@@ -1,0 +1,15 @@
+From: dan@example.com
+To: support@armature.test
+Subject: [HELP-4] both kinds
+Message-ID: <alt@example.com>
+Content-Type: multipart/alternative; boundary="b1"
+
+--b1
+Content-Type: text/plain; charset=utf-8
+
+The plain words.
+--b1
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>The <b>rich</b> words.</p></body></html>
+--b1--

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "armature.fullname" . }}-api
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.api.port }}
+      targetPort: http
+    # /metrics has no authentication of its own. It is on the Service so a
+    # scraper inside the cluster can reach it, and nowhere in the Ingress.
+    - name: metrics
+      port: {{ .Values.telemetry.metricsPort }}
+      targetPort: metrics
+  selector:
+    {{- include "armature.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api

@@ -1,0 +1,30 @@
+// The kit, one file per component. Every name the old single file exported is
+// still exported here, so callers keep importing from "@/components/ui".
+export { cx } from "./cx";
+export { Button, IconButton, Spinner, controlHeight, type ButtonVariant, type ControlSize, ButtonLink } from "./Button";
+export { Input, Textarea, Checkbox, Switch, Select, SelectInput, Labelled, control, controlClass, fieldId, type InputProps } from "./controls";
+export { Field } from "./Field";
+export { Card } from "./Card";
+export { ProgressBar, type ProgressTone } from "./ProgressBar";
+export { Stat } from "./Stat";
+export { Tag } from "./Tag";
+export { SectionTitle } from "./SectionTitle";
+export { Table, Th, Td } from "./Table";
+export { EmptyState } from "./EmptyState";
+export { ErrorBanner } from "./ErrorBanner";
+export { Segmented } from "./Segmented";
+export { PageHeader, Breadcrumbs, ShellHeaderContext, type Crumb } from "./PageHeader";
+export { Chip } from "./Chip";
+export { Choice, OptionCard } from "./Choice";
+export { Page, type PageWidth } from "./Page";
+export { Toolbar } from "./Toolbar";
+export { Skeleton } from "./Skeleton";
+export { Avatar, type AvatarSize } from "./Avatar";
+export { Popover } from "./Popover";
+export { Tooltip } from "./Tooltip";
+export { Spotlight } from "./Spotlight";
+export { MentionTextarea, mentionMatches, mentionQuery, type Mentionable } from "./MentionTextarea";
+export { Menu, type MenuItem } from "./Menu";
+export { Dialog, ConfirmDialog, Drawer, DockedPanel, isEditing, isInteractiveTarget } from "./Dialog";
+export { ToastProvider, useToast, type ToastKind, type ToastOptions } from "./Toast";
+export { Tabs, TabPanel, type Tab } from "./Tabs";

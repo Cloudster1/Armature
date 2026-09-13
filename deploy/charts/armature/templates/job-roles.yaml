@@ -1,0 +1,126 @@
+{{- if .Values.jobs.roles.enabled }}
+{{/*
+deploy/postgres/init-roles.sh runs from Postgres's initdb hook, which only
+fires on an empty data directory - something no managed database offers. This
+is the same work as a Job that can be run against a database that already
+exists.
+
+Three differences from the script, each deliberate:
+
+  * CREATE ROLE errors if the role is there, and a Helm hook runs again on
+    every upgrade, so each is guarded.
+  * ALTER DEFAULT PRIVILEGES is granted FOR ROLE the owner that runs the
+    migrations, not literally postgres. Name the wrong role and the tables
+    the migration Job creates afterwards are silently not granted to the
+    application, which surfaces much later as a permission error.
+  * No replicator role and no pg_hba line. A managed database provisions its
+    own read replicas; database.replicaHosts then points at them and they are
+    read as the application role like any other connection.
+
+The role names come from one value each, used here and by the workloads. They
+have to match what the migrations grant to: every role reference there is
+wrapped in IF EXISTS, so a name that does not match is skipped rather than
+refused, and the grants and the row-level-security bypass go missing with no
+error anywhere.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "armature.fullname" . }}-roles
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: roles
+  annotations:
+    # post-install, not pre-install: Helm runs pre-install hooks before it
+    # creates any of the release's own resources, so this Job's Secret, and a
+    # bundled database, would not exist yet. pre-upgrade is safe because both
+    # were made by the install before it.
+    helm.sh/hook: post-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        {{- include "armature.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: roles
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "armature.serviceAccountName" . }}
+      {{- with .Values.images.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: roles
+          image: {{ include "armature.image" (dict "root" $ "name" "psql") }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          env:
+            - name: PGURL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "armature.secretName" . }}
+                  key: db-owner-url
+            - name: APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "armature.secretName" . }}
+                  key: db-app-password
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "armature.secretName" . }}
+                  key: db-admin-password
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
+              DO $$
+              BEGIN
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{ .Values.database.appRole | quote }}) THEN
+                      CREATE ROLE {{ .Values.database.appRole }} LOGIN;
+                  END IF;
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{ .Values.database.adminRole | quote }}) THEN
+                      CREATE ROLE {{ .Values.database.adminRole }} LOGIN;
+                  END IF;
+              END;
+              $$;
+              SQL
+              # The passwords are set outside the DO block: they change between
+              # installs, and ALTER is the only idempotent way to say so.
+              psql -v ON_ERROR_STOP=1 "$PGURL" \
+                -c "ALTER ROLE {{ .Values.database.appRole }} WITH PASSWORD '$APP_PASSWORD'" \
+                -c "ALTER ROLE {{ .Values.database.adminRole }} WITH PASSWORD '$ADMIN_PASSWORD'"
+              psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
+              GRANT CONNECT ON DATABASE {{ .Values.database.name }} TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
+              GRANT USAGE ON SCHEMA public TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
+
+              -- The pool reads pg_stat_wal_receiver to tell a caught-up standby
+              -- from one whose receiver has quietly dropped.
+              GRANT pg_read_all_stats TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
+
+              -- Everything the migrations create afterwards is granted without
+              -- anybody remembering to. FOR ROLE is the role that will create
+              -- them, which is the one this Job connects as.
+              ALTER DEFAULT PRIVILEGES FOR ROLE {{ .Values.database.ownerRole }} IN SCHEMA public
+                  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
+              ALTER DEFAULT PRIVILEGES FOR ROLE {{ .Values.database.ownerRole }} IN SCHEMA public
+                  GRANT USAGE, SELECT ON SEQUENCES TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
+              ALTER DEFAULT PRIVILEGES FOR ROLE {{ .Values.database.ownerRole }} IN SCHEMA public
+                  GRANT EXECUTE ON FUNCTIONS TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
+              SQL
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+{{- end }}

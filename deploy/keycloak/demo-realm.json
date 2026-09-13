@@ -1,0 +1,72 @@
+{
+  "realm": "demo",
+  "displayName": "Demo Company",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "groups": [
+    { "name": "armature-administrators", "path": "/armature-administrators" },
+    { "name": "portal-owners", "path": "/portal-owners" },
+    { "name": "scrum-masters", "path": "/scrum-masters" },
+    { "name": "developers", "path": "/developers" },
+    { "name": "readers", "path": "/readers" }
+  ],
+  "users": [
+    {
+      "username": "ada", "email": "ada@armature.test", "firstName": "Ada", "lastName": "Lovelace",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo password please", "temporary": false }],
+      "groups": ["/armature-administrators"]
+    },
+    {
+      "username": "grace", "email": "grace@armature.test", "firstName": "Grace", "lastName": "Hopper",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo password please", "temporary": false }],
+      "groups": ["/portal-owners", "/scrum-masters"]
+    },
+    {
+      "username": "alan", "email": "alan@armature.test", "firstName": "Alan", "lastName": "Turing",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo password please", "temporary": false }],
+      "groups": ["/developers"]
+    },
+    {
+      "username": "rita", "email": "rita@armature.test", "firstName": "Rita", "lastName": "Reader",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo password please", "temporary": false }],
+      "groups": ["/readers"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "armature",
+      "name": "Armature",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "armature-demo-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:8080/api/v1/auth/oidc/callback", "http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "defaultClientScopes": ["openid", "profile", "email"],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,314 @@
+# Armature. The defaults here describe a real deployment: your own Postgres,
+# your own Redis, your own object store. For a stack that comes up with none of
+# those, install with -f values-demo.yaml instead.
+
+nameOverride: ""
+fullnameOverride: ""
+
+images:
+  # The four backend targets of deploy/Dockerfile.backend, the production
+  # target of deploy/Dockerfile.web, and the public Chrome image the PDF
+  # renderer runs in. An empty tag means the chart's appVersion.
+  api: { repository: armature/api, tag: "" }
+  worker: { repository: armature/worker, tag: "" }
+  migrate: { repository: armature/migrate, tag: "" }
+  seed: { repository: armature/seed, tag: "" }
+  web: { repository: armature/web, tag: "" }
+  render: { repository: armature/render, tag: "" }
+  psql: { repository: postgres, tag: 18-alpine }
+  # Valkey answers the Redis protocol; only the bundled cache uses this.
+  redis: { repository: valkey/valkey, tag: 8-alpine }
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# development, staging or production. Anything else is refused at startup, and
+# anything but development requires ingress.tls and secureCookies below.
+env: production
+
+ingress:
+  enabled: true
+  className: ""
+  # The host the browser uses. Mail links, the OIDC callback and the session
+  # cookie are all derived from it, so it is not only routing.
+  host: armature.example.com
+  tls:
+    enabled: true
+    secretName: armature-tls
+  annotations: {}
+
+api:
+  replicas: 2
+  # The listen address and the Service target come from this one value, so
+  # they cannot disagree.
+  port: 8080
+  # The api gives in-flight requests 25 seconds after SIGTERM and then flushes
+  # traces, so anything under about 35 kills it mid-drain.
+  terminationGracePeriodSeconds: 40
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    # Argon2 asks for 64 MiB per password hash in flight (argon.memoryKiB
+    # below). A limit near the request will be hit by a burst of sign-ins.
+    limits: { memory: 1Gi }
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+worker:
+  # Pinned to one, and not a mistake. The worker has no leader election and no
+  # advisory lock. Its stream consumers all identify themselves to Redis as
+  # the literal "worker", so replicas are indistinguishable to the consumer
+  # group, and notify.Digest remembers which hourly digests it has sent in an
+  # in-process map rather than in the database. A second replica mails every
+  # digest twice. Making this scalable is a change to the product, not to the
+  # chart.
+  replicas: 1
+  # Loops exit at their next poll boundary; the longest Redis block is 5s.
+  terminationGracePeriodSeconds: 20
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+web:
+  replicas: 2
+  # Stock nginx would start its master as root. It runs as the image's own
+  # nginx user instead, so the listener is above 1024 and the root filesystem
+  # can stay read only.
+  runAsUser: 101
+  port: 8080
+  # nginx resolves the names in proxy_pass once, at startup, and refuses to
+  # start if one is missing. That is fine here: Helm creates Services before
+  # Deployments, and a Service's DNS name exists the moment the Service does,
+  # with or without endpoints behind it. Set this to your cluster DNS address
+  # - an IP, not a name, or nginx has the same problem resolving the resolver
+  # - to defer resolution to request time instead.
+  apiResolver: ""
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+render:
+  # PDF export. Off by default: it needs a Chromium image an order of
+  # magnitude larger than everything else, and without it the only thing that
+  # fails is a PDF download, with a message saying so.
+  enabled: false
+  replicas: 1
+  timeout: 20s
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits: { memory: 2Gi }
+
+database:
+  # Where the api and the worker connect. Everything before the credentials is
+  # yours to supply; the chart never guesses a host.
+  host: ""
+  port: 5432
+  name: armature
+  sslmode: require
+  # Read replicas are optional. With none, every read goes to the primary,
+  # which is a supported configuration and not a degraded one.
+  replicaHosts: []
+  # These names must match what the migrations grant to. They are one value
+  # each precisely so the roles Job and the workloads cannot disagree: a
+  # migration naming a role that does not exist is skipped, not refused, and
+  # the grants and the row-level-security bypass vanish without an error.
+  appRole: armature_app
+  adminRole: armature_admin
+  # The role the roles Job and the migration Job connect as. It must be able
+  # to CREATE ROLE and own the schema. The api and the worker refuse to start
+  # if they are given a role with rolsuper or rolbypassrls, so this must not
+  # be the role they use.
+  ownerRole: postgres
+  pool:
+    maxConns: 20
+    minConns: 2
+    maxConnLifetime: 1h
+    healthInterval: 5s
+    maxReplicaLag: 2s
+    replicaLagSamples: 3
+
+externalRedis:
+  # Not optional. Both binaries ping Redis at startup and refuse to run
+  # without it. It carries the outbox relay stream as well as a disposable
+  # cache: an event is marked published as soon as it reaches the stream, so
+  # losing Redis loses any event the six consumer groups have not yet acked,
+  # with no way to replay it. Persistence is not a luxury here.
+  #
+  # Ignored when the bundled redis subchart is enabled.
+  host: ""
+  port: 6379
+  db: 0
+
+s3:
+  # Attachments. Without it the product runs and refuses uploads with a
+  # message naming this setting.
+  enabled: false
+  endpoint: ""
+  bucket: armature-attachments
+  region: us-east-1
+  useSSL: true
+
+mail:
+  # Blank turns mail off: no invitations, no digests, no desk notifications,
+  # no portal login codes. Everything else works.
+  smtpAddr: ""
+  from: Armature <no-reply@armature.example.com>
+  # The desk's own address. Required if pop3.addr is set, or the worker
+  # refuses to start.
+  inbox: ""
+  pop3:
+    addr: ""
+    user: ""
+    tls: true
+    interval: 30s
+
+auth:
+  sessionTTL: 720h
+  sessionCookie: armature_session
+  # Must be true unless env is development. The worker shares the same
+  # configuration loader and so needs it too, despite never issuing a cookie.
+  secureCookies: true
+  argon:
+    memoryKiB: 65536
+    iterations: 3
+    threads: 4
+  readYourWritesTTL: 30s
+  portalCodeCooldown: 1m
+  oidc:
+    # Must match what is registered with the identity provider, byte for byte.
+    # Empty derives it from ingress.host.
+    redirectURL: ""
+    # public=reachable rewrites, for a provider whose browser-facing issuer
+    # differs from the address this cluster reaches it at.
+    backchannel: ""
+
+network:
+  # CIDRs whose X-Forwarded-For is believed. Your ingress controller's range.
+  trustedProxies: []
+  # Extra browser origins allowed to call the API. Same-origin needs none.
+  corsOrigins: []
+  # Where the server's own outbound requests (webhooks, git hosts, OIDC
+  # discovery) may reach beyond the public internet. Private ranges are
+  # refused unless named here, which is what stops a webhook pointed at an
+  # internal address. Widen deliberately.
+  outboundAllow: []
+
+telemetry:
+  # /metrics has no authentication. Keep it on the cluster network.
+  metricsPort: 9090
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+  otel:
+    endpoint: ""
+    sampleRatio: 1
+
+assistant:
+  url: ""
+  model: claude-sonnet-5
+  timeout: 25s
+
+# How long each kind of row is kept past its use. Zero means forever.
+retention:
+  sessions: 24h
+  portalCodes: 24h
+  invites: 720h
+  apiTokens: 720h
+  oidcLogins: 24h
+  notifications: 4320h
+  outbox: 720h
+  webhookDeliveries: 720h
+  automationRuns: 2160h
+  inboundMail: 2160h
+  importJobs: 2160h
+  audit: 8760h
+
+logLevel: info
+
+secrets:
+  # create: the chart renders a Secret from the values below, which is what a
+  # trial install wants. existingSecret: you made the Secret yourself and the
+  # chart only names it, which is what a real one wants. The keys expected are
+  # listed in the chart's README.
+  create: true
+  existingSecret: ""
+  appPassword: ""
+  adminPassword: ""
+  ownerPassword: ""
+  redisPassword: ""
+  s3AccessKey: ""
+  s3SecretKey: ""
+  pop3Password: ""
+  assistantKey: ""
+
+jobs:
+  roles:
+    # The roles the migrations expect. Runs before every install and upgrade,
+    # and is written to be safe to run again.
+    enabled: true
+  migrate:
+    enabled: true
+  seed:
+    # Demo data. The binary itself refuses to run when env is production.
+    enabled: false
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile: { type: RuntimeDefault }
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: ["ALL"] }
+
+# What the chart can bring with it, all off. Postgres and Valkey are two
+# StatefulSets of this chart's own on the official images, one pod and one
+# volume each, for a trial rather than a deployment. SeaweedFS is a subchart
+# and its own settings live under that key. See values-demo.yaml.
+postgresql:
+  enabled: false
+  # The image is images.psql above, the one the roles Job already uses, so the
+  # bundled server and the client that bootstraps it are the same release.
+  storage: 8Gi
+  storageClass: ""
+  # postgres:18-alpine runs as this user, and PGDATA is where its entrypoint
+  # puts the cluster.
+  runAsUser: 70
+  runAsGroup: 70
+  dataPath: /var/lib/postgresql/18/docker
+  terminationGracePeriodSeconds: 60
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+redis:
+  enabled: false
+  storage: 8Gi
+  storageClass: ""
+  # valkey/valkey:8-alpine runs as this user.
+  runAsUser: 999
+  runAsGroup: 1000
+  terminationGracePeriodSeconds: 30
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+
+seaweedfs:
+  enabled: false

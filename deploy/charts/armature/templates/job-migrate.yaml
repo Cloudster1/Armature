@@ -1,0 +1,68 @@
+{{- if .Values.jobs.migrate.enabled }}
+{{/*
+goose here is the legacy top-level API, which takes no advisory lock - two
+concurrent `migrate up` runs are unguarded. Hence one pod, no retries that
+could overlap, and a delete policy that replaces a previous hook Job rather
+than racing it.
+
+It connects as the owner, not the application role: it creates tables and
+grants to roles. The api and the worker would refuse to start as this role.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "armature.fullname" . }}-migrate
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    # post-install for the same reason as the roles Job, and after it by weight.
+    helm.sh/hook: post-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        {{- include "armature.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "armature.serviceAccountName" . }}
+      {{- with .Values.images.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "armature.image" (dict "root" $ "name" "migrate") }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          args: ["up"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "armature.fullname" . }}-env
+          env:
+            # The owner, deliberately: this one writes DDL. It also overrides
+            # the primary URL the ConfigMap and Secret give every other
+            # workload, which is why it comes after envFrom.
+            - name: ARMATURE_DB_PRIMARY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "armature.secretName" . }}
+                  key: db-owner-url
+            - name: ARMATURE_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "armature.secretName" . }}
+                  key: redis-url
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+{{- end }}

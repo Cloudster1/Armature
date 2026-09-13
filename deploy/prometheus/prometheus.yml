@@ -1,0 +1,10 @@
+# Prometheus for the development stack: the api and the worker, scraped on the
+# private metrics port they serve on the compose network. Started by
+# `make observe`; nothing here runs otherwise.
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: armature
+    static_configs:
+      - targets: ["api:9090", "worker:9090"]

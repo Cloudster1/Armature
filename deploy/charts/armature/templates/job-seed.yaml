@@ -1,0 +1,52 @@
+{{- if .Values.jobs.seed.enabled }}
+{{- if eq .Values.env "production" }}
+{{- fail "jobs.seed.enabled is true but env is production. The seed binary refuses to run there anyway; this says so before the Job is created rather than after it fails." }}
+{{- end }}
+{{/*
+Demo data. Off unless asked for, and the binary itself refuses to run when the
+environment is production, so this is two locks on the same door.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "armature.fullname" . }}-seed
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seed
+  annotations:
+    helm.sh/hook: post-install
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "armature.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: seed
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "armature.serviceAccountName" . }}
+      {{- with .Values.images.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: seed
+          image: {{ include "armature.image" (dict "root" $ "name" "seed") }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "armature.fullname" . }}-env
+          env:
+            {{- include "armature.secretEnv" . | nindent 12 }}
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+{{- end }}

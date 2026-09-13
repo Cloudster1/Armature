@@ -1,0 +1,29 @@
+# Toolchain caches, bind mounted into the build containers.
+.cache/
+.claude/
+
+# Node
+node_modules/
+web/dist/
+
+# Go
+backend/api
+backend/worker
+backend/migrate
+backend/seed
+*.test
+
+# Local overrides
+.env
+.env.local
+deploy/.env
+
+# Build state
+web/tsconfig.tsbuildinfo
+
+# A Jira export somebody dropped here to try the importer. It is somebody's
+# data, not the project's.
+*_Export_*.csv
+
+# Fetched by `make helm-deps`, pinned by Chart.lock.
+deploy/charts/*/charts/

@@ -1,0 +1,680 @@
+---
+# Source: armature/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: armature
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+---
+# Source: armature/templates/secret-env.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: armature-secrets
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+type: Opaque
+stringData:
+  # The app role is subject to every row level security policy; the admin role
+  # is exempt by policy rather than by being a superuser, which is why both can
+  # pass the check that refuses a privileged role at startup.
+  db-primary-url: "postgres://armature_app:app-password@db.example.com:5432/armature?sslmode=require"
+  db-admin-url: "postgres://armature_admin:admin-password@db.example.com:5432/armature?sslmode=require"
+  # Owned by the roles and migration Jobs only. The api and the worker must
+  # never be given this: they refuse to start as a role that bypasses RLS.
+  db-owner-url: "postgres://postgres:owner-password@db.example.com:5432/armature?sslmode=require"
+  db-app-password: "app-password"
+  db-admin-password: "admin-password"
+  # The bundled database reads this as its superuser password, so the server
+  # and the URL the Jobs connect with cannot come to disagree.
+  db-owner-password: "owner-password"
+  redis-url: "redis://redis.example.com:6379/0"
+---
+# Source: armature/templates/configmap-env.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: armature-env
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+data:
+  ARMATURE_ENV: "production"
+  ARMATURE_LOG_LEVEL: "info"
+  ARMATURE_APP_URL: "https://armature.example.com"
+  ARMATURE_HTTP_ADDR: ":8080"
+  ARMATURE_METRICS_ADDR: ":9090"
+  
+  # Database pool. The URLs themselves carry credentials and live in the Secret.
+  ARMATURE_DB_MAX_CONNS: "20"
+  ARMATURE_DB_MIN_CONNS: "2"
+  ARMATURE_DB_CONN_MAX_LIFETIME: "1h"
+  ARMATURE_DB_HEALTH_INTERVAL: "5s"
+  ARMATURE_DB_MAX_REPLICA_LAG: "2s"
+  ARMATURE_DB_REPLICA_LAG_SAMPLES: "3"
+  
+  # Sessions and hashing. secureCookies must be true unless env is development,
+  # on the worker as much as the api: they share one configuration loader.
+  ARMATURE_SESSION_TTL: "720h"
+  ARMATURE_SESSION_COOKIE: "armature_session"
+  ARMATURE_SECURE_COOKIES: "true"
+  ARMATURE_ARGON_MEMORY_KIB: "65536"
+  ARMATURE_ARGON_ITERATIONS: "3"
+  ARMATURE_ARGON_THREADS: "4"
+  ARMATURE_READ_YOUR_WRITES_TTL: "30s"
+  ARMATURE_PORTAL_CODE_COOLDOWN: "1m"
+  ARMATURE_OIDC_REDIRECT_URL: "https://armature.example.com/api/v1/auth/oidc/callback"
+  
+  
+  ARMATURE_RETAIN_SESSIONS: "24h"
+  ARMATURE_RETAIN_PORTAL_CODES: "24h"
+  ARMATURE_RETAIN_INVITES: "720h"
+  ARMATURE_RETAIN_API_TOKENS: "720h"
+  ARMATURE_RETAIN_OIDC_LOGINS: "24h"
+  ARMATURE_RETAIN_NOTIFICATIONS: "4320h"
+  ARMATURE_RETAIN_OUTBOX: "720h"
+  ARMATURE_RETAIN_WEBHOOK_DELIVERIES: "720h"
+  ARMATURE_RETAIN_AUTOMATION_RUNS: "2160h"
+  ARMATURE_RETAIN_INBOUND_MAIL: "2160h"
+  ARMATURE_RETAIN_IMPORT_JOBS: "2160h"
+  ARMATURE_RETAIN_AUDIT: "8760h"
+---
+# Source: armature/templates/configmap-nginx.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: armature-nginx
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+data:
+  default.conf: |
+    server {
+        listen 8080;
+        server_name _;
+        root /usr/share/nginx/html;
+
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "same-origin" always;
+
+        location /api/ {
+            proxy_pass http://armature-api:8080;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /assets/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+---
+# Source: armature/templates/api-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: armature-api
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+    # /metrics has no authentication of its own. It is on the Service so a
+    # scraper inside the cluster can reach it, and nowhere in the Ingress.
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/component: api
+---
+# Source: armature/templates/web-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: armature-web
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: web
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/component: web
+---
+# Source: armature/templates/api-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: armature-api
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: armature
+      app.kubernetes.io/instance: armature
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: armature
+        app.kubernetes.io/instance: armature
+        app.kubernetes.io/component: api
+      annotations:
+        # Roll the pods when the configuration changes. Without this an edit to
+        # a value would update the ConfigMap and leave the running pods on the
+        # old one until something else happened to restart them.
+        checksum/env: ea42183d862fb2fcdcb82ff5224f1136346b97f0169a101451fb621c2d97dab3
+    spec:
+      serviceAccountName: armature
+      securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # The api drains in-flight requests for 25 seconds after SIGTERM and then
+      # flushes traces. Anything shorter than that kills it mid-drain.
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: api
+          image: armature/api:0.1.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          envFrom:
+            - configMapRef:
+                name: armature-env
+          env:
+            - name: ARMATURE_DB_PRIMARY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: db-primary-url
+            - name: ARMATURE_DB_ADMIN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: db-admin-url
+            - name: ARMATURE_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: redis-url
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+          # Liveness deliberately checks nothing but the process: /healthz
+          # answers without touching the database, so an outage of something
+          # downstream does not get every pod killed and restarted into it.
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # Readiness does ping the primary, so a pod that cannot reach the
+          # database is taken out of the Service until it can.
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          startupProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 3
+            failureThreshold: 30
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+---
+# Source: armature/templates/web-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: armature-web
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: armature
+      app.kubernetes.io/instance: armature
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: armature
+        app.kubernetes.io/instance: armature
+        app.kubernetes.io/component: web
+      annotations:
+        checksum/nginx: 2cbc4632cd1ad517fe39530f835fa8a4653ef6e1acbd198a71e7d6063eab8efb
+    spec:
+      serviceAccountName: armature
+      # The image is stock nginx, whose master would normally start as root.
+      # It runs as the image's own nginx user instead, which is why the server
+      # block listens on 8080 rather than 80 and why the writable paths below
+      # are mounted: the root filesystem is read only.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: web
+          image: armature/web:0.1.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet: { path: /index.html, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /index.html, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /var/run
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              cpu: 20m
+              memory: 64Mi
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: armature-nginx
+        - name: cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+# Source: armature/templates/worker-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: armature-worker
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  # Recreate, not RollingUpdate: a rolling update would briefly run two
+  # workers, which is the thing the single replica exists to prevent.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: armature
+      app.kubernetes.io/instance: armature
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: armature
+        app.kubernetes.io/instance: armature
+        app.kubernetes.io/component: worker
+      annotations:
+        checksum/env: ea42183d862fb2fcdcb82ff5224f1136346b97f0169a101451fb621c2d97dab3
+    spec:
+      serviceAccountName: armature
+      securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # Loops stop at their next poll boundary; the longest Redis block is 5s.
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: worker
+          image: armature/worker:0.1.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          envFrom:
+            - configMapRef:
+                name: armature-env
+          env:
+            - name: ARMATURE_DB_PRIMARY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: db-primary-url
+            - name: ARMATURE_DB_ADMIN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: db-admin-url
+            - name: ARMATURE_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: redis-url
+          ports:
+            - name: metrics
+              containerPort: 9090
+          # The only endpoint the worker has is the metrics mux's /healthz,
+          # which answers 200 whenever the process is up and checks nothing.
+          # That makes it a fair liveness probe and a useless readiness one, so
+          # there is no readiness probe here rather than a dishonest one.
+          livenessProbe:
+            httpGet: { path: /healthz, port: metrics }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+---
+# Source: armature/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: armature
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+spec:
+  tls:
+    - hosts:
+        - "armature.example.com"
+      secretName: armature-tls
+  rules:
+    - host: "armature.example.com"
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: armature-api
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: armature-web
+                port:
+                  name: http
+---
+# Source: armature/templates/job-migrate.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: armature-migrate
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: migrate
+  annotations:
+    # post-install for the same reason as the roles Job, and after it by weight.
+    helm.sh/hook: post-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: armature
+        app.kubernetes.io/instance: armature
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      serviceAccountName: armature
+      securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: armature/migrate:0.1.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          args: ["up"]
+          envFrom:
+            - configMapRef:
+                name: armature-env
+          env:
+            # The owner, deliberately: this one writes DDL. It also overrides
+            # the primary URL the ConfigMap and Secret give every other
+            # workload, which is why it comes after envFrom.
+            - name: ARMATURE_DB_PRIMARY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: db-owner-url
+            - name: ARMATURE_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: redis-url
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+# Source: armature/templates/job-roles.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: armature-roles
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: roles
+  annotations:
+    # post-install, not pre-install: Helm runs pre-install hooks before it
+    # creates any of the release's own resources, so this Job's Secret, and a
+    # bundled database, would not exist yet. pre-upgrade is safe because both
+    # were made by the install before it.
+    helm.sh/hook: post-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: armature
+        app.kubernetes.io/instance: armature
+        app.kubernetes.io/component: roles
+    spec:
+      restartPolicy: Never
+      serviceAccountName: armature
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: roles
+          image: postgres:18-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          env:
+            - name: PGURL
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: db-owner-url
+            - name: APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: db-app-password
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: db-admin-password
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
+              DO $$
+              BEGIN
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = "armature_app") THEN
+                      CREATE ROLE armature_app LOGIN;
+                  END IF;
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = "armature_admin") THEN
+                      CREATE ROLE armature_admin LOGIN;
+                  END IF;
+              END;
+              $$;
+              SQL
+              # The passwords are set outside the DO block: they change between
+              # installs, and ALTER is the only idempotent way to say so.
+              psql -v ON_ERROR_STOP=1 "$PGURL" \
+                -c "ALTER ROLE armature_app WITH PASSWORD '$APP_PASSWORD'" \
+                -c "ALTER ROLE armature_admin WITH PASSWORD '$ADMIN_PASSWORD'"
+              psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
+              GRANT CONNECT ON DATABASE armature TO armature_app, armature_admin;
+              GRANT USAGE ON SCHEMA public TO armature_app, armature_admin;
+
+              -- The pool reads pg_stat_wal_receiver to tell a caught-up standby
+              -- from one whose receiver has quietly dropped.
+              GRANT pg_read_all_stats TO armature_app, armature_admin;
+
+              -- Everything the migrations create afterwards is granted without
+              -- anybody remembering to. FOR ROLE is the role that will create
+              -- them, which is the one this Job connects as.
+              ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+                  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO armature_app, armature_admin;
+              ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+                  GRANT USAGE, SELECT ON SEQUENCES TO armature_app, armature_admin;
+              ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+                  GRANT EXECUTE ON FUNCTIONS TO armature_app, armature_admin;
+              SQL
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }

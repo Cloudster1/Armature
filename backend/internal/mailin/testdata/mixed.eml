@@ -1,0 +1,24 @@
+From: fay@example.com
+To: support@armature.test
+Subject: [HELP-6] with a file
+Message-ID: <mixed@example.com>
+Content-Type: multipart/mixed; boundary="outer"
+
+--outer
+Content-Type: multipart/alternative; boundary="inner"
+
+--inner
+Content-Type: text/plain; charset=utf-8
+
+See the file.
+--inner
+Content-Type: text/html; charset=utf-8
+
+<p>See the file.</p>
+--inner--
+--outer
+Content-Type: application/pdf; name="x.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0=
+--outer--

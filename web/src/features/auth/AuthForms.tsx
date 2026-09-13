@@ -1,0 +1,192 @@
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { ApiError, BASE } from "@/api/client";
+import { useLogin, useSignup } from "@/api/auth";
+import { Button, ErrorBanner, Field } from "@/components/ui";
+
+/** Pulls per-field messages out of the API's validation envelope. */
+function fieldErrors(error: unknown): Record<string, string> {
+  return error instanceof ApiError ? error.fields : {};
+}
+
+function formError(error: unknown): string | null {
+  if (!error) return null;
+  if (error instanceof ApiError) {
+    // Field-level problems are shown against their fields instead.
+    return Object.keys(error.fields).length > 0 ? null : error.message;
+  }
+  return "Something went wrong. Please try again.";
+}
+
+export function LoginForm() {
+  const navigate = useNavigate();
+  const login = useLogin();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [org, setOrg] = useState("");
+  const [sso, setSSO] = useState(false);
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    login.mutate({ email, password }, { onSuccess: () => navigate({ to: "/" }) });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      {formError(login.error) && <ErrorBanner>{formError(login.error)}</ErrorBanner>}
+      <Field
+        label="Email"
+        type="email"
+        autoComplete="username"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        error={fieldErrors(login.error).email}
+      />
+      <Field
+        label="Password"
+        type="password"
+        autoComplete="current-password"
+        required
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        error={fieldErrors(login.error).password}
+      />
+      <Button type="submit" loading={login.isPending} className="w-full">
+        Sign in
+      </Button>
+
+      <SingleSignOn open={sso} org={org} onOrg={setOrg} onOpen={() => setSSO(true)} />
+    </form>
+  );
+}
+
+/**
+ * Signing in through an identity provider.
+ *
+ * The organization has to be named first, because a sign-in has to know which
+ * tenant it is for before there is anybody signed in to ask. The link is a
+ * plain navigation rather than a fetch: the browser has to follow the
+ * provider's redirects itself.
+ */
+function SingleSignOn({
+  open,
+  org,
+  onOrg,
+  onOpen,
+}: {
+  open: boolean;
+  org: string;
+  onOrg: (value: string) => void;
+  onOpen: () => void;
+}) {
+  const failure = ssoFailure();
+
+  if (!open && !failure) {
+    return (
+      <Button variant="link" onClick={onOpen} className="w-full justify-center">
+        Sign in with single sign-on
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 border-t border-border pt-4">
+      {failure && <ErrorBanner>{failure}</ErrorBanner>}
+      <Field
+        label="Organization"
+        placeholder="your-company"
+        value={org}
+        onChange={(event) => onOrg(event.target.value)}
+      />
+      <Button
+        type="button"
+        variant="secondary"
+        className="w-full"
+        disabled={!org.trim()}
+        onClick={() => {
+          window.location.href = `${BASE}/auth/oidc/${encodeURIComponent(org.trim())}/start`;
+        }}
+      >
+        Continue to your provider
+      </Button>
+    </div>
+  );
+}
+
+/** Turns the reason carried back on the URL into something worth reading. */
+function ssoFailure(): string | null {
+  const reason = new URLSearchParams(window.location.search).get("sso");
+  switch (reason) {
+    case null:
+      return null;
+    case "not_a_member":
+      return "Your provider knows you, but you have not been invited to that organization.";
+    case "not_configured":
+      return "That organization does not use single sign-on.";
+    case "expired":
+      return "That sign-in took too long. Start it again.";
+    case "no_email":
+      return "Your provider did not send an email address, so there is no account to match.";
+    case "unverified_email":
+      return "Your provider has not verified your email address. Verify it there, then sign in again.";
+    default:
+      return "Signing in through your provider did not work.";
+  }
+}
+
+export function SignupForm() {
+  const navigate = useNavigate();
+  const signup = useSignup();
+  const [values, setValues] = useState({ name: "", email: "", password: "", orgName: "" });
+
+  function set(key: keyof typeof values) {
+    return (event: { target: { value: string } }) =>
+      setValues((current) => ({ ...current, [key]: event.target.value }));
+  }
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    signup.mutate(values, { onSuccess: () => navigate({ to: "/" }) });
+  }
+
+  const errors = fieldErrors(signup.error);
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      {formError(signup.error) && <ErrorBanner>{formError(signup.error)}</ErrorBanner>}
+      <Field label="Your name" required value={values.name} onChange={set("name")} error={errors.name} />
+      <Field
+        label="Work email"
+        type="email"
+        autoComplete="username"
+        required
+        value={values.email}
+        onChange={set("email")}
+        error={errors.email}
+      />
+      <Field
+        label="Password"
+        type="password"
+        autoComplete="new-password"
+        required
+        minLength={12}
+        value={values.password}
+        onChange={set("password")}
+        hint="At least 12 characters."
+        error={errors.password}
+      />
+      <Field
+        label="Organization name"
+        required
+        value={values.orgName}
+        onChange={set("orgName")}
+        hint="You can change this later."
+        error={errors.orgName}
+      />
+      <Button type="submit" loading={signup.isPending} className="w-full">
+        Create your organization
+      </Button>
+    </form>
+  );
+}

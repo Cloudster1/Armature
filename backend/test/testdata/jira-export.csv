@@ -1,0 +1,13 @@
+Summary,Issue key,Issue id,Issue Type,Status,Priority,Assignee,Reporter,Created,Updated,Resolved,Due Date,Description,Original Estimate,Remaining Estimate,Labels,Labels,Labels,Custom field (Epic Link),Sprint,Sprint,Log Work,Log Work,Comment,Outward issue link (Blocks),Fix Version/s,Component/s
+Platform groundwork,IT-1,100001,Epic,To Do,Medium,Ada.Byrne,Ada.Byrne,03/Aug/26 09:15,09/Sep/26 08:37,,,"The work the rest of this hangs off.",,,platform,,,,,,,,,,,
+Stand up the cluster,IT-2,100002,Story,Done,Highest,Ada.Byrne,Grace.Hoff,04/Aug/26 10:20,27/Aug/26 08:58,27/Aug/26 08:58,28/Aug/26 00:00,"h2. What was done
+
+ * Three nodes, one of them spare
+ * Certificates renewed on a timer
+
+The whole thing is *automated* now.",57600,0,platform,cluster,,IT-1,2026 - KW32/33,2026 - KW34/35,;24/Aug/26 10:05;Ada.Byrne;28800,;24/Aug/26 10:05;Ada.Byrne;14400,24/Aug/26 11:00;Grace.Hoff;Looks right to me.;;;,IT-3,1.0,Cluster
+Move the mirrors,IT-3,100003,Story,In Progress,Medium,Grace.Hoff,Ada.Byrne,05/Aug/26 11:00,08/Sep/26 09:39,,,"Mirrors are synced by hand, which is how they go stale.",144000,57600,platform,mirrors,ops,IT-1,2026 - KW34/35,,;28/Aug/26 10:20;Grace.Hoff;57600,,,,1.0,Mirrors
+Write the runbook,IT-4,100004,Story,Requested,Medium,,Ada.Byrne,06/Aug/26 08:00,06/Aug/26 08:00,,,"Nobody can run this but the person who built it.",28800,28800,docs,,,IT-1,,,,,,,,
+Renew the certificates,IT-5,100005,Story,Done,Medium,Ada.Byrne,Ada.Byrne,10/Aug/26 14:26,24/Aug/26 10:05,24/Aug/26 10:05,,"Before they expire, this time.",86400,0,ops,,,IT-1,2026 - KW32/33,,;10/Aug/26 14:26;Ada.Byrne;86400,,,,1.0,
+Decide the backup story,IT-6,100006,Story,Requested,Medium,Sam.Okonkwo,Sam.Okonkwo,11/Aug/26 09:30,11/Aug/26 09:30,,,"Nobody here answers to this person, which is the point of the row.",,,,,,IT-1,,,,,,,,
+Decide the mirror retention,IT-7,100007,Story,To Do,Medium,Ada.Byrne,Ada.Byrne,12/Aug/26 09:00,12/Aug/26 09:00,,,"The epic this names is not in this file, which is what a filtered export does.",,,ops,,,IT-99,,,,,,,,

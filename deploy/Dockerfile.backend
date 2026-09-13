@@ -1,0 +1,50 @@
+# Multi-stage build shared by every backend binary. Each binary gets its own
+# final stage so that "target: api" and "target: worker" in compose produce
+# minimal, single-purpose images.
+
+FROM golang:1.26-alpine AS builder
+WORKDIR /src
+
+# Dependencies first: this layer is cached until go.mod or go.sum changes.
+COPY backend/go.mod backend/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY backend/ ./
+
+# The goose build tags drop database drivers we will never use; without them the
+# migrate binary carries an embedded sqlite, mysql and clickhouse driver.
+ARG GOOSE_TAGS="no_sqlite3 no_mysql no_clickhouse no_vertica no_ydb no_libsql no_mssql no_turso no_duckdb"
+ARG CGO_ENABLED=0
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /out/api      ./cmd/api      && \
+    go build -trimpath -ldflags="-s -w" -o /out/worker   ./cmd/worker   && \
+    go build -trimpath -ldflags="-s -w" -tags "$GOOSE_TAGS" -o /out/migrate ./cmd/migrate && \
+    go build -trimpath -ldflags="-s -w" -o /out/seed     ./cmd/seed
+
+# A shared runtime base: no shell-less scratch, because the health checks and
+# the replica bootstrap both benefit from having a shell available.
+FROM alpine:3.22 AS runtime
+RUN apk add --no-cache ca-certificates tzdata && \
+    adduser -D -u 10001 armature
+WORKDIR /app
+USER armature
+
+FROM runtime AS api
+COPY --from=builder /out/api /app/api
+EXPOSE 8080
+ENTRYPOINT ["/app/api"]
+
+FROM runtime AS worker
+COPY --from=builder /out/worker /app/worker
+ENTRYPOINT ["/app/worker"]
+
+FROM runtime AS migrate
+COPY --from=builder /out/migrate /app/migrate
+ENTRYPOINT ["/app/migrate"]
+CMD ["up"]
+
+FROM runtime AS seed
+COPY --from=builder /out/seed /app/seed
+ENTRYPOINT ["/app/seed"]

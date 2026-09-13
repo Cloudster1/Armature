@@ -1,0 +1,49 @@
+{{- if .Values.ingress.enabled }}
+{{/*
+One host. The SPA calls /api/v1 relatively and its own CSP says connect-src
+'self', so the API has to answer on the same origin the app was served from -
+the session cookie stays first-party and CORS never enters into it.
+
+/api goes straight to the api Service. The web pod can also proxy it, which is
+what makes a port-forward to the web Service work on its own, but in a cluster
+with an ingress the extra hop is pointless.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "armature.fullname" . }}
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "armature.fullname" . }}-api
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "armature.fullname" . }}-web
+                port:
+                  name: http
+{{- end }}

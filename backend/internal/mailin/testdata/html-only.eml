@@ -1,0 +1,7 @@
+From: eve@example.com
+To: support@armature.test
+Subject: [HELP-5] html
+Message-ID: <html@example.com>
+Content-Type: text/html; charset=utf-8
+
+<html><head><style>p { color: red }</style></head><body><div>First line &amp; more</div><p>Second<br>third</p></body></html>

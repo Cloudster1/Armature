@@ -1,0 +1,53 @@
+{{/*
+deploy/nginx.conf hardcodes `proxy_pass http://api:8080`, which is a Compose
+service name and resolves nowhere else. The file is reproduced here with the
+real Service name so the web pod stands on its own: a port-forward straight to
+it gives a working application, not one whose API calls fail.
+
+The Ingress sends /api to the api Service directly, so this proxy is the
+fallback rather than the path most requests take.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "armature.fullname" . }}-nginx
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+data:
+  default.conf: |
+    server {
+        listen {{ .Values.web.port }};
+        server_name _;
+        root /usr/share/nginx/html;
+
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "same-origin" always;
+
+        location /api/ {
+            {{- if .Values.web.apiResolver }}
+            # Resolution deferred to request time. nginx refuses to start if a
+            # name in proxy_pass cannot be resolved, so this is the way out for
+            # a cluster where the api Service may not exist yet.
+            resolver {{ .Values.web.apiResolver }} valid=10s ipv6=off;
+            set $upstream "http://{{ include "armature.fullname" . }}-api:{{ .Values.api.port }}";
+            proxy_pass $upstream;
+            {{- else }}
+            proxy_pass http://{{ include "armature.fullname" . }}-api:{{ .Values.api.port }};
+            {{- end }}
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /assets/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }

@@ -1,0 +1,32 @@
+Armature {{ .Chart.AppVersion }} is installed as {{ .Release.Name }}.
+
+  {{ include "armature.appURL" . }}
+
+{{ if not .Values.ingress.enabled }}
+There is no Ingress. To look at it:
+
+  kubectl port-forward svc/{{ include "armature.fullname" . }}-web 8080:80
+
+The web pod proxies /api to the api Service itself, so this works on its own.
+{{ end }}
+{{- if .Values.jobs.seed.enabled }}
+The demo organization was seeded. Sign in as ada@armature.test with the
+password the seed printed in its log:
+
+  kubectl logs job/{{ include "armature.fullname" . }}-seed
+{{ end }}
+{{- if not .Values.s3.enabled }}
+Attachments are off: no S3 endpoint is set. Everything else works; an upload
+is refused with a message saying so.
+{{ end }}
+{{- if not .Values.mail.smtpAddr }}
+Mail is off: no SMTP address is set. No invitations, digests or desk
+notifications go out, and the portal's login codes cannot be delivered.
+{{ end }}
+{{- if not .Values.render.enabled }}
+PDF export is off. Set render.enabled to turn it on.
+{{ end }}
+{{- if gt (int .Values.worker.replicas) 0 }}
+The worker runs one replica and cannot be scaled: it has no leader election,
+and the hourly digest remembers what it has sent in memory. See values.yaml.
+{{ end }}

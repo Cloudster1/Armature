@@ -1,0 +1,90 @@
+# Everything in one command, for a look at the product rather than a
+# deployment of it. Postgres, Redis and SeaweedFS come up inside the release.
+#
+#   helm dependency update deploy/charts/armature
+#   helm install demo deploy/charts/armature -f deploy/charts/armature/values-demo.yaml
+#
+# Not for real work: one database pod with a password in a values file, no
+# backups, no TLS, and the seeded demo organization.
+
+env: development
+
+ingress:
+  enabled: true
+  host: armature.localhost
+  tls:
+    enabled: false
+
+# development is the one setting where these may be false, and this is it.
+auth:
+  secureCookies: false
+
+api:
+  replicas: 1
+web:
+  replicas: 1
+
+database:
+  name: armature
+  sslmode: disable
+  ownerRole: postgres
+
+s3:
+  enabled: true
+  useSSL: false
+  bucket: armature-attachments
+
+secrets:
+  create: true
+  appPassword: armature_app
+  adminPassword: armature_admin
+  ownerPassword: armature
+  s3AccessKey: armature
+  s3SecretKey: armature-dev-secret
+
+jobs:
+  seed:
+    enabled: true
+
+# The stack's own services reach each other on private addresses, which the
+# outbound guard refuses unless they are named.
+network:
+  outboundAllow:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+
+# One pod and one volume each. The superuser password is secrets.ownerPassword
+# above: the database is told it and the Jobs connect with it, from one value.
+postgresql:
+  enabled: true
+  storage: 8Gi
+
+redis:
+  enabled: true
+  storage: 8Gi
+
+seaweedfs:
+  enabled: true
+  # No bucket is named here: the api makes the one it is configured with on
+  # start, which is the same path a real deployment takes.
+  s3:
+    enabled: true
+    enableAuth: true
+    credentials:
+      admin:
+        accessKey: armature
+        secretKey: armature-dev-secret
+      # Nothing here reads through this identity, but the chart invents a
+      # random pair for it when it is not given one, which would change the
+      # Secret and its checksum annotation on every render: the golden test
+      # could never pass and every upgrade would restart the S3 pods.
+      read:
+        accessKey: armature-read
+        secretKey: armature-read-secret
+  master:
+    replicas: 1
+  volume:
+    replicas: 1
+  filer:
+    replicas: 1

@@ -1,0 +1,76 @@
+{{- if gt (int .Values.worker.replicas) 1 }}
+{{- fail "worker.replicas must be 1: the worker has no leader election, its Redis consumers all identify as the literal \"worker\", and notify.Digest tracks which digests it has sent in an in-process map. A second replica sends every hourly digest twice. See the comment in values.yaml." }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "armature.fullname" . }}-worker
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  # Recreate, not RollingUpdate: a rolling update would briefly run two
+  # workers, which is the thing the single replica exists to prevent.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "armature.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "armature.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+      annotations:
+        checksum/env: {{ include (print $.Template.BasePath "/configmap-env.yaml") . | sha256sum }}
+        {{- with .Values.worker.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "armature.serviceAccountName" . }}
+      {{- with .Values.images.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      # Loops stop at their next poll boundary; the longest Redis block is 5s.
+      terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
+      containers:
+        - name: worker
+          image: {{ include "armature.image" (dict "root" $ "name" "worker") }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "armature.fullname" . }}-env
+          env:
+            {{- include "armature.secretEnv" . | nindent 12 }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.telemetry.metricsPort }}
+          # The only endpoint the worker has is the metrics mux's /healthz,
+          # which answers 200 whenever the process is up and checks nothing.
+          # That makes it a fair liveness probe and a useless readiness one, so
+          # there is no readiness probe here rather than a dishonest one.
+          livenessProbe:
+            httpGet: { path: /healthz, port: metrics }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

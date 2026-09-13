@@ -1,0 +1,130 @@
+{{- if .Values.redis.enabled }}
+{{/*
+Valkey, the BSD licensed fork, answering the Redis protocol. Named redis
+throughout because that is what the protocol, the value keys and
+ARMATURE_REDIS_URL are called; Valkey is only the server that answers.
+
+Appending is on: an event is marked published the moment it reaches the stream,
+so a cache that forgets loses work that nothing can replay.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  # The name the redisHost helper builds, so the workloads address it the same
+  # way whether it was bundled or supplied.
+  name: {{ .Release.Name }}-redis-master
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: {{ .Values.externalRedis.port }}
+      targetPort: redis
+  selector:
+    {{- include "armature.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-redis-master
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  serviceName: {{ .Release.Name }}-redis-master
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "armature.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "armature.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      {{- with .Values.images.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # The image's own user, not the application's.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.redis.runAsUser }}
+        runAsGroup: {{ .Values.redis.runAsGroup }}
+        fsGroup: {{ .Values.redis.runAsGroup }}
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: {{ .Values.redis.terminationGracePeriodSeconds }}
+      containers:
+        - name: redis
+          image: {{ include "armature.image" (dict "root" $ "name" "redis") }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          command:
+            - valkey-server
+            - --appendonly
+            - "yes"
+            - --dir
+            - /data
+            {{- if .Values.secrets.redisPassword }}
+            - --requirepass
+            - $(REDIS_PASSWORD)
+            {{- end }}
+          {{- if .Values.secrets.redisPassword }}
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "armature.secretName" . }}
+                  key: redis-password
+          {{- end }}
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              {{- if .Values.secrets.redisPassword }}
+              command: ["sh", "-c", "valkey-cli -a \"$REDIS_PASSWORD\" --no-auth-warning ping"]
+              {{- else }}
+              command: ["valkey-cli", "ping"]
+              {{- end }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              {{- if .Values.secrets.redisPassword }}
+              command: ["sh", "-c", "valkey-cli -a \"$REDIS_PASSWORD\" --no-auth-warning ping"]
+              {{- else }}
+              command: ["valkey-cli", "ping"]
+              {{- end }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.redis.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.redis.storage }}
+{{- end }}

@@ -1,0 +1,12 @@
+# The PDF renderer: the public Chrome image with our server script baked in.
+#
+# The compose stack bind mounts render/ instead, which a cluster cannot do, and
+# copying the script into a ConfigMap would leave two copies to keep in step.
+# Building it is the only arrangement with one source.
+FROM zenika/alpine-chrome:with-puppeteer
+WORKDIR /usr/src/app
+COPY render/ ./render/
+ENV HOME=/tmp
+EXPOSE 8090
+ENTRYPOINT ["node"]
+CMD ["/usr/src/app/render/server.mjs"]

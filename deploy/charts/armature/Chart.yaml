@@ -1,0 +1,29 @@
+apiVersion: v2
+name: armature
+description: Project and service management in the Jira and Jira Service Management class
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/armature/armature
+sources:
+  - https://github.com/armature/armature
+
+# Off by default. A real deployment brings its own database, cache and object
+# store; these exist so that `helm install -f values-demo.yaml` works against a
+# cluster with nothing else set up.
+#
+# Postgres and Valkey are not here: they are two StatefulSets in templates/, on
+# the same official images the compose stack runs. They were Bitnami subcharts
+# until that catalog stopped publishing versioned tags, which left the chart
+# rendering bitnami/postgresql:latest in a repository where everything else is
+# pinned.
+dependencies:
+  # SeaweedFS from the project itself rather than a repackager: the chart
+  # version is the release it installs, its filer keeps metadata in an embedded
+  # store instead of bringing a second database along, and it takes the S3
+  # credentials either inline or from a Secret you already made, which is the
+  # bargain this chart strikes everywhere else.
+  - name: seaweedfs
+    version: 4.46.0
+    repository: https://seaweedfs.github.io/seaweedfs/helm
+    condition: seaweedfs.enabled

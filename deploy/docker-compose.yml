@@ -1,0 +1,415 @@
+name: armature
+
+x-db-env: &db-env
+  POSTGRES_USER: armature
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-armature}
+  POSTGRES_DB: armature
+
+# Development only: gitea, the api and the object store are all on this
+# network, and the guard refuses private addresses everywhere else. One list,
+# so it cannot drift.
+x-outbound-env: &outbound-env
+  ARMATURE_OUTBOUND_ALLOW: "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+
+x-s3-env: &s3-env
+  # Attachments go to the bucket; the api makes it if it is missing.
+  ARMATURE_S3_ENDPOINT: seaweedfs:8333
+  ARMATURE_S3_BUCKET: armature-attachments
+  ARMATURE_S3_ACCESS_KEY: ${S3_ACCESS_KEY:-armature}
+  ARMATURE_S3_SECRET_KEY: ${S3_SECRET_KEY:-armature-dev-secret}
+
+services:
+  postgres-primary:
+    image: postgres:18-alpine
+    environment:
+      <<: *db-env
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-armature_app}
+      ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD:-armature_admin}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator}
+      # scram-sha-256 for replication connections as well as client ones.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby=on
+      # Surfaces the standby's replay position on the primary, which the health
+      # loop and the lag dashboards both read.
+      - -c
+      - track_commit_timestamp=on
+    volumes:
+      - primary-data:/var/lib/postgresql/18/docker
+      - ../deploy/postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U armature -d armature"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-replica:
+    image: postgres:18-alpine
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      <<: *db-env
+      PRIMARY_HOST: postgres-primary
+      REPLICATION_USER: replicator
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator}
+      REPLICATION_SLOT: armature_replica_1
+    entrypoint: ["/usr/local/bin/replica-entrypoint.sh"]
+    volumes:
+      - replica-data:/var/lib/postgresql/18/docker
+      - ../deploy/postgres/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_REPLICA_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U armature -d armature"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Valkey, the BSD licensed fork, answering on the service still called redis:
+  # redis is the protocol and the role here, and the image keeps redis-server
+  # and redis-cli as names, so the command and the healthcheck below are the
+  # same words they were.
+  redis:
+    image: valkey/valkey:8-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-armature_redis}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-armature_redis}"]
+    volumes:
+      # A new volume, not the one Redis wrote: Valkey forked before Redis 8 and
+      # refuses its RDB format, so reusing it fails the container on start.
+      - valkey-data:/data
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Catches every outbound mail in development; nothing ever leaves the host.
+  mailpit:
+    image: axllent/mailpit:latest
+    environment:
+      # POP3 is how the worker reads replies; the box is one for everything,
+      # and the reader consumes only what is addressed to the desk. Mailpit
+      # serves POP3 once it has a password file.
+      MP_POP3_AUTH_FILE: /etc/mailpit/pop3-auth
+    volumes:
+      - ./mailpit/pop3-auth:/etc/mailpit/pop3-auth:ro
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+      - "1025"
+      - "1110"
+
+  # S3 compatible attachment storage, so the storage code path is identical in
+  # development and production. One container is the whole of SeaweedFS here:
+  # master, volume server, filer and the S3 gateway, which is what `server -s3`
+  # means. Given these two variables it refuses unsigned requests, so there is
+  # no credentials file to keep in step with the ones the api is handed.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.46
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-master.volumeSizeLimitMB=256"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-armature}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-armature-dev-secret}
+    volumes:
+      - seaweedfs-data:/data
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+      - "127.0.0.1:${S3_FILER_PORT:-8888}:8888"
+    healthcheck:
+      # The master says the cluster is up; the second call proves the S3 port
+      # is listening, where 403 to an unsigned request is the healthy answer.
+      test: ["CMD", "sh", "-c", "curl -fsS http://localhost:9333/cluster/healthz >/dev/null && curl -s -o /dev/null http://localhost:8333/"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # The demo's identity provider. The realm is imported on first start: four
+  # people in five groups, and a client for the tracker. The browser reaches it
+  # at localhost:8180; the api reaches it as keycloak:8080 through the
+  # backchannel rewrite below.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    command: ["start-dev", "--import-realm", "--http-port=8080"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_PASSWORD:-admin}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    # No volume: the realm is imported afresh on every start, which is all a
+    # demo needs, and a mounted data directory would be root owned while the
+    # image runs unprivileged.
+    volumes:
+      - ../deploy/keycloak/demo-realm.json:/opt/keycloak/data/import/demo-realm.json:ro
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8180}:8080"
+    healthcheck:
+      # The image has no curl; bash can open a socket to the management port.
+      test:
+        - CMD-SHELL
+        - 'exec 3<>/dev/tcp/127.0.0.1/9000; printf ''GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n'' >&3; grep -q UP <&3'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  # A git host of the stack's own, so that a branch made from an issue is a
+  # real branch and a push to it a real webhook. The browser reaches it at
+  # localhost:3001; the api reaches it as gitea:3000, and Gitea reaches the api
+  # as api:8080, which the allowed host list has to permit since it is a
+  # private address.
+  gitea:
+    image: gitea/gitea:1.24-rootless
+    environment:
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__server__ROOT_URL: http://localhost:${GITEA_PORT:-3001}/
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__DISABLE_SSH: "true"
+      GITEA__server__OFFLINE_MODE: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__service__REQUIRE_SIGNIN_VIEW: "false"
+      GITEA__webhook__ALLOWED_HOST_LIST: "*"
+      GITEA__webhook__DELIVER_TIMEOUT: "10"
+      GITEA__actions__ENABLED: "false"
+      GITEA__mailer__ENABLED: "false"
+      GITEA__log__LEVEL: Warn
+    volumes:
+      - gitea-data:/var/lib/gitea
+      - gitea-config:/etc/gitea
+    ports:
+      - "127.0.0.1:${GITEA_PORT:-3001}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  # Gitea's first user is made by its own command line, which is the one
+  # supported way to do it without the install page. The seed then signs in as
+  # this person to make the demo repository.
+  gitea-init:
+    image: gitea/gitea:1.24-rootless
+    depends_on:
+      gitea:
+        condition: service_healthy
+    volumes:
+      - gitea-data:/var/lib/gitea
+      - gitea-config:/etc/gitea
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        gitea admin user create --admin --username ${GITEA_USER:-demo}
+        --password '${GITEA_PASSWORD:-demo password please}' --email demo@armature.test
+        --must-change-password=false 2>&1 | grep -v "already exists" || true
+    restart: "no"
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+      target: migrate
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      ARMATURE_DB_PRIMARY_URL: postgres://armature:${POSTGRES_PASSWORD:-armature}@postgres-primary:5432/armature?sslmode=disable
+    restart: "no"
+
+  seed:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+      target: seed
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      gitea-init:
+        condition: service_completed_successfully
+    environment:
+      ARMATURE_ENV: development
+      ARMATURE_DB_PRIMARY_URL: postgres://armature_app:${APP_DB_PASSWORD:-armature_app}@postgres-primary:5432/armature?sslmode=disable
+      ARMATURE_DB_ADMIN_URL: postgres://armature_admin:${ADMIN_DB_PASSWORD:-armature_admin}@postgres-primary:5432/armature?sslmode=disable
+      # The demo repository lives on the stack's own Gitea. The api reaches it
+      # by service name; the links people click go to the published port.
+      ARMATURE_SEED_GITEA_URL: http://gitea:3000
+      ARMATURE_SEED_GITEA_PUBLIC_URL: http://localhost:${GITEA_PORT:-3001}
+      ARMATURE_SEED_GITEA_USER: ${GITEA_USER:-demo}
+      ARMATURE_SEED_GITEA_PASSWORD: ${GITEA_PASSWORD:-demo password please}
+      # Where Gitea delivers webhooks: the api, by its service name.
+      ARMATURE_SEED_WEBHOOK_BASE_URL: http://api:8080
+      # The seed talks to Gitea directly, so it needs the same permission the
+      # api has to reach a private address.
+      <<: [*s3-env, *outbound-env]
+    profiles: ["tools"]
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+      target: api
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      postgres-replica:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      <<: [*s3-env, *outbound-env]
+      ARMATURE_ENV: development
+      ARMATURE_HTTP_ADDR: ":8080"
+      # Metrics stay on the network: Prometheus scrapes them, nobody else.
+      # Traces leave only when `make observe` names the collector.
+      ARMATURE_METRICS_ADDR: ":9090"
+      ARMATURE_OTEL_ENDPOINT: ${ARMATURE_OTEL_ENDPOINT:-}
+      # Keycloak's public address is the browser's; inside the network it is
+      # keycloak:8080. Tokens name the public one, so the api asks for it
+      # there while connecting here.
+      ARMATURE_OIDC_BACKCHANNEL: http://localhost:${KEYCLOAK_PORT:-8180}=http://keycloak:8080
+      ARMATURE_LOG_LEVEL: debug
+      # The api connects as armature_app, a role with no superuser powers, so row
+      # level security actually constrains it.
+      ARMATURE_DB_PRIMARY_URL: postgres://armature_app:${APP_DB_PASSWORD:-armature_app}@postgres-primary:5432/armature?sslmode=disable
+      ARMATURE_DB_REPLICA_URLS: postgres://armature_app:${APP_DB_PASSWORD:-armature_app}@postgres-replica:5432/armature?sslmode=disable
+      ARMATURE_DB_ADMIN_URL: postgres://armature_admin:${ADMIN_DB_PASSWORD:-armature_admin}@postgres-primary:5432/armature?sslmode=disable
+      ARMATURE_REDIS_URL: redis://:${REDIS_PASSWORD:-armature_redis}@redis:6379/0
+      # The portal's codes are mailed by the API while the person waits; the
+      # cooldown between codes is short in development so a browser test can
+      # ask twice.
+      ARMATURE_SMTP_ADDR: mailpit:1025
+      ARMATURE_MAIL_FROM: Armature <no-reply@armature.test>
+      ARMATURE_PORTAL_CODE_COOLDOWN: 5s
+      # Set so the portal can say that answering the desk's mails works; the
+      # worker is what reads the box.
+      ARMATURE_POP3_ADDR: mailpit:1110
+      # The render service prints pages for PDF export; it reaches the web
+      # container by name, so the api only ever hands it a path.
+      ARMATURE_RENDER_URL: http://render:8090
+      # A model behind the palette's Ask; unset means the guide alone answers.
+      ARMATURE_ASSISTANT_URL: ${ARMATURE_ASSISTANT_URL:-}
+      ARMATURE_ASSISTANT_KEY: ${ARMATURE_ASSISTANT_KEY:-}
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "/app/api", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+      target: worker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment:
+      ARMATURE_ENV: development
+      ARMATURE_LOG_LEVEL: debug
+      ARMATURE_METRICS_ADDR: ":9090"
+      ARMATURE_OTEL_ENDPOINT: ${ARMATURE_OTEL_ENDPOINT:-}
+      ARMATURE_DB_PRIMARY_URL: postgres://armature_app:${APP_DB_PASSWORD:-armature_app}@postgres-primary:5432/armature?sslmode=disable
+      ARMATURE_DB_REPLICA_URLS: postgres://armature_app:${APP_DB_PASSWORD:-armature_app}@postgres-replica:5432/armature?sslmode=disable
+      ARMATURE_DB_ADMIN_URL: postgres://armature_admin:${ADMIN_DB_PASSWORD:-armature_admin}@postgres-primary:5432/armature?sslmode=disable
+      ARMATURE_REDIS_URL: redis://:${REDIS_PASSWORD:-armature_redis}@redis:6379/0
+      <<: [*s3-env, *outbound-env]
+      # Customers are mailed about their requests; in development the mail
+      # lands in Mailpit at http://localhost:8025.
+      ARMATURE_SMTP_ADDR: mailpit:1025
+      ARMATURE_MAIL_FROM: Armature <no-reply@armature.test>
+      ARMATURE_APP_URL: http://localhost:5173
+      # Replies to the desk's mails are read back from Mailpit over POP3,
+      # every few seconds in development so a browser test does not wait.
+      ARMATURE_MAIL_INBOX: support@armature.test
+      ARMATURE_POP3_ADDR: mailpit:1110
+      ARMATURE_POP3_USER: armature
+      ARMATURE_POP3_PASSWORD: armature
+      ARMATURE_POP3_INTERVAL: 3s
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+      target: dev
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:5173"
+    environment:
+      # Vite proxies /api to the API container, so the browser only ever talks
+      # to one origin.
+      VITE_API_PROXY: http://api:8080
+    volumes:
+      # Source is bind mounted for hot reload; node_modules stays the image's.
+      - ../web/src:/app/src:ro
+      - ../web/index.html:/app/index.html:ro
+
+  # Prints pages of the product as PDF. The same Chromium and puppeteer image
+  # the browser suite runs in, so nothing is installed for it; the script is
+  # mounted from the repository like the suite's.
+  render:
+    image: zenika/alpine-chrome:with-puppeteer
+    entrypoint: ["node"]
+    command: ["/usr/src/app/render/server.mjs"]
+    working_dir: /usr/src/app
+    depends_on:
+      - web
+    environment:
+      HOME: /tmp
+      RENDER_PORT: "8090"
+      RENDER_APP_URL: http://web:5173
+    volumes:
+      - ../render:/usr/src/app/render:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8090/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Where the api and the worker say how they are doing, when asked to:
+  # `make observe` starts these two and points the binaries at Jaeger.
+  # Jaeger takes traces over OTLP on 4318 and keeps them in memory; Prometheus
+  # scrapes the private metrics port of each binary.
+  jaeger:
+    image: jaegertracing/jaeger:2.14.0
+    profiles: ["observe"]
+    ports:
+      - "127.0.0.1:${JAEGER_PORT:-16686}:16686"
+  prometheus:
+    image: prom/prometheus:v3.13.3
+    profiles: ["observe"]
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+volumes:
+  primary-data:
+  replica-data:
+  valkey-data:
+  seaweedfs-data:
+  gitea-data:
+  gitea-config:
