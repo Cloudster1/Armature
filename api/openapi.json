@@ -97,7 +97,13 @@
       "name": "teams"
     },
     {
+      "name": "themes"
+    },
+    {
       "name": "time"
+    },
+    {
+      "name": "users"
     },
     {
       "name": "versions"
@@ -994,6 +1000,40 @@
         }
       }
     },
+    "/auth/me/password": {
+      "put": {
+        "operationId": "changePassword",
+        "summary": "Change your password; every other session of yours ends. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/oidc/callback": {
       "get": {
         "operationId": "oIDCCallback",
@@ -1370,7 +1410,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Input"
+                "$ref": "#/components/schemas/AutomationInput"
               }
             }
           }
@@ -1511,7 +1551,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Input"
+                "$ref": "#/components/schemas/AutomationInput"
               }
             }
           }
@@ -9060,7 +9100,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Input"
+                "$ref": "#/components/schemas/AutomationInput"
               }
             }
           }
@@ -13538,6 +13578,499 @@
         }
       }
     },
+    "/themes": {
+      "get": {
+        "operationId": "listThemes",
+        "summary": "Themes the caller may use: theirs, then the shared ones.",
+        "tags": [
+          "themes"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "themes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Theme"
+                      }
+                    }
+                  },
+                  "required": [
+                    "themes"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTheme",
+        "summary": "Make a theme.",
+        "tags": [
+          "themes"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "theme": {
+                      "$ref": "#/components/schemas/Theme"
+                    }
+                  },
+                  "required": [
+                    "theme"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/themes/active": {
+      "get": {
+        "operationId": "activeTheme",
+        "summary": "The theme the caller chose, or null for the built-in one.",
+        "tags": [
+          "themes"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "theme": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Theme"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "theme"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "chooseTheme",
+        "summary": "Use a theme, or null to return to the built-in one.",
+        "tags": [
+          "themes"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseThemeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "theme": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Theme"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "theme"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/themes/{themeID}": {
+      "delete": {
+        "operationId": "deleteTheme",
+        "summary": "Delete a theme; everybody using it returns to the built-in one.",
+        "tags": [
+          "themes"
+        ],
+        "parameters": [
+          {
+            "name": "themeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getTheme",
+        "summary": "One theme.",
+        "tags": [
+          "themes"
+        ],
+        "parameters": [
+          {
+            "name": "themeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "theme": {
+                      "$ref": "#/components/schemas/Theme"
+                    }
+                  },
+                  "required": [
+                    "theme"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateTheme",
+        "summary": "Change a theme; the owner's to do, or an administrator's once shared.",
+        "tags": [
+          "themes"
+        ],
+        "parameters": [
+          {
+            "name": "themeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "theme": {
+                      "$ref": "#/components/schemas/Theme"
+                    }
+                  },
+                  "required": [
+                    "theme"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/themes/{themeID}/assets": {
+      "post": {
+        "operationId": "uploadThemeAsset",
+        "summary": "Put a picture or a font on a theme, as a multipart part named file.",
+        "tags": [
+          "themes"
+        ],
+        "parameters": [
+          {
+            "name": "themeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "$ref": "#/components/schemas/Asset"
+                    }
+                  },
+                  "required": [
+                    "asset"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/themes/{themeID}/assets/{assetID}": {
+      "delete": {
+        "operationId": "deleteThemeAsset",
+        "summary": "Take a file off a theme it no longer uses.",
+        "tags": [
+          "themes"
+        ],
+        "parameters": [
+          {
+            "name": "themeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assetID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "themeAsset",
+        "summary": "The bytes of a theme's file, as a download.",
+        "tags": [
+          "themes"
+        ],
+        "parameters": [
+          {
+            "name": "themeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assetID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tokens": {
       "get": {
         "operationId": "listAPITokens",
@@ -13696,6 +14229,155 @@
         }
       }
     },
+    "/users": {
+      "get": {
+        "operationId": "listUsers",
+        "summary": "The organization's accounts, switched off ones included, and what may be done to each.",
+        "tags": [
+          "users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ManagedUser"
+                      }
+                    }
+                  },
+                  "required": [
+                    "users"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createUser",
+        "summary": "Make an account that signs in here with a password.",
+        "tags": [
+          "users"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/ManagedUser"
+                    }
+                  },
+                  "required": [
+                    "user"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userID}": {
+      "patch": {
+        "operationId": "updateUser",
+        "summary": "Rename somebody, change their standing, or switch their account off or on.",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/ManagedUser"
+                    }
+                  },
+                  "required": [
+                    "user"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/{userID}/avatar": {
       "get": {
         "operationId": "avatar",
@@ -13715,6 +14397,51 @@
           }
         ],
         "responses": {
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userID}/password": {
+      "put": {
+        "operationId": "setUserPassword",
+        "summary": "Give somebody a new password; every session of theirs ends.",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
             "content": {
@@ -15536,6 +16263,35 @@
           "question"
         ]
       },
+      "Asset": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "contentType",
+          "size",
+          "createdAt"
+        ]
+      },
       "Assignment": {
         "type": "object",
         "properties": {
@@ -15632,6 +16388,45 @@
           "createdAt"
         ]
       },
+      "AutomationInput": {
+        "type": "object",
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            }
+          },
+          "allowOwnEvents": {
+            "type": "boolean"
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Condition"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "hourlyCap": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger"
+          }
+        },
+        "required": [
+          "name",
+          "trigger",
+          "conditions",
+          "actions",
+          "allowOwnEvents"
+        ]
+      },
       "AverageAgeReport": {
         "type": "object",
         "properties": {
@@ -15667,6 +16462,26 @@
           "oldestDays",
           "weeks",
           "window"
+        ]
+      },
+      "Backdrop": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fit": {
+            "type": "string",
+            "enum": [
+              "cover",
+              "tile"
+            ]
+          }
+        },
+        "required": [
+          "assetId",
+          "fit"
         ]
       },
       "Band": {
@@ -16435,6 +17250,21 @@
           "field"
         ]
       },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
       "ChartGroup": {
         "type": "object",
         "properties": {
@@ -16569,6 +17399,21 @@
           "days",
           "measure",
           "counts"
+        ]
+      },
+      "ChooseThemeRequest": {
+        "type": "object",
+        "properties": {
+          "themeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "themeId"
         ]
       },
       "CloneOptions": {
@@ -17281,6 +18126,29 @@
           "name"
         ]
       },
+      "CreateUserRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "role",
+          "password"
+        ]
+      },
       "CreatedResolvedReport": {
         "type": "object",
         "properties": {
@@ -17364,6 +18232,26 @@
           "days",
           "reconstructed",
           "window"
+        ]
+      },
+      "Cursor": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "hotspotX": {
+            "type": "integer"
+          },
+          "hotspotY": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assetId",
+          "hotspotX",
+          "hotspotY"
         ]
       },
       "CycleTimeReport": {
@@ -18080,6 +18968,32 @@
           "category"
         ]
       },
+      "Font": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "family": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "family"
+        ]
+      },
+      "Fonts": {
+        "type": "object",
+        "properties": {
+          "mono": {
+            "$ref": "#/components/schemas/Font"
+          },
+          "sans": {
+            "$ref": "#/components/schemas/Font"
+          }
+        }
+      },
       "Grant": {
         "type": "object",
         "properties": {
@@ -18276,6 +19190,21 @@
           "createdAt"
         ]
       },
+      "Icon": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ImportPreview": {
         "type": "object",
         "properties": {
@@ -18409,41 +19338,16 @@
       "Input": {
         "type": "object",
         "properties": {
-          "actions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Action"
-            }
-          },
-          "allowOwnEvents": {
-            "type": "boolean"
-          },
-          "conditions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Condition"
-            }
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "hourlyCap": {
-            "type": "integer"
-          },
           "name": {
             "type": "string"
           },
-          "trigger": {
-            "$ref": "#/components/schemas/Trigger"
+          "shared": {
+            "type": "boolean"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/Spec"
           }
-        },
-        "required": [
-          "name",
-          "trigger",
-          "conditions",
-          "actions",
-          "allowOwnEvents"
-        ]
+        }
       },
       "Invite": {
         "type": "object",
@@ -19094,6 +19998,58 @@
           "password"
         ]
       },
+      "ManagedUser": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "managed": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "customer"
+            ]
+          },
+          "signsInWith": {
+            "type": "string",
+            "enum": [
+              "password",
+              "provider",
+              "none"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role",
+          "isActive",
+          "signsInWith",
+          "managed",
+          "createdAt"
+        ]
+      },
       "MarkReadRequest": {
         "type": "object",
         "properties": {
@@ -19710,6 +20666,27 @@
           "schemeId",
           "schemeName",
           "named"
+        ]
+      },
+      "Palette": {
+        "type": "object",
+        "properties": {
+          "dark": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "light": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "light",
+          "dark"
         ]
       },
       "Parameter": {
@@ -22040,6 +23017,28 @@
           "schemeId"
         ]
       },
+      "SetUserPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "Shape": {
+        "type": "object",
+        "properties": {
+          "radiusControl": {
+            "type": "integer"
+          },
+          "radiusOverlay": {
+            "type": "integer"
+          }
+        }
+      },
       "Share": {
         "type": "object",
         "properties": {
@@ -22147,6 +23146,53 @@
         "required": [
           "from",
           "to"
+        ]
+      },
+      "Spec": {
+        "type": "object",
+        "properties": {
+          "backdrop": {
+            "$ref": "#/components/schemas/Backdrop"
+          },
+          "colors": {
+            "$ref": "#/components/schemas/Palette"
+          },
+          "css": {
+            "type": "string"
+          },
+          "cursors": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Cursor"
+            }
+          },
+          "fonts": {
+            "$ref": "#/components/schemas/Fonts"
+          },
+          "icons": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Icon"
+            }
+          },
+          "shadows": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "shape": {
+            "$ref": "#/components/schemas/Shape"
+          }
+        },
+        "required": [
+          "colors",
+          "fonts",
+          "shape",
+          "shadows",
+          "cursors",
+          "icons",
+          "css"
         ]
       },
       "Sprint": {
@@ -23103,6 +24149,64 @@
           "config"
         ]
       },
+      "Theme": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inUse": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "shared": {
+            "type": "boolean"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/Spec"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "ownerId",
+          "ownerName",
+          "name",
+          "shared",
+          "spec",
+          "assets",
+          "inUse",
+          "active",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "ThroughputReport": {
         "type": "object",
         "properties": {
@@ -23579,6 +24683,20 @@
           },
           "wipLimit": {
             "type": "integer"
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
           }
         }
       },

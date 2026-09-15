@@ -149,6 +149,11 @@ func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
 		signup := c.signup(t, h, "suspended")
 		userID := principalField(t, signup, "principal", "user", "id").(string)
 
+		// The last owner of an organization cannot be switched off, so they
+		// step down first.
+		if _, err := h.super.Exec(ctx, `UPDATE org_member SET org_role = 'member' WHERE user_id = $1`, userID); err != nil {
+			t.Fatal(err)
+		}
 		if _, err := h.super.Exec(ctx, `UPDATE app_user SET is_active = false WHERE id = $1`, userID); err != nil {
 			t.Fatal(err)
 		}

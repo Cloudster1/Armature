@@ -91,6 +91,9 @@ var CursorKinds = []string{"default", "pointer", "text", "grab", "grabbing", "mo
 // ShadowKeys are the three elevations.
 var ShadowKeys = []string{"1", "2", "3"}
 
+// BackdropFits are the two ways a backdrop is laid behind the content.
+var BackdropFits = []string{"cover", "tile"}
+
 var (
 	tokenName  = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	iconName   = regexp.MustCompile(`^[a-z][a-z-]*$`)
@@ -203,7 +206,7 @@ func Validate(spec *Spec, themeID uuid.UUID, assets map[uuid.UUID]bool) error {
 		if !assets[spec.Backdrop.AssetID] {
 			return errors.New("the backdrop names a file that is not this theme's")
 		}
-		if spec.Backdrop.Fit != "cover" && spec.Backdrop.Fit != "tile" {
+		if !contains(BackdropFits, spec.Backdrop.Fit) {
 			return errors.New("a backdrop is fitted as cover or tile")
 		}
 	}

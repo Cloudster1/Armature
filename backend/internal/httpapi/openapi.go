@@ -322,6 +322,7 @@ func declareEnums(b *openapi.Builder) {
 	set(calendar.Kind(""), "issue", "sprint", "milestone", "version")
 	b.FieldOverrides["Label.color"] = &openapi.Schema{Type: "string", Enum: label.Colors}
 	b.FieldOverrides["LabelRef.color"] = &openapi.Schema{Type: "string", Enum: label.Colors}
+	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	// Every kind of report, whichever kind of project it suits.
 	seen := map[string]bool{}
 	kinds := []string{}

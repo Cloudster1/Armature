@@ -53,6 +53,7 @@ scenario("a theme changes the accent for whoever uses it, and survives a reload"
 
   const who = await inviteMember(page, "themed");
   await acceptInvite(page, who);
+  await goto(page, "/");
   await waitForApp(page);
   expect.equal(await accentOf(page), stock, "somebody else starts with the built-in theme");
   await goto(page, "/settings/themes");

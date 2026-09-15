@@ -191,6 +191,11 @@ func TestLogin(t *testing.T) {
 
 	t.Run("refuses a deactivated account", func(t *testing.T) {
 		deactivated := h.signup(t, svc, "deactivated")
+		// The last owner of an organization cannot be switched off, so they
+		// step down first.
+		if _, err := h.super.Exec(ctx, `UPDATE org_member SET org_role = 'member' WHERE user_id = $1`, deactivated.Principal.User.ID); err != nil {
+			t.Fatal(err)
+		}
 		if _, err := h.super.Exec(ctx, `UPDATE app_user SET is_active = false WHERE id = $1`, deactivated.Principal.User.ID); err != nil {
 			t.Fatal(err)
 		}

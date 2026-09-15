@@ -56,9 +56,9 @@ type ManagedUserInput struct {
 }
 
 var (
-	// ErrAddressHasAccount is returned when making an account at an address
+	// ErrAddressInUse is returned when making an account at an address
 	// somebody already signs in with, here or elsewhere.
-	ErrAddressHasAccount = errors.New("that address already has an account. Invite them instead")
+	ErrAddressInUse = errors.New("that address already has an account. Invite them instead")
 	// ErrNoSuchUser is returned for a person who is not a member here.
 	ErrNoSuchUser = errors.New("that person is not a member here")
 	// ErrManagedElsewhere is returned for a person who also belongs to another
@@ -223,7 +223,7 @@ func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in Creat
 				VALUES ($1, $2, $3)
 				RETURNING id`, email, name, hash).Scan(&userID)
 			if isUniqueViolation(err, "app_user_email_key") {
-				return ErrAddressHasAccount
+				return ErrAddressInUse
 			}
 			if err != nil {
 				return fmt.Errorf("create user: %w", err)
@@ -231,7 +231,7 @@ func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in Creat
 		case err != nil:
 			return err
 		case taken:
-			return ErrAddressHasAccount
+			return ErrAddressInUse
 		default:
 			if _, err := tx.Exec(ctx, `
 				UPDATE app_user SET name = $2, password_hash = $3, is_active = true

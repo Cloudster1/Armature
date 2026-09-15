@@ -16,14 +16,14 @@ func TestAThemeIsValidatedPartByPart(t *testing.T) {
 	assets := map[uuid.UUID]bool{file: true}
 
 	good := Spec{
-		Colors:  Palette{Light: map[string]string{"accent": "#ff0066", "canvas": "rgb(10 20 30)"}, Dark: map[string]string{"accent": "oklch(70% 0.2 250)"}},
-		Fonts:   Fonts{Sans: &Font{Family: "Atkinson Hyperlegible", AssetID: &file}},
-		Shape:   Shape{RadiusControl: ptr(4), RadiusOverlay: ptr(12)},
-		Shadows: map[string]string{"1": "0 1px 2px rgb(0 0 0 / 0.2)"},
-		Cursors: map[string]Cursor{"pointer": {AssetID: file, HotspotX: 2, HotspotY: 2}},
-		Icons:   map[string]Icon{"home": {Paths: []string{"M2 8 8 2l6 6", "M4 7v7h8V7"}}, "search": {AssetID: &file}},
+		Colors:   Palette{Light: map[string]string{"accent": "#ff0066", "canvas": "rgb(10 20 30)"}, Dark: map[string]string{"accent": "oklch(70% 0.2 250)"}},
+		Fonts:    Fonts{Sans: &Font{Family: "Atkinson Hyperlegible", AssetID: &file}},
+		Shape:    Shape{RadiusControl: ptr(4), RadiusOverlay: ptr(12)},
+		Shadows:  map[string]string{"1": "0 1px 2px rgb(0 0 0 / 0.2)"},
+		Cursors:  map[string]Cursor{"pointer": {AssetID: file, HotspotX: 2, HotspotY: 2}},
+		Icons:    map[string]Icon{"home": {Paths: []string{"M2 8 8 2l6 6", "M4 7v7h8V7"}}, "search": {AssetID: &file}},
 		Backdrop: &Backdrop{AssetID: file, Fit: "cover"},
-		CSS:     "[data-rail] { opacity: .9 } .x { background: url(/api/v1/themes/" + themeID.String() + "/assets/" + file.String() + ") }",
+		CSS:      "[data-rail] { opacity: .9 } .x { background: url(/api/v1/themes/" + themeID.String() + "/assets/" + file.String() + ") }",
 	}
 	if err := Validate(&good, themeID, assets); err != nil {
 		t.Fatalf("a good theme was refused: %v", err)

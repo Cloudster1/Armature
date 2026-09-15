@@ -33,8 +33,8 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
-	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/tenant"
+	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
 	"github.com/armature/armature/backend/internal/workflow"
@@ -177,8 +177,8 @@ func toAPIError(err error) *APIError {
 			Message: "That person is already a member here. Change what they may do under Access instead."}
 	case errors.Is(err, auth.ErrSessionStaysHome):
 		return sessionBound(http.StatusConflict)
-	case errors.Is(err, auth.ErrAddressHasAccount):
-		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: capitalize(auth.ErrAddressHasAccount.Error()) + "."}
+	case errors.Is(err, auth.ErrAddressInUse):
+		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: capitalize(auth.ErrAddressInUse.Error()) + "."}
 	case errors.Is(err, auth.ErrNoSuchUser):
 		return ErrNotFound(capitalize(auth.ErrNoSuchUser.Error()) + ".")
 	case errors.Is(err, auth.ErrManagedElsewhere), errors.Is(err, auth.ErrOwnAccount),
