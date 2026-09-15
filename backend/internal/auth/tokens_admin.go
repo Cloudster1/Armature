@@ -213,8 +213,8 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 			}
 			proof = in.Proof
 		} else {
-			if len([]rune(in.Password)) < 12 {
-				return errors.New("password must be at least 12 characters")
+			if err := ValidatePassword(in.Password); err != nil {
+				return err
 			}
 			if strings.TrimSpace(in.Name) == "" {
 				return errors.New("name is required")

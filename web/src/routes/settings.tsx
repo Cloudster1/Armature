@@ -19,6 +19,7 @@ const you: Array<{ to: string; label: string; detail: string; icon: IconName }> 
 const organization: Array<{ to: string; label: string; detail: string; icon: IconName }> = [
   { to: "/settings/organization", label: "Organization", detail: "Its name and address, and deleting it with everything in it.", icon: "Settings" },
   { to: "/settings/access", label: "Access", detail: "Who holds which role, the groups, and the identity provider.", icon: "Key" },
+  { to: "/settings/users", label: "Users", detail: "Accounts that sign in with a password here: make one, reset it, switch it off.", icon: "Users" },
   { to: "/settings/workflows", label: "Workflows", detail: "The organization's workflows and the schemes that hand them to issue types.", icon: "Workflow" },
   { to: "/settings/labels", label: "Labels", detail: "Words shared by every project.", icon: "Tag" },
   { to: "/settings/automation", label: "Automation", detail: "Rules that watch every project: when something happens, check it, do things.", icon: "Bolt" },

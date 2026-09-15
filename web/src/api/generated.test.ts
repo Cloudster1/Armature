@@ -5,6 +5,7 @@ import type { Issue, Comment, HistoryEntry } from "./issues";
 import type { Project } from "./projects";
 import type { Field, FieldValue } from "./fields";
 import type { Attachment } from "./attachments";
+import type { ManagedUser } from "./users";
 
 // The hand written types are what the components render; the generated ones
 // are what the server promises. Each hand written type has to be satisfied by
@@ -21,6 +22,10 @@ describe("the hand written types agree with the document", () => {
     expectTypeOf<Schemas["Field"]>().toMatchTypeOf<Field>();
     expectTypeOf<Schemas["Value"]>().toMatchTypeOf<FieldValue>();
     expectTypeOf<Schemas["Attachment"]>().toMatchTypeOf<Attachment>();
+  });
+
+  it("for the organization's accounts", () => {
+    expectTypeOf<Schemas["ManagedUser"]>().toMatchTypeOf<ManagedUser>();
   });
 });
 

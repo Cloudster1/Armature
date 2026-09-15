@@ -55,6 +55,23 @@ scenario("an existing account can sign back in", async ({ page }) => {
   expect.contains(await bodyText(page), who.org, "back in the same organization");
 });
 
+scenario("a person changes their own password from the profile", async ({ page }) => {
+  const who = await signUp(page);
+  await goto(page, "/settings/profile");
+  await page.waitForSelector("[data-change-password]", { timeout: WAIT });
+  await fill(page, "Current password", PASSWORD);
+  const next = "a freshly chosen adequate password";
+  await fill(page, "New password", next);
+  await clickButton(page, "Change password");
+  await page.waitForFunction(() => document.body.innerText.includes("Password changed"), { timeout: WAIT });
+
+  await signIn(page, who.email, PASSWORD);
+  await page.waitForSelector("[role=alert]", { timeout: WAIT });
+  await signIn(page, who.email, next);
+  await waitForPath(page, "/");
+  await waitForApp(page);
+});
+
 scenario("a wrong password is refused without saying whether the account exists", async ({ page }) => {
   const who = await signUp(page);
   await page.click('[data-action="sign-out"]');

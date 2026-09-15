@@ -85,6 +85,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/auth/me", s.handleMe)
 			// One's own account: what a person may change about themselves.
 			r.Patch("/auth/me", s.handleUpdateProfile)
+			// A password is changed by the person who has it, never by a token.
+			r.With(requireSession).Put("/auth/me/password", s.handleChangePassword)
 			r.Post("/auth/me/avatar", s.handleSetAvatar)
 			r.Delete("/auth/me/avatar", s.handleRemoveAvatar)
 			// A person's data is theirs to take and theirs to have erased.
@@ -310,6 +312,14 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	// ownership is standing in the organization rather than a granted role.
 	r.Delete("/organization", s.handleDeleteOrganization)
 	r.Get("/users/{userID}/avatar", s.handleAvatar)
+	// The organization's own accounts are its administrators' to make and manage.
+	r.Group(func(r chi.Router) {
+		r.Use(requirePerm(perm.OrgAdminister))
+		r.Get("/users", s.handleListUsers)
+		r.Post("/users", s.handleCreateUser)
+		r.Patch("/users/{userID}", s.handleUpdateUser)
+		r.Put("/users/{userID}/password", s.handleSetUserPassword)
+	})
 	r.Get("/issue-types", s.handleListIssueTypes)
 	r.Get("/statuses", s.handleListStatuses)
 	r.Get("/link-types", s.handleListLinkTypes)

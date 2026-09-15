@@ -176,6 +176,20 @@ func toAPIError(err error) *APIError {
 			Message: "That person is already a member here. Change what they may do under Access instead."}
 	case errors.Is(err, auth.ErrSessionStaysHome):
 		return sessionBound(http.StatusConflict)
+	case errors.Is(err, auth.ErrAddressHasAccount):
+		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: capitalize(auth.ErrAddressHasAccount.Error()) + "."}
+	case errors.Is(err, auth.ErrNoSuchUser):
+		return ErrNotFound(capitalize(auth.ErrNoSuchUser.Error()) + ".")
+	case errors.Is(err, auth.ErrManagedElsewhere), errors.Is(err, auth.ErrOwnAccount),
+		errors.Is(err, auth.ErrOwnerStanding), errors.Is(err, auth.ErrProviderAccount):
+		return ErrConflict(capitalize(err.Error()) + ".")
+	case errors.Is(err, auth.ErrLastActiveOwner):
+		return &APIError{Status: http.StatusConflict, Code: "last_owner", Message: capitalize(auth.ErrLastActiveOwner.Error()) + "."}
+	case errors.Is(err, auth.ErrOwnerOnly):
+		return ErrForbidden(capitalize(auth.ErrOwnerOnly.Error()) + ".")
+	case errors.Is(err, auth.ErrWrongPassword), errors.Is(err, auth.ErrPasswordTooShort),
+		errors.Is(err, auth.ErrBadUserRole), errors.Is(err, auth.ErrUserName), errors.Is(err, auth.ErrUserAddress):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
 	case errors.Is(err, issue.ErrNotFound):
 		return ErrNotFound("That issue was not found.")
 	case errors.Is(err, issue.ErrLinkCycle):

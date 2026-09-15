@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
-import { LOCALES, MY_DATA_HREF, useEraseMe, useMe, useRemoveAvatar, useUpdateProfile, useUploadAvatar } from "@/api/auth";
+import { LOCALES, MY_DATA_HREF, useChangeMyPassword, useEraseMe, useMe, useRemoveAvatar, useUpdateProfile, useUploadAvatar } from "@/api/auth";
 import { NOTIFICATION_KINDS, useNotificationPreferences, useSaveNotificationPreferences, type NotificationPreferences } from "@/api/notifications";
 import { Avatar, Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Page, PageHeader, SectionTitle, Select, Tag, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -146,6 +146,8 @@ function ProfilePage() {
         </form>
       </Card>
 
+      <ChangePassword />
+
       <NotificationSettings />
 
       <section className="mt-8">
@@ -162,6 +164,46 @@ function ProfilePage() {
 
       <YourData name={user.name} />
     </Page>
+  );
+}
+
+// The password is changed by proving the one in hand. Every other session
+// ends, so a password that leaked stops working everywhere but here.
+function ChangePassword() {
+  const change = useChangeMyPassword();
+  const toast = useToast();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!current || !next) return;
+    change.mutate(
+      { currentPassword: current, newPassword: next },
+      {
+        onSuccess: () => {
+          toast.success("Password changed");
+          setCurrent("");
+          setNext("");
+        },
+      },
+    );
+  }
+
+  return (
+    <section className="mt-8">
+      <SectionTitle className="mb-2">Password</SectionTitle>
+      <Card className="p-5">
+        <form onSubmit={onSubmit} className="space-y-4" noValidate data-change-password>
+          {change.error && <ErrorBanner>{(change.error as Error).message}</ErrorBanner>}
+          <Field label="Current password" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <Field label="New password" type="password" autoComplete="new-password" hint="At least 12 characters. Every other session of yours ends; this one stays." value={next} onChange={(e) => setNext(e.target.value)} />
+          <Button type="submit" loading={change.isPending} disabled={!current || !next} data-action="change-password">
+            Change password
+          </Button>
+        </form>
+      </Card>
+    </section>
   );
 }
 

@@ -50,6 +50,12 @@ what it made. It may also make an account for somebody the file names who has
 none here: no password, not active, a member so the work has somebody to point
 at, and only ever at an address nobody already holds.
 
+An administrator may also make an account outright, typing its first
+password, and may reset or switch off an account whose only organization is
+theirs. A reset or a switch-off ends every session and token the person holds.
+The person is asked to change a password an administrator typed, from their
+profile, which ends every other session of theirs.
+
 Every retention window is a duration read from the environment
 (`ARMATURE_RETAIN_*`, Go duration syntax such as `720h`); zero keeps a kind
 forever, which nothing here recommends. The worker sweeps on start and every

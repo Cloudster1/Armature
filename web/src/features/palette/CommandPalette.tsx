@@ -149,6 +149,7 @@ export function CommandPalette({
     }
     for (const page of [
       { to: "/settings/access", label: "Access", icon: "Key" as IconName },
+      { to: "/settings/users", label: "Users", icon: "Users" as IconName },
       { to: "/settings/workflows", label: "Workflows", icon: "Workflow" as IconName },
       { to: "/settings/labels", label: "Labels", icon: "Tag" as IconName },
       { to: "/settings/tokens", label: "API tokens", icon: "Command" as IconName },

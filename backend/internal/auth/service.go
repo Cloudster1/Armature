@@ -82,8 +82,8 @@ func (s *Service) Signup(ctx context.Context, in SignupInput) (*Credentials, err
 	if strings.TrimSpace(in.Name) == "" {
 		return nil, errors.New("name is required")
 	}
-	if len([]rune(in.Password)) < 12 {
-		return nil, errors.New("password must be at least 12 characters")
+	if err := ValidatePassword(in.Password); err != nil {
+		return nil, err
 	}
 	orgName := strings.TrimSpace(in.OrgName)
 	if orgName == "" {

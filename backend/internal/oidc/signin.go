@@ -27,6 +27,15 @@ func (s *Service) SignIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 		if err != nil {
 			return err
 		}
+		// The provider vouches for the person; whether the account is
+		// switched on is still ours to say, as it is at every other door.
+		var active bool
+		if err := tx.QueryRow(ctx, `SELECT is_active FROM app_user WHERE id = $1`, userID).Scan(&active); err != nil {
+			return err
+		}
+		if !active {
+			return auth.ErrUserInactive
+		}
 
 		var role string
 		err = tx.QueryRow(ctx, `

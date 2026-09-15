@@ -1094,6 +1094,33 @@ codes are counted per address for an hour across reissues.
 **Reconsider if** signup gains address verification, at which point a verified
 account could be let through more doors.
 
+### An administrator makes a local user, and manages only what is theirs
+
+Signing up makes an organization and an invitation needs a mailbox at the
+other end, so a company that keeps its people off mail, or a desk that wants an
+account ready before the person arrives, had no way to make one. An
+administrator now types an address, a name, a standing and a password, and the
+account exists; the password is told to the person another way and the
+profile is where they change it, ending every other session of theirs.
+
+An account is global and a person may belong to many organizations, so what
+one organization may do to an account stops where another one's interest
+begins: renaming, resetting and switching off are offered only for a person
+whose one organization this is. Anybody else is somebody another organization
+also relies on, and the most this one may do is let them go. An address that
+already signs in anywhere is refused with a pointer to invitations; an address
+that is only a passwordless row of this organization, made by an import, a
+mailed code or being named as a follower, is claimed and becomes the account.
+Only an owner touches another owner, an owner's standing is not changed here,
+and a reset or a switch-off ends every session and token the person holds,
+because a password that leaked stops working the moment it is replaced.
+The last active owner of an organization cannot be switched off: the service
+refuses it and a trigger refuses the same row, the way the last-administrator
+check is kept twice.
+
+**Reconsider if** an organization needs to suspend somebody it shares, at
+which point suspension moves onto the membership rather than the account.
+
 ### A project is a wall inside the organization
 
 The database wall between organizations was solid, and there was no wall at all

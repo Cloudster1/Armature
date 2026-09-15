@@ -308,6 +308,33 @@ on your own row. The portal's foot puts the customer's name on a Menu
 (`[data-action="customer-menu"]`) with the same two actions.
 
 
+## Users (narrow)
+
+```
+Settings / Users
+[Email            ] [Name             ]
+[Role      v      ] [Password         ]           [Create user]
+NAME          EMAIL              SIGNS IN WITH   ROLE           STATE
+Ada Lovelace  ada@armature.test  Password        Owner          Active   ...
+```
+
+The organization's own accounts. The form (`[data-new-user]`) takes
+`#field-email`, `#field-name`, `#field-role` (Member, Administrator) and
+`#field-password`, and "Create user" toasts. Each row is `data-user=<email>`
+with `data-user-active` and `data-user-managed`; its Menu
+(`[data-action="user-menu"]`) holds Rename (`rename-user`, a Dialog
+`[data-rename-user=<email>]` with `#field-new-name`), Change role
+(`change-role`, `[data-change-role=<email>]` with `#field-new-role`), Set
+password (`set-password`, `[data-set-password=<email>]` with
+`#field-new-password`) and Deactivate (`deactivate-user`, a danger item behind
+a confirm whose noun is "account") or Reactivate (`reactivate-user`). Every
+item is disabled on your own row and on anybody who also belongs to another
+organization (`data-user-managed="false"`). Somebody who is not a global
+administrator sees an empty state. The profile gains a Password card
+(`[data-change-password]`): `#field-current-password`, `#field-new-password`
+and "Change password" (`[data-action="change-password"]`), toasting
+"Password changed".
+
 ## Releases (content) and Components (content)
 
 ```

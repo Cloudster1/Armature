@@ -18,6 +18,22 @@ import (
 // login form into an account enumeration oracle.
 var ErrInvalidCredentials = errors.New("invalid email or password")
 
+// MinPasswordLength is the fewest characters a password may have. Length is
+// the one rule worth having: composition rules make passwords easier to guess.
+const MinPasswordLength = 12
+
+// ErrPasswordTooShort is returned by every door that takes a new password.
+var ErrPasswordTooShort = errors.New("password must be at least 12 characters")
+
+// ValidatePassword is the one rule, so signing up, accepting an invitation and
+// an administrator setting a password cannot drift apart.
+func ValidatePassword(password string) error {
+	if len([]rune(password)) < MinPasswordLength {
+		return ErrPasswordTooShort
+	}
+	return nil
+}
+
 // PasswordParams are the argon2id cost parameters. They are stored inside every
 // hash, so raising them later does not invalidate existing passwords: an old
 // hash still verifies with its own parameters and is transparently rehashed on

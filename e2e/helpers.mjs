@@ -1047,6 +1047,17 @@ export async function inviteMember(page, prefix, role = "member") {
   return { ...who, token };
 }
 
+/** Makes a local account on the users page and waits for its row. */
+export async function createLocalUser(page, { email, name, role = "Member", password = PASSWORD }) {
+  await goto(page, "/settings/users");
+  await fill(page, "Email", email);
+  await fill(page, "Name", name);
+  await selectByLabel(page, "#field-role", role);
+  await fill(page, "Password", password);
+  await clickButton(page, "Create user");
+  await page.waitForSelector(`[data-user="${email}"]`, { timeout: WAIT });
+}
+
 /** Invites an address into the signed-in person's organization and returns the invitation's token. */
 export async function inviteAddress(page, email, role = "member") {
   await goto(page, "/settings/tokens");

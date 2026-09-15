@@ -326,6 +326,15 @@ one named helper so each scenario moves by a line.
   fills the open door's form, presses Continue and returns the `[role=alert]`
   text the refusal shows. An open door answers an address with a password or
   a place on a team the way a careful desk does, asking for a code.
+- `createLocalUser(page, { email, name, role, password })` fills the users
+  page's form, presses "Create user" and waits for `[data-user=<email>]`;
+  `role` is the option's text, Member or Administrator. A row's
+  `[data-action="user-menu"]` opens Rename, Change role, Set password and
+  Deactivate or Reactivate, each a `data-action` of that name; the dialogs
+  carry `data-rename-user`, `data-change-role` and `data-set-password`, each
+  naming the address, and the row's `data-user-active` says whether the
+  account is on. The profile's `[data-change-password]` form takes
+  `#field-current-password` and `#field-new-password`.
 - `inviteAddress(page, email, role)` invites an address and returns the
   invitation's token; `inviteMember` is it with a fresh identity.
   `tryAcceptInvite(page, { token, name, password })` offers the invitation

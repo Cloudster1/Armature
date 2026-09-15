@@ -191,6 +191,14 @@ export function useUpdateProfile() {
   });
 }
 
+/** Changes the caller's own password; every other session of theirs ends. */
+export function useChangeMyPassword() {
+  return useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
+      request<void>("/auth/me/password", { method: "PUT", body: input }),
+  });
+}
+
 export function useUploadAvatar() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -44,6 +44,7 @@ import { repositoriesRoute } from "./repositories";
 import { fieldsRoute } from "./fields";
 import { issueArrangementRoute } from "./issue-arrangement";
 import { labelsRoute } from "./labels";
+import { usersRoute } from "./users";
 import { queuesRoute } from "./queues";
 import { dashboardRoute } from "./dashboard";
 import { serviceDeskRoute } from "./service-desk";
@@ -107,6 +108,7 @@ const routeTree = rootRoute.addChildren([
     accessRoute,
     organizationRoute,
     labelsRoute,
+    usersRoute,
   ]),
 ]);
 

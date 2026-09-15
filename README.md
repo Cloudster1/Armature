@@ -89,7 +89,9 @@ rest.
 **Roles.** Five of them, granted to people or to groups, over the organization
 or over one project: global administrator, project administrator, scrum master,
 user, reader. Groups can come from the identity provider, replaced at every
-sign-in. A project is a wall: what a role does not reach is not found.
+sign-in. An administrator makes local accounts with a password, resets them
+and switches them off. A project is a wall: what a role does not reach is not
+found.
 
 **Planning.** Boards (scrum follows the running sprint, kanban shows
 everything), backlogs, sprints per team with capacity, a timeline where epics

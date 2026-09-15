@@ -182,6 +182,23 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 				perm.GlobalAdministrator: true,
 			},
 		},
+		{
+			what: "see the organization's accounts",
+			do:   func(c *client) response { return c.get("/api/v1/users") },
+			allowed: map[perm.Role]bool{
+				perm.GlobalAdministrator: true,
+			},
+		},
+		{
+			what: "make an account",
+			do: func(c *client) response {
+				return c.post("/api/v1/users", map[string]string{
+					"email": h.email(t, "made"), "name": "Made", "role": "member", "password": testPassword})
+			},
+			allowed: map[perm.Role]bool{
+				perm.GlobalAdministrator: true,
+			},
+		},
 	}
 
 	for _, role := range perm.Roles {

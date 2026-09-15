@@ -67,7 +67,7 @@ folds are kept in `localStorage armature.sidebar-groups`):
   Components, Repositories, Automation, Import, Settings. With no project in
   the route the group shows the last visited project (`localStorage
   armature.project`) or a "Choose a project" button.
-- **Settings** (open): Access, Workflows, Labels, Automation, Webhooks,
+- **Settings** (open): Access, Users, Workflows, Labels, Automation, Webhooks,
   Fields, Audit log, API tokens. The link to API tokens is what the browser
   suite waits for, so the group opens by default and the link stays a link.
 
@@ -94,7 +94,8 @@ strip through `ShellHeaderContext` and in place where there is no strip
   workflows and schemes. `/projects/$key/workflows` is **Workflow scheme**;
   its sidebar label is **Workflow**.
 - `/settings` is a hub: You (Profile, API tokens) and Organization (Access,
-  Workflows, Labels, Automation, Webhooks, Fields, Audit log). `/settings/fields`
+  Users, Workflows, Labels, Automation, Webhooks, Fields, Audit log).
+  `/settings/users` is the organization's own accounts. `/settings/fields`
   is the organization's shared fields and `/settings/audit` the audit log. `/settings/automation` is the
   organization's rules and `/settings/webhooks` its endpoints. `/settings/profile` is the profile, with the
   notification settings below it; `/me` redirects.

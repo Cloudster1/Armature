@@ -294,6 +294,7 @@ func declareEnums(b *openapi.Builder) {
 	set(sprint.State(""), "future", "active", "closed")
 	set(perm.Role(""), "global_administrator", "project_administrator", "scrum_master", "user", "reader")
 	set(auth.OrgRole(""), "owner", "admin", "member", "customer")
+	set(auth.SignInMethod(""), "password", "provider", "none")
 	set(git.HostKind(""), "github", "gitlab", "gitea")
 	set(desk.QueueFilter(""), "open", "unassigned", "mine", "breached", "all")
 	set(desk.Metric(""), "first_response", "resolution")
@@ -441,6 +442,7 @@ var operations = []operation{
 		request: unwatchRequest{}, responses: none()},
 	{method: "POST", path: "/auth/logout", handler: "handleLogout", tag: "auth", summary: "End the session.", responses: none()},
 	{method: "PATCH", path: "/auth/me", handler: "handleUpdateProfile", tag: "auth", summary: "Change your name, time zone or language.", request: updateProfileRequest{}, responses: ok(env{"principal": auth.Principal{}})},
+	{method: "PUT", path: "/auth/me/password", handler: "handleChangePassword", tag: "auth", summary: "Change your password; every other session of yours ends. From a browser session only.", request: changePasswordRequest{}, responses: none()},
 	{method: "POST", path: "/auth/me/avatar", handler: "handleSetAvatar", tag: "auth", summary: "Put a picture on your account.", multipart: true, responses: ok(env{"principal": auth.Principal{}})},
 	{method: "DELETE", path: "/auth/me/avatar", handler: "handleRemoveAvatar", tag: "auth", summary: "Take your picture away.", responses: none()},
 	{method: "GET", path: "/auth/me/export", handler: "handleExportMe", tag: "auth", summary: "Everything held about you, as one JSON file.", binary: true, responses: ok(nil)},
@@ -510,6 +512,10 @@ var operations = []operation{
 	{method: "DELETE", path: "/organization", handler: "handleDeleteOrganization", tag: "organization", summary: "Delete the organization and everything in it; owners only, with its address typed back.",
 		query: []param{{name: "confirm", description: "The organization's address, typed back."}}, responses: none()},
 	{method: "DELETE", path: "/members/{userID}", handler: "handleRemoveMember", tag: "organization", summary: "Let a member go: their membership, grants, groups, teams and tokens here.", responses: none()},
+	{method: "GET", path: "/users", handler: "handleListUsers", tag: "users", summary: "The organization's accounts, switched off ones included, and what may be done to each.", responses: ok(env{"users": []auth.ManagedUser{}})},
+	{method: "POST", path: "/users", handler: "handleCreateUser", tag: "users", summary: "Make an account that signs in here with a password.", request: createUserRequest{}, responses: created(env{"user": auth.ManagedUser{}})},
+	{method: "PATCH", path: "/users/{userID}", handler: "handleUpdateUser", tag: "users", summary: "Rename somebody, change their standing, or switch their account off or on.", request: updateUserRequest{}, responses: ok(env{"user": auth.ManagedUser{}})},
+	{method: "PUT", path: "/users/{userID}/password", handler: "handleSetUserPassword", tag: "users", summary: "Give somebody a new password; every session of theirs ends.", request: setUserPasswordRequest{}, responses: none()},
 	{method: "GET", path: "/members", handler: "handleListMembers", tool: "list_members", toolHelp: "The organization's people, with the ids other tools take for assignees.", tag: "organization", summary: "The organization's people.", responses: ok(env{"members": []memberView{}})},
 	{method: "GET", path: "/issue-types", handler: "handleListIssueTypes", tool: "list_issue_types", toolHelp: "The issue types and their ids, needed to file an issue of a given type.", tag: "organization", summary: "The issue types and where each sits in the hierarchy.", responses: ok(env{"issueTypes": []issueTypeView{}})},
 	{method: "GET", path: "/statuses", handler: "handleListStatuses", tool: "list_statuses", toolHelp: "The statuses workflows are built from.", tag: "organization", summary: "The statuses workflows are built from.", responses: ok(env{"statuses": []workflow.Status{}})},
