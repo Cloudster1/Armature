@@ -13,6 +13,7 @@ import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
 import { IssueDrawerProvider } from "@/features/issues/IssueDrawer";
 import { IssuePanel } from "@/features/issues/IssuePanel";
 import { NoOrganization } from "@/features/shell/NoOrganization";
+import { ThemeLoader } from "@/features/themes/ThemeLoader";
 
 /**
  * The authenticated shell. Everything under it can assume a signed-in user in
@@ -92,6 +93,7 @@ function AgentShell() {
   const [strip, setStrip] = useState<HTMLElement | null>(null);
   return (
     <div className="flex h-full">
+      <ThemeLoader />
       <Sidebar onNewIssue={() => setCreating(true)} onAsk={() => setPalette("ask")} />
       <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-backdrop">
         <div ref={setStrip} className="sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-8 pt-5 backdrop-blur-md empty:hidden" data-shell-header />

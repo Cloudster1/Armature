@@ -33,6 +33,7 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
+	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/tenant"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
@@ -435,6 +436,20 @@ func moreAPIError(err error) *APIError {
 		return ErrBadRequest(withoutSentinel(err, workflow.ErrInvalid))
 	case errors.Is(err, workflow.ErrInUse):
 		return ErrConflict(withoutSentinel(err, workflow.ErrInUse))
+	case errors.Is(err, theme.ErrNotFound):
+		return ErrNotFound("That theme was not found.")
+	case errors.Is(err, theme.ErrAssetNotFound):
+		return ErrNotFound("That file is not in the theme.")
+	case errors.Is(err, theme.ErrNotYours):
+		return ErrForbidden(capitalize(theme.ErrNotYours.Error()) + ".")
+	case errors.Is(err, theme.ErrDuplicateName), errors.Is(err, theme.ErrAssetInUse), errors.Is(err, theme.ErrTooManyAssets):
+		return ErrConflict(capitalize(err.Error()) + ".")
+	case errors.Is(err, theme.ErrCustomerShare):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(theme.ErrCustomerShare.Error()) + "."}
+	case errors.Is(err, theme.ErrBadAssetType), errors.Is(err, theme.ErrUnsafeSVG):
+		return ErrBadRequest(capitalize(err.Error()) + ".")
+	case errors.Is(err, theme.ErrAssetTooLarge):
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: capitalize(theme.ErrAssetTooLarge.Error()) + "."}
 	case errors.Is(err, tenant.ErrNoTenant):
 		return &APIError{
 			Status:  http.StatusBadRequest,

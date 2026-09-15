@@ -32,3 +32,46 @@ export function applyTheme(theme: Theme): void {
     // A theme that does not persist is still a theme.
   }
 }
+
+// A custom theme is one stylesheet in the head, written by the loader once
+// the server has answered and, before that, from what this browser saw last.
+const STYLE_ID = "armature-theme";
+const CACHE_KEY = "armature.theme-css";
+
+/** Puts a compiled theme on the page, or takes it off with null. */
+export function applyCustomTheme(css: string | null): void {
+  let style = document.getElementById(STYLE_ID);
+  if (css === null) {
+    style?.remove();
+    return;
+  }
+  if (!style) {
+    style = document.createElement("style");
+    style.id = STYLE_ID;
+    document.head.appendChild(style);
+  }
+  if (style.textContent !== css) style.textContent = css;
+}
+
+/** Remembers a compiled theme so the next load paints it before the server answers. */
+export function cacheCustomTheme(entry: { key: string; css: string } | null): void {
+  try {
+    if (entry === null) localStorage.removeItem(CACHE_KEY);
+    else localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    // A theme that is not remembered is still applied.
+  }
+}
+
+/** What the last load left behind, if anything. */
+export function readCachedTheme(): { key: string; css: string } | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { key?: unknown; css?: unknown };
+    if (typeof parsed.key === "string" && typeof parsed.css === "string") return { key: parsed.key, css: parsed.css };
+  } catch {
+    // Unreadable storage, or a cache written by an older version.
+  }
+  return null;
+}

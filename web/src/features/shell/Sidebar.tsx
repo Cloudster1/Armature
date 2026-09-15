@@ -63,6 +63,7 @@ const settingsPages: Array<{ to: string; label: string; icon: IconName }> = [
   { to: "/settings/issue-view", label: "Issue view", icon: "Issue" },
   { to: "/settings/audit", label: "Audit log", icon: "Shield" },
   { to: "/settings/tokens", label: "API tokens", icon: "Command" },
+  { to: "/settings/themes", label: "Themes", icon: "Sun" },
 ];
 
 /** The pages of the list the project has; a project still loading shows them all. */

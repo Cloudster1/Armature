@@ -51,6 +51,7 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
+	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
 	"github.com/armature/armature/backend/internal/workflow"
@@ -165,12 +166,14 @@ func run() error {
 	accounts := auth.NewService(cluster, passwordParams, cfg.Auth.SessionTTL).
 		PortalCodeCooldown(cfg.Auth.PortalCodeCooldown).
 		Signups(auth.SignupPolicy(cfg.Auth.Signup))
+	themes := theme.NewService(cluster, store)
 	labels := label.NewService(cluster)
 	webhooks := webhook.NewService(cluster, log)
 	server := &httpapi.Server{
 		Auth:       accounts,
 		Profiles:   profile.NewService(store, accounts),
-		Privacy:    privacy.NewService(cluster).WithAvatars(profile.NewService(store, accounts)),
+		Privacy:    privacy.NewService(cluster).WithAvatars(profile.NewService(store, accounts)).WithThemes(themes),
+		Themes:     themes,
 		Mailer:     mailer,
 		Fields:     field.NewService(cluster),
 		Arrange:    arrange.NewService(cluster),

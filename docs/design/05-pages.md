@@ -335,6 +335,37 @@ administrator sees an empty state. The profile gains a Password card
 and "Change password" (`[data-action="change-password"]`), toasting
 "Password changed".
 
+## Themes (narrow) and the theme editor (content)
+
+```
+Settings / Themes                                        [+ New theme]
+[Mine | Shared with me]
+THEME              OWNER    IN USE
+Magenta  Shared    you      2 people                     ...
+```
+
+`/settings/themes` lists what the reader may use; rows are
+`data-theme-row=<name>` with `data-theme-active`, and the Menu
+(`[data-action="theme-menu"]`) holds Use this theme (`use-theme`) or Stop
+using (`stop-theme`), Edit (`edit-theme`), Share with the organization or
+Stop sharing (`share-theme`) and Delete (`delete-theme`, behind a confirm
+whose noun is "theme" and whose body says how many people go back to the
+built-in theme). `[data-themes-view="mine"|"shared"]` switch the list;
+`[data-action="new-theme"]` opens the editor.
+
+`/settings/themes/new` and `/settings/themes/<id>` are the editor
+(`[data-theme-editor=<id>|"new"]`): `#field-theme-name`, a Switch "Shared with
+the organization" (`[data-theme-shared]`), a Switch "Preview on this page"
+(`[data-action="preview-theme"]`) that shows the draft on the page it is on,
+"Save theme" (`[data-action="save-theme"]`) and, once saved, "Use this theme"
+(`[data-action="use-theme"]`). Tabs (`data-theme-tab`): Colours (a
+`[data-theme-mode="light"|"dark"]` Segmented over the token groups, each a
+`ColorField` `#field-token-<name>` with `data-token` and a Reset), Type,
+Shape, Cursors (`[data-theme-cursor=<kind>]`), Icons (every glyph with its
+`[data-theme-icon=<name>]` row, a picture or path data), Backdrop, Files
+(`[data-action="add-theme-file"]`, rows `data-theme-asset=<name>`, a file in
+use cannot be removed) and Advanced (`[data-theme-css]`).
+
 ## Releases (content) and Components (content)
 
 ```

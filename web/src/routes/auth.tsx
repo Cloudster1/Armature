@@ -4,7 +4,8 @@ import { LoginForm, SignupForm } from "@/features/auth/AuthForms";
 import { Card } from "@/components/ui";
 import { meQueryKey, useSignupOpen } from "@/api/auth";
 import { request } from "@/api/client";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { applyCustomTheme } from "@/lib/theme";
 
 /**
  * Bounces an already signed-in visitor away from the sign-in screens. It reads
@@ -32,6 +33,8 @@ async function redirectIfSignedIn({ context }: { context: { queryClient: import(
 }
 
 export function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: ReactNode; footer: ReactNode }) {
+  // A theme is somebody's; the door has nobody yet, so it wears the built-in one.
+  useEffect(() => applyCustomTheme(null), []);
   return (
     <div className="flex min-h-full items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">

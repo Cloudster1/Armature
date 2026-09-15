@@ -1121,6 +1121,39 @@ check is kept twice.
 **Reconsider if** an organization needs to suspend somebody it shares, at
 which point suspension moves onto the membership rather than the account.
 
+### A theme is a saved redefinition of the tokens, compiled in the browser
+
+Every colour in the interface is one of forty-three names, and the dark theme
+already proved that redefining the names reskins the whole product, charts and
+canvas included. A custom theme is therefore a document of overrides on those
+names, plus the other things a person can want to change: the two faces, the
+two radii, the three shadows, the eight cursors, any of the kit's glyphs, the
+backdrop, and a block of CSS for whatever the parts do not reach. Only what
+the theme names is kept, so the stylesheet stays the one source of what a
+token means, and a theme made today keeps working when a token is added.
+
+The document compiles to one stylesheet in the browser, unlayered so it beats
+the stylesheet's own layer, with light overrides under the light selectors and
+dark under the dark ones, so the Auto, Light and Dark choice keeps working
+under a custom theme and keeps living in the browser, where it belongs to the
+device. Which theme a person uses lives on the server, because it is the
+person's, not the browser's, and because a theme can be shared: it is its
+maker's, shared with the organization when they say so, and an administrator
+may tidy what anybody shared. This is the second per-person setting the plan's
+horizon was waiting for, and it got a table of its own rather than a
+preferences table, because a theme is a thing with files, not a value.
+
+A glyph is replaced by masking the drawn one with a picture in the text's own
+colour, so an SVG's colours never matter and the replacement follows every
+state the glyph has. Everything a theme loads is one of its own files, served
+from this origin as a download with a policy that keeps an SVG inert, or an
+inline image; the CSS is refused if it imports, reaches another site, or
+closes the element it lives in. The application still has no third party at
+load time, whoever wrote the theme.
+
+**Reconsider if** an organization wants a default theme for everyone who has
+not chosen, at which point the organization's settings column is where it goes.
+
 ### A project is a wall inside the organization
 
 The database wall between organizations was solid, and there was no wall at all

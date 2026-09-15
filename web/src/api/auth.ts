@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { request, upload } from "./client";
+import { cacheCustomTheme } from "@/lib/theme";
 
 export type OrgRole = "owner" | "admin" | "member" | "customer";
 
@@ -98,7 +99,10 @@ export function useEraseMe() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => request<void>("/auth/me", { method: "DELETE" }),
-    onSuccess: () => queryClient.clear(),
+    onSuccess: () => {
+      cacheCustomTheme(null);
+      queryClient.clear();
+    },
   });
 }
 
@@ -116,8 +120,11 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => request<void>("/auth/logout", { method: "POST" }),
     // Clear everything, not just the session: cached issues and boards belong
-    // to the person who just signed out.
-    onSuccess: () => queryClient.clear(),
+    // to the person who just signed out, and so does the theme.
+    onSuccess: () => {
+      cacheCustomTheme(null);
+      queryClient.clear();
+    },
   });
 }
 

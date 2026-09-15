@@ -1047,6 +1047,19 @@ export async function inviteMember(page, prefix, role = "member") {
   return { ...who, token };
 }
 
+/** Makes a theme through the editor, with the light accent given, and waits for the save. */
+export async function createTheme(page, name, { accent } = {}) {
+  await goto(page, "/settings/themes/new");
+  await fill(page, "Theme name", name);
+  if (accent) {
+    await page.waitForSelector("#field-token-accent", { timeout: WAIT });
+    await page.click("#field-token-accent", { clickCount: 3 });
+    await page.keyboard.sendCharacter(accent);
+  }
+  await clickButton(page, "Save theme");
+  await page.waitForFunction((n) => document.body.innerText.includes(`Made ${n}`), { timeout: WAIT }, name);
+}
+
 /** Makes a local account on the users page and waits for its row. */
 export async function createLocalUser(page, { email, name, role = "Member", password = PASSWORD }) {
   await goto(page, "/settings/users");

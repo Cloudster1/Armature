@@ -37,7 +37,8 @@ function makeIcon(name: string, paths: string[]) {
     );
   }
   Icon.displayName = `Icon.${name}`;
-  return Icon;
+  // The glyph's name is what a theme keys a replacement on.
+  return Object.assign(Icon, { glyph: name });
 }
 
 export const Icon = {

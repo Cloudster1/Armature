@@ -14,6 +14,7 @@ export const settingsRoute = createRoute({
 const you: Array<{ to: string; label: string; detail: string; icon: IconName }> = [
   { to: "/settings/profile", label: "Profile", detail: "Your name, your picture, and how dates are written for you.", icon: "User" },
   { to: "/settings/tokens", label: "API tokens", detail: "Call the API from a script or a CI job.", icon: "Command" },
+  { to: "/settings/themes", label: "Themes", detail: "Colours, type, cursors and icons, yours or shared with everyone.", icon: "Sun" },
 ];
 
 const organization: Array<{ to: string; label: string; detail: string; icon: IconName }> = [

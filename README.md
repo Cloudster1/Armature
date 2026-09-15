@@ -124,6 +124,12 @@ tracker's keys, dates, people, hierarchy, sprints, links, comments and worklogs.
 mail; webhooks signed, retried and logged; automation rules that run as an
 account of their own, once per event.
 
+**Themes.** The interface is drawn from named tokens, and a theme is a saved
+redefinition of them: colours for light and dark, the faces, the corners, the
+shadows, the cursors, any glyph, the backdrop, and a block of CSS for the
+rest, from files the theme owns. A theme is its maker's, shared with the
+organization when they say so, and chosen per person.
+
 **The API.** Everything the SPA does is the documented API, and the same table
 of operations is offered to a model over MCP. The assistant answers from an
 index of the product first, and a model second, behind the same door as the

@@ -153,6 +153,7 @@ export function CommandPalette({
       { to: "/settings/workflows", label: "Workflows", icon: "Workflow" as IconName },
       { to: "/settings/labels", label: "Labels", icon: "Tag" as IconName },
       { to: "/settings/tokens", label: "API tokens", icon: "Command" as IconName },
+      { to: "/settings/themes", label: "Themes", icon: "Sun" as IconName },
     ]) {
       if (matches(`settings ${page.label}`)) out.push({ id: `settings:${page.to}`, group: "Pages", label: `Settings / ${page.label}`, icon: page.icon, run: () => go(page.to) });
     }

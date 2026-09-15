@@ -4,6 +4,7 @@ export { cx } from "./cx";
 export { Button, IconButton, Spinner, controlHeight, type ButtonVariant, type ControlSize, ButtonLink } from "./Button";
 export { Input, Textarea, Checkbox, Switch, Select, SelectInput, Labelled, control, controlClass, fieldId, type InputProps } from "./controls";
 export { Field } from "./Field";
+export { ColorField } from "./ColorField";
 export { Card } from "./Card";
 export { ProgressBar, type ProgressTone } from "./ProgressBar";
 export { Stat } from "./Stat";

@@ -42,6 +42,7 @@ installation does.
 | Audit log | `audit_log` | actor id, action, target, address | `ARMATURE_RETAIN_AUDIT` (365 days) | swept per organization; exportable by its administrators |
 | Commits and pull requests | `git_commit`, `pull_request` | author name and address as the repository gave them | while the repository is connected | disconnected; pseudonymised when the address belongs to an erased account |
 | Pictures | the bucket, `user/<id>/avatar` | the picture | while chosen | removed on request or by erasure |
+| Themes | `theme`, `theme_asset`, `user_theme`, the bucket under `theme/<theme>/<file>` | the maker, the files they uploaded, who chose what | while the theme exists | deleted by the maker or an administrator, and by the maker's erasure, files included |
 | Ratings | `csat_rating` | a score and a free text | with the request | with the issue |
 
 An import adds one column to issues, comments and worklogs: the name the

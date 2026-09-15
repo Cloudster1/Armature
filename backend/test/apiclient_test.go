@@ -45,6 +45,7 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
+	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
 	"github.com/armature/armature/backend/internal/workflow"
@@ -90,10 +91,12 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	webhooks := webhook.NewService(h.cluster, testLog)
 
 	accounts := h.authService()
+	themes := theme.NewService(h.cluster, h.attachmentStore(t))
 	srv := &httpapi.Server{
 		Mailer:     mailer,
 		Profiles:   profile.NewService(h.attachmentStore(t), accounts),
-		Privacy:    privacy.NewService(h.cluster).WithAvatars(profile.NewService(h.attachmentStore(t), accounts)),
+		Privacy:    privacy.NewService(h.cluster).WithAvatars(profile.NewService(h.attachmentStore(t), accounts)).WithThemes(themes),
+		Themes:     themes,
 		Auth:       accounts,
 		Fields:     field.NewService(h.cluster),
 		Arrange:    arrange.NewService(h.cluster),

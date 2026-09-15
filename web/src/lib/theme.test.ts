@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyTheme, readTheme } from "./theme";
+import { applyCustomTheme, applyTheme, cacheCustomTheme, readCachedTheme, readTheme } from "./theme";
 
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
+  document.getElementById("armature-theme")?.remove();
 });
 
 afterEach(() => {
@@ -55,5 +56,41 @@ describe("theme", () => {
     });
     expect(() => applyTheme("dark")).not.toThrow();
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+});
+
+describe("a custom theme", () => {
+  it("is one style element, replaced in place and removed with null", () => {
+    applyCustomTheme(":root { --color-accent: #f06; }");
+    const style = document.getElementById("armature-theme");
+    expect(style?.textContent).toBe(":root { --color-accent: #f06; }");
+    applyCustomTheme(":root { --color-accent: #0cf; }");
+    expect(document.querySelectorAll("#armature-theme")).toHaveLength(1);
+    expect(document.getElementById("armature-theme")?.textContent).toBe(":root { --color-accent: #0cf; }");
+    applyCustomTheme(null);
+    expect(document.getElementById("armature-theme")).toBeNull();
+  });
+
+  it("is remembered for the next load and forgotten with null", () => {
+    cacheCustomTheme({ key: "t1:2026", css: ".x {}" });
+    expect(readCachedTheme()).toEqual({ key: "t1:2026", css: ".x {}" });
+    cacheCustomTheme(null);
+    expect(readCachedTheme()).toBeNull();
+  });
+
+  it("ignores a cache it cannot read", () => {
+    localStorage.setItem("armature.theme-css", "not json");
+    expect(readCachedTheme()).toBeNull();
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("access denied");
+    });
+    expect(readCachedTheme()).toBeNull();
+  });
+
+  it("still applies when storage cannot be written", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("access denied");
+    });
+    expect(() => cacheCustomTheme({ key: "k", css: "" })).not.toThrow();
   });
 });

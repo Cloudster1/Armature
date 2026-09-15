@@ -42,6 +42,12 @@ progress", "epic" or "bug". The values live in `web/src/styles/index.css`.
 The accent's old name, `brand`, is gone; a test in `web/src/styles` refuses it
 outside the kit, along with sizes typed in pixels.
 
+The names are also what a custom theme writes to: a theme keeps a light and a
+dark set of overrides on any of them, and the editor lists them from
+`web/src/lib/theme-tokens.ts`, which a test keeps equal to the `--color-*`
+names in the stylesheet. Renaming a token is therefore a change to what saved
+themes mean; add a name rather than rename one.
+
 ## How to use them
 
 - Backgrounds: `canvas` for the page, `surface` for anything that holds

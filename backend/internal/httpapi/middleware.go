@@ -45,6 +45,7 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
+	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/tenant"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
@@ -236,6 +237,8 @@ type Server struct {
 	// Filters are saved queries; Bulk edits many issues at once; CSV moves
 	// them in and out as files.
 	Filters *filter.Service
+	// Themes are people's own redefinitions of the interface and the files behind them.
+	Themes *theme.Service
 	Bulk    *bulk.Service
 	CSV     *csvio.Service
 	// Audit reads the organization's record of who did what; Calendar lays a

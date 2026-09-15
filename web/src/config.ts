@@ -276,3 +276,22 @@ export const DESCRIPTION_ROWS = 4;
 
 /** Placeholder rows the create dialog shows while it learns the arrangement. */
 export const DIALOG_SKELETON_LINES = 3;
+
+/** The largest file a theme takes, matching the API's limit. */
+export const THEME_ASSET_MAX_BYTES = 2 * 1024 * 1024;
+/** The most extra CSS a theme carries, matching the API's limit. */
+export const THEME_CSS_MAX_BYTES = 32 * 1024;
+/** How long a draft settles before the live preview is recompiled. */
+export const THEME_PREVIEW_DEBOUNCE_MS = 150;
+/** The size an icon is drawn at in the theme editor's grid. */
+export const THEME_ICON_PREVIEW_PX = 20;
+/** Lines the extra CSS box shows before it scrolls. */
+export const THEME_CSS_ROWS = 12;
+/** The largest radius a theme may set, matching the API's limit. */
+export const THEME_MAX_RADIUS = 32;
+/** The furthest a cursor's point may sit from its picture's corner, matching the API's limit. */
+export const THEME_MAX_HOTSPOT = 128;
+/** The size a cursor picture is best drawn at; larger ones are refused by some browsers. */
+export const THEME_CURSOR_PX = 32;
+/** Bytes in a kilobyte, for the sizes the editor prints. */
+export const KILOBYTE = 1024;

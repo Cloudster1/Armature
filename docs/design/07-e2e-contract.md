@@ -335,6 +335,12 @@ one named helper so each scenario moves by a line.
   naming the address, and the row's `data-user-active` says whether the
   account is on. The profile's `[data-change-password]` form takes
   `#field-current-password` and `#field-new-password`.
+- `createTheme(page, name, { accent })` fills the editor's `#field-theme-name`,
+  types a light accent into `#field-token-accent`, presses "Save theme" and
+  waits for the toast. The custom theme is one `<style id="armature-theme">`
+  in the head; a scenario reads its effect through `getComputedStyle` on the
+  root, never through the element. `[data-action="theme"]` still reads Auto,
+  Light or Dark under a custom theme.
 - `inviteAddress(page, email, role)` invites an address and returns the
   invitation's token; `inviteMember` is it with a fresh identity.
   `tryAcceptInvite(page, { token, name, password })` offers the invitation

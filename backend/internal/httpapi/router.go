@@ -299,6 +299,19 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	r.Get("/notification-preferences", s.handleNotificationPreferences)
 	r.Put("/notification-preferences", s.handleSaveNotificationPreferences)
 
+	// Themes: the caller's own and the shared ones. The active one is read
+	// before the id routes so "active" is never taken for a theme's id.
+	r.Get("/themes", s.handleListThemes)
+	r.Post("/themes", s.handleCreateTheme)
+	r.Get("/themes/active", s.handleActiveTheme)
+	r.Put("/themes/active", s.handleChooseTheme)
+	r.Get("/themes/{themeID}", s.handleGetTheme)
+	r.Patch("/themes/{themeID}", s.handleUpdateTheme)
+	r.Delete("/themes/{themeID}", s.handleDeleteTheme)
+	r.Post("/themes/{themeID}/assets", s.handleUploadThemeAsset)
+	r.Get("/themes/{themeID}/assets/{assetID}", s.handleThemeAsset)
+	r.Delete("/themes/{themeID}/assets/{assetID}", s.handleDeleteThemeAsset)
+
 	r.Get("/tokens", s.handleListAPITokens)
 	// Making one is session only, so a leaked key cannot mint a longer lived
 	// key and outlive the revocation of the key it was made with.

@@ -40,10 +40,16 @@ type Avatars interface {
 	Remove(ctx context.Context, userID uuid.UUID) error
 }
 
+// Themes takes a person's themes and their files out with them.
+type Themes interface {
+	EraseOwner(ctx context.Context, userID uuid.UUID) error
+}
+
 // Service serves a person's rights over their data.
 type Service struct {
 	db      *db.Cluster
 	avatars Avatars
+	themes  Themes
 }
 
 func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
@@ -51,6 +57,12 @@ func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 // WithAvatars lets an erasure take the picture out of the bucket too.
 func (s *Service) WithAvatars(a Avatars) *Service {
 	s.avatars = a
+	return s
+}
+
+// WithThemes lets an erasure take the person's themes and their files too.
+func (s *Service) WithThemes(t Themes) *Service {
+	s.themes = t
 	return s
 }
 
@@ -378,6 +390,11 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 	if s.avatars != nil {
 		if err := s.avatars.Remove(ctx, userID); err != nil {
 			return fmt.Errorf("remove the picture: %w", err)
+		}
+	}
+	if s.themes != nil {
+		if err := s.themes.EraseOwner(ctx, userID); err != nil {
+			return fmt.Errorf("remove the themes: %w", err)
 		}
 	}
 	return nil
