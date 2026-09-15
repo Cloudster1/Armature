@@ -390,6 +390,12 @@ verdict is a judgement of the binary's contents, so a new dependency can flip
 it. When a binary starts dying at two seconds, suspect the agent before the
 code; retest 1.27 before bumping.
 
+The working tree on that host is a Windows drive mounted into WSL, where every
+file reads as executable and git is told to ignore modes (`core.filemode` is
+false). A script the stack runs directly, such as the replica's entrypoint, is
+therefore marked with `git update-index --chmod=+x`, never with `chmod`, or the
+bit never reaches a Linux clone.
+
 The render service that prints dashboards is the browser suite's own image
 started as a container, and the api reaches it over HTTP with the standard
 library, so PDF export adds no dependency to the api binary either.
