@@ -4,6 +4,7 @@ import { rootRoute } from "./root";
 import { loginRoute, signupRoute } from "./auth";
 import { deskEntryRoute } from "./desk-entry";
 import { unwatchRoute } from "./unwatch";
+import { inviteRoute } from "./invite";
 import { rateRoute } from "./rate";
 import { sharedRoute } from "./shared";
 import { appRoute } from "./app";
@@ -52,6 +53,7 @@ import { portalArticleRoute, portalNewRoute, portalRequestRoute, portalRoute } f
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signupRoute,
+  inviteRoute,
   deskEntryRoute,
   unwatchRoute,
   rateRoute,

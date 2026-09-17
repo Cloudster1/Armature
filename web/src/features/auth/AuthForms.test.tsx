@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { LoginForm, PASSWORD_MISMATCH, SignupForm } from "./AuthForms";
+import { LoginForm, PASSWORD_MISMATCH, SignupForm, safeNext } from "./AuthForms";
 import { ApiError } from "@/api/client";
 
 // The router is only used for the post-login redirect, which is not what these
@@ -41,6 +41,19 @@ function baseLogin() {
 describe("LoginForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  // An invitation sends somebody to sign in and expects them back on its page.
+  it("goes back where it was sent from after signing in, and only within the app", async () => {
+    const mutate = vi.fn((_input, options) => options?.onSuccess?.());
+    mockLogin({ mutate });
+    wrap(<LoginForm next="/invite" />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(navigate).toHaveBeenCalledWith({ href: "/invite" });
+
+    expect(safeNext("//evil.example")).toBeUndefined();
+    expect(safeNext("https://evil.example")).toBeUndefined();
+    expect(safeNext("/projects")).toBe("/projects");
   });
 
   it("submits the credentials the user typed", async () => {

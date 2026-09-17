@@ -1359,6 +1359,36 @@ export async function deleteMyAccount(page) {
   await waitForPath(page, "/login");
 }
 
+/**
+ * Invites an address from the Access page's Members tab, the way an
+ * administrator would, and returns the link the page shows and the secret in
+ * it. The link names the app's configured address, not this browser's, so
+ * callers open the secret on BASE_URL themselves.
+ */
+export async function inviteFromMembersPage(page, email, roleLabel = "Member") {
+  await goto(page, "/settings/access");
+  await page.click('[data-access-tab="Members"]');
+  await fill(page, "Invite by email", email);
+  await selectByLabel(page, "#field-as", roleLabel);
+  await clickButton(page, "Send invitation");
+  const shown = `[data-invite-link="${email}"] [data-invite-url]`;
+  await page.waitForSelector(shown, { timeout: WAIT });
+  const link = await page.$eval(shown, (el) => el.textContent.trim());
+  return { link, token: link.slice(link.indexOf("#") + 1) };
+}
+
+/** Opens an invitation link while signed out and makes the account it asks for. */
+export async function joinThroughLink(page, token, who) {
+  await signOut(page);
+  await goto(page, `/invite#${token}`);
+  await fill(page, "Your name", who.name);
+  await fill(page, "Password", PASSWORD);
+  await fill(page, "Repeat password", PASSWORD);
+  await page.click("[data-invite-accept] button[type=submit]");
+  await waitForPath(page, "/");
+  await waitForApp(page);
+}
+
 /** Removes a member by name on the Access page's Members tab and waits for the row to go. */
 export async function removeMember(page, name) {
   await goto(page, "/settings/access");

@@ -18,7 +18,12 @@ function formError(error: unknown): string | null {
   return "Something went wrong. Please try again.";
 }
 
-export function LoginForm() {
+/** Where to go after signing in: a path of this application, never another site. */
+export function safeNext(next: string | undefined): string | undefined {
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
+}
+
+export function LoginForm({ next }: { next?: string } = {}) {
   const navigate = useNavigate();
   const login = useLogin();
   const [email, setEmail] = useState("");
@@ -28,7 +33,8 @@ export function LoginForm() {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    login.mutate({ email, password }, { onSuccess: () => navigate({ to: "/" }) });
+    const target = safeNext(next);
+    login.mutate({ email, password }, { onSuccess: () => (target ? navigate({ href: target }) : navigate({ to: "/" })) });
   }
 
   return (

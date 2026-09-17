@@ -50,13 +50,20 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
 export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
+  validateSearch: (search: Record<string, unknown>): { next?: string } =>
+    typeof search.next === "string" ? { next: search.next } : {},
   beforeLoad: redirectIfSignedIn,
-  component: () => (
-    <AuthLayout title="Sign in" footer={<SignupOffer />}>
-      <LoginForm />
-    </AuthLayout>
-  ),
+  component: LoginPage,
 });
+
+function LoginPage() {
+  const { next } = loginRoute.useSearch();
+  return (
+    <AuthLayout title="Sign in" footer={<SignupOffer />}>
+      <LoginForm next={next} />
+    </AuthLayout>
+  );
+}
 
 /** Offers sign-up only where it would work; elsewhere the way in is an invitation. */
 export function SignupOffer() {

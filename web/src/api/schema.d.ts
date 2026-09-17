@@ -142,6 +142,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/invites/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Where an invitation leads and whom it is for, before accepting it. */
+        post: operations["previewInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -975,7 +992,7 @@ export interface paths {
         /** Open invitations. */
         get: operations["listInvites"];
         put?: never;
-        /** Invite somebody; the token is shown once. */
+        /** Invite somebody: mailed when mail is set up, and the link shown once either way. */
         post: operations["createInvite"];
         delete?: never;
         options?: never;
@@ -4430,6 +4447,12 @@ export interface components {
             /** @enum {string} */
             role: "owner" | "admin" | "member" | "customer";
         };
+        InvitePreview: {
+            email: string;
+            orgName: string;
+            /** @enum {string} */
+            role: "owner" | "admin" | "member" | "customer";
+        };
         InviteRequest: {
             email: string;
             role: string;
@@ -4914,6 +4937,9 @@ export interface components {
             people: components["schemas"]["PersonFound"][];
             total: number;
             words: components["schemas"]["CsvioWord"][];
+        };
+        PreviewInviteRequest: {
+            token: string;
         };
         Principal: {
             org?: components["schemas"]["Org"];
@@ -6351,6 +6377,41 @@ export interface operations {
                 content: {
                     "application/json": {
                         principal: components["schemas"]["Principal"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    previewInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        invite: components["schemas"]["InvitePreview"];
                     };
                 };
             };
@@ -8769,6 +8830,8 @@ export interface operations {
                 content: {
                     "application/json": {
                         invite: components["schemas"]["Invite"];
+                        link: string;
+                        mailed: boolean;
                         token: string;
                     };
                 };
