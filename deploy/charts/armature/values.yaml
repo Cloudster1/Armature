@@ -18,6 +18,9 @@ images:
   psql: { repository: postgres, tag: 18-alpine }
   # Valkey answers the Redis protocol; only the bundled cache uses this.
   redis: { repository: valkey/valkey, tag: 8-alpine }
+  # The secrets Job needs a shell next to kubectl, which the upstream
+  # registry.k8s.io/kubectl image does not have.
+  kubectl: { repository: alpine/kubectl, tag: 1.34.1 }
   pullPolicy: IfNotPresent
   pullSecrets: []
 
@@ -107,8 +110,8 @@ render:
     limits: { memory: 2Gi }
 
 database:
-  # Where the api and the worker connect. Everything before the credentials is
-  # yours to supply; the chart never guesses a host.
+  # Where the api and the worker connect. Ignored when cnpg or the bundled
+  # postgresql is enabled; otherwise yours to supply, the chart never guesses.
   host: ""
   port: 5432
   name: armature
@@ -122,11 +125,13 @@ database:
   # the grants and the row-level-security bypass vanish without an error.
   appRole: armature_app
   adminRole: armature_admin
-  # The role the roles Job and the migration Job connect as. It must be able
-  # to CREATE ROLE and own the schema. The api and the worker refuse to start
-  # if they are given a role with rolsuper or rolbypassrls, so this must not
-  # be the role they use.
-  ownerRole: postgres
+  # The role the roles Job and the migration Job connect as. It must own the
+  # schema, and outside cnpg also be able to CREATE ROLE. The api and the
+  # worker refuse to start as a role with rolsuper or rolbypassrls, so this
+  # must not be the role they use. Empty means armature_owner with cnpg, which
+  # keeps postgres for its own superuser, and postgres otherwise. A CNPG
+  # cluster creates its owner once, so do not change this after the first sync.
+  ownerRole: ""
   pool:
     maxConns: 20
     minConns: 2
@@ -142,10 +147,15 @@ externalRedis:
   # losing Redis loses any event the six consumer groups have not yet acked,
   # with no way to replay it. Persistence is not a luxury here.
   #
-  # Ignored when the bundled redis subchart is enabled.
+  # host is ignored when the bundled redis is enabled, which always requires a
+  # password.
   host: ""
   port: 6379
   db: 0
+  # Whether this server wants a password. It is read from the Secret named by
+  # secrets.names.redis, which you create: the chart cannot tell your server a
+  # password it made up.
+  auth: false
 
 s3:
   # Attachments. Without it the product runs and refuses uploads with a
@@ -235,16 +245,35 @@ retention:
 logLevel: info
 
 secrets:
-  # create: the chart renders a Secret from the values below, which is what a
-  # trial install wants. existingSecret: you made the Secret yourself and the
-  # chart only names it, which is what a real one wants. The keys expected are
-  # listed in the chart's README.
+  # Database and Redis passwords live in basic-auth Secrets, one per role,
+  # with the keys username and password. That is the shape CNPG reads.
+  #
+  # generate: a Job creates each missing one with a random password, before
+  # anything else on every install or sync, and never touches one that exists.
+  # They carry no Helm or Argo CD ownership, so an uninstall or a prune leaves
+  # them behind, next to the database volumes whose passwords they are.
+  #
+  # Only passwords the chart itself hands to a server are generated: the app
+  # and admin roles always, the owner with cnpg or the bundled postgresql, and
+  # Redis when bundled. An external database's owner and an external Redis
+  # already have passwords, so those Secrets must exist, and the Job stops
+  # with a message naming the one that does not.
+  generate: true
+  passwordLength: 32
+  # Blank means <fullname>-db-owner, -db-app, -db-admin and -redis. Name your
+  # own to have the chart use it instead. A password you supply ends up inside
+  # a connection URL, so keep it to letters and digits.
+  names:
+    dbOwner: ""
+    dbApp: ""
+    dbAdmin: ""
+    redis: ""
+
+  # The credentials only you can supply. create: the chart renders them into
+  # a Secret from the values below. existingSecret: you made that Secret and
+  # the chart only names it. The keys are listed in the chart's README.
   create: true
   existingSecret: ""
-  appPassword: ""
-  adminPassword: ""
-  ownerPassword: ""
-  redisPassword: ""
   s3AccessKey: ""
   s3SecretKey: ""
   pop3Password: ""
@@ -277,6 +306,34 @@ containerSecurityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
   capabilities: { drop: ["ALL"] }
+
+# A PostgreSQL cluster run by the CloudNativePG operator, which must already be
+# installed in the cluster: this renders a postgresql.cnpg.io/v1 Cluster, not
+# the operator. The workloads connect to its -rw Service.
+cnpg:
+  enabled: false
+  # Send reads to the -ro Service when there is more than one instance.
+  readReplicas: true
+  # The Cluster's spec, passed to the operator as written, so every field the
+  # CNPG documentation lists can be set here. The chart only fills in what has
+  # to agree with the rest of it: bootstrap.initdb's database, owner and
+  # secret, the app and admin roles under managed.roles (yours are kept after
+  # them), and track_commit_timestamp. A bootstrap by recovery or
+  # pg_basebackup is left entirely alone.
+  spec:
+    instances: 3
+    # The same major version as images.psql, the client the roles Job runs.
+    imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
+    enableSuperuserAccess: false
+    storage:
+      size: 10Gi
+    postgresql:
+      parameters: {}
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 1Gi }
+    monitoring:
+      enablePodMonitor: false
 
 # What the chart can bring with it, all off. Postgres and Valkey are two
 # StatefulSets of this chart's own on the official images, one pod and one

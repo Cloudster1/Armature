@@ -16,10 +16,8 @@ metadata:
     {{- include "armature.labels" . | nindent 4 }}
     app.kubernetes.io/component: migrate
   annotations:
-    # post-install for the same reason as the roles Job, and after it by weight.
-    helm.sh/hook: post-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
-    helm.sh/hook-delete-policy: before-hook-creation
+    # Ordered like the roles Job, and after it.
+    {{- include "armature.hookAnnotations" (dict "helm" "post-install,pre-upgrade" "argo" "Sync" "weight" "-4") | nindent 4 }}
 spec:
   parallelism: 1
   completions: 1
@@ -49,19 +47,11 @@ spec:
             - configMapRef:
                 name: {{ include "armature.fullname" . }}-env
           env:
-            # The owner, deliberately: this one writes DDL. It also overrides
-            # the primary URL the ConfigMap and Secret give every other
-            # workload, which is why it comes after envFrom.
+            # The owner, deliberately: this one writes DDL.
+            {{- include "armature.passwordEnv" (dict "root" . "name" "dbOwner" "var" "DB_OWNER_PASSWORD") | nindent 12 }}
             - name: ARMATURE_DB_PRIMARY_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "armature.secretName" . }}
-                  key: db-owner-url
-            - name: ARMATURE_REDIS_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "armature.secretName" . }}
-                  key: redis-url
+              value: {{ include "armature.dbURL" (dict "root" . "role" (include "armature.ownerRole" .) "var" "DB_OWNER_PASSWORD" "host" (include "armature.dbHost" .)) | quote }}
+            {{- include "armature.redisEnv" . | nindent 12 }}
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }

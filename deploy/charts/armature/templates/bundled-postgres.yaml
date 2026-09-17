@@ -4,8 +4,8 @@ A trial database, not a deployment's. One pod, one volume, no replica and no
 backup: the chart says everywhere that a real installation brings its own, and
 this exists only so that -f values-demo.yaml comes up against a bare cluster.
 
-Its superuser password is the same value the roles and migration Jobs connect
-with, read from the same Secret key, so there is no second place to keep it.
+Its superuser password is the owner's basic-auth Secret, the same one the roles
+and migration Jobs connect with, so there is no second place to keep it.
 */}}
 apiVersion: v1
 kind: Service
@@ -16,6 +16,8 @@ metadata:
   labels:
     {{- include "armature.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   type: ClusterIP
   ports:
@@ -33,6 +35,8 @@ metadata:
   labels:
     {{- include "armature.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   serviceName: {{ .Release.Name }}-postgresql
   replicas: 1
@@ -76,14 +80,14 @@ spec:
             - track_commit_timestamp=on
           env:
             - name: POSTGRES_USER
-              value: {{ .Values.database.ownerRole | quote }}
+              value: {{ include "armature.ownerRole" . | quote }}
             - name: POSTGRES_DB
               value: {{ .Values.database.name | quote }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "armature.secretName" . }}
-                  key: db-owner-password
+                  name: {{ include "armature.credentialSecret" (dict "root" . "name" "dbOwner") }}
+                  key: password
             - name: POSTGRES_INITDB_ARGS
               value: "--auth-host=scram-sha-256"
             - name: PGDATA
@@ -93,13 +97,13 @@ spec:
               containerPort: 5432
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", {{ .Values.database.ownerRole | quote }}, "-d", {{ .Values.database.name | quote }}]
+              command: ["pg_isready", "-U", {{ include "armature.ownerRole" . | quote }}, "-d", {{ .Values.database.name | quote }}]
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 6
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", {{ .Values.database.ownerRole | quote }}, "-d", {{ .Values.database.name | quote }}]
+              command: ["pg_isready", "-U", {{ include "armature.ownerRole" . | quote }}, "-d", {{ .Values.database.name | quote }}]
             initialDelaySeconds: 30
             periodSeconds: 10
           resources:

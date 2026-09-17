@@ -17,12 +17,19 @@ Three differences from the script, each deliberate:
     own read replicas; database.replicaHosts then points at them and they are
     read as the application role like any other connection.
 
+With cnpg the operator creates the two roles and sets their passwords from
+managed.roles, and the owner could not do it anyway. This Job then waits for
+them to appear and only grants.
+
 The role names come from one value each, used here and by the workloads. They
 have to match what the migrations grant to: every role reference there is
 wrapped in IF EXISTS, so a name that does not match is skipped rather than
 refused, and the grants and the row-level-security bypass go missing with no
 error anywhere.
 */}}
+{{- $v := .Values.database }}
+{{- $roles := printf "%s, %s" $v.appRole $v.adminRole }}
+{{- $owner := include "armature.ownerRole" . }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -32,16 +39,18 @@ metadata:
     app.kubernetes.io/component: roles
   annotations:
     # post-install, not pre-install: Helm runs pre-install hooks before it
-    # creates any of the release's own resources, so this Job's Secret, and a
-    # bundled database, would not exist yet. pre-upgrade is safe because both
-    # were made by the install before it.
-    helm.sh/hook: post-install,pre-upgrade
-    helm.sh/hook-weight: "-10"
-    helm.sh/hook-delete-policy: before-hook-creation
+    # creates any of the release's own resources, so a bundled database would
+    # not exist yet. pre-upgrade is safe because the install made it. Argo CD
+    # runs it in the Sync phase, after the database's wave has turned healthy
+    # and before the workloads; a PostSync hook would wait on an api that
+    # cannot become ready until this has run.
+    {{- include "armature.hookAnnotations" (dict "helm" "post-install,pre-upgrade" "argo" "Sync" "weight" "-5") | nindent 4 }}
 spec:
   parallelism: 1
   completions: 1
   backoffLimit: 2
+  # Covers a first CNPG cluster coming up, which takes a few minutes.
+  activeDeadlineSeconds: 900
   template:
     metadata:
       labels:
@@ -67,32 +76,40 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: { drop: ["ALL"] }
           env:
+            {{- include "armature.passwordEnv" (dict "root" . "name" "dbOwner" "var" "DB_OWNER_PASSWORD") | nindent 12 }}
+            {{- if not .Values.cnpg.enabled }}
+            {{- include "armature.passwordEnv" (dict "root" . "name" "dbApp" "var" "APP_PASSWORD") | nindent 12 }}
+            {{- include "armature.passwordEnv" (dict "root" . "name" "dbAdmin" "var" "ADMIN_PASSWORD") | nindent 12 }}
+            {{- end }}
+            # A host that drops packets would otherwise hold a connect open
+            # until the Job's deadline.
+            - name: PGCONNECT_TIMEOUT
+              value: "5"
             - name: PGURL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "armature.secretName" . }}
-                  key: db-owner-url
-            - name: APP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "armature.secretName" . }}
-                  key: db-app-password
-            - name: ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "armature.secretName" . }}
-                  key: db-admin-password
+              value: {{ include "armature.dbURL" (dict "root" . "role" $owner "var" "DB_OWNER_PASSWORD" "host" (include "armature.dbHost" .)) | quote }}
           command: ["/bin/sh", "-ec"]
           args:
             - |
+              # The database may still be starting: a bundled pod, or a CNPG
+              # cluster created moments ago in the same sync.
+              until psql "$PGURL" -Atc "SELECT 1" >/dev/null 2>&1; do
+                echo "waiting for the database to accept the owner role"
+                sleep 5
+              done
+              {{- if .Values.cnpg.enabled }}
+              until [ "$(psql "$PGURL" -Atc "SELECT count(*) FROM pg_roles WHERE rolname IN ('{{ $v.appRole }}', '{{ $v.adminRole }}')")" = 2 ]; do
+                echo "waiting for the operator to create {{ $roles }}"
+                sleep 5
+              done
+              {{- else }}
               psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
               DO $$
               BEGIN
-                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{ .Values.database.appRole | quote }}) THEN
-                      CREATE ROLE {{ .Values.database.appRole }} LOGIN;
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{ $v.appRole | squote }}) THEN
+                      CREATE ROLE {{ $v.appRole }} LOGIN;
                   END IF;
-                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{ .Values.database.adminRole | quote }}) THEN
-                      CREATE ROLE {{ .Values.database.adminRole }} LOGIN;
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{ $v.adminRole | squote }}) THEN
+                      CREATE ROLE {{ $v.adminRole }} LOGIN;
                   END IF;
               END;
               $$;
@@ -100,25 +117,27 @@ spec:
               # The passwords are set outside the DO block: they change between
               # installs, and ALTER is the only idempotent way to say so.
               psql -v ON_ERROR_STOP=1 "$PGURL" \
-                -c "ALTER ROLE {{ .Values.database.appRole }} WITH PASSWORD '$APP_PASSWORD'" \
-                -c "ALTER ROLE {{ .Values.database.adminRole }} WITH PASSWORD '$ADMIN_PASSWORD'"
+                -c "ALTER ROLE {{ $v.appRole }} WITH PASSWORD '$APP_PASSWORD'" \
+                -c "ALTER ROLE {{ $v.adminRole }} WITH PASSWORD '$ADMIN_PASSWORD'"
               psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
-              GRANT CONNECT ON DATABASE {{ .Values.database.name }} TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
-              GRANT USAGE ON SCHEMA public TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
-
               -- The pool reads pg_stat_wal_receiver to tell a caught-up standby
               -- from one whose receiver has quietly dropped.
-              GRANT pg_read_all_stats TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
+              GRANT pg_read_all_stats TO {{ $roles }};
+              SQL
+              {{- end }}
+              psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
+              GRANT CONNECT ON DATABASE {{ $v.name }} TO {{ $roles }};
+              GRANT USAGE ON SCHEMA public TO {{ $roles }};
 
               -- Everything the migrations create afterwards is granted without
               -- anybody remembering to. FOR ROLE is the role that will create
               -- them, which is the one this Job connects as.
-              ALTER DEFAULT PRIVILEGES FOR ROLE {{ .Values.database.ownerRole }} IN SCHEMA public
-                  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
-              ALTER DEFAULT PRIVILEGES FOR ROLE {{ .Values.database.ownerRole }} IN SCHEMA public
-                  GRANT USAGE, SELECT ON SEQUENCES TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
-              ALTER DEFAULT PRIVILEGES FOR ROLE {{ .Values.database.ownerRole }} IN SCHEMA public
-                  GRANT EXECUTE ON FUNCTIONS TO {{ .Values.database.appRole }}, {{ .Values.database.adminRole }};
+              ALTER DEFAULT PRIVILEGES FOR ROLE {{ $owner }} IN SCHEMA public
+                  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {{ $roles }};
+              ALTER DEFAULT PRIVILEGES FOR ROLE {{ $owner }} IN SCHEMA public
+                  GRANT USAGE, SELECT ON SEQUENCES TO {{ $roles }};
+              ALTER DEFAULT PRIVILEGES FOR ROLE {{ $owner }} IN SCHEMA public
+                  GRANT EXECUTE ON FUNCTIONS TO {{ $roles }};
               SQL
           resources:
             requests: { cpu: 50m, memory: 64Mi }

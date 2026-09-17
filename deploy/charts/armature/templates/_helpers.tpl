@@ -54,24 +54,115 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
-Hosts. The bundled subcharts name their own services, so the chart has to
-answer "where is the database" differently depending on whether it brought one.
+Hosts. The bundled database and the CNPG cluster name their own services, so
+the chart has to answer "where is the database" differently depending on
+whether it brought one.
 */}}
 
+{{- define "armature.cnpgName" -}}
+{{- printf "%s-postgres" (include "armature.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- define "armature.dbHost" -}}
-{{- if .Values.postgresql.enabled -}}
+{{- if and .Values.cnpg.enabled .Values.postgresql.enabled -}}
+{{- fail "cnpg.enabled and postgresql.enabled are both true. Turn one of them off: the workloads can only be pointed at one database." -}}
+{{- end -}}
+{{- if .Values.cnpg.enabled -}}
+{{- printf "%s-rw" (include "armature.cnpgName" .) -}}
+{{- else if .Values.postgresql.enabled -}}
 {{- printf "%s-postgresql" .Release.Name -}}
 {{- else -}}
-{{- required "database.host is required unless the bundled postgresql subchart is enabled" .Values.database.host -}}
+{{- required "database.host is required unless cnpg.enabled or the bundled postgresql is enabled" .Values.database.host -}}
 {{- end -}}
+{{- end -}}
+
+{{/* Comma separated, because a template can only return a string. */}}
+{{- define "armature.replicaHosts" -}}
+{{- $hosts := .Values.database.replicaHosts | default list -}}
+{{- if and .Values.cnpg.enabled .Values.cnpg.readReplicas (gt (int (.Values.cnpg.spec.instances | default 1)) 1) -}}
+{{- $hosts = append $hosts (printf "%s-ro" (include "armature.cnpgName" .)) -}}
+{{- end -}}
+{{- join "," $hosts -}}
+{{- end -}}
+
+{{- define "armature.ownerRole" -}}
+{{- $role := .Values.database.ownerRole -}}
+{{- if and .Values.cnpg.enabled (eq $role "postgres") -}}
+{{- fail "database.ownerRole is postgres, which CNPG keeps for its own superuser. Leave database.ownerRole empty to get armature_owner, or set another name." -}}
+{{- end -}}
+{{- default (ternary "armature_owner" "postgres" .Values.cnpg.enabled) $role -}}
 {{- end -}}
 
 {{- define "armature.redisHost" -}}
 {{- if .Values.redis.enabled -}}
 {{- printf "%s-redis-master" .Release.Name -}}
 {{- else -}}
-{{- required "externalRedis.host is required unless the bundled redis subchart is enabled" .Values.externalRedis.host -}}
+{{- required "externalRedis.host is required unless the bundled redis is enabled" .Values.externalRedis.host -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "armature.redisAuth" -}}
+{{- if or .Values.redis.enabled .Values.externalRedis.auth -}}true{{- end -}}
+{{- end -}}
+
+{{/*
+The basic-auth Secrets holding one password each. CNPG reads them in exactly
+this shape, and the bundled database and the Jobs read the same ones.
+*/}}
+{{- define "armature.credentialSecret" -}}
+{{- $names := .root.Values.secrets.names -}}
+{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "redis" "redis" -}}
+{{- default (printf "%s-%s" (include "armature.fullname" .root) (get $suffix .name)) (get $names .name) -}}
+{{- end -}}
+
+{{/*
+A password from its Secret, as an env var the URLs below expand with $(NAME).
+Kubernetes only expands variables declared earlier in the same list.
+*/}}
+{{- define "armature.passwordEnv" -}}
+- name: {{ .var }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "armature.credentialSecret" (dict "root" .root "name" .name) }}
+      key: password
+{{- end -}}
+
+{{/* Generated passwords are alphanumeric, so they need no escaping here. */}}
+{{- define "armature.dbURL" -}}
+{{- $v := .root.Values.database -}}
+{{- printf "postgres://%s:$(%s)@%s:%d/%s?sslmode=%s" .role .var .host (int $v.port) $v.name $v.sslmode -}}
+{{- end -}}
+
+{{- define "armature.redisEnv" -}}
+{{- $host := include "armature.redisHost" . -}}
+{{- $port := int .Values.externalRedis.port -}}
+{{- $db := int .Values.externalRedis.db -}}
+{{- if include "armature.redisAuth" . -}}
+{{ include "armature.passwordEnv" (dict "root" . "name" "redis" "var" "REDIS_PASSWORD") }}
+- name: ARMATURE_REDIS_URL
+  value: {{ printf "redis://:$(REDIS_PASSWORD)@%s:%d/%d" $host $port $db | quote }}
+{{- else -}}
+- name: ARMATURE_REDIS_URL
+  value: {{ printf "redis://%s:%d/%d" $host $port $db | quote }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Annotations that order a hook the same way under Helm and under Argo CD. Argo
+ignores helm.sh/hook on anything that carries its own hook annotation, and
+Helm ignores Argo's, so each tool reads only the half meant for it.
+*/}}
+{{- define "armature.hookAnnotations" -}}
+{{- if .helm -}}
+helm.sh/hook: {{ .helm }}
+helm.sh/hook-weight: {{ .weight | quote }}
+helm.sh/hook-delete-policy: before-hook-creation
+{{- end }}
+{{- if .argo }}
+argocd.argoproj.io/hook: {{ .argo }}
+argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+{{- end }}
+argocd.argoproj.io/sync-wave: {{ .weight | quote }}
 {{- end -}}
 
 {{- define "armature.s3Endpoint" -}}
@@ -209,28 +300,23 @@ ARMATURE_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
 {{/* The credentials, by reference. Never rendered into a pod spec. */}}
 {{- define "armature.secretEnv" -}}
 {{- $secret := include "armature.secretName" . -}}
+{{- $v := .Values.database -}}
+{{- $host := include "armature.dbHost" . -}}
+{{ include "armature.passwordEnv" (dict "root" . "name" "dbApp" "var" "DB_APP_PASSWORD") }}
+{{ include "armature.passwordEnv" (dict "root" . "name" "dbAdmin" "var" "DB_ADMIN_PASSWORD") }}
 - name: ARMATURE_DB_PRIMARY_URL
-  valueFrom:
-    secretKeyRef:
-      name: {{ $secret }}
-      key: db-primary-url
+  value: {{ include "armature.dbURL" (dict "root" . "role" $v.appRole "var" "DB_APP_PASSWORD" "host" $host) | quote }}
 - name: ARMATURE_DB_ADMIN_URL
-  valueFrom:
-    secretKeyRef:
-      name: {{ $secret }}
-      key: db-admin-url
-{{- if .Values.database.replicaHosts }}
+  value: {{ include "armature.dbURL" (dict "root" . "role" $v.adminRole "var" "DB_ADMIN_PASSWORD" "host" $host) | quote }}
+{{- with include "armature.replicaHosts" . }}
 - name: ARMATURE_DB_REPLICA_URLS
-  valueFrom:
-    secretKeyRef:
-      name: {{ $secret }}
-      key: db-replica-urls
+  {{- $urls := list }}
+  {{- range splitList "," . }}
+  {{- $urls = append $urls (include "armature.dbURL" (dict "root" $ "role" $v.appRole "var" "DB_APP_PASSWORD" "host" .)) }}
+  {{- end }}
+  value: {{ join "," $urls | quote }}
 {{- end }}
-- name: ARMATURE_REDIS_URL
-  valueFrom:
-    secretKeyRef:
-      name: {{ $secret }}
-      key: redis-url
+{{ include "armature.redisEnv" . }}
 {{- if .Values.s3.enabled }}
 - name: ARMATURE_S3_ACCESS_KEY
   valueFrom:

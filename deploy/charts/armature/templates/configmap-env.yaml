@@ -4,5 +4,8 @@ metadata:
   name: {{ include "armature.fullname" . }}-env
   labels:
     {{- include "armature.labels" . | nindent 4 }}
+  annotations:
+    # Before the Jobs of the Sync phase, which read it.
+    argocd.argoproj.io/sync-wave: "-20"
 data:
   {{- include "armature.env" . | nindent 2 }}

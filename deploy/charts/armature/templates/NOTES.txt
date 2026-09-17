@@ -2,6 +2,13 @@ Armature {{ .Chart.AppVersion }} is installed as {{ .Release.Name }}.
 
   {{ include "armature.appURL" . }}
 
+{{ if .Values.secrets.generate }}
+Database and Redis passwords are in Secrets labelled
+app.kubernetes.io/instance={{ .Release.Name }}. They are generated once and kept
+when the release is removed:
+
+  kubectl get secret -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/part-of=armature
+{{ end }}
 {{ if not .Values.ingress.enabled }}
 There is no Ingress. To look at it:
 
