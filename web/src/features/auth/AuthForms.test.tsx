@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { LoginForm, SignupForm } from "./AuthForms";
+import { LoginForm, PASSWORD_MISMATCH, SignupForm } from "./AuthForms";
 import { ApiError } from "@/api/client";
 
 // The router is only used for the post-login redirect, which is not what these
@@ -112,6 +112,7 @@ describe("SignupForm", () => {
     await userEvent.type(screen.getByLabelText("Your name"), "Grace Hopper");
     await userEvent.type(screen.getByLabelText("Work email"), "grace@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "compiler pioneer 1952");
+    await userEvent.type(screen.getByLabelText("Repeat password"), "compiler pioneer 1952");
     await userEvent.type(screen.getByLabelText("Organization name"), "Remington Rand");
     await userEvent.click(screen.getByRole("button", { name: "Create your organization" }));
 
@@ -133,6 +134,26 @@ describe("SignupForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create your organization" }));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
+  });
+
+  it("sends nothing while the two passwords differ, and says so", async () => {
+    const mutate = vi.fn();
+    mockSignup({ mutate });
+
+    wrap(<SignupForm />);
+    await userEvent.type(screen.getByLabelText("Password"), "compiler pioneer 1952");
+    await userEvent.type(screen.getByLabelText("Repeat password"), "compiler pioneer 1953");
+    // Not said while the second copy is still being typed.
+    expect(screen.queryByText(PASSWORD_MISMATCH)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Create your organization" }));
+
+    expect(screen.getByText(PASSWORD_MISMATCH)).toBeTruthy();
+    expect(mutate).not.toHaveBeenCalled();
+
+    await userEvent.clear(screen.getByLabelText("Repeat password"));
+    await userEvent.type(screen.getByLabelText("Repeat password"), "compiler pioneer 1952");
+    await userEvent.click(screen.getByRole("button", { name: "Create your organization" }));
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
   });
 
   it("surfaces a taken email against the form", () => {
@@ -157,5 +178,6 @@ describe("SignupForm", () => {
     wrap(<SignupForm />);
     expect(screen.getByLabelText("Work email")).toHaveAttribute("autocomplete", "username");
     expect(screen.getByLabelText("Password")).toHaveAttribute("autocomplete", "new-password");
+    expect(screen.getByLabelText("Repeat password")).toHaveAttribute("autocomplete", "new-password");
   });
 });

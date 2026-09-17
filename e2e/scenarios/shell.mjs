@@ -40,11 +40,31 @@ scenario("form validation is reported against the field, not swallowed", async (
   await fill(page, "Your name", "Someone Else");
   await fill(page, "Work email", who.email);
   await fill(page, "Password", PASSWORD);
+  await fill(page, "Repeat password", PASSWORD);
   await fill(page, "Organization name", `Another ${Date.now()}`);
   await submit(page);
 
   await page.waitForSelector("[role=alert]", { timeout: WAIT });
   expect.contains((await textOf(page, "[role=alert]")).toLowerCase(), "already exists", "duplicate email message");
+});
+
+scenario("a password typed differently the second time creates no account", async ({ page }) => {
+  const who = unique("typo");
+  await goto(page, "/signup");
+  await fill(page, "Your name", who.name);
+  await fill(page, "Work email", who.email);
+  await fill(page, "Password", PASSWORD);
+  await fill(page, "Repeat password", `${PASSWORD}x`);
+  await fill(page, "Organization name", who.org);
+  await submit(page);
+
+  await page.waitForFunction(() => document.body.innerText.includes("The two passwords are not the same"), { timeout: WAIT });
+  expect.equal(new URL(page.url()).pathname, "/signup", "still on the sign-up page");
+
+  // Nothing was sent, so the address is still free for the corrected attempt.
+  await fill(page, "Repeat password", PASSWORD);
+  await submit(page);
+  await waitForPath(page, "/");
 });
 
 scenario("the theme choice persists across a reload", async ({ page }) => {

@@ -135,10 +135,66 @@ function ssoFailure(): string | null {
   }
 }
 
+/** Said when the two copies of a new password differ. */
+export const PASSWORD_MISMATCH = "The two passwords are not the same. Type the same password in both fields.";
+
+/**
+ * A new password, typed twice. A typo in a field that shows only dots would
+ * otherwise become the password nobody knows. The caller checks
+ * `passwordsMatch` before it sends anything.
+ */
+export function NewPasswordFields({
+  password,
+  repeat,
+  onPassword,
+  onRepeat,
+  checked,
+  error,
+}: {
+  password: string;
+  repeat: string;
+  onPassword: (value: string) => void;
+  onRepeat: (value: string) => void;
+  /** Whether a submit was attempted, so a half-typed repeat is not scolded. */
+  checked: boolean;
+  error?: string;
+}) {
+  return (
+    <>
+      <Field
+        label="Password"
+        type="password"
+        autoComplete="new-password"
+        required
+        minLength={12}
+        value={password}
+        onChange={(e) => onPassword(e.target.value)}
+        hint="At least 12 characters."
+        error={error}
+      />
+      <Field
+        label="Repeat password"
+        type="password"
+        autoComplete="new-password"
+        required
+        value={repeat}
+        onChange={(e) => onRepeat(e.target.value)}
+        error={checked && !passwordsMatch(password, repeat) ? PASSWORD_MISMATCH : undefined}
+      />
+    </>
+  );
+}
+
+export function passwordsMatch(password: string, repeat: string): boolean {
+  return password === repeat;
+}
+
 export function SignupForm() {
   const navigate = useNavigate();
   const signup = useSignup();
   const [values, setValues] = useState({ name: "", email: "", password: "", orgName: "" });
+  const [repeat, setRepeat] = useState("");
+  const [checked, setChecked] = useState(false);
 
   function set(key: keyof typeof values) {
     return (event: { target: { value: string } }) =>
@@ -147,6 +203,8 @@ export function SignupForm() {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
+    setChecked(true);
+    if (!passwordsMatch(values.password, repeat)) return;
     signup.mutate(values, { onSuccess: () => navigate({ to: "/" }) });
   }
 
@@ -165,15 +223,12 @@ export function SignupForm() {
         onChange={set("email")}
         error={errors.email}
       />
-      <Field
-        label="Password"
-        type="password"
-        autoComplete="new-password"
-        required
-        minLength={12}
-        value={values.password}
-        onChange={set("password")}
-        hint="At least 12 characters."
+      <NewPasswordFields
+        password={values.password}
+        repeat={repeat}
+        onPassword={(password) => setValues((current) => ({ ...current, password }))}
+        onRepeat={setRepeat}
+        checked={checked}
         error={errors.password}
       />
       <Field
