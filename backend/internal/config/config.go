@@ -117,6 +117,8 @@ type Auth struct {
 	ReadYourWritesTTL time.Duration
 	// PortalCodeCooldown is how long an address waits between portal codes.
 	PortalCodeCooldown time.Duration
+	// Signup is open, first or closed: who may create an organization.
+	Signup string
 }
 
 // Render names the render service, when there is one.
@@ -214,6 +216,7 @@ func Load() (Config, error) {
 			ArgonThreads:       uint8(envInt("ARMATURE_ARGON_THREADS", 4)),
 			ReadYourWritesTTL:  envDur("ARMATURE_READ_YOUR_WRITES_TTL", 30*time.Second),
 			PortalCodeCooldown: envDur("ARMATURE_PORTAL_CODE_COOLDOWN", time.Minute),
+			Signup:             env("ARMATURE_SIGNUP", "open"),
 		},
 	}
 
@@ -233,6 +236,11 @@ func Load() (Config, error) {
 	// what production is held to; development is the one that runs locally.
 	if c.Env != "development" && !c.Auth.SecureCookies {
 		problems = append(problems, "ARMATURE_SECURE_COOKIES must be true outside development")
+	}
+	switch c.Auth.Signup {
+	case "open", "first", "closed":
+	default:
+		problems = append(problems, fmt.Sprintf("ARMATURE_SIGNUP %q must be open, first or closed", c.Auth.Signup))
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		problems = append(problems, "ARMATURE_OTEL_SAMPLE_RATIO must be between 0 and 1")

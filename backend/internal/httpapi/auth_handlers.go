@@ -79,6 +79,16 @@ type signupRequest struct {
 	OrgSlug  string `json:"orgSlug,omitempty"`
 }
 
+// handleSignupOpen lets the sign-in page offer sign-up only where it would work.
+func (s *Server) handleSignupOpen(w http.ResponseWriter, r *http.Request) {
+	open, err := s.Auth.SignupAllowed(r.Context())
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"open": open})
+}
+
 func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
 	var req signupRequest
 	if err := decodeJSON(w, r, &req); err != nil {
