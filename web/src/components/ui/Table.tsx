@@ -11,7 +11,9 @@ export function Table({
   ...rest
 }: HTMLAttributes<HTMLTableElement> & { dense?: boolean; sticky?: boolean }) {
   return (
-    <div className={cx("overflow-x-auto rounded-overlay border border-border bg-surface", sticky && "max-h-full overflow-y-auto")}>
+    // Positioned, so a visually hidden header inside is clipped by the scroll
+    // container instead of widening the whole page on a narrow screen.
+    <div className={cx("relative overflow-x-auto rounded-overlay border border-border bg-surface", sticky && "max-h-full overflow-y-auto")}>
       <table
         {...rest}
         data-dense={dense || undefined}
@@ -38,7 +40,7 @@ export function Td({ children, className, ...rest }: TdHTMLAttributes<HTMLTableC
   return (
     <td
       {...rest}
-      className={cx("border-b border-border px-3 py-2 align-middle tabular-nums last:border-b-0 [table[data-dense]_&]:py-1.5", className)}
+      className={cx("border-b border-border px-3 py-2 align-middle tabular-nums [tr:last-child_&]:border-b-0 [table[data-dense]_&]:py-1.5", className)}
     >
       {children}
     </td>

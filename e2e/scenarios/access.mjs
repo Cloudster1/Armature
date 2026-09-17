@@ -17,6 +17,9 @@ import {
   signUp,
   WAIT,
   waitForApp,
+  inviteFromMembersPage,
+  joinThroughLink,
+  unique,
 } from "../helpers.mjs";
 
 scenario("a role in one project hides the others", async ({ page }) => {
@@ -130,13 +133,13 @@ scenario("the access page explains what each role grants", async ({ page }) => {
 
   await selectByLabel(page, 'select[aria-label="Role"]', "Reader");
   await page.waitForFunction(
-    () => document.body.innerText.includes("Reader can: read"),
+    () => document.body.innerText.includes("Reader can see projects."),
     { timeout: WAIT },
   );
 
   await selectByLabel(page, 'select[aria-label="Role"]', "Scrum master");
   await page.waitForFunction(
-    () => document.body.innerText.includes("sprint.manage"),
+    () => document.body.innerText.includes("plan sprints"),
     { timeout: WAIT },
   );
 });
@@ -183,4 +186,31 @@ scenario("the sign-in page offers single sign-on", async ({ page }) => {
       )?.disabled,
   );
   expect.truthy(enabled, "the button to continue is not usable once an organization is named");
+});
+
+// Reported as the page looking broken: on a narrow screen a table widened the
+// whole page and a member's name vanished beside the removal button.
+scenario("every tab of the access page fits a phone", async ({ page }) => {
+  const owner = await signUp(page);
+  const who = unique("longname");
+  who.name = "Katherine Johnson with a rather long name";
+  const { token } = await inviteFromMembersPage(page, who.email);
+  await joinThroughLink(page, token, who);
+  await signIn(page, owner.email);
+  await waitForApp(page);
+
+  await page.setViewport({ width: 400, height: 860 });
+  await goto(page, "/settings/access");
+  for (const tab of ["Roles", "Members", "Groups", "Single sign-on"]) {
+    await page.waitForSelector(`[data-access-tab="${tab}"]`, { timeout: WAIT });
+    await page.click(`[data-access-tab="${tab}"]`);
+    await page.waitForFunction((t) => document.querySelector(`[data-access-tab="${t}"]`)?.getAttribute("aria-selected") === "true", { timeout: WAIT }, tab);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect.equal(overflow, 0, `the ${tab} tab does not widen the page`);
+  }
+
+  await page.click('[data-access-tab="Members"]');
+  await page.waitForSelector(`[data-member="${who.name}"]`, { timeout: WAIT });
+  const nameWidth = await page.$eval(`[data-member="${who.name}"] .truncate`, (el) => el.getBoundingClientRect().width);
+  expect.truthy(nameWidth > 40, `the member's name is still readable, ${nameWidth}px wide`);
 });

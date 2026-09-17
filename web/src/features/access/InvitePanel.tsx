@@ -184,19 +184,17 @@ function PendingInvites() {
             className="flex items-center gap-3 px-4 py-2.5 text-sm"
             data-pending-invite={invite.email}
           >
-            <span className="min-w-0 flex-1 truncate text-ink">
-              {invite.email}
-            </span>
-            <span className="hidden text-ink-muted sm:block">
-              {roleChoices.find((choice) => choice.value === invite.role)
-                ?.label ?? invite.role}
-            </span>
-            <span className="hidden text-xs text-ink-subtle sm:block">
-              until {new Date(invite.expiresAt).toLocaleDateString()}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-ink">{invite.email}</span>
+              <span className="block text-xs text-ink-muted">
+                {roleChoices.find((choice) => choice.value === invite.role)?.label ?? invite.role}, until{" "}
+                {new Date(invite.expiresAt).toLocaleDateString()}
+              </span>
             </span>
             <Button
               size="sm"
               variant="ghost"
+              className="shrink-0"
               aria-label={`Withdraw the invitation for ${invite.email}`}
               onClick={async () =>
                 (await confirm({

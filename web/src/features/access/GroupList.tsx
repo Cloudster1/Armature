@@ -65,12 +65,12 @@ function GroupCard({ group }: { group: Group }) {
 
   return (
     <Card className="p-4" data-group={group.name}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-ink">
-            {group.name}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-ink">
+            <span className="break-words">{group.name}</span>
             {fromProvider && (
-              <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs font-medium text-ink-muted">
+              <span className="rounded-full bg-surface-raised px-2 py-0.5 text-2xs font-medium whitespace-nowrap text-ink-muted">
                 from the identity provider
               </span>
             )}
@@ -84,6 +84,7 @@ function GroupCard({ group }: { group: Group }) {
         <Button
           size="sm"
           variant="ghost"
+          className="shrink-0"
           loading={deleteGroup.isPending}
           onClick={async () => (await confirm({ noun: "group", body: `${group.name} goes, and its members lose the roles it granted.` })) && deleteGroup.mutate(group.id)}
         >
@@ -94,7 +95,7 @@ function GroupCard({ group }: { group: Group }) {
       <ul className="mt-2 space-y-1 text-sm">
         {members.map((member) => (
           <li key={member.userId} className="flex items-center gap-2">
-            <span className="text-ink">{member.name}</span>
+            <span className="min-w-0 truncate text-ink">{member.name}</span>
             {!fromProvider && (
               <Button
                 size="sm"
@@ -167,27 +168,21 @@ function NewGroup() {
     );
   }
 
+  // The hint sits under the whole row rather than under its field, so the two
+  // inputs and the button line up however wide the page is.
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
-      <Field
-        label="New group"
-        value={name}
-        placeholder="Release managers"
-        onChange={(event) => setName(event.target.value)}
-        className="w-56"
-      />
-      <Field
-        label="Provider claim"
-        value={ref}
-        placeholder="Optional"
-        hint="The value your identity provider sends for this group."
-        onChange={(event) => setRef(event.target.value)}
-        className="w-56"
-      />
-      <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-        Create group
-      </Button>
-      {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
-    </form>
+    <Card className="p-4">
+      <form onSubmit={onSubmit} className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          <Field label="New group" value={name} placeholder="Release managers" onChange={(event) => setName(event.target.value)} />
+          <Field label="Provider claim" value={ref} placeholder="Optional" onChange={(event) => setRef(event.target.value)} />
+          <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
+            Create group
+          </Button>
+        </div>
+        <p className="text-xs text-ink-subtle">The provider claim is the value your identity provider sends for this group; with it, membership follows sign-ins.</p>
+        {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
+      </form>
+    </Card>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMembers } from "@/api/issues";
 import { useProjects } from "@/api/projects";
 import {
+  permissionWords,
   roleName,
   useAssignments,
   useGrantRole,
@@ -11,7 +12,7 @@ import {
   type Assignment,
   type Role,
 } from "@/api/access";
-import { Button, Card, cx, EmptyState, ErrorBanner, SelectInput } from "@/components/ui";
+import { Button, Card, cx, EmptyState, ErrorBanner, Select, Table, Td, Th } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /**
@@ -42,59 +43,47 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
           description="Roles can be given to a person or to a group, over this project or over the whole organization."
         />
       ) : (
-        <Card className="overflow-hidden">
-          <table className="w-full text-sm" data-testid="role-assignments">
-            <thead className="border-b border-border bg-surface-raised text-left text-xs text-ink-muted">
-              <tr>
-                <th className="px-4 py-2 font-medium">Who</th>
-                <th className="px-4 py-2 font-medium">Role</th>
-                <th className="px-4 py-2 font-medium">Where</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map((assignment) => (
-                <AssignmentRow
-                  key={assignment.id}
-                  assignment={assignment}
-                  onRevoke={async () => (await confirm({ noun: "role", verb: "Revoke", body: `${roleName(assignment.role)} is taken away at once; what it allowed is refused from the next request.` })) && revoke.mutate(assignment.id)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <Table data-testid="role-assignments">
+          <thead>
+            <tr>
+              <Th>Who</Th>
+              <Th>Role</Th>
+              <Th>Where</Th>
+              <Th>
+                <span className="sr-only">Actions</span>
+              </Th>
+            </tr>
+          </thead>
+          <tbody>
+            {assignments.map((assignment) => (
+              <AssignmentRow
+                key={assignment.id}
+                assignment={assignment}
+                onRevoke={async () => (await confirm({ noun: "role", verb: "Revoke", body: `${roleName(assignment.role)} is taken away at once; what it allowed is refused from the next request.` })) && revoke.mutate(assignment.id)}
+              />
+            ))}
+          </tbody>
+        </Table>
       )}
     </div>
   );
 }
 
-function AssignmentRow({
-  assignment,
-  onRevoke,
-}: {
-  assignment: Assignment;
-  onRevoke: () => void;
-}) {
+function AssignmentRow({ assignment, onRevoke }: { assignment: Assignment; onRevoke: () => void }) {
   const toGroup = Boolean(assignment.groupId);
   return (
-    <tr className="border-b border-border last:border-0" data-assignment={assignment.id}>
-      <td className="px-4 py-2.5">
+    <tr data-assignment={assignment.id}>
+      <Td className="w-full min-w-48">
         <span className="text-ink">{assignment.groupName || assignment.userName}</span>
-        {toGroup && (
-          <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs text-ink-muted">
-            group
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-2.5 text-ink">{roleName(assignment.role)}</td>
-      <td className="px-4 py-2.5 text-ink-muted">
-        {assignment.projectKey || "Every project"}
-      </td>
-      <td className="px-4 py-2.5 text-right">
+        {toGroup && <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs text-ink-muted">group</span>}
+      </Td>
+      <Td className="whitespace-nowrap text-ink">{roleName(assignment.role)}</Td>
+      <Td className="whitespace-nowrap text-ink-muted">{assignment.projectKey || "Every project"}</Td>
+      <Td className="text-right">
         <Button size="sm" variant="ghost" onClick={onRevoke}>
           Revoke
         </Button>
-      </td>
+      </Td>
     </tr>
   );
 }
@@ -132,54 +121,39 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">
-          Who
-          <SelectInput
-            aria-label="Who to grant to"
-            value={subject}
-            onChange={(event) => setSubject(event.target.value)}
-            className="w-56"
-          >
-            <option value="">Choose somebody or a group...</option>
-            {groups.length > 0 && (
-              <optgroup label="Groups">
-                {groups.map((group) => (
-                  <option key={group.id} value={`group:${group.id}`}>
-                    {group.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <optgroup label="People">
-              {people.map((person) => (
-                <option key={person.id} value={`user:${person.id}`}>
-                  {person.name}
+    <Card className="space-y-3 p-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <Select label="Who" aria-label="Who to grant to" value={subject} onChange={(event) => setSubject(event.target.value)}>
+          <option value="">Choose a person or a group</option>
+          {groups.length > 0 && (
+            <optgroup label="Groups">
+              {groups.map((group) => (
+                <option key={group.id} value={`group:${group.id}`}>
+                  {group.name}
                 </option>
               ))}
             </optgroup>
-          </SelectInput>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">
-          Role
-          <SelectInput
-            aria-label="Role"
-            value={role}
-            onChange={(event) => setRole(event.target.value as Role)}
-          >
-            {roles.map((each) => (
-              <option key={each.role} value={each.role}>
-                {roleName(each.role)}
+          )}
+          <optgroup label="People">
+            {people.map((person) => (
+              <option key={person.id} value={`user:${person.id}`}>
+                {person.name}
               </option>
             ))}
-          </SelectInput>
-        </label>
+          </optgroup>
+        </Select>
 
-        <label className={cx("flex flex-col gap-1 text-xs text-ink-muted", scopeIsFixed && "opacity-55")}>
-          Where
-          <SelectInput
+        <Select label="Role" aria-label="Role" value={role} onChange={(event) => setRole(event.target.value as Role)}>
+          {roles.map((each) => (
+            <option key={each.role} value={each.role}>
+              {roleName(each.role)}
+            </option>
+          ))}
+        </Select>
+
+        <div className={cx(scopeIsFixed && "opacity-55")}>
+          <Select
+            label="Where"
             aria-label="Where the role applies"
             value={scopeIsFixed ? "" : scope}
             disabled={scopeIsFixed || Boolean(projectKey)}
@@ -191,8 +165,8 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
                 {project.key}
               </option>
             ))}
-          </SelectInput>
-        </label>
+          </Select>
+        </div>
 
         <Button disabled={!subject} loading={grant.isPending} onClick={submit}>
           Grant
@@ -200,8 +174,8 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
       </div>
 
       {chosen && (
-        <p className="mt-2 text-xs text-ink-subtle">
-          {roleName(chosen.role)} can: {chosen.permissions.join(", ")}.
+        <p className="text-xs text-ink-subtle">
+          {roleName(chosen.role)} can {chosen.permissions.map(permissionWords).join(", ")}.
         </p>
       )}
       {grant.error && <ErrorBanner>{(grant.error as Error).message}</ErrorBanner>}
