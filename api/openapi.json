@@ -7807,6 +7807,40 @@
         }
       }
     },
+    "/organization": {
+      "delete": {
+        "operationId": "deleteOrganization",
+        "summary": "Delete the organization and everything in it; owners only, with its address typed back.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "confirm",
+            "in": "query",
+            "description": "The organization's address, typed back.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/portal/articles/{articleID}": {
       "get": {
         "operationId": "portalArticle",

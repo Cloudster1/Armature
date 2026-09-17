@@ -52,6 +52,7 @@ export const projectSetupPages: PageLink[] = [
 ];
 
 const settingsPages: Array<{ to: string; label: string; icon: IconName }> = [
+  { to: "/settings/organization", label: "Organization", icon: "Settings" },
   { to: "/settings/access", label: "Access", icon: "Key" },
   { to: "/settings/workflows", label: "Workflows", icon: "Workflow" },
   { to: "/settings/labels", label: "Labels", icon: "Tag" },

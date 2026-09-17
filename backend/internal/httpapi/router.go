@@ -306,6 +306,9 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	// Metadata behind the client's pickers.
 	r.Get("/members", s.handleListMembers)
 	r.With(requirePerm(perm.OrgAdminister)).Delete("/members/{userID}", s.handleRemoveMember)
+	// The whole organization. Owners only, which the service decides, since
+	// ownership is standing in the organization rather than a granted role.
+	r.Delete("/organization", s.handleDeleteOrganization)
 	r.Get("/users/{userID}/avatar", s.handleAvatar)
 	r.Get("/issue-types", s.handleListIssueTypes)
 	r.Get("/statuses", s.handleListStatuses)

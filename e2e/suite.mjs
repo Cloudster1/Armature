@@ -27,6 +27,7 @@ import "./scenarios/plan-links.mjs";
 import "./scenarios/sprints.mjs";
 import "./scenarios/access.mjs";
 import "./scenarios/invitations.mjs";
+import "./scenarios/organization-delete.mjs";
 import "./scenarios/arrange.mjs";
 
 // ----------------------------------------------------------------- driver ---
