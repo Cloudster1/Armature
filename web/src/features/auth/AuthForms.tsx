@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ApiError, BASE } from "@/api/client";
-import { useLogin, useSignup } from "@/api/auth";
+import { ApiError, BASE, request } from "@/api/client";
+import { useLogin, useSignup, useSwitchOrg, type Membership, type Principal } from "@/api/auth";
 import { Button, ErrorBanner, Field } from "@/components/ui";
 
 /** Pulls per-field messages out of the API's validation envelope. */
@@ -30,12 +30,34 @@ export function LoginForm({ next }: { next?: string } = {}) {
   const [password, setPassword] = useState("");
   const [org, setOrg] = useState("");
   const [sso, setSSO] = useState(false);
+  const [choice, setChoice] = useState<{ organizations: Membership[]; current?: string } | null>(null);
+  const target = safeNext(next);
+
+  function proceed() {
+    if (target) navigate({ href: target });
+    else navigate({ to: "/" });
+  }
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const target = safeNext(next);
-    login.mutate({ email, password }, { onSuccess: () => (target ? navigate({ href: target }) : navigate({ to: "/" })) });
+    login.mutate(
+      { email, password },
+      {
+        // Somebody in more than one organization says which one they came for,
+        // rather than landing in whichever they joined first. A page that sent
+        // them here already knows where they are going.
+        onSuccess: async () => {
+          if (target) return proceed();
+          const me = await request<{ principal: Principal; organizations: Membership[] | null }>("/auth/me").catch(() => null);
+          const organizations = me?.organizations ?? [];
+          if (organizations.length > 1) setChoice({ organizations, current: me?.principal.org?.slug });
+          else proceed();
+        },
+      },
+    );
   }
+
+  if (choice) return <OrganizationChoice {...choice} onChosen={proceed} />;
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
@@ -64,6 +86,29 @@ export function LoginForm({ next }: { next?: string } = {}) {
 
       <SingleSignOn open={sso} org={org} onOrg={setOrg} onOpen={() => setSSO(true)} />
     </form>
+  );
+}
+
+function OrganizationChoice({ organizations, current, onChosen }: { organizations: Membership[]; current?: string; onChosen: () => void }) {
+  const switchOrg = useSwitchOrg();
+  return (
+    <div className="space-y-3" data-org-choice-list>
+      <p className="text-sm font-medium text-ink">Which organization?</p>
+      {switchOrg.error && <ErrorBanner>{(switchOrg.error as Error).message}</ErrorBanner>}
+      {organizations.map((each) => (
+        <Button
+          key={each.orgId}
+          variant={each.orgSlug === current ? "primary" : "secondary"}
+          className="w-full justify-between"
+          loading={switchOrg.isPending && switchOrg.variables === each.orgSlug}
+          data-org-choice={each.orgSlug}
+          onClick={() => (each.orgSlug === current ? onChosen() : switchOrg.mutateAsync(each.orgSlug).then(onChosen, () => {}))}
+        >
+          <span className="truncate">{each.orgName}</span>
+          <span className="text-xs capitalize opacity-70">{each.role}</span>
+        </Button>
+      ))}
+    </div>
   );
 }
 

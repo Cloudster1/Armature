@@ -109,3 +109,29 @@ scenario("somebody who already has an account signs in from the invitation and b
   const both = await bodyText(page);
   expect.contains(both, owner.org, "now working in the organization that invited them");
 });
+
+scenario("somebody in two organizations chooses which one when signing in", async ({ page }) => {
+  const owner = await signUp(page);
+  await signOut(page);
+  const other = await signUp(page, unique("chooser"));
+  await signIn(page, owner.email);
+  await waitForApp(page);
+  const { token } = await inviteFromMembersPage(page, other.email);
+
+  await signIn(page, other.email);
+  await waitForApp(page);
+  await goto(page, `/invite#${token}`);
+  await clickButton(page, `Join ${owner.org}`);
+  await waitForPath(page, "/");
+
+  await signIn(page, other.email);
+  await page.waitForSelector("[data-org-choice-list]", { timeout: WAIT });
+  const offered = await bodyText(page);
+  expect.contains(offered, owner.org, "the organization they joined is offered");
+  expect.contains(offered, other.org, "and their own");
+
+  await page.evaluate((name) => [...document.querySelectorAll("[data-org-choice]")].find((b) => b.textContent.includes(name))?.click(), owner.org);
+  await waitForPath(page, "/");
+  await waitForApp(page);
+  await page.waitForFunction((name) => document.querySelector("[data-sidebar]")?.innerText.includes(name), { timeout: WAIT }, owner.org);
+});
