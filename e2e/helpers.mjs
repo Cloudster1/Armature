@@ -175,6 +175,7 @@ export async function signUp(page, who = unique("user")) {
   await fill(page, "Your name", who.name);
   await fill(page, "Work email", who.email);
   await fill(page, "Password", PASSWORD);
+  await fill(page, "Repeat password", PASSWORD);
   await fill(page, "Organization name", who.org);
   await submit(page);
   await waitForPath(page, "/");
