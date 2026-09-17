@@ -16,13 +16,21 @@ vi.mock("@tanstack/react-router", () => ({
 
 const login = vi.fn();
 const signup = vi.fn();
+const switchOrg = vi.fn(() => Promise.resolve({}));
 vi.mock("@/api/auth", async () => {
   const actual = await vi.importActual<typeof import("@/api/auth")>("@/api/auth");
   return {
     ...actual,
     useLogin: () => login(),
     useSignup: () => signup(),
+    useSwitchOrg: () => ({ mutateAsync: switchOrg, isPending: false, error: null }),
   };
+});
+
+const me = vi.fn();
+vi.mock("@/api/client", async () => {
+  const actual = await vi.importActual<typeof import("@/api/client")>("@/api/client");
+  return { ...actual, request: (path: string) => (path === "/auth/me" ? me() : Promise.reject(new Error(path))) };
 });
 
 function wrap(ui: ReactNode) {
@@ -54,6 +62,38 @@ describe("LoginForm", () => {
     expect(safeNext("//evil.example")).toBeUndefined();
     expect(safeNext("https://evil.example")).toBeUndefined();
     expect(safeNext("/projects")).toBe("/projects");
+  });
+
+  it("asks somebody in several organizations which one they came for", async () => {
+    const mutate = vi.fn((_input, options) => options?.onSuccess?.());
+    mockLogin({ mutate });
+    me.mockResolvedValue({
+      principal: { user: { id: "u1" }, org: { slug: "first" } },
+      organizations: [
+        { orgId: "o1", orgSlug: "first", orgName: "First Corp", role: "member" },
+        { orgId: "o2", orgSlug: "second", orgName: "Second Corp", role: "admin" },
+      ],
+    });
+
+    wrap(<LoginForm />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await screen.findByText("Which organization?");
+    expect(navigate).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: /Second Corp/ }));
+    expect(switchOrg).toHaveBeenCalledWith("second");
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
+  });
+
+  it("goes straight in with only one organization", async () => {
+    const mutate = vi.fn((_input, options) => options?.onSuccess?.());
+    mockLogin({ mutate });
+    me.mockResolvedValue({ principal: { user: { id: "u1" }, org: { slug: "only" } }, organizations: [{ orgId: "o1", orgSlug: "only", orgName: "Only", role: "owner" }] });
+
+    wrap(<LoginForm />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
+    expect(screen.queryByText("Which organization?")).toBeNull();
   });
 
   it("submits the credentials the user typed", async () => {
