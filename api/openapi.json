@@ -645,6 +645,55 @@
         }
       }
     },
+    "/auth/invites/preview": {
+      "post": {
+        "operationId": "previewInvite",
+        "summary": "Where an invitation leads and whom it is for, before accepting it.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewInviteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invite": {
+                      "$ref": "#/components/schemas/InvitePreview"
+                    }
+                  },
+                  "required": [
+                    "invite"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/login": {
       "post": {
         "operationId": "login",
@@ -4055,7 +4104,7 @@
       },
       "post": {
         "operationId": "createInvite",
-        "summary": "Invite somebody; the token is shown once.",
+        "summary": "Invite somebody: mailed when mail is set up, and the link shown once either way.",
         "tags": [
           "auth"
         ],
@@ -4080,12 +4129,20 @@
                     "invite": {
                       "$ref": "#/components/schemas/Invite"
                     },
+                    "link": {
+                      "type": "string"
+                    },
+                    "mailed": {
+                      "type": "boolean"
+                    },
                     "token": {
                       "type": "string"
                     }
                   },
                   "required": [
                     "invite",
+                    "link",
+                    "mailed",
                     "token"
                   ]
                 }
@@ -18395,6 +18452,31 @@
           "createdAt"
         ]
       },
+      "InvitePreview": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "orgName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "customer"
+            ]
+          }
+        },
+        "required": [
+          "orgName",
+          "email",
+          "role"
+        ]
+      },
       "InviteRequest": {
         "type": "object",
         "properties": {
@@ -20130,6 +20212,17 @@
           "total",
           "words",
           "people"
+        ]
+      },
+      "PreviewInviteRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
         ]
       },
       "Principal": {

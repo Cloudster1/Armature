@@ -94,6 +94,36 @@ func (s *Service) ListInvites(ctx context.Context) ([]Invite, error) {
 	return out, err
 }
 
+// InvitePreview is what an invitation link tells whoever opened it, before
+// they accept: where it leads and for whom. Holding the link is the whole of
+// the authorization, and accepting would tell them the same.
+type InvitePreview struct {
+	OrgName string  `json:"orgName"`
+	Email   string  `json:"email"`
+	Role    OrgRole `json:"role"`
+}
+
+// PreviewInvite reads a pending invitation by its secret. It runs before
+// anybody is signed in, so it takes the admin path.
+func (s *Service) PreviewInvite(ctx context.Context, secret string) (*InvitePreview, error) {
+	var out InvitePreview
+	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		return tx.QueryRow(ctx, `
+			SELECT o.name, i.email, i.org_role
+			FROM org_invite i
+			JOIN org o ON o.id = i.org_id AND o.archived_at IS NULL
+			WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.expires_at > now()`,
+			HashToken(secret)).Scan(&out.OrgName, &out.Email, &out.Role)
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrInviteInvalid
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // RevokeInvite withdraws a pending invitation.
 func (s *Service) RevokeInvite(ctx context.Context, id uuid.UUID) error {
 	_, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {

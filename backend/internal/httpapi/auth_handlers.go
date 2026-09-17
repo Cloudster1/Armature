@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/mail"
 )
 
 // maxBodyBytes caps request bodies so a malformed or hostile client cannot make
@@ -220,10 +222,56 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, asValidationError(err))
 		return
 	}
-	// The secret is returned once. Delivering it by email is the notify
-	// package's job; returning it here also keeps the flow testable and lets an
-	// admin copy a link when mail is not configured.
-	respondJSON(w, r, http.StatusCreated, map[string]any{"invite": invite, "token": secret})
+	// The secret is returned once, and mailed when mail is set up. Returning it
+	// either way lets an administrator pass the link on themselves, which is
+	// the only way when there is no mail, and keeps the flow testable.
+	link := s.AppBaseURL + "/invite#" + secret
+	mailed := false
+	if s.Mailer != nil {
+		if err := s.Mailer.Send(r.Context(), invitationMail(invite.Email, p.User.Name, p.Org.Name, link)); err != nil {
+			s.Log.Warn("invitation not mailed", "error", err)
+		} else {
+			mailed = true
+		}
+	}
+	respondJSON(w, r, http.StatusCreated, map[string]any{"invite": invite, "token": secret, "link": link, "mailed": mailed})
+}
+
+// invitationMail words the mail that carries an invitation link.
+func invitationMail(to, inviter, orgName, link string) mail.Mail {
+	return mail.Mail{
+		To:      to,
+		Subject: fmt.Sprintf("%s invited you to %s", inviter, orgName),
+		Body: fmt.Sprintf("%s invited you to join %s on Armature.\n\nAccept the invitation at %s\n\nThe link works once and expires in a week. If you did not expect it, ignore this mail.\n",
+			inviter, orgName, link),
+	}
+}
+
+type previewInviteRequest struct {
+	Token string `json:"token"`
+}
+
+// handlePreviewInvite says where an invitation leads, so the page it opens can
+// say so before anybody decides. A POST, so the secret stays out of logs.
+func (s *Server) handlePreviewInvite(w http.ResponseWriter, r *http.Request) {
+	var req previewInviteRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	tried := "invite:" + clientIP(r)
+	if credentialTries.tooMany(w, r, tried, "Too many invitations were tried from here. Wait a few minutes and try again.") {
+		return
+	}
+	preview, err := s.Auth.PreviewInvite(r.Context(), req.Token)
+	if err != nil {
+		if errors.Is(err, auth.ErrInviteInvalid) {
+			credentialTries.record(tried)
+		}
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"invite": preview})
 }
 
 func (s *Server) handleListInvites(w http.ResponseWriter, r *http.Request) {
@@ -287,7 +335,11 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 
 	creds, err := s.Auth.AcceptInvite(r.Context(), in)
 	if err != nil {
-		credentialTries.record(tried)
+		// Only a link that leads nowhere counts as a guess. One that is valid
+		// but needs its owner to sign in first is the link working as meant.
+		if errors.Is(err, auth.ErrInviteInvalid) {
+			credentialTries.record(tried)
+		}
 		respondError(w, r, asValidationError(err))
 		return
 	}

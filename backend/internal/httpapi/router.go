@@ -46,6 +46,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Post("/auth/signup", s.handleSignup)
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/invites/accept", s.handleAcceptInvite)
+		r.Post("/auth/invites/preview", s.handlePreviewInvite)
 
 		// Signing in through an identity provider. Both halves are outside
 		// authentication: nobody is signed in yet, which is the point.

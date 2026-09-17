@@ -13,6 +13,7 @@ vi.mock("@/api/auth", () => ({
   useMe: () => ({ data: { principal: { user: { id: "u-ada", name: "Ada Lovelace" }, role: "owner" } } }),
   useRemoveMember: () => ({ mutate: remove, isPending: false }),
 }));
+vi.mock("./InvitePanel", () => ({ InvitePanel: () => null }));
 vi.mock("@/features/shell/ConfirmProvider", () => ({ useConfirm: () => async () => true }));
 vi.mock("@/components/ui", async () => {
   const actual = await vi.importActual<typeof import("@/components/ui")>("@/components/ui");

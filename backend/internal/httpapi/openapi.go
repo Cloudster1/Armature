@@ -425,6 +425,8 @@ var operations = []operation{
 		request: loginRequest{}, responses: ok(env{"principal": auth.Principal{}})},
 	{method: "POST", path: "/auth/invites/accept", handler: "handleAcceptInvite", tag: "auth", summary: "Join an organization with an invitation token.", public: true,
 		request: acceptInviteRequest{}, responses: ok(env{"principal": auth.Principal{}})},
+	{method: "POST", path: "/auth/invites/preview", handler: "handlePreviewInvite", tag: "auth", summary: "Where an invitation leads and whom it is for, before accepting it.", public: true,
+		request: previewInviteRequest{}, responses: ok(env{"invite": auth.InvitePreview{}})},
 	{method: "GET", path: "/auth/oidc/{orgSlug}/start", handler: "handleOIDCStart", tag: "auth", summary: "Begin signing in through the organization's identity provider.", public: true, redirect: true,
 		query: []param{{name: "next", description: "Where to land afterwards."}}, responses: map[int]any{}},
 	{method: "GET", path: "/auth/oidc/callback", handler: "handleOIDCCallback", tag: "auth", summary: "Where the identity provider sends the browser back.", public: true, redirect: true,
@@ -453,8 +455,8 @@ var operations = []operation{
 		request: createTokenRequest{}, responses: created(env{"token": auth.APIToken{}})},
 	{method: "DELETE", path: "/tokens/{tokenID}", handler: "handleRevokeAPIToken", tag: "auth", summary: "Revoke a token.", responses: none()},
 	{method: "GET", path: "/invites", handler: "handleListInvites", tag: "auth", summary: "Open invitations.", responses: ok(env{"invites": []auth.Invite{}})},
-	{method: "POST", path: "/invites", handler: "handleCreateInvite", tag: "auth", summary: "Invite somebody; the token is shown once.",
-		request: inviteRequest{}, responses: created(env{"invite": auth.Invite{}, "token": ""})},
+	{method: "POST", path: "/invites", handler: "handleCreateInvite", tag: "auth", summary: "Invite somebody: mailed when mail is set up, and the link shown once either way.",
+		request: inviteRequest{}, responses: created(env{"invite": auth.Invite{}, "token": "", "link": "", "mailed": true})},
 	{method: "DELETE", path: "/invites/{inviteID}", handler: "handleRevokeInvite", tag: "auth", summary: "Withdraw an invitation.", responses: none()},
 
 	// The portal.
