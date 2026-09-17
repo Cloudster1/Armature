@@ -162,7 +162,9 @@ func run() error {
 	attachments := attachment.NewService(cluster, store, issues)
 	deskService.WithAttachments(attachments)
 
-	accounts := auth.NewService(cluster, passwordParams, cfg.Auth.SessionTTL).PortalCodeCooldown(cfg.Auth.PortalCodeCooldown)
+	accounts := auth.NewService(cluster, passwordParams, cfg.Auth.SessionTTL).
+		PortalCodeCooldown(cfg.Auth.PortalCodeCooldown).
+		Signups(auth.SignupPolicy(cfg.Auth.Signup))
 	labels := label.NewService(cluster)
 	webhooks := webhook.NewService(cluster, log)
 	server := &httpapi.Server{

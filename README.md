@@ -298,6 +298,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_DB_MAX_REPLICA_LAG` | `2s` | lag past which a replica is not used |
 | `ARMATURE_DB_REPLICA_LAG_SAMPLES` | `3` | samples kept per replica |
 | `ARMATURE_REDIS_URL` | `redis://localhost:6379/0` | the event stream |
+| `ARMATURE_SIGNUP` | `open` | who may create an organization: `open`, `first` (only the first one) or `closed` |
 | `ARMATURE_SESSION_TTL` | `720h` | how long a session lives |
 | `ARMATURE_SESSION_COOKIE` | `armature_session` | the cookie's name |
 | `ARMATURE_SECURE_COOKIES` | `false` | required true outside development |

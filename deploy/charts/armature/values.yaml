@@ -181,6 +181,11 @@ mail:
     interval: 30s
 
 auth:
+  # Who may create an organization on the sign-up page. open: anybody who
+  # reaches it. first: the first one, which is how a new installation is set
+  # up, and nothing after. closed: nobody. People join an existing
+  # organization by invitation whatever this says.
+  signup: first
   sessionTTL: 720h
   sessionCookie: armature_session
   # Must be true unless env is development. The worker shares the same

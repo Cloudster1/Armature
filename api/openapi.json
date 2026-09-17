@@ -1035,6 +1035,43 @@
       }
     },
     "/auth/signup": {
+      "get": {
+        "operationId": "signupOpen",
+        "summary": "Whether a new organization may be created by signing up.",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "open": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "open"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "signup",
         "summary": "Create an account and its organization, and sign in.",

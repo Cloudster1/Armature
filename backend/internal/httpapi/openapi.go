@@ -417,6 +417,8 @@ var operations = []operation{
 		responses: ok(openapi.Document{})},
 
 	// Signing up and in.
+	{method: "GET", path: "/auth/signup", handler: "handleSignupOpen", tag: "auth", summary: "Whether a new organization may be created by signing up.", public: true,
+		responses: ok(env{"open": true})},
 	{method: "POST", path: "/auth/signup", handler: "handleSignup", tag: "auth", summary: "Create an account and its organization, and sign in.", public: true,
 		request: signupRequest{}, responses: created(env{"principal": auth.Principal{}})},
 	{method: "POST", path: "/auth/login", handler: "handleLogin", tag: "auth", summary: "Sign in with email and password.", public: true,

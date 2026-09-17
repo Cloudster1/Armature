@@ -156,6 +156,9 @@ func toAPIError(err error) *APIError {
 		return ErrForbidden("This account has been deactivated.")
 	case errors.Is(err, auth.ErrEmailTaken):
 		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: auth.ErrEmailTaken.Error()}
+	case errors.Is(err, auth.ErrSignupClosed):
+		return &APIError{Status: http.StatusForbidden, Code: "signup_closed",
+			Message: "New organizations cannot be created here. Ask an administrator of your organization to invite you."}
 	case errors.Is(err, auth.ErrSlugTaken):
 		return &APIError{Status: http.StatusConflict, Code: "slug_taken", Message: auth.ErrSlugTaken.Error()}
 	case errors.Is(err, auth.ErrNotAMember):

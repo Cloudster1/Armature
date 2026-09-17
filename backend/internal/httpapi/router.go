@@ -42,6 +42,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Get("/openapi.json", s.handleOpenAPI)
 
 		// Unauthenticated entry points.
+		r.Get("/auth/signup", s.handleSignupOpen)
 		r.Post("/auth/signup", s.handleSignup)
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/invites/accept", s.handleAcceptInvite)

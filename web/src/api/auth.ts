@@ -63,6 +63,15 @@ export interface SignupInput {
   orgSlug?: string;
 }
 
+/** Whether this installation lets a new organization be created by signing up. */
+export function useSignupOpen() {
+  return useQuery({
+    queryKey: ["auth", "signup"],
+    queryFn: () => request<{ open: boolean }>("/auth/signup"),
+    staleTime: 60_000,
+  });
+}
+
 export function useSignup() {
   const queryClient = useQueryClient();
   return useMutation({

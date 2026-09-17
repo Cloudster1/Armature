@@ -16,8 +16,11 @@ ingress:
     enabled: false
 
 # development is the one setting where these may be false, and this is it.
+# The demo organization is seeded rather than signed up for, so first would
+# close the sign-up page before anybody could try it.
 auth:
   secureCookies: false
+  signup: open
 
 api:
   replicas: 1

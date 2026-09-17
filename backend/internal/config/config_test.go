@@ -63,3 +63,28 @@ func TestTelemetryDefaultsAndOff(t *testing.T) {
 		t.Fatalf("a ratio past one should be refused: %v", err)
 	}
 }
+
+func TestSignupPolicy(t *testing.T) {
+	t.Setenv("ARMATURE_DB_PRIMARY_URL", "postgres://x")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Auth.Signup != "open" {
+		t.Errorf("signup = %q, want open by default so development keeps its sign-up page", cfg.Auth.Signup)
+	}
+
+	for _, policy := range []string{"open", "first", "closed"} {
+		t.Setenv("ARMATURE_SIGNUP", policy)
+		if _, err := Load(); err != nil {
+			t.Errorf("%s should be accepted: %v", policy, err)
+		}
+	}
+
+	// A typo must not quietly leave sign-up open.
+	t.Setenv("ARMATURE_SIGNUP", "disabled")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ARMATURE_SIGNUP") {
+		t.Errorf("an unknown policy should be refused and named, got %v", err)
+	}
+}

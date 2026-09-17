@@ -30,6 +30,8 @@ type Service struct {
 	// portalCooldown is how long an address waits between portal codes; zero
 	// means the default minute.
 	portalCooldown time.Duration
+	// signup is who may create an organization; empty means open.
+	signup SignupPolicy
 }
 
 // NewService constructs the identity service.
@@ -69,6 +71,10 @@ type SignupInput struct {
 // Signup creates the user, the organization and the owner membership in one
 // transaction, then logs the user straight in.
 func (s *Service) Signup(ctx context.Context, in SignupInput) (*Credentials, error) {
+	// Refused before the password is hashed, which is the expensive part.
+	if s.signupPolicy() == SignupClosed {
+		return nil, ErrSignupClosed
+	}
 	email := NormalizeEmail(in.Email)
 	if email == "" {
 		return nil, errors.New("email is required")
@@ -104,6 +110,19 @@ func (s *Service) Signup(ctx context.Context, in SignupInput) (*Credentials, err
 	)
 
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if policy := s.signupPolicy(); policy != SignupOpen {
+			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, signupLock); err != nil {
+				return fmt.Errorf("wait for other signups: %w", err)
+			}
+			allowed, err := SignupAllowedIn(ctx, tx, policy)
+			if err != nil {
+				return err
+			}
+			if !allowed {
+				return ErrSignupClosed
+			}
+		}
+
 		var userID uuid.UUID
 		err := tx.QueryRow(ctx, `
 			INSERT INTO app_user (email, name, password_hash)
