@@ -10,6 +10,7 @@ import {
   createProject,
   expect,
   goto,
+  grantRole,
   inviteAddress,
   inviteMember,
   tryAcceptInvite,
@@ -157,6 +158,27 @@ scenario("an administrator lets a member go", async ({ page }) => {
   await page.click('[data-access-tab="Members"]');
   await page.waitForSelector("[data-member]", { timeout: WAIT });
   expect.truthy(!(await bodyText(page)).includes(member.name), "the member is gone from the list");
+});
+
+// Reported as "can't log in": the X beside the Member tag was taken for
+// revoking a role, and the person it removed signed in to an empty shell.
+scenario("somebody let go of their only organization is told so when they sign in", async ({ page }) => {
+  const owner = await signUp(page);
+  const member = await inviteMember(page, "letgo");
+  await acceptInvite(page, member);
+
+  await signIn(page, owner.email);
+  await waitForApp(page);
+  await grantRole(page, { who: member.name, role: "Global administrator" });
+  await removeMember(page, member.name);
+
+  await signIn(page, member.email);
+  await page.waitForSelector("[data-no-organization]", { timeout: WAIT });
+  expect.contains(await bodyText(page), "invite you again", "the page says what to do");
+  expect.equal(await page.$('a[href="/settings/tokens"]'), null, "the empty shell is not shown");
+
+  await page.click('[data-no-organization] [data-action="sign-out"]');
+  await waitForPath(page, "/login");
 });
 
 scenario("an invitation to an address with an account is that account's to accept", async ({ page }) => {

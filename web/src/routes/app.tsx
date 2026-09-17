@@ -12,6 +12,7 @@ import { CommandPalette, usePaletteShortcut, type PaletteMode, type SpotlightReq
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
 import { IssueDrawerProvider } from "@/features/issues/IssueDrawer";
 import { IssuePanel } from "@/features/issues/IssuePanel";
+import { NoOrganization } from "@/features/shell/NoOrganization";
 
 /**
  * The authenticated shell. Everything under it can assume a signed-in user in
@@ -59,6 +60,7 @@ function RouteError({ error, reset }: { error: Error; reset: () => void }) {
 
 function AppShell() {
   const { data } = useMe();
+  if (data?.principal && !data.principal.org) return <NoOrganization />;
   if (data?.principal?.role === "customer") return <PortalShell />;
   return (
     <ToastProvider>
