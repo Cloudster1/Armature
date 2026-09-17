@@ -11,6 +11,8 @@ metadata:
     app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
 ---
 # Source: armature/templates/secret-env.yaml
 apiVersion: v1
@@ -24,22 +26,10 @@ metadata:
     app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
 type: Opaque
 stringData:
-  # The app role is subject to every row level security policy; the admin role
-  # is exempt by policy rather than by being a superuser, which is why both can
-  # pass the check that refuses a privileged role at startup.
-  db-primary-url: "postgres://armature_app:app-password@db.example.com:5432/armature?sslmode=require"
-  db-admin-url: "postgres://armature_admin:admin-password@db.example.com:5432/armature?sslmode=require"
-  # Owned by the roles and migration Jobs only. The api and the worker must
-  # never be given this: they refuse to start as a role that bypasses RLS.
-  db-owner-url: "postgres://postgres:owner-password@db.example.com:5432/armature?sslmode=require"
-  db-app-password: "app-password"
-  db-admin-password: "admin-password"
-  # The bundled database reads this as its superuser password, so the server
-  # and the URL the Jobs connect with cannot come to disagree.
-  db-owner-password: "owner-password"
-  redis-url: "redis://redis.example.com:6379/0"
 ---
 # Source: armature/templates/configmap-env.yaml
 apiVersion: v1
@@ -53,6 +43,9 @@ metadata:
     app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
+  annotations:
+    # Before the Jobs of the Sync phase, which read it.
+    argocd.argoproj.io/sync-wave: "-20"
 data:
   ARMATURE_ENV: "production"
   ARMATURE_LOG_LEVEL: "info"
@@ -219,7 +212,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: ea42183d862fb2fcdcb82ff5224f1136346b97f0169a101451fb621c2d97dab3
+        checksum/env: 55b96a3e263100a26453b5d78eeecd2fdd493f4de2cc3d1db347be0ea79e7925
     spec:
       serviceAccountName: armature
       securityContext:
@@ -246,21 +239,22 @@ spec:
             - configMapRef:
                 name: armature-env
           env:
+            - name: DB_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-db-app
+                  key: password
+            - name: DB_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-db-admin
+                  key: password
             - name: ARMATURE_DB_PRIMARY_URL
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: db-primary-url
+              value: "postgres://armature_app:$(DB_APP_PASSWORD)@db.example.com:5432/armature?sslmode=require"
             - name: ARMATURE_DB_ADMIN_URL
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: db-admin-url
+              value: "postgres://armature_admin:$(DB_ADMIN_PASSWORD)@db.example.com:5432/armature?sslmode=require"
             - name: ARMATURE_REDIS_URL
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: redis-url
+              value: "redis://redis.example.com:6379/0"
           ports:
             - name: http
               containerPort: 8080
@@ -410,7 +404,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: ea42183d862fb2fcdcb82ff5224f1136346b97f0169a101451fb621c2d97dab3
+        checksum/env: 55b96a3e263100a26453b5d78eeecd2fdd493f4de2cc3d1db347be0ea79e7925
     spec:
       serviceAccountName: armature
       securityContext:
@@ -436,21 +430,22 @@ spec:
             - configMapRef:
                 name: armature-env
           env:
+            - name: DB_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-db-app
+                  key: password
+            - name: DB_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-db-admin
+                  key: password
             - name: ARMATURE_DB_PRIMARY_URL
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: db-primary-url
+              value: "postgres://armature_app:$(DB_APP_PASSWORD)@db.example.com:5432/armature?sslmode=require"
             - name: ARMATURE_DB_ADMIN_URL
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: db-admin-url
+              value: "postgres://armature_admin:$(DB_ADMIN_PASSWORD)@db.example.com:5432/armature?sslmode=require"
             - name: ARMATURE_REDIS_URL
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: redis-url
+              value: "redis://redis.example.com:6379/0"
           ports:
             - name: metrics
               containerPort: 9090
@@ -505,6 +500,87 @@ spec:
                 port:
                   name: http
 ---
+# Source: armature/templates/job-secrets.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: armature-secrets-generator
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-40"
+    helm.sh/hook-delete-policy: before-hook-creation
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-40"
+---
+# Source: armature/templates/job-secrets.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: armature-secrets-generator
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-39"
+    helm.sh/hook-delete-policy: before-hook-creation
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-39"
+rules:
+  # Kubernetes cannot scope create to resource names, so reading is limited
+  # to these Secrets and creating is not.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - armature-db-app
+      - armature-db-admin
+      - armature-db-owner
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+# Source: armature/templates/job-secrets.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: armature-secrets-generator
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-38"
+    helm.sh/hook-delete-policy: before-hook-creation
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-38"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: armature-secrets-generator
+subjects:
+  - kind: ServiceAccount
+    name: armature-secrets-generator
+    namespace: default
+---
 # Source: armature/templates/job-migrate.yaml
 apiVersion: batch/v1
 kind: Job
@@ -519,10 +595,13 @@ metadata:
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: migrate
   annotations:
-    # post-install for the same reason as the roles Job, and after it by weight.
+    # Ordered like the roles Job, and after it.
     helm.sh/hook: post-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
+    helm.sh/hook-weight: "-4"
     helm.sh/hook-delete-policy: before-hook-creation
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-4"
 spec:
   parallelism: 1
   completions: 1
@@ -558,19 +637,16 @@ spec:
             - configMapRef:
                 name: armature-env
           env:
-            # The owner, deliberately: this one writes DDL. It also overrides
-            # the primary URL the ConfigMap and Secret give every other
-            # workload, which is why it comes after envFrom.
+            # The owner, deliberately: this one writes DDL.
+            - name: DB_OWNER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-db-owner
+                  key: password
             - name: ARMATURE_DB_PRIMARY_URL
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: db-owner-url
+              value: "postgres://postgres:$(DB_OWNER_PASSWORD)@db.example.com:5432/armature?sslmode=require"
             - name: ARMATURE_REDIS_URL
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: redis-url
+              value: "redis://redis.example.com:6379/0"
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }
@@ -590,16 +666,23 @@ metadata:
     app.kubernetes.io/component: roles
   annotations:
     # post-install, not pre-install: Helm runs pre-install hooks before it
-    # creates any of the release's own resources, so this Job's Secret, and a
-    # bundled database, would not exist yet. pre-upgrade is safe because both
-    # were made by the install before it.
+    # creates any of the release's own resources, so a bundled database would
+    # not exist yet. pre-upgrade is safe because the install made it. Argo CD
+    # runs it in the Sync phase, after the database's wave has turned healthy
+    # and before the workloads; a PostSync hook would wait on an api that
+    # cannot become ready until this has run.
     helm.sh/hook: post-install,pre-upgrade
-    helm.sh/hook-weight: "-10"
+    helm.sh/hook-weight: "-5"
     helm.sh/hook-delete-policy: before-hook-creation
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-5"
 spec:
   parallelism: 1
   completions: 1
   backoffLimit: 2
+  # Covers a first CNPG cluster coming up, which takes a few minutes.
+  activeDeadlineSeconds: 900
   template:
     metadata:
       labels:
@@ -622,31 +705,43 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: { drop: ["ALL"] }
           env:
-            - name: PGURL
+            - name: DB_OWNER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: armature-secrets
-                  key: db-owner-url
+                  name: armature-db-owner
+                  key: password
             - name: APP_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: armature-secrets
-                  key: db-app-password
+                  name: armature-db-app
+                  key: password
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: armature-secrets
-                  key: db-admin-password
+                  name: armature-db-admin
+                  key: password
+            # A host that drops packets would otherwise hold a connect open
+            # until the Job's deadline.
+            - name: PGCONNECT_TIMEOUT
+              value: "5"
+            - name: PGURL
+              value: "postgres://postgres:$(DB_OWNER_PASSWORD)@db.example.com:5432/armature?sslmode=require"
           command: ["/bin/sh", "-ec"]
           args:
             - |
+              # The database may still be starting: a bundled pod, or a CNPG
+              # cluster created moments ago in the same sync.
+              until psql "$PGURL" -Atc "SELECT 1" >/dev/null 2>&1; do
+                echo "waiting for the database to accept the owner role"
+                sleep 5
+              done
               psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
               DO $$
               BEGIN
-                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = "armature_app") THEN
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'armature_app') THEN
                       CREATE ROLE armature_app LOGIN;
                   END IF;
-                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = "armature_admin") THEN
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'armature_admin') THEN
                       CREATE ROLE armature_admin LOGIN;
                   END IF;
               END;
@@ -658,12 +753,13 @@ spec:
                 -c "ALTER ROLE armature_app WITH PASSWORD '$APP_PASSWORD'" \
                 -c "ALTER ROLE armature_admin WITH PASSWORD '$ADMIN_PASSWORD'"
               psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
-              GRANT CONNECT ON DATABASE armature TO armature_app, armature_admin;
-              GRANT USAGE ON SCHEMA public TO armature_app, armature_admin;
-
               -- The pool reads pg_stat_wal_receiver to tell a caught-up standby
               -- from one whose receiver has quietly dropped.
               GRANT pg_read_all_stats TO armature_app, armature_admin;
+              SQL
+              psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
+              GRANT CONNECT ON DATABASE armature TO armature_app, armature_admin;
+              GRANT USAGE ON SCHEMA public TO armature_app, armature_admin;
 
               -- Everything the migrations create afterwards is granted without
               -- anybody remembering to. FOR ROLE is the role that will create
@@ -678,3 +774,120 @@ spec:
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 128Mi }
+---
+# Source: armature/templates/job-secrets.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: armature-secrets-generator
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: secrets
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-30"
+    helm.sh/hook-delete-policy: before-hook-creation
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-30"
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: armature
+        app.kubernetes.io/instance: armature
+        app.kubernetes.io/component: secrets
+    spec:
+      restartPolicy: Never
+      serviceAccountName: armature-secrets-generator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: secrets
+          image: alpine/kubectl:1.34.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          env:
+            # kubectl keeps its discovery cache under HOME.
+            - name: HOME
+              value: /tmp
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              ns="default"
+
+              # A lookup that fails for any reason but NotFound, such as a
+              # missing permission, stops the Job. Read as "absent", it would
+              # try to create a Secret that may well exist.
+              exists() {
+                if out=$(kubectl get secret "$1" -n "$ns" -o name 2>&1); then return 0; fi
+                case "$out" in *NotFound*) return 1 ;; esac
+                echo "$out" >&2
+                exit 1
+              }
+
+              password() {
+                tr -dc A-Za-z0-9 </dev/urandom | head -c 32
+              }
+
+              # The labels mark it as Armature's without making it Helm's or
+              # Argo CD's, so neither deletes it. cnpg.io/reload has the
+              # operator apply a changed password straight away.
+              create() {
+                kubectl create secret generic "$1" -n "$ns" \
+                  --type=kubernetes.io/basic-auth \
+                  --from-literal=username="$2" \
+                  --from-literal=password="$(password)" \
+                  --dry-run=client -o yaml \
+                | kubectl label --local -f - -o yaml \
+                    app.kubernetes.io/part-of=armature \
+                    app.kubernetes.io/instance="armature" \
+                    cnpg.io/reload=true \
+                | kubectl create -f - 2>err || {
+                  # Another run got there first, which is the outcome wanted.
+                  grep -q AlreadyExists err && return 0
+                  cat err >&2
+                  exit 1
+                }
+                echo "created $1 with a random password"
+              }
+              cd /tmp
+              if exists "armature-db-app"; then
+                echo "armature-db-app exists and is left as it is"
+              else
+                create "armature-db-app" "armature_app"
+              fi
+              if exists "armature-db-admin"; then
+                echo "armature-db-admin exists and is left as it is"
+              else
+                create "armature-db-admin" "armature_admin"
+              fi
+              if exists "armature-db-owner"; then
+                echo "armature-db-owner exists and is left as it is"
+              else
+                echo "Secret armature-db-owner does not exist. The chart cannot make this password up, because the server it belongs to already has one: create it as a kubernetes.io/basic-auth Secret with that password, or name one that exists in secrets.names.dbOwner." >&2
+                exit 1
+              fi
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

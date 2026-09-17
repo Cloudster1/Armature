@@ -14,9 +14,9 @@ metadata:
     {{- include "armature.labels" . | nindent 4 }}
     app.kubernetes.io/component: seed
   annotations:
-    helm.sh/hook: post-install
-    helm.sh/hook-weight: "10"
-    helm.sh/hook-delete-policy: before-hook-creation
+    # Under Argo CD on every sync, which the seed allows: it tops up what
+    # exists and adds nothing twice.
+    {{- include "armature.hookAnnotations" (dict "helm" "post-install" "argo" "PostSync" "weight" "10") | nindent 4 }}
 spec:
   parallelism: 1
   completions: 1

@@ -30,8 +30,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "-20"
 type: Opaque
 stringData:
-  s3-access-key: "key"
-  s3-secret-key: "secret"
 ---
 # Source: armature/templates/configmap-env.yaml
 apiVersion: v1
@@ -73,15 +71,6 @@ data:
   ARMATURE_ARGON_THREADS: "4"
   ARMATURE_READ_YOUR_WRITES_TTL: "30s"
   ARMATURE_PORTAL_CODE_COOLDOWN: "1m"
-  ARMATURE_S3_ENDPOINT: "s3.example.com"
-  ARMATURE_S3_BUCKET: "armature-attachments"
-  ARMATURE_S3_REGION: "us-east-1"
-  ARMATURE_S3_USE_SSL: "true"
-  ARMATURE_SMTP_ADDR: "smtp.example.com:587"
-  ARMATURE_MAIL_FROM: "Armature <no-reply@armature.example.com>"
-  ARMATURE_MAIL_INBOX: "desk@example.com"
-  ARMATURE_RENDER_URL: "http://armature-render:8090"
-  ARMATURE_RENDER_TIMEOUT: "20s"
   ARMATURE_OIDC_REDIRECT_URL: "https://armature.example.com/api/v1/auth/oidc/callback"
   
   
@@ -169,30 +158,6 @@ spec:
     app.kubernetes.io/instance: armature
     app.kubernetes.io/component: api
 ---
-# Source: armature/templates/render-service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: armature-render
-  labels:
-    helm.sh/chart: armature-0.1.0
-    app.kubernetes.io/name: armature
-    app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.1.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/part-of: armature
-    app.kubernetes.io/component: render
-spec:
-  type: ClusterIP
-  ports:
-    - name: http
-      port: 8090
-      targetPort: http
-  selector:
-    app.kubernetes.io/name: armature
-    app.kubernetes.io/instance: armature
-    app.kubernetes.io/component: render
----
 # Source: armature/templates/web-service.yaml
 apiVersion: v1
 kind: Service
@@ -247,7 +212,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 4344182a1716f3c804f95c10ed14262ff7be0e5362fd34635e182e95ec0f50e5
+        checksum/env: 55b96a3e263100a26453b5d78eeecd2fdd493f4de2cc3d1db347be0ea79e7925
     spec:
       serviceAccountName: armature
       securityContext:
@@ -285,28 +250,13 @@ spec:
                   name: armature-db-admin
                   key: password
             - name: ARMATURE_DB_PRIMARY_URL
-              value: "postgres://armature_app:$(DB_APP_PASSWORD)@db.example.com:5432/armature?sslmode=require"
+              value: "postgres://armature_app:$(DB_APP_PASSWORD)@armature-postgres-rw:5432/armature?sslmode=require"
             - name: ARMATURE_DB_ADMIN_URL
-              value: "postgres://armature_admin:$(DB_ADMIN_PASSWORD)@db.example.com:5432/armature?sslmode=require"
+              value: "postgres://armature_admin:$(DB_ADMIN_PASSWORD)@armature-postgres-rw:5432/armature?sslmode=require"
             - name: ARMATURE_DB_REPLICA_URLS
-              value: "postgres://armature_app:$(DB_APP_PASSWORD)@replica.example.com:5432/armature?sslmode=require"
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: armature-redis
-                  key: password
+              value: "postgres://armature_app:$(DB_APP_PASSWORD)@armature-postgres-ro:5432/armature?sslmode=require"
             - name: ARMATURE_REDIS_URL
-              value: "redis://:$(REDIS_PASSWORD)@redis.example.com:6379/0"
-            - name: ARMATURE_S3_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: s3-access-key
-            - name: ARMATURE_S3_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: s3-secret-key
+              value: "redis://redis.example.com:6379/0"
           ports:
             - name: http
               containerPort: 8080
@@ -336,81 +286,6 @@ spec:
             requests:
               cpu: 100m
               memory: 256Mi
----
-# Source: armature/templates/render-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: armature-render
-  labels:
-    helm.sh/chart: armature-0.1.0
-    app.kubernetes.io/name: armature
-    app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.1.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/part-of: armature
-    app.kubernetes.io/component: render
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: armature
-      app.kubernetes.io/instance: armature
-      app.kubernetes.io/component: render
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: armature
-        app.kubernetes.io/instance: armature
-        app.kubernetes.io/component: render
-    spec:
-      serviceAccountName: armature
-      # The Chrome image's own user, not ours: it owns the browser it ships.
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile: { type: RuntimeDefault }
-      containers:
-        - name: render
-          image: armature/render:0.1.0
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities: { drop: ["ALL"] }
-          env:
-            # Chromium writes a scratch profile under HOME. Nothing here needs
-            # to outlive the pod.
-            - name: HOME
-              value: /tmp
-            - name: RENDER_PORT
-              value: "8090"
-            # It prints the application's own pages, so it reaches the web pod
-            # in the cluster rather than going out through the ingress.
-            - name: RENDER_APP_URL
-              value: "http://armature-web"
-          ports:
-            - name: http
-              containerPort: 8090
-          livenessProbe:
-            httpGet: { path: /healthz, port: http }
-            initialDelaySeconds: 10
-            periodSeconds: 20
-          readinessProbe:
-            httpGet: { path: /healthz, port: http }
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-          resources:
-            limits:
-              memory: 2Gi
-            requests:
-              cpu: 200m
-              memory: 512Mi
-      volumes:
-        - name: tmp
-          emptyDir: {}
 ---
 # Source: armature/templates/web-deployment.yaml
 apiVersion: apps/v1
@@ -531,7 +406,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 4344182a1716f3c804f95c10ed14262ff7be0e5362fd34635e182e95ec0f50e5
+        checksum/env: 55b96a3e263100a26453b5d78eeecd2fdd493f4de2cc3d1db347be0ea79e7925
     spec:
       serviceAccountName: armature
       securityContext:
@@ -568,28 +443,13 @@ spec:
                   name: armature-db-admin
                   key: password
             - name: ARMATURE_DB_PRIMARY_URL
-              value: "postgres://armature_app:$(DB_APP_PASSWORD)@db.example.com:5432/armature?sslmode=require"
+              value: "postgres://armature_app:$(DB_APP_PASSWORD)@armature-postgres-rw:5432/armature?sslmode=require"
             - name: ARMATURE_DB_ADMIN_URL
-              value: "postgres://armature_admin:$(DB_ADMIN_PASSWORD)@db.example.com:5432/armature?sslmode=require"
+              value: "postgres://armature_admin:$(DB_ADMIN_PASSWORD)@armature-postgres-rw:5432/armature?sslmode=require"
             - name: ARMATURE_DB_REPLICA_URLS
-              value: "postgres://armature_app:$(DB_APP_PASSWORD)@replica.example.com:5432/armature?sslmode=require"
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: armature-redis
-                  key: password
+              value: "postgres://armature_app:$(DB_APP_PASSWORD)@armature-postgres-ro:5432/armature?sslmode=require"
             - name: ARMATURE_REDIS_URL
-              value: "redis://:$(REDIS_PASSWORD)@redis.example.com:6379/0"
-            - name: ARMATURE_S3_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: s3-access-key
-            - name: ARMATURE_S3_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: armature-secrets
-                  key: s3-secret-key
+              value: "redis://redis.example.com:6379/0"
           ports:
             - name: metrics
               containerPort: 9090
@@ -644,6 +504,62 @@ spec:
                 port:
                   name: http
 ---
+# Source: armature/templates/cnpg-cluster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: armature-postgres
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: postgresql
+  annotations:
+    # Before the roles Job, which Argo CD holds back until this is healthy.
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  bootstrap:
+    initdb:
+      database: armature
+      owner: armature_owner
+      secret:
+        name: armature-db-owner
+  enableSuperuserAccess: false
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
+  instances: 3
+  managed:
+    roles:
+    - ensure: present
+      inRoles:
+      - pg_read_all_stats
+      login: true
+      name: armature_admin
+      passwordSecret:
+        name: armature-db-admin
+    - ensure: present
+      inRoles:
+      - pg_read_all_stats
+      login: true
+      name: armature_app
+      passwordSecret:
+        name: armature-db-app
+  monitoring:
+    enablePodMonitor: false
+  postgresql:
+    parameters:
+      track_commit_timestamp: "on"
+  resources:
+    limits:
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  storage:
+    size: 10Gi
+---
 # Source: armature/templates/job-secrets.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -692,7 +608,6 @@ rules:
       - armature-db-app
       - armature-db-admin
       - armature-db-owner
-      - armature-redis
     verbs: ["get"]
   - apiGroups: [""]
     resources: ["secrets"]
@@ -789,14 +704,9 @@ spec:
                   name: armature-db-owner
                   key: password
             - name: ARMATURE_DB_PRIMARY_URL
-              value: "postgres://postgres:$(DB_OWNER_PASSWORD)@db.example.com:5432/armature?sslmode=require"
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: armature-redis
-                  key: password
+              value: "postgres://armature_owner:$(DB_OWNER_PASSWORD)@armature-postgres-rw:5432/armature?sslmode=require"
             - name: ARMATURE_REDIS_URL
-              value: "redis://:$(REDIS_PASSWORD)@redis.example.com:6379/0"
+              value: "redis://redis.example.com:6379/0"
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }
@@ -860,22 +770,12 @@ spec:
                 secretKeyRef:
                   name: armature-db-owner
                   key: password
-            - name: APP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: armature-db-app
-                  key: password
-            - name: ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: armature-db-admin
-                  key: password
             # A host that drops packets would otherwise hold a connect open
             # until the Job's deadline.
             - name: PGCONNECT_TIMEOUT
               value: "5"
             - name: PGURL
-              value: "postgres://postgres:$(DB_OWNER_PASSWORD)@db.example.com:5432/armature?sslmode=require"
+              value: "postgres://armature_owner:$(DB_OWNER_PASSWORD)@armature-postgres-rw:5432/armature?sslmode=require"
           command: ["/bin/sh", "-ec"]
           args:
             - |
@@ -885,28 +785,10 @@ spec:
                 echo "waiting for the database to accept the owner role"
                 sleep 5
               done
-              psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
-              DO $$
-              BEGIN
-                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'armature_app') THEN
-                      CREATE ROLE armature_app LOGIN;
-                  END IF;
-                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'armature_admin') THEN
-                      CREATE ROLE armature_admin LOGIN;
-                  END IF;
-              END;
-              $$;
-              SQL
-              # The passwords are set outside the DO block: they change between
-              # installs, and ALTER is the only idempotent way to say so.
-              psql -v ON_ERROR_STOP=1 "$PGURL" \
-                -c "ALTER ROLE armature_app WITH PASSWORD '$APP_PASSWORD'" \
-                -c "ALTER ROLE armature_admin WITH PASSWORD '$ADMIN_PASSWORD'"
-              psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
-              -- The pool reads pg_stat_wal_receiver to tell a caught-up standby
-              -- from one whose receiver has quietly dropped.
-              GRANT pg_read_all_stats TO armature_app, armature_admin;
-              SQL
+              until [ "$(psql "$PGURL" -Atc "SELECT count(*) FROM pg_roles WHERE rolname IN ('armature_app', 'armature_admin')")" = 2 ]; do
+                echo "waiting for the operator to create armature_app, armature_admin"
+                sleep 5
+              done
               psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
               GRANT CONNECT ON DATABASE armature TO armature_app, armature_admin;
               GRANT USAGE ON SCHEMA public TO armature_app, armature_admin;
@@ -914,11 +796,11 @@ spec:
               -- Everything the migrations create afterwards is granted without
               -- anybody remembering to. FOR ROLE is the role that will create
               -- them, which is the one this Job connects as.
-              ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+              ALTER DEFAULT PRIVILEGES FOR ROLE armature_owner IN SCHEMA public
                   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO armature_app, armature_admin;
-              ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+              ALTER DEFAULT PRIVILEGES FOR ROLE armature_owner IN SCHEMA public
                   GRANT USAGE, SELECT ON SEQUENCES TO armature_app, armature_admin;
-              ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+              ALTER DEFAULT PRIVILEGES FOR ROLE armature_owner IN SCHEMA public
                   GRANT EXECUTE ON FUNCTIONS TO armature_app, armature_admin;
               SQL
           resources:
@@ -1029,14 +911,7 @@ spec:
               if exists "armature-db-owner"; then
                 echo "armature-db-owner exists and is left as it is"
               else
-                echo "Secret armature-db-owner does not exist. The chart cannot make this password up, because the server it belongs to already has one: create it as a kubernetes.io/basic-auth Secret with that password, or name one that exists in secrets.names.dbOwner." >&2
-                exit 1
-              fi
-              if exists "armature-redis"; then
-                echo "armature-redis exists and is left as it is"
-              else
-                echo "Secret armature-redis does not exist. The chart cannot make this password up, because the server it belongs to already has one: create it as a kubernetes.io/basic-auth Secret with that password, or name one that exists in secrets.names.redis." >&2
-                exit 1
+                create "armature-db-owner" "armature_owner"
               fi
           resources:
             requests: { cpu: 10m, memory: 32Mi }

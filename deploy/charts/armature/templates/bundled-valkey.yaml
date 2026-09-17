@@ -16,6 +16,8 @@ metadata:
   labels:
     {{- include "armature.labels" . | nindent 4 }}
     app.kubernetes.io/component: redis
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   type: ClusterIP
   ports:
@@ -33,6 +35,8 @@ metadata:
   labels:
     {{- include "armature.labels" . | nindent 4 }}
     app.kubernetes.io/component: redis
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   serviceName: {{ .Release.Name }}-redis-master
   replicas: 1
@@ -72,38 +76,22 @@ spec:
             - "yes"
             - --dir
             - /data
-            {{- if .Values.secrets.redisPassword }}
             - --requirepass
             - $(REDIS_PASSWORD)
-            {{- end }}
-          {{- if .Values.secrets.redisPassword }}
           env:
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "armature.secretName" . }}
-                  key: redis-password
-          {{- end }}
+            {{- include "armature.passwordEnv" (dict "root" . "name" "redis" "var" "REDIS_PASSWORD") | nindent 12 }}
           ports:
             - name: redis
               containerPort: 6379
           readinessProbe:
             exec:
-              {{- if .Values.secrets.redisPassword }}
               command: ["sh", "-c", "valkey-cli -a \"$REDIS_PASSWORD\" --no-auth-warning ping"]
-              {{- else }}
-              command: ["valkey-cli", "ping"]
-              {{- end }}
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 6
           livenessProbe:
             exec:
-              {{- if .Values.secrets.redisPassword }}
               command: ["sh", "-c", "valkey-cli -a \"$REDIS_PASSWORD\" --no-auth-warning ping"]
-              {{- else }}
-              command: ["valkey-cli", "ping"]
-              {{- end }}
             initialDelaySeconds: 30
             periodSeconds: 10
           resources:

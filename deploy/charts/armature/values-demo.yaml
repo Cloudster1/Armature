@@ -34,11 +34,9 @@ s3:
   useSSL: false
   bucket: armature-attachments
 
+# The database and Redis passwords are generated on install, like anywhere else.
 secrets:
   create: true
-  appPassword: armature_app
-  adminPassword: armature_admin
-  ownerPassword: armature
   s3AccessKey: armature
   s3SecretKey: armature-dev-secret
 
@@ -54,8 +52,9 @@ network:
     - 172.16.0.0/12
     - 192.168.0.0/16
 
-# One pod and one volume each. The superuser password is secrets.ownerPassword
-# above: the database is told it and the Jobs connect with it, from one value.
+# One pod and one volume each. The superuser password is the generated
+# <release>-db-owner Secret: the database is told it and the Jobs connect with
+# it, from one Secret.
 postgresql:
   enabled: true
   storage: 8Gi

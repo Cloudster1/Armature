@@ -43,7 +43,7 @@ DOCKER_GO = docker run --rm -t \
 
 # Helm keeps its cache under $HOME, which is not writable for the invoking
 # user inside this image; /tmp is.
-DOCKER_HELM = docker run --rm -t \
+DOCKER_HELM = docker run --rm \
 	-u $(UID):$(GID) \
 	-v $(ROOT):/src \
 	-e HELM_CACHE_HOME=/tmp -e HELM_CONFIG_HOME=/tmp -e HELM_DATA_HOME=/tmp \
@@ -247,16 +247,16 @@ helm-deps: ## Fetch the chart's subchart tarballs (needed once, and after Chart.
 
 .PHONY: helm-lint
 helm-lint: ## Lint the chart with both values files
-	$(DOCKER_HELM) lint $(CHART) --values $(CHART)/values.yaml --set database.host=db --set externalRedis.host=redis --set secrets.appPassword=a --set secrets.adminPassword=b --set secrets.ownerPassword=c
+	$(DOCKER_HELM) lint $(CHART) --values $(CHART)/values.yaml --set database.host=db --set externalRedis.host=redis
+	$(DOCKER_HELM) lint $(CHART) --values $(CHART)/values.yaml $(CNPG_ARGS)
 	$(DOCKER_HELM) lint $(CHART) --values $(CHART)/values-demo.yaml
 
 # A golden render, the same bargain api/openapi.json strikes: the rendered
 # manifests are committed, so a change to a template or a default has to show
 # up in a diff somebody reads rather than arriving silently in a cluster.
 GOLDEN := $(CHART)/tests/golden
-GOLDEN_ARGS := --set database.host=db.example.com --set externalRedis.host=redis.example.com \
-	--set secrets.appPassword=app-password --set secrets.adminPassword=admin-password \
-	--set secrets.ownerPassword=owner-password
+GOLDEN_ARGS := --set database.host=db.example.com --set externalRedis.host=redis.example.com
+CNPG_ARGS := --set cnpg.enabled=true --set externalRedis.host=redis.example.com
 
 .PHONY: helm-template
 helm-template: ## Render the chart into the golden files
@@ -266,7 +266,8 @@ helm-template: ## Render the chart into the golden files
 	$(DOCKER_HELM) template armature $(CHART) $(GOLDEN_ARGS) --set s3.enabled=true --set s3.endpoint=s3.example.com \
 		--set secrets.s3AccessKey=key --set secrets.s3SecretKey=secret --set render.enabled=true \
 		--set mail.smtpAddr=smtp.example.com:587 --set mail.inbox=desk@example.com \
-		--set database.replicaHosts={replica.example.com} > $(GOLDEN)/everything.yaml
+		--set database.replicaHosts={replica.example.com} --set externalRedis.auth=true > $(GOLDEN)/everything.yaml
+	$(DOCKER_HELM) template armature $(CHART) $(CNPG_ARGS) > $(GOLDEN)/cnpg.yaml
 
 .PHONY: helm-check
 helm-check: ## Fail if the rendered chart differs from the committed golden files
