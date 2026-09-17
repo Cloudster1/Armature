@@ -1,7 +1,6 @@
 import { useMembers } from "@/api/issues";
 import { useMe, useRemoveMember } from "@/api/auth";
-import { Avatar, Card, EmptyState, ErrorBanner, IconButton, Tag, useToast } from "@/components/ui";
-import { Icon } from "@/components/icons";
+import { Avatar, Button, Card, EmptyState, ErrorBanner, Tag, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /**
@@ -31,9 +30,10 @@ export function MemberList() {
             <span className="min-w-0 flex-1 truncate text-ink">{member.name}</span>
             <span className="hidden truncate text-ink-muted sm:block">{member.email}</span>
             <Tag className="capitalize">{member.role}</Tag>
-            <IconButton
-              icon={<Icon.X />}
-              label={`Remove ${member.name}`}
+            {/* Spelled out: an X beside the role read as taking the role away,
+                when it takes the person out of the organization. */}
+            <Button
+              aria-label={`Remove ${member.name} from the organization`}
               size="sm"
               variant="ghost"
               disabled={member.id === me?.principal?.user.id || remove.isPending}
@@ -43,7 +43,9 @@ export function MemberList() {
                   remove.mutate(member.id, { onSuccess: () => toast.success(`Removed ${member.name}`) });
                 }
               }}
-            />
+            >
+              Remove from organization
+            </Button>
           </div>
         ))}
       </Card>

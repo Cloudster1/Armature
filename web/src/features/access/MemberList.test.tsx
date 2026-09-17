@@ -27,8 +27,8 @@ describe("MemberList", () => {
   it("lists everyone and lets an administrator remove anyone but themselves", async () => {
     render(<MemberList />);
     expect(screen.getByText("bob@armature.test")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Remove Ada Lovelace" })).toHaveProperty("disabled", true);
-    await userEvent.click(screen.getByRole("button", { name: "Remove Bob Builder" }));
+    expect(screen.getByRole("button", { name: "Remove Ada Lovelace from the organization" })).toHaveProperty("disabled", true);
+    await userEvent.click(screen.getByRole("button", { name: "Remove Bob Builder from the organization" }));
     expect(remove).toHaveBeenCalledWith("u-bob", expect.anything());
   });
 });
