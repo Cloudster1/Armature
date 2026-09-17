@@ -35,15 +35,18 @@ export function MemberList() {
             {members.map((member) => (
               <div key={member.id} className="flex items-center gap-3 px-4 py-2.5 text-sm" data-member={member.name}>
                 <Avatar name={member.name} src={member.avatarUrl} size="sm" />
-                <span className="min-w-0 flex-1 truncate text-ink">{member.name}</span>
-                <span className="hidden truncate text-ink-muted sm:block">{member.email}</span>
-                <Tag className="capitalize">{member.role}</Tag>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-ink">{member.name}</span>
+                  <span className="block truncate text-xs text-ink-muted">{member.email}</span>
+                </span>
+                <Tag className="shrink-0 capitalize">{member.role}</Tag>
                 {/* Spelled out: an X beside the role read as taking the role away,
                     when it takes the person out of the organization. */}
                 <Button
                   aria-label={`Remove ${member.name} from the organization`}
                   size="sm"
                   variant="ghost"
+                  className="shrink-0"
                   disabled={member.id === me?.principal?.user.id || remove.isPending}
                   data-action="remove-member"
                   onClick={async () => {
@@ -52,7 +55,8 @@ export function MemberList() {
                     }
                   }}
                 >
-                  Remove from organization
+                  <span className="sm:hidden">Remove</span>
+                  <span className="hidden sm:inline">Remove from organization</span>
                 </Button>
               </div>
             ))}

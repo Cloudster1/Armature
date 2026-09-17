@@ -24,7 +24,7 @@ function AccessPage() {
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("roles");
 
   return (
-    <Page width="narrow">
+    <Page width="content">
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">

@@ -200,6 +200,27 @@ export function useSaveProvider() {
 }
 
 /** How a role reads in a sentence, rather than as an identifier. */
+/**
+ * What a permission lets somebody do, in words. The server names permissions
+ * for code; somebody deciding whom to give a role reads this instead. An
+ * unknown one is shown as it is rather than hidden.
+ */
+export function permissionWords(permission: string): string {
+  const words: Record<string, string> = {
+    read: "see projects",
+    "issue.write": "create and edit issues",
+    "issue.transition": "move issues through the workflow",
+    "comment.write": "comment",
+    "sprint.manage": "plan sprints",
+    "team.manage": "manage teams",
+    "board.configure": "set up boards",
+    "project.administer": "administer projects",
+    "project.create": "create projects",
+    "org.administer": "administer the organization",
+  };
+  return words[permission] ?? permission;
+}
+
 export function roleName(role: Role): string {
   switch (role) {
     case "global_administrator":
