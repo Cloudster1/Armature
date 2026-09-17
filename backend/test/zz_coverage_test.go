@@ -18,7 +18,7 @@ func TestEveryOperationWasExercisedBothWays(t *testing.T) {
 	neverSucceeded, neverRefused := apiContract.uncovered()
 	// A GET with no input and no session cannot be refused; there is nothing
 	// to refuse it for.
-	unrefusable := map[string]bool{"GET /healthz": true, "GET /readyz": true, "GET /openapi.json": true}
+	unrefusable := map[string]bool{"GET /healthz": true, "GET /readyz": true, "GET /openapi.json": true, "GET /auth/signup": true}
 	kept := neverRefused[:0]
 	for _, key := range neverRefused {
 		if !unrefusable[key] {
