@@ -196,6 +196,10 @@ func toAPIError(err error) *APIError {
 		return domainNotTrusted(err)
 	case errors.Is(err, privacy.ErrLastOwner):
 		return &APIError{Status: http.StatusConflict, Code: "last_owner", Message: lastOwner(err)}
+	case errors.Is(err, privacy.ErrNotOwner):
+		return ErrForbidden("Only an owner can delete the organization.")
+	case errors.Is(err, privacy.ErrConfirmation):
+		return ErrValidation(map[string]string{"confirm": "Type the organization's address exactly as shown to confirm."})
 	case errors.Is(err, privacy.ErrNotAMember):
 		return ErrNotFound("That person is not a member of this organization.")
 	case errors.Is(err, privacy.ErrNotFound):

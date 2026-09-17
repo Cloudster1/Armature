@@ -95,6 +95,22 @@ func (s *Server) handleEraseMe(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleRemoveMember lets an organization go of a member.
+func (s *Server) handleDeleteOrganization(w http.ResponseWriter, r *http.Request) {
+	p := PrincipalFrom(r.Context())
+	if p.SessionID == nil {
+		respondError(w, r, ErrForbidden("An organization is deleted from a browser session, not with an API token."))
+		return
+	}
+	lsn, err := s.Privacy.DeleteOrganization(r.Context(), p.Org.ID, p.User.ID, r.URL.Query().Get("confirm"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	s.Log.Info("organization deleted", "org", p.Org.ID, "slug", p.Org.Slug, "by", p.User.ID)
+	NoteWrite(r.Context(), lsn)
+	respondNoContent(w)
+}
+
 func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
 	userID, err := uuid.Parse(chi.URLParam(r, "userID"))

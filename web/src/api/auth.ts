@@ -121,6 +121,15 @@ export function useLogout() {
   });
 }
 
+/** Deletes the current organization; its address typed back is the confirmation. */
+export function useDeleteOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (confirm: string) => request<void>(`/organization?confirm=${encodeURIComponent(confirm)}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+}
+
 export function useSwitchOrg() {
   const queryClient = useQueryClient();
   return useMutation({
