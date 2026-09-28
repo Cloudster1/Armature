@@ -1,6 +1,6 @@
+import { useAccess } from "@/api/access";
 import { Link, Outlet, createRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
-import { useMe } from "@/api/auth";
 import { Page, PageHeader, Tabs } from "@/components/ui";
 import { SchemeCards } from "@/features/workflows/library/SchemeCards";
 import { StatusCards } from "@/features/workflows/library/StatusCards";
@@ -46,10 +46,11 @@ const tabs: Array<{ value: TabId; label: string; to: string }> = [
   { value: "schemes", label: "Schemes", to: "/settings/workflows/schemes" },
 ];
 
+// What the Access page granted decides, not the seat somebody holds in the
+// organization: a member made a global administrator configures workflows.
 function useCanConfigure(): boolean {
-  const { data: me } = useMe();
-  const role = me?.principal?.role;
-  return role === "owner" || role === "admin";
+  const { data: access } = useAccess();
+  return access?.canAdministerOrg ?? false;
 }
 
 function WorkflowLibrary() {
