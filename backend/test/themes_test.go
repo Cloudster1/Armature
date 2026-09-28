@@ -55,6 +55,26 @@ func TestThemesOverTheAPI(t *testing.T) {
 		}
 	})
 
+	t.Run("the same name is free again in another organization of one's own", func(t *testing.T) {
+		demo := want(t, owner.post("/api/v1/organizations/demo", nil), http.StatusCreated, "a second organization")
+		home := principalField(t, signedUp, "principal", "org", "slug").(string)
+		defer func() {
+			want(t, owner.post("/api/v1/auth/switch-org", map[string]string{"slug": home}), http.StatusOK, "back home")
+		}()
+		if me := want(t, owner.get("/api/v1/auth/me"), http.StatusOK, "where am I"); principalField(t, me, "principal", "org", "slug") != obj(t, demo, "organization")["slug"] {
+			t.Fatalf("the session is not in the new organization: %s", me.Raw)
+		}
+		h.waitForPrimary(t)
+		if there := want(t, owner.get("/api/v1/themes"), http.StatusOK, "themes there"); len(list(t, there, "themes")) != 0 {
+			t.Fatalf("the new organization starts with themes: %s", there.Raw)
+		}
+		want(t, owner.post("/api/v1/themes", map[string]any{"name": "Magenta", "spec": spec}), http.StatusCreated, "the same name there")
+		if _, err := h.super.Exec(context.Background(), `
+			INSERT INTO theme (org_id, owner_id, name) SELECT org_id, owner_id, name FROM theme WHERE id = $1`, themeID); err == nil {
+			t.Fatal("the database took a second theme by that name in the same organization")
+		}
+	})
+
 	t.Run("what is refused on the way in", func(t *testing.T) {
 		refuse := func(what string, got response, status int) {
 			t.Helper()
