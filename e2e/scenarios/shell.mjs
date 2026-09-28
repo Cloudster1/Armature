@@ -105,3 +105,13 @@ scenario("nothing in the page reports a script error", async ({ page }) => {
   const real = problems.filter((p) => !p.includes("401") && !p.includes("Failed to load resource"));
   expect.equal(real.length, 0, `console errors: ${real.join(" | ")}`);
 });
+
+// The build is named where a problem report can read it out.
+scenario("the foot of the sidebar names the running build", async ({ page }) => {
+  await signUp(page);
+  await page.waitForSelector("[data-build]", { timeout: WAIT });
+  const stamp = await textOf(page, "[data-build]");
+  expect.truthy(/\S/.test(stamp), "the foot names a build");
+  const title = await page.$eval("[data-build]", (el) => el.getAttribute("title") ?? "");
+  expect.truthy(stamp.startsWith("dev") || /\(/.test(stamp) || title.includes("commit"), `the stamp reads as a build: ${stamp}`);
+});

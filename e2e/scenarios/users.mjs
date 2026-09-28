@@ -68,3 +68,20 @@ scenario("an administrator's own row is not theirs to change here", async ({ pag
   const disabled = await page.$eval('[data-action="rename-user"]', (el) => el.disabled || el.getAttribute("aria-disabled") === "true");
   expect.truthy(disabled, "the owner's own row offers nothing");
 });
+
+// Somebody the identity provider vouched for who is not a member is sent back
+// to the sign-in page with a reason. Said there: who can let them in, and
+// where. The page that lists the waiting takes no room while nobody waits.
+scenario("somebody the provider knows is told who can let them in", async ({ page }) => {
+  await goto(page, "/login?sso=not_a_member");
+  await page.waitForSelector("[role=alert]", { timeout: WAIT });
+  const told = await textOf(page, "[role=alert]");
+  expect.contains(told, "let you in", "the refusal says what happens next");
+  expect.contains(told, "Users page", "the refusal says where");
+
+  await signUp(page);
+  await goto(page, "/settings/users");
+  await page.waitForSelector("[data-new-user]", { timeout: WAIT });
+  const waiting = await page.$("[data-join-requests]");
+  expect.truthy(waiting === null, "an empty waiting list is drawn");
+});

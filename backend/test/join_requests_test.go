@@ -3,11 +3,15 @@
 package test
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
 	"testing"
 
+	"github.com/google/uuid"
+
+	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/oidc"
 )
 
@@ -87,4 +91,61 @@ func TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage(t *testing.T) {
 			t.Fatalf("session in %s, want %s", session.OrgID, ws.orgID)
 		}
 	})
+}
+
+// The requests are tenant rows like any other: one organization's
+// administrators never see, nor decide, who is waiting at another's door.
+// Tried straight through SQL, as the application role.
+func TestJoinRequestsStayWithinTheirTenant(t *testing.T) {
+	h := newHarness(t)
+	orgA, ctxA := h.makeOrg(t, "door-a")
+	orgB, ctxB := h.makeOrg(t, "door-b")
+
+	var stranger uuid.UUID
+	if err := h.super.QueryRow(context.Background(), `
+		INSERT INTO app_user (email, name) VALUES ($1, 'Stranger') RETURNING id`,
+		h.email(t, "stranger")).Scan(&stranger); err != nil {
+		t.Fatalf("make the stranger: %v", err)
+	}
+	if _, err := h.cluster.Write(ctxA, func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, orgA, stranger)
+		return err
+	}); err != nil {
+		t.Fatalf("org A notes a request: %v", err)
+	}
+
+	count := func(ctx context.Context) int {
+		var n int
+		if err := h.cluster.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
+			return tx.QueryRow(ctx, `SELECT count(*) FROM org_join_request`).Scan(&n)
+		}); err != nil {
+			t.Fatalf("count: %v", err)
+		}
+		return n
+	}
+	if got := count(ctxA); got != 1 {
+		t.Errorf("org A sees %d requests, want its own 1", got)
+	}
+	if got := count(ctxB); got != 0 {
+		t.Errorf("org B sees %d of org A's requests, want none", got)
+	}
+
+	_, err := h.cluster.Write(ctxB, func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, orgA, stranger)
+		return err
+	})
+	if err == nil {
+		t.Errorf("org B wrote a request into org A's door")
+	}
+	_, err = h.cluster.Write(ctxB, func(ctx context.Context, tx db.DBTX) error {
+		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE org_id = $1`, orgA)
+		if err == nil && tag.RowsAffected() != 0 {
+			return errors.New("org B deleted org A's request")
+		}
+		return err
+	})
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	_ = orgB
 }

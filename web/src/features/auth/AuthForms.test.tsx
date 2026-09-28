@@ -64,6 +64,17 @@ describe("LoginForm", () => {
     expect(safeNext("/projects")).toBe("/projects");
   });
 
+  // The provider knew them and the tracker did not: the page says who can
+  // change that, not just that it failed.
+  it("tells somebody the provider vouched for that an administrator can let them in", () => {
+    window.history.replaceState({}, "", "/login?sso=not_a_member");
+    mockLogin({ mutate: vi.fn() });
+    wrap(<LoginForm />);
+    expect(screen.getByText(/nobody here has let you in yet/)).toBeTruthy();
+    expect(screen.getByText(/Users page/)).toBeTruthy();
+    window.history.replaceState({}, "", "/login");
+  });
+
   it("asks somebody in several organizations which one they came for", async () => {
     const mutate = vi.fn((_input, options) => options?.onSuccess?.());
     mockLogin({ mutate });
