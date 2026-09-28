@@ -38,6 +38,23 @@ func TestThemesOverTheAPI(t *testing.T) {
 		t.Fatalf("the spec did not come back: %s", made.Raw)
 	}
 
+	t.Run("the shipped examples are offered, and one saves as a theme of one's own", func(t *testing.T) {
+		listed := want(t, owner.get("/api/v1/themes/examples"), http.StatusOK, "examples")
+		examples := list(t, listed, "examples")
+		if len(examples) == 0 {
+			t.Fatalf("no examples: %s", listed.Raw)
+		}
+		first := examples[0].(map[string]any)
+		if first["key"] != "deep-tech" || first["name"] != "Deep-Tech" {
+			t.Fatalf("the first example is %v", first)
+		}
+		saved := want(t, owner.post("/api/v1/themes", map[string]any{"name": "My Deep-Tech", "spec": first["spec"]}), http.StatusCreated, "save an example")
+		wantAccent := first["spec"].(map[string]any)["colors"].(map[string]any)["dark"].(map[string]any)["accent"]
+		if obj(t, saved, "theme", "spec", "colors", "dark")["accent"] != wantAccent {
+			t.Fatalf("the example's colours did not survive saving: %s", saved.Raw)
+		}
+	})
+
 	t.Run("what is refused on the way in", func(t *testing.T) {
 		refuse := func(what string, got response, status int) {
 			t.Helper()

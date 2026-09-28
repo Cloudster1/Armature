@@ -3,6 +3,7 @@
 import { scenario } from "../runner.mjs";
 import {
   acceptInvite,
+  clickButton,
   confirm,
   createTheme,
   expect,
@@ -92,4 +93,27 @@ scenario("the editor previews a draft on the page and takes it off again", async
   await page.waitForFunction((s) => getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() === s, { timeout: WAIT }, stock);
   const disabled = await page.$eval('[data-action="save-theme"]', (el) => el.disabled);
   expect.truthy(disabled, "a theme without a name cannot be saved");
+});
+
+// The product ships a theme to start from; picking it fills the draft, the
+// preview paints the page in its colours, and saving keeps it as one's own.
+scenario("a new theme starts from the shipped Deep-Tech example", async ({ page }) => {
+  await signUp(page);
+  await goto(page, "/settings/themes/new");
+  await page.waitForSelector('[data-theme-example="deep-tech"]', { timeout: WAIT });
+  await page.click('[data-theme-example="deep-tech"]');
+  await page.waitForFunction(() => document.querySelector('[data-theme-example="deep-tech"]')?.getAttribute("aria-checked") === "true", { timeout: WAIT });
+  const named = await page.$eval("#field-theme-name", (el) => el.value);
+  expect.equal(named, "Deep-Tech", "the example names the draft");
+
+  await page.click('[data-action="preview-theme"]');
+  await page.waitForFunction(() => {
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim().toLowerCase();
+    return accent === "#2f6fd6" || accent === "#5cc8ff";
+  }, { timeout: WAIT });
+
+  await clickButton(page, "Save theme");
+  await page.waitForFunction(() => /\/settings\/themes\/[0-9a-f-]{36}$/.test(location.pathname), { timeout: WAIT });
+  await goto(page, "/settings/themes");
+  await page.waitForSelector('[data-theme-row="Deep-Tech"]', { timeout: WAIT });
 });

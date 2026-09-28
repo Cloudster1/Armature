@@ -33,6 +33,10 @@ func (s *Server) handleListThemes(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"themes": themes})
 }
 
+func (s *Server) handleThemeExamples(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, r, http.StatusOK, map[string]any{"examples": theme.Examples()})
+}
+
 func (s *Server) handleCreateTheme(w http.ResponseWriter, r *http.Request) {
 	var req theme.Input
 	if err := decodeJSON(w, r, &req); err != nil {

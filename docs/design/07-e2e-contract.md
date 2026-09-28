@@ -98,7 +98,7 @@ one named helper so each scenario moves by a line.
   data-rule-condition, data-rule-action, data-rule-log, data-rule-run, data-incoming-address,
   data-webhook, data-webhook-enabled, data-webhook-menu, data-webhook-form, data-webhook-secret,
   data-secret-value, data-topic, data-webhook-log, data-delivery, data-delivery-state,
-  data-template, data-testid, data-theme, data-time-spent, data-unwatched, data-value,
+  data-template, data-testid, data-theme, data-theme-example, data-theme-start, data-time-spent, data-unwatched, data-value,
   data-widget, data-widget-loading, data-workflow-canvas, data-workflow-card, data-workflow-edge,
   data-workflow-edge-label, data-workflow-graph, data-workflow-initial, data-workflow-node,
   data-workflow-subtitle,

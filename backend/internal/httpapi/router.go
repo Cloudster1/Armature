@@ -311,6 +311,7 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	// before the id routes so "active" is never taken for a theme's id.
 	r.Get("/themes", s.handleListThemes)
 	r.Post("/themes", s.handleCreateTheme)
+	r.Get("/themes/examples", s.handleThemeExamples)
 	r.Get("/themes/active", s.handleActiveTheme)
 	r.Put("/themes/active", s.handleChooseTheme)
 	r.Get("/themes/{themeID}", s.handleGetTheme)

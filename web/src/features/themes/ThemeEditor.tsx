@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useChooseTheme, useCreateTheme, useDeleteThemeAsset, useUpdateTheme, useUploadThemeAsset, type Theme, type ThemeAsset, type ThemeSpec } from "@/api/themes";
-import { Button, Card, ColorField, ErrorBanner, Field, IconButton, SectionTitle, Segmented, SelectInput, Switch, Tabs, Tag, useToast } from "@/components/ui";
+import { useChooseTheme, useCreateTheme, useDeleteThemeAsset, useThemeExamples, useUpdateTheme, useUploadThemeAsset, type Theme, type ThemeAsset, type ThemeExample, type ThemeSpec } from "@/api/themes";
+import { Button, Card, ColorField, ErrorBanner, Field, IconButton, OptionCard, SectionTitle, Segmented, SelectInput, Switch, Tabs, Tag, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { KILOBYTE, THEME_ASSET_MAX_BYTES, THEME_CSS_MAX_BYTES, THEME_CSS_ROWS, THEME_CURSOR_PX, THEME_ICON_PREVIEW_PX, THEME_MAX_HOTSPOT, THEME_MAX_RADIUS, THEME_PREVIEW_DEBOUNCE_MS } from "@/config";
 import { compileTheme, emptySpec } from "@/lib/theme-css";
@@ -52,6 +52,7 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
   const [spec, setSpec] = useState<ThemeSpec>(() => (theme ? structuredClone(theme.spec) : emptySpec()));
   const [tab, setTab] = useState<TabID>("colours");
   const [preview, setPreview] = useState(false);
+  const [startedFrom, setStartedFrom] = useState("blank");
   const assets = theme?.assets ?? [];
   const saving = create.isPending || update.isPending;
   const patch = (change: (draft: ThemeSpec) => void) =>
@@ -118,6 +119,8 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
         </div>
       </Card>
 
+      {!theme && <StartFrom chosen={startedFrom} onChoose={(example) => { setStartedFrom(example?.key ?? "blank"); setSpec(example ? structuredClone(example.spec) : emptySpec()); if (example && !name.trim()) setName(example.name); }} />}
+
       <Tabs<TabID> label="Theme" value={tab} onChange={setTab} tabs={tabs.map((each) => ({ ...each, attrs: { "data-theme-tab": each.label } }))} />
 
       {tab === "colours" && <ColoursTab spec={spec} patch={patch} />}
@@ -133,6 +136,25 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
 }
 
 type Patch = (change: (draft: ThemeSpec) => void) => void;
+
+// A new theme starts blank or from one the product ships; picking one
+// replaces the whole draft, so it comes before anything is typed.
+function StartFrom({ chosen, onChoose }: { chosen: string; onChoose: (example: ThemeExample | null) => void }) {
+  const { data } = useThemeExamples();
+  const examples = data?.examples ?? [];
+  if (examples.length === 0) return null;
+  return (
+    <Card className="p-4" data-theme-start>
+      <SectionTitle className="mb-3">Start from</SectionTitle>
+      <div role="radiogroup" aria-label="Start from" className="grid gap-3 sm:grid-cols-3">
+        <OptionCard title="Blank" description="Every colour is the stylesheet's until you change it." checked={chosen === "blank"} onSelect={() => onChoose(null)} data-theme-example="blank" />
+        {examples.map((example) => (
+          <OptionCard key={example.key} title={example.name} description={example.description} checked={chosen === example.key} onSelect={() => onChoose(example)} data-theme-example={example.key} />
+        ))}
+      </div>
+    </Card>
+  );
+}
 
 function stockValue(token: string): string {
   try {

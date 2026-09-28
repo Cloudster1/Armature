@@ -3177,6 +3177,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/themes/examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The themes shipped with the product, to start a theme from. */
+        get: operations["themeExamples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/themes/{themeID}": {
         parameters: {
             query?: never;
@@ -4564,6 +4581,12 @@ export interface components {
         };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
+        };
+        Example: {
+            description: string;
+            key: string;
+            name: string;
+            spec: components["schemas"]["Spec"];
         };
         Field: {
             /** Format: date-time */
@@ -15326,6 +15349,37 @@ export interface operations {
                 content: {
                     "application/json": {
                         theme: components["schemas"]["Theme"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    themeExamples: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        examples: components["schemas"]["Example"][];
                     };
                 };
             };

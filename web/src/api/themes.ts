@@ -35,7 +35,21 @@ export interface ThemeInput {
   spec?: ThemeSpec;
 }
 
+/** A theme shipped with the product, to start one's own from. */
+export interface ThemeExample {
+  key: string;
+  name: string;
+  description: string;
+  spec: ThemeSpec;
+}
+
 export const themesQueryKey = ["themes"] as const;
+export const themeExamplesQueryKey = ["themes", "examples"] as const;
+
+export function useThemeExamples() {
+  return useQuery({ queryKey: themeExamplesQueryKey, queryFn: () => request<{ examples: ThemeExample[] }>("/themes/examples"), staleTime: Infinity });
+}
+
 export const activeThemeQueryKey = ["themes", "active"] as const;
 
 export function useThemes() {

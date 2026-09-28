@@ -13806,6 +13806,48 @@
         }
       }
     },
+    "/themes/examples": {
+      "get": {
+        "operationId": "themeExamples",
+        "summary": "The themes shipped with the product, to start a theme from.",
+        "tags": [
+          "themes"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "examples": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Example"
+                      }
+                    }
+                  },
+                  "required": [
+                    "examples"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/themes/{themeID}": {
       "delete": {
         "operationId": "deleteTheme",
@@ -18909,6 +18951,29 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "Example": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/Spec"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "spec"
         ]
       },
       "Field": {
