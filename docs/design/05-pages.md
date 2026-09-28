@@ -357,9 +357,11 @@ built-in theme). `[data-themes-view="mine"|"shared"]` switch the list;
 (`[data-theme-editor=<id>|"new"]`). A new theme opens with a Start from card
 (`[data-theme-start]`): Blank, then the themes the product ships, from
 `GET /themes/examples`, each an OptionCard `[data-theme-example=<key>]`;
-picking one replaces the draft and names it. Deep-Tech is the one shipped,
-drawn from `docs/design/newdesign.jpeg`, and the seed installs it shared in
-the demo organization. Then `#field-theme-name`, a Switch "Shared with
+picking one replaces the draft and names it. Two are shipped, both drawn from
+`docs/design/newdesign.jpeg`: Deep-Tech, the palette and the glass, and
+Constellation, the same with the lattice of points and lines behind the
+content and the rail and sidebar in dark slate whatever the palette. The seed
+installs both, shared, in the demo organization. Then `#field-theme-name`, a Switch "Shared with
 the organization" (`[data-theme-shared]`), a Switch "Preview on this page"
 (`[data-action="preview-theme"]`) that shows the draft on the page it is on,
 "Save theme" (`[data-action="save-theme"]`) and, once saved, "Use this theme"

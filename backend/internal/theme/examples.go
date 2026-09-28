@@ -1,5 +1,7 @@
 package theme
 
+import "strings"
+
 // Example is a theme anybody may start from. The editor offers them beside
 // a blank sheet, and the demo organization gets them installed.
 type Example struct {
@@ -12,7 +14,7 @@ type Example struct {
 // Examples are the themes shipped with the product; docs/design/newdesign.jpeg
 // is the picture Deep-Tech is drawn from.
 func Examples() []Example {
-	examples := []Example{deepTech()}
+	examples := []Example{deepTech(), constellation()}
 	for i := range examples {
 		examples[i].Spec.normalise()
 	}
@@ -31,6 +33,93 @@ func ExampleByKey(key string) *Example {
 }
 
 func intPtr(n int) *int { return &n }
+
+// svgDataURI makes a small drawing safe to carry inside a stylesheet: the
+// characters CSS or the validator would trip on are percent encoded, so
+// no tag ever appears in the text.
+func svgDataURI(svg string) string {
+	encoded := strings.NewReplacer("\n", "", "<", "%3C", ">", "%3E", "#", "%23", "\"", "%22", " ", "%20").Replace(strings.TrimSpace(svg))
+	return "data:image/svg+xml," + encoded
+}
+
+// constellation is Deep-Tech with the picture's other half: the lattice of
+// points and lines behind the content, drawn as a tile so the theme still
+// carries no file, and a deeper teal in the dark.
+func constellation() Example {
+	base := deepTech()
+	light := map[string]string{}
+	for k, v := range base.Spec.Colors.Light {
+		light[k] = v
+	}
+	dark := map[string]string{}
+	for k, v := range base.Spec.Colors.Dark {
+		dark[k] = v
+	}
+	for k, v := range map[string]string{
+		"backdrop-from": "#eef3f8", "backdrop-to": "#cfdbe8", "accent": "#1f7fb8", "accent-hover": "#186a9a",
+		"accent-subtle": "#dcedf8", "focus": "#1f7fb8", "selection": "#d3e6f4", "chart-1": "#1f7fb8",
+	} {
+		light[k] = v
+	}
+	for k, v := range map[string]string{
+		"canvas": "#0a141d", "surface": "#10202c", "surface-raised": "#172b3a", "surface-sunken": "#071017",
+		"surface-overlay": "#14283a", "surface-glass": "rgb(16 32 44 / 0.6)", "backdrop-from": "#123141",
+		"backdrop-to": "#07111a", "border": "#1f3a4c", "border-strong": "#2f5468",
+		"accent": "#4fd1c5", "accent-hover": "#7de3d9", "accent-subtle": "#123a3d", "primary": "#4fd1c5",
+		"primary-hover": "#7de3d9", "focus": "#4fd1c5", "selection": "#174549", "chart-1": "#4fd1c5", "chart-5": "#5cc8ff",
+	} {
+		dark[k] = v
+	}
+	// One tile of the lattice: eight points and the lines between them, in
+	// the current border colour so it sits behind either palette.
+	lattice := svgDataURI(`<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" fill="none" stroke="rgb(110 150 190 / 0.35)" stroke-width="1">
+<path d="M40 60L150 30L250 90L330 40M150 30L120 170L40 60M120 170L250 90L290 210L330 330M120 170L60 300L200 320L290 210M200 320L330 330M60 300L40 60"/>
+<g fill="rgb(110 150 190 / 0.55)" stroke="none"><circle cx="40" cy="60" r="2.5"/><circle cx="150" cy="30" r="2"/><circle cx="250" cy="90" r="3"/><circle cx="330" cy="40" r="2"/><circle cx="120" cy="170" r="2.5"/><circle cx="290" cy="210" r="2"/><circle cx="60" cy="300" r="2"/><circle cx="200" cy="320" r="3"/><circle cx="330" cy="330" r="2"/></g>
+</svg>`)
+	css := `.bg-backdrop {
+  background-color: var(--color-backdrop-to);
+  background-image:
+    radial-gradient(circle at 15% 10%, var(--color-backdrop-from) 0, transparent 48%),
+    radial-gradient(circle at 85% 90%, var(--color-accent-subtle) 0, transparent 42%),
+    url("` + lattice + `");
+  background-size: auto, auto, 360px 360px;
+  background-attachment: fixed;
+}
+
+/* The picture's column: the rail and the sidebar in dark slate whatever the
+   palette, done by giving that column its own values for the tokens the
+   kit paints it with. */
+[data-rail], [data-sidebar] {
+  --color-surface: #1b2a3a;
+  --color-surface-raised: #26394d;
+  --color-surface-overlay: #223548;
+  --color-border: #2c4157;
+  --color-border-strong: #3d5670;
+  --color-ink: #e6eef8;
+  --color-ink-muted: #a7b8cc;
+  --color-ink-subtle: #7b8fa6;
+  --color-ink-disabled: #52657a;
+  --color-accent: #7fd4ff;
+  --color-accent-hover: #a5e1ff;
+  --color-accent-subtle: #24405a;
+  --color-selection: #24405a;
+}`
+	shadows := map[string]string{}
+	for k, v := range base.Spec.Shadows {
+		shadows[k] = v
+	}
+	return Example{
+		Key:         "constellation",
+		Name:        "Constellation",
+		Description: "Deep-Tech with the lattice of points and lines behind everything, and teal after dark.",
+		Spec: Spec{
+			Colors:  Palette{Light: light, Dark: dark},
+			Shape:   Shape{RadiusControl: intPtr(8), RadiusOverlay: intPtr(12)},
+			Shadows: shadows,
+			CSS:     css,
+		},
+	}
+}
 
 // deepTech is cool slate and glass: a soft grey-blue gradient in the light,
 // a night of navy in the dark, one cyan accent for what is current, cards
