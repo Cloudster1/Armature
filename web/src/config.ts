@@ -299,6 +299,9 @@ export const KILOBYTE = 1024;
 /** How much of a commit hash the foot of the screen shows; the rest is in its title. */
 export const COMMIT_SHORT_LENGTH = 7;
 
+/** The gap between a menu's trigger and its list, in pixels. */
+export const MENU_GAP_PX = 4;
+
 /** How many wandering points the constellation backdrop draws per million pixels of page. */
 export const CONSTELLATION_POINTS_PER_MEGAPIXEL = 70;
 
