@@ -23,8 +23,8 @@ ARG CGO_ENABLED=0
 ARG VERSION=""
 ARG COMMIT=""
 ARG BUILT_AT=""
-COPY .git /src/.git
 RUN apk add --no-cache git && git config --global --add safe.directory /src
+COPY .git /src/.git
 ENV GOFLAGS=-buildvcs=false
 
 RUN --mount=type=cache,target=/go/pkg/mod \
