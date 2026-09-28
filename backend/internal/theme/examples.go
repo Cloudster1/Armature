@@ -12,7 +12,7 @@ type Example struct {
 // Examples are the themes shipped with the product; docs/design/newdesign.jpeg
 // is the picture Deep-Tech is drawn from.
 func Examples() []Example {
-	examples := []Example{deepTech(), constellation()}
+	examples := append([]Example{deepTech(), constellation()}, shipped()...)
 	for i := range examples {
 		examples[i].Spec.normalise()
 	}

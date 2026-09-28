@@ -402,7 +402,8 @@ own, its files given ids of their own and the spec and CSS rewritten to name
 them, a taken name numbered; the row menu's Export as a file
 (`export-theme`) downloads `GET /themes/<id>/export`, a JSON document of
 format `armature-theme/1` with the name, the spec and every file inline.
-`docs/design/themes/` keeps such files; `minecraft.armature-theme.json` is the
+`backend/internal/theme/shipped/` keeps such files, and the Themes page offers
+them as examples too; `minecraft.armature-theme.json` is the
 one the browser suite imports.
 
 `/settings/themes/new` and `/settings/themes/<id>` are the editor
