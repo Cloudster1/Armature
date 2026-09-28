@@ -28,6 +28,7 @@ import (
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/observability"
+	"github.com/armature/armature/backend/internal/perm"
 	"github.com/armature/armature/backend/internal/plan"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/report"
@@ -336,7 +337,7 @@ func (h *harness) newWorkspace(t *testing.T, name string) *workspace {
 	sprints, plans := h.sprintService(issues)
 	teams := team.NewService(h.cluster)
 	plans.WithTeams(teams)
-	actor := issue.Actor{UserID: creds.Principal.User.ID, OrgRole: creds.Principal.Role}
+	actor := issue.Actor{UserID: creds.Principal.User.ID, OrgRole: creds.Principal.Role, Perms: perm.NewSet(nil).WithEverything()}
 
 	// The key must be unique per run and not merely derived from the name:
 	// two workspaces whose names share a prefix would otherwise get the same

@@ -154,17 +154,22 @@ func TestAPortalCodeCannotBeGuessedByAskingAgain(t *testing.T) {
 	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusOK, "the right code works again")
 }
 
-func TestASingleSignOnReachesOnlyItsOrganization(t *testing.T) {
+// A provider's sign-in vouches for the person wherever that provider is
+// trusted, and in an organization of their own; nowhere else.
+func TestASingleSignOnReachesItsProviderAndItsOwn(t *testing.T) {
 	h := newHarness(t)
 	home := h.newWorkspace(t, "ssohome")
 	away := h.newWorkspace(t, "ssoaway")
+	twin := h.newWorkspace(t, "ssotwin")
 	elsewhere := h.newWorkspace(t, "ssoelse")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, home, provider, false)
+	configured(t, h, twin, provider, false)
 
 	email := h.email(t, "traveller")
 	h.joinExisting(t, home, email, "member")
 	h.joinExisting(t, away, email, "member")
+	h.joinExisting(t, twin, email, "member")
 
 	if _, err := signInWith(t, h, svc, home, provider, clientID, map[string]any{"email": email, "email_verified": false}); !errors.Is(err, oidc.ErrEmailUnverified) {
 		t.Fatalf("an address the provider never verified signed in: %v", err)
@@ -188,7 +193,36 @@ func TestASingleSignOnReachesOnlyItsOrganization(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, awaySlug); !errors.Is(err, auth.ErrSessionStaysHome) {
-		t.Fatalf("a provider's sign-in switched into another organization: %v", err)
+		t.Fatalf("a provider's sign-in switched into an organization with another provider: %v", err)
+	}
+	if _, err := h.super.Exec(ctx, `UPDATE user_session SET current_org_id = $2 WHERE id = $1`, *principal.SessionID, away.orgID); err == nil {
+		t.Fatal("the database let a provider's session into an organization with another provider")
+	}
+
+	slugOf := func(orgID uuid.UUID) string {
+		var slug string
+		if err := h.super.QueryRow(ctx, `SELECT slug FROM org WHERE id = $1`, orgID).Scan(&slug); err != nil {
+			t.Fatal(err)
+		}
+		return slug
+	}
+	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, slugOf(twin.orgID)); err != nil {
+		t.Fatalf("a provider's sign-in did not reach an organization trusting the same provider: %v", err)
+	}
+	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, slugOf(home.orgID)); err != nil {
+		t.Fatalf("a provider's sign-in could not come home: %v", err)
+	}
+
+	own, _, err := accounts.CreateOrganization(ctx, principal.User.ID, "Traveller's own", "ssoown-"+uuid.NewString()[:8], "")
+	if err != nil {
+		t.Fatalf("make an organization of their own: %v", err)
+	}
+	t.Cleanup(func() { _, _ = h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, own.ID) })
+	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, own.Slug); err != nil {
+		t.Fatalf("a provider's sign-in did not reach the organization the person owns: %v", err)
+	}
+	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, slugOf(home.orgID)); err != nil {
+		t.Fatalf("a provider's sign-in could not come home from its own organization: %v", err)
 	}
 
 	_, token, err := accounts.CreateInvite(elsewhere.ctx, email, auth.RoleMember, elsewhere.actor.UserID, time.Hour)

@@ -351,6 +351,10 @@ func moreAPIError(err error) *APIError {
 		return ErrNotFound("That worklog was not found.")
 	case errors.Is(err, issue.ErrNotYourWorklog):
 		return ErrForbidden(capitalize(issue.ErrNotYourWorklog.Error()) + ".")
+	case errors.Is(err, issue.ErrNotYourComment):
+		return ErrForbidden(capitalize(issue.ErrNotYourComment.Error()) + ".")
+	case errors.Is(err, issue.ErrDeleteTakesAdministering):
+		return ErrForbidden(capitalize(issue.ErrDeleteTakesAdministering.Error()) + ".")
 	case errors.Is(err, issue.ErrBadDuration):
 		return ErrBadRequest(capitalize(withoutSentinel(err, issue.ErrBadDuration)) + ".")
 	case errors.Is(err, attachment.ErrNotFound):

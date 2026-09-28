@@ -55,9 +55,10 @@ describe("LoginForm", () => {
   it("goes back where it was sent from after signing in, and only within the app", async () => {
     const mutate = vi.fn((_input, options) => options?.onSuccess?.());
     mockLogin({ mutate });
+    me.mockResolvedValue({ principal: { user: { id: "u1" }, org: { slug: "only" } }, organizations: [{ orgId: "o1", orgSlug: "only", orgName: "Only", role: "owner" }] });
     wrap(<LoginForm next="/invite" />);
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(navigate).toHaveBeenCalledWith({ href: "/invite" });
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ href: "/invite" }));
 
     expect(safeNext("//evil.example")).toBeUndefined();
     expect(safeNext("https://evil.example")).toBeUndefined();
@@ -94,6 +95,25 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /Second Corp/ }));
     expect(switchOrg).toHaveBeenCalledWith("second");
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
+  });
+
+  it("asks which organization even when a page sent them", async () => {
+    const mutate = vi.fn((_input, options) => options?.onSuccess?.());
+    mockLogin({ mutate });
+    me.mockResolvedValue({
+      principal: { user: { id: "u1" }, org: { slug: "first" } },
+      organizations: [
+        { orgId: "o1", orgSlug: "first", orgName: "First Corp", role: "member" },
+        { orgId: "o2", orgSlug: "second", orgName: "Second Corp", role: "admin" },
+      ],
+    });
+
+    wrap(<LoginForm next="/issues/SEC-1" />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await screen.findByText("Which organization?");
+    await userEvent.click(screen.getByRole("button", { name: /Second Corp/ }));
+    expect(switchOrg).toHaveBeenCalledWith("second");
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ href: "/issues/SEC-1" }));
   });
 
   it("goes straight in with only one organization", async () => {

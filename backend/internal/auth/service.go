@@ -508,17 +508,11 @@ func (s *Service) CreateOrganization(ctx context.Context, userID uuid.UUID, name
 }
 
 // SwitchOrg points a session at another organization of the person's, when its
-// proof vouches for them beyond the organization it was opened for.
+// proof vouches for them there. The database decides that with the same
+// function its trigger applies, so the two cannot drift apart.
 func (s *Service) SwitchOrg(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, slug string) (*Org, db.LSN, error) {
 	var org Org
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var proof Proof
-		if err := tx.QueryRow(ctx, `SELECT proof FROM user_session WHERE id = $1`, sessionID).Scan(&proof); err != nil {
-			return err
-		}
-		if !proof.ReachesEverywhere() {
-			return ErrSessionStaysHome
-		}
 		err := tx.QueryRow(ctx, `
 			SELECT o.id, o.slug, o.name
 			FROM org o
@@ -531,6 +525,15 @@ func (s *Service) SwitchOrg(ctx context.Context, sessionID uuid.UUID, userID uui
 		}
 		if err != nil {
 			return err
+		}
+		var reaches bool
+		if err := tx.QueryRow(ctx, `
+			SELECT session_reaches(proof, proof_org_id, user_id, $2) FROM user_session WHERE id = $1`,
+			sessionID, org.ID).Scan(&reaches); err != nil {
+			return err
+		}
+		if !reaches {
+			return ErrSessionStaysHome
 		}
 		_, err = tx.Exec(ctx, `UPDATE user_session SET current_org_id = $2 WHERE id = $1`, sessionID, org.ID)
 		return err
@@ -581,8 +584,8 @@ func insertSessionFor(ctx context.Context, tx db.DBTX, userID uuid.UUID, orgID, 
 	}
 	var id uuid.UUID
 	err = tx.QueryRow(ctx, `
-		INSERT INTO user_session (user_id, token_hash, current_org_id, user_agent, ip, expires_at, portal_project_id, proof)
-		VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, '')::inet, $6, $7, $8)
+		INSERT INTO user_session (user_id, token_hash, current_org_id, proof_org_id, user_agent, ip, expires_at, portal_project_id, proof)
+		VALUES ($1, $2, $3, $3, NULLIF($4, ''), NULLIF($5, '')::inet, $6, $7, $8)
 		RETURNING id`,
 		userID, digest, orgID, userAgent, ip, expiresAt, portalProject, string(proof),
 	).Scan(&id)

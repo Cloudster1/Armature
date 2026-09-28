@@ -12,6 +12,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // WorklogInput is one stretch of time as it was reported.
@@ -181,7 +182,7 @@ func (s *Service) UpdateWorklog(ctx context.Context, id uuid.UUID, in WorklogInp
 		if err != nil {
 			return err
 		}
-		if err := mayTouch(before, actor); err != nil {
+		if err := mayTouch(ctx, tx, before, actor); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE issue_worklog SET minutes = $2, started_on = $3, note = $4 WHERE id = $1`,
@@ -213,7 +214,7 @@ func (s *Service) DeleteWorklog(ctx context.Context, id uuid.UUID, actor Actor) 
 		if err != nil {
 			return err
 		}
-		if err := mayTouch(before, actor); err != nil {
+		if err := mayTouch(ctx, tx, before, actor); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM issue_worklog WHERE id = $1`, id); err != nil {
@@ -223,9 +224,19 @@ func (s *Service) DeleteWorklog(ctx context.Context, id uuid.UUID, actor Actor) 
 	})
 }
 
-func mayTouch(w *Worklog, actor Actor) error {
-	mine := w.Author != nil && w.Author.ID == actor.UserID
-	if !mine && !actor.OrgRole.CanAdminister() {
+// mayTouch lets an entry's author change it, and whoever administers the
+// project change anybody's.
+func mayTouch(ctx context.Context, tx db.DBTX, w *Worklog, actor Actor) error {
+	if w.Author != nil && w.Author.ID == actor.UserID {
+		return nil
+	}
+	var projectKey string
+	if err := tx.QueryRow(ctx, `
+		SELECT p.key FROM issue i JOIN project p ON p.id = i.project_id WHERE i.id = $1`,
+		w.IssueID).Scan(&projectKey); err != nil {
+		return err
+	}
+	if !actor.Perms.Can(perm.ProjectAdminister, projectKey) {
 		return ErrNotYourWorklog
 	}
 	return nil

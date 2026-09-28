@@ -13,6 +13,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // ErrCommentNotFound is returned for a comment that does not exist on the issue.
@@ -20,7 +21,7 @@ var ErrCommentNotFound = errors.New("comment not found")
 
 // ErrNotYourComment is returned when editing or deleting somebody else's
 // comment without the standing to do so.
-var ErrNotYourComment = errors.New("you can only change your own comments")
+var ErrNotYourComment = errors.New("you can only change your own comments, unless you administer the project")
 
 // AddComment posts a comment everybody on the issue can read, the customer
 // included.
@@ -233,12 +234,20 @@ func (s *Service) EditComment(ctx context.Context, commentID uuid.UUID, body jso
 	return comment, lsn, nil
 }
 
-// DeleteComment removes a comment. Its author may always do so; an
-// organization administrator may remove anybody's.
+// DeleteComment removes a comment. Its author may always do so; whoever
+// administers the project may remove anybody's.
 func (s *Service) DeleteComment(ctx context.Context, commentID uuid.UUID, actor Actor) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var authorID *uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT author_id FROM issue_comment WHERE id = $1`, commentID).Scan(&authorID)
+		var (
+			authorID   *uuid.UUID
+			projectKey string
+		)
+		err := tx.QueryRow(ctx, `
+			SELECT c.author_id, p.key
+			FROM issue_comment c
+			JOIN issue i ON i.id = c.issue_id
+			JOIN project p ON p.id = i.project_id
+			WHERE c.id = $1`, commentID).Scan(&authorID, &projectKey)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrCommentNotFound
 		}
@@ -247,7 +256,7 @@ func (s *Service) DeleteComment(ctx context.Context, commentID uuid.UUID, actor 
 		}
 
 		mine := authorID != nil && *authorID == actor.UserID
-		if !mine && !actor.OrgRole.CanAdminister() {
+		if !mine && !actor.Perms.Can(perm.ProjectAdminister, projectKey) {
 			return ErrNotYourComment
 		}
 

@@ -270,7 +270,10 @@ var (
 	// organization.
 	ErrWorklogNotFound = errors.New("worklog not found")
 	// ErrNotYourWorklog is returned when somebody edits time they did not log.
-	ErrNotYourWorklog = errors.New("only the person who logged this time, or an administrator, can change it")
+	ErrNotYourWorklog = errors.New("only the person who logged this time, or whoever administers the project, can change it")
+	// ErrDeleteTakesAdministering is returned when somebody without the
+	// project's administration deletes an issue in it.
+	ErrDeleteTakesAdministering = errors.New("deleting an issue takes administering its project")
 	// ErrBadDuration is returned for time that is zero, negative or absurd.
 	ErrBadDuration = errors.New("that is not an amount of time")
 )

@@ -198,8 +198,8 @@ var (
 	// ErrAlreadyMember is returned when inviting somebody who already works here.
 	ErrAlreadyMember = errors.New("that person is already a member")
 	// ErrSessionStaysHome is returned when a session proven for one organization
-	// tries to act beyond it.
-	ErrSessionStaysHome = errors.New("this sign-in only reaches the organization it was made for")
+	// tries to act beyond what that proof vouches for.
+	ErrSessionStaysHome = errors.New("this sign-in does not reach that organization")
 )
 
 // Proof is how a session was opened, which decides how far it reaches.
@@ -214,5 +214,8 @@ const (
 )
 
 // ReachesEverywhere reports whether a session proven this way may act in every
-// organization the person belongs to; the other proofs vouch for one.
+// organization the person belongs to. A mailed code and an open door vouch for
+// one; a provider's sign-in also reaches the organizations that trust the same
+// provider, and the ones the person owns, which session_reaches in the
+// database decides.
 func (p Proof) ReachesEverywhere() bool { return p == ProofPassword || p == ProofInvite }

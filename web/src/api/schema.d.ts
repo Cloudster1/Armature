@@ -1166,7 +1166,7 @@ export interface paths {
         get: operations["getIssue"];
         put?: never;
         post?: never;
-        /** Delete an issue; organization administrators only. */
+        /** Delete an issue; takes administering its project. */
         delete: operations["deleteIssue"];
         options?: never;
         head?: never;

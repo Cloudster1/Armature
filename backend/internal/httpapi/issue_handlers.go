@@ -23,7 +23,7 @@ func actorFrom(r *http.Request) issue.Actor {
 	if p == nil {
 		return issue.Actor{}
 	}
-	return issue.Actor{UserID: p.User.ID, OrgRole: p.Role}
+	return issue.Actor{UserID: p.User.ID, OrgRole: p.Role, Perms: PermsFrom(r.Context())}
 }
 
 type createIssueRequest struct {

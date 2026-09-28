@@ -4810,7 +4810,7 @@
     "/issues/{issueKey}": {
       "delete": {
         "operationId": "deleteIssue",
-        "summary": "Delete an issue; organization administrators only.",
+        "summary": "Delete an issue; takes administering its project.",
         "tags": [
           "issues"
         ],

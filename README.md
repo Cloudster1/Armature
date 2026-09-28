@@ -265,9 +265,10 @@ api and the worker with Jaeger as their endpoint; Jaeger is at
 them again. Nothing of this runs unless asked.
 
 **Security at the edges.** A session reaches what its proof vouches for: a
-password reaches every organization the person belongs to, a mailed code, an
-open desk door and single sign-on reach only the organization that asked for
-them, and the database refuses the switch as well. A write carrying the session
+password reaches every organization the person belongs to, a mailed code and an
+open desk door reach only the organization that asked for them, single sign-on
+reaches the organizations that trust the same provider and the ones the person
+owns, and the database refuses any other switch as well. A write carrying the session
 cookie must say it is JSON and, in production, come from one of this
 application's origins. Guessing at a password or an invitation is braked by the
 address guessed at, which is the connection's own unless it comes from a proxy
