@@ -7,8 +7,9 @@ import {
   useAttachments,
   useDeleteAttachment,
   useUploadAttachment,
+  useUploadLimit,
 } from "@/api/attachments";
-import { useMe, useUploadLimit } from "@/api/auth";
+import { useMe } from "@/api/auth";
 import { Button, ErrorBanner } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { relativeTime } from "@/features/issues/badges";

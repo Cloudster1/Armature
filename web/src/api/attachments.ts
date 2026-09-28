@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BASE, request, upload } from "./client";
 import { issuesQueryKey, type UserRef } from "./issues";
+import { useMe } from "./auth";
+import { ATTACHMENT_MAX_BYTES } from "@/config";
 
 /** What the tracker knows about a file on an issue; the bytes are behind attachmentUrl. */
 export interface Attachment {
@@ -84,4 +86,10 @@ export function formatSize(bytes: number): string {
   }
   const shown = unit === 0 ? String(value) : value < 10 ? value.toFixed(1) : String(Math.round(value));
   return `${shown} ${SIZE_UNITS[unit]}`;
+}
+
+/** The largest file an upload may be, as the server says; the built-in figure until it has. */
+export function useUploadLimit(): number {
+  const { data } = useMe();
+  return data?.limits?.uploadBytes ?? ATTACHMENT_MAX_BYTES;
 }

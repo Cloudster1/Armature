@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ATTACHMENT_MAX_BYTES } from "@/config";
 import { request, upload } from "./client";
 import { cacheCustomTheme } from "@/lib/theme";
 
@@ -57,12 +56,6 @@ export function useMe() {
     retry: false,
     staleTime: 30_000,
   });
-}
-
-/** The largest file an upload may be, as the server says; the built-in figure until it has. */
-export function useUploadLimit(): number {
-  const { data } = useMe();
-  return data?.limits?.uploadBytes ?? ATTACHMENT_MAX_BYTES;
 }
 
 /** Makes a demo organization with a production line in it and moves the session there. */
