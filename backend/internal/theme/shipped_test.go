@@ -36,8 +36,13 @@ func TestEveryShippedThemeFileImports(t *testing.T) {
 		if pkg.Format != PackageFormat || strings.TrimSpace(pkg.Name) == "" {
 			t.Errorf("%s is not a %s package with a name", filepath.Base(file), PackageFormat)
 		}
+		// The files the package carries are the theme's own once imported.
+		assets := map[uuid.UUID]bool{}
+		for _, a := range pkg.Assets {
+			assets[a.ID] = true
+		}
 		spec := pkg.Spec
-		if err := Validate(&spec, uuid.Nil, nil); err != nil {
+		if err := Validate(&spec, uuid.Nil, assets); err != nil {
 			t.Errorf("%s does not validate: %v", filepath.Base(file), err)
 		}
 	}

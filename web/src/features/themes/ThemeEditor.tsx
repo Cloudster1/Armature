@@ -415,15 +415,16 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
           </span>
         )}
       </div>
-      <p className="mb-2 mt-6 text-sm text-ink-muted">A moving picture the page draws live behind the content, never the same twice. It stands still for anyone who asked their system for less motion.</p>
-      <Segmented<"none" | "constellation">
+      <p className="mb-2 mt-6 text-sm text-ink-muted">A moving picture the page draws live, never the same twice: a network behind the content, or a burst of colour wherever the page is clicked. Both stand still for anyone who asked their system for less motion.</p>
+      <Segmented<"none" | "constellation" | "confetti">
         label="Moving picture"
         size="sm"
-        value={spec.effect === "constellation" ? "constellation" : "none"}
+        value={spec.effect === "constellation" || spec.effect === "confetti" ? spec.effect : "none"}
         onChange={(effect) => patch((d) => { if (effect === "none") delete d.effect; else d.effect = effect; })}
         options={[
           { value: "none", label: "None", attrs: { "data-theme-effect": "none" } },
           { value: "constellation", label: "Constellation", attrs: { "data-theme-effect": "constellation" } },
+          { value: "confetti", label: "Confetti", attrs: { "data-theme-effect": "confetti" } },
         ]}
       />
     </Card>

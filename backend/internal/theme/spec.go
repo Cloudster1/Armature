@@ -14,17 +14,19 @@ import (
 
 // Limits a theme keeps to, so one document cannot become a payload.
 const (
-	MaxSpecBytes     = 256 * 1024
-	MaxCSSBytes      = 32 * 1024
-	MaxTokensPerSet  = 64
-	MaxIcons         = 128
-	MaxPathsPerIcon  = 16
-	MaxPathBytes     = 2048
-	MaxRadius        = 32
-	MaxHotspot       = 128
-	MaxShadowBytes   = 200
-	MaxFamilyBytes   = 64
-	MaxAssetBytes    = 2 * 1024 * 1024
+	MaxSpecBytes    = 256 * 1024
+	MaxCSSBytes     = 32 * 1024
+	MaxTokensPerSet = 64
+	MaxIcons        = 128
+	MaxPathsPerIcon = 16
+	MaxPathBytes    = 2048
+	MaxRadius       = 32
+	MaxHotspot      = 128
+	MaxShadowBytes  = 200
+	MaxFamilyBytes  = 64
+	// A backdrop may be a moving picture, and an animated one weighs more
+	// than a still.
+	MaxAssetBytes    = 12 * 1024 * 1024
 	MaxAssetsPerSpec = 64
 )
 
@@ -98,7 +100,7 @@ var ShadowKeys = []string{"1", "2", "3"}
 var BackdropFits = []string{"cover", "tile"}
 
 // Effects are the moving pictures the shell knows how to draw.
-var Effects = []string{"constellation"}
+var Effects = []string{"constellation", "confetti"}
 
 var (
 	tokenName  = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
