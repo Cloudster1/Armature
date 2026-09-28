@@ -27,6 +27,7 @@ vi.mock("@/api/auth", () => ({
 }));
 vi.mock("@/api/projects", () => ({ useProject: () => ({ data: undefined }), useProjects: () => ({ data: { projects: [] } }) }));
 vi.mock("@/api/notifications", () => ({ useUnreadCount: () => ({ data: { unread: 3 } }) }));
+vi.mock("@/api/build", () => ({ useBuild: () => ({ data: { build: { version: "0.1.0", commit: "0123456789abcdef", builtAt: "2026-09-28T10:00:00Z" } } }) }));
 vi.mock("./state", async () => {
   const actual = await vi.importActual<typeof import("./state")>("./state");
   return { ...actual, useSidebarMode: () => [state.mode, toggleMode], useLastProject: () => undefined };
@@ -67,5 +68,14 @@ describe("the shell's chrome", () => {
     for (const action of ["sidebar", "theme", "guide", "inbox", "new-issue", "profile"]) {
       expect(document.querySelectorAll(`[data-action="${action}"]`), action).toHaveLength(1);
     }
+  });
+});
+
+describe("the foot of the map", () => {
+  it("names the build that is answering", () => {
+    render(<Sidebar onNewIssue={() => {}} />);
+    const stamp = document.querySelector("[data-build]")!;
+    expect(stamp.textContent).toBe("0.1.0 (0123456)");
+    expect(stamp.getAttribute("title")).toContain("commit 0123456789abcdef");
   });
 });

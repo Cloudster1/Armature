@@ -181,6 +181,8 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: capitalize(auth.ErrAddressInUse.Error()) + "."}
 	case errors.Is(err, auth.ErrNoSuchUser):
 		return ErrNotFound(capitalize(auth.ErrNoSuchUser.Error()) + ".")
+	case errors.Is(err, auth.ErrNoSuchRequest):
+		return ErrNotFound(capitalize(auth.ErrNoSuchRequest.Error()) + ".")
 	case errors.Is(err, auth.ErrManagedElsewhere), errors.Is(err, auth.ErrOwnAccount),
 		errors.Is(err, auth.ErrOwnerStanding), errors.Is(err, auth.ErrProviderAccount):
 		return ErrConflict(capitalize(err.Error()) + ".")

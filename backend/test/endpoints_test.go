@@ -72,6 +72,7 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	want(t, c.get("/healthz"), http.StatusOK, "liveness")
 	want(t, c.get("/readyz"), http.StatusOK, "readiness")
 	want(t, c.get("/api/v1/openapi.json"), http.StatusOK, "openapi")
+	want(t, c.get("/api/v1/build"), http.StatusOK, "build")
 
 	// Metadata behind the pickers.
 	want(t, c.get("/api/v1/members"), http.StatusOK, "members")

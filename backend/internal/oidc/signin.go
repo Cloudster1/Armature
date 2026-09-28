@@ -19,8 +19,39 @@ import (
 //
 // Authenticating is not the same as being let in: somebody the provider vouches
 // for who has not been invited is refused. An organization that let anybody with
-// a company account in would have no membership at all, only a login page.
+// a company account in would have no membership at all, only a login page. The
+// refusal is remembered, though, so an administrator can let them in from the
+// Users page instead of typing out an invitation.
 func (s *Service) SignIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
+	session, err := s.signIn(ctx, orgID, identity, ttl, userAgent, ip)
+	if errors.Is(err, ErrNotAMember) {
+		if noted := s.noteJoinRequest(ctx, orgID, identity); noted != nil {
+			return nil, noted
+		}
+	}
+	return session, err
+}
+
+// noteJoinRequest keeps the account and the request in their own transaction,
+// because the refusal that led here rolled the sign-in's back.
+func (s *Service) noteJoinRequest(ctx context.Context, orgID uuid.UUID, identity *Identity) error {
+	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		userID, err := upsertUser(ctx, tx, identity)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)
+			ON CONFLICT DO NOTHING`, orgID, userID)
+		if err != nil {
+			return fmt.Errorf("note the request to join: %w", err)
+		}
+		return nil
+	})
+	return err
+}
+
+func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
 	var out Session
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		userID, err := upsertUser(ctx, tx, identity)

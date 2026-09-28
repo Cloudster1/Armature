@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/armature/armature/backend/internal/buildinfo"
 	"github.com/armature/armature/backend/internal/perm"
 	"github.com/armature/armature/backend/internal/project"
 )
@@ -83,6 +84,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 
 			r.Post("/auth/logout", s.handleLogout)
 			r.Get("/auth/me", s.handleMe)
+			// Which build answers, for the foot of the screen. Behind the
+			// session: a commit hash is nobody else's business.
+			r.Get("/build", s.handleBuild)
 			// One's own account: what a person may change about themselves.
 			r.Patch("/auth/me", s.handleUpdateProfile)
 			// A password is changed by the person who has it, never by a token.
@@ -138,6 +142,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 // killed and restarted, which would only make the outage worse.
 func (s *Server) handleLiveness(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleBuild(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, r, http.StatusOK, map[string]any{"build": buildinfo.Current()})
 }
 
 // handleReadiness answers whether the process can serve traffic, and reports
@@ -332,6 +340,10 @@ func (s *Server) organizationRoutes(r chi.Router) {
 		r.Post("/users", s.handleCreateUser)
 		r.Patch("/users/{userID}", s.handleUpdateUser)
 		r.Put("/users/{userID}/password", s.handleSetUserPassword)
+		// People the identity provider vouched for who are waiting to be let in.
+		r.Get("/users/requests", s.handleListJoinRequests)
+		r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)
+		r.Delete("/users/requests/{userID}", s.handleDeclineJoinRequest)
 	})
 	r.Get("/issue-types", s.handleListIssueTypes)
 	r.Get("/statuses", s.handleListStatuses)

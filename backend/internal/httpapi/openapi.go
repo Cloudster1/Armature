@@ -14,6 +14,7 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/automation"
 	"github.com/armature/armature/backend/internal/board"
+	"github.com/armature/armature/backend/internal/buildinfo"
 	"github.com/armature/armature/backend/internal/bulk"
 	"github.com/armature/armature/backend/internal/calendar"
 	"github.com/armature/armature/backend/internal/component"
@@ -452,6 +453,8 @@ var operations = []operation{
 	{method: "GET", path: "/users/{userID}/avatar", handler: "handleAvatar", tag: "auth", summary: "Somebody's picture, for anyone in an organization with them.", binary: true, responses: map[int]any{}},
 	{method: "GET", path: "/auth/me", handler: "handleMe", tool: "whoami", toolHelp: "Who the token belongs to and which organization it acts in.", tag: "auth", summary: "Who is signed in, and which organizations they belong to.",
 		responses: ok(env{"principal": auth.Principal{}, "organizations": []auth.Membership{}})},
+	{method: "GET", path: "/build", handler: "handleBuild", tag: "health", summary: "Which build of Armature is answering.",
+		responses: ok(env{"build": buildinfo.Info{}})},
 	{method: "POST", path: "/auth/switch-org", handler: "handleSwitchOrg", tag: "auth", summary: "Move the session to another organization.",
 		request: switchOrgRequest{}, responses: ok(env{"organization": auth.Org{}})},
 	// Themes.
@@ -528,6 +531,9 @@ var operations = []operation{
 	{method: "GET", path: "/users", handler: "handleListUsers", tag: "users", summary: "The organization's accounts, switched off ones included, and what may be done to each.", responses: ok(env{"users": []auth.ManagedUser{}})},
 	{method: "POST", path: "/users", handler: "handleCreateUser", tag: "users", summary: "Make an account that signs in here with a password.", request: createUserRequest{}, responses: created(env{"user": auth.ManagedUser{}})},
 	{method: "PATCH", path: "/users/{userID}", handler: "handleUpdateUser", tag: "users", summary: "Rename somebody, change their standing, or switch their account off or on.", request: updateUserRequest{}, responses: ok(env{"user": auth.ManagedUser{}})},
+	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", tag: "users", summary: "Who signed in through the identity provider and is waiting to be let in.", responses: ok(env{"requests": []auth.JoinRequest{}})},
+	{method: "POST", path: "/users/requests/{userID}/admit", handler: "handleAdmitJoinRequest", tag: "users", summary: "Let a waiting person in with the standing given.", request: admitRequest{}, responses: ok(env{"user": auth.ManagedUser{}})},
+	{method: "DELETE", path: "/users/requests/{userID}", handler: "handleDeclineJoinRequest", tag: "users", summary: "Turn a waiting person away; they may ask again.", responses: none()},
 	{method: "PUT", path: "/users/{userID}/password", handler: "handleSetUserPassword", tag: "users", summary: "Give somebody a new password; every session of theirs ends.", request: setUserPasswordRequest{}, responses: none()},
 	{method: "GET", path: "/members", handler: "handleListMembers", tool: "list_members", toolHelp: "The organization's people, with the ids other tools take for assignees.", tag: "organization", summary: "The organization's people.", responses: ok(env{"members": []memberView{}})},
 	{method: "GET", path: "/issue-types", handler: "handleListIssueTypes", tool: "list_issue_types", toolHelp: "The issue types and their ids, needed to file an issue of a given type.", tag: "organization", summary: "The issue types and where each sits in the hierarchy.", responses: ok(env{"issueTypes": []issueTypeView{}})},

@@ -23,6 +23,7 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/automation"
 	"github.com/armature/armature/backend/internal/board"
+	"github.com/armature/armature/backend/internal/buildinfo"
 	"github.com/armature/armature/backend/internal/bulk"
 	"github.com/armature/armature/backend/internal/calendar"
 	"github.com/armature/armature/backend/internal/component"
@@ -245,7 +246,8 @@ func run() error {
 	// for what was actually a failure to serve.
 	serveErr := make(chan error, 1)
 	go func() {
-		log.Info("api listening", "addr", cfg.HTTPAddr, "env", cfg.Env)
+		build := buildinfo.Current()
+		log.Info("api listening", "addr", cfg.HTTPAddr, "env", cfg.Env, "version", build.Version, "commit", build.Commit)
 		err := srv.ListenAndServe()
 		if errors.Is(err, http.ErrServerClosed) {
 			err = nil
