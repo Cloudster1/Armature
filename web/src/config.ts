@@ -37,7 +37,8 @@ export const PLAN_WEEK_LABEL_MIN_PX_PER_DAY = 6;
 export const PLAN_MIN_TICK_LABEL_PX = 40;
 
 /** The largest file an issue takes, matching the API's limit. */
-export const ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+/** The server's own default; what it actually allows arrives with the session. */
+export const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
 
 /** Size of a status on the workflow canvas, in pixels. */
 export const WORKFLOW_NODE_WIDTH = 240;

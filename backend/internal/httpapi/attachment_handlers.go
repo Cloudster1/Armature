@@ -32,7 +32,7 @@ func (s *Server) handleListAttachments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadAttachment(w http.ResponseWriter, r *http.Request) {
-	in, err := readUploadedFile(w, r)
+	in, err := readUploadedFile(w, r, s.Attachments.MaxSize)
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -48,9 +48,9 @@ func (s *Server) handleUploadAttachment(w http.ResponseWriter, r *http.Request) 
 
 // readUploadedFile finds the part named file and hands its stream on, so the
 // bytes go to the bucket without a copy on disk. The body is capped first.
-func readUploadedFile(w http.ResponseWriter, r *http.Request) (attachment.UploadInput, error) {
+func readUploadedFile(w http.ResponseWriter, r *http.Request, limit int64) (attachment.UploadInput, error) {
 	// Refusing at the connection is cheaper than reading a gigabyte to say no.
-	r.Body = http.MaxBytesReader(w, r.Body, attachment.MaxSize+uploadSlack)
+	r.Body = http.MaxBytesReader(w, r.Body, limit+uploadSlack)
 	reader, err := r.MultipartReader()
 	if err != nil {
 		return attachment.UploadInput{}, ErrBadRequest("Send the file as multipart form data in a part named file.")

@@ -319,6 +319,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off |
 | `ARMATURE_POP3_ADDR` / `_USER` / `_PASSWORD` / `_TLS` / `_INTERVAL` | none, none, none, `false`, `30s` | the mailbox the worker reads replies from |
 | `ARMATURE_S3_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY` / `_SECRET_KEY` / `_REGION` / `_USE_SSL` | none, `armature-attachments`, none, none, `us-east-1`, `false` | the bucket attachments and pictures live in |
+| `ARMATURE_UPLOAD_LIMIT` | `50MB` | the largest file an issue or the portal takes; `B`, `KB`, `MB` and `GB` are understood |
 | `ARMATURE_ATTACHMENT_DIR` | none | a directory on a volume for them instead, when there is no bucket; the bucket wins when both are set, and `migrate attachments` copies the directory into it. Neither set turns uploads off |
 | `ARMATURE_RENDER_URL` / `_TIMEOUT` | none / `20s` | the browser that prints dashboards to PDF |
 | `ARMATURE_ASSISTANT_URL` / `_KEY` / `_MODEL` / `_TIMEOUT` | none, none, `claude-sonnet-5`, `25s` | the model behind Ask; no URL turns it off |

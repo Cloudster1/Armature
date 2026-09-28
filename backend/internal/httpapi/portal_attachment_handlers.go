@@ -24,7 +24,7 @@ func (s *Server) handlePortalAttachments(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) handlePortalAttach(w http.ResponseWriter, r *http.Request) {
-	in, err := readUploadedFile(w, r)
+	in, err := readUploadedFile(w, r, s.Attachments.MaxSize)
 	if err != nil {
 		respondError(w, r, err)
 		return

@@ -5038,6 +5038,9 @@ export interface components {
             color?: string;
             name?: string;
         };
+        Limits: {
+            uploadBytes: number;
+        };
         Link: {
             direction: string;
             /** Format: uuid */
@@ -7039,6 +7042,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        limits: components["schemas"]["Limits"];
                         organizations: components["schemas"]["Membership"][];
                         principal: components["schemas"]["Principal"];
                     };

@@ -177,7 +177,14 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{
 		"principal":     p,
 		"organizations": memberships,
+		"limits":        limits{UploadBytes: s.Attachments.MaxSize},
 	})
+}
+
+// limits is what the server allows, told to the client so it can refuse a
+// file before sending it rather than after.
+type limits struct {
+	UploadBytes int64 `json:"uploadBytes"`
 }
 
 type switchOrgRequest struct {

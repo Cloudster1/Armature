@@ -232,6 +232,7 @@ ARMATURE_ARGON_THREADS: {{ .Values.auth.argon.threads | quote }}
 ARMATURE_READ_YOUR_WRITES_TTL: {{ .Values.auth.readYourWritesTTL | quote }}
 ARMATURE_PORTAL_CODE_COOLDOWN: {{ .Values.auth.portalCodeCooldown | quote }}
 
+ARMATURE_UPLOAD_LIMIT: {{ .Values.attachments.uploadLimit | quote }}
 {{- if .Values.attachments.persistence.enabled }}
 ARMATURE_ATTACHMENT_DIR: {{ .Values.attachments.mountPath | quote }}
 {{- end }}

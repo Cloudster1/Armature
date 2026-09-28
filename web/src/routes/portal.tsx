@@ -2,10 +2,9 @@ import { DocView } from "@/features/editor/DocView";
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, Navigate, createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
-import { useMe } from "@/api/auth";
+import { useMe, useUploadLimit } from "@/api/auth";
 import { formatSize, useUploadAttachment } from "@/api/attachments";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
-import { ATTACHMENT_MAX_BYTES } from "@/config";
 import { useDesks, useFollow, useMyRequests, usePortalArticle, usePortalArticles, useRaiseRequest, useReply, useRequest, useRequestWatchers, useUnfollow, type RequestType } from "@/api/desk";
 import { Button, Card, EmptyState, ErrorBanner, Field, Input, OptionCard, Page, PageHeader, SectionTitle, Select, Table, Td, Th, Textarea } from "@/components/ui";
 import { Avatar, StatusBadge, relativeTime } from "@/features/issues/badges";
@@ -195,6 +194,7 @@ function RaiseRequest() {
   // mind swaps templates only while the box still holds one untouched.
   const [templateShown, setTemplateShown] = useState("");
   const template = chosen?.detailsTemplate ?? "";
+  const limit = useUploadLimit();
   if (template !== templateShown) {
     setDescription(prefillDetails(description, templateShown, template));
     setTemplateShown(template);
@@ -203,9 +203,9 @@ function RaiseRequest() {
   function onPick(event: ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(event.target.files ?? []);
     event.target.value = "";
-    const large = picked.find((f) => f.size > ATTACHMENT_MAX_BYTES);
-    setTooBig(large ? `${large.name} is ${formatSize(large.size)}; the limit is ${formatSize(ATTACHMENT_MAX_BYTES)}.` : "");
-    setFiles((current) => [...current, ...picked.filter((f) => f.size <= ATTACHMENT_MAX_BYTES && !current.some((c) => c.name === f.name))]);
+    const large = picked.find((f) => f.size > limit);
+    setTooBig(large ? `${large.name} is ${formatSize(large.size)}; the limit is ${formatSize(limit)}.` : "");
+    setFiles((current) => [...current, ...picked.filter((f) => f.size <= limit && !current.some((c) => c.name === f.name))]);
   }
 
   async function onSubmit(event: FormEvent) {
@@ -312,7 +312,7 @@ function RaiseRequest() {
                 <Button type="button" size="sm" variant="secondary" onClick={() => picker.current?.click()}>
                   Attach files
                 </Button>
-                <span className="text-xs text-ink-subtle">Screenshots, logs and documents up to {formatSize(ATTACHMENT_MAX_BYTES)} each.</span>
+                <span className="text-xs text-ink-subtle">Screenshots, logs and documents up to {formatSize(limit)} each.</span>
               </div>
               {tooBig && <ErrorBanner>{tooBig}</ErrorBanner>}
               {files.length > 0 && (
