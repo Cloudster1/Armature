@@ -1166,7 +1166,7 @@ export interface paths {
         get: operations["getIssue"];
         put?: never;
         post?: never;
-        /** Delete an issue; organization administrators only. */
+        /** Delete an issue; takes administering its project. */
         delete: operations["deleteIssue"];
         options?: never;
         head?: never;
@@ -1963,6 +1963,40 @@ export interface paths {
         post?: never;
         /** Delete the organization and everything in it; owners only, with its address typed back. */
         delete: operations["deleteOrganization"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a demo organization with a production line in it, owned by the caller, and move the session there. From a browser session only. */
+        post: operations["createDemoOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every permission a role may grant, in words. */
+        get: operations["listPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2923,14 +2957,33 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The five roles and what each grants. */
+        /** The organization's roles and what each grants. */
         get: operations["listRoles"];
         put?: never;
-        post?: never;
+        /** Add a role of the organization's own. */
+        post: operations["createRole"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/roles/{roleKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a role of the organization's own, and every grant of it. */
+        delete: operations["deleteRole"];
+        options?: never;
+        head?: never;
+        /** Rename a role or change what it grants; every grant of it follows. */
+        patch: operations["updateRole"];
         trace?: never;
     };
     "/shared/{token}": {
@@ -3166,11 +3219,62 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The theme the caller chose, or null for the built-in one. */
+        /** The theme the caller sees: chosen, the organization's default, or null for the built-in one. */
         get: operations["activeTheme"];
-        /** Use a theme, or null to return to the built-in one. */
+        /** Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one. */
         put: operations["chooseTheme"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Name the shared theme everybody sees until they choose, or null for the built-in one. */
+        put: operations["setDefaultTheme"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The themes shipped with the product, to start a theme from. */
+        get: operations["themeExamples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a theme of the caller's own from an exported theme file, sent as a multipart part named file. */
+        post: operations["importTheme"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3226,6 +3330,23 @@ export interface paths {
         post?: never;
         /** Take a file off a theme it no longer uses. */
         delete: operations["deleteThemeAsset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/{themeID}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The theme as one file, its pictures and fonts inside, as a download. */
+        get: operations["exportTheme"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3888,8 +4009,7 @@ export interface components {
             /** Format: uuid */
             projectId?: string;
             projectKey?: string;
-            /** @enum {string} */
-            role: "global_administrator" | "project_administrator" | "scrum_master" | "user" | "reader";
+            role: string;
             /** Format: uuid */
             userId?: string;
             userName?: string;
@@ -4192,6 +4312,7 @@ export interface components {
             series: components["schemas"]["ChartLine"][];
         };
         ChooseThemeRequest: {
+            builtIn?: boolean;
             /** Format: uuid */
             themeId: string | null;
         };
@@ -4393,6 +4514,13 @@ export interface components {
             /** Format: uuid */
             teamId: string | null;
         };
+        CreateRoleRequest: {
+            description?: string;
+            key?: string;
+            name: string;
+            orgWideOnly?: boolean;
+            permissions: string[];
+        };
         CreateShareRequest: {
             /** Format: date-time */
             expiresAt: string | null;
@@ -4468,6 +4596,19 @@ export interface components {
             projectId: string;
             projectKey: string;
             widgets: components["schemas"]["Widget"][];
+        };
+        DefaultThemeRequest: {
+            /** Format: uuid */
+            themeId: string | null;
+        };
+        Definition: {
+            builtin: boolean;
+            description: string;
+            inUse: number;
+            name: string;
+            orgWideOnly: boolean;
+            permissions: string[];
+            role: string;
         };
         Delivery: {
             attempt: number;
@@ -4565,6 +4706,12 @@ export interface components {
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
+        Example: {
+            description: string;
+            key: string;
+            name: string;
+            spec: components["schemas"]["Spec"];
+        };
         Field: {
             /** Format: date-time */
             createdAt: string;
@@ -4652,15 +4799,13 @@ export interface components {
         };
         Grant: {
             projectKey?: string;
-            /** @enum {string} */
-            role: "global_administrator" | "project_administrator" | "scrum_master" | "user" | "reader";
+            role: string;
         };
         GrantRoleRequest: {
             /** Format: uuid */
             groupId: string | null;
             projectKey: string;
-            /** @enum {string} */
-            role: "global_administrator" | "project_administrator" | "scrum_master" | "user" | "reader";
+            role: string;
             /** Format: uuid */
             userId: string | null;
         };
@@ -5170,6 +5315,10 @@ export interface components {
         ParentRequest: {
             parentKey: string | null;
         };
+        PermissionView: {
+            permission: string;
+            words: string;
+        };
         Person: {
             /** Format: uuid */
             id: string;
@@ -5530,12 +5679,6 @@ export interface components {
             offset: number;
             total: number;
         };
-        RoleView: {
-            orgWideOnly: boolean;
-            permissions: string[];
-            /** @enum {string} */
-            role: "global_administrator" | "project_administrator" | "scrum_master" | "user" | "reader";
-        };
         Row: {
             action: string;
             /** Format: uuid */
@@ -5800,6 +5943,7 @@ export interface components {
             cursors: {
                 [key: string]: components["schemas"]["Cursor"];
             };
+            effect?: string;
             fonts: components["schemas"]["Fonts"];
             icons: {
                 [key: string]: components["schemas"]["Icon"];
@@ -6076,6 +6220,7 @@ export interface components {
             assets: components["schemas"]["Asset"][];
             /** Format: date-time */
             createdAt: string;
+            default: boolean;
             /** Format: uuid */
             id: string;
             inUse: number;
@@ -6220,6 +6365,12 @@ export interface components {
             priority: string | null;
             /** Format: uuid */
             teamId: string | null;
+        };
+        UpdateRoleRequest: {
+            description?: string;
+            name?: string;
+            orgWideOnly?: boolean;
+            permissions?: string[];
         };
         UpdateSwimlaneRequest: {
             name?: string;
@@ -6445,6 +6596,9 @@ export interface operations {
                         canAdministerOrg: boolean;
                         canCreateProject: boolean;
                         grants: components["schemas"]["Grant"][];
+                        permissions: {
+                            [key: string]: unknown;
+                        };
                         projects: string[];
                     };
                 };
@@ -11691,6 +11845,69 @@ export interface operations {
             };
         };
     };
+    createDemoOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        organization: components["schemas"]["Org"];
+                        projectKey: string;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        permissions: components["schemas"]["PermissionView"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     portalArticle: {
         parameters: {
             query?: never;
@@ -14666,7 +14883,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        roles: components["schemas"]["RoleView"][];
+                        roles: components["schemas"]["Definition"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        role: components["schemas"]["Definition"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roleKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roleKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        role: components["schemas"]["Definition"];
                     };
                 };
             };
@@ -15290,6 +15608,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        source: string;
                         theme: components["schemas"]["Theme"] | null;
                     };
                 };
@@ -15326,6 +15645,110 @@ export interface operations {
                 content: {
                     "application/json": {
                         theme: components["schemas"]["Theme"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setDefaultTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefaultThemeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    themeExamples: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        examples: components["schemas"]["Example"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"];
                     };
                 };
             };
@@ -15529,6 +15952,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

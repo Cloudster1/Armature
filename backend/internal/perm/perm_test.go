@@ -278,3 +278,45 @@ func TestEveryAdministratorOnlyPermissionIsRefusedToKeys(t *testing.T) {
 		}
 	}
 }
+
+// An organization's own roles decide: a role the built-in table never had
+// grants what its row says, and an edited built-in grants what it says now.
+func TestAnOrganizationsOwnRolesDecide(t *testing.T) {
+	defs := Definitions{
+		"sprint_planner": {Read, SprintManage},
+		User:             {Read},
+	}
+	s := NewSetWith([]Grant{inProject("sprint_planner", here), orgWide(User)}, defs)
+	if !s.Can(SprintManage, here) || s.Can(SprintManage, elsewhere) {
+		t.Error("a custom role's project grant does not land where it was given")
+	}
+	if s.Can(IssueWrite, here) {
+		t.Error("an edited user role still grants what the built-in table said")
+	}
+	if s.Can(Read, elsewhere) != true {
+		t.Error("the org-wide read went missing")
+	}
+	if NewSetWith([]Grant{orgWide(GlobalAdministrator)}, Definitions{}).CanInOrg(OrgAdminister) {
+		t.Error("a role the organization does not define grants something")
+	}
+}
+
+func TestTheOwnerHoldsEverythingWhateverTheRolesSay(t *testing.T) {
+	s := NewSetWith(nil, Definitions{GlobalAdministrator: {Read}}).WithEverything()
+	for _, p := range AllPermissions {
+		if !s.CanInOrg(p) {
+			t.Errorf("the owner lacks %s", p)
+		}
+	}
+	if got := s.OrgPermissions(); len(got) != len(AllPermissions) {
+		t.Errorf("OrgPermissions lists %d of %d", len(got), len(AllPermissions))
+	}
+}
+
+func TestAKeyIsMadeFromAName(t *testing.T) {
+	for name, want := range map[string]Role{"Sprint planner": "sprint_planner", "  Release  Manager! ": "release_manager", "2nd line": "r_2nd_line"} {
+		if got := KeyFromName(name); got != want {
+			t.Errorf("KeyFromName(%q) = %q, want %q", name, got, want)
+		}
+	}
+}

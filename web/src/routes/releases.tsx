@@ -1,7 +1,7 @@
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
-import { canAdminister, holdsRole, useAccess } from "@/api/access";
+import { canAdminister, holds, useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
 import { ReleaseList } from "@/features/versions/ReleaseList";
 import { ComponentList } from "@/features/versions/ComponentList";
@@ -25,7 +25,7 @@ function ReleasesPage() {
   const { data } = useProject(projectKey);
   const { data: access } = useAccess();
   // Planning a release is the same job as planning a sprint.
-  const canPlan = holdsRole(access, ["scrum_master", "project_administrator", "global_administrator"], projectKey);
+  const canPlan = holds(access, "sprint.manage", projectKey);
   return (
     <Page width="content">
       <PageHeader

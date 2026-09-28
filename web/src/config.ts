@@ -298,3 +298,15 @@ export const KILOBYTE = 1024;
 
 /** How much of a commit hash the foot of the screen shows; the rest is in its title. */
 export const COMMIT_SHORT_LENGTH = 7;
+
+/** The gap between a menu's trigger and its list, in pixels. */
+export const MENU_GAP_PX = 4;
+
+/** How many wandering points the constellation backdrop draws per million pixels of page. */
+export const CONSTELLATION_POINTS_PER_MEGAPIXEL = 70;
+
+/** How close two of them have to be for a line to join them, in pixels. */
+export const CONSTELLATION_LINK_PX = 150;
+
+/** How fast a point wanders, in pixels per second, before its own variation. */
+export const CONSTELLATION_SPEED_PX_PER_S = 14;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cx } from "./cx";
-import { focusables, useEscape, useOutsidePress } from "./overlay";
+import { focusables, useAnchored, useEscape, useOutsidePress } from "./overlay";
 
 export interface MenuItem {
   label: ReactNode;
@@ -13,7 +14,9 @@ export interface MenuItem {
 }
 
 // A list of actions behind one button: arrows move, Home and End jump, typing
-// a letter finds, Escape returns focus to the trigger.
+// a letter finds, Escape returns focus to the trigger. The list is drawn at
+// the end of the document, fixed beside the trigger, so a table or a panel
+// that scrolls cannot cut it off; it opens upward when the bottom is near.
 export function Menu({
   trigger,
   items,
@@ -39,7 +42,10 @@ export function Menu({
     setOpen(false);
   }, []);
   useEscape(open, close);
-  useOutsidePress(open, [wrapRef], closeFromOutside);
+  const outside = useRef([wrapRef, listRef]);
+  useOutsidePress(open, outside.current, closeFromOutside);
+
+  const place = useAnchored(open, wrapRef, listRef, { align });
 
   const wasOpen = useRef(false);
   useEffect(() => {
@@ -87,13 +93,15 @@ export function Menu({
   return (
     <div ref={wrapRef} className={cx("relative inline-flex", className)}>
       {trigger({ open, toggle: () => setOpen((o) => !o), "aria-haspopup": "menu", "aria-expanded": open })}
-      {open && (
+      {open &&
+        createPortal(
         <div
           ref={listRef}
           role="menu"
           aria-label={label}
           onKeyDown={onKeyDown}
-          className={cx("absolute top-full z-30 mt-1 min-w-44 rounded-overlay border border-border bg-surface-overlay p-1 shadow-2", align === "end" ? "right-0" : "left-0")}
+          style={place}
+          className="fixed z-30 min-w-44 rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
         >
           {items.map((item, i) => (
             <button
@@ -117,8 +125,9 @@ export function Menu({
               {item.label}
             </button>
           ))}
-        </div>
-      )}
+        </div>,
+        document.body,
+        )}
     </div>
   );
 }

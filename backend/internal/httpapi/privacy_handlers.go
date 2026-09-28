@@ -26,7 +26,7 @@ func orBound(err error) error {
 // proof vouches for.
 func sessionBound(status int) *APIError {
 	return &APIError{Status: status, Code: "session_bound",
-		Message: "This sign-in only reaches the organization it was made for. Sign in with your password to reach your other organizations."}
+		Message: "This sign-in reaches the organizations that trust the same identity provider, and the ones you own. Sign in with your password for the others."}
 }
 
 // actsForTheWholePerson says whether the caller may act on the account itself,

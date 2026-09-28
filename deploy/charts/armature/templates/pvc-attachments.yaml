@@ -1,0 +1,23 @@
+{{- if and .Values.attachments.persistence.enabled (not .Values.attachments.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "armature.attachmentClaim" . }}
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: attachments
+  annotations:
+    # Before the Jobs and the Deployments that mount it.
+    argocd.argoproj.io/sync-wave: "-20"
+    # Kept on uninstall: the files are the organization's, not the release's.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - {{ .Values.attachments.persistence.accessMode }}
+  {{- with .Values.attachments.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.attachments.persistence.size }}
+{{- end }}

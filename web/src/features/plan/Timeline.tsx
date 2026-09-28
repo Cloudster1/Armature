@@ -838,6 +838,9 @@ function SidebarRow({
       data-plan-trouble={trouble ?? undefined}
       onPointerDown={onPointerDown}
     >
+      {/* The handle says where to take hold; the key beside it is a link,
+          which the browser would otherwise offer to drag as a link. */}
+      {draggable && <Icon.Drag className="size-3.5 shrink-0 text-ink-subtle" aria-hidden data-plan-grip />}
       {row.hasChildren ? (
         <IconButton
           size="xs"
@@ -855,6 +858,7 @@ function SidebarRow({
         to="/issues/$issueKey"
         params={{ issueKey: item.issue.key }}
         className="shrink-0 font-mono text-2xs text-ink-muted hover:text-accent"
+        draggable={false}
       >
         {item.issue.key}
       </Link>

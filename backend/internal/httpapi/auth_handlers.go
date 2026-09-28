@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/demo"
 	"github.com/armature/armature/backend/internal/mail"
 )
 
@@ -202,6 +204,42 @@ func (s *Server) handleSwitchOrg(w http.ResponseWriter, r *http.Request) {
 	}
 	NoteWrite(r.Context(), lsn)
 	respondJSON(w, r, http.StatusOK, map[string]any{"organization": org})
+}
+
+// handleCreateDemoOrganization makes a fresh organization for the caller,
+// fills it with the production line demo, and moves the session there, so
+// one press shows the product with an operation in it.
+func (s *Server) handleCreateDemoOrganization(w http.ResponseWriter, r *http.Request) {
+	p := PrincipalFrom(r.Context())
+	if p.SessionID == nil {
+		respondError(w, r, ErrBadRequest("An API token is bound to one organization and cannot make another."))
+		return
+	}
+	if !p.Role.IsAgent() {
+		respondError(w, r, ErrForbidden("The demo is for the people who run projects, not for the portal."))
+		return
+	}
+	suffix := strings.ToLower(uuid.NewString()[:8])
+	org, _, err := s.Auth.CreateOrganization(r.Context(), p.User.ID, "Demo factory", "demo-factory-"+suffix, clientIP(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	inside := *p
+	inside.Org = &auth.Org{ID: org.ID, Slug: org.Slug, Name: org.Name}
+	inside.Role = auth.RoleOwner
+	made, err := demo.Factory(r.Context(), s.DB, &inside, s.Log)
+	if err != nil {
+		respondError(w, r, fmt.Errorf("fill the demo: %w", err))
+		return
+	}
+	switched, lsn, err := s.Auth.SwitchOrg(r.Context(), *p.SessionID, p.User.ID, org.Slug)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusCreated, map[string]any{"organization": switched, "projectKey": made.Key})
 }
 
 type inviteRequest struct {

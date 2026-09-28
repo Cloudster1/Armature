@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type TextareaHTMLAttributes } from "react";
 import { MENTION_MAX_SUGGESTIONS, MENTION_MIN_CHARS } from "@/config";
 import { Textarea } from "./controls";
+import { createPortal } from "react-dom";
 import { cx } from "./cx";
+import { useAnchored } from "./overlay";
 
 /** Somebody who can be named: the whole name is what gets inserted. */
 export interface Mentionable {
@@ -57,6 +59,10 @@ export function MentionTextarea({
     setCaret(el.selectionStart ?? el.value.length);
   }
 
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const place = useAnchored(open, wrapRef, listRef);
+
   function onChange(event: ChangeEvent<HTMLTextAreaElement>) {
     onValueChange(event.target.value);
     track(event.target);
@@ -103,7 +109,7 @@ export function MentionTextarea({
   }
 
   return (
-    <div className="relative">
+    <div ref={wrapRef} className="relative">
       <Textarea
         {...rest}
         ref={ref}
@@ -116,8 +122,9 @@ export function MentionTextarea({
         aria-autocomplete="list"
         aria-expanded={open}
       />
-      {open && (
-        <div role="listbox" aria-label="People to mention" data-mention-list className="absolute left-0 z-30 mt-1 min-w-56 rounded-overlay border border-border bg-surface-overlay p-1 shadow-2">
+      {open &&
+        createPortal(
+        <div ref={listRef} role="listbox" aria-label="People to mention" data-mention-list style={place} className="fixed z-30 min-w-56 rounded-overlay border border-border bg-surface-overlay p-1 shadow-2">
           {matches.map((person, i) => (
             <div
               key={person.id}
@@ -135,8 +142,9 @@ export function MentionTextarea({
               {person.email && <span className="truncate text-xs text-ink-subtle">{person.email}</span>}
             </div>
           ))}
-        </div>
-      )}
+        </div>,
+        document.body,
+        )}
     </div>
   );
 }

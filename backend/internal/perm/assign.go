@@ -44,8 +44,7 @@ LEFT JOIN user_group g ON g.id = a.group_id`
 // first, then by project, and the most powerful role at the top of each.
 const order = `
 ORDER BY (a.project_id IS NOT NULL), p.key,
-         array_position(ARRAY['global_administrator', 'project_administrator',
-                              'scrum_master', 'user', 'reader']::app_role[], a.role),
+         (SELECT r.sort_order FROM org_role r WHERE r.org_id = a.org_id AND r.key = a.role), a.role,
          COALESCE(g.name, u.name)`
 
 func scanAssignment(row pgx.Row) (*Assignment, error) {
@@ -108,18 +107,28 @@ type GrantInput struct {
 // asked for, and refusing would make an administration page that has to read
 // before it writes.
 func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Assignment, db.LSN, error) {
-	if !in.Role.Valid() {
-		return nil, 0, fmt.Errorf("%q is not a role", in.Role)
+	if in.Role == "" {
+		return nil, 0, ErrRoleNotFound
 	}
 	if (in.UserID == nil) == (in.GroupID == nil) {
 		return nil, 0, errors.New("a role is granted to a person or to a group, not both")
 	}
-	if in.Role.OrgWideOnly() && in.ProjectKey != "" {
-		return nil, 0, fmt.Errorf("%w: %s answers for the whole organization", ErrScope, in.Role)
-	}
 
 	var out *Assignment
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		// The role is the organization's own: what it is called and whether
+		// it answers for the whole organization are its row's to say.
+		var wholeOrg bool
+		err := tx.QueryRow(ctx, `SELECT org_wide_only FROM org_role WHERE key = $1`, string(in.Role)).Scan(&wholeOrg)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w: %s", ErrRoleNotFound, in.Role)
+		}
+		if err != nil {
+			return err
+		}
+		if wholeOrg && in.ProjectKey != "" {
+			return fmt.Errorf("%w: %s answers for the whole organization", ErrScope, in.Role)
+		}
 		var projectID *uuid.UUID
 		if in.ProjectKey != "" {
 			var found uuid.UUID
@@ -134,7 +143,7 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 		}
 
 		var id uuid.UUID
-		err := tx.QueryRow(ctx, `
+		err = tx.QueryRow(ctx, `
 			INSERT INTO role_assignment (org_id, role, project_id, user_id, group_id, created_by)
 			VALUES (current_org_id(), $1, $2, $3, $4, $5)
 			ON CONFLICT (org_id, role, project_id, user_id, group_id)

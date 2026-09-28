@@ -21,7 +21,7 @@ type Store interface {
 
 // ErrUnavailable is returned when no object store is configured. It is a
 // deployment problem, not a user's, and the message says which setting fixes it.
-var ErrUnavailable = errors.New("attachments are not configured: set ARMATURE_S3_ENDPOINT to an S3 compatible store")
+var ErrUnavailable = errors.New("attachments are not configured: set ARMATURE_S3_ENDPOINT to an S3 compatible store, or ARMATURE_ATTACHMENT_DIR to a directory on a volume")
 
 // ErrNoObject is returned when the row exists but the bytes are gone.
 var ErrNoObject = errors.New("the file behind this attachment is missing from storage")
@@ -92,11 +92,27 @@ func (Unavailable) Put(context.Context, string, io.Reader, int64, string) error 
 func (Unavailable) Get(context.Context, string) (io.ReadCloser, error) { return nil, ErrUnavailable }
 func (Unavailable) Delete(context.Context, string) error               { return ErrUnavailable }
 
-// FromConfig picks the store a configuration asks for. A missing endpoint is a
-// store that refuses, not a store that pretends.
-func FromConfig(cfg S3Config) (Store, error) {
-	if !cfg.Configured() {
-		return Unavailable{}, nil
+// Storage is the two places files may live. A bucket wins when both are
+// named, which is what a deployment looks like while it moves to one.
+type Storage struct {
+	Dir string
+	S3  S3Config
+}
+
+// Open picks the store a configuration asks for: the bucket, else the
+// directory, else a store that refuses with the settings to fix. It does not
+// pretend.
+func Open(cfg Storage) (Store, error) {
+	switch {
+	case cfg.S3.Configured():
+		return NewS3(cfg.S3)
+	case cfg.Dir != "":
+		return NewFS(cfg.Dir)
 	}
-	return NewS3(cfg)
+	return Unavailable{}, nil
+}
+
+// FromConfig is Open for a bucket alone.
+func FromConfig(cfg S3Config) (Store, error) {
+	return Open(Storage{S3: cfg})
 }

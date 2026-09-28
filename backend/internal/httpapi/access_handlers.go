@@ -12,25 +12,104 @@ import (
 // people and groups. All of it is organization administration, because a role
 // granted over one project is still a decision about the tenant's access.
 
-// roleView is a role and what it grants, as the access page explains it.
-type roleView struct {
-	Role        perm.Role         `json:"role"`
-	OrgWideOnly bool              `json:"orgWideOnly"`
-	Permissions []perm.Permission `json:"permissions"`
+// permissionView is one permission in the words the matrix shows.
+type permissionView struct {
+	Permission perm.Permission `json:"permission"`
+	Words      string          `json:"words"`
 }
 
-// handleListRoles describes the roles themselves, so a settings page can
-// explain what each one grants rather than leaving somebody to guess.
-func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
-	out := make([]roleView, 0, len(perm.Roles))
-	for _, role := range perm.Roles {
-		out = append(out, roleView{
-			Role:        role,
-			OrgWideOnly: role.OrgWideOnly(),
-			Permissions: role.Permissions(),
-		})
+type createRoleRequest struct {
+	Key         string   `json:"key,omitempty"`
+	Name        string   `json:"name"`
+	Description string   `json:"description,omitempty"`
+	OrgWideOnly bool     `json:"orgWideOnly,omitempty"`
+	Permissions []string `json:"permissions"`
+}
+
+type updateRoleRequest struct {
+	Name        *string   `json:"name,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	OrgWideOnly *bool     `json:"orgWideOnly,omitempty"`
+	Permissions *[]string `json:"permissions,omitempty"`
+}
+
+func permissionsOf(names []string) []perm.Permission {
+	out := make([]perm.Permission, 0, len(names))
+	for _, n := range names {
+		out = append(out, perm.Permission(n))
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"roles": out})
+	return out
+}
+
+// handleListRoles lists the organization's roles and what each grants, so
+// a settings page can explain them and the matrix can edit them.
+func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
+	roles, err := s.Perms.Roles(r.Context())
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"roles": roles})
+}
+
+// handleListPermissions names every permission the code checks for, in the
+// order the matrix lists them.
+func (s *Server) handleListPermissions(w http.ResponseWriter, r *http.Request) {
+	out := make([]permissionView, 0, len(perm.AllPermissions))
+	for _, p := range perm.AllPermissions {
+		out = append(out, permissionView{Permission: p, Words: perm.PermissionWords[p]})
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"permissions": out})
+}
+
+func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
+	var req createRoleRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	made, lsn, err := s.Perms.CreateRole(r.Context(), perm.RoleInput{
+		Key: perm.Role(req.Key), Name: &req.Name, Description: &req.Description,
+		OrgWideOnly: &req.OrgWideOnly, Permissions: permissionsOf(req.Permissions),
+	}, userFrom(r))
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusCreated, map[string]any{"role": made})
+}
+
+func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request) {
+	var req updateRoleRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	in := perm.RoleInput{Key: perm.Role(r.PathValue("roleKey")), Name: req.Name, Description: req.Description, OrgWideOnly: req.OrgWideOnly}
+	if req.Permissions != nil {
+		in.Permissions = permissionsOf(*req.Permissions)
+		if in.Permissions == nil {
+			in.Permissions = []perm.Permission{}
+		}
+	}
+	saved, lsn, err := s.Perms.UpdateRole(r.Context(), in, userFrom(r))
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusOK, map[string]any{"role": saved})
+}
+
+func (s *Server) handleDeleteRole(w http.ResponseWriter, r *http.Request) {
+	lsn, err := s.Perms.DeleteRole(r.Context(), perm.Role(r.PathValue("roleKey")), userFrom(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondNoContent(w)
 }
 
 // handleMyAccess answers "what may I do", which the client needs to decide
@@ -42,6 +121,7 @@ func (s *Server) handleMyAccess(w http.ResponseWriter, r *http.Request) {
 		"projects":         set.Projects(),
 		"canAdministerOrg": set.CanInOrg(perm.OrgAdminister),
 		"canCreateProject": set.CanInOrg(perm.ProjectCreate),
+		"permissions":      map[string]any{"org": set.OrgPermissions(), "projects": set.ProjectPermissions()},
 	})
 }
 

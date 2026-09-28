@@ -40,6 +40,7 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
+	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/workflow"
 )
 
@@ -126,10 +127,10 @@ func run() error {
 
 	// The demo has a file on an issue when there is a bucket to put it in, and
 	// says so rather than failing when there is not.
-	store, err := attachment.FromConfig(attachment.S3Config{
+	store, err := attachment.Open(attachment.Storage{Dir: cfg.Attachments.Dir, S3: attachment.S3Config{
 		Endpoint: cfg.S3.Endpoint, Bucket: cfg.S3.Bucket, AccessKey: cfg.S3.AccessKey,
 		SecretKey: cfg.S3.SecretKey, Region: cfg.S3.Region, UseSSL: cfg.S3.UseSSL,
-	})
+	}})
 	if err != nil {
 		return err
 	}
@@ -143,6 +144,9 @@ func run() error {
 		return err
 	}
 	if err := seedSingleSignOn(ctx, cluster, creds, log); err != nil {
+		return err
+	}
+	if err := seedThemes(ctx, cluster, store, creds, log); err != nil {
 		return err
 	}
 
@@ -252,14 +256,23 @@ func seedMembers(ctx context.Context, svc *auth.Service, creds *auth.Credentials
 	// confirms the memberships that are already there.
 	for _, u := range teammates {
 		_, token, err := svc.CreateInvite(orgCtx, u.email, u.role, creds.Principal.User.ID, 30*24*time.Hour)
+		if errors.Is(err, auth.ErrAlreadyMember) {
+			continue
+		}
 		if err != nil {
 			return fmt.Errorf("invite %s: %w", u.email, err)
 		}
-		if _, err := svc.AcceptInvite(ctx, auth.AcceptInviteInput{
+		_, err = svc.AcceptInvite(ctx, auth.AcceptInviteInput{
 			Secret:   token,
 			Name:     u.name,
 			Password: demoPassword,
-		}); err != nil {
+		})
+		if errors.Is(err, auth.ErrSignInToAccept) {
+			// Their account survives from an earlier run; the invitation is
+			// theirs to accept by signing in, which the demo does not need.
+			continue
+		}
+		if err != nil {
 			return fmt.Errorf("accept invite for %s: %w", u.email, err)
 		}
 		log.Info("seeded member", "email", u.email, "role", u.role)
@@ -1188,4 +1201,30 @@ func issueTypeIDs(ctx context.Context, cluster *db.Cluster) (map[string]uuid.UUI
 
 func printCredentials(email string) {
 	fmt.Printf("\n  Demo organization ready.\n\n    sign in at  http://localhost:5173/login\n    email       %s\n    password    %s\n\n", email, demoPassword)
+}
+
+// seedThemes installs the shipped example themes, shared, owned by the demo's
+// owner, so the themes page has something to pick before anybody draws one.
+func seedThemes(ctx context.Context, cluster *db.Cluster, store attachment.Store, creds *auth.Credentials, log *slog.Logger) error {
+	themes := theme.NewService(cluster, store)
+	ctx = db.PinPrimary(auth.ContextForOrg(ctx, creds.Principal))
+	existing, err := themes.List(ctx, creds.Principal.User.ID)
+	if err != nil {
+		return fmt.Errorf("list themes: %w", err)
+	}
+	have := map[string]bool{}
+	for _, t := range existing {
+		have[t.Name] = true
+	}
+	for _, example := range theme.Examples() {
+		if have[example.Name] {
+			continue
+		}
+		name, shared, spec := example.Name, true, example.Spec
+		if _, _, err := themes.Create(ctx, creds.Principal.User.ID, theme.Input{Name: &name, Shared: &shared, Spec: &spec}); err != nil {
+			return fmt.Errorf("install the %s theme: %w", example.Name, err)
+		}
+		log.Info("installed an example theme", "name", example.Name)
+	}
+	return nil
 }

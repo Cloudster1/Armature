@@ -14,6 +14,7 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/perm"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/rank"
 	"github.com/armature/armature/backend/internal/workflow"
@@ -52,6 +53,9 @@ func (s *Service) Observe(o Observer) { s.observers = append(s.observers, o) }
 type Actor struct {
 	UserID  uuid.UUID
 	OrgRole auth.OrgRole
+	// Perms is what the roles grant them; the standing above is what the
+	// workflow conditions compare, and does not decide what they may do.
+	Perms perm.Set
 	// Import is set by the importer alone, and is what lets a write say when it
 	// happened and who it was. No handler sets it.
 	Import bool

@@ -7,6 +7,7 @@ import {
   type Issue,
 } from "@/api/issues";
 import { Button, cx, ErrorBanner, Field, Input, Labelled } from "@/components/ui";
+import { canAdminister, useAccess } from "@/api/access";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Avatar } from "@/features/issues/badges";
 import { formatDuration, parseDuration, timeProgress } from "./duration";
@@ -103,6 +104,9 @@ function TimeCell({
 /** The work logged on an issue, and a form to log more. */
 export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: boolean; me?: string }) {
   const { data } = useWorklogs(issue.key);
+  const { data: access } = useAccess();
+  // An entry is its author's to remove, or a project administrator's.
+  const mayRemove = (authorID?: string) => editable && (authorID === me || canAdminister(access, issue.projectKey));
   const log = useLogWork();
   const remove = useDeleteWorklog();
   const confirm = useConfirm();
@@ -150,7 +154,7 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
               <span className="shrink-0 text-sm text-ink-subtle">
                 {w.author?.name ?? "Armature"} · {w.startedOn.slice(0, 10)}
               </span>
-              {editable && w.author?.id === me && (
+              {mayRemove(w.author?.id) && (
                 <Button size="sm" variant="ghost" aria-label={`Remove work log ${formatDuration(w.minutes)}`} onClick={async () => (await confirm({ noun: "work log", verb: "Remove", body: `${formatDuration(w.minutes)} comes off the time spent.` })) && remove.mutate(w.id)}>
                   Remove
                 </Button>

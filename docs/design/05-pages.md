@@ -308,6 +308,16 @@ on your own row. The portal's foot puts the customer's name on a Menu
 (`[data-action="customer-menu"]`) with the same two actions.
 
 
+## Organization (narrow)
+
+The organization's name and address, then Show the product: a Card with
+Create a demo organization (`[data-action="create-demo"]`), which posts
+`POST /organizations/demo`, gets a second organization of the reader's own
+with the production line demo in it (project `LINE`: a changeover, machines
+that stop, a scrap rate, the shift, its maintenance windows, two milestones),
+moves the session there and lands on the project. Below it, Delete the
+organization, for an owner.
+
 ## Users (narrow)
 
 ```
@@ -335,6 +345,33 @@ administrator sees an empty state. The profile gains a Password card
 and "Change password" (`[data-action="change-password"]`), toasting
 "Password changed".
 
+## Access: the role matrix (content)
+
+```
+Settings / Access
+[Roles] [Matrix] Members  Groups  Single sign-on             [+ New role]
+PERMISSION                          Global admin  Project admin  ...  Sprint planner ⋯
+See projects and everything   read    [x]           [x]              [x]
+Plan, start and complete...   sprint  [x]           [x]              [ ]
+Administer the organization   org.a.  [x] fixed     [ ]              [ ]
+```
+
+Roles are the organization's own: the five it starts with are rows in
+`org_role`, and it may add more. The Matrix tab (`[data-role-matrix]`) lists
+every permission the code checks for (`GET /permissions`, `data-permission-row`)
+against every role (`GET /roles`, `data-role-column=<key>`), a checkbox at
+each crossing (`data-permission-cell="<key>:<permission>"`) saved the moment
+it is ticked (`PATCH /roles/<key>`); the global administrator's
+`org.administer` box is ticked and disabled, and the database refuses the
+same. New role (`[data-action="new-role"]`, `#field-role-name`,
+`#field-role-description`, a Switch for org-wide only) posts `POST /roles` and
+starts the role with `read`; a column's menu (`role-menu`) renames or
+describes it (`rename-role`, `[data-rename-role=<key>]`) or deletes it
+(`delete-role`, disabled on a built-in, behind a confirm naming how many
+grants go with it). The client decides buttons by permission
+(`access.permissions.org` and `.projects[key]`), never by role name, so a
+renamed or invented role works everywhere at once.
+
 ## Themes (narrow) and the theme editor (content)
 
 ```
@@ -345,16 +382,42 @@ Magenta  Shared    you      2 people                     ...
 ```
 
 `/settings/themes` lists what the reader may use; rows are
-`data-theme-row=<name>` with `data-theme-active`, and the Menu
+`data-theme-row=<name>` with `data-theme-active` and `data-theme-default`,
+and the Menu
 (`[data-action="theme-menu"]`) holds Use this theme (`use-theme`) or Stop
 using (`stop-theme`), Edit (`edit-theme`), Share with the organization or
 Stop sharing (`share-theme`) and Delete (`delete-theme`, behind a confirm
 whose noun is "theme" and whose body says how many people go back to the
-built-in theme). `[data-themes-view="mine"|"shared"]` switch the list;
-`[data-action="new-theme"]` opens the editor.
+built-in theme). An organization administrator's menu on a shared theme adds
+Make it the organization's default (`default-theme`) or No longer the
+organization's default (`undefault-theme`): the default is what everybody
+sees until they choose, `GET /themes/active` says whether what they see is
+`chosen` or the `organization`'s, and the header offers Use the built-in theme
+(`[data-action="built-in-theme"]`) over the default, or Use the organization's
+default (`[data-action="org-default-theme"]`) to come back to it. `[data-themes-view="mine"|"shared"]` switch the list;
+`[data-action="new-theme"]` opens the editor. Import theme
+(`[data-action="import-theme"]`, a hidden file input `[data-theme-file]`)
+posts an exported theme to `POST /themes/import` and makes it the reader's
+own, its files given ids of their own and the spec and CSS rewritten to name
+them, a taken name numbered; the row menu's Export as a file
+(`export-theme`) downloads `GET /themes/<id>/export`, a JSON document of
+format `armature-theme/1` with the name, the spec and every file inline.
+`docs/design/themes/` keeps such files; `minecraft.armature-theme.json` is the
+one the browser suite imports.
 
 `/settings/themes/new` and `/settings/themes/<id>` are the editor
-(`[data-theme-editor=<id>|"new"]`): `#field-theme-name`, a Switch "Shared with
+(`[data-theme-editor=<id>|"new"]`). A new theme opens with a Start from card
+(`[data-theme-start]`): Blank, then the themes the product ships, from
+`GET /themes/examples`, each an OptionCard `[data-theme-example=<key>]`;
+picking one replaces the draft and names it. Two are shipped, both drawn from
+`docs/design/newdesign.jpeg`: Deep-Tech, the palette and the glass, and
+Constellation, the same with a network of points and lines drawn live behind
+the content (`spec.effect = "constellation"`, the Moving picture control on
+the Backdrop tab, `[data-theme-effect]`; the shell mounts
+`[data-backdrop-effect]` at the top of `main` and draws on a canvas that
+covers the column, still under reduced motion) and the rail and sidebar in
+dark slate whatever the palette. The seed
+installs both, shared, in the demo organization. Then `#field-theme-name`, a Switch "Shared with
 the organization" (`[data-theme-shared]`), a Switch "Preview on this page"
 (`[data-action="preview-theme"]`) that shows the draft on the page it is on,
 "Save theme" (`[data-action="save-theme"]`) and, once saved, "Use this theme"

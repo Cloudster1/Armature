@@ -1,9 +1,12 @@
 import { useCallback, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cx } from "./cx";
-import { useEscape, useFocusReturn, useOutsidePress } from "./overlay";
+import { useAnchored, useEscape, useFocusReturn, useOutsidePress } from "./overlay";
 
 // A panel anchored to its trigger and not modal: the page stays live, Escape
 // or a press outside closes it, and focus goes in on open and back on close.
+// Drawn at the end of the document, fixed beside the trigger, so a scrolling
+// panel or table cannot cut it off.
 export function Popover({
   open,
   onClose,
@@ -27,26 +30,19 @@ export function Popover({
   useEscape(open, close);
   useOutsidePress(open, [triggerRef, panelRef], close);
   useFocusReturn(open, panelRef, false);
+  const place = useAnchored(open, triggerRef, panelRef, { align });
   return (
     <div className="relative inline-flex">
       <div ref={triggerRef} className="inline-flex">
         {trigger}
       </div>
-      {open && (
-        <div
-          ref={panelRef}
-          role="dialog"
-          aria-label={label}
-          data-popover
-          className={cx(
-            "absolute top-full z-30 mt-1 min-w-56 rounded-overlay border border-border bg-surface-overlay p-3 shadow-2",
-            align === "end" ? "right-0" : "left-0",
-            className,
-          )}
-        >
-          {children}
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div ref={panelRef} role="dialog" aria-label={label} data-popover style={place} className={cx("fixed z-30 min-w-56 rounded-overlay border border-border bg-surface-overlay p-3 shadow-2", className)}>
+            {children}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -2,7 +2,6 @@ package issue
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -10,6 +9,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/nql"
+	"github.com/armature/armature/backend/internal/perm"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/workflow"
 )
@@ -291,15 +291,15 @@ func (f Filter) build() (string, []any) {
 }
 
 // Delete removes an issue and everything hanging off it. Comments, history,
-// links and subtasks all cascade, which is why this is an administrator action
-// rather than something anybody can do by accident.
+// links and subtasks all cascade, which is why this takes administering the
+// project rather than being something anybody can do by accident.
 func (s *Service) Delete(ctx context.Context, key string, actor Actor) (db.LSN, error) {
-	if !actor.OrgRole.CanAdminister() {
-		return 0, errors.New("only organization admins can delete issues")
-	}
 	projectKey, num, err := ParseKey(key)
 	if err != nil {
 		return 0, err
+	}
+	if !actor.Perms.Can(perm.ProjectAdminister, projectKey) {
+		return 0, ErrDeleteTakesAdministering
 	}
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		doomed, err := scanIssue(tx.QueryRow(ctx,

@@ -195,6 +195,14 @@ is by invitation in every case.
 
 ## What is optional
 
+Attachments go to the bucket under `s3`, or to a volume under
+`attachments.persistence` when there is no bucket; the claim is mounted into
+the api, the worker and the migrate Job, and has to be ReadWriteMany while
+the api runs more than one replica. To move from the volume to a bucket, turn
+`s3` on beside it (the bucket wins), run the migrate image once with
+`attachments` as its argument, which copies every file across, then turn the
+volume off.
+
 Attachments (`s3`), mail (`mail.smtpAddr`), replies by mail (`mail.pop3`), PDF
 export (`render`), the assistant (`assistant`) and tracing
 (`telemetry.otel`) are all off unless configured, and the product runs without

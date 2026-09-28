@@ -317,7 +317,7 @@ func (s *Service) UpdateManagedUser(ctx context.Context, orgID, userID uuid.UUID
 			if old := r.user.Role.AppRole(); old != "" {
 				if _, err := tx.Exec(ctx, `
 					DELETE FROM role_assignment
-					WHERE org_id = $1 AND user_id = $2 AND project_id IS NULL AND role = $3::app_role`,
+					WHERE org_id = $1 AND user_id = $2 AND project_id IS NULL AND role = $3`,
 					orgID, userID, old); err != nil {
 					return fmt.Errorf("take back the joining role: %w", err)
 				}

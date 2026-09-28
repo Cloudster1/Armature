@@ -19,6 +19,8 @@ export interface ThemeSpec {
   cursors: Record<string, { assetId: string; hotspotX: number; hotspotY: number }>;
   icons: Record<string, { assetId?: string; paths?: string[] }>;
   backdrop?: { assetId: string; fit: "cover" | "tile" } | null;
+  /** A moving picture the shell draws live; only "constellation" exists. */
+  effect?: string;
   css: string;
 }
 

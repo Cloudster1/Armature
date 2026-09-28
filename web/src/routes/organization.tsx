@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
-import { useDeleteOrganization, useMe } from "@/api/auth";
+import { useCreateDemoOrganization, useDeleteOrganization, useMe } from "@/api/auth";
 import { Button, Card, Dialog, ErrorBanner, Field, Page, PageHeader, SectionTitle } from "@/components/ui";
 
 export const organizationRoute = createRoute({
@@ -15,6 +15,8 @@ function OrganizationPage() {
   const org = data?.principal?.org;
   const owner = data?.principal?.role === "owner";
   const [deleting, setDeleting] = useState(false);
+  const demo = useCreateDemoOrganization();
+  const navigate = useNavigate();
 
   if (!org) return null;
 
@@ -39,6 +41,24 @@ function OrganizationPage() {
           <code className="font-mono text-ink">{org.slug}</code>
         </div>
       </Card>
+
+      <section className="mt-8">
+        <SectionTitle className="mb-2">Show the product</SectionTitle>
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+          <p className="max-w-md text-sm text-ink-muted">
+            A second organization of your own with a factory's production line in it: a changeover under way, machines that stop, a scrap rate to bring down, the shift that owns the work. You are taken there at once and can come back from the organization menu.
+          </p>
+          <Button
+            variant="secondary"
+            loading={demo.isPending}
+            data-action="create-demo"
+            onClick={() => demo.mutate(undefined, { onSuccess: (made) => navigate({ to: "/projects/$projectKey", params: { projectKey: made.projectKey } }) })}
+          >
+            Create a demo organization
+          </Button>
+        </Card>
+        {demo.error && <ErrorBanner>{(demo.error as Error).message}</ErrorBanner>}
+      </section>
 
       <section className="mt-8">
         <SectionTitle className="mb-2">Delete the organization</SectionTitle>

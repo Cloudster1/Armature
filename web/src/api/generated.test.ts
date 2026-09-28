@@ -6,7 +6,7 @@ import type { Project } from "./projects";
 import type { Field, FieldValue } from "./fields";
 import type { Attachment } from "./attachments";
 import type { ManagedUser } from "./users";
-import type { Theme } from "./themes";
+import type { Theme, ThemeExample } from "./themes";
 import type { Build } from "./build";
 
 // The hand written types are what the components render; the generated ones
@@ -32,6 +32,7 @@ describe("the hand written types agree with the document", () => {
 
   it("for themes", () => {
     expectTypeOf<Schemas["Theme"]>().toMatchTypeOf<Theme>();
+    expectTypeOf<Schemas["Example"]>().toMatchTypeOf<ThemeExample>();
   });
 
   it("for the build", () => {

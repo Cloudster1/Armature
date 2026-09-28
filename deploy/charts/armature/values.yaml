@@ -158,13 +158,30 @@ externalRedis:
   auth: false
 
 s3:
-  # Attachments. Without it the product runs and refuses uploads with a
-  # message naming this setting.
+  # Attachments in a bucket. Without it, and without attachments.persistence,
+  # the product runs and refuses uploads with a message naming both settings.
   enabled: false
   endpoint: ""
   bucket: armature-attachments
   region: us-east-1
   useSSL: true
+
+attachments:
+  # Attachments on a volume instead of a bucket: one claim mounted into the
+  # api, the worker and the migrate Job. The api runs two replicas, so the
+  # claim has to be ReadWriteMany unless api.replicas is 1. When s3 is enabled
+  # as well the bucket wins, which is the state a move to a bucket goes
+  # through: mount both, run `migrate attachments` from the migrate image to
+  # copy the volume into the bucket, then turn the volume off.
+  persistence:
+    enabled: false
+    # An existing claim to mount instead of making one.
+    existingClaim: ""
+    size: 8Gi
+    storageClass: ""
+    accessMode: ReadWriteMany
+  # Where the volume is mounted, and what ARMATURE_ATTACHMENT_DIR is set to.
+  mountPath: /var/lib/armature/attachments
 
 mail:
   # Blank turns mail off: no invitations, no digests, no desk notifications,

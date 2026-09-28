@@ -4,6 +4,7 @@ import { appRoute } from "./app";
 import { GroupList } from "@/features/access/GroupList";
 import { MemberList } from "@/features/access/MemberList";
 import { ProviderSettings } from "@/features/access/ProviderSettings";
+import { RoleMatrix } from "@/features/access/RoleMatrix";
 import { RoleTable } from "@/features/access/RoleTable";
 import { Page, PageHeader, Tabs } from "@/components/ui";
 
@@ -15,6 +16,7 @@ export const accessRoute = createRoute({
 
 const tabs = [
   { id: "roles", label: "Roles" },
+  { id: "matrix", label: "Matrix" },
   { id: "members", label: "Members" },
   { id: "groups", label: "Groups" },
   { id: "sso", label: "Single sign-on" },
@@ -36,6 +38,7 @@ function AccessPage() {
       <Tabs label="Access" value={tab} onChange={setTab} className="mb-4" tabs={tabs.map((each) => ({ value: each.id, label: each.label, attrs: { "data-access-tab": each.label } }))} />
 
       {tab === "roles" && <RoleTable />}
+      {tab === "matrix" && <RoleMatrix />}
       {tab === "members" && <MemberList />}
       {tab === "groups" && <GroupList />}
       {tab === "sso" && <ProviderSettings />}

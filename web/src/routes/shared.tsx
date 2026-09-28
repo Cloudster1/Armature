@@ -82,7 +82,7 @@ function SharedDashboardPage() {
           </header>
         )}
         <main className="min-h-0 flex-1 overflow-auto">
-          <div className={cx("mx-auto max-w-[72rem] px-8", print ? "py-2" : "py-6")}>
+          <div className={cx("mx-auto max-w-[100rem] px-8", print ? "py-2" : "py-6")}>
             {data.share.query && (
               <p className="mb-4 text-xs text-ink-subtle" data-shared-query="">
                 Narrowed to <code className="font-mono text-ink-muted">{data.share.query}</code>

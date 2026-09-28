@@ -265,9 +265,10 @@ api and the worker with Jaeger as their endpoint; Jaeger is at
 them again. Nothing of this runs unless asked.
 
 **Security at the edges.** A session reaches what its proof vouches for: a
-password reaches every organization the person belongs to, a mailed code, an
-open desk door and single sign-on reach only the organization that asked for
-them, and the database refuses the switch as well. A write carrying the session
+password reaches every organization the person belongs to, a mailed code and an
+open desk door reach only the organization that asked for them, single sign-on
+reaches the organizations that trust the same provider and the ones the person
+owns, and the database refuses any other switch as well. A write carrying the session
 cookie must say it is JSON and, in production, come from one of this
 application's origins. Guessing at a password or an invitation is braked by the
 address guessed at, which is the connection's own unless it comes from a proxy
@@ -317,7 +318,8 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_MAIL_FROM` | `Armature <no-reply@armature.test>` | the sender |
 | `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off |
 | `ARMATURE_POP3_ADDR` / `_USER` / `_PASSWORD` / `_TLS` / `_INTERVAL` | none, none, none, `false`, `30s` | the mailbox the worker reads replies from |
-| `ARMATURE_S3_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY` / `_SECRET_KEY` / `_REGION` / `_USE_SSL` | none, `armature-attachments`, none, none, `us-east-1`, `false` | where attachments and pictures live; no endpoint turns uploads off |
+| `ARMATURE_S3_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY` / `_SECRET_KEY` / `_REGION` / `_USE_SSL` | none, `armature-attachments`, none, none, `us-east-1`, `false` | the bucket attachments and pictures live in |
+| `ARMATURE_ATTACHMENT_DIR` | none | a directory on a volume for them instead, when there is no bucket; the bucket wins when both are set, and `migrate attachments` copies the directory into it. Neither set turns uploads off |
 | `ARMATURE_RENDER_URL` / `_TIMEOUT` | none / `20s` | the browser that prints dashboards to PDF |
 | `ARMATURE_ASSISTANT_URL` / `_KEY` / `_MODEL` / `_TIMEOUT` | none, none, `claude-sonnet-5`, `25s` | the model behind Ask; no URL turns it off |
 | `ARMATURE_METRICS_ADDR` | `:9090` | the metrics listener; blank serves none |

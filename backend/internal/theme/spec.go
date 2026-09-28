@@ -38,7 +38,10 @@ type Spec struct {
 	Cursors  map[string]Cursor `json:"cursors"`
 	Icons    map[string]Icon   `json:"icons"`
 	Backdrop *Backdrop         `json:"backdrop,omitempty"`
-	CSS      string            `json:"css"`
+	// Effect names a moving picture the shell draws live behind the content,
+	// which no stylesheet can: nothing in it repeats.
+	Effect string `json:"effect,omitempty"`
+	CSS    string `json:"css"`
 }
 
 // Palette is a set of colour tokens for each of the two built-in themes.
@@ -93,6 +96,9 @@ var ShadowKeys = []string{"1", "2", "3"}
 
 // BackdropFits are the two ways a backdrop is laid behind the content.
 var BackdropFits = []string{"cover", "tile"}
+
+// Effects are the moving pictures the shell knows how to draw.
+var Effects = []string{"constellation"}
 
 var (
 	tokenName  = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
@@ -209,6 +215,9 @@ func Validate(spec *Spec, themeID uuid.UUID, assets map[uuid.UUID]bool) error {
 		if !contains(BackdropFits, spec.Backdrop.Fit) {
 			return errors.New("a backdrop is fitted as cover or tile")
 		}
+	}
+	if spec.Effect != "" && !contains(Effects, spec.Effect) {
+		return fmt.Errorf("%q is not a moving picture the shell can draw", spec.Effect)
 	}
 	return validateCSS(spec.CSS, themeID, assets)
 }

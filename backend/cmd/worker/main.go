@@ -128,15 +128,15 @@ func run() error {
 
 	// Files whose issue was deleted are removed from the bucket here, after
 	// the fact, from the tombstones the deletion left.
-	store, err := attachment.FromConfig(attachment.S3Config{
+	store, err := attachment.Open(attachment.Storage{Dir: cfg.Attachments.Dir, S3: attachment.S3Config{
 		Endpoint: cfg.S3.Endpoint, Bucket: cfg.S3.Bucket, AccessKey: cfg.S3.AccessKey,
 		SecretKey: cfg.S3.SecretKey, Region: cfg.S3.Region, UseSSL: cfg.S3.UseSSL,
-	})
+	}})
 	if err != nil {
 		return err
 	}
 	if _, off := store.(attachment.Unavailable); off {
-		log.Info("attachment reaper is off: ARMATURE_S3_ENDPOINT is not set")
+		log.Info("attachment reaper is off: neither ARMATURE_S3_ENDPOINT nor ARMATURE_ATTACHMENT_DIR is set")
 	} else {
 		reaper := attachment.NewReaper(attachment.NewService(cluster, store, issues), log)
 		g.Go(func() error { return reaper.Run(ctx) })

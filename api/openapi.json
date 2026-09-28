@@ -143,6 +143,12 @@
                         "$ref": "#/components/schemas/Grant"
                       }
                     },
+                    "permissions": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "description": "A JSON value."
+                      }
+                    },
                     "projects": {
                       "type": "array",
                       "items": {
@@ -154,6 +160,7 @@
                     "canAdministerOrg",
                     "canCreateProject",
                     "grants",
+                    "permissions",
                     "projects"
                   ]
                 }
@@ -4803,7 +4810,7 @@
     "/issues/{issueKey}": {
       "delete": {
         "operationId": "deleteIssue",
-        "summary": "Delete an issue; organization administrators only.",
+        "summary": "Delete an issue; takes administering its project.",
         "tags": [
           "issues"
         ],
@@ -7906,6 +7913,91 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organizations/demo": {
+      "post": {
+        "operationId": "createDemoOrganization",
+        "summary": "Make a demo organization with a production line in it, owned by the caller, and move the session there. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organization": {
+                      "$ref": "#/components/schemas/Org"
+                    },
+                    "projectKey": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "organization",
+                    "projectKey"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/permissions": {
+      "get": {
+        "operationId": "listPermissions",
+        "summary": "Every permission a role may grant, in words.",
+        "tags": [
+          "access"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PermissionView"
+                      }
+                    }
+                  },
+                  "required": [
+                    "permissions"
+                  ]
+                }
+              }
+            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -12730,7 +12822,7 @@
     "/roles": {
       "get": {
         "operationId": "listRoles",
-        "summary": "The five roles and what each grants.",
+        "summary": "The organization's roles and what each grants.",
         "tags": [
           "access"
         ],
@@ -12745,12 +12837,152 @@
                     "roles": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/RoleView"
+                        "$ref": "#/components/schemas/Definition"
                       }
                     }
                   },
                   "required": [
                     "roles"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRole",
+        "summary": "Add a role of the organization's own.",
+        "tags": [
+          "access"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "$ref": "#/components/schemas/Definition"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{roleKey}": {
+      "delete": {
+        "operationId": "deleteRole",
+        "summary": "Remove a role of the organization's own, and every grant of it.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "roleKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateRole",
+        "summary": "Rename a role or change what it grants; every grant of it follows.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "roleKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "$ref": "#/components/schemas/Definition"
+                    }
+                  },
+                  "required": [
+                    "role"
                   ]
                 }
               }
@@ -13709,10 +13941,68 @@
     "/themes/active": {
       "get": {
         "operationId": "activeTheme",
-        "summary": "The theme the caller chose, or null for the built-in one.",
+        "summary": "The theme the caller sees: chosen, the organization's default, or null for the built-in one.",
         "tags": [
           "themes"
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "theme": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Theme"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "theme"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "chooseTheme",
+        "summary": "Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one.",
+        "tags": [
+          "themes"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseThemeRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -13750,10 +14040,12 @@
             }
           }
         }
-      },
+      }
+    },
+    "/themes/default": {
       "put": {
-        "operationId": "chooseTheme",
-        "summary": "Use a theme, or null to return to the built-in one.",
+        "operationId": "setDefaultTheme",
+        "summary": "Name the shared theme everybody sees until they choose, or null for the built-in one.",
         "tags": [
           "themes"
         ],
@@ -13762,7 +14054,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ChooseThemeRequest"
+                "$ref": "#/components/schemas/DefaultThemeRequest"
               }
             }
           }
@@ -13784,6 +14076,106 @@
                           "type": "null"
                         }
                       ]
+                    }
+                  },
+                  "required": [
+                    "theme"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/themes/examples": {
+      "get": {
+        "operationId": "themeExamples",
+        "summary": "The themes shipped with the product, to start a theme from.",
+        "tags": [
+          "themes"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "examples": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Example"
+                      }
+                    }
+                  },
+                  "required": [
+                    "examples"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/themes/import": {
+      "post": {
+        "operationId": "importTheme",
+        "summary": "Make a theme of the caller's own from an exported theme file, sent as a multipart part named file.",
+        "tags": [
+          "themes"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "theme": {
+                      "$ref": "#/components/schemas/Theme"
                     }
                   },
                   "required": [
@@ -14077,6 +14469,49 @@
           },
           {
             "name": "assetID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/themes/{themeID}/export": {
+      "get": {
+        "operationId": "exportTheme",
+        "summary": "The theme as one file, its pictures and fonts inside, as a download.",
+        "tags": [
+          "themes"
+        ],
+        "parameters": [
+          {
+            "name": "themeID",
             "in": "path",
             "required": true,
             "schema": {
@@ -16501,14 +16936,7 @@
             "type": "string"
           },
           "role": {
-            "type": "string",
-            "enum": [
-              "global_administrator",
-              "project_administrator",
-              "scrum_master",
-              "user",
-              "reader"
-            ]
+            "type": "string"
           },
           "userId": {
             "type": "string",
@@ -17608,6 +18036,9 @@
       "ChooseThemeRequest": {
         "type": "object",
         "properties": {
+          "builtIn": {
+            "type": "boolean"
+          },
           "themeId": {
             "type": [
               "string",
@@ -18261,6 +18692,33 @@
           "teamId"
         ]
       },
+      "CreateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "orgWideOnly": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "permissions"
+        ]
+      },
       "CreateShareRequest": {
         "type": "object",
         "properties": {
@@ -18551,6 +19009,59 @@
           "position",
           "widgets",
           "createdAt"
+        ]
+      },
+      "DefaultThemeRequest": {
+        "type": "object",
+        "properties": {
+          "themeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "themeId"
+        ]
+      },
+      "Definition": {
+        "type": "object",
+        "properties": {
+          "builtin": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "inUse": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "orgWideOnly": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "name",
+          "description",
+          "orgWideOnly",
+          "builtin",
+          "permissions",
+          "inUse"
         ]
       },
       "Delivery": {
@@ -18911,6 +19422,29 @@
           "error"
         ]
       },
+      "Example": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/Spec"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "spec"
+        ]
+      },
       "Field": {
         "type": "object",
         "properties": {
@@ -19205,14 +19739,7 @@
             "type": "string"
           },
           "role": {
-            "type": "string",
-            "enum": [
-              "global_administrator",
-              "project_administrator",
-              "scrum_master",
-              "user",
-              "reader"
-            ]
+            "type": "string"
           }
         },
         "required": [
@@ -19233,14 +19760,7 @@
             "type": "string"
           },
           "role": {
-            "type": "string",
-            "enum": [
-              "global_administrator",
-              "project_administrator",
-              "scrum_master",
-              "user",
-              "reader"
-            ]
+            "type": "string"
           },
           "userId": {
             "type": [
@@ -21033,6 +21553,21 @@
           "parentKey"
         ]
       },
+      "PermissionView": {
+        "type": "object",
+        "properties": {
+          "permission": {
+            "type": "string"
+          },
+          "words": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "words"
+        ]
+      },
       "Person": {
         "type": "object",
         "properties": {
@@ -22441,35 +22976,6 @@
           "offset"
         ]
       },
-      "RoleView": {
-        "type": "object",
-        "properties": {
-          "orgWideOnly": {
-            "type": "boolean"
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "global_administrator",
-              "project_administrator",
-              "scrum_master",
-              "user",
-              "reader"
-            ]
-          }
-        },
-        "required": [
-          "role",
-          "orgWideOnly",
-          "permissions"
-        ]
-      },
       "Row": {
         "type": "object",
         "properties": {
@@ -23394,6 +23900,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/Cursor"
             }
+          },
+          "effect": {
+            "type": "string"
           },
           "fonts": {
             "$ref": "#/components/schemas/Fonts"
@@ -24394,6 +24903,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "default": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -24432,6 +24944,7 @@
           "assets",
           "inUse",
           "active",
+          "default",
           "createdAt",
           "updatedAt"
         ]
@@ -24896,6 +25409,26 @@
           "teamId",
           "clearTeam"
         ]
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "orgWideOnly": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "UpdateSwimlaneRequest": {
         "type": "object",

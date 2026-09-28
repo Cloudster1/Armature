@@ -45,9 +45,8 @@ export function LoginForm({ next }: { next?: string } = {}) {
       {
         // Somebody in more than one organization says which one they came for,
         // rather than landing in whichever they joined first. A page that sent
-        // them here already knows where they are going.
+        // them here names a path, not an organization, so the question stands.
         onSuccess: async () => {
-          if (target) return proceed();
           const me = await request<{ principal: Principal; organizations: Membership[] | null }>("/auth/me").catch(() => null);
           const organizations = me?.organizations ?? [];
           if (organizations.length > 1) setChoice({ organizations, current: me?.principal.org?.slug });

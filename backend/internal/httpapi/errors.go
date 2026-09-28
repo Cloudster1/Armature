@@ -233,6 +233,12 @@ func toAPIError(err error) *APIError {
 		return ErrForbidden(capitalize(privacy.ErrOwnerRemovesOwner.Error()) + ".")
 	case errors.Is(err, perm.ErrNotFound):
 		return ErrNotFound("That was not found.")
+	case errors.Is(err, perm.ErrRoleNotFound):
+		return ErrNotFound(capitalize(err.Error()) + ".")
+	case errors.Is(err, perm.ErrBuiltinRole), errors.Is(err, perm.ErrLockout), errors.Is(err, perm.ErrRoleNameTaken):
+		return ErrConflict(capitalize(err.Error()) + ".")
+	case errors.Is(err, perm.ErrRoleKey), errors.Is(err, perm.ErrRoleName), errors.Is(err, perm.ErrUnknownPermission):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
 	case errors.Is(err, perm.ErrNotAMember):
 		return ErrBadRequest(perm.ErrNotAMember.Error())
 	case errors.Is(err, perm.ErrNameTaken):
@@ -345,6 +351,10 @@ func moreAPIError(err error) *APIError {
 		return ErrNotFound("That worklog was not found.")
 	case errors.Is(err, issue.ErrNotYourWorklog):
 		return ErrForbidden(capitalize(issue.ErrNotYourWorklog.Error()) + ".")
+	case errors.Is(err, issue.ErrNotYourComment):
+		return ErrForbidden(capitalize(issue.ErrNotYourComment.Error()) + ".")
+	case errors.Is(err, issue.ErrDeleteTakesAdministering):
+		return ErrForbidden(capitalize(issue.ErrDeleteTakesAdministering.Error()) + ".")
 	case errors.Is(err, issue.ErrBadDuration):
 		return ErrBadRequest(capitalize(withoutSentinel(err, issue.ErrBadDuration)) + ".")
 	case errors.Is(err, attachment.ErrNotFound):
@@ -438,6 +448,10 @@ func moreAPIError(err error) *APIError {
 		return ErrBadRequest(withoutSentinel(err, workflow.ErrInvalid))
 	case errors.Is(err, workflow.ErrInUse):
 		return ErrConflict(withoutSentinel(err, workflow.ErrInUse))
+	case errors.Is(err, theme.ErrNotAThemeFile):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
+	case errors.Is(err, theme.ErrDefaultNotShared):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(theme.ErrDefaultNotShared.Error()) + "."}
 	case errors.Is(err, theme.ErrNotFound):
 		return ErrNotFound("That theme was not found.")
 	case errors.Is(err, theme.ErrAssetNotFound):

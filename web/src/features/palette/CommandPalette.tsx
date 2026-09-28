@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useAccess } from "@/api/access";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
-import { useMe } from "@/api/auth";
 import { useIssues } from "@/api/issues";
 import { useProjects } from "@/api/projects";
 import { answer, looksLikeQuestion } from "@/features/guide/match";
@@ -54,8 +54,8 @@ export function CommandPalette({
   onSpotlight?: (request: SpotlightRequest) => void;
 }) {
   const navigate = useNavigate();
-  const { data: me } = useMe();
-  const canAdministerOrg = me?.principal?.role === "owner" || me?.principal?.role === "admin";
+  const { data: access } = useAccess();
+  const canAdministerOrg = access?.canAdministerOrg ?? false;
   const { data: assistant } = useAssistantStatus();
   const ask = useAsk();
   const [asked, setAsked] = useState<AssistantAnswer | null>(null);

@@ -25,6 +25,8 @@ export interface Theme {
   assets: ThemeAsset[];
   inUse: number;
   active: boolean;
+  /** The organization shows it to whoever has not chosen. */
+  default: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,7 +37,21 @@ export interface ThemeInput {
   spec?: ThemeSpec;
 }
 
+/** A theme shipped with the product, to start one's own from. */
+export interface ThemeExample {
+  key: string;
+  name: string;
+  description: string;
+  spec: ThemeSpec;
+}
+
 export const themesQueryKey = ["themes"] as const;
+export const themeExamplesQueryKey = ["themes", "examples"] as const;
+
+export function useThemeExamples() {
+  return useQuery({ queryKey: themeExamplesQueryKey, queryFn: () => request<{ examples: ThemeExample[] }>("/themes/examples"), staleTime: Infinity });
+}
+
 export const activeThemeQueryKey = ["themes", "active"] as const;
 
 export function useThemes() {
@@ -50,9 +66,12 @@ export function useTheme(id: string | undefined) {
   });
 }
 
-/** The theme the reader chose; null is the built-in one. */
+/** Where the theme the reader sees came from: their choice, the organization's default, or nothing. */
+export type ThemeSource = "chosen" | "organization" | "";
+
+/** The theme the reader sees; null is the built-in one. */
 export function useActiveTheme() {
-  return useQuery({ queryKey: activeThemeQueryKey, queryFn: () => request<{ theme: Theme | null }>("/themes/active") });
+  return useQuery({ queryKey: activeThemeQueryKey, queryFn: () => request<{ theme: Theme | null; source: ThemeSource }>("/themes/active") });
 }
 
 function useThemeMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>) {
@@ -72,9 +91,34 @@ export function useDeleteTheme() {
   return useThemeMutation((id: string) => request<void>(`/themes/${id}`, { method: "DELETE" }));
 }
 
-/** Uses a theme, or null to return to the built-in one. */
+/** A choice: a theme, null for whatever the organization shows, or the built-in theme over it. */
+export type ThemeChoice = string | null | { builtIn: true };
+
+/** Uses a theme, returns to the organization's default with null, or keeps the built-in one over it. */
 export function useChooseTheme() {
-  return useThemeMutation((themeId: string | null) => request<{ theme: Theme | null }>("/themes/active", { method: "PUT", body: { themeId } }));
+  return useThemeMutation((choice: ThemeChoice) => {
+    const body = choice !== null && typeof choice === "object" ? { themeId: null, builtIn: true } : { themeId: choice };
+    return request<{ theme: Theme | null }>("/themes/active", { method: "PUT", body });
+  });
+}
+
+/** Names the shared theme everybody sees until they choose, or null for the built-in one. */
+export function useSetDefaultTheme() {
+  return useThemeMutation((themeId: string | null) => request<{ theme: Theme | null }>("/themes/default", { method: "PUT", body: { themeId } }));
+}
+
+/** Where a theme's export is fetched from, as a download the browser handles itself. */
+export function themeExportHref(id: string): string {
+  return `/api/v1/themes/${id}/export`;
+}
+
+/** Makes a theme of one's own from an exported theme file. */
+export function useImportTheme() {
+  return useThemeMutation((file: File) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    return upload<{ theme: Theme }>("/themes/import", form);
+  });
 }
 
 export function useUploadThemeAsset() {

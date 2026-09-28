@@ -156,7 +156,7 @@ func run() error {
 
 	// Attachments live in a bucket. Making sure it exists at startup is what a
 	// fresh development stack needs; production has made it by hand.
-	store, err := attachmentStore(ctx, cfg.S3, log)
+	store, err := attachmentStore(ctx, &cfg, log)
 	if err != nil {
 		return err
 	}
@@ -295,23 +295,25 @@ func telemetryConfig(cfg config.Config, service string) observability.Config {
 	}
 }
 
-// attachmentStore connects to the configured bucket, or returns the store that
-// refuses with the setting to fix when there is none.
-func attachmentStore(ctx context.Context, cfg config.S3, log *slog.Logger) (attachment.Store, error) {
-	s3cfg := attachment.S3Config{
-		Endpoint: cfg.Endpoint, Bucket: cfg.Bucket, AccessKey: cfg.AccessKey,
-		SecretKey: cfg.SecretKey, Region: cfg.Region, UseSSL: cfg.UseSSL,
-	}
-	if !s3cfg.Configured() {
-		log.Warn("attachments are off: ARMATURE_S3_ENDPOINT is not set")
-		return attachment.Unavailable{}, nil
-	}
-	store, err := attachment.NewS3(s3cfg)
+// attachmentStore connects to the configured bucket or opens the configured
+// directory, or returns the store that refuses with the settings to fix.
+func attachmentStore(ctx context.Context, cfg *config.Config, log *slog.Logger) (attachment.Store, error) {
+	store, err := attachment.Open(attachment.Storage{Dir: cfg.Attachments.Dir, S3: attachment.S3Config{
+		Endpoint: cfg.S3.Endpoint, Bucket: cfg.S3.Bucket, AccessKey: cfg.S3.AccessKey,
+		SecretKey: cfg.S3.SecretKey, Region: cfg.S3.Region, UseSSL: cfg.S3.UseSSL,
+	}})
 	if err != nil {
 		return nil, err
 	}
-	if err := store.EnsureBucket(ctx); err != nil {
-		return nil, fmt.Errorf("attachment bucket: %w", err)
+	switch s := store.(type) {
+	case attachment.Unavailable:
+		log.Warn("attachments are off: neither ARMATURE_S3_ENDPOINT nor ARMATURE_ATTACHMENT_DIR is set")
+	case *attachment.FSStore:
+		log.Info("attachments live on a volume", "dir", s.Root())
+	case *attachment.S3Store:
+		if err := s.EnsureBucket(ctx); err != nil {
+			return nil, fmt.Errorf("attachment bucket: %w", err)
+		}
 	}
 	return store, nil
 }

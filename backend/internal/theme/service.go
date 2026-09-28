@@ -35,9 +35,11 @@ type Theme struct {
 	Shared    bool      `json:"shared"`
 	Spec      Spec      `json:"spec"`
 	Assets    []Asset   `json:"assets"`
-	// InUse counts the people who chose it; Active says the reader is one.
+	// InUse counts the people who chose it; Active says the reader is one;
+	// Default says the organization shows it to whoever has not chosen.
 	InUse     int       `json:"inUse"`
 	Active    bool      `json:"active"`
+	Default   bool      `json:"default"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -72,7 +74,8 @@ func NewService(cluster *db.Cluster, store attachment.Store) *Service {
 const selectThemes = `
 SELECT t.id, t.owner_id, COALESCE(u.name, ''), t.name, t.shared, t.spec, t.created_at, t.updated_at,
        (SELECT count(*) FROM user_theme ut WHERE ut.theme_id = t.id),
-       EXISTS (SELECT 1 FROM user_theme ut WHERE ut.theme_id = t.id AND ut.user_id = $1)
+       EXISTS (SELECT 1 FROM user_theme ut WHERE ut.theme_id = t.id AND ut.user_id = $1),
+       EXISTS (SELECT 1 FROM org o WHERE o.id = t.org_id AND o.default_theme_id = t.id)
 FROM theme t
 LEFT JOIN app_user u ON u.id = t.owner_id`
 
@@ -84,7 +87,7 @@ func scan(row pgx.Row) (*Theme, error) {
 		t   Theme
 		raw []byte
 	)
-	err := row.Scan(&t.ID, &t.OwnerID, &t.OwnerName, &t.Name, &t.Shared, &raw, &t.CreatedAt, &t.UpdatedAt, &t.InUse, &t.Active)
+	err := row.Scan(&t.ID, &t.OwnerID, &t.OwnerName, &t.Name, &t.Shared, &raw, &t.CreatedAt, &t.UpdatedAt, &t.InUse, &t.Active, &t.Default)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -188,47 +191,107 @@ func (s *Service) Get(ctx context.Context, id, reader uuid.UUID) (*Theme, error)
 	return out, err
 }
 
-// Active is the theme the reader chose, or nil for the built-in one.
-func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, error) {
-	var out *Theme
+// Source says where the theme somebody sees came from.
+type Source string
+
+const (
+	// SourceChosen is a theme the person picked for themselves.
+	SourceChosen Source = "chosen"
+	// SourceOrganization is the organization's default, shown to whoever has
+	// not chosen.
+	SourceOrganization Source = "organization"
+	// SourceBuiltIn is the stylesheet's own look: nothing chosen and no
+	// default, or the built-in theme chosen over the default.
+	SourceBuiltIn Source = ""
+)
+
+// ErrDefaultNotShared is returned when a theme nobody else can see is made
+// the organization's default.
+var ErrDefaultNotShared = errors.New("the organization's default has to be a shared theme")
+
+// Active is the theme the reader sees: the one they chose, else the
+// organization's default, else nil for the built-in one. A row that names no
+// theme is the built-in one chosen over the default.
+func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, Source, error) {
+	var (
+		out    *Theme
+		source Source
+	)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var id uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT theme_id FROM user_theme WHERE user_id = $1`, reader).Scan(&id)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
+		var chosen *uuid.UUID
+		err := tx.QueryRow(ctx, `SELECT theme_id FROM user_theme WHERE user_id = $1`, reader).Scan(&chosen)
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			var fallback *uuid.UUID
+			if err := tx.QueryRow(ctx, `SELECT default_theme_id FROM org WHERE id = current_org_id()`).Scan(&fallback); err != nil {
+				return err
+			}
+			if fallback == nil {
+				return nil
+			}
+			chosen, source = fallback, SourceOrganization
+		case err != nil:
 			return err
+		case chosen == nil:
+			return nil
+		default:
+			source = SourceChosen
 		}
-		out, err = readOne(ctx, tx, reader, id, ` WHERE t.id = $2 AND`+visible)
+		out, err = readOne(ctx, tx, reader, *chosen, ` WHERE t.id = $2 AND`+visible)
 		if errors.Is(err, ErrNotFound) {
 			// Unshared since it was chosen: the choice lapses quietly.
-			out = nil
+			out, source = nil, SourceBuiltIn
 			return nil
 		}
 		return err
 	})
-	return out, err
+	return out, source, err
 }
 
-// Choose makes a theme the reader's own, or nil returns them to the built-in one.
-func (s *Service) Choose(ctx context.Context, reader uuid.UUID, id *uuid.UUID) (*Theme, db.LSN, error) {
+// Choose makes a theme the reader's own. Nil returns them to whatever the
+// organization shows; nil with builtIn keeps the built-in theme over it.
+func (s *Service) Choose(ctx context.Context, reader uuid.UUID, id *uuid.UUID, builtIn bool) (*Theme, db.LSN, error) {
 	var out *Theme
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if id == nil {
+		if id == nil && !builtIn {
 			_, err := tx.Exec(ctx, `DELETE FROM user_theme WHERE user_id = $1`, reader)
 			return err
+		}
+		if id != nil {
+			t, err := readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+visible)
+			if err != nil {
+				return err
+			}
+			t.Active = true
+			out = t
+		}
+		_, err := tx.Exec(ctx, `
+			INSERT INTO user_theme (org_id, user_id, theme_id) VALUES (current_org_id(), $1, $2)
+			ON CONFLICT (org_id, user_id) DO UPDATE SET theme_id = EXCLUDED.theme_id`, reader, id)
+		return err
+	})
+	return out, lsn, err
+}
+
+// SetDefault names the theme the organization shows to whoever has not
+// chosen, or nil to show the built-in one. Only a shared theme will do, and
+// the database refuses any other.
+func (s *Service) SetDefault(ctx context.Context, reader uuid.UUID, id *uuid.UUID) (*Theme, db.LSN, error) {
+	var out *Theme
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if _, err := tx.Exec(ctx, `UPDATE org SET default_theme_id = $1 WHERE id = current_org_id()`, id); err != nil {
+			if isCheck(err) {
+				return ErrDefaultNotShared
+			}
+			return fmt.Errorf("set the default theme: %w", err)
+		}
+		if id == nil {
+			return nil
 		}
 		t, err := readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+visible)
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO user_theme (org_id, user_id, theme_id) VALUES (current_org_id(), $1, $2)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET theme_id = EXCLUDED.theme_id`, reader, *id); err != nil {
-			return err
-		}
-		t.Active = true
 		out = t
 		return nil
 	})

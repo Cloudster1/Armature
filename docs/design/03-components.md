@@ -43,6 +43,10 @@ Every name the first kit exported is still exported, so callers keep
   popover; a flow that gains a step gains a named helper in the suite.
 - Overlays are portaled last in the DOM and close on Escape. Menus and
   popovers also close on a press outside. Dialogs trap focus; popovers do not.
+  A menu, a popover, a tooltip and the mention list are placed by
+  `useAnchored` in `overlay.ts`: fixed beside their trigger, below it or above
+  when the bottom is near, re-measured on scroll and resize, so a table's or
+  a panel's scrolling edge never cuts one off.
 - Every interactive component has a test for focus, keyboard and aria in
   `controls.test.tsx` and `overlays.test.tsx`.
 - Ad hoc controls are defects: `<button>` outside the kit, an `<input>` with a

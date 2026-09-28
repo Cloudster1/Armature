@@ -11,6 +11,7 @@ import {
   goto,
   grantRole,
   inviteMember,
+  reload,
   revokeAll,
   selectByLabel,
   signIn,
@@ -213,4 +214,59 @@ scenario("every tab of the access page fits a phone", async ({ page }) => {
   await page.waitForSelector(`[data-member="${who.name}"]`, { timeout: WAIT });
   const nameWidth = await page.$eval(`[data-member="${who.name}"] .truncate`, (el) => el.getBoundingClientRect().width);
   expect.truthy(nameWidth > 40, `the member's name is still readable, ${nameWidth}px wide`);
+});
+
+// Reported from a deployment: a member made a global administrator on the
+// Access page could not author workflows, because the library page looked at
+// the seat they held rather than at what they had been granted.
+scenario("a member granted global administration can author workflows", async ({ page }) => {
+  const owner = await signUp(page);
+  const who = await inviteMember(page, "granted");
+  await acceptInvite(page, who);
+
+  await signIn(page, owner.email);
+  await waitForApp(page);
+  await grantRole(page, { who: who.name, role: "Global administrator" });
+
+  await signIn(page, who.email);
+  await waitForApp(page);
+  await goto(page, "/settings/workflows");
+  await page.waitForSelector('[data-workflow-tab="Workflows"]', { timeout: WAIT });
+  const offered = await page.evaluate(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "New workflow"));
+  expect.truthy(offered, "a granted administrator is offered a new workflow");
+});
+
+// The matrix: a role of the organization's own is added, given a permission
+// with one tick, and offered on the Roles tab with what it grants.
+scenario("the role matrix adds a role and decides what it grants", async ({ page }) => {
+  const owner = await signUp(page);
+  await goto(page, "/settings/access");
+  await page.click('[data-access-tab="Matrix"]');
+  await page.waitForSelector("[data-role-matrix]", { timeout: WAIT });
+  expect.truthy(await page.$('[data-role-column="global_administrator"]'), "the built-in roles are columns");
+  const fixed = await page.$eval('[data-permission-cell="global_administrator:org.administer"]', (el) => el.disabled && el.checked);
+  expect.truthy(fixed, "the global administrator's administration cannot be unticked");
+
+  await page.click('[data-action="new-role"]');
+  await page.waitForSelector("#field-role-name", { timeout: WAIT });
+  await page.type("#field-role-name", "Sprint planner");
+  await clickButton(page, "Add role");
+  await page.waitForSelector('[data-role-column="sprint_planner"]', { timeout: WAIT });
+
+  const box = '[data-permission-cell="sprint_planner:sprint.manage"]';
+  await page.click(box);
+  await page.waitForFunction((s) => document.querySelector(s)?.checked === true, { timeout: WAIT }, box);
+  await reload(page);
+  await page.click('[data-access-tab="Matrix"]');
+  await page.waitForSelector(box, { timeout: WAIT });
+  expect.truthy(await page.$eval(box, (el) => el.checked), "the tick survived a reload");
+
+  await page.click('[data-access-tab="Roles"]');
+  await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
+  await selectByLabel(page, 'select[aria-label="Role"]', "Sprint planner");
+  await page.waitForFunction(() => document.body.innerText.includes("Sprint planner can see projects, plan sprints."), { timeout: WAIT });
+
+  // And it is granted like any other, from the same form.
+  await grantRole(page, { who: owner.name, role: "Sprint planner" });
+  await page.waitForFunction(() => document.querySelector('[data-testid="role-assignments"]')?.innerText.includes("Sprint planner"), { timeout: WAIT });
 });

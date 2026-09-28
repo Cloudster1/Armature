@@ -19,6 +19,8 @@ type Config struct {
 	Auth  Auth
 	Mail  Mail
 	S3    S3
+	// Attachments is the directory files live in when there is no bucket.
+	Attachments Attachments
 	// Render is the service that prints pages as PDF; empty turns export off.
 	Render Render
 	// Assistant is the model behind the palette's Ask; empty turns it off.
@@ -85,6 +87,12 @@ type POP3 struct {
 	Password string
 	TLS      bool
 	Interval time.Duration
+}
+
+// Attachments is where files go when no bucket is configured: a directory,
+// on a volume every replica can reach. A bucket wins when both are set.
+type Attachments struct {
+	Dir string
 }
 
 // S3 is the bucket attachments live in. Any service that speaks the S3
@@ -184,6 +192,9 @@ func Load() (Config, error) {
 				TLS:      envBool("ARMATURE_POP3_TLS", false),
 				Interval: envDur("ARMATURE_POP3_INTERVAL", 30*time.Second),
 			},
+		},
+		Attachments: Attachments{
+			Dir: env("ARMATURE_ATTACHMENT_DIR", ""),
 		},
 		S3: S3{
 			Endpoint:  env("ARMATURE_S3_ENDPOINT", ""),

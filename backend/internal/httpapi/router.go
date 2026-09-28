@@ -97,6 +97,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/auth/me/export", s.handleExportMe)
 			r.Delete("/auth/me", s.handleEraseMe)
 			r.Post("/auth/switch-org", s.handleSwitchOrg)
+			// A whole organization with an operation in it, for showing the product.
+			r.With(requireSession).Post("/organizations/demo", s.handleCreateDemoOrganization)
 
 			// And below here, one they have chosen an organization for, so
 			// every query underneath carries a tenant scope.
@@ -311,8 +313,12 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	// before the id routes so "active" is never taken for a theme's id.
 	r.Get("/themes", s.handleListThemes)
 	r.Post("/themes", s.handleCreateTheme)
+	r.Get("/themes/examples", s.handleThemeExamples)
 	r.Get("/themes/active", s.handleActiveTheme)
 	r.Put("/themes/active", s.handleChooseTheme)
+	r.With(requirePerm(perm.OrgAdminister)).Put("/themes/default", s.handleSetDefaultTheme)
+	r.Post("/themes/import", s.handleImportTheme)
+	r.Get("/themes/{themeID}/export", s.handleExportTheme)
 	r.Get("/themes/{themeID}", s.handleGetTheme)
 	r.Patch("/themes/{themeID}", s.handleUpdateTheme)
 	r.Delete("/themes/{themeID}", s.handleDeleteTheme)
@@ -357,6 +363,15 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	// readable by anyone: a client that cannot ask what it may do
 	// has to draw every button and refuse on click.
 	r.Get("/roles", s.handleListRoles)
+	r.Get("/permissions", s.handleListPermissions)
+	// The matrix: what each of the organization's roles grants, its
+	// administrators' to change.
+	r.Group(func(r chi.Router) {
+		r.Use(requirePerm(perm.OrgAdminister))
+		r.Post("/roles", s.handleCreateRole)
+		r.Patch("/roles/{roleKey}", s.handleUpdateRole)
+		r.Delete("/roles/{roleKey}", s.handleDeleteRole)
+	})
 	r.Get("/access/me", s.handleMyAccess)
 
 	// Granting access is administration of the tenant, even when

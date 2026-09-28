@@ -294,7 +294,6 @@ func declareEnums(b *openapi.Builder) {
 	set(board.Grouping(""), "none", "assignee", "priority", "type")
 	set(project.Kind(""), "software", "service", "business")
 	set(sprint.State(""), "future", "active", "closed")
-	set(perm.Role(""), "global_administrator", "project_administrator", "scrum_master", "user", "reader")
 	set(auth.OrgRole(""), "owner", "admin", "member", "customer")
 	set(auth.SignInMethod(""), "password", "provider", "none")
 	set(git.HostKind(""), "github", "gitlab", "gitea")
@@ -455,13 +454,19 @@ var operations = []operation{
 		responses: ok(env{"principal": auth.Principal{}, "organizations": []auth.Membership{}})},
 	{method: "GET", path: "/build", handler: "handleBuild", tag: "health", summary: "Which build of Armature is answering.",
 		responses: ok(env{"build": buildinfo.Info{}})},
+	{method: "POST", path: "/organizations/demo", handler: "handleCreateDemoOrganization", tag: "auth", summary: "Make a demo organization with a production line in it, owned by the caller, and move the session there. From a browser session only.",
+		responses: created(env{"organization": auth.Org{}, "projectKey": ""})},
 	{method: "POST", path: "/auth/switch-org", handler: "handleSwitchOrg", tag: "auth", summary: "Move the session to another organization.",
 		request: switchOrgRequest{}, responses: ok(env{"organization": auth.Org{}})},
 	// Themes.
 	{method: "GET", path: "/themes", handler: "handleListThemes", tag: "themes", summary: "Themes the caller may use: theirs, then the shared ones.", responses: ok(env{"themes": []theme.Theme{}})},
 	{method: "POST", path: "/themes", handler: "handleCreateTheme", tag: "themes", summary: "Make a theme.", request: theme.Input{}, responses: created(env{"theme": theme.Theme{}})},
-	{method: "GET", path: "/themes/active", handler: "handleActiveTheme", tag: "themes", summary: "The theme the caller chose, or null for the built-in one.", responses: ok(env{"theme": (*theme.Theme)(nil)})},
-	{method: "PUT", path: "/themes/active", handler: "handleChooseTheme", tag: "themes", summary: "Use a theme, or null to return to the built-in one.", request: chooseThemeRequest{}, responses: ok(env{"theme": (*theme.Theme)(nil)})},
+	{method: "GET", path: "/themes/examples", handler: "handleThemeExamples", tag: "themes", summary: "The themes shipped with the product, to start a theme from.", responses: ok(env{"examples": []theme.Example{}})},
+	{method: "GET", path: "/themes/active", handler: "handleActiveTheme", tag: "themes", summary: "The theme the caller sees: chosen, the organization's default, or null for the built-in one.", responses: ok(env{"theme": (*theme.Theme)(nil), "source": ""})},
+	{method: "PUT", path: "/themes/active", handler: "handleChooseTheme", tag: "themes", summary: "Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one.", request: chooseThemeRequest{}, responses: ok(env{"theme": (*theme.Theme)(nil)})},
+	{method: "PUT", path: "/themes/default", handler: "handleSetDefaultTheme", tag: "themes", summary: "Name the shared theme everybody sees until they choose, or null for the built-in one.", request: defaultThemeRequest{}, responses: ok(env{"theme": (*theme.Theme)(nil)})},
+	{method: "POST", path: "/themes/import", handler: "handleImportTheme", tag: "themes", summary: "Make a theme of the caller's own from an exported theme file, sent as a multipart part named file.", multipart: true, responses: created(env{"theme": theme.Theme{}})},
+	{method: "GET", path: "/themes/{themeID}/export", handler: "handleExportTheme", tag: "themes", summary: "The theme as one file, its pictures and fonts inside, as a download.", binary: true, responses: ok(nil)},
 	{method: "GET", path: "/themes/{themeID}", handler: "handleGetTheme", tag: "themes", summary: "One theme.", responses: ok(env{"theme": theme.Theme{}})},
 	{method: "PATCH", path: "/themes/{themeID}", handler: "handleUpdateTheme", tag: "themes", summary: "Change a theme; the owner's to do, or an administrator's once shared.", request: theme.Input{}, responses: ok(env{"theme": theme.Theme{}})},
 	{method: "DELETE", path: "/themes/{themeID}", handler: "handleDeleteTheme", tag: "themes", summary: "Delete a theme; everybody using it returns to the built-in one.", responses: none()},
@@ -540,9 +545,14 @@ var operations = []operation{
 	{method: "GET", path: "/statuses", handler: "handleListStatuses", tool: "list_statuses", toolHelp: "The statuses workflows are built from.", tag: "organization", summary: "The statuses workflows are built from.", responses: ok(env{"statuses": []workflow.Status{}})},
 	{method: "POST", path: "/statuses", handler: "handleCreateStatus", tag: "organization", summary: "Coin a status workflows can be built from.", request: createStatusRequest{}, responses: created(env{"status": workflow.Status{}})},
 	{method: "GET", path: "/link-types", handler: "handleListLinkTypes", tag: "organization", summary: "The ways two issues can relate.", responses: ok(env{"linkTypes": []issue.LinkTypeRef{}})},
-	{method: "GET", path: "/roles", handler: "handleListRoles", tag: "access", summary: "The five roles and what each grants.", responses: ok(env{"roles": []roleView{}})},
+	{method: "GET", path: "/roles", handler: "handleListRoles", tag: "access", summary: "The organization's roles and what each grants.", responses: ok(env{"roles": []perm.Definition{}})},
+	{method: "GET", path: "/permissions", handler: "handleListPermissions", tag: "access", summary: "Every permission a role may grant, in words.", responses: ok(env{"permissions": []permissionView{}})},
+	{method: "POST", path: "/roles", handler: "handleCreateRole", tag: "access", summary: "Add a role of the organization's own.", request: createRoleRequest{}, responses: created(env{"role": perm.Definition{}})},
+	{method: "PATCH", path: "/roles/{roleKey}", handler: "handleUpdateRole", tag: "access", summary: "Rename a role or change what it grants; every grant of it follows.", request: updateRoleRequest{}, responses: ok(env{"role": perm.Definition{}})},
+	{method: "DELETE", path: "/roles/{roleKey}", handler: "handleDeleteRole", tag: "access", summary: "Remove a role of the organization's own, and every grant of it.", responses: none()},
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "access", summary: "What the caller may do, which decides which buttons to draw.",
-		responses: ok(env{"grants": []perm.Grant{}, "projects": []string{}, "canAdministerOrg": false, "canCreateProject": false})},
+		responses: ok(env{"grants": []perm.Grant{}, "projects": []string{}, "canAdministerOrg": false, "canCreateProject": false,
+			"permissions": env{"org": []perm.Permission{}, "projects": map[string][]perm.Permission{}}})},
 
 	// Groups and role assignments.
 	{method: "GET", path: "/groups", handler: "handleListGroups", tag: "access", summary: "Groups.", responses: ok(env{"groups": []perm.Group{}})},
@@ -603,7 +613,7 @@ var operations = []operation{
 	{method: "POST", path: "/issues", handler: "handleCreateIssue", tag: "issues", summary: "File an issue, naming the project in the body.", request: createIssueRequest{}, responses: created(env{"issue": issue.Issue{}})},
 	{method: "GET", path: "/issues/{issueKey}", handler: "handleGetIssue", tool: "get_issue", toolHelp: "One issue by its key, such as CP-12.", tag: "issues", summary: "One issue.", responses: ok(env{"issue": issue.Issue{}})},
 	{method: "PATCH", path: "/issues/{issueKey}", handler: "handleUpdateIssue", tool: "update_issue", toolHelp: "Edit an issue's fields; its status moves through transition_issue instead.", tag: "issues", summary: "Edit an issue's fields; the status moves through transitions instead.", request: updateIssueRequest{}, responses: ok(env{"issue": issue.Issue{}})},
-	{method: "DELETE", path: "/issues/{issueKey}", handler: "handleDeleteIssue", tag: "issues", summary: "Delete an issue; organization administrators only.", responses: none()},
+	{method: "DELETE", path: "/issues/{issueKey}", handler: "handleDeleteIssue", tag: "issues", summary: "Delete an issue; takes administering its project.", responses: none()},
 	{method: "GET", path: "/issues/{issueKey}/children", handler: "handleIssueChildren", tag: "hierarchy", summary: "The issues directly underneath.", responses: ok(env{"children": []issue.Issue{}})},
 	{method: "GET", path: "/issues/{issueKey}/hierarchy", handler: "handleIssueHierarchy", tag: "hierarchy", summary: "The issue in context: above it, under it, and its roll-up.", responses: ok(issue.Hierarchy{})},
 	{method: "PUT", path: "/issues/{issueKey}/parent", handler: "handleSetParent", tag: "hierarchy", summary: "Move the issue under another, or out with null.", request: parentRequest{}, responses: ok(env{"issue": issue.Issue{}})},
