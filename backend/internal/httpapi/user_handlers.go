@@ -127,3 +127,54 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	NoteWrite(r.Context(), lsn)
 	respondNoContent(w)
 }
+
+type admitRequest struct {
+	Role string `json:"role"`
+}
+
+func (s *Server) handleListJoinRequests(w http.ResponseWriter, r *http.Request) {
+	p := PrincipalFrom(r.Context())
+	requests, err := s.Auth.JoinRequests(r.Context(), p.Org.ID)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"requests": requests})
+}
+
+func (s *Server) handleAdmitJoinRequest(w http.ResponseWriter, r *http.Request) {
+	userID, err := uuid.Parse(r.PathValue("userID"))
+	if err != nil {
+		respondError(w, r, ErrNotFound("That person was not found."))
+		return
+	}
+	var req admitRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	p := PrincipalFrom(r.Context())
+	user, lsn, err := s.Auth.AdmitJoinRequest(r.Context(), p.Org.ID, userID, auth.OrgRole(req.Role), p.User.ID, clientIP(r))
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusOK, map[string]any{"user": user})
+}
+
+func (s *Server) handleDeclineJoinRequest(w http.ResponseWriter, r *http.Request) {
+	userID, err := uuid.Parse(r.PathValue("userID"))
+	if err != nil {
+		respondError(w, r, ErrNotFound("That person was not found."))
+		return
+	}
+	p := PrincipalFrom(r.Context())
+	lsn, err := s.Auth.DeclineJoinRequest(r.Context(), p.Org.ID, userID, p.User.ID, clientIP(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	w.WriteHeader(http.StatusNoContent)
+}

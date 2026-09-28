@@ -172,7 +172,7 @@ function ssoFailure(): string | null {
     case null:
       return null;
     case "not_a_member":
-      return "Your provider knows you, but you have not been invited to that organization.";
+      return "Your provider knows you, but nobody here has let you in yet. An administrator can do that on the Users page; sign in again once they have.";
     case "not_configured":
       return "That organization does not use single sign-on.";
     case "expired":

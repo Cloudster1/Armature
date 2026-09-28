@@ -65,3 +65,30 @@ export function useSetUserPassword() {
     request<void>(`/users/${id}/password`, { method: "PUT", body: { password } }),
   );
 }
+
+/** Somebody the identity provider vouched for who is waiting to be let in. */
+export interface JoinRequest {
+  userId: string;
+  email: string;
+  name: string;
+  requestedAt: string;
+}
+
+export const joinRequestsQueryKey = ["users", "requests"] as const;
+
+export function useJoinRequests() {
+  return useQuery({
+    queryKey: joinRequestsQueryKey,
+    queryFn: () => request<{ requests: JoinRequest[] }>("/users/requests"),
+  });
+}
+
+export function useAdmitJoinRequest() {
+  return useUserMutation(({ userId, role }: { userId: string; role: "admin" | "member" }) =>
+    request<{ user: ManagedUser }>(`/users/requests/${userId}/admit`, { method: "POST", body: { role } }),
+  );
+}
+
+export function useDeclineJoinRequest() {
+  return useUserMutation(({ userId }: { userId: string }) => request<void>(`/users/requests/${userId}`, { method: "DELETE" }));
+}

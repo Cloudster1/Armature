@@ -340,6 +340,10 @@ func (s *Server) organizationRoutes(r chi.Router) {
 		r.Post("/users", s.handleCreateUser)
 		r.Patch("/users/{userID}", s.handleUpdateUser)
 		r.Put("/users/{userID}/password", s.handleSetUserPassword)
+		// People the identity provider vouched for who are waiting to be let in.
+		r.Get("/users/requests", s.handleListJoinRequests)
+		r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)
+		r.Delete("/users/requests/{userID}", s.handleDeclineJoinRequest)
 	})
 	r.Get("/issue-types", s.handleListIssueTypes)
 	r.Get("/statuses", s.handleListStatuses)
