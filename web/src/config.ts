@@ -295,3 +295,6 @@ export const THEME_MAX_HOTSPOT = 128;
 export const THEME_CURSOR_PX = 32;
 /** Bytes in a kilobyte, for the sizes the editor prints. */
 export const KILOBYTE = 1024;
+
+/** How much of a commit hash the foot of the screen shows; the rest is in its title. */
+export const COMMIT_SHORT_LENGTH = 7;

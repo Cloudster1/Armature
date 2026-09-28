@@ -474,6 +474,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/build": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which build of Armature is answering. */
+        get: operations["build"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/canned-responses/{responseID}": {
         parameters: {
             query?: never;
@@ -3952,6 +3969,11 @@ export interface components {
             category?: string;
             count: number;
             label: string;
+        };
+        BuildinfoInfo: {
+            builtAt?: string;
+            commit?: string;
+            version: string;
         };
         BulkInput: {
             addLabels?: string[];
@@ -7591,6 +7613,37 @@ export interface operations {
                 content: {
                     "application/json": {
                         cards: components["schemas"]["Card"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    build: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        build: components["schemas"]["BuildinfoInfo"];
                     };
                 };
             };

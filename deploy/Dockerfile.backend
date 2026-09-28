@@ -16,12 +16,22 @@ COPY backend/ ./
 ARG GOOSE_TAGS="no_sqlite3 no_mysql no_clickhouse no_vertica no_ydb no_libsql no_mssql no_turso no_duckdb"
 ARG CGO_ENABLED=0
 
+# What the running build says it is, shown at the foot of the screen. The
+# build context has no .git, so the values come in as arguments:
+#   docker build --build-arg VERSION=$(git describe --tags --always) \
+#                --build-arg COMMIT=$(git rev-parse HEAD) \
+#                --build-arg BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ) ...
+ARG VERSION=""
+ARG COMMIT=""
+ARG BUILT_AT=""
+ENV LDFLAGS="-s -w -X github.com/armature/armature/backend/internal/buildinfo.Version=${VERSION} -X github.com/armature/armature/backend/internal/buildinfo.Commit=${COMMIT} -X github.com/armature/armature/backend/internal/buildinfo.BuiltAt=${BUILT_AT}"
+
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -trimpath -ldflags="-s -w" -o /out/api      ./cmd/api      && \
-    go build -trimpath -ldflags="-s -w" -o /out/worker   ./cmd/worker   && \
-    go build -trimpath -ldflags="-s -w" -tags "$GOOSE_TAGS" -o /out/migrate ./cmd/migrate && \
-    go build -trimpath -ldflags="-s -w" -o /out/seed     ./cmd/seed
+    go build -trimpath -ldflags="$LDFLAGS" -o /out/api      ./cmd/api      && \
+    go build -trimpath -ldflags="$LDFLAGS" -o /out/worker   ./cmd/worker   && \
+    go build -trimpath -ldflags="$LDFLAGS" -tags "$GOOSE_TAGS" -o /out/migrate ./cmd/migrate && \
+    go build -trimpath -ldflags="$LDFLAGS" -o /out/seed     ./cmd/seed
 
 # A shared runtime base: no shell-less scratch, because the health checks and
 # the replica bootstrap both benefit from having a shell available.

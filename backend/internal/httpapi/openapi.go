@@ -14,6 +14,7 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/automation"
 	"github.com/armature/armature/backend/internal/board"
+	"github.com/armature/armature/backend/internal/buildinfo"
 	"github.com/armature/armature/backend/internal/bulk"
 	"github.com/armature/armature/backend/internal/calendar"
 	"github.com/armature/armature/backend/internal/component"
@@ -452,6 +453,8 @@ var operations = []operation{
 	{method: "GET", path: "/users/{userID}/avatar", handler: "handleAvatar", tag: "auth", summary: "Somebody's picture, for anyone in an organization with them.", binary: true, responses: map[int]any{}},
 	{method: "GET", path: "/auth/me", handler: "handleMe", tool: "whoami", toolHelp: "Who the token belongs to and which organization it acts in.", tag: "auth", summary: "Who is signed in, and which organizations they belong to.",
 		responses: ok(env{"principal": auth.Principal{}, "organizations": []auth.Membership{}})},
+	{method: "GET", path: "/build", handler: "handleBuild", tag: "health", summary: "Which build of Armature is answering.",
+		responses: ok(env{"build": buildinfo.Info{}})},
 	{method: "POST", path: "/auth/switch-org", handler: "handleSwitchOrg", tag: "auth", summary: "Move the session to another organization.",
 		request: switchOrgRequest{}, responses: ok(env{"organization": auth.Org{}})},
 	// Themes.

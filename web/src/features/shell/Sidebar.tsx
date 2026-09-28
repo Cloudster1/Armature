@@ -11,6 +11,7 @@ import { useLastProject, useSidebarGroups, useSidebarMode } from "./state";
 import { useConfirm } from "./ConfirmProvider";
 import { InboxBell, NavItem } from "./nav";
 import { Rail } from "./Rail";
+import { BuildStamp } from "./BuildStamp";
 import { SidebarGroup } from "./SidebarGroup";
 
 // The sidebar is the map: where you are is highlighted, where you can go is
@@ -150,6 +151,7 @@ export function Sidebar({ onNewIssue, onAsk }: { onNewIssue: () => void; onAsk?:
           </div>
 
           <SidebarUser userName={principal?.user.name ?? ""} role={principal?.role ?? ""} avatar={principal?.user.avatarUrl} />
+          <BuildStamp />
         </nav>
       )}
     </>
