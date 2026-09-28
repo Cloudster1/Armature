@@ -70,20 +70,40 @@ func constellation() Example {
 	} {
 		dark[k] = v
 	}
-	// One tile of the lattice: eight points and the lines between them, in
-	// the current border colour so it sits behind either palette.
-	lattice := svgDataURI(`<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" fill="none" stroke="rgb(110 150 190 / 0.35)" stroke-width="1">
-<path d="M40 60L150 30L250 90L330 40M150 30L120 170L40 60M120 170L250 90L290 210L330 330M120 170L60 300L200 320L290 210M200 320L330 330M60 300L40 60"/>
-<g fill="rgb(110 150 190 / 0.55)" stroke="none"><circle cx="40" cy="60" r="2.5"/><circle cx="150" cy="30" r="2"/><circle cx="250" cy="90" r="3"/><circle cx="330" cy="40" r="2"/><circle cx="120" cy="170" r="2.5"/><circle cx="290" cy="210" r="2"/><circle cx="60" cy="300" r="2"/><circle cx="200" cy="320" r="3"/><circle cx="330" cy="330" r="2"/></g>
+	// Two lattices, one near and one far, each a tile whose lines stay clear
+	// of its edges so the repeat never shows a seam. They drift slowly in
+	// different directions and the glow breathes under them, which is what
+	// gives the backdrop its depth; anyone who asked for less motion gets the
+	// same picture standing still.
+	near := svgDataURI(`<svg xmlns="http://www.w3.org/2000/svg" width="520" height="520" viewBox="0 0 520 520" fill="none" stroke="rgb(120 165 205 / 0.42)" stroke-width="1">
+<path d="M70 90L180 50L260 120L370 70L450 140M180 50L150 200M260 120L150 200M150 200L90 330L200 400L300 330L260 120M300 330L370 70M300 330L430 300L450 140M200 400L230 470L360 450L430 300M90 330L70 90"/>
+<g fill="rgb(140 185 225 / 0.6)" stroke="none"><circle cx="70" cy="90" r="2.6"/><circle cx="180" cy="50" r="2"/><circle cx="260" cy="120" r="3.2"/><circle cx="370" cy="70" r="2"/><circle cx="450" cy="140" r="2.4"/><circle cx="150" cy="200" r="2.8"/><circle cx="90" cy="330" r="2"/><circle cx="200" cy="400" r="3"/><circle cx="300" cy="330" r="2.4"/><circle cx="430" cy="300" r="2"/><circle cx="230" cy="470" r="2"/><circle cx="360" cy="450" r="2.6"/></g>
+</svg>`)
+	far := svgDataURI(`<svg xmlns="http://www.w3.org/2000/svg" width="760" height="760" viewBox="0 0 760 760" fill="none" stroke="rgb(120 165 205 / 0.24)" stroke-width="1">
+<path d="M120 140L300 80L470 160L640 100M300 80L250 300M470 160L250 300M250 300L140 470L330 560L500 430L470 160M500 430L640 100M500 430L660 520L640 660M330 560L360 680L520 640L660 520M140 470L120 140"/>
+<g fill="rgb(140 185 225 / 0.35)" stroke="none"><circle cx="120" cy="140" r="3.5"/><circle cx="300" cy="80" r="2.5"/><circle cx="470" cy="160" r="4"/><circle cx="640" cy="100" r="2.5"/><circle cx="250" cy="300" r="3.5"/><circle cx="140" cy="470" r="2.5"/><circle cx="330" cy="560" r="4"/><circle cx="500" cy="430" r="3"/><circle cx="660" cy="520" r="2.5"/><circle cx="360" cy="680" r="2.5"/><circle cx="520" cy="640" r="3"/><circle cx="640" cy="660" r="2.5"/></g>
 </svg>`)
 	css := `.bg-backdrop {
   background-color: var(--color-backdrop-to);
   background-image:
+    url("` + near + `"),
+    url("` + far + `"),
     radial-gradient(circle at 15% 10%, var(--color-backdrop-from) 0, transparent 48%),
-    radial-gradient(circle at 85% 90%, var(--color-accent-subtle) 0, transparent 42%),
-    url("` + lattice + `");
-  background-size: auto, auto, 360px 360px;
+    radial-gradient(circle at 85% 90%, var(--color-accent-subtle) 0, transparent 42%);
+  background-size: 520px 520px, 760px 760px, 200% 200%, 200% 200%;
+  background-position: 0 0, 0 0, 0% 0%, 100% 100%;
   background-attachment: fixed;
+  animation: constellation-drift 240s linear infinite;
+}
+
+@keyframes constellation-drift {
+  0%   { background-position: 0px 0px, 0px 0px, 0% 0%, 100% 100%; }
+  50%  { background-position: 520px 260px, -380px 190px, 30% 20%, 70% 80%; }
+  100% { background-position: 1040px 520px, -760px 380px, 0% 0%, 100% 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-backdrop { animation: none; }
 }
 
 /* The picture's column: the rail and the sidebar in dark slate whatever the
@@ -111,7 +131,7 @@ func constellation() Example {
 	return Example{
 		Key:         "constellation",
 		Name:        "Constellation",
-		Description: "Deep-Tech with the lattice of points and lines behind everything, and teal after dark.",
+		Description: "Deep-Tech with two lattices of points and lines drifting behind everything, and teal after dark.",
 		Spec: Spec{
 			Colors:  Palette{Light: light, Dark: dark},
 			Shape:   Shape{RadiusControl: intPtr(8), RadiusOverlay: intPtr(12)},
