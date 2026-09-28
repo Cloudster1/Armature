@@ -5,7 +5,9 @@
 FROM node:26-alpine AS deps
 WORKDIR /app
 COPY web/package.json web/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+# No cache mount: kaniko ignores them, and this layer is cached whole until
+# the lock file changes.
+RUN npm ci --no-audit --no-fund
 
 FROM node:26-alpine AS dev
 WORKDIR /app

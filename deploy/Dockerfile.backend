@@ -1,13 +1,33 @@
 # Multi-stage build shared by every backend binary. Each binary gets its own
 # final stage so that "target: api" and "target: worker" in compose produce
 # minimal, single-purpose images.
+#
+# It is written for kaniko as much as for docker: no cache mounts, which
+# kaniko ignores, and the dependency compile in a layer of its own that stays
+# cached until the imports change, so a commit compiles Armature's own
+# packages and nothing else.
 
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26-alpine AS modules
 WORKDIR /src
-
+ENV GOFLAGS=-buildvcs=false
 # Dependencies first: this layer is cached until go.mod or go.sum changes.
 COPY backend/go.mod backend/go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
+RUN go mod download
+
+# The packages the binaries import from outside the module, as a list whose
+# content changes only when an import does. The stage itself is rebuilt every
+# time the source changes; listing is cheap, and what matters is the layer
+# below that reads the list.
+FROM modules AS deplist
+COPY backend/ ./
+RUN go list -deps -f '{{if and (not .Standard) (ne .Module.Path "github.com/armature/armature/backend")}}{{.ImportPath}}{{end}}' ./cmd/... | sort -u > /deps.txt
+
+FROM modules AS builder
+# Compiling the dependencies fills the build cache in this layer, keyed on
+# the list alone, so the cache survives every commit that keeps its imports.
+# The flags match the final build's, or the cache would not be consulted.
+COPY --from=deplist /deps.txt /deps.txt
+RUN go build -trimpath $(cat /deps.txt)
 
 COPY backend/ ./
 
@@ -25,18 +45,15 @@ ARG COMMIT=""
 ARG BUILT_AT=""
 RUN apk add --no-cache git && git config --global --add safe.directory /src
 COPY .git /src/.git
-ENV GOFLAGS=-buildvcs=false
 
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    VERSION="${VERSION:-$(git describe --tags 2>/dev/null || echo dev)}" && \
+# One invocation for the three plain binaries: the shared packages are
+# compiled once and linked three times.
+RUN VERSION="${VERSION:-$(git describe --tags 2>/dev/null || echo dev)}" && \
     COMMIT="${COMMIT:-$(git rev-parse HEAD)}" && \
     BUILT_AT="${BUILT_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" && \
     LDFLAGS="-s -w -X github.com/armature/armature/backend/internal/buildinfo.Version=$VERSION -X github.com/armature/armature/backend/internal/buildinfo.Commit=$COMMIT -X github.com/armature/armature/backend/internal/buildinfo.BuiltAt=$BUILT_AT" && \
-    go build -trimpath -ldflags="$LDFLAGS" -o /out/api      ./cmd/api      && \
-    go build -trimpath -ldflags="$LDFLAGS" -o /out/worker   ./cmd/worker   && \
-    go build -trimpath -ldflags="$LDFLAGS" -tags "$GOOSE_TAGS" -o /out/migrate ./cmd/migrate && \
-    go build -trimpath -ldflags="$LDFLAGS" -o /out/seed     ./cmd/seed
+    go build -trimpath -ldflags="$LDFLAGS" -o /out/ ./cmd/api ./cmd/worker ./cmd/seed && \
+    go build -trimpath -ldflags="$LDFLAGS" -tags "$GOOSE_TAGS" -o /out/migrate ./cmd/migrate
 
 # A shared runtime base: no shell-less scratch, because the health checks and
 # the replica bootstrap both benefit from having a shell available.

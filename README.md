@@ -388,6 +388,20 @@ Zero keeps a kind forever, which nothing here recommends.
 
 </details>
 
+## Building the images
+
+`deploy/Dockerfile.backend` builds the four backend binaries, `deploy/Dockerfile.web`
+the static bundle behind nginx, and `deploy/Dockerfile.render` the PDF browser.
+They are written for kaniko as much as for docker: no cache mounts, and the Go
+dependencies compiled in a layer of their own that stays cached until an
+import changes, so a commit compiles Armature's own packages and nothing else.
+
+`deploy/Jenkinsfile` is a pipeline that builds all six images with kaniko in
+three pods side by side and pushes them to a registry, with the flags that
+keep kaniko quick: `--snapshot-mode=redo`, `--skip-unused-stages` and a layer
+cache in the registry. Point its parameters at your repository, registry and
+proxy.
+
 ## Build notes
 
 The Go toolchain is pinned to 1.26 in `Makefile` and `deploy/Dockerfile.backend`.

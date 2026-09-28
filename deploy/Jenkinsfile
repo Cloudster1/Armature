@@ -1,0 +1,151 @@
+// Builds every image with kaniko and pushes them to a registry. Three pods run
+// side by side, one per Dockerfile, so the wall clock is the longest of the
+// three rather than their sum. The backend's four images share one builder
+// stage; the layer cache in the registry means the second, third and fourth
+// find it already compiled.
+//
+// The parameters name the repository to clone, the branch or tag to build, and
+// where to push. A tag that looks like a release becomes the image tag; every
+// other build is pushed as latest.
+
+def kanikoPod = '''
+kind: Pod
+spec:
+  containers:
+  - name: jnlp
+    workingDir: /home/jenkins
+  - name: kaniko
+    workingDir: /home/jenkins
+    image: gcr.io/kaniko-project/executor:debug
+    command:
+    - /busybox/cat
+    tty: true
+'''
+
+// One kaniko run. The flags are what make it quick: redo snapshotting checks
+// file times instead of hashing the whole filesystem after every step, unused
+// stages are not built at all, and the registry keeps the layer cache.
+def buildImage(Map img) {
+  def targetFlag = img.target ? "--target ${img.target}" : ''
+  sh """#!/busybox/sh
+    /kaniko/executor \
+      --context workdir \
+      --dockerfile workdir/${img.dockerfile} \
+      ${targetFlag} \
+      --cleanup \
+      --cache=true \
+      --cache-repo ${params.DESTINATION_REPOSITORY}/${params.IMAGE_NAME}/cache \
+      --compressed-caching=false \
+      --snapshot-mode=redo \
+      --skip-unused-stages \
+      --registry-mirror ${params.REGISTRY_MIRROR} \
+      --build-arg http_proxy=${env.INTERNET_PROXY} \
+      --build-arg https_proxy=${env.INTERNET_PROXY} \
+      --verbosity info \
+      --destination ${params.DESTINATION_REPOSITORY}/${params.IMAGE_NAME}/${img.name}:${env.IMAGE_TAG}
+  """
+}
+
+// Every pod clones for itself and writes kaniko's registry login; the robot
+// account lives in Jenkins, so the file is written rather than mounted.
+def prepare() {
+  sh '''
+    rm -rf workdir
+    git -c http.proxy="$INTERNET_PROXY" clone --depth 1 --branch "$GIT_BRANCH" "$GIT_REPO_URL" workdir
+  '''
+  container(name: 'kaniko', shell: '/busybox/sh') {
+    withCredentials([usernamePassword(credentialsId: params.REGISTRY_CREDENTIALS,
+                                      usernameVariable: 'REGISTRY_USER',
+                                      passwordVariable: 'REGISTRY_PASSWORD')]) {
+      sh '''#!/busybox/sh
+        mkdir -p /kaniko/.docker
+        auth=$(printf '%s:%s' "$REGISTRY_USER" "$REGISTRY_PASSWORD" | base64 | tr -d '\\n')
+        printf '{"auths":{"%s":{"auth":"%s"}}}' "$REGISTRY_HOST" "$auth" > /kaniko/.docker/config.json
+      '''
+    }
+  }
+}
+
+pipeline {
+  agent none
+
+  options {
+    timeout(time: 1, unit: 'HOURS')
+    disableConcurrentBuilds()
+  }
+
+  parameters {
+    string(name: 'GIT_REPO_URL', defaultValue: 'https://github.com/Cloudster1/Armature.git', description: 'the repository to build')
+    string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'the branch or release tag to build')
+    string(name: 'DESTINATION_REPOSITORY', defaultValue: 'registry.example.com/armature', description: 'registry path to push the images to')
+    string(name: 'IMAGE_NAME', defaultValue: 'armature', description: 'image path prefix; the chart expects <prefix>/api, worker, migrate, seed, web and render')
+    string(name: 'REGISTRY_HOST', defaultValue: 'registry.example.com', description: 'the registry the login is for')
+    string(name: 'REGISTRY_MIRROR', defaultValue: 'registry.example.com/cache', description: 'a pull-through cache for the base images')
+    string(name: 'REGISTRY_CREDENTIALS', defaultValue: 'registry-robot', description: 'the Jenkins credential holding the registry login')
+    string(name: 'TAG_REGEX', defaultValue: '^v\\d+\\.\\d+\\.\\d+$', description: 'a branch matching this is a release and tags the images with its name')
+  }
+
+  environment {
+    // Only the clone and the base image pulls reach the internet; the push
+    // stays on the internal network.
+    INTERNET_PROXY = 'http://proxy.example.com:3128/'
+  }
+
+  stages {
+    stage('decide the tag') {
+      agent any
+      steps {
+        script {
+          env.IMAGE_TAG = (params.GIT_BRANCH =~ params.TAG_REGEX) ? params.GIT_BRANCH : 'latest'
+        }
+      }
+    }
+
+    stage('build images') {
+      parallel {
+        stage('backend') {
+          agent { kubernetes { yaml kanikoPod } }
+          environment { PATH = "/busybox:/kaniko:$PATH" }
+          steps {
+            prepare()
+            container(name: 'kaniko', shell: '/busybox/sh') {
+              script {
+                // The first run compiles; the other three restore the
+                // builder layer from the cache repo and only assemble.
+                for (target in ['api', 'worker', 'migrate', 'seed']) {
+                  buildImage(name: target, dockerfile: 'deploy/Dockerfile.backend', target: target)
+                }
+              }
+            }
+          }
+        }
+        stage('web') {
+          agent { kubernetes { yaml kanikoPod } }
+          environment { PATH = "/busybox:/kaniko:$PATH" }
+          steps {
+            prepare()
+            container(name: 'kaniko', shell: '/busybox/sh') {
+              script { buildImage(name: 'web', dockerfile: 'deploy/Dockerfile.web', target: 'production') }
+            }
+          }
+        }
+        stage('render') {
+          agent { kubernetes { yaml kanikoPod } }
+          environment { PATH = "/busybox:/kaniko:$PATH" }
+          steps {
+            prepare()
+            container(name: 'kaniko', shell: '/busybox/sh') {
+              script { buildImage(name: 'render', dockerfile: 'deploy/Dockerfile.render', target: '') }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Images pushed as ${params.DESTINATION_REPOSITORY}/${params.IMAGE_NAME}/<component>:${env.IMAGE_TAG}"
+    }
+  }
+}
