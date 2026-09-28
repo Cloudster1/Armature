@@ -49,7 +49,7 @@ one named helper so each scenario moves by a line.
   data-custom-field, data-dashboard, data-dashboard-template, data-description, data-desk-address, data-desk-code, data-desk-entry, data-dir, data-graph-unlink, data-issue-history, data-field, data-filter-category, data-filter-count, data-filter-tile,
   data-filter-type,
   data-follower-address, data-graph-edge, data-graph-edge-hit,
-  data-assistant-answer, data-backdrop-effect, data-graph-handle, data-graph-node, data-graph-unlinked, data-group,
+  data-assistant-answer, data-backdrop-effect, data-new-role, data-permission-cell, data-permission-row, data-rename-role, data-role-column, data-role-matrix, data-graph-handle, data-graph-node, data-graph-unlinked, data-group,
   data-guide, data-guide-callout,
   data-issue, data-issue-drawer, data-issue-link, data-issue-list,
   data-issue-page, data-issue-panel, data-issue-row, data-issue-watcher,

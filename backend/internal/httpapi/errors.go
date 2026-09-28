@@ -233,6 +233,12 @@ func toAPIError(err error) *APIError {
 		return ErrForbidden(capitalize(privacy.ErrOwnerRemovesOwner.Error()) + ".")
 	case errors.Is(err, perm.ErrNotFound):
 		return ErrNotFound("That was not found.")
+	case errors.Is(err, perm.ErrRoleNotFound):
+		return ErrNotFound(capitalize(perm.ErrRoleNotFound.Error()) + ".")
+	case errors.Is(err, perm.ErrBuiltinRole), errors.Is(err, perm.ErrLockout), errors.Is(err, perm.ErrRoleNameTaken):
+		return ErrConflict(capitalize(err.Error()) + ".")
+	case errors.Is(err, perm.ErrRoleKey), errors.Is(err, perm.ErrRoleName), errors.Is(err, perm.ErrUnknownPermission):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
 	case errors.Is(err, perm.ErrNotAMember):
 		return ErrBadRequest(perm.ErrNotAMember.Error())
 	case errors.Is(err, perm.ErrNameTaken):

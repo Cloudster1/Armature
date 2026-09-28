@@ -335,6 +335,33 @@ administrator sees an empty state. The profile gains a Password card
 and "Change password" (`[data-action="change-password"]`), toasting
 "Password changed".
 
+## Access: the role matrix (content)
+
+```
+Settings / Access
+[Roles] [Matrix] Members  Groups  Single sign-on             [+ New role]
+PERMISSION                          Global admin  Project admin  ...  Sprint planner ⋯
+See projects and everything   read    [x]           [x]              [x]
+Plan, start and complete...   sprint  [x]           [x]              [ ]
+Administer the organization   org.a.  [x] fixed     [ ]              [ ]
+```
+
+Roles are the organization's own: the five it starts with are rows in
+`org_role`, and it may add more. The Matrix tab (`[data-role-matrix]`) lists
+every permission the code checks for (`GET /permissions`, `data-permission-row`)
+against every role (`GET /roles`, `data-role-column=<key>`), a checkbox at
+each crossing (`data-permission-cell="<key>:<permission>"`) saved the moment
+it is ticked (`PATCH /roles/<key>`); the global administrator's
+`org.administer` box is ticked and disabled, and the database refuses the
+same. New role (`[data-action="new-role"]`, `#field-role-name`,
+`#field-role-description`, a Switch for org-wide only) posts `POST /roles` and
+starts the role with `read`; a column's menu (`role-menu`) renames or
+describes it (`rename-role`, `[data-rename-role=<key>]`) or deletes it
+(`delete-role`, disabled on a built-in, behind a confirm naming how many
+grants go with it). The client decides buttons by permission
+(`access.permissions.org` and `.projects[key]`), never by role name, so a
+renamed or invented role works everywhere at once.
+
 ## Themes (narrow) and the theme editor (content)
 
 ```

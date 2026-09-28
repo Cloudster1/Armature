@@ -507,7 +507,7 @@ func grantJoiningRole(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, 
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO role_assignment (org_id, role, user_id)
-		VALUES ($1, $2::app_role, $3)
+		VALUES ($1, $2, $3)
 		ON CONFLICT DO NOTHING`, orgID, appRole, userID)
 	if err != nil {
 		return fmt.Errorf("grant the role that comes with joining: %w", err)

@@ -128,19 +128,27 @@ type Set struct {
 	roles     []Grant
 }
 
-// NewSet turns a list of grants into the answers a request needs.
+// NewSet turns a list of grants into the answers a request needs, reading
+// what each role grants from the built-in table.
 func NewSet(grants []Grant) Set {
+	return NewSetWith(grants, builtinDefinitions())
+}
+
+// NewSetWith is NewSet over an organization's own roles. A grant of a role
+// the definitions do not name grants nothing.
+func NewSetWith(grants []Grant, defs Definitions) Set {
 	s := Set{
 		orgWide:   map[Permission]bool{},
 		byProject: map[string]map[Permission]bool{},
 		roles:     slices.Clone(grants),
 	}
 	for _, g := range grants {
-		if !g.Role.Valid() {
+		perms, ok := defs[g.Role]
+		if !ok {
 			continue
 		}
 		if g.ProjectKey == "" {
-			for _, p := range g.Role.Permissions() {
+			for _, p := range perms {
 				s.orgWide[p] = true
 			}
 			continue
@@ -150,11 +158,47 @@ func NewSet(grants []Grant) Set {
 			here = map[Permission]bool{}
 			s.byProject[g.ProjectKey] = here
 		}
-		for _, p := range g.Role.Permissions() {
+		for _, p := range perms {
 			here[p] = true
 		}
 	}
 	return s
+}
+
+// WithEverything grants every permission over the whole organization: the
+// owner's standing, whatever the roles say.
+func (s Set) WithEverything() Set {
+	for _, p := range AllPermissions {
+		s.orgWide[p] = true
+	}
+	return s
+}
+
+// OrgPermissions lists what is held over the whole organization, for a
+// client that decides which buttons to draw by permission, not by role.
+func (s Set) OrgPermissions() []Permission {
+	out := []Permission{}
+	for _, p := range AllPermissions {
+		if s.orgWide[p] {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// ProjectPermissions lists what is held in each project named explicitly.
+func (s Set) ProjectPermissions() map[string][]Permission {
+	out := map[string][]Permission{}
+	for key, here := range s.byProject {
+		list := []Permission{}
+		for _, p := range AllPermissions {
+			if here[p] {
+				list = append(list, p)
+			}
+		}
+		out[key] = list
+	}
+	return out
 }
 
 // Grants returns the roles this set was built from, for showing somebody why

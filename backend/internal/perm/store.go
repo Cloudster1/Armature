@@ -57,6 +57,10 @@ func (s *Store) Resolve(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID
 	if owner {
 		grants = append(grants, Grant{Role: GlobalAdministrator})
 	}
+	defs, err := definitionsFor(ctx, tx, orgID)
+	if err != nil {
+		return Set{}, err
+	}
 
 	rows, err := tx.Query(ctx, resolveFor, userID, orgID)
 	if err != nil {
@@ -74,7 +78,11 @@ func (s *Store) Resolve(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID
 	if err := rows.Err(); err != nil {
 		return Set{}, err
 	}
-	return NewSet(grants), nil
+	set := NewSetWith(grants, defs)
+	if owner {
+		set = set.WithEverything()
+	}
+	return set, nil
 }
 
 // ResolveFor is Resolve on its own connection, for callers outside a

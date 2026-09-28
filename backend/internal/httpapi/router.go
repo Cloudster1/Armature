@@ -359,6 +359,15 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	// readable by anyone: a client that cannot ask what it may do
 	// has to draw every button and refuse on click.
 	r.Get("/roles", s.handleListRoles)
+	r.Get("/permissions", s.handleListPermissions)
+	// The matrix: what each of the organization's roles grants, its
+	// administrators' to change.
+	r.Group(func(r chi.Router) {
+		r.Use(requirePerm(perm.OrgAdminister))
+		r.Post("/roles", s.handleCreateRole)
+		r.Patch("/roles/{roleKey}", s.handleUpdateRole)
+		r.Delete("/roles/{roleKey}", s.handleDeleteRole)
+	})
 	r.Get("/access/me", s.handleMyAccess)
 
 	// Granting access is administration of the tenant, even when

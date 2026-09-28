@@ -3,11 +3,11 @@ import { useMembers } from "@/api/issues";
 import { useProjects } from "@/api/projects";
 import {
   permissionWords,
-  roleName,
   useAssignments,
   useGrantRole,
   useGroups,
   useRevokeRole,
+  useRoleName,
   useRoles,
   type Assignment,
   type Role,
@@ -26,6 +26,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
   const { data, isLoading, error } = useAssignments(projectKey);
   const revoke = useRevokeRole();
   const confirm = useConfirm();
+  const roleName = useRoleName();
 
   const assignments = data?.assignments ?? [];
   const failure = (error ?? revoke.error) as Error | undefined;
@@ -71,6 +72,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
 
 function AssignmentRow({ assignment, onRevoke }: { assignment: Assignment; onRevoke: () => void }) {
   const toGroup = Boolean(assignment.groupId);
+  const roleName = useRoleName();
   return (
     <tr data-assignment={assignment.id}>
       <Td className="w-full min-w-48">
@@ -146,7 +148,7 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
         <Select label="Role" aria-label="Role" value={role} onChange={(event) => setRole(event.target.value as Role)}>
           {roles.map((each) => (
             <option key={each.role} value={each.role}>
-              {roleName(each.role)}
+              {each.name}
             </option>
           ))}
         </Select>
@@ -175,7 +177,7 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
 
       {chosen && (
         <p className="text-xs text-ink-subtle">
-          {roleName(chosen.role)} can {chosen.permissions.map(permissionWords).join(", ")}.
+          {chosen.name} can {chosen.permissions.map(permissionWords).join(", ")}.
         </p>
       )}
       {grant.error && <ErrorBanner>{(grant.error as Error).message}</ErrorBanner>}

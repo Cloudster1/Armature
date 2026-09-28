@@ -2,22 +2,31 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { request } from "./client";
 
 /**
- * Five roles, granted to people and to groups, over the whole organization or
- * over one project. What each grants is decided by the server and described
- * here rather than duplicated, so the two cannot drift apart.
+ * Roles are the organization's own: the five it starts with and any it adds,
+ * each a key and a list of permissions the server decides. A role is a
+ * string here, because the list is data.
  */
-export type Role =
-  | "global_administrator"
-  | "project_administrator"
-  | "scrum_master"
-  | "user"
-  | "reader";
+export type Role = string;
+
+/** One thing somebody may do; the server names them and says what each means. */
+export type Permission = string;
 
 export interface RoleDescription {
   role: Role;
+  name: string;
+  description: string;
   /** A role that only makes sense over the whole tenant. */
   orgWideOnly: boolean;
-  permissions: string[];
+  /** One of the five every organization starts with: editable, never deleted. */
+  builtin: boolean;
+  permissions: Permission[];
+  /** How many grants name it. */
+  inUse: number;
+}
+
+export interface PermissionDescription {
+  permission: Permission;
+  words: string;
 }
 
 export interface Grant {
@@ -31,6 +40,8 @@ export interface Access {
   projects: string[];
   canAdministerOrg: boolean;
   canCreateProject: boolean;
+  /** What is held: over the whole organization, and in each project named explicitly. */
+  permissions: { org: Permission[]; projects: Record<string, Permission[]> };
 }
 
 export interface GroupMember {
@@ -74,29 +85,26 @@ export interface Provider {
   updatedAt: string;
 }
 
-/** The roles that may configure a project, and the ones that may edit its issues. */
-const ADMINISTERING_ROLES: Role[] = ["global_administrator", "project_administrator"];
-const WRITING_ROLES: Role[] = ["global_administrator", "project_administrator", "scrum_master", "user"];
-
 /**
- * Whether the grants held include one of the roles, over the whole
- * organization or over this project. A project scoped grant elsewhere does
- * not count, which is the point of scoping it.
+ * Whether a permission is held in this project, from a grant over the whole
+ * organization or over this project alone. A project scoped grant elsewhere
+ * does not count, which is the point of scoping it. Decided by permission,
+ * never by role name: roles are the organization's to redefine.
  */
-export function holdsRole(access: Access | undefined, roles: Role[], projectKey: string): boolean {
+export function holds(access: Access | undefined, permission: Permission, projectKey: string): boolean {
   if (!access) return false;
-  if (access.canAdministerOrg) return true;
-  return access.grants.some((g) => roles.includes(g.role) && (!g.projectKey || g.projectKey === projectKey));
+  if (access.permissions.org.includes(permission)) return true;
+  return (access.permissions.projects[projectKey] ?? []).includes(permission);
 }
 
 /** Whether this person configures the project: its fields, boards, dashboards. */
 export function canAdminister(access: Access | undefined, projectKey: string): boolean {
-  return holdsRole(access, ADMINISTERING_ROLES, projectKey);
+  return holds(access, "project.administer", projectKey);
 }
 
 /** Whether this person may file and edit issues in the project. */
 export function canWriteIssues(access: Access | undefined, projectKey: string): boolean {
-  return holdsRole(access, WRITING_ROLES, projectKey);
+  return holds(access, "issue.write", projectKey);
 }
 
 export const accessQueryKey = ["access"] as const;
@@ -113,8 +121,22 @@ export function useRoles() {
   return useQuery({
     queryKey: [...accessQueryKey, "roles"],
     queryFn: () => request<{ roles: RoleDescription[] }>("/roles"),
+  });
+}
+
+export function usePermissions() {
+  return useQuery({
+    queryKey: [...accessQueryKey, "permissions"],
+    queryFn: () => request<{ permissions: PermissionDescription[] }>("/permissions"),
     staleTime: Infinity,
   });
+}
+
+/** A role's name in words, from the organization's list; the key made readable while it loads. */
+export function useRoleName(): (role: Role) => string {
+  const { data } = useRoles();
+  const names = new Map((data?.roles ?? []).map((each) => [each.role, each.name]));
+  return (role) => names.get(role) ?? roleName(role);
 }
 
 export function useGroups() {
@@ -193,6 +215,28 @@ export function useRevokeRole() {
   );
 }
 
+export interface RoleInput {
+  key?: string;
+  name: string;
+  description?: string;
+  orgWideOnly?: boolean;
+  permissions: Permission[];
+}
+
+export function useCreateRole() {
+  return useAccessMutation((input: RoleInput) => request<{ role: RoleDescription }>("/roles", { method: "POST", body: input }));
+}
+
+export function useUpdateRole() {
+  return useAccessMutation(({ role, ...input }: { role: Role; name?: string; description?: string; orgWideOnly?: boolean; permissions?: Permission[] }) =>
+    request<{ role: RoleDescription }>(`/roles/${role}`, { method: "PATCH", body: input }),
+  );
+}
+
+export function useDeleteRole() {
+  return useAccessMutation((role: Role) => request<void>(`/roles/${role}`, { method: "DELETE" }));
+}
+
 export function useSaveProvider() {
   return useAccessMutation((input: Partial<Provider> & { clientSecret?: string }) =>
     request<{ provider: Provider }>("/oidc-provider", { method: "PUT", body: input }),
@@ -221,17 +265,8 @@ export function permissionWords(permission: string): string {
   return words[permission] ?? permission;
 }
 
+/** A role's key made readable, for before the organization's list has loaded. */
 export function roleName(role: Role): string {
-  switch (role) {
-    case "global_administrator":
-      return "Global administrator";
-    case "project_administrator":
-      return "Project administrator";
-    case "scrum_master":
-      return "Scrum master";
-    case "user":
-      return "User";
-    case "reader":
-      return "Reader";
-  }
+  const words = role.replace(/_/g, " ").trim();
+  return words ? words[0]!.toUpperCase() + words.slice(1) : role;
 }

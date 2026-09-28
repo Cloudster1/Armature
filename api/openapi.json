@@ -143,6 +143,12 @@
                         "$ref": "#/components/schemas/Grant"
                       }
                     },
+                    "permissions": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "description": "A JSON value."
+                      }
+                    },
                     "projects": {
                       "type": "array",
                       "items": {
@@ -154,6 +160,7 @@
                     "canAdministerOrg",
                     "canCreateProject",
                     "grants",
+                    "permissions",
                     "projects"
                   ]
                 }
@@ -7920,6 +7927,48 @@
         }
       }
     },
+    "/permissions": {
+      "get": {
+        "operationId": "listPermissions",
+        "summary": "Every permission a role may grant, in words.",
+        "tags": [
+          "access"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PermissionView"
+                      }
+                    }
+                  },
+                  "required": [
+                    "permissions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/portal/articles/{articleID}": {
       "get": {
         "operationId": "portalArticle",
@@ -12730,7 +12779,7 @@
     "/roles": {
       "get": {
         "operationId": "listRoles",
-        "summary": "The five roles and what each grants.",
+        "summary": "The organization's roles and what each grants.",
         "tags": [
           "access"
         ],
@@ -12745,12 +12794,152 @@
                     "roles": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/RoleView"
+                        "$ref": "#/components/schemas/Definition"
                       }
                     }
                   },
                   "required": [
                     "roles"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRole",
+        "summary": "Add a role of the organization's own.",
+        "tags": [
+          "access"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "$ref": "#/components/schemas/Definition"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{roleKey}": {
+      "delete": {
+        "operationId": "deleteRole",
+        "summary": "Remove a role of the organization's own, and every grant of it.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "roleKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateRole",
+        "summary": "Rename a role or change what it grants; every grant of it follows.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "roleKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "$ref": "#/components/schemas/Definition"
+                    }
+                  },
+                  "required": [
+                    "role"
                   ]
                 }
               }
@@ -16603,14 +16792,7 @@
             "type": "string"
           },
           "role": {
-            "type": "string",
-            "enum": [
-              "global_administrator",
-              "project_administrator",
-              "scrum_master",
-              "user",
-              "reader"
-            ]
+            "type": "string"
           },
           "userId": {
             "type": "string",
@@ -18366,6 +18548,33 @@
           "teamId"
         ]
       },
+      "CreateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "orgWideOnly": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "permissions"
+        ]
+      },
       "CreateShareRequest": {
         "type": "object",
         "properties": {
@@ -18671,6 +18880,44 @@
         },
         "required": [
           "themeId"
+        ]
+      },
+      "Definition": {
+        "type": "object",
+        "properties": {
+          "builtin": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "inUse": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "orgWideOnly": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "name",
+          "description",
+          "orgWideOnly",
+          "builtin",
+          "permissions",
+          "inUse"
         ]
       },
       "Delivery": {
@@ -19348,14 +19595,7 @@
             "type": "string"
           },
           "role": {
-            "type": "string",
-            "enum": [
-              "global_administrator",
-              "project_administrator",
-              "scrum_master",
-              "user",
-              "reader"
-            ]
+            "type": "string"
           }
         },
         "required": [
@@ -19376,14 +19616,7 @@
             "type": "string"
           },
           "role": {
-            "type": "string",
-            "enum": [
-              "global_administrator",
-              "project_administrator",
-              "scrum_master",
-              "user",
-              "reader"
-            ]
+            "type": "string"
           },
           "userId": {
             "type": [
@@ -21176,6 +21409,21 @@
           "parentKey"
         ]
       },
+      "PermissionView": {
+        "type": "object",
+        "properties": {
+          "permission": {
+            "type": "string"
+          },
+          "words": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "words"
+        ]
+      },
       "Person": {
         "type": "object",
         "properties": {
@@ -22582,35 +22830,6 @@
           "total",
           "limit",
           "offset"
-        ]
-      },
-      "RoleView": {
-        "type": "object",
-        "properties": {
-          "orgWideOnly": {
-            "type": "boolean"
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "global_administrator",
-              "project_administrator",
-              "scrum_master",
-              "user",
-              "reader"
-            ]
-          }
-        },
-        "required": [
-          "role",
-          "orgWideOnly",
-          "permissions"
         ]
       },
       "Row": {
@@ -25046,6 +25265,26 @@
           "teamId",
           "clearTeam"
         ]
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "orgWideOnly": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "UpdateSwimlaneRequest": {
         "type": "object",

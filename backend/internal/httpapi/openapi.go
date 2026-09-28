@@ -294,7 +294,6 @@ func declareEnums(b *openapi.Builder) {
 	set(board.Grouping(""), "none", "assignee", "priority", "type")
 	set(project.Kind(""), "software", "service", "business")
 	set(sprint.State(""), "future", "active", "closed")
-	set(perm.Role(""), "global_administrator", "project_administrator", "scrum_master", "user", "reader")
 	set(auth.OrgRole(""), "owner", "admin", "member", "customer")
 	set(auth.SignInMethod(""), "password", "provider", "none")
 	set(git.HostKind(""), "github", "gitlab", "gitea")
@@ -542,9 +541,14 @@ var operations = []operation{
 	{method: "GET", path: "/statuses", handler: "handleListStatuses", tool: "list_statuses", toolHelp: "The statuses workflows are built from.", tag: "organization", summary: "The statuses workflows are built from.", responses: ok(env{"statuses": []workflow.Status{}})},
 	{method: "POST", path: "/statuses", handler: "handleCreateStatus", tag: "organization", summary: "Coin a status workflows can be built from.", request: createStatusRequest{}, responses: created(env{"status": workflow.Status{}})},
 	{method: "GET", path: "/link-types", handler: "handleListLinkTypes", tag: "organization", summary: "The ways two issues can relate.", responses: ok(env{"linkTypes": []issue.LinkTypeRef{}})},
-	{method: "GET", path: "/roles", handler: "handleListRoles", tag: "access", summary: "The five roles and what each grants.", responses: ok(env{"roles": []roleView{}})},
+	{method: "GET", path: "/roles", handler: "handleListRoles", tag: "access", summary: "The organization's roles and what each grants.", responses: ok(env{"roles": []perm.Definition{}})},
+	{method: "GET", path: "/permissions", handler: "handleListPermissions", tag: "access", summary: "Every permission a role may grant, in words.", responses: ok(env{"permissions": []permissionView{}})},
+	{method: "POST", path: "/roles", handler: "handleCreateRole", tag: "access", summary: "Add a role of the organization's own.", request: createRoleRequest{}, responses: created(env{"role": perm.Definition{}})},
+	{method: "PATCH", path: "/roles/{roleKey}", handler: "handleUpdateRole", tag: "access", summary: "Rename a role or change what it grants; every grant of it follows.", request: updateRoleRequest{}, responses: ok(env{"role": perm.Definition{}})},
+	{method: "DELETE", path: "/roles/{roleKey}", handler: "handleDeleteRole", tag: "access", summary: "Remove a role of the organization's own, and every grant of it.", responses: none()},
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "access", summary: "What the caller may do, which decides which buttons to draw.",
-		responses: ok(env{"grants": []perm.Grant{}, "projects": []string{}, "canAdministerOrg": false, "canCreateProject": false})},
+		responses: ok(env{"grants": []perm.Grant{}, "projects": []string{}, "canAdministerOrg": false, "canCreateProject": false,
+			"permissions": env{"org": []perm.Permission{}, "projects": map[string][]perm.Permission{}}})},
 
 	// Groups and role assignments.
 	{method: "GET", path: "/groups", handler: "handleListGroups", tag: "access", summary: "Groups.", responses: ok(env{"groups": []perm.Group{}})},
