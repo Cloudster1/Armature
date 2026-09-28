@@ -62,6 +62,8 @@ spec:
             periodSeconds: 20
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
+          {{- include "armature.attachmentMount" . | nindent 10 }}
+      {{- include "armature.attachmentVolume" . | nindent 6 }}
       {{- with .Values.worker.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

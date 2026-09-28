@@ -232,6 +232,10 @@ ARMATURE_ARGON_THREADS: {{ .Values.auth.argon.threads | quote }}
 ARMATURE_READ_YOUR_WRITES_TTL: {{ .Values.auth.readYourWritesTTL | quote }}
 ARMATURE_PORTAL_CODE_COOLDOWN: {{ .Values.auth.portalCodeCooldown | quote }}
 
+{{- if .Values.attachments.persistence.enabled }}
+ARMATURE_ATTACHMENT_DIR: {{ .Values.attachments.mountPath | quote }}
+{{- end }}
+
 {{- if .Values.s3.enabled }}
 ARMATURE_S3_ENDPOINT: {{ include "armature.s3Endpoint" . | quote }}
 ARMATURE_S3_BUCKET: {{ .Values.s3.bucket | quote }}
@@ -344,4 +348,30 @@ ARMATURE_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
       name: {{ $secret }}
       key: assistant-key
 {{- end }}
+{{- end -}}
+
+{{/*
+The attachment volume, mounted by the api, the worker and the migrate Job
+when attachments.persistence is on. Two helpers so a container's mount and
+the pod's volume cannot name different claims.
+*/}}
+{{- define "armature.attachmentClaim" -}}
+{{- default (printf "%s-attachments" (include "armature.fullname" .)) .Values.attachments.persistence.existingClaim -}}
+{{- end -}}
+
+{{- define "armature.attachmentMount" -}}
+{{- if .Values.attachments.persistence.enabled -}}
+volumeMounts:
+  - name: attachments
+    mountPath: {{ .Values.attachments.mountPath }}
+{{- end -}}
+{{- end -}}
+
+{{- define "armature.attachmentVolume" -}}
+{{- if .Values.attachments.persistence.enabled -}}
+volumes:
+  - name: attachments
+    persistentVolumeClaim:
+      claimName: {{ include "armature.attachmentClaim" . }}
+{{- end -}}
 {{- end -}}

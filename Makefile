@@ -266,7 +266,8 @@ helm-template: ## Render the chart into the golden files
 	$(DOCKER_HELM) template armature $(CHART) $(GOLDEN_ARGS) --set s3.enabled=true --set s3.endpoint=s3.example.com \
 		--set secrets.s3AccessKey=key --set secrets.s3SecretKey=secret --set render.enabled=true \
 		--set mail.smtpAddr=smtp.example.com:587 --set mail.inbox=desk@example.com \
-		--set database.replicaHosts={replica.example.com} --set externalRedis.auth=true > $(GOLDEN)/everything.yaml
+		--set database.replicaHosts={replica.example.com} --set externalRedis.auth=true \
+		--set attachments.persistence.enabled=true > $(GOLDEN)/everything.yaml
 	$(DOCKER_HELM) template armature $(CHART) $(CNPG_ARGS) > $(GOLDEN)/cnpg.yaml
 
 .PHONY: helm-check

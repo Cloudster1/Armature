@@ -7,6 +7,7 @@
 //	migrate status        show which migrations have been applied
 //	migrate version       print the current schema version
 //	migrate up-to <n>     migrate up to and including version n
+//	migrate attachments   copy every file from ARMATURE_ATTACHMENT_DIR into the bucket
 package main
 
 import (
@@ -24,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
+	"github.com/armature/armature/backend/internal/attachment"
 	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/migrations"
 )
@@ -49,6 +51,11 @@ func run() error {
 		args = []string{"up"}
 	}
 	command := args[0]
+
+	// Moving the files needs the volume and the bucket, and no database.
+	if command == "attachments" {
+		return migrateAttachments(ctx, &cfg)
+	}
 
 	// Migrations always run against the primary, never a replica.
 	pool, err := waitForPrimary(ctx, cfg.DB.PrimaryURL)
@@ -105,6 +112,36 @@ func run() error {
 		return err
 	}
 	slog.Info("migrations applied", "command", command, "schema_version", v)
+	return nil
+}
+
+// migrateAttachments copies the volume into the bucket. Both have to be
+// configured: the directory as the source, the bucket as the destination.
+func migrateAttachments(ctx context.Context, cfg *config.Config) error {
+	if cfg.Attachments.Dir == "" || cfg.S3.Endpoint == "" {
+		return errors.New("migrate attachments copies ARMATURE_ATTACHMENT_DIR into ARMATURE_S3_ENDPOINT: set both")
+	}
+	from, err := attachment.NewFS(cfg.Attachments.Dir)
+	if err != nil {
+		return err
+	}
+	to, err := attachment.NewS3(attachment.S3Config{
+		Endpoint: cfg.S3.Endpoint, Bucket: cfg.S3.Bucket, AccessKey: cfg.S3.AccessKey,
+		SecretKey: cfg.S3.SecretKey, Region: cfg.S3.Region, UseSSL: cfg.S3.UseSSL,
+	})
+	if err != nil {
+		return err
+	}
+	if err := to.EnsureBucket(ctx); err != nil {
+		return fmt.Errorf("attachment bucket: %w", err)
+	}
+	report, err := attachment.Migrate(ctx, from, to, slog.Default())
+	slog.Info("attachments copied", "from", from.Root(), "to", cfg.S3.Endpoint+"/"+cfg.S3.Bucket,
+		"copied", report.Copied, "bytes", report.Bytes, "failed", len(report.Failed))
+	if err != nil {
+		return err
+	}
+	slog.Info("point the api and the worker at the bucket now; the volume can go once they run without it")
 	return nil
 }
 

@@ -74,6 +74,7 @@ data:
   ARMATURE_ARGON_THREADS: "4"
   ARMATURE_READ_YOUR_WRITES_TTL: "30s"
   ARMATURE_PORTAL_CODE_COOLDOWN: "1m"
+  ARMATURE_ATTACHMENT_DIR: "/var/lib/armature/attachments"
   ARMATURE_S3_ENDPOINT: "s3.example.com"
   ARMATURE_S3_BUCKET: "armature-attachments"
   ARMATURE_S3_REGION: "us-east-1"
@@ -140,6 +141,31 @@ data:
             try_files $uri $uri/ /index.html;
         }
     }
+---
+# Source: armature/templates/pvc-attachments.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: armature-attachments
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: attachments
+  annotations:
+    # Before the Jobs and the Deployments that mount it.
+    argocd.argoproj.io/sync-wave: "-20"
+    # Kept on uninstall: the files are the organization's, not the release's.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 8Gi
 ---
 # Source: armature/templates/api-service.yaml
 apiVersion: v1
@@ -248,7 +274,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 6d2d25d2aff20cfbdf175cb34148d5b74341ed2b563425ece2a98e91ca34db1c
+        checksum/env: c389bd30c6f6527d805dfe03d9807b7f3540dd0fd877078ed29d6621a6646698
     spec:
       serviceAccountName: armature
       securityContext:
@@ -337,6 +363,13 @@ spec:
             requests:
               cpu: 100m
               memory: 256Mi
+          volumeMounts:
+            - name: attachments
+              mountPath: /var/lib/armature/attachments
+      volumes:
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: armature-attachments
 ---
 # Source: armature/templates/render-deployment.yaml
 apiVersion: apps/v1
@@ -532,7 +565,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 6d2d25d2aff20cfbdf175cb34148d5b74341ed2b563425ece2a98e91ca34db1c
+        checksum/env: c389bd30c6f6527d805dfe03d9807b7f3540dd0fd877078ed29d6621a6646698
     spec:
       serviceAccountName: armature
       securityContext:
@@ -608,6 +641,13 @@ spec:
             requests:
               cpu: 100m
               memory: 256Mi
+          volumeMounts:
+            - name: attachments
+              mountPath: /var/lib/armature/attachments
+      volumes:
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: armature-attachments
 ---
 # Source: armature/templates/ingress.yaml
 apiVersion: networking.k8s.io/v1
@@ -801,6 +841,13 @@ spec:
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }
+          volumeMounts:
+            - name: attachments
+              mountPath: /var/lib/armature/attachments
+      volumes:
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: armature-attachments
 ---
 # Source: armature/templates/job-roles.yaml
 apiVersion: batch/v1

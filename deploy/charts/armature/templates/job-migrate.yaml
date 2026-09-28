@@ -55,4 +55,6 @@ spec:
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }
+          {{- include "armature.attachmentMount" . | nindent 10 }}
+      {{- include "armature.attachmentVolume" . | nindent 6 }}
 {{- end }}
