@@ -23460,6 +23460,9 @@
               "$ref": "#/components/schemas/Cursor"
             }
           },
+          "effect": {
+            "type": "string"
+          },
           "fonts": {
             "$ref": "#/components/schemas/Fonts"
           },

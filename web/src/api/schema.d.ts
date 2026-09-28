@@ -5823,6 +5823,7 @@ export interface components {
             cursors: {
                 [key: string]: components["schemas"]["Cursor"];
             };
+            effect?: string;
             fonts: components["schemas"]["Fonts"];
             icons: {
                 [key: string]: components["schemas"]["Icon"];

@@ -117,3 +117,31 @@ scenario("a new theme starts from the shipped Deep-Tech example", async ({ page 
   await goto(page, "/settings/themes");
   await page.waitForSelector('[data-theme-row="Deep-Tech"]', { timeout: WAIT });
 });
+
+// Constellation's network is drawn live rather than printed, so the shell
+// mounts a canvas for it, while the theme is previewed and once it is used.
+scenario("Constellation draws its network live behind the page", async ({ page }) => {
+  await signUp(page);
+  const before = await page.$("[data-backdrop-effect]");
+  expect.truthy(before === null, "the built-in theme draws nothing behind the page");
+
+  await goto(page, "/settings/themes/new");
+  await page.waitForSelector('[data-theme-example="constellation"]', { timeout: WAIT });
+  await page.click('[data-theme-example="constellation"]');
+  await page.click('[data-action="preview-theme"]');
+  await page.waitForSelector('[data-backdrop-effect="constellation"] canvas', { timeout: WAIT });
+  await page.click('[data-action="preview-theme"]');
+  await page.waitForFunction(() => !document.querySelector("[data-backdrop-effect]"), { timeout: WAIT });
+
+  await clickButton(page, "Save theme");
+  await page.waitForFunction(() => /\/settings\/themes\/[0-9a-f-]{36}$/.test(location.pathname), { timeout: WAIT });
+  await clickButton(page, "Use this theme");
+  await page.waitForSelector('[data-backdrop-effect="constellation"] canvas', { timeout: WAIT });
+  const drawn = await page.$eval('[data-backdrop-effect="constellation"] canvas', (c) => {
+    const data = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let lit = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) lit++;
+    return { w: c.width, h: c.height, lit };
+  });
+  expect.truthy(drawn.w > 0 && drawn.h > 0 && drawn.lit > 0, `the canvas covers the page and something is drawn on it: ${JSON.stringify(drawn)}`);
+});

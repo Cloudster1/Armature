@@ -23,6 +23,13 @@ func TestEveryExampleIsAValidTheme(t *testing.T) {
 			t.Errorf("%s leaves one of the palettes empty", example.Name)
 		}
 	}
+	if ExampleByKey("constellation").Spec.Effect != "constellation" {
+		t.Error("Constellation does not ask the shell for its network")
+	}
+	bad := Spec{Effect: "fireworks"}
+	if err := Validate(&bad, uuid.Nil, nil); err == nil {
+		t.Error("an effect the shell cannot draw was accepted")
+	}
 	if ExampleByKey("deep-tech") == nil || ExampleByKey("nothing") != nil {
 		t.Error("ExampleByKey does not find what is there, or finds what is not")
 	}

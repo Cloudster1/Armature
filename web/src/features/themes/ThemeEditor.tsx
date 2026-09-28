@@ -69,7 +69,7 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
       setThemePreview(null);
       return;
     }
-    const timer = window.setTimeout(() => setThemePreview(compileTheme({ id: theme?.id ?? "new", spec, assets })), THEME_PREVIEW_DEBOUNCE_MS);
+    const timer = window.setTimeout(() => setThemePreview(compileTheme({ id: theme?.id ?? "new", spec, assets }), spec.effect ?? null), THEME_PREVIEW_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [preview, spec, theme?.id, assets]);
   useEffect(() => () => setThemePreview(null), []);
@@ -415,6 +415,17 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
           </span>
         )}
       </div>
+      <p className="mb-2 mt-6 text-sm text-ink-muted">A moving picture the page draws live behind the content, never the same twice. It stands still for anyone who asked their system for less motion.</p>
+      <Segmented<"none" | "constellation">
+        label="Moving picture"
+        size="sm"
+        value={spec.effect === "constellation" ? "constellation" : "none"}
+        onChange={(effect) => patch((d) => { if (effect === "none") delete d.effect; else d.effect = effect; })}
+        options={[
+          { value: "none", label: "None", attrs: { "data-theme-effect": "none" } },
+          { value: "constellation", label: "Constellation", attrs: { "data-theme-effect": "constellation" } },
+        ]}
+      />
     </Card>
   );
 }
