@@ -13,6 +13,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("./app", () => ({ appRoute: {} }));
 vi.mock("@/api/auth", () => ({
+  useCreateDemoOrganization: () => ({ mutate: vi.fn(), isPending: false, error: null }),
   useMe: () => ({ data: { principal } }),
   useDeleteOrganization: () => ({ mutateAsync: remove, isPending: false, error: null }),
 }));

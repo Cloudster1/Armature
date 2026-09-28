@@ -67,6 +67,11 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER org_starts_with_roles AFTER INSERT ON org
     FOR EACH ROW EXECUTE FUNCTION org_starts_with_roles();
 
+-- Every organization there is gets the five. The org table forces row
+-- security on its owner as well, and the migrations run as the owner, so
+-- without lifting it for the loop the loop would see no organizations at
+-- all and quietly fill none.
+ALTER TABLE org NO FORCE ROW LEVEL SECURITY;
 -- +goose StatementBegin
 DO $$
 DECLARE
@@ -77,6 +82,7 @@ BEGIN
     END LOOP;
 END $$;
 -- +goose StatementEnd
+ALTER TABLE org FORCE ROW LEVEL SECURITY;
 
 -- What a built-in role is stays: it cannot go, its key cannot change, and
 -- the global administrator keeps administering the organization, or an

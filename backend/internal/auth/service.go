@@ -550,6 +550,11 @@ func grantJoiningRole(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, 
 	if appRole == "" {
 		return nil
 	}
+	// An organization from before roles were rows may still lack its five;
+	// this adds nothing where they are there.
+	if _, err := tx.Exec(ctx, `SELECT org_builtin_roles($1)`, orgID); err != nil {
+		return fmt.Errorf("make sure the organization has its roles: %w", err)
+	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO role_assignment (org_id, role, user_id)
 		VALUES ($1, $2, $3)
