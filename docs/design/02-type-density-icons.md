@@ -42,9 +42,10 @@ line up. A size typed by hand (`text-[13px]`) is a defect, and
 Constants live in `web/src/config.ts` (`CONTROL_HEIGHT_*`, `ROW_HEIGHT_*`,
 `SIDEBAR_WIDTH`, `SIDEBAR_RAIL_WIDTH`, `DRAWER_WIDTH`, `ISSUE_PANEL_WIDTH`,
 `ISSUE_PANEL_DOCK_MIN_PX`). Three page widths, by
-what a page is: `narrow` 44rem for forms and settings, `content` 72rem for
+what a page is: `narrow` 64rem for forms and settings, `content` 100rem for
 reading and lists, `wide` for canvases (board, plan, hierarchy, workflow,
-dashboard).
+dashboard). Both caps are there for the line of prose, not the table: on a
+wide monitor a settings table fills the column rather than a strip of it.
 
 ## Icons
 
