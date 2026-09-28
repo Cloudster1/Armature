@@ -444,6 +444,8 @@ func moreAPIError(err error) *APIError {
 		return ErrBadRequest(withoutSentinel(err, workflow.ErrInvalid))
 	case errors.Is(err, workflow.ErrInUse):
 		return ErrConflict(withoutSentinel(err, workflow.ErrInUse))
+	case errors.Is(err, theme.ErrNotAThemeFile):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
 	case errors.Is(err, theme.ErrDefaultNotShared):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(theme.ErrDefaultNotShared.Error()) + "."}
 	case errors.Is(err, theme.ErrNotFound):

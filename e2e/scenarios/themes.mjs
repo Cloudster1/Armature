@@ -178,3 +178,31 @@ scenario("an organization's default theme reaches everybody until they choose", 
   await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() === "#22aa66", { timeout: WAIT });
   expect.truthy(owner.email.length > 0, "the owner set the default");
 });
+
+// A theme goes out as one file and comes back as one's own: the Minecraft
+// theme kept under e2e/fixtures is imported, used, and its square corners show.
+scenario("a theme is imported from a file and exported back", async ({ page }) => {
+  await signUp(page);
+  await goto(page, "/settings/themes");
+  await page.waitForSelector("[data-theme-file]", { timeout: WAIT });
+  const input = await page.$("[data-theme-file]");
+  await input.uploadFile(new URL("../fixtures/minecraft.armature-theme.json", import.meta.url).pathname);
+  await page.waitForSelector('[data-theme-row="Minecraft"] [data-action="theme-menu"]', { timeout: WAIT });
+
+  await page.click('[data-theme-row="Minecraft"] [data-action="theme-menu"]');
+  await page.waitForSelector('[data-action="use-theme"]', { timeout: WAIT });
+  await page.click('[data-action="use-theme"]');
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--radius-control").trim() === "0px", { timeout: WAIT });
+
+  // The export is the same shape the import took.
+  const exported = await page.evaluate(async () => {
+    const row = document.querySelector('[data-theme-row="Minecraft"] a[href^="/settings/themes/"]');
+    const id = row.getAttribute("href").split("/").pop();
+    const response = await fetch(`/api/v1/themes/${id}/export`, { credentials: "include" });
+    return { status: response.status, disposition: response.headers.get("content-disposition"), body: await response.json() };
+  });
+  expect.equal(exported.status, 200, "the export answers");
+  expect.contains(exported.disposition ?? "", "Minecraft.armature-theme.json", "the file is named after the theme");
+  expect.equal(exported.body.format, "armature-theme/1", "the export is a theme file");
+  expect.equal(exported.body.spec.shape.radiusControl, 0, "the export carries the spec");
+});

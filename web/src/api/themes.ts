@@ -107,6 +107,20 @@ export function useSetDefaultTheme() {
   return useThemeMutation((themeId: string | null) => request<{ theme: Theme | null }>("/themes/default", { method: "PUT", body: { themeId } }));
 }
 
+/** Where a theme's export is fetched from, as a download the browser handles itself. */
+export function themeExportHref(id: string): string {
+  return `/api/v1/themes/${id}/export`;
+}
+
+/** Makes a theme of one's own from an exported theme file. */
+export function useImportTheme() {
+  return useThemeMutation((file: File) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    return upload<{ theme: Theme }>("/themes/import", form);
+  });
+}
+
 export function useUploadThemeAsset() {
   return useThemeMutation(({ id, file }: { id: string; file: File }) => {
     const form = new FormData();

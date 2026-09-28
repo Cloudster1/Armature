@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useMe } from "@/api/auth";
 import { useAccess } from "@/api/access";
-import { useActiveTheme, useChooseTheme, useDeleteTheme, useSetDefaultTheme, useThemes, useUpdateTheme, type Theme } from "@/api/themes";
+import { themeExportHref, useActiveTheme, useChooseTheme, useDeleteTheme, useImportTheme, useSetDefaultTheme, useThemes, useUpdateTheme, type Theme } from "@/api/themes";
 import { Button, EmptyState, ErrorBanner, IconButton, Menu, Page, PageHeader, Segmented, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -32,6 +32,8 @@ function ThemesPage() {
   const { data: activeData } = useActiveTheme();
   const choose = useChooseTheme();
   const setDefault = useSetDefaultTheme();
+  const importTheme = useImportTheme();
+  const fileInput = useRef<HTMLInputElement>(null);
   const update = useUpdateTheme();
   const remove = useDeleteTheme();
   const confirm = useConfirm();
@@ -73,6 +75,22 @@ function ThemesPage() {
                 Use the organization's default
               </Button>
             )}
+            <Button variant="secondary" icon={<Icon.Upload />} loading={importTheme.isPending} onClick={() => fileInput.current?.click()} data-action="import-theme">
+              Import theme
+            </Button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              aria-label="Theme file"
+              data-theme-file
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) importTheme.mutate(file, { onSuccess: (made) => toast.success(`Imported ${made.theme.name}`) });
+              }}
+            />
             <Button icon={<Icon.Plus />} onClick={() => navigate({ to: "/settings/themes/new" })} data-action="new-theme">
               New theme
             </Button>
@@ -94,6 +112,7 @@ function ThemesPage() {
       {choose.error && <ErrorBanner>{(choose.error as Error).message}</ErrorBanner>}
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
       {setDefault.error && <ErrorBanner>{(setDefault.error as Error).message}</ErrorBanner>}
+      {importTheme.error && <ErrorBanner>{(importTheme.error as Error).message}</ErrorBanner>}
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
       {isLoading ? null : themes.length === 0 ? (
         <EmptyState
@@ -153,6 +172,7 @@ function ThemesPage() {
                             ]
                           : []),
                         { label: "Edit", icon: <Icon.Edit />, disabled: !editable, onSelect: () => navigate({ to: "/settings/themes/$themeId", params: { themeId: t.id } }), attrs: { "data-action": "edit-theme" } },
+                        { label: "Export as a file", icon: <Icon.Download />, onSelect: () => { window.location.href = themeExportHref(t.id); }, attrs: { "data-action": "export-theme" } },
                         {
                           label: t.shared ? "Stop sharing" : "Share with the organization",
                           icon: <Icon.Share />,

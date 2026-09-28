@@ -1,10 +1,12 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -187,6 +189,77 @@ func (s *Server) handleUploadThemeAsset(w http.ResponseWriter, r *http.Request) 
 		}
 		NoteWrite(r.Context(), lsn)
 		respondJSON(w, r, http.StatusCreated, map[string]any{"asset": asset})
+		return
+	}
+}
+
+// handleExportTheme hands the theme over as one file, so it can be kept or
+// given to another organization.
+func (s *Server) handleExportTheme(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "themeID", "theme")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	pkg, err := s.Themes.Export(r.Context(), id, userFrom(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	body, err := json.MarshalIndent(pkg, "", "  ")
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	safe := strings.Map(func(c rune) rune {
+		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_' {
+			return c
+		}
+		return '-'
+	}, pkg.Name)
+	h := w.Header()
+	h.Set("Content-Type", "application/json")
+	h.Set("Content-Length", strconv.Itoa(len(body)))
+	h.Set("Content-Disposition", `attachment; filename="`+safe+`.armature-theme.json"`)
+	h.Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
+}
+
+// handleImportTheme reads an exported theme, as a multipart part named file,
+// and makes it the caller's own.
+func (s *Server) handleImportTheme(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, theme.MaxPackageBytes+uploadSlack)
+	reader, err := r.MultipartReader()
+	if err != nil {
+		respondError(w, r, ErrBadRequest("Send the theme file as multipart form data in a part named file."))
+		return
+	}
+	for {
+		part, err := reader.NextPart()
+		if errors.Is(err, io.EOF) {
+			respondError(w, r, ErrBadRequest("The upload has no part named file."))
+			return
+		}
+		if err != nil {
+			respondError(w, r, ErrBadRequest("The upload could not be read."))
+			return
+		}
+		if part.FormName() != "file" {
+			continue
+		}
+		var pkg theme.Package
+		if err := json.NewDecoder(part).Decode(&pkg); err != nil {
+			respondError(w, r, asValidationError(theme.ErrNotAThemeFile))
+			return
+		}
+		made, lsn, err := s.Themes.Import(r.Context(), userFrom(r), &pkg)
+		if err != nil {
+			respondError(w, r, asValidationError(err))
+			return
+		}
+		NoteWrite(r.Context(), lsn)
+		respondJSON(w, r, http.StatusCreated, map[string]any{"theme": made})
 		return
 	}
 }

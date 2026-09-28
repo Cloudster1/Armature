@@ -395,7 +395,15 @@ sees until they choose, `GET /themes/active` says whether what they see is
 `chosen` or the `organization`'s, and the header offers Use the built-in theme
 (`[data-action="built-in-theme"]`) over the default, or Use the organization's
 default (`[data-action="org-default-theme"]`) to come back to it. `[data-themes-view="mine"|"shared"]` switch the list;
-`[data-action="new-theme"]` opens the editor.
+`[data-action="new-theme"]` opens the editor. Import theme
+(`[data-action="import-theme"]`, a hidden file input `[data-theme-file]`)
+posts an exported theme to `POST /themes/import` and makes it the reader's
+own, its files given ids of their own and the spec and CSS rewritten to name
+them, a taken name numbered; the row menu's Export as a file
+(`export-theme`) downloads `GET /themes/<id>/export`, a JSON document of
+format `armature-theme/1` with the name, the spec and every file inline.
+`docs/design/themes/` keeps such files; `minecraft.armature-theme.json` is the
+one the browser suite imports.
 
 `/settings/themes/new` and `/settings/themes/<id>` are the editor
 (`[data-theme-editor=<id>|"new"]`). A new theme opens with a Start from card

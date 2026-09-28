@@ -317,6 +317,8 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	r.Get("/themes/active", s.handleActiveTheme)
 	r.Put("/themes/active", s.handleChooseTheme)
 	r.With(requirePerm(perm.OrgAdminister)).Put("/themes/default", s.handleSetDefaultTheme)
+	r.Post("/themes/import", s.handleImportTheme)
+	r.Get("/themes/{themeID}/export", s.handleExportTheme)
 	r.Get("/themes/{themeID}", s.handleGetTheme)
 	r.Patch("/themes/{themeID}", s.handleUpdateTheme)
 	r.Delete("/themes/{themeID}", s.handleDeleteTheme)
