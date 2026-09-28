@@ -45,6 +45,30 @@ func TestADemoFactoryIsOnePressAway(t *testing.T) {
 		t.Fatalf("the demo has %d milestones, want 2", len(milestones))
 	}
 
+	// The plant around the line: a night shift with boards for both, and a
+	// maintenance project on a workflow of its own where work waits for parts.
+	teams := list(t, want(t, owner.get("/api/v1/projects/LINE/teams"), http.StatusOK, "shifts"), "teams")
+	if len(teams) != 2 {
+		t.Fatalf("the line has %d teams, want both shifts", len(teams))
+	}
+	boards := list(t, want(t, owner.get("/api/v1/projects/LINE/boards"), http.StatusOK, "boards"), "boards")
+	if len(boards) < 4 {
+		t.Fatalf("the line has %d boards, want the project's, one per shift and the kanban one", len(boards))
+	}
+	plant := want(t, owner.get("/api/v1/projects/MAINT/issues?state=all"), http.StatusOK, "the plant's issues")
+	waiting := 0
+	for _, row := range list(t, plant, "issues") {
+		if row.(map[string]any)["status"].(map[string]any)["name"] == "Waiting for parts" {
+			waiting++
+		}
+	}
+	if got := len(list(t, plant, "issues")); got < 10 || waiting < 2 {
+		t.Fatalf("the plant holds %d issues, %d waiting for parts; want a crew's worth with some waiting: %s", got, waiting, plant.Raw)
+	}
+	if crew := list(t, want(t, owner.get("/api/v1/projects/MAINT/teams"), http.StatusOK, "crew"), "teams"); len(crew) != 1 {
+		t.Fatalf("the plant has %d teams, want the crew", len(crew))
+	}
+
 	// Back home, the demo is one of the organizations to choose from.
 	want(t, owner.post("/api/v1/auth/switch-org", map[string]string{"slug": home}), http.StatusOK, "back home")
 	orgs := list(t, want(t, owner.get("/api/v1/auth/me"), http.StatusOK, "memberships"), "organizations")
