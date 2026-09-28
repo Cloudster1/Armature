@@ -78,14 +78,20 @@ func (w *Watch) Once(ctx context.Context) (int, error) {
 	recorded := 0
 	for _, d := range found {
 		orgCtx := db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID}))
-		_, err := w.db.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
-			return w.desk.breach(ctx, tx, d.timerID)
+		var happened bool
+		_, err := w.db.Write(orgCtx, func(ctx context.Context, tx db.DBTX) (err error) {
+			happened, err = w.desk.breach(ctx, tx, d.timerID)
+			return err
 		})
 		if err != nil {
 			w.log.Warn("could not record a breach", "timer", d.timerID, "error", err)
 			continue
 		}
-		recorded++
+		// A clock that only counts open hours may be found by wall time and
+		// still have time left; that is not a breach recorded.
+		if happened {
+			recorded++
+		}
 	}
 	return recorded, nil
 }
