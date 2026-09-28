@@ -33,7 +33,9 @@ DOCKER_GO = docker run --rm -t \
 	-u $(UID):$(GID) \
 	-v $(ROOT)/backend:/src \
 	-v $(ROOT)/api:/api \
+	-v $(ROOT)/docs/design/themes:/themes:ro \
 	-e ARMATURE_OPENAPI_FILE=/api/openapi.json \
+	-e ARMATURE_THEME_FILES=/themes \
 	-v $(GO_CACHE_VOL):/gocache \
 	-v $(GO_MOD_VOL):/gomod \
 	-e GOCACHE=/gocache \

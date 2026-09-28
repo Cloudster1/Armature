@@ -1,24 +1,44 @@
 package theme
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
-// The theme files kept under shipped/ are offered as examples and are what
-// somebody imports to try the format. Each has to be a package this version
-// reads, with a description, and a spec the editor would save; the examples
-// test then validates it like the rest.
-func TestEveryShippedThemeFileIsAnExample(t *testing.T) {
-	examples := shipped()
-	if len(examples) < 2 {
-		t.Fatalf("shipped %d themes, want the files under shipped/", len(examples))
+// The theme files kept under docs/design/themes are what somebody imports to
+// try the product dressed up. Each has to be a package this version reads and
+// a spec the editor would save. The Makefile mounts the directory and names
+// it; outside that, there is nothing to check.
+func TestEveryShippedThemeFileImports(t *testing.T) {
+	dir := os.Getenv("ARMATURE_THEME_FILES")
+	if dir == "" {
+		t.Skip("ARMATURE_THEME_FILES is not set; run the suite with `make test`")
 	}
-	for _, e := range examples {
-		if e.Description == "" {
-			t.Errorf("%s has no description for the Themes page", e.Key)
+	files, err := filepath.Glob(filepath.Join(dir, "*.armature-theme.json"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no theme files under %s: %v", dir, err)
+	}
+	for _, file := range files {
+		body, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if ExampleByKey(e.Key) == nil {
-			t.Errorf("%s is not offered as an example", e.Key)
+		var pkg Package
+		if err := json.Unmarshal(body, &pkg); err != nil {
+			t.Errorf("%s does not parse: %v", filepath.Base(file), err)
+			continue
+		}
+		if pkg.Format != PackageFormat || strings.TrimSpace(pkg.Name) == "" {
+			t.Errorf("%s is not a %s package with a name", filepath.Base(file), PackageFormat)
+		}
+		spec := pkg.Spec
+		if err := Validate(&spec, uuid.Nil, nil); err != nil {
+			t.Errorf("%s does not validate: %v", filepath.Base(file), err)
 		}
 	}
 }
