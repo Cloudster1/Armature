@@ -308,6 +308,16 @@ on your own row. The portal's foot puts the customer's name on a Menu
 (`[data-action="customer-menu"]`) with the same two actions.
 
 
+## Organization (narrow)
+
+The organization's name and address, then Show the product: a Card with
+Create a demo organization (`[data-action="create-demo"]`), which posts
+`POST /organizations/demo`, gets a second organization of the reader's own
+with the production line demo in it (project `LINE`: a changeover, machines
+that stop, a scrap rate, the shift, its maintenance windows, two milestones),
+moves the session there and lands on the project. Below it, Delete the
+organization, for an owner.
+
 ## Users (narrow)
 
 ```

@@ -239,7 +239,7 @@ scenario("a member granted global administration can author workflows", async ({
 // The matrix: a role of the organization's own is added, given a permission
 // with one tick, and offered on the Roles tab with what it grants.
 scenario("the role matrix adds a role and decides what it grants", async ({ page }) => {
-  await signUp(page);
+  const owner = await signUp(page);
   await goto(page, "/settings/access");
   await page.click('[data-access-tab="Matrix"]');
   await page.waitForSelector("[data-role-matrix]", { timeout: WAIT });
@@ -265,4 +265,8 @@ scenario("the role matrix adds a role and decides what it grants", async ({ page
   await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
   await selectByLabel(page, 'select[aria-label="Role"]', "Sprint planner");
   await page.waitForFunction(() => document.body.innerText.includes("Sprint planner can see projects, plan sprints."), { timeout: WAIT });
+
+  // And it is granted like any other, from the same form.
+  await grantRole(page, { who: owner.name, role: "Sprint planner" });
+  await page.waitForFunction(() => document.querySelector('[data-testid="role-assignments"]')?.innerText.includes("Sprint planner"), { timeout: WAIT });
 });

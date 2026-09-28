@@ -56,6 +56,18 @@ export function useMe() {
   });
 }
 
+/** Makes a demo organization with a production line in it and moves the session there. */
+export function useCreateDemoOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => request<{ organization: Org; projectKey: string }>("/organizations/demo", { method: "POST" }),
+    onSuccess: () => {
+      cacheCustomTheme(null);
+      queryClient.clear();
+    },
+  });
+}
+
 export interface SignupInput {
   email: string;
   password: string;

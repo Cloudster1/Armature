@@ -234,7 +234,7 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, perm.ErrNotFound):
 		return ErrNotFound("That was not found.")
 	case errors.Is(err, perm.ErrRoleNotFound):
-		return ErrNotFound(capitalize(perm.ErrRoleNotFound.Error()) + ".")
+		return ErrNotFound(capitalize(err.Error()) + ".")
 	case errors.Is(err, perm.ErrBuiltinRole), errors.Is(err, perm.ErrLockout), errors.Is(err, perm.ErrRoleNameTaken):
 		return ErrConflict(capitalize(err.Error()) + ".")
 	case errors.Is(err, perm.ErrRoleKey), errors.Is(err, perm.ErrRoleName), errors.Is(err, perm.ErrUnknownPermission):

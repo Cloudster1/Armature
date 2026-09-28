@@ -97,6 +97,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/auth/me/export", s.handleExportMe)
 			r.Delete("/auth/me", s.handleEraseMe)
 			r.Post("/auth/switch-org", s.handleSwitchOrg)
+			// A whole organization with an operation in it, for showing the product.
+			r.With(requireSession).Post("/organizations/demo", s.handleCreateDemoOrganization)
 
 			// And below here, one they have chosen an organization for, so
 			// every query underneath carries a tenant scope.

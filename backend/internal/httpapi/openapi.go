@@ -454,6 +454,8 @@ var operations = []operation{
 		responses: ok(env{"principal": auth.Principal{}, "organizations": []auth.Membership{}})},
 	{method: "GET", path: "/build", handler: "handleBuild", tag: "health", summary: "Which build of Armature is answering.",
 		responses: ok(env{"build": buildinfo.Info{}})},
+	{method: "POST", path: "/organizations/demo", handler: "handleCreateDemoOrganization", tag: "auth", summary: "Make a demo organization with a production line in it, owned by the caller, and move the session there. From a browser session only.",
+		responses: created(env{"organization": auth.Org{}, "projectKey": ""})},
 	{method: "POST", path: "/auth/switch-org", handler: "handleSwitchOrg", tag: "auth", summary: "Move the session to another organization.",
 		request: switchOrgRequest{}, responses: ok(env{"organization": auth.Org{}})},
 	// Themes.

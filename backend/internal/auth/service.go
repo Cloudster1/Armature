@@ -462,6 +462,51 @@ func (s *Service) Memberships(ctx context.Context, userID uuid.UUID) ([]Membersh
 	return out, err
 }
 
+// CreateOrganization makes a second organization for somebody who already has
+// an account, owned by them, ready for a project, under the same policy that
+// decides whether anybody may sign up at all.
+func (s *Service) CreateOrganization(ctx context.Context, userID uuid.UUID, name, slug, ip string) (*Org, db.LSN, error) {
+	if s.signupPolicy() == SignupClosed {
+		return nil, 0, ErrSignupClosed
+	}
+	name = strings.TrimSpace(name)
+	slug = strings.TrimSpace(strings.ToLower(slug))
+	if name == "" || slug == "" {
+		return nil, 0, errors.New("an organization needs a name and an address")
+	}
+	var org Org
+	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var orgID uuid.UUID
+		err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, slug, name).Scan(&orgID)
+		if isUniqueViolation(err, "org_slug_key") {
+			return ErrSlugTaken
+		}
+		if err != nil {
+			return fmt.Errorf("create organization: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, orgID, userID); err != nil {
+			return fmt.Errorf("create membership: %w", err)
+		}
+		if err := grantJoiningRole(ctx, tx, orgID, userID, RoleOwner); err != nil {
+			return err
+		}
+		if _, err := bootstrap.Org(ctx, tx, orgID); err != nil {
+			return fmt.Errorf("prepare organization: %w", err)
+		}
+		org = Org{ID: orgID, Slug: slug, Name: name}
+		if err := writeAudit(ctx, tx, orgID, userID, "org.created", "org", &orgID, ip); err != nil {
+			return err
+		}
+		return events.Emit(ctx, tx, orgID, events.TopicOrgCreated, map[string]any{
+			"orgId": orgID, "orgSlug": slug, "orgName": name, "ownerId": userID,
+		})
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return &org, lsn, nil
+}
+
 // SwitchOrg points a session at another organization of the person's, when its
 // proof vouches for them beyond the organization it was opened for.
 func (s *Service) SwitchOrg(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, slug string) (*Org, db.LSN, error) {

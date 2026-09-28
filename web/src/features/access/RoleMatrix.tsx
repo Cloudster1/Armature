@@ -56,10 +56,11 @@ export function RoleMatrix() {
           <tr>
             <Th>Permission</Th>
             {roles.map((role) => (
-              <Th key={role.role} className="text-center" data-role-column={role.role}>
-                <span className="inline-flex items-center gap-1 normal-case tracking-normal">
-                  <span className="text-xs font-medium text-ink" title={role.description}>{role.name}</span>
-                  {role.builtin && <Tag>Built in</Tag>}
+              <Th key={role.role} className="text-center align-top" data-role-column={role.role}>
+                <span className="inline-flex flex-col items-center gap-1 normal-case tracking-normal">
+                  <span className="whitespace-nowrap text-xs font-medium text-ink" title={role.description}>{role.name}</span>
+                  <span className="inline-flex items-center gap-1">
+                  {role.builtin && <Tag className="whitespace-nowrap">Built in</Tag>}
                   {administers && (
                     <Menu
                       label={`Actions for ${role.name}`}
@@ -71,6 +72,7 @@ export function RoleMatrix() {
                       ]}
                     />
                   )}
+                  </span>
                 </span>
               </Th>
             ))}

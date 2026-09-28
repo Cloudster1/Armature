@@ -7927,6 +7927,49 @@
         }
       }
     },
+    "/organizations/demo": {
+      "post": {
+        "operationId": "createDemoOrganization",
+        "summary": "Make a demo organization with a production line in it, owned by the caller, and move the session there. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organization": {
+                      "$ref": "#/components/schemas/Org"
+                    },
+                    "projectKey": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "organization",
+                    "projectKey"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/permissions": {
       "get": {
         "operationId": "listPermissions",

@@ -121,7 +121,7 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 		var wholeOrg bool
 		err := tx.QueryRow(ctx, `SELECT org_wide_only FROM org_role WHERE key = $1`, string(in.Role)).Scan(&wholeOrg)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrRoleNotFound
+			return fmt.Errorf("%w: %s", ErrRoleNotFound, in.Role)
 		}
 		if err != nil {
 			return err
