@@ -145,3 +145,36 @@ scenario("Constellation draws its network live behind the page", async ({ page }
   });
   expect.truthy(drawn.w > 0 && drawn.h > 0 && drawn.lit > 0, `the canvas covers the page and something is drawn on it: ${JSON.stringify(drawn)}`);
 });
+
+// The organization's default reaches whoever has not chosen, and a person
+// may keep the built-in theme over it.
+scenario("an organization's default theme reaches everybody until they choose", async ({ page }) => {
+  const owner = await signUp(page);
+  const stock = await accentOf(page);
+  const name = `House ${Date.now().toString(36)}`;
+  await createTheme(page, name, { accent: "#22aa66" });
+  await goto(page, "/settings/themes");
+  await page.click(`[data-theme-row="${name}"] [data-action="theme-menu"]`);
+  await page.waitForSelector('[data-action="share-theme"]', { timeout: WAIT });
+  await page.click('[data-action="share-theme"]');
+  await page.waitForFunction((n) => document.querySelector(`[data-theme-row="${n}"]`)?.innerText.includes("Shared"), { timeout: WAIT }, name);
+  await page.click(`[data-theme-row="${name}"] [data-action="theme-menu"]`);
+  await page.waitForSelector('[data-action="default-theme"]', { timeout: WAIT });
+  await page.click('[data-action="default-theme"]');
+  await page.waitForFunction((n) => document.querySelector(`[data-theme-row="${n}"]`)?.getAttribute("data-theme-default") === "true", { timeout: WAIT }, name);
+
+  const who = await inviteMember(page, "housed");
+  await acceptInvite(page, who);
+  await goto(page, "/");
+  await waitForApp(page);
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() === "#22aa66", { timeout: WAIT });
+
+  await goto(page, "/settings/themes");
+  await page.waitForSelector('[data-action="built-in-theme"]', { timeout: WAIT });
+  await page.click('[data-action="built-in-theme"]');
+  await page.waitForFunction((s) => getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() === s, { timeout: WAIT }, stock);
+  await page.waitForSelector('[data-action="org-default-theme"]', { timeout: WAIT });
+  await page.click('[data-action="org-default-theme"]');
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() === "#22aa66", { timeout: WAIT });
+  expect.truthy(owner.email.length > 0, "the owner set the default");
+});

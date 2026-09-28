@@ -18,6 +18,12 @@ import (
 
 type chooseThemeRequest struct {
 	ThemeID *uuid.UUID `json:"themeId"`
+	// BuiltIn with no theme keeps the built-in theme over the organization's default.
+	BuiltIn bool `json:"builtIn,omitempty"`
+}
+
+type defaultThemeRequest struct {
+	ThemeID *uuid.UUID `json:"themeId"`
 }
 
 func (s *Server) administers(r *http.Request) bool {
@@ -53,12 +59,27 @@ func (s *Server) handleCreateTheme(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleActiveTheme(w http.ResponseWriter, r *http.Request) {
-	active, err := s.Themes.Active(r.Context(), userFrom(r))
+	active, source, err := s.Themes.Active(r.Context(), userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"theme": active})
+	respondJSON(w, r, http.StatusOK, map[string]any{"theme": active, "source": string(source)})
+}
+
+func (s *Server) handleSetDefaultTheme(w http.ResponseWriter, r *http.Request) {
+	var req defaultThemeRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	chosen, lsn, err := s.Themes.SetDefault(r.Context(), userFrom(r), req.ThemeID)
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusOK, map[string]any{"theme": chosen})
 }
 
 func (s *Server) handleChooseTheme(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +88,7 @@ func (s *Server) handleChooseTheme(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	chosen, lsn, err := s.Themes.Choose(r.Context(), userFrom(r), req.ThemeID)
+	chosen, lsn, err := s.Themes.Choose(r.Context(), userFrom(r), req.ThemeID, req.BuiltIn)
 	if err != nil {
 		respondError(w, r, err)
 		return

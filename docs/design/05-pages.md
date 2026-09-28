@@ -345,12 +345,19 @@ Magenta  Shared    you      2 people                     ...
 ```
 
 `/settings/themes` lists what the reader may use; rows are
-`data-theme-row=<name>` with `data-theme-active`, and the Menu
+`data-theme-row=<name>` with `data-theme-active` and `data-theme-default`,
+and the Menu
 (`[data-action="theme-menu"]`) holds Use this theme (`use-theme`) or Stop
 using (`stop-theme`), Edit (`edit-theme`), Share with the organization or
 Stop sharing (`share-theme`) and Delete (`delete-theme`, behind a confirm
 whose noun is "theme" and whose body says how many people go back to the
-built-in theme). `[data-themes-view="mine"|"shared"]` switch the list;
+built-in theme). An organization administrator's menu on a shared theme adds
+Make it the organization's default (`default-theme`) or No longer the
+organization's default (`undefault-theme`): the default is what everybody
+sees until they choose, `GET /themes/active` says whether what they see is
+`chosen` or the `organization`'s, and the header offers Use the built-in theme
+(`[data-action="built-in-theme"]`) over the default, or Use the organization's
+default (`[data-action="org-default-theme"]`) to come back to it. `[data-themes-view="mine"|"shared"]` switch the list;
 `[data-action="new-theme"]` opens the editor.
 
 `/settings/themes/new` and `/settings/themes/<id>` are the editor

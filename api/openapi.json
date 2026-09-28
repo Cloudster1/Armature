@@ -13709,10 +13709,68 @@
     "/themes/active": {
       "get": {
         "operationId": "activeTheme",
-        "summary": "The theme the caller chose, or null for the built-in one.",
+        "summary": "The theme the caller sees: chosen, the organization's default, or null for the built-in one.",
         "tags": [
           "themes"
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "theme": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Theme"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "theme"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "chooseTheme",
+        "summary": "Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one.",
+        "tags": [
+          "themes"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseThemeRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -13750,10 +13808,12 @@
             }
           }
         }
-      },
+      }
+    },
+    "/themes/default": {
       "put": {
-        "operationId": "chooseTheme",
-        "summary": "Use a theme, or null to return to the built-in one.",
+        "operationId": "setDefaultTheme",
+        "summary": "Name the shared theme everybody sees until they choose, or null for the built-in one.",
         "tags": [
           "themes"
         ],
@@ -13762,7 +13822,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ChooseThemeRequest"
+                "$ref": "#/components/schemas/DefaultThemeRequest"
               }
             }
           }
@@ -17650,6 +17710,9 @@
       "ChooseThemeRequest": {
         "type": "object",
         "properties": {
+          "builtIn": {
+            "type": "boolean"
+          },
           "themeId": {
             "type": [
               "string",
@@ -18593,6 +18656,21 @@
           "position",
           "widgets",
           "createdAt"
+        ]
+      },
+      "DefaultThemeRequest": {
+        "type": "object",
+        "properties": {
+          "themeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "themeId"
         ]
       },
       "Delivery": {
@@ -24462,6 +24540,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "default": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -24500,6 +24581,7 @@
           "assets",
           "inUse",
           "active",
+          "default",
           "createdAt",
           "updatedAt"
         ]

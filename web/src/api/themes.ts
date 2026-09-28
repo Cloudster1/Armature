@@ -25,6 +25,8 @@ export interface Theme {
   assets: ThemeAsset[];
   inUse: number;
   active: boolean;
+  /** The organization shows it to whoever has not chosen. */
+  default: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -64,9 +66,12 @@ export function useTheme(id: string | undefined) {
   });
 }
 
-/** The theme the reader chose; null is the built-in one. */
+/** Where the theme the reader sees came from: their choice, the organization's default, or nothing. */
+export type ThemeSource = "chosen" | "organization" | "";
+
+/** The theme the reader sees; null is the built-in one. */
 export function useActiveTheme() {
-  return useQuery({ queryKey: activeThemeQueryKey, queryFn: () => request<{ theme: Theme | null }>("/themes/active") });
+  return useQuery({ queryKey: activeThemeQueryKey, queryFn: () => request<{ theme: Theme | null; source: ThemeSource }>("/themes/active") });
 }
 
 function useThemeMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>) {
@@ -86,9 +91,20 @@ export function useDeleteTheme() {
   return useThemeMutation((id: string) => request<void>(`/themes/${id}`, { method: "DELETE" }));
 }
 
-/** Uses a theme, or null to return to the built-in one. */
+/** A choice: a theme, null for whatever the organization shows, or the built-in theme over it. */
+export type ThemeChoice = string | null | { builtIn: true };
+
+/** Uses a theme, returns to the organization's default with null, or keeps the built-in one over it. */
 export function useChooseTheme() {
-  return useThemeMutation((themeId: string | null) => request<{ theme: Theme | null }>("/themes/active", { method: "PUT", body: { themeId } }));
+  return useThemeMutation((choice: ThemeChoice) => {
+    const body = choice !== null && typeof choice === "object" ? { themeId: null, builtIn: true } : { themeId: choice };
+    return request<{ theme: Theme | null }>("/themes/active", { method: "PUT", body });
+  });
+}
+
+/** Names the shared theme everybody sees until they choose, or null for the built-in one. */
+export function useSetDefaultTheme() {
+  return useThemeMutation((themeId: string | null) => request<{ theme: Theme | null }>("/themes/default", { method: "PUT", body: { themeId } }));
 }
 
 export function useUploadThemeAsset() {

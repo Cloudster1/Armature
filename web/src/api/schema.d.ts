@@ -3166,10 +3166,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The theme the caller chose, or null for the built-in one. */
+        /** The theme the caller sees: chosen, the organization's default, or null for the built-in one. */
         get: operations["activeTheme"];
-        /** Use a theme, or null to return to the built-in one. */
+        /** Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one. */
         put: operations["chooseTheme"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Name the shared theme everybody sees until they choose, or null for the built-in one. */
+        put: operations["setDefaultTheme"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4209,6 +4226,7 @@ export interface components {
             series: components["schemas"]["ChartLine"][];
         };
         ChooseThemeRequest: {
+            builtIn?: boolean;
             /** Format: uuid */
             themeId: string | null;
         };
@@ -4485,6 +4503,10 @@ export interface components {
             projectId: string;
             projectKey: string;
             widgets: components["schemas"]["Widget"][];
+        };
+        DefaultThemeRequest: {
+            /** Format: uuid */
+            themeId: string | null;
         };
         Delivery: {
             attempt: number;
@@ -6100,6 +6122,7 @@ export interface components {
             assets: components["schemas"]["Asset"][];
             /** Format: date-time */
             createdAt: string;
+            default: boolean;
             /** Format: uuid */
             id: string;
             inUse: number;
@@ -15314,6 +15337,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        source: string;
                         theme: components["schemas"]["Theme"] | null;
                     };
                 };
@@ -15339,6 +15363,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ChooseThemeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setDefaultTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefaultThemeRequest"];
             };
         };
         responses: {

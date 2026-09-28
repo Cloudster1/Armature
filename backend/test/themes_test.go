@@ -162,6 +162,62 @@ func TestThemesOverTheAPI(t *testing.T) {
 		}
 	})
 
+	t.Run("the organization's default is what everybody sees until they choose", func(t *testing.T) {
+		// Taken private first: the earlier subtest shared it.
+		want(t, owner.patch("/api/v1/themes/"+themeID, map[string]any{"shared": false}), http.StatusOK, "take it private")
+		h.waitForPrimary(t)
+		// A private theme is refused as the default, over the API and in SQL.
+		if got := owner.put("/api/v1/themes/default", map[string]any{"themeId": themeID}); got.Status != http.StatusUnprocessableEntity {
+			t.Fatalf("a private theme became the default: %d %s", got.Status, got.Raw)
+		}
+		if _, err := h.super.Exec(context.Background(), `UPDATE org SET default_theme_id = $1 WHERE id = $2`, themeID, orgID); err == nil {
+			t.Fatalf("SQL let a private theme be the default")
+		}
+		if got := other.put("/api/v1/themes/default", map[string]any{"themeId": themeID}); got.Status != http.StatusForbidden {
+			t.Fatalf("a member set the default: %d %s", got.Status, got.Raw)
+		}
+
+		want(t, owner.patch("/api/v1/themes/"+themeID, map[string]any{"shared": true}), http.StatusOK, "share")
+		set := want(t, owner.put("/api/v1/themes/default", map[string]any{"themeId": themeID}), http.StatusOK, "make it the default")
+		if obj(t, set, "theme")["default"] != true {
+			t.Fatalf("not marked as the default: %s", set.Raw)
+		}
+		h.waitForPrimary(t)
+
+		// Somebody who chose nothing sees it, and is told it is the organization's.
+		want(t, other.put("/api/v1/themes/active", map[string]any{"themeId": nil}), http.StatusOK, "nothing chosen")
+		h.waitForPrimary(t)
+		seen := want(t, other.get("/api/v1/themes/active"), http.StatusOK, "what a member sees")
+		if obj(t, seen, "theme")["id"] != themeID || seen.Body["source"] != "organization" {
+			t.Fatalf("a member does not see the organization's default: %s", seen.Raw)
+		}
+		// The built-in theme can be kept over it, and the default come back to.
+		want(t, other.put("/api/v1/themes/active", map[string]any{"themeId": nil, "builtIn": true}), http.StatusOK, "keep the built-in")
+		h.waitForPrimary(t)
+		if kept := want(t, other.get("/api/v1/themes/active"), http.StatusOK, "built-in kept"); kept.Body["theme"] != nil || kept.Body["source"] != "" {
+			t.Fatalf("the built-in theme was not kept: %s", kept.Raw)
+		}
+		want(t, other.put("/api/v1/themes/active", map[string]any{"themeId": nil}), http.StatusOK, "back to the default")
+		h.waitForPrimary(t)
+		if back := want(t, other.get("/api/v1/themes/active"), http.StatusOK, "default again"); back.Body["source"] != "organization" {
+			t.Fatalf("the default did not come back: %s", back.Raw)
+		}
+
+		// Taken private, the theme stops being the default at once, by SQL.
+		want(t, owner.patch("/api/v1/themes/"+themeID, map[string]any{"shared": false}), http.StatusOK, "unshare")
+		h.waitForPrimary(t)
+		if gone := want(t, other.get("/api/v1/themes/active"), http.StatusOK, "after unsharing"); gone.Body["theme"] != nil {
+			t.Fatalf("an unshared theme is still shown as the default: %s", gone.Raw)
+		}
+		var still *string
+		if err := h.super.QueryRow(context.Background(), `SELECT default_theme_id::text FROM org WHERE id = $1`, orgID).Scan(&still); err != nil || still != nil {
+			t.Fatalf("default_theme_id after unsharing = %v, %v", still, err)
+		}
+		want(t, owner.patch("/api/v1/themes/"+themeID, map[string]any{"shared": true}), http.StatusOK, "share again")
+		want(t, owner.put("/api/v1/themes/default", map[string]any{"themeId": nil}), http.StatusOK, "no default")
+		h.waitForPrimary(t)
+	})
+
 	t.Run("a customer cannot share, and SQL refuses it too", func(t *testing.T) {
 		var customerID string
 		if err := h.super.QueryRow(context.Background(), `INSERT INTO app_user (email, name) VALUES ($1, 'Customer') RETURNING id`, h.email(t, "customer")).Scan(&customerID); err != nil {

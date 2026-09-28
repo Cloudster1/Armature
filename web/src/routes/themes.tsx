@@ -3,7 +3,7 @@ import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useMe } from "@/api/auth";
 import { useAccess } from "@/api/access";
-import { useChooseTheme, useDeleteTheme, useThemes, useUpdateTheme, type Theme } from "@/api/themes";
+import { useActiveTheme, useChooseTheme, useDeleteTheme, useSetDefaultTheme, useThemes, useUpdateTheme, type Theme } from "@/api/themes";
 import { Button, EmptyState, ErrorBanner, IconButton, Menu, Page, PageHeader, Segmented, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -29,7 +29,9 @@ function ThemesPage() {
   const { data: access } = useAccess();
   const me = meData?.principal?.user.id;
   const administers = access?.canAdministerOrg ?? false;
+  const { data: activeData } = useActiveTheme();
   const choose = useChooseTheme();
+  const setDefault = useSetDefaultTheme();
   const update = useUpdateTheme();
   const remove = useDeleteTheme();
   const confirm = useConfirm();
@@ -37,7 +39,17 @@ function ThemesPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<View>("mine");
   const themes = (data?.themes ?? []).filter((t) => inThemeView(t, view, me));
-  const active = (data?.themes ?? []).find((t) => t.active);
+  const seen = activeData?.theme ?? null;
+  const source = activeData?.source ?? "";
+  const orgDefault = (data?.themes ?? []).find((t) => t.default);
+  const meta =
+    seen && source === "organization"
+      ? `You are using ${seen.name}, the organization's default.`
+      : seen
+        ? `You are using ${seen.name}.`
+        : orgDefault
+          ? `You are using the built-in theme, over the organization's default ${orgDefault.name}.`
+          : "You are using the built-in theme.";
 
   return (
     <Page width="narrow">
@@ -48,11 +60,23 @@ function ThemesPage() {
           </Link>
         }
         title="Themes"
-        meta={active ? `You are using ${active.name}.` : "You are using the built-in theme."}
+        meta={meta}
         actions={
-          <Button icon={<Icon.Plus />} onClick={() => navigate({ to: "/settings/themes/new" })} data-action="new-theme">
-            New theme
-          </Button>
+          <>
+            {seen && source === "organization" && (
+              <Button variant="secondary" onClick={() => choose.mutate({ builtIn: true }, { onSuccess: () => toast.success("Back to the built-in theme") })} data-action="built-in-theme">
+                Use the built-in theme
+              </Button>
+            )}
+            {!seen && orgDefault && (
+              <Button variant="secondary" onClick={() => choose.mutate(null, { onSuccess: () => toast.success(`Now using ${orgDefault.name}`) })} data-action="org-default-theme">
+                Use the organization's default
+              </Button>
+            )}
+            <Button icon={<Icon.Plus />} onClick={() => navigate({ to: "/settings/themes/new" })} data-action="new-theme">
+              New theme
+            </Button>
+          </>
         }
       />
       <div className="mb-4">
@@ -69,6 +93,7 @@ function ThemesPage() {
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {choose.error && <ErrorBanner>{(choose.error as Error).message}</ErrorBanner>}
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
+      {setDefault.error && <ErrorBanner>{(setDefault.error as Error).message}</ErrorBanner>}
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
       {isLoading ? null : themes.length === 0 ? (
         <EmptyState
@@ -96,7 +121,7 @@ function ThemesPage() {
             {themes.map((t) => {
               const editable = t.ownerId === me || (administers && t.shared);
               return (
-                <tr key={t.id} data-theme-row={t.name} data-theme-active={t.active ? "true" : "false"}>
+                <tr key={t.id} data-theme-row={t.name} data-theme-active={t.active ? "true" : "false"} data-theme-default={t.default ? "true" : "false"}>
                   <Td>
                     {editable ? (
                       <Link to="/settings/themes/$themeId" params={{ themeId: t.id }} className="font-medium text-ink hover:text-accent">
@@ -106,7 +131,8 @@ function ThemesPage() {
                       <span className="font-medium text-ink">{t.name}</span>
                     )}
                     {t.shared && <Tag className="ml-2">Shared</Tag>}
-                    {t.active && <Tag className="ml-2 text-accent">In use</Tag>}
+                    {t.default && <Tag className="ml-2">Organization's default</Tag>}
+                    {seen?.id === t.id && <Tag className="ml-2 text-accent">In use</Tag>}
                   </Td>
                   <Td className="text-ink-muted">{t.ownerId === me ? "you" : t.ownerName}</Td>
                   <Td className="text-ink-muted tabular-nums">{t.inUse === 1 ? "1 person" : `${t.inUse} people`}</Td>
@@ -117,8 +143,15 @@ function ThemesPage() {
                       trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${t.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-action="theme-menu" />}
                       items={[
                         t.active
-                          ? { label: "Stop using", icon: <Icon.X />, onSelect: () => choose.mutate(null, { onSuccess: () => toast.success("Back to the built-in theme") }), attrs: { "data-action": "stop-theme" } }
+                          ? { label: "Stop using", icon: <Icon.X />, onSelect: () => choose.mutate(null, { onSuccess: () => toast.success(orgDefault ? `Back to the organization's default` : "Back to the built-in theme") }), attrs: { "data-action": "stop-theme" } }
                           : { label: "Use this theme", icon: <Icon.Check />, onSelect: () => choose.mutate(t.id, { onSuccess: () => toast.success(`Now using ${t.name}`) }), attrs: { "data-action": "use-theme" } },
+                        ...(administers && t.shared
+                          ? [
+                              t.default
+                                ? { label: "No longer the organization's default", icon: <Icon.X />, onSelect: () => setDefault.mutate(null, { onSuccess: () => toast.success("The organization shows the built-in theme again") }), attrs: { "data-action": "undefault-theme" } }
+                                : { label: "Make it the organization's default", icon: <Icon.Users />, onSelect: () => setDefault.mutate(t.id, { onSuccess: () => toast.success(`${t.name} is what everybody sees until they choose`) }), attrs: { "data-action": "default-theme" } },
+                            ]
+                          : []),
                         { label: "Edit", icon: <Icon.Edit />, disabled: !editable, onSelect: () => navigate({ to: "/settings/themes/$themeId", params: { themeId: t.id } }), attrs: { "data-action": "edit-theme" } },
                         {
                           label: t.shared ? "Stop sharing" : "Share with the organization",
