@@ -7,12 +7,12 @@ import {
   useAttachments,
   useDeleteAttachment,
   useUploadAttachment,
+  useUploadLimit,
 } from "@/api/attachments";
 import { useMe } from "@/api/auth";
 import { Button, ErrorBanner } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { relativeTime } from "@/features/issues/badges";
-import { ATTACHMENT_MAX_BYTES } from "@/config";
 
 /**
  * The files on an issue. Uploading goes through the API to the bucket; the
@@ -38,6 +38,7 @@ export function AttachmentPanel({
   const confirm = useConfirm();
   const input = useRef<HTMLInputElement>(null);
   const [tooBig, setTooBig] = useState<string | null>(null);
+  const limit = useUploadLimit();
 
   const attachments = data?.attachments ?? [];
   if (attachments.length === 0 && !editable) return null;
@@ -47,8 +48,8 @@ export function AttachmentPanel({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    if (file.size > ATTACHMENT_MAX_BYTES) {
-      setTooBig(`${file.name} is ${formatSize(file.size)}; the limit is ${formatSize(ATTACHMENT_MAX_BYTES)}.`);
+    if (file.size > limit) {
+      setTooBig(`${file.name} is ${formatSize(file.size)}; the limit is ${formatSize(limit)}.`);
       return;
     }
     setTooBig(null);
@@ -86,7 +87,7 @@ export function AttachmentPanel({
       )}
 
       {attachments.length === 0 ? (
-        <p className="text-sm text-ink-subtle">Nothing attached. Screenshots, logs and documents up to {formatSize(ATTACHMENT_MAX_BYTES)}.</p>
+        <p className="text-sm text-ink-subtle">Nothing attached. Screenshots, logs and documents up to {formatSize(limit)}.</p>
       ) : (
         <ul className="divide-y divide-border rounded-md border border-border">
           {attachments.map((a) => (

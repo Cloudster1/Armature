@@ -319,6 +319,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off |
 | `ARMATURE_POP3_ADDR` / `_USER` / `_PASSWORD` / `_TLS` / `_INTERVAL` | none, none, none, `false`, `30s` | the mailbox the worker reads replies from |
 | `ARMATURE_S3_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY` / `_SECRET_KEY` / `_REGION` / `_USE_SSL` | none, `armature-attachments`, none, none, `us-east-1`, `false` | the bucket attachments and pictures live in |
+| `ARMATURE_UPLOAD_LIMIT` | `50MB` | the largest file an issue or the portal takes; `B`, `KB`, `MB` and `GB` are understood |
 | `ARMATURE_ATTACHMENT_DIR` | none | a directory on a volume for them instead, when there is no bucket; the bucket wins when both are set, and `migrate attachments` copies the directory into it. Neither set turns uploads off |
 | `ARMATURE_RENDER_URL` / `_TIMEOUT` | none / `20s` | the browser that prints dashboards to PDF |
 | `ARMATURE_ASSISTANT_URL` / `_KEY` / `_MODEL` / `_TIMEOUT` | none, none, `claude-sonnet-5`, `25s` | the model behind Ask; no URL turns it off |
@@ -386,6 +387,20 @@ Zero keeps a kind forever, which nothing here recommends.
 | `deploy/charts/armature/` | the Helm chart and its golden rendered manifests |
 
 </details>
+
+## Building the images
+
+`deploy/Dockerfile.backend` builds the four backend binaries, `deploy/Dockerfile.web`
+the static bundle behind nginx, and `deploy/Dockerfile.render` the PDF browser.
+They are written for kaniko as much as for docker: no cache mounts, and the Go
+dependencies compiled in a layer of their own that stays cached until an
+import changes, so a commit compiles Armature's own packages and nothing else.
+
+`deploy/Jenkinsfile` is a pipeline that builds all six images with kaniko in
+three pods side by side and pushes them to a registry, with the flags that
+keep kaniko quick: `--snapshot-mode=redo`, `--skip-unused-stages` and a layer
+cache in the registry. Point its parameters at your repository, registry and
+proxy.
 
 ## Build notes
 

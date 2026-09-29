@@ -39,6 +39,8 @@ export interface Membership {
 interface MeResponse {
   principal: Principal;
   organizations: Membership[] | null;
+  /** What the server allows, so a file can be refused before it is sent. */
+  limits?: { uploadBytes: number };
 }
 
 export const meQueryKey = ["auth", "me"] as const;

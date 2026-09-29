@@ -1099,19 +1099,19 @@ func IsCustomer(role auth.OrgRole) bool { return role == auth.RoleCustomer }
 
 // ---------------------------------------------------------------- events ------
 
-// Breach records that a running clock ran out, once, and tells the stream.
-func (s *Service) breach(ctx context.Context, tx db.DBTX, timerID uuid.UUID) error {
-	// The watch finds suspects by wall time; a clock that counts only open
-	// hours has the last word, so nothing is recorded that has not happened.
+// breach records that a clock has run out, and says whether it did: the
+// watch finds suspects by wall time, and a clock that counts only open hours
+// has the last word, so nothing is recorded that has not happened.
+func (s *Service) breach(ctx context.Context, tx db.DBTX, timerID uuid.UUID) (bool, error) {
 	t, err := scanTimer(tx.QueryRow(ctx, selectTimer+` WHERE t.id = $1`, timerID))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !t.clock().Breached(s.now().UTC()) {
-		return nil
+		return false, nil
 	}
 	var (
 		issueKey string
@@ -1123,12 +1123,12 @@ func (s *Service) breach(ctx context.Context, tx db.DBTX, timerID uuid.UUID) err
 		WHERE t.id = $1 AND t.breached_at IS NULL AND i.id = t.issue_id AND p.id = i.project_id AND sp.id = t.policy_id
 		RETURNING p.key || '-' || i.key_num, sp.metric`, timerID).Scan(&issueKey, &metric)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
-	return events.EmitInTenant(ctx, tx, events.TopicSLABreached, map[string]any{
+	return true, events.EmitInTenant(ctx, tx, events.TopicSLABreached, map[string]any{
 		"issueKey": issueKey, "metric": metric, "timerId": timerID,
 	})
 }

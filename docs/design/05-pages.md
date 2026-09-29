@@ -415,8 +415,9 @@ Constellation, the same with a network of points and lines drawn live behind
 the content (`spec.effect = "constellation"`, the Moving picture control on
 the Backdrop tab, `[data-theme-effect]`; the shell mounts
 `[data-backdrop-effect]` at the top of `main` and draws on a canvas that
-covers the column, still under reduced motion) and the rail and sidebar in
-dark slate whatever the palette. The seed
+covers the column, still under reduced motion; `"confetti"` instead draws a
+burst of colour wherever the page is clicked, and nothing under reduced
+motion) and the rail and sidebar in dark slate whatever the palette. The seed
 installs both, shared, in the demo organization. Then `#field-theme-name`, a Switch "Shared with
 the organization" (`[data-theme-shared]`), a Switch "Preview on this page"
 (`[data-action="preview-theme"]`) that shows the draft on the page it is on,

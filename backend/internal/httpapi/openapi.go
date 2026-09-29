@@ -451,7 +451,7 @@ var operations = []operation{
 	{method: "DELETE", path: "/auth/me", handler: "handleEraseMe", tag: "auth", summary: "Erase your account: your identity goes, what you wrote stays as Former user. From a browser session only.", responses: none()},
 	{method: "GET", path: "/users/{userID}/avatar", handler: "handleAvatar", tag: "auth", summary: "Somebody's picture, for anyone in an organization with them.", binary: true, responses: map[int]any{}},
 	{method: "GET", path: "/auth/me", handler: "handleMe", tool: "whoami", toolHelp: "Who the token belongs to and which organization it acts in.", tag: "auth", summary: "Who is signed in, and which organizations they belong to.",
-		responses: ok(env{"principal": auth.Principal{}, "organizations": []auth.Membership{}})},
+		responses: ok(env{"principal": auth.Principal{}, "organizations": []auth.Membership{}, "limits": limits{}})},
 	{method: "GET", path: "/build", handler: "handleBuild", tag: "health", summary: "Which build of Armature is answering.",
 		responses: ok(env{"build": buildinfo.Info{}})},
 	{method: "POST", path: "/organizations/demo", handler: "handleCreateDemoOrganization", tag: "auth", summary: "Make a demo organization with a production line in it, owned by the caller, and move the session there. From a browser session only.",

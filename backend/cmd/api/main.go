@@ -161,7 +161,7 @@ func run() error {
 		return err
 	}
 
-	attachments := attachment.NewService(cluster, store, issues)
+	attachments := attachment.NewService(cluster, store, issues).WithMaxSize(cfg.Attachments.MaxBytes)
 	deskService.WithAttachments(attachments)
 
 	accounts := auth.NewService(cluster, passwordParams, cfg.Auth.SessionTTL).

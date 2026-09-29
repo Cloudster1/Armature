@@ -25,13 +25,23 @@ type Service struct {
 	db    *db.Cluster
 	store Store
 	log   *slog.Logger
+	// MaxSize is the largest file an upload takes.
+	MaxSize int64
 }
 
 // NewService makes the service and has it told when an issue is deleted, so
 // the files on it are not left behind in the bucket.
 func NewService(cluster *db.Cluster, store Store, issues *issue.Service) *Service {
-	s := &Service{db: cluster, store: store, log: slog.Default()}
+	s := &Service{db: cluster, store: store, log: slog.Default(), MaxSize: DefaultMaxSize}
 	issues.Observe(s)
+	return s
+}
+
+// WithMaxSize sets what an upload may weigh.
+func (s *Service) WithMaxSize(limit int64) *Service {
+	if limit > 0 {
+		s.MaxSize = limit
+	}
 	return s
 }
 
@@ -151,12 +161,12 @@ func (s *Service) Upload(ctx context.Context, issueKey string, in UploadInput, a
 
 	// The whole file is read first so its size is known and the limit is
 	// enforced before anything is written anywhere.
-	data, err := io.ReadAll(io.LimitReader(in.Body, MaxSize+1))
+	data, err := io.ReadAll(io.LimitReader(in.Body, s.MaxSize+1))
 	if err != nil {
 		return nil, 0, fmt.Errorf("read upload: %w", err)
 	}
-	if int64(len(data)) > MaxSize {
-		return nil, 0, fmt.Errorf("%w: the limit is %d MB", ErrTooLarge, MaxSize>>20)
+	if int64(len(data)) > s.MaxSize {
+		return nil, 0, fmt.Errorf("%w: the limit is %d MB", ErrTooLarge, s.MaxSize>>20)
 	}
 	if len(data) == 0 {
 		return nil, 0, ErrEmpty

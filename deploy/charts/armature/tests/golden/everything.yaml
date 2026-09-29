@@ -74,6 +74,8 @@ data:
   ARMATURE_ARGON_THREADS: "4"
   ARMATURE_READ_YOUR_WRITES_TTL: "30s"
   ARMATURE_PORTAL_CODE_COOLDOWN: "1m"
+  
+  ARMATURE_UPLOAD_LIMIT: "50MB"
   ARMATURE_ATTACHMENT_DIR: "/var/lib/armature/attachments"
   ARMATURE_S3_ENDPOINT: "s3.example.com"
   ARMATURE_S3_BUCKET: "armature-attachments"
@@ -125,6 +127,8 @@ data:
         add_header Referrer-Policy "same-origin" always;
 
         location /api/ {
+            # The api decides how large an upload may be; nginx does not second-guess it.
+            client_max_body_size 0;
             proxy_pass http://armature-api:8080;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -274,7 +278,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: c389bd30c6f6527d805dfe03d9807b7f3540dd0fd877078ed29d6621a6646698
+        checksum/env: b590fa104dbfdd4f25b3d917acbd8e53ed39f0f6e546fbc183409dc083f8640b
     spec:
       serviceAccountName: armature
       securityContext:
@@ -473,7 +477,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: web
       annotations:
-        checksum/nginx: 2cbc4632cd1ad517fe39530f835fa8a4653ef6e1acbd198a71e7d6063eab8efb
+        checksum/nginx: 2c4ebde08192fcb0f0934bfcbe0cef8065d3f1b3819644c2900f87f99b005059
     spec:
       serviceAccountName: armature
       # The image is stock nginx, whose master would normally start as root.
@@ -565,7 +569,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: c389bd30c6f6527d805dfe03d9807b7f3540dd0fd877078ed29d6621a6646698
+        checksum/env: b590fa104dbfdd4f25b3d917acbd8e53ed39f0f6e546fbc183409dc083f8640b
     spec:
       serviceAccountName: armature
       securityContext:

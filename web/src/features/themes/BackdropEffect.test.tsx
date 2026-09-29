@@ -26,6 +26,15 @@ describe("the moving picture behind the page", () => {
     expect(mount!.getAttribute("aria-hidden")).toBe("true");
   });
 
+  it("lays the confetti over the page when the chosen theme asks for it", () => {
+    active.mockReturnValue({ theme: { spec: { effect: "confetti" } } });
+    const { container } = render(<BackdropEffect />);
+    const mount = container.querySelector('[data-backdrop-effect="confetti"]');
+    expect(mount).not.toBeNull();
+    expect(mount!.querySelector("canvas")).not.toBeNull();
+    expect(mount!.className).toContain("pointer-events-none");
+  });
+
   it("follows the editor's draft while one is previewed", () => {
     active.mockReturnValue({ theme: null });
     setThemePreview("", "constellation");

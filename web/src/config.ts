@@ -37,7 +37,8 @@ export const PLAN_WEEK_LABEL_MIN_PX_PER_DAY = 6;
 export const PLAN_MIN_TICK_LABEL_PX = 40;
 
 /** The largest file an issue takes, matching the API's limit. */
-export const ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+/** The server's own default; what it actually allows arrives with the session. */
+export const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
 
 /** Size of a status on the workflow canvas, in pixels. */
 export const WORKFLOW_NODE_WIDTH = 240;
@@ -278,7 +279,7 @@ export const DESCRIPTION_ROWS = 4;
 export const DIALOG_SKELETON_LINES = 3;
 
 /** The largest file a theme takes, matching the API's limit. */
-export const THEME_ASSET_MAX_BYTES = 2 * 1024 * 1024;
+export const THEME_ASSET_MAX_BYTES = 12 * 1024 * 1024;
 /** The most extra CSS a theme carries, matching the API's limit. */
 export const THEME_CSS_MAX_BYTES = 32 * 1024;
 /** How long a draft settles before the live preview is recompiled. */
@@ -303,6 +304,10 @@ export const COMMIT_SHORT_LENGTH = 7;
 export const MENU_GAP_PX = 4;
 
 /** How many wandering points the constellation backdrop draws per million pixels of page. */
+/** How many pieces a click throws, how long each lives, and how hard they fall. */
+export const CONFETTI_PIECES_PER_CLICK = 28;
+export const CONFETTI_LIFE_MS = 1100;
+export const CONFETTI_GRAVITY_PX_PER_S2 = 1600;
 export const CONSTELLATION_POINTS_PER_MEGAPIXEL = 70;
 
 /** How close two of them have to be for a line to join them, in pixels. */

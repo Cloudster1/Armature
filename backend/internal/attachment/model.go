@@ -9,9 +9,10 @@ import (
 	"github.com/armature/armature/backend/internal/issue"
 )
 
-// MaxSize is the largest file an issue takes. Screenshots, logs and documents
-// fit; a database dump does not belong on a ticket.
-const MaxSize int64 = 25 << 20
+// DefaultMaxSize is the largest file an issue takes unless the service is
+// told otherwise. Screenshots, logs and documents fit; a database dump does
+// not belong on a ticket.
+const DefaultMaxSize int64 = 50 << 20
 
 // Attachment is what the tracker knows about a file on an issue.
 type Attachment struct {
@@ -29,7 +30,7 @@ var (
 	// ErrNotFound is returned for an attachment that is not in the caller's
 	// organization.
 	ErrNotFound = errors.New("attachment not found")
-	// ErrTooLarge is returned for a file over MaxSize.
+	// ErrTooLarge is returned for a file over the service's MaxSize.
 	ErrTooLarge = errors.New("that file is too large")
 	// ErrEmpty is returned for an upload with no bytes in it.
 	ErrEmpty = errors.New("that file is empty")

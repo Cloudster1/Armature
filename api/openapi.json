@@ -817,6 +817,9 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "limits": {
+                      "$ref": "#/components/schemas/Limits"
+                    },
                     "organizations": {
                       "type": "array",
                       "items": {
@@ -828,6 +831,7 @@
                     }
                   },
                   "required": [
+                    "limits",
                     "organizations",
                     "principal"
                   ]
@@ -20598,6 +20602,17 @@
             "type": "string"
           }
         }
+      },
+      "Limits": {
+        "type": "object",
+        "properties": {
+          "uploadBytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "uploadBytes"
+        ]
       },
       "Link": {
         "type": "object",

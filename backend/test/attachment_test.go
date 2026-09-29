@@ -182,7 +182,7 @@ func TestUploadsThatCannotBeTakenAreRefused(t *testing.T) {
 	key := issued.Body["issue"].(map[string]any)["key"].(string)
 
 	if resp := owner.upload("/api/v1/issues/"+key+"/attachments", "file", "big.bin", "application/octet-stream",
-		bytes.Repeat([]byte{1}, int(attachment.MaxSize)+1)); resp.Status != http.StatusRequestEntityTooLarge {
+		bytes.Repeat([]byte{1}, int(attachment.DefaultMaxSize)+1)); resp.Status != http.StatusRequestEntityTooLarge {
 		t.Fatalf("an oversized file should be refused with 413, got %d %s", resp.Status, resp.Raw)
 	}
 	if resp := owner.upload("/api/v1/issues/"+key+"/attachments", "file", "empty.txt", "text/plain", nil); resp.Status != http.StatusBadRequest {

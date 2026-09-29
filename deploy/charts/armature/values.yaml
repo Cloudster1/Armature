@@ -182,6 +182,9 @@ attachments:
     accessMode: ReadWriteMany
   # Where the volume is mounted, and what ARMATURE_ATTACHMENT_DIR is set to.
   mountPath: /var/lib/armature/attachments
+  # The largest file an issue or the portal takes. The Ingress in front must
+  # allow at least this much; an nginx Ingress reads proxy-body-size.
+  uploadLimit: 50MB
 
 mail:
   # Blank turns mail off: no invitations, no digests, no desk notifications,

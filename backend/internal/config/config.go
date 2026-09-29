@@ -93,7 +93,16 @@ type POP3 struct {
 // on a volume every replica can reach. A bucket wins when both are set.
 type Attachments struct {
 	Dir string
+	// MaxBytes is the largest file an upload takes, on an issue or through
+	// the portal. The client is told, so it refuses a larger file before
+	// sending it.
+	MaxBytes int64
 }
+
+// DefaultUploadLimit is what an upload may weigh unless ARMATURE_UPLOAD_LIMIT
+// says otherwise: screenshots, logs and documents fit, a database dump does
+// not belong on a ticket.
+const DefaultUploadLimit int64 = 50 << 20
 
 // S3 is the bucket attachments live in. Any service that speaks the S3
 // protocol will do; an empty endpoint turns attachments off, and an upload then
@@ -194,7 +203,8 @@ func Load() (Config, error) {
 			},
 		},
 		Attachments: Attachments{
-			Dir: env("ARMATURE_ATTACHMENT_DIR", ""),
+			Dir:      env("ARMATURE_ATTACHMENT_DIR", ""),
+			MaxBytes: envSize("ARMATURE_UPLOAD_LIMIT", DefaultUploadLimit),
 		},
 		S3: S3{
 			Endpoint:  env("ARMATURE_S3_ENDPOINT", ""),
@@ -234,6 +244,9 @@ func Load() (Config, error) {
 	var problems []string
 	if c.DB.PrimaryURL == "" {
 		problems = append(problems, "ARMATURE_DB_PRIMARY_URL is required")
+	}
+	if c.Attachments.MaxBytes <= 0 {
+		problems = append(problems, "ARMATURE_UPLOAD_LIMIT must be a size such as 50MB")
 	}
 	switch c.Env {
 	case "development", "staging", "production":
@@ -312,6 +325,43 @@ func envInt(key string, def int) int {
 		}
 	}
 	return def
+}
+
+// envSize reads a size such as 50MB, 2G or 1048576. A value it cannot read is
+// reported through the caller's validation rather than silently defaulted.
+func envSize(key string, def int64) int64 {
+	v, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(v) == "" {
+		return def
+	}
+	n, err := ParseSize(v)
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// ParseSize reads a byte count with an optional unit: B, K, KB, M, MB, G or
+// GB, in either case, with or without a space.
+func ParseSize(text string) (int64, error) {
+	text = strings.ToUpper(strings.TrimSpace(text))
+	units := []struct {
+		suffix string
+		scale  int64
+	}{{"GB", 1 << 30}, {"G", 1 << 30}, {"MB", 1 << 20}, {"M", 1 << 20}, {"KB", 1 << 10}, {"K", 1 << 10}, {"B", 1}}
+	scale := int64(1)
+	for _, u := range units {
+		if strings.HasSuffix(text, u.suffix) {
+			text = strings.TrimSpace(strings.TrimSuffix(text, u.suffix))
+			scale = u.scale
+			break
+		}
+	}
+	n, err := strconv.ParseInt(text, 10, 64)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("%q is not a size such as 50MB", text)
+	}
+	return n * scale, nil
 }
 
 func envBool(key string, def bool) bool {

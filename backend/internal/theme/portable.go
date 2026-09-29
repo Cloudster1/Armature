@@ -18,8 +18,9 @@ import (
 // version can be told apart from one this version reads.
 const PackageFormat = "armature-theme/1"
 
-// MaxPackageBytes bounds an import: every file a theme may hold, encoded.
-const MaxPackageBytes = MaxAssetsPerSpec*MaxAssetBytes*4/3 + MaxSpecBytes
+// MaxPackageBytes bounds an import. A theme rarely carries more than a
+// handful of files; one that would not fit is split by taking files out.
+const MaxPackageBytes = 64 * 1024 * 1024
 
 // Package is a theme as one file: its name, its spec and every file it draws
 // from, so it can be sent to another organization or kept outside.

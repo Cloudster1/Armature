@@ -88,3 +88,26 @@ func TestSignupPolicy(t *testing.T) {
 		t.Errorf("an unknown policy should be refused and named, got %v", err)
 	}
 }
+
+func TestUploadLimitReadsSizes(t *testing.T) {
+	t.Setenv("ARMATURE_DB_PRIMARY_URL", "postgres://x")
+	for _, tc := range []struct {
+		text string
+		want int64
+	}{{"50MB", 50 << 20}, {"2g", 2 << 30}, {"512 kb", 512 << 10}, {"1048576", 1 << 20}, {"", DefaultUploadLimit}} {
+		t.Setenv("ARMATURE_UPLOAD_LIMIT", tc.text)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("%q: %v", tc.text, err)
+		}
+		if cfg.Attachments.MaxBytes != tc.want {
+			t.Errorf("%q read as %d, want %d", tc.text, cfg.Attachments.MaxBytes, tc.want)
+		}
+	}
+	for _, bad := range []string{"lots", "-5MB", "0"} {
+		t.Setenv("ARMATURE_UPLOAD_LIMIT", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ARMATURE_UPLOAD_LIMIT") {
+			t.Errorf("%q should be refused by name, got %v", bad, err)
+		}
+	}
+}
