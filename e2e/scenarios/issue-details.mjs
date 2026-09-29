@@ -9,6 +9,7 @@ import {
   createIssue,
   createProject,
   createSprint,
+  createToken,
   day,
   estimateIssue,
   expect,
@@ -231,4 +232,47 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
   await page.waitForSelector('[data-label-row="blocker"]', { timeout: WAIT });
   await goto(page, `/issues/${issueKey}`);
   await page.waitForSelector('[data-labels] [data-label="blocker"]', { timeout: WAIT });
+});
+
+scenario("a page another application puts on an issue is listed under Pages", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Specced");
+  const issueKey = await createIssue(page, key, "the checkout flow", "Story");
+  const secret = await createToken(page, "Page sync");
+  const spec = "https://wiki.example.com/pages/checkout";
+
+  // The application syncs over the API with a token, and sends the same page
+  // twice: the second time it has been retitled.
+  const put = (title) =>
+    page.evaluate(
+      async (bearer, target, url, pageTitle) => {
+        const response = await fetch(`/api/v1/issues/${target}/remote-links`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ url, title: pageTitle, source: "Stator" }),
+        });
+        return response.status;
+      },
+      secret,
+      issueKey,
+      spec,
+      title,
+    );
+  expect.equal(await put("Checkout spec"), 201, "the page is put on the issue");
+  expect.equal(await put("Checkout spec, second draft"), 200, "the same page again is retitled");
+
+  await goto(page, `/issues/${issueKey}`);
+  const row = `[data-testid="pages-panel"] [data-remote-link="${spec}"]`;
+  await page.waitForSelector(row, { timeout: WAIT });
+  expect.equal(await page.$$eval("[data-remote-link]", (rows) => rows.length), 1, "one row for the page");
+  const link = await page.$eval(`${row} a`, (a) => ({ text: a.textContent.trim(), href: a.getAttribute("href"), target: a.getAttribute("target"), rel: a.getAttribute("rel") }));
+  expect.equal(link.text, "Checkout spec, second draft", "the row carries the latest title");
+  expect.equal(link.href, spec, "and goes to the page");
+  expect.equal(link.target, "_blank", "in a new tab");
+  expect.contains(link.rel, "noopener", "without handing the page this one");
+  expect.contains(await textOf(page, row), "Stator", "the row names where the page lives");
+
+  // Somebody who edits the issue can take the page off, and the section goes with it.
+  await page.click(`${row} button[aria-label="Remove the page Checkout spec, second draft"]`);
+  await page.waitForFunction(() => !document.querySelector('[data-testid="pages-panel"]'), { timeout: WAIT });
 });
