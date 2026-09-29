@@ -279,7 +279,7 @@ export const DESCRIPTION_ROWS = 4;
 export const DIALOG_SKELETON_LINES = 3;
 
 /** The largest file a theme takes, matching the API's limit. */
-export const THEME_ASSET_MAX_BYTES = 2 * 1024 * 1024;
+export const THEME_ASSET_MAX_BYTES = 12 * 1024 * 1024;
 /** The most extra CSS a theme carries, matching the API's limit. */
 export const THEME_CSS_MAX_BYTES = 32 * 1024;
 /** How long a draft settles before the live preview is recompiled. */

@@ -14,7 +14,7 @@ var (
 	// ErrUnsafeSVG is returned for an SVG that carries script or reaches out.
 	ErrUnsafeSVG = errors.New("that SVG carries script, event handlers or links to elsewhere, which a theme cannot use")
 	// ErrAssetTooLarge is returned for a file over the limit.
-	ErrAssetTooLarge = errors.New("that file is too large: a theme's files are up to 2 MB each")
+	ErrAssetTooLarge = errors.New("that file is too large: a theme's files are up to 12 MB each")
 	// ErrTooManyAssets is returned at the limit of files per theme.
 	ErrTooManyAssets = errors.New("a theme holds at most 64 files; delete one first")
 	// ErrAssetInUse is returned when deleting a file the theme still names.
