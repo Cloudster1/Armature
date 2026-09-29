@@ -149,6 +149,11 @@ vi.mock("@/api/watchers", async () => ({
   useWatchers: nothing, useAddWatcher: mutation, useRemoveWatcher: mutation,
 }));
 
+vi.mock("@/api/remoteLinks", async () => ({
+  ...(await vi.importActual<typeof import("@/api/remoteLinks")>("@/api/remoteLinks")),
+  useRemoteLinks: nothing, useRemoveRemoteLink: mutation,
+}));
+
 vi.mock("@/api/attachments", async () => ({
   ...(await vi.importActual<typeof import("@/api/attachments")>("@/api/attachments")),
   useAttachments: nothing, useUploadAttachment: mutation, useDeleteAttachment: mutation,
@@ -236,7 +241,7 @@ describe("the issue page", () => {
     renderPage();
     const sections = [...document.querySelectorAll("[data-section]")].map((s) => s.getAttribute("data-section"));
     const rail = [...document.querySelectorAll("[data-rail]")].map((a) => a.getAttribute("data-rail"));
-    expect(sections).toEqual(["description", "activity", "attachments", "work", "development", "children", "links", "watchers", "history"]);
+    expect(sections).toEqual(["description", "activity", "attachments", "work", "development", "children", "links", "pages", "watchers", "history"]);
     expect(rail).toEqual(sections);
   });
 });

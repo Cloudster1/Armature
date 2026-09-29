@@ -1535,6 +1535,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/issues/{issueKey}/remote-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pages elsewhere that are about this issue. */
+        get: operations["listRemoteLinks"];
+        put?: never;
+        /** Put a page on this issue, or retitle it when its url is already there. */
+        post: operations["putRemoteLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/issues/{issueKey}/remote-links/{remoteLinkID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a page off this issue. */
+        delete: operations["deleteRemoteLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/issues/{issueKey}/schedule": {
         parameters: {
             query?: never;
@@ -5554,6 +5589,26 @@ export interface components {
             /** Format: uuid */
             versionId: string;
             versionName: string;
+        };
+        RemoteLink: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            createdBy?: string;
+            iconUrl: string | null;
+            /** Format: uuid */
+            id: string;
+            source: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            url: string;
+        };
+        RemoteLinkRequest: {
+            iconUrl?: string;
+            source: string;
+            title: string;
+            url: string;
         };
         RenameDashboardRequest: {
             name: string;
@@ -10734,6 +10789,117 @@ export interface operations {
                         issue: components["schemas"]["Issue"];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listRemoteLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issueKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        remoteLinks: components["schemas"]["RemoteLink"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putRemoteLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issueKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoteLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        remoteLink: components["schemas"]["RemoteLink"];
+                    };
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        remoteLink: components["schemas"]["RemoteLink"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteRemoteLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issueKey: string;
+                remoteLinkID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

@@ -746,6 +746,15 @@ func (s *Server) issueRoutes(r chi.Router) {
 	r.With(requireIssuePerm(perm.IssueWrite)).
 		Delete("/issues/{issueKey}/links/{linkID}", s.handleDeleteLink)
 
+	// Pages elsewhere about the issue. Putting one on it or taking one off is
+	// editing the issue, though the issue itself does not change.
+	r.Get("/issues/{issueKey}/remote-links", s.handleListRemoteLinks)
+	r.Group(func(r chi.Router) {
+		r.Use(requireIssuePerm(perm.IssueWrite))
+		r.Post("/issues/{issueKey}/remote-links", s.handlePutRemoteLink)
+		r.Delete("/issues/{issueKey}/remote-links/{remoteLinkID}", s.handleDeleteRemoteLink)
+	})
+
 	// Moving an issue goes through the workflow, never by editing
 	// the status field directly.
 	r.Get("/issues/{issueKey}/transitions", s.handleListTransitions)

@@ -36,6 +36,10 @@ const (
 	TopicAttachmentAdded     = "attachment.added"
 	TopicWorkLogged          = "worklog.added"
 	TopicWatcherAdded        = "watcher.added"
+	// A page elsewhere put on or taken off an issue. Not an edit of the issue,
+	// so a sync touching many pages does not read as many changes to it.
+	TopicRemoteLinkAdded   = "issue.remote_link.added"
+	TopicRemoteLinkRemoved = "issue.remote_link.removed"
 	// The automation's own topics: a schedule that came due, a call on an
 	// incoming hook, a rule run by hand.
 	TopicAutomationScheduled = "automation.scheduled"
@@ -48,6 +52,7 @@ var Topics = []string{
 	TopicOrgCreated, TopicMemberJoined, TopicIssueCreated, TopicIssueUpdated, TopicIssueTransitioned,
 	TopicCommentAdded, TopicPullRequestLinked, TopicCommitLinked, TopicCIRunRecorded, TopicDeploymentSucceeded,
 	TopicSLABreached, TopicAttachmentAdded, TopicWorkLogged, TopicWatcherAdded,
+	TopicRemoteLinkAdded, TopicRemoteLinkRemoved,
 	TopicAutomationScheduled, TopicAutomationIncoming, TopicAutomationManual,
 }
 

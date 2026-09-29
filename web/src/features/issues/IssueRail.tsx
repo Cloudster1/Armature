@@ -8,6 +8,7 @@ const railStops = [
   { id: "development", label: "Development" },
   { id: "children", label: "Children" },
   { id: "links", label: "Links" },
+  { id: "pages", label: "Pages" },
   { id: "watchers", label: "Watchers" },
   { id: "history", label: "History" },
 ];

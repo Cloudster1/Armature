@@ -270,6 +270,10 @@ func toAPIError(err error) *APIError {
 		return portalEntryError(err)
 	case errors.Is(err, issue.ErrLinkNotFound):
 		return ErrNotFound("That link was not found.")
+	case errors.Is(err, issue.ErrRemoteLinkNotFound):
+		return ErrNotFound("That page link is not on this issue.")
+	case errors.Is(err, issue.ErrBadRemoteLink):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: withoutSentinel(err, issue.ErrBadRemoteLink) + "."}
 	case errors.Is(err, issue.ErrNotWatching):
 		return ErrNotFound("That person is not watching this issue.")
 	case errors.Is(err, desk.ErrNotYourRequest):

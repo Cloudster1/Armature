@@ -8,6 +8,7 @@ import { Activity } from "./IssueActivity";
 import { History } from "./IssueHistory";
 import { ChildrenPanel } from "./hierarchy";
 import { LinksPanel } from "./LinksPanel";
+import { PagesPanel } from "./PagesPanel";
 import { WatchersPanel } from "./WatchersPanel";
 import { DevelopmentPanel } from "@/features/git/DevelopmentPanel";
 import { WorklogPanel } from "@/features/time/TimeTracking";
@@ -57,6 +58,9 @@ export function IssueMain({ issue, editable, me, isDesk, places }: { issue: Issu
       </Section>
       <Section id="links" hidden>
         <LinksPanel issueKey={issue.key} editable={editable} />
+      </Section>
+      <Section id="pages" hidden>
+        <PagesPanel issueKey={issue.key} editable={editable} />
       </Section>
       <Section id="watchers" hidden>
         <WatchersPanel issueKey={issue.key} editable={editable} me={me} />
