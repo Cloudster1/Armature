@@ -71,7 +71,7 @@
   --color-danger: #b93a2e;
   --color-danger-hover: #9c2f25;
   --color-danger-subtle: #f9e7e4;
-  --color-success: #2e7d4f;
+  --color-success: #277749;
   --color-success-subtle: #e3f1e8;
   --color-warning: #b7791f;
   --color-warning-subtle: #fbf0da;
@@ -92,10 +92,10 @@
   /* Chart series, in the order a dashboard hands them out: blue, green, purple,
      amber, teal, red, so no two neighbours fall together for colour-blind eyes. */
   --color-chart-1: #2f5fd0;
-  --color-chart-2: #2e7d4f;
+  --color-chart-2: #277749;
   --color-chart-3: #7a4fb5;
-  --color-chart-4: #b7791f;
-  --color-chart-5: #0f9a9a;
+  --color-chart-4: #935d00;
+  --color-chart-5: #007575;
   --color-chart-6: #b93a2e;
 
   /* Elevation: raised things sit a hair above the surface, overlays float. */

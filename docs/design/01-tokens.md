@@ -28,12 +28,12 @@ progress", "epic" or "bug". The values live in `web/src/styles/index.css`.
 | focus | #2F5FD0 | #9BB7F5 | the focus ring, nothing else |
 | selection | #DCE5F8 | #2A3A5E | text selection, selected rows |
 | danger / danger-hover / danger-subtle | #B93A2E / #9C2F25 / #F9E7E4 | #E4756A / #EC8F86 / #3E2220 | destructive |
-| success / success-subtle | #2E7D4F / #E3F1E8 | #6CC08F / #1E3527 | done, saved |
+| success / success-subtle | #277749 / #E3F1E8 | #6CC08F / #1E3527 | done, saved |
 | warning / warning-subtle | #B7791F / #FBF0DA | #E0A94A / #3D2F16 | in flight, capacity |
 | epic | #7A4FB5 | #B392E6 | the levels above standard |
 | status-todo / status-progress / status-done | #8F877B / #B7791F / #2E7D4F | #7D7569 / #E0A94A / #6CC08F | the learned colours |
 | status-todo-subtle / status-progress-subtle / status-done-subtle | #F0EDE7 / #FBF0DA / #E3F1E8 | #2B2721 / #3D2F16 / #1E3527 | the tint of a workflow card |
-| chart-1 to chart-6 | #2F5FD0 #2E7D4F #7A4FB5 #B7791F #0F9A9A #B93A2E | #5B86E6 #4AA66E #9A7AD6 #B8862A #1FA3A3 #D4574A | series, in order: blue, green, purple, amber, teal, red; neighbours stay apart under protan and deutan vision, checked by a validator, not by eye |
+| chart-1 to chart-6 | #2F5FD0 #277749 #7A4FB5 #935D00 #007575 #B93A2E | #5B86E6 #4AA66E #9A7AD6 #B8862A #1FA3A3 #D4574A | series, in order: blue, green, purple, amber, teal, red; neighbours stay apart under protan and deutan vision, checked by a validator, not by eye |
 | shadow-1 | 0 1px 2px rgb(31 27 22 / .06) | 0 1px 2px #0008 | raised |
 | shadow-2 | 0 8px 24px rgb(31 27 22 / .12) | 0 12px 32px #000a | overlays |
 | shadow-3 | 0 16px 40px rgb(31 27 22 / .10) + a top hairline of light | 0 16px 40px #0008 + the same | elevated glass cards |

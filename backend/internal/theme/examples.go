@@ -47,7 +47,7 @@ func constellation() Example {
 	}
 	for k, v := range map[string]string{
 		"backdrop-from": "#eef3f8", "backdrop-to": "#cfdbe8", "accent": "#1f7fb8", "accent-hover": "#186a9a",
-		"accent-subtle": "#dcedf8", "focus": "#1f7fb8", "selection": "#d3e6f4", "chart-1": "#1f7fb8",
+		"accent-subtle": "#dcedf8", "focus": "#1f7fb8", "selection": "#d3e6f4", "chart-1": "#00699e",
 	} {
 		light[k] = v
 	}
@@ -134,10 +134,10 @@ func deepTech() Example {
 		"on-accent":              "#ffffff",
 		"focus":                  "#2f6fd6",
 		"selection":              "#d6e3fa",
-		"danger":                 "#c9463a",
+		"danger":                 "#b6342a",
 		"danger-hover":           "#a83a30",
 		"danger-subtle":          "#fae4e1",
-		"success":                "#1f9d7a",
+		"success":                "#007156",
 		"success-subtle":         "#dff3ec",
 		"warning":                "#c98a1e",
 		"warning-subtle":         "#fbefd6",
@@ -148,12 +148,12 @@ func deepTech() Example {
 		"status-todo-subtle":     "#e8edf3",
 		"status-progress-subtle": "#fbefd6",
 		"status-done-subtle":     "#dff3ec",
-		"chart-1":                "#2f6fd6",
-		"chart-2":                "#1f9d7a",
-		"chart-3":                "#6f56c5",
-		"chart-4":                "#c98a1e",
-		"chart-5":                "#1aa3b8",
-		"chart-6":                "#c9463a",
+		"chart-1":                "#1f5fc5",
+		"chart-2":                "#007156",
+		"chart-3":                "#6a50bf",
+		"chart-4":                "#895a00",
+		"chart-5":                "#006e7e",
+		"chart-6":                "#b6342a",
 	}
 	dark := map[string]string{
 		"canvas":                 "#0d1826",
