@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/rank"
 )
@@ -53,8 +54,8 @@ type ImportResult struct {
 	Updated bool
 }
 
-// Import emits no event and tells no observer: a record being reproduced is
-// not news, and a file of issues must not become a file of notifications.
+// Import tells no observer, as a file of issues must not become a file of
+// notifications; a new issue is announced marked imported, for copies elsewhere.
 func (s *Service) Import(ctx context.Context, in ImportInput, actor Actor) (*ImportResult, db.LSN, error) {
 	if !actor.Import {
 		return nil, 0, ErrNotAnImport
@@ -134,6 +135,15 @@ func (s *Service) importIssue(ctx context.Context, tx db.DBTX, in ImportInput, a
 	}
 	made, err := s.insertImported(ctx, tx, projectID, projectKey, in, issueType.ID, statusID, parentID, actor)
 	if err != nil {
+		return nil, err
+	}
+	if err := events.EmitInTenant(ctx, tx, events.TopicIssueCreated, map[string]any{
+		"issueId":  made.ID,
+		"key":      made.Key,
+		"summary":  made.Summary,
+		"actorId":  actor.UserID,
+		"imported": true,
+	}); err != nil {
 		return nil, err
 	}
 	return &ImportResult{Issue: made}, nil

@@ -26,6 +26,9 @@ type payload struct {
 	IssueKey string    `json:"issueKey"`
 	ActorID  uuid.UUID `json:"actorId"`
 	RuleID   uuid.UUID `json:"ruleId"`
+	// Imported marks an issue brought in from a file: a rule must not rewrite
+	// a record as it arrives.
+	Imported bool `json:"imported"`
 	Changes  []struct {
 		Field string `json:"field"`
 	} `json:"changes"`
@@ -69,7 +72,7 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 			rules, err = s.readRules(ctx, tx, `WHERE r.id = $1`, p.RuleID)
 		default:
 			// Most events are nobody's trigger; they cost nothing here.
-			if p.key() == "" || !triggerKinds[e.Topic] {
+			if p.key() == "" || p.Imported || !triggerKinds[e.Topic] {
 				return nil
 			}
 			projectKey, num, err := issue.ParseKey(p.key())

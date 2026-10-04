@@ -89,7 +89,9 @@ type payload struct {
 	Mentions  []uuid.UUID `json:"mentions"`
 	ToStatus  string      `json:"toStatus"`
 	Metric    string      `json:"metric"`
-	Changes   []struct {
+	// Imported marks an issue brought in from a file, which nobody is told of.
+	Imported bool `json:"imported"`
+	Changes  []struct {
 		Field string `json:"field"`
 	} `json:"changes"`
 }
@@ -129,7 +131,11 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 		return nil
 	}
 	var p payload
-	if err := json.Unmarshal(e.Payload, &p); err != nil || p.key() == "" {
+	if err := json.Unmarshal(e.Payload, &p); err != nil || p.key() == "" || p.Imported {
+		return nil
+	}
+	// A deleted issue has nobody left to tell, and no row to tell them about.
+	if e.Topic == events.TopicIssueDeleted {
 		return nil
 	}
 	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
