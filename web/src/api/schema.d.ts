@@ -200,7 +200,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Who is signed in, and which organizations they belong to. */
+        /** Who is signed in, which organizations they belong to, and the token they called with; null for a browser session. */
         get: operations["me"];
         put?: never;
         post?: never;
@@ -7100,6 +7100,7 @@ export interface operations {
                         limits: components["schemas"]["Limits"];
                         organizations: components["schemas"]["Membership"][];
                         principal: components["schemas"]["Principal"];
+                        token: components["schemas"]["APIToken"] | null;
                     };
                 };
             };

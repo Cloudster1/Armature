@@ -174,10 +174,16 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	if memberships == nil {
 		memberships = []auth.Membership{}
 	}
+	token, err := s.Auth.CallingToken(r.Context(), p)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
 	respondJSON(w, r, http.StatusOK, map[string]any{
 		"principal":     p,
 		"organizations": memberships,
 		"limits":        limits{UploadBytes: s.Attachments.MaxSize},
+		"token":         token,
 	})
 }
 
