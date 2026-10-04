@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -165,17 +166,23 @@ func TestScheduledAndManualRuns(t *testing.T) {
 	}
 }
 
+// received is one request a receiver kept: the body and the headers it is signed in.
+type received struct{ Body, Signature, Event, Timestamp, Timestamped string }
+
 // receiver is an endpoint that keeps what it was sent and answers as told.
 type receiver struct {
 	mu     sync.Mutex
-	got    []struct{ Body, Signature, Event string }
+	got    []received
 	status int
 }
 
 func (r *receiver) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	body, _ := io.ReadAll(req.Body)
 	r.mu.Lock()
-	r.got = append(r.got, struct{ Body, Signature, Event string }{string(body), req.Header.Get("X-Armature-Signature-256"), req.Header.Get("X-Armature-Event")})
+	r.got = append(r.got, received{
+		Body: string(body), Signature: req.Header.Get(webhook.HeaderSignature), Event: req.Header.Get("X-Armature-Event"),
+		Timestamp: req.Header.Get(webhook.HeaderTimestamp), Timestamped: req.Header.Get(webhook.HeaderTimestampedSignature),
+	})
 	status := r.status
 	r.mu.Unlock()
 	w.WriteHeader(status)
@@ -221,6 +228,14 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 	}
 	if len(sink.got) != 1 || sink.got[0].Event != events.TopicIssueCreated || !webhook.Verify([]byte(sink.got[0].Body), made.Secret, sink.got[0].Signature) {
 		t.Fatalf("received = %+v, want one signed issue.created", sink.got)
+	}
+	// The same delivery is signed with the moment it was sent, which a receiver
+	// checks against its own clock to refuse a replay.
+	if !webhook.VerifyTimestamped([]byte(sink.got[0].Body), made.Secret, sink.got[0].Timestamp, sink.got[0].Timestamped, time.Minute, time.Now()) {
+		t.Errorf("timestamp %q and signature %q do not verify", sink.got[0].Timestamp, sink.got[0].Timestamped)
+	}
+	if webhook.VerifyTimestamped([]byte(sink.got[0].Body), made.Secret, sink.got[0].Timestamp, sink.got[0].Timestamped, time.Minute, time.Now().Add(time.Hour)) {
+		t.Error("the delivery still verifies an hour later")
 	}
 	var envelope struct {
 		ID      uuid.UUID       `json:"id"`
