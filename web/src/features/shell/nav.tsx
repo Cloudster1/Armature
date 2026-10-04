@@ -49,6 +49,23 @@ export function NavItem({
   );
 }
 
+/** A destination outside Armature, drawn like one inside it and opened in a new tab. */
+export function NavLinkOut({ href, icon, children, ...rest }: { href: string; icon: IconName; children: string } & Record<`data-${string}`, string>) {
+  const Glyph = Icon[icon];
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex h-8 items-center gap-2 rounded-control px-2 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink"
+      {...rest}
+    >
+      <Glyph className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+    </a>
+  );
+}
+
 /** An action in the rail or the sidebar, drawn like a destination. */
 export function NavButton({ icon, rail, children, ...rest }: { icon: IconName; rail: boolean; children: string; onClick: () => void } & Record<`data-${string}`, string>) {
   const Glyph = Icon[icon];

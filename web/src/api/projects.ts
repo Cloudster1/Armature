@@ -34,6 +34,10 @@ export interface Project {
   workflowSchemeId?: string;
   /** The template the project was made from, or absent for one made without. */
   template?: string;
+  /** Where the project's documentation lives, shown in its sidebar; absent when it has none. */
+  docsUrl?: string;
+  /** What the sidebar calls that link; "Docs" when absent. */
+  docsLabel?: string;
   issueCount: number;
   openIssueCount: number;
   /** The latest status update, absent until somebody posts one. */
@@ -173,6 +177,9 @@ export interface UpdateProjectInput {
   portalVerifies?: boolean;
   trustedDomains?: string[];
   features?: Feature[];
+  /** An empty string clears the link and its label. */
+  docsUrl?: string;
+  docsLabel?: string;
 }
 
 export function useUpdateProject() {

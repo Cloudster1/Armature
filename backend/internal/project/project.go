@@ -59,7 +59,11 @@ type Project struct {
 	// Features are the pages the project has, decided by its template and
 	// changed by its administrators. Issues, workflow, fields and settings
 	// are not features: every project has them.
-	Features   []Feature  `json:"features"`
+	Features []Feature `json:"features"`
+	// DocsURL is where the project's documentation lives, shown in its sidebar;
+	// empty when it has none. DocsLabel names the link and may be empty.
+	DocsURL    string     `json:"docsUrl,omitempty"`
+	DocsLabel  string     `json:"docsLabel,omitempty"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`
 	ArchivedAt *time.Time `json:"archivedAt,omitempty"`

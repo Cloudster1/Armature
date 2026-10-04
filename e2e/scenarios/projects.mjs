@@ -9,6 +9,7 @@ import {
   createIssue,
   createProject,
   expect,
+  fill,
   goto,
   grantRole,
   inviteAddress,
@@ -289,4 +290,33 @@ scenario("a project's counts follow its issues", async ({ page }) => {
   const listing = await bodyText(page);
   expect.contains(listing, "2 open", "open count");
   expect.contains(listing, "2 total", "total count");
+});
+
+// A project points at its documentation elsewhere, and the sidebar offers it
+// one click from the board, in a tab of its own.
+scenario("a project's sidebar links to its documentation", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Documented");
+  await goto(page, `/projects/${key}/settings`);
+  expect.truthy((await page.$("[data-project-docs]")) === null, "a new project links to no docs");
+
+  await fill(page, "Documentation", "wiki.example.com");
+  await clickButton(page, "Save changes");
+  await page.waitForFunction(() => document.querySelector("#field-documentation")?.getAttribute("aria-invalid") === "true", { timeout: WAIT });
+  expect.contains(await bodyText(page), "http:// or https://", "the refusal says what an address looks like");
+
+  const address = "https://wiki.example.com/spaces/docs";
+  await fill(page, "Documentation", address);
+  await fill(page, "Link name", "Team wiki");
+  await clickButton(page, "Save changes");
+  const link = await page.waitForSelector(`[data-project-docs="${address}"]`, { timeout: WAIT });
+  const shown = await link.evaluate((a) => ({ text: a.textContent.trim(), href: a.href, target: a.target, rel: a.rel }));
+  expect.equal(shown.text, "Team wiki", "the entry wears the link's name");
+  expect.equal(shown.href, address, "the entry opens the documentation");
+  expect.equal(shown.target, "_blank", "the documentation opens in a tab of its own");
+  expect.contains(shown.rel, "noopener", "the opened page cannot reach back into Armature");
+
+  await fill(page, "Documentation", "");
+  await clickButton(page, "Save changes");
+  await page.waitForFunction(() => !document.querySelector("[data-project-docs]"), { timeout: WAIT });
 });

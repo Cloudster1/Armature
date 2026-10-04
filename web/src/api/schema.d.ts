@@ -5484,6 +5484,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             description: string;
+            docsLabel?: string;
+            docsUrl?: string;
             features: ("board" | "sprints" | "plan" | "calendar" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
             /** Format: uuid */
             id: string;
@@ -6404,6 +6406,8 @@ export interface components {
         };
         UpdateProjectRequest: {
             description?: string;
+            docsLabel?: string;
+            docsUrl?: string;
             features?: string[];
             kind?: string;
             /** Format: uuid */

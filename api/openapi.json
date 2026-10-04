@@ -22266,6 +22266,12 @@
           "description": {
             "type": "string"
           },
+          "docsLabel": {
+            "type": "string"
+          },
+          "docsUrl": {
+            "type": "string"
+          },
           "features": {
             "type": "array",
             "items": {
@@ -25582,6 +25588,12 @@
         "type": "object",
         "properties": {
           "description": {
+            "type": "string"
+          },
+          "docsLabel": {
+            "type": "string"
+          },
+          "docsUrl": {
             "type": "string"
           },
           "features": {
