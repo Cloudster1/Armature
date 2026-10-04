@@ -52,7 +52,7 @@
 
   --color-ink: #1f1b16;
   --color-ink-muted: #625b51;
-  --color-ink-subtle: #8f877b;
+  --color-ink-subtle: #6f685d;
   --color-ink-disabled: #b5aea3;
 
   /* The primary action colour: ink on light, paper on dark. */
@@ -135,7 +135,7 @@
       --color-backdrop-to: #0f1216;
       --color-ink: #ede8e0;
       --color-ink-muted: #aba396;
-      --color-ink-subtle: #7d7569;
+      --color-ink-subtle: #999185;
       --color-ink-disabled: #5a544b;
       --color-primary: #ede8e0;
       --color-primary-hover: #dbd5cb;
@@ -185,7 +185,7 @@
     --color-backdrop-to: #0f1216;
     --color-ink: #ede8e0;
     --color-ink-muted: #aba396;
-    --color-ink-subtle: #7d7569;
+    --color-ink-subtle: #999185;
     --color-ink-disabled: #5a544b;
     --color-primary: #ede8e0;
     --color-primary-hover: #dbd5cb;

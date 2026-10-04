@@ -20,7 +20,7 @@ progress", "epic" or "bug". The values live in `web/src/styles/index.css`.
 | border-strong | #C9C2B6 | #3F4652 | controls at rest |
 | ink | #1F1B16 | #EDE8E0 | text |
 | ink-muted | #625B51 | #ABA396 | secondary text, labels |
-| ink-subtle | #8F877B | #7D7569 | meta, placeholders |
+| ink-subtle | #6F685D | #999185 | meta, placeholders; 4.5:1 on every surface |
 | ink-disabled | #B5AEA3 | #5A544B | disabled labels |
 | primary / primary-hover / on-primary | #1F1B16 / #37312A / #FBFAF7 | #EDE8E0 / #DBD5CB / #171512 | the one action |
 | accent / accent-hover | #2F5FD0 / #264DAD | #7FA3F2 / #9BB7F5 | links, the current item |
