@@ -359,25 +359,32 @@ func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, name str
 	return &tok, lsn, nil
 }
 
+const selectAPITokens = `
+	SELECT t.id, t.name, t.scopes, t.last_used_at, t.expires_at, t.created_at,
+	       COALESCE(ARRAY(SELECT p.key FROM api_token_project tp
+	                      JOIN project p ON p.id = tp.project_id
+	                      WHERE tp.token_id = t.id ORDER BY p.key), '{}')
+	FROM api_token t`
+
+func scanAPIToken(row pgx.Row) (APIToken, error) {
+	var t APIToken
+	err := row.Scan(&t.ID, &t.Name, &t.Scopes, &t.LastUsedAt, &t.ExpiresAt, &t.CreatedAt, &t.Projects)
+	return t, err
+}
+
 // ListAPITokens returns the caller's tokens in the current organization,
 // without their secrets.
 func (s *Service) ListAPITokens(ctx context.Context, userID uuid.UUID) ([]APIToken, error) {
 	var out []APIToken
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `
-			SELECT t.id, t.name, t.scopes, t.last_used_at, t.expires_at, t.created_at,
-			       COALESCE(ARRAY(SELECT p.key FROM api_token_project tp
-			                      JOIN project p ON p.id = tp.project_id
-			                      WHERE tp.token_id = t.id ORDER BY p.key), '{}')
-			FROM api_token t WHERE t.user_id = $1
-			ORDER BY t.created_at DESC`, userID)
+		rows, err := tx.Query(ctx, selectAPITokens+` WHERE t.user_id = $1 ORDER BY t.created_at DESC`, userID)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var t APIToken
-			if err := rows.Scan(&t.ID, &t.Name, &t.Scopes, &t.LastUsedAt, &t.ExpiresAt, &t.CreatedAt, &t.Projects); err != nil {
+			t, err := scanAPIToken(rows)
+			if err != nil {
 				return err
 			}
 			out = append(out, t)
@@ -385,6 +392,27 @@ func (s *Service) ListAPITokens(ctx context.Context, userID uuid.UUID) ([]APITok
 		return rows.Err()
 	})
 	return out, err
+}
+
+// CallingToken returns the token a request came with, or nil for a browser
+// session, so an integration can learn at connect time what it will be refused.
+func (s *Service) CallingToken(ctx context.Context, p *Principal) (*APIToken, error) {
+	if p == nil || p.TokenID == nil {
+		return nil, nil
+	}
+	var t APIToken
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		t, err = scanAPIToken(tx.QueryRow(ctx, selectAPITokens+` WHERE t.id = $1 AND t.user_id = $2`, *p.TokenID, p.User.ID))
+		return err
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrInvalidToken
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }
 
 // RevokeAPIToken deletes one of the caller's tokens.
