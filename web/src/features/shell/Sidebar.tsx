@@ -9,7 +9,7 @@ import { SIDEBAR_WIDTH } from "@/config";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { useLastProject, useSidebarGroups, useSidebarMode } from "./state";
 import { useConfirm } from "./ConfirmProvider";
-import { InboxBell, NavItem } from "./nav";
+import { InboxBell, NavItem, NavLinkOut } from "./nav";
 import { Rail } from "./Rail";
 import { BuildStamp } from "./BuildStamp";
 import { SidebarGroup } from "./SidebarGroup";
@@ -194,6 +194,11 @@ function ProjectPages({ projectKey, adminOpen, onToggleAdmin }: { projectKey: st
           {page.label}
         </NavItem>
       ))}
+      {data?.project.docsUrl && (
+        <NavLinkOut href={data.project.docsUrl} icon="External" data-project-docs={data.project.docsUrl}>
+          {data.project.docsLabel || "Docs"}
+        </NavLinkOut>
+      )}
       <SidebarGroup id="project-admin" title="Project Admin" open={adminOpen} onToggle={onToggleAdmin} nested>
         {pages(projectSetupPages).map((page) => (
           <NavItem key={page.path} to={`/projects/$projectKey${page.path}`} params={{ projectKey }} icon={page.icon} rail={false}>

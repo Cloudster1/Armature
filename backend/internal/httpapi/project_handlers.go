@@ -97,6 +97,10 @@ type updateProjectRequest struct {
 	TrustedDomains *[]string `json:"trustedDomains,omitempty"`
 	// Features replaces the list of pages the project has.
 	Features *[]string `json:"features,omitempty"`
+	// DocsURL is where the project's documentation lives; an empty string
+	// clears the link. DocsLabel names it in the sidebar.
+	DocsURL   *string `json:"docsUrl,omitempty"`
+	DocsLabel *string `json:"docsLabel,omitempty"`
 }
 
 // leadPatch distinguishes an absent field from an explicit null.
@@ -126,7 +130,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	in := project.UpdateInput{Name: req.Name, Description: req.Description, PortalVerifies: req.PortalVerifies, TrustedDomains: req.TrustedDomains, Features: req.Features}
+	in := project.UpdateInput{Name: req.Name, Description: req.Description, PortalVerifies: req.PortalVerifies, TrustedDomains: req.TrustedDomains, Features: req.Features, DocsURL: req.DocsURL, DocsLabel: req.DocsLabel}
 	if req.Kind != nil {
 		kind := project.Kind(*req.Kind)
 		in.Kind = &kind

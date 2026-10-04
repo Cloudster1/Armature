@@ -4,7 +4,9 @@ import { projectRoute } from "./project";
 import { useArchiveProject, useProject, useUpdateProject } from "@/api/projects";
 import { useMembers } from "@/api/issues";
 import { canAdminister, useAccess } from "@/api/access";
+import { ApiError } from "@/api/client";
 import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, SectionTitle, Select, Switch, Tag, useToast } from "@/components/ui";
+import { DOCS_LABEL_MAX_LENGTH } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { FEATURES } from "@/features/projects/features";
 
@@ -32,12 +34,17 @@ function ProjectSettingsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [leadId, setLeadId] = useState("");
+  const [docsUrl, setDocsUrl] = useState("");
+  const [docsLabel, setDocsLabel] = useState("");
+  const fieldErrors = update.error instanceof ApiError ? update.error.fields : {};
 
   useEffect(() => {
     if (project) {
       setName(project.name);
       setDescription(project.description);
       setLeadId(project.leadId ?? "");
+      setDocsUrl(project.docsUrl ?? "");
+      setDocsLabel(project.docsLabel ?? "");
     }
   }, [project]);
 
@@ -53,7 +60,7 @@ function ProjectSettingsPage() {
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     update.mutate(
-      { key: projectKey, name: name.trim(), description: description.trim(), leadId: leadId || null },
+      { key: projectKey, name: name.trim(), description: description.trim(), leadId: leadId || null, docsUrl: docsUrl.trim(), docsLabel: docsUrl.trim() ? docsLabel.trim() : "" },
       { onSuccess: () => toast.success("Project settings saved") },
     );
   }
@@ -86,6 +93,24 @@ function ProjectSettingsPage() {
               </option>
             ))}
           </Select>
+          <Field
+            label="Documentation"
+            type="url"
+            value={docsUrl}
+            onChange={(e) => setDocsUrl(e.target.value)}
+            placeholder="https://wiki.example.com/spaces/team"
+            hint="Where the project's docs live. The sidebar links to it; leave it empty for none."
+            error={fieldErrors.docsUrl}
+          />
+          <Field
+            label="Link name"
+            value={docsLabel}
+            onChange={(e) => setDocsLabel(e.target.value)}
+            placeholder="Docs"
+            maxLength={DOCS_LABEL_MAX_LENGTH}
+            disabled={!docsUrl.trim()}
+            error={fieldErrors.docsLabel}
+          />
           <div className="flex items-center gap-3">
             <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
               Save changes
