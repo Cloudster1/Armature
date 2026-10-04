@@ -46,8 +46,8 @@ func constellation() Example {
 		dark[k] = v
 	}
 	for k, v := range map[string]string{
-		"backdrop-from": "#eef3f8", "backdrop-to": "#cfdbe8", "accent": "#1f7fb8", "accent-hover": "#186a9a",
-		"accent-subtle": "#dcedf8", "focus": "#1f7fb8", "selection": "#d3e6f4", "chart-1": "#00699e",
+		"backdrop-from": "#eef3f8", "backdrop-to": "#cfdbe8", "accent": "#00699e", "accent-hover": "#015580",
+		"accent-subtle": "#dcedf8", "focus": "#00699e", "selection": "#d3e6f4", "chart-1": "#00699e",
 	} {
 		light[k] = v
 	}
@@ -86,7 +86,12 @@ func constellation() Example {
   --color-accent: #7fd4ff;
   --color-accent-hover: #a5e1ff;
   --color-accent-subtle: #24405a;
+  --color-on-accent: #06192b;
   --color-selection: #24405a;
+  --color-danger: #f57c6f;
+  --color-danger-hover: #f59185;
+  --color-danger-subtle: #3d2325;
+  --color-on-danger: #290f0c;
 }`
 	shadows := map[string]string{}
 	for k, v := range base.Spec.Shadows {
@@ -128,15 +133,16 @@ func deepTech() Example {
 		"primary":                "#17222f",
 		"primary-hover":          "#2a3a4e",
 		"on-primary":             "#f7f9fc",
-		"accent":                 "#2f6fd6",
+		"accent":                 "#1f5fc5",
 		"accent-hover":           "#245cb8",
 		"accent-subtle":          "#dfe9fb",
 		"on-accent":              "#ffffff",
-		"focus":                  "#2f6fd6",
+		"focus":                  "#1f5fc5",
 		"selection":              "#d6e3fa",
 		"danger":                 "#b6342a",
 		"danger-hover":           "#a83a30",
 		"danger-subtle":          "#fae4e1",
+		"on-danger":              "#ffffff",
 		"success":                "#007156",
 		"success-subtle":         "#dff3ec",
 		"warning":                "#c98a1e",
@@ -182,6 +188,7 @@ func deepTech() Example {
 		"danger":                 "#f0776b",
 		"danger-hover":           "#f59185",
 		"danger-subtle":          "#3d2325",
+		"on-danger":              "#290f0c",
 		"success":                "#48d0b0",
 		"success-subtle":         "#163a35",
 		"warning":                "#f2b85c",

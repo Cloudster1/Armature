@@ -144,3 +144,41 @@ describe("text contrast", () => {
     });
   });
 });
+
+// Coloured words: links and the current item in the accent, errors and
+// destructive menu items in danger, each on any surface and on its own tint.
+const COLOURED_TEXT: Array<{ text: string; tint: string }> = [
+  { text: "accent", tint: "accent-subtle" },
+  { text: "danger", tint: "danger-subtle" },
+];
+
+// The fills a label is written on, with the token that writes it, hover included.
+const FILLS: Array<{ text: string; fill: string }> = [
+  { text: "on-primary", fill: "primary" },
+  { text: "on-primary", fill: "primary-hover" },
+  { text: "on-accent", fill: "accent" },
+  { text: "on-accent", fill: "accent-hover" },
+  { text: "on-danger", fill: "danger" },
+  { text: "on-danger", fill: "danger-hover" },
+];
+
+describe("coloured text and labels on fills", () => {
+  it("reads every token it judges as a colour", () => {
+    for (const { palette } of cases()) {
+      for (const token of [...COLOURED_TEXT.flatMap((c) => [c.text, c.tint]), ...FILLS.flatMap((f) => [f.text, f.fill])]) {
+        expect(palette[token], token).toMatch(/^#[0-9a-f]{6}$/);
+      }
+    }
+  });
+
+  describe.each(cases())("$name", ({ palette, surfaces }) => {
+    const pairs = [
+      ...COLOURED_TEXT.flatMap(({ text, tint }) => [...surfaces, tint].map((background) => ({ text, background }))),
+      ...FILLS.map(({ text, fill }) => ({ text, background: fill })),
+    ];
+    it.each(pairs)("$text on $background", ({ text, background }) => {
+      const ratio = contrast(palette[text]!, palette[background]!);
+      expect(ratio, `${text} ${palette[text]} on ${background} ${palette[background]} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_TEXT);
+    });
+  });
+});

@@ -28,6 +28,7 @@ progress", "epic" or "bug". The values live in `web/src/styles/index.css`.
 | focus | #2F5FD0 | #9BB7F5 | the focus ring, nothing else |
 | selection | #DCE5F8 | #2A3A5E | text selection, selected rows |
 | danger / danger-hover / danger-subtle | #B93A2E / #9C2F25 / #F9E7E4 | #E4756A / #EC8F86 / #3E2220 | destructive |
+| on-danger | #FFFFFF | #2F100D | the label on a danger button; dark danger is too light for white |
 | success / success-subtle | #277749 / #E3F1E8 | #6CC08F / #1E3527 | done, saved |
 | warning / warning-subtle | #B7791F / #FBF0DA | #E0A94A / #3D2F16 | in flight, capacity |
 | epic | #7A4FB5 | #B392E6 | the levels above standard |

@@ -71,6 +71,9 @@
   --color-danger: #b93a2e;
   --color-danger-hover: #9c2f25;
   --color-danger-subtle: #f9e7e4;
+  /* The label on a danger fill. Dark danger is light enough to be error text,
+   * so white on it reaches only 3:1 and the dark theme writes on it in the dark. */
+  --color-on-danger: #ffffff;
   --color-success: #277749;
   --color-success-subtle: #e3f1e8;
   --color-warning: #b7791f;
@@ -149,6 +152,7 @@
       --color-danger: #e4756a;
       --color-danger-hover: #ec8f86;
       --color-danger-subtle: #3e2220;
+      --color-on-danger: #2f100d;
       --color-success: #6cc08f;
       --color-success-subtle: #1e3527;
       --color-warning: #e0a94a;
@@ -199,6 +203,7 @@
     --color-danger: #e4756a;
     --color-danger-hover: #ec8f86;
     --color-danger-subtle: #3e2220;
+    --color-on-danger: #2f100d;
     --color-success: #6cc08f;
     --color-success-subtle: #1e3527;
     --color-warning: #e0a94a;
