@@ -19,7 +19,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
   primary: "bg-primary text-on-primary hover:bg-primary-hover",
   secondary: "bg-surface text-ink border border-border-strong/70 hover:border-border-strong hover:bg-surface-raised",
   ghost: "text-ink-muted hover:bg-surface-raised hover:text-ink",
-  danger: "bg-danger text-white hover:bg-danger-hover",
+  danger: "bg-danger text-on-danger hover:bg-danger-hover",
   link: "text-ink-muted underline-offset-2 hover:text-ink hover:underline",
 };
 

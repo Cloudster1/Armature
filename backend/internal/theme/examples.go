@@ -46,8 +46,8 @@ func constellation() Example {
 		dark[k] = v
 	}
 	for k, v := range map[string]string{
-		"backdrop-from": "#eef3f8", "backdrop-to": "#cfdbe8", "accent": "#1f7fb8", "accent-hover": "#186a9a",
-		"accent-subtle": "#dcedf8", "focus": "#1f7fb8", "selection": "#d3e6f4", "chart-1": "#1f7fb8",
+		"backdrop-from": "#eef3f8", "backdrop-to": "#cfdbe8", "accent": "#00699e", "accent-hover": "#015580",
+		"accent-subtle": "#dcedf8", "focus": "#00699e", "selection": "#d3e6f4", "chart-1": "#00699e",
 	} {
 		light[k] = v
 	}
@@ -81,12 +81,17 @@ func constellation() Example {
   --color-border-strong: #3d5670;
   --color-ink: #e6eef8;
   --color-ink-muted: #a7b8cc;
-  --color-ink-subtle: #7b8fa6;
+  --color-ink-subtle: #8ea2b9;
   --color-ink-disabled: #52657a;
   --color-accent: #7fd4ff;
   --color-accent-hover: #a5e1ff;
   --color-accent-subtle: #24405a;
+  --color-on-accent: #06192b;
   --color-selection: #24405a;
+  --color-danger: #f57c6f;
+  --color-danger-hover: #f59185;
+  --color-danger-subtle: #3d2325;
+  --color-on-danger: #290f0c;
 }`
 	shadows := map[string]string{}
 	for k, v := range base.Spec.Shadows {
@@ -123,21 +128,22 @@ func deepTech() Example {
 		"border-strong":          "#a9b8c9",
 		"ink":                    "#17222f",
 		"ink-muted":              "#4f6178",
-		"ink-subtle":             "#7b8fa6",
+		"ink-subtle":             "#52657b",
 		"ink-disabled":           "#aab8c7",
 		"primary":                "#17222f",
 		"primary-hover":          "#2a3a4e",
 		"on-primary":             "#f7f9fc",
-		"accent":                 "#2f6fd6",
+		"accent":                 "#1f5fc5",
 		"accent-hover":           "#245cb8",
 		"accent-subtle":          "#dfe9fb",
 		"on-accent":              "#ffffff",
-		"focus":                  "#2f6fd6",
+		"focus":                  "#1f5fc5",
 		"selection":              "#d6e3fa",
-		"danger":                 "#c9463a",
+		"danger":                 "#b6342a",
 		"danger-hover":           "#a83a30",
 		"danger-subtle":          "#fae4e1",
-		"success":                "#1f9d7a",
+		"on-danger":              "#ffffff",
+		"success":                "#007156",
 		"success-subtle":         "#dff3ec",
 		"warning":                "#c98a1e",
 		"warning-subtle":         "#fbefd6",
@@ -148,12 +154,12 @@ func deepTech() Example {
 		"status-todo-subtle":     "#e8edf3",
 		"status-progress-subtle": "#fbefd6",
 		"status-done-subtle":     "#dff3ec",
-		"chart-1":                "#2f6fd6",
-		"chart-2":                "#1f9d7a",
-		"chart-3":                "#6f56c5",
-		"chart-4":                "#c98a1e",
-		"chart-5":                "#1aa3b8",
-		"chart-6":                "#c9463a",
+		"chart-1":                "#1f5fc5",
+		"chart-2":                "#007156",
+		"chart-3":                "#6a50bf",
+		"chart-4":                "#895a00",
+		"chart-5":                "#006e7e",
+		"chart-6":                "#b6342a",
 	}
 	dark := map[string]string{
 		"canvas":                 "#0d1826",
@@ -168,7 +174,7 @@ func deepTech() Example {
 		"border-strong":          "#3a5a82",
 		"ink":                    "#e6eef8",
 		"ink-muted":              "#a7b8cc",
-		"ink-subtle":             "#7b8fa6",
+		"ink-subtle":             "#8397ae",
 		"ink-disabled":           "#4f6178",
 		"primary":                "#5cc8ff",
 		"primary-hover":          "#7fd4ff",
@@ -182,6 +188,7 @@ func deepTech() Example {
 		"danger":                 "#f0776b",
 		"danger-hover":           "#f59185",
 		"danger-subtle":          "#3d2325",
+		"on-danger":              "#290f0c",
 		"success":                "#48d0b0",
 		"success-subtle":         "#163a35",
 		"warning":                "#f2b85c",

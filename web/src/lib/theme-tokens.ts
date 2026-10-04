@@ -66,6 +66,7 @@ export const TOKEN_GROUPS: TokenGroup[] = [
       { name: "danger", label: "Destructive" },
       { name: "danger-hover", label: "Destructive, hovered" },
       { name: "danger-subtle", label: "Destructive background" },
+      { name: "on-danger", label: "Text on a destructive button" },
       { name: "success", label: "Done, saved" },
       { name: "success-subtle", label: "Done background" },
       { name: "warning", label: "In flight, capacity" },

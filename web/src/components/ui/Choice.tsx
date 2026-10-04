@@ -33,7 +33,7 @@ export function OptionCard({ title, description, extra, checked, className, ...r
     >
       <span className={cx("block text-sm font-medium", checked ? "text-accent" : "text-ink")}>{title}</span>
       {description && <span className="mt-1 block text-xs text-ink-muted">{description}</span>}
-      {extra && <span className="mt-2 block text-2xs text-ink-subtle">{extra}</span>}
+      {extra && <span className={cx("mt-2 block text-2xs", checked ? "text-ink-muted" : "text-ink-subtle")}>{extra}</span>}
     </Choice>
   );
 }

@@ -52,7 +52,7 @@
 
   --color-ink: #1f1b16;
   --color-ink-muted: #625b51;
-  --color-ink-subtle: #8f877b;
+  --color-ink-subtle: #6f685d;
   --color-ink-disabled: #b5aea3;
 
   /* The primary action colour: ink on light, paper on dark. */
@@ -71,7 +71,10 @@
   --color-danger: #b93a2e;
   --color-danger-hover: #9c2f25;
   --color-danger-subtle: #f9e7e4;
-  --color-success: #2e7d4f;
+  /* The label on a danger fill. Dark danger is light enough to be error text,
+   * so white on it reaches only 3:1 and the dark theme writes on it in the dark. */
+  --color-on-danger: #ffffff;
+  --color-success: #277749;
   --color-success-subtle: #e3f1e8;
   --color-warning: #b7791f;
   --color-warning-subtle: #fbf0da;
@@ -92,10 +95,10 @@
   /* Chart series, in the order a dashboard hands them out: blue, green, purple,
      amber, teal, red, so no two neighbours fall together for colour-blind eyes. */
   --color-chart-1: #2f5fd0;
-  --color-chart-2: #2e7d4f;
+  --color-chart-2: #277749;
   --color-chart-3: #7a4fb5;
-  --color-chart-4: #b7791f;
-  --color-chart-5: #0f9a9a;
+  --color-chart-4: #935d00;
+  --color-chart-5: #007575;
   --color-chart-6: #b93a2e;
 
   /* Elevation: raised things sit a hair above the surface, overlays float. */
@@ -135,7 +138,7 @@
       --color-backdrop-to: #0f1216;
       --color-ink: #ede8e0;
       --color-ink-muted: #aba396;
-      --color-ink-subtle: #7d7569;
+      --color-ink-subtle: #999185;
       --color-ink-disabled: #5a544b;
       --color-primary: #ede8e0;
       --color-primary-hover: #dbd5cb;
@@ -149,6 +152,7 @@
       --color-danger: #e4756a;
       --color-danger-hover: #ec8f86;
       --color-danger-subtle: #3e2220;
+      --color-on-danger: #2f100d;
       --color-success: #6cc08f;
       --color-success-subtle: #1e3527;
       --color-warning: #e0a94a;
@@ -185,7 +189,7 @@
     --color-backdrop-to: #0f1216;
     --color-ink: #ede8e0;
     --color-ink-muted: #aba396;
-    --color-ink-subtle: #7d7569;
+    --color-ink-subtle: #999185;
     --color-ink-disabled: #5a544b;
     --color-primary: #ede8e0;
     --color-primary-hover: #dbd5cb;
@@ -199,6 +203,7 @@
     --color-danger: #e4756a;
     --color-danger-hover: #ec8f86;
     --color-danger-subtle: #3e2220;
+    --color-on-danger: #2f100d;
     --color-success: #6cc08f;
     --color-success-subtle: #1e3527;
     --color-warning: #e0a94a;

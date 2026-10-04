@@ -51,9 +51,13 @@ DOCKER_HELM = docker run --rm \
 	-e HELM_CACHE_HOME=/tmp -e HELM_CONFIG_HOME=/tmp -e HELM_DATA_HOME=/tmp \
 	-w /src $(HELM_IMAGE)
 
+# The shipped themes are written in Go, so the contrast test that judges them
+# is handed that one file beside the web module.
 DOCKER_NODE = docker run --rm -t \
 	-u $(UID):$(GID) \
 	-v $(ROOT)/web:/app \
+	-v $(ROOT)/backend/internal/theme/examples.go:/theme-examples.go:ro \
+	-e ARMATURE_THEME_EXAMPLES=/theme-examples.go \
 	-v $(NPM_CACHE_VOL):/npmcache \
 	-e npm_config_cache=/npmcache \
 	-w /app $(NODE_IMAGE)
