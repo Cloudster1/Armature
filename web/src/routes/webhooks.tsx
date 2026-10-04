@@ -71,7 +71,7 @@ function WebhooksPage() {
       {fresh && (
         <Card className="mb-4 p-4" data-webhook-secret>
           <p className="text-sm text-ink">
-            The secret for <span className="font-medium">{fresh.name}</span>. Copy it now; it is not shown again. Each delivery carries <span className="font-mono">X-Armature-Signature-256: sha256=HMAC(body)</span> with it.
+            The secret for <span className="font-medium">{fresh.name}</span>. Copy it now; it is not shown again. Each delivery carries <span className="font-mono">X-Armature-Signature-256: sha256=HMAC(body)</span> with it, and <span className="font-mono">X-Armature-Signature-Timestamped-256: sha256=HMAC(timestamp.body)</span> beside <span className="font-mono">X-Armature-Timestamp</span>, the Unix second it was sent; refuse a delivery whose timestamp is minutes old.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <code className="rounded-control bg-surface-raised px-2 py-1 font-mono text-sm text-ink" data-secret-value>
