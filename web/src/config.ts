@@ -318,3 +318,16 @@ export const CONSTELLATION_LINK_PX = 150;
 
 /** How fast a point wanders, in pixels per second, before its own variation. */
 export const CONSTELLATION_SPEED_PX_PER_S = 14;
+
+/** Minutes in an hour and hours in a day, for a working week written in hours. */
+export const MINUTES_PER_HOUR = 60;
+export const HOURS_PER_DAY = 24;
+/** A working day is entered to the quarter hour, and shown to two places at most. */
+export const WORKING_HOURS_STEP = 0.25;
+export const WORKING_HOURS_DECIMALS = 2;
+/** A Monday, for naming the weekdays in the reader's language. */
+export const WEEKDAY_REFERENCE_MONDAY = "2024-01-01";
+/** What the holiday import offers to pick: iCalendar files. */
+export const HOLIDAY_FILE_ACCEPT = ".ics,text/calendar";
+/** The longest name a holiday or a calendar may have; the server holds the same bound. */
+export const HOLIDAY_NAME_MAX_LENGTH = 100;

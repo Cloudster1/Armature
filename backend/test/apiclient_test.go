@@ -20,6 +20,7 @@ import (
 	"github.com/armature/armature/backend/internal/attachment"
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/automation"
+	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/board"
 	"github.com/armature/armature/backend/internal/bulk"
 	"github.com/armature/armature/backend/internal/calendar"
@@ -110,30 +111,31 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Bulk:       bulk.NewService(issues, labels),
 		CSV: csvio.NewService(h.cluster, issues, labels, field.NewService(h.cluster), accounts).
 			WithPlanning(sprints, version.NewService(h.cluster), component.NewService(h.cluster), team.NewService(h.cluster)),
-		Attachments: attachments,
-		Projects:    projects,
-		Templates:   template.NewService(h.cluster, projects, workflowAdmin).WithDesk(deskService),
-		Git:         git.NewService(h.cluster, issues),
-		Desk:        deskService,
-		Reports:     report.NewService(h.cluster, plans).WithSprints(sprints),
-		AppBaseURL:  "http://app.test",
-		Issues:      issues,
-		Boards:      board.NewService(h.cluster, issues),
-		Plans:       plans,
-		Sprints:     sprints,
-		Milestones:  milestones,
-		Versions:    version.NewService(h.cluster),
-		Components:  component.NewService(h.cluster),
-		Teams:       team.NewService(h.cluster),
-		Perms:       perm.NewStore(h.cluster),
-		Workflow:    &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
-		DB:          h.cluster,
-		Telemetry:   h.tel,
-		Fresh:       freshness.NewMemoryTracker(30 * time.Second),
-		Log:         slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
-		Secure:      false,
-		CookieName:  testCookieName,
-		SessionTTL:  time.Hour,
+		Attachments:  attachments,
+		Projects:     projects,
+		Templates:    template.NewService(h.cluster, projects, workflowAdmin).WithDesk(deskService),
+		Git:          git.NewService(h.cluster, issues),
+		Desk:         deskService,
+		Reports:      report.NewService(h.cluster, plans).WithSprints(sprints),
+		AppBaseURL:   "http://app.test",
+		Issues:       issues,
+		Boards:       board.NewService(h.cluster, issues),
+		Plans:        plans,
+		Sprints:      sprints,
+		Milestones:   milestones,
+		Versions:     version.NewService(h.cluster),
+		Components:   component.NewService(h.cluster),
+		Teams:        team.NewService(h.cluster),
+		Availability: availability.NewService(h.cluster),
+		Perms:        perm.NewStore(h.cluster),
+		Workflow:     &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
+		DB:           h.cluster,
+		Telemetry:    h.tel,
+		Fresh:        freshness.NewMemoryTracker(30 * time.Second),
+		Log:          slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
+		Secure:       false,
+		CookieName:   testCookieName,
+		SessionTTL:   time.Hour,
 	}
 
 	ts := httptest.NewServer(srv.Routes([]string{"http://localhost:5173"}))

@@ -203,6 +203,9 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 	}); err != nil {
 		return nil, err
 	}
+	if err := Holidays(orgCtx, cluster, actor.UserID, today); err != nil {
+		return nil, err
+	}
 	log.Info("filled a demo factory", "project", created.Key, "issues", len(work))
 	return created, nil
 }

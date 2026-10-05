@@ -25,6 +25,7 @@ import (
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/demo"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/git"
@@ -147,6 +148,9 @@ func run() error {
 		return err
 	}
 	if err := seedThemes(ctx, cluster, store, creds, log); err != nil {
+		return err
+	}
+	if err := demo.Holidays(db.PinPrimary(auth.ContextForOrg(ctx, creds.Principal)), cluster, creds.Principal.User.ID, time.Now().UTC()); err != nil {
 		return err
 	}
 

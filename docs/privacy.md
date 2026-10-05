@@ -10,6 +10,9 @@ installation does.
 - **Running a tracker.** Accounts, memberships, sessions and API tokens exist
   so people can sign in and be told apart; issues, comments, worklogs and
   attachments are the work itself and carry who did what.
+- **Planning.** A working week says how long somebody works on each weekday
+  and which holiday calendar they keep, so the plan knows which days they
+  can work. An administrator sets it; the person reads it on their profile.
 - **Telling people.** Notifications and mail carry news of the work to the
   people on it; a person chooses, per reason, whether to be told.
 - **Running a service desk.** A customer's address is how a request finds
@@ -26,6 +29,7 @@ installation does.
 |---|---|---|---|---|
 | Account | `app_user` | address, name, password hash, picture, time zone, language | while the account exists | erased on request: the row becomes a tombstone ("Former user", a reserved address, no password, no picture) |
 | Membership | `org_member`, `role_assignment`, `group_member`, `team_member` | who belongs where and holds what | while the membership exists | an administrator removes the member, or the person erases their account |
+| Working week | `member_schedule` | the minutes a person works on each weekday, and the holiday calendar they keep | while the membership exists | an administrator removes the member, or the person erases their account |
 | Sessions | `user_session` | token hash, user agent, address, last seen | `ARMATURE_SESSION_TTL` (30 days) | signed out, erased, or swept `ARMATURE_RETAIN_SESSIONS` (1 day) past expiry |
 | API tokens | `api_token`, `api_token_project` | name, token hash, last used, the projects it is confined to | until revoked or expired | revoked, erased, or swept `ARMATURE_RETAIN_API_TOKENS` (30 days) past expiry |
 | Invitations | `org_invite` | address | until accepted or expired | swept `ARMATURE_RETAIN_INVITES` (30 days) past expiry; deleted by erasure |
@@ -87,8 +91,8 @@ administrator for the tables that belong to nobody in particular.
 
 - **Access and portability:** `GET /api/v1/auth/me/export` hands the person
   one JSON file: profile, memberships, sessions, tokens, issues reported and
-  assigned, comments, worklogs, watches, notifications, saved filters and the
-  audit actions they performed. On the profile page it is "Download my
+  assigned, comments, worklogs, watches, notifications, saved filters, the
+  working weeks set for them and the audit actions they performed. On the profile page it is "Download my
   data"; a customer finds it under their name in the portal.
 - **Rectification:** the profile page changes the name, the zone, the
   language and the picture. The address is what signs a person in and does
