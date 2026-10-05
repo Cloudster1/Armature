@@ -303,6 +303,23 @@ ARMATURE_RETAIN_IMPORT_JOBS: {{ .Values.retention.importJobs | quote }}
 ARMATURE_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
 {{- end -}}
 
+{{/* The bucket's keys, by reference. The migrate Job needs them too: the
+endpoint is in the shared ConfigMap, and an endpoint without keys is refused. */}}
+{{- define "armature.s3SecretEnv" -}}
+{{- if .Values.s3.enabled }}
+- name: ARMATURE_S3_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "armature.secretName" . }}
+      key: s3-access-key
+- name: ARMATURE_S3_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "armature.secretName" . }}
+      key: s3-secret-key
+{{- end }}
+{{- end -}}
+
 {{/* The credentials, by reference. Never rendered into a pod spec. */}}
 {{- define "armature.secretEnv" -}}
 {{- $secret := include "armature.secretName" . -}}
@@ -323,18 +340,7 @@ ARMATURE_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
   value: {{ join "," $urls | quote }}
 {{- end }}
 {{ include "armature.redisEnv" . }}
-{{- if .Values.s3.enabled }}
-- name: ARMATURE_S3_ACCESS_KEY
-  valueFrom:
-    secretKeyRef:
-      name: {{ $secret }}
-      key: s3-access-key
-- name: ARMATURE_S3_SECRET_KEY
-  valueFrom:
-    secretKeyRef:
-      name: {{ $secret }}
-      key: s3-secret-key
-{{- end }}
+{{- include "armature.s3SecretEnv" . }}
 {{- if .Values.mail.pop3.addr }}
 - name: ARMATURE_POP3_PASSWORD
   valueFrom:
