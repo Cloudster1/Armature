@@ -2830,6 +2830,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectKey}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The work per team or person per week, in hours, against the hours available. */
+        get: operations["getResources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectKey}/restore": {
         parameters: {
             query?: never;
@@ -5664,7 +5681,7 @@ export interface components {
             description: string;
             docsLabel?: string;
             docsUrl?: string;
-            features: ("board" | "sprints" | "plan" | "calendar" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
+            features: ("board" | "sprints" | "plan" | "calendar" | "resources" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
             /** Format: uuid */
             id: string;
             issueCount: number;
@@ -5676,7 +5693,11 @@ export interface components {
             leadName?: string;
             name: string;
             openIssueCount: number;
+            /** @enum {string} */
+            planningMethod: "scrum" | "kanban";
             portalVerifies: boolean;
+            /** @enum {string} */
+            resourceGrouping: "team" | "person";
             status?: components["schemas"]["StatusUpdate"];
             template?: string;
             trustedDomains: string[];
@@ -5904,6 +5925,45 @@ export interface components {
             bands: components["schemas"]["Band"][];
             resolved: number;
             window: number;
+        };
+        ResourceIssue: {
+            hours?: number;
+            key: string;
+            summary: string;
+        };
+        ResourcePlan: {
+            /** Format: date-time */
+            from: string;
+            /** @enum {string} */
+            grouping: "team" | "person";
+            /** @enum {string} */
+            method: "scrum" | "kanban";
+            projectKey: string;
+            rows: components["schemas"]["ResourceRow"][];
+            /** Format: date-time */
+            to: string;
+            unestimated: components["schemas"]["ResourceIssue"][];
+            unscheduled: components["schemas"]["ResourceIssue"][];
+            warnings: components["schemas"]["Warning"][];
+            weeks: string[];
+        };
+        ResourceRow: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind: "team" | "person" | "unassigned";
+            name: string;
+            weeks: components["schemas"]["ResourceWeek"][];
+        };
+        ResourceWeek: {
+            capacityHours?: number;
+            daysAway?: number;
+            holidays?: number;
+            issues: components["schemas"]["WeekIssue"][];
+            loadHours: number;
+            nominalHours?: number;
+            /** Format: date-time */
+            start: string;
         };
         Response: {
             content?: {
@@ -6443,11 +6503,13 @@ export interface components {
             boardType: "scrum" | "kanban";
             description: string;
             desk: boolean;
-            features: ("board" | "sprints" | "plan" | "calendar" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
+            features: ("board" | "sprints" | "plan" | "calendar" | "resources" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
             key: string;
             /** @enum {string} */
             kind: "software" | "service" | "business";
             name: string;
+            /** @enum {string} */
+            planningMethod: "scrum" | "kanban";
             workflowName?: string;
         };
         TemplateWidget: {
@@ -6595,7 +6657,11 @@ export interface components {
             /** Format: uuid */
             leadId?: string | null;
             name?: string;
+            /** @enum {string} */
+            planningMethod?: "scrum" | "kanban";
             portalVerifies?: boolean;
+            /** @enum {string} */
+            resourceGrouping?: "team" | "person";
             trustedDomains?: string[];
         };
         UpdateRequestTypeRequest: {
@@ -6709,6 +6775,7 @@ export interface components {
             issueKey?: string;
             kind: string;
             message: string;
+            person?: string;
             sprint?: string;
             team?: string;
         };
@@ -6733,6 +6800,11 @@ export interface components {
             resolved: number;
             /** Format: date-time */
             start: string;
+        };
+        WeekIssue: {
+            hours: number;
+            key: string;
+            summary: string;
         };
         Widget: {
             /** @description A JSON value. */
@@ -14844,6 +14916,42 @@ export interface operations {
                     "application/json": {
                         requestType: components["schemas"]["RequestType"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getResources: {
+        parameters: {
+            query?: {
+                /** @description A day in the first week, YYYY-MM-DD; this week when absent. */
+                from?: string;
+                /** @description A day in the last week, YYYY-MM-DD; at most 26 weeks after from. */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourcePlan"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

@@ -37,12 +37,12 @@ func (i Item) Scheduled() bool { return i.Start != nil && i.Due != nil }
 // Warning is a place the schedule disagrees with itself. Warnings never refuse
 // a change: a plan is a draft, and a draft you cannot write down is useless.
 type Warning struct {
-	// Exactly one of these names what the warning is about. A sprint committed
-	// beyond its capacity, or a team loaded beyond its week, is not any one
-	// issue's fault.
+	// Exactly one of these names what the warning is about: a sprint, team or
+	// person loaded beyond its capacity is not any one issue's fault.
 	IssueKey string `json:"issueKey,omitempty"`
 	Sprint   string `json:"sprint,omitempty"`
 	Team     string `json:"team,omitempty"`
+	Person   string `json:"person,omitempty"`
 	Kind     string `json:"kind"`
 	Message  string `json:"message"`
 }

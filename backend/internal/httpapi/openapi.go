@@ -18,6 +18,7 @@ import (
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/openapi"
 	"github.com/armature/armature/backend/internal/perm"
+	"github.com/armature/armature/backend/internal/plan"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/report"
 	"github.com/armature/armature/backend/internal/sprint"
@@ -275,6 +276,8 @@ func declareEnums(b *openapi.Builder) {
 	set(board.Type(""), "scrum", "kanban")
 	set(board.Grouping(""), "none", "assignee", "priority", "type")
 	set(project.Kind(""), "software", "service", "business")
+	set(project.PlanningMethod(""), string(project.MethodScrum), string(project.MethodKanban))
+	set(project.ResourceGrouping(""), string(project.GroupByTeam), string(project.GroupByPerson))
 	set(sprint.State(""), "future", "active", "closed")
 	set(auth.OrgRole(""), "owner", "admin", "member", "customer")
 	set(auth.SignInMethod(""), "password", "provider", "none")
@@ -304,6 +307,7 @@ func declareEnums(b *openapi.Builder) {
 	set(calendar.Kind(""), "issue", "sprint", "milestone", "version", "holiday", "absence")
 	b.FieldOverrides["Label.color"] = &openapi.Schema{Type: "string", Enum: label.Colors}
 	b.FieldOverrides["LabelRef.color"] = &openapi.Schema{Type: "string", Enum: label.Colors}
+	b.FieldOverrides["ResourceRow.kind"] = &openapi.Schema{Type: "string", Enum: []string{plan.LoadTeam, plan.RowPerson, plan.LoadUnassigned}}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	// Every kind of report, whichever kind of project it suits.
 	seen := map[string]bool{}

@@ -33,7 +33,8 @@ export type WarningKind =
   | "over-capacity"
   | "outside-sprint"
   | "past-milestone"
-  | "over-load";
+  | "over-load"
+  | "over-allocated";
 
 export interface PlanWarning {
   /** Exactly one of these names what the warning is about. A sprint committed
@@ -42,6 +43,7 @@ export interface PlanWarning {
   issueKey?: string;
   sprint?: string;
   team?: string;
+  person?: string;
   kind: WarningKind;
   message: string;
 }

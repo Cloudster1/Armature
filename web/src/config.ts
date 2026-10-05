@@ -335,3 +335,11 @@ export const HOLIDAY_NAME_MAX_LENGTH = 100;
 export const ABSENCE_MAX_DAYS = 366;
 /** Milliseconds in a day, for counting the days between two dates. */
 export const MS_PER_DAY = 86_400_000;
+/** How many weeks the resource view shows, and how far Previous and Next move it. */
+export const RESOURCE_WINDOW_WEEKS = 8;
+export const RESOURCE_STEP_WEEKS = 4;
+/** How tall a week's bar may grow in the resource view, and the narrowest a week's column gets. */
+export const RESOURCE_BAR_HEIGHT = 40;
+export const RESOURCE_WEEK_MIN_PX = 84;
+/** How many issues the unscheduled and unestimated lists show before counting the rest. */
+export const RESOURCE_LIST_LIMIT = 25;

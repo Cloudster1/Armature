@@ -31,6 +31,7 @@ import "./scenarios/organization-delete.mjs";
 import "./scenarios/users.mjs";
 import "./scenarios/holidays.mjs";
 import "./scenarios/absences.mjs";
+import "./scenarios/resources.mjs";
 import "./scenarios/themes.mjs";
 import "./scenarios/arrange.mjs";
 

@@ -32,6 +32,7 @@ export const projectWorkPages: PageLink[] = [
   { path: "/sprints", label: "Sprints", icon: "Sprint", feature: "sprints" },
   { path: "/plan", label: "Plan", icon: "Plan", feature: "plan" },
   { path: "/calendar", label: "Calendar", icon: "Calendar", feature: "calendar" },
+  { path: "/resources", label: "Resources", icon: "Capacity", feature: "resources" },
   { path: "/milestones", label: "Milestones", icon: "Milestone", feature: "milestones" },
   { path: "/releases", label: "Releases", icon: "Ship", feature: "releases" },
   { path: "/dashboard", label: "Dashboard", icon: "Dashboard", feature: "dashboard" },

@@ -23,6 +23,7 @@ import { auditRoute } from "./audit";
 import { orgFieldsRoute } from "./org-fields";
 import { orgIssueArrangementRoute } from "./org-issue-arrangement";
 import { calendarRoute } from "./calendar";
+import { resourcesRoute } from "./resources";
 import { projectsRoute } from "./projects";
 import { projectDetailRoute } from "./project-detail";
 import { projectSettingsRoute } from "./project-settings";
@@ -74,6 +75,7 @@ const routeTree = rootRoute.addChildren([
       hierarchyRoute,
       planRoute,
       calendarRoute,
+      resourcesRoute,
       projectWorkflowsRoute,
       sprintsRoute,
       milestonesRoute,

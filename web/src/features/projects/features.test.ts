@@ -17,7 +17,15 @@ describe("a project's features", () => {
     expect(labels).toContain("Issues");
     expect(labels).toContain("Settings");
     expect(labels).not.toContain("Sprints");
+    expect(labels).not.toContain("Resources");
     expect(labels).not.toContain("Repositories");
+  });
+
+  it("list the resource page where the project has it, between the calendar and the milestones", () => {
+    const flow = { key: "FLOW", kind: "software", features: ["plan", "calendar", "resources", "milestones"] } as Project;
+    const pages = pagesFor(flow, projectWorkPages);
+    expect(pages.map((page) => page.label)).toEqual(["Issues", "Plan", "Calendar", "Resources", "Milestones"]);
+    expect(pages.find((page) => page.label === "Resources")?.path).toBe("/resources");
   });
 
   // A project still loading shows everything rather than flashing a shorter list.
@@ -30,13 +38,14 @@ describe("a project's features", () => {
     expect(featureOfPath("HELP", "/projects/HELP/sprints")).toBe("sprints");
     expect(featureOfPath("HELP", "/projects/HELP/sprints/abc/board")).toBe("sprints");
     expect(featureOfPath("HELP", "/projects/HELP/service-desk")).toBe("desk");
+    expect(featureOfPath("HELP", "/projects/HELP/resources")).toBe("resources");
     expect(featureOfPath("HELP", "/projects/HELP/settings")).toBeUndefined();
     expect(featureOfPath("HELP", "/projects/HELP")).toBeUndefined();
   });
 
   it("read on a template card as what it leaves out", () => {
-    expect(leftOut(desk.features)).toEqual(["sprints", "plan", "milestones", "releases", "components", "hierarchy", "repositories"]);
-    expect(leftOut(["board", "sprints", "plan", "calendar", "milestones", "releases", "components", "hierarchy", "dashboard", "teams", "repositories", "automation", "import"])).toEqual([]);
+    expect(leftOut(desk.features)).toEqual(["sprints", "plan", "resources", "milestones", "releases", "components", "hierarchy", "repositories"]);
+    expect(leftOut(["board", "sprints", "plan", "calendar", "resources", "milestones", "releases", "components", "hierarchy", "dashboard", "teams", "repositories", "automation", "import"])).toEqual([]);
   });
 
   it("keep the guide from answering with a page the project lacks", () => {

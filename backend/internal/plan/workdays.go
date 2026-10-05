@@ -41,6 +41,23 @@ func NewWorkdays(holidays []availability.Holiday, members map[uuid.UUID][]uuid.U
 
 var standardWeek = availability.StandardWeek()
 
+// personWorks says whether a person's work is spread onto a day: a day they have
+// minutes on. A day not read falls back to their week and the default calendar.
+func (w Workdays) personWorks(id uuid.UUID, d time.Time) bool {
+	key := d.Format(availability.DateLayout)
+	if day, ok := w.days[id][key]; ok {
+		return day.Minutes > 0
+	}
+	if h, off := w.holidays[key]; off && !h.HalfDay {
+		return false
+	}
+	week, ok := w.weeks[id]
+	if !ok {
+		week = standardWeek
+	}
+	return availability.MinutesOn(week, d, nil) > 0
+}
+
 // works says whether work is spread onto a day: a day some member's week holds
 // and the default calendar does not take whole. A team of nobody works Monday to Friday.
 func (w Workdays) works(teamID *uuid.UUID, d time.Time) bool {
@@ -74,9 +91,14 @@ type teamTime struct {
 const halfDay = 0.5
 
 func (w Workdays) teamTime(teamID uuid.UUID, from, to time.Time) teamTime {
+	return w.peopleTime(w.members[teamID], from, to)
+}
+
+// peopleTime is teamTime for any set of people, one person being a set too.
+func (w Workdays) peopleTime(people []uuid.UUID, from, to time.Time) teamTime {
 	var out teamTime
 	holidays := map[string]bool{}
-	for _, m := range w.members[teamID] {
+	for _, m := range people {
 		for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
 			key := d.Format(availability.DateLayout)
 			day, ok := w.days[m][key]

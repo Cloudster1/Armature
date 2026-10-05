@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Resource planning: a Resources page sets each week's scheduled hours against
+  the hours left after holidays and absences, per team, or per person in a
+  kanban project, hatches the days off, lists a week's issues on a click and the
+  unscheduled and unestimated work below; projects gain a planning method and a
+  grouping, and a scrum project plans by team (#31).
 - Holidays and absences reach planning: the project calendar shades the
   default calendar's holidays, lists the other calendars' and who is away, and
   hides them all at a switch; the timeline shades the holidays; a team's load

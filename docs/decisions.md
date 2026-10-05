@@ -522,6 +522,41 @@ an exclusion constraint, so the plan never counts somebody away twice.
 **Reconsider if** an organization needs leave approval inside the tracker, which
 would be a state on the absence and a person who decides, not a reason.
 
+### Scrum plans by team; kanban chooses team or person
+
+A project has a planning method, scrum or kanban, and a grouping for its
+resource view, team or person. Scrum is planned by team because a sprint is a
+team's commitment: setting one person's hours against work the team took on
+together reads a shared promise as one person's debt. A kanban project has no
+sprint to keep together, so it may set the work against each person's own week,
+which is how a small project of specialists is usually run.
+
+The method is backfilled from the boards, scrum where a project has a scrum
+board, and a new project takes it from its template. It is a column of its own
+rather than read off the boards, because a project may have boards of both types
+and the resource view needs one answer. A check constraint holds "scrum plans by
+team", so a row written past the service is refused too. Turning a project to
+scrum takes its grouping back to teams rather than refusing the change; asking
+for people on a scrum project is refused with a sentence that says to switch it
+to kanban first.
+
+### Resource planning is in hours; team capacity stays in points
+
+The resource view sets each open issue's remaining time, or its estimate where
+nothing remains to say, against the hours its team or person has in each Monday
+week after holidays and absences. Hours, because availability is measured in
+them: a working week is minutes per weekday, and a day away takes hours, not
+points. Points measure a team's pace against itself, and a person's day has no
+pace; converting one into the other would need a rate nobody can state.
+
+The team load under the plan stays in points, scaled by the same holidays and
+absences, so a team that estimates in points is not made to estimate twice.
+Work is spread evenly over the row's working days between start and due, as the
+team load is; a person's working days are their own, so an absence moves their
+share of an issue onto the days they are there. Work with hours but without both
+dates, and work with no hours at all, is listed rather than guessed into a week.
+A week over its hours is an over-allocated warning, never a refusal.
+
 ## Projects, git and the service desk
 
 ### Templates are code, not rows

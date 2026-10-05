@@ -28,6 +28,7 @@ place under the same name.
 ![The plan](plan.png)
 ![The plan by quarters](plan-quarters.png)
 ![The calendar](calendar.png)
+![Hours per team per week](resources.png)
 ![The hierarchy](hierarchy.png)
 ![An issue and its children](issue-hierarchy.png)
 ![A team's scrum board, and the sprint it is running](board-scrum.png)

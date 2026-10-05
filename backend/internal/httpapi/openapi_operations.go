@@ -249,6 +249,8 @@ var operations = []operation{
 	{method: "GET", path: "/projects/{projectKey}/hierarchy", handler: "handleProjectHierarchy", tool: "get_hierarchy", toolHelp: "The whole project as a tree of issues, roots first.", tag: "hierarchy", summary: "The whole project as a tree, roots first.", responses: ok(env{"tree": []issue.Node{}})},
 	{method: "GET", path: "/projects/{projectKey}/plan", handler: "handleGetPlan", tool: "get_plan", toolHelp: "The project laid out against a calendar, with an optional NQL query marking what matches.", tag: "plan", summary: "The project laid out against a calendar.",
 		query: []param{{name: "q", description: "An NQL query; the plan is returned whole and matched lists the keys it selects."}}, responses: ok(plan.Plan{})},
+	{method: "GET", path: "/projects/{projectKey}/resources", handler: "handleGetResources", tool: "get_resources", toolHelp: "Hours of work per team or person per week against the hours they have, with what is unscheduled or unestimated.", tag: "plan", summary: "The work per team or person per week, in hours, against the hours available.",
+		query: []param{{name: "from", schema: dateParam, description: "A day in the first week, YYYY-MM-DD; this week when absent."}, {name: "to", schema: dateParam, description: "A day in the last week, YYYY-MM-DD; at most 26 weeks after from."}}, responses: ok(plan.ResourcePlan{})},
 
 	// Issues.
 	{method: "GET", path: "/issues", handler: "handleListIssues", tool: "search_issues", toolHelp: "Search issues across projects; q takes an NQL query such as assignee = currentUser() AND statusCategory != done.", tag: "issues", summary: "Search issues across projects.", query: issueListQuery, responses: ok(issue.Result{})},

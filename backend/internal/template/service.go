@@ -55,6 +55,7 @@ func (s *Service) Create(ctx context.Context, key string, in project.CreateInput
 		in.Kind = tpl.Kind
 	}
 	in.BoardType = string(tpl.BoardType)
+	in.PlanningMethod = tpl.PlanningMethod
 	in.Template = tpl.Key
 	in.Features = slices.Clone(tpl.Features)
 

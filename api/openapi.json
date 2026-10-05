@@ -12393,6 +12393,66 @@
         }
       }
     },
+    "/projects/{projectKey}/resources": {
+      "get": {
+        "operationId": "getResources",
+        "summary": "The work per team or person per week, in hours, against the hours available.",
+        "tags": [
+          "plan"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "A day in the first week, YYYY-MM-DD; this week when absent.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "A day in the last week, YYYY-MM-DD; at most 26 weeks after from.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePlan"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{projectKey}/restore": {
       "post": {
         "operationId": "restoreProject",
@@ -23163,6 +23223,7 @@
                 "sprints",
                 "plan",
                 "calendar",
+                "resources",
                 "milestones",
                 "releases",
                 "components",
@@ -23208,8 +23269,22 @@
           "openIssueCount": {
             "type": "integer"
           },
+          "planningMethod": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
           "portalVerifies": {
             "type": "boolean"
+          },
+          "resourceGrouping": {
+            "type": "string",
+            "enum": [
+              "team",
+              "person"
+            ]
           },
           "status": {
             "$ref": "#/components/schemas/StatusUpdate"
@@ -23243,6 +23318,8 @@
           "portalVerifies",
           "trustedDomains",
           "features",
+          "planningMethod",
+          "resourceGrouping",
           "createdAt",
           "updatedAt"
         ]
@@ -24085,6 +24162,163 @@
           "bands",
           "resolved",
           "window"
+        ]
+      },
+      "ResourceIssue": {
+        "type": "object",
+        "properties": {
+          "hours": {
+            "type": "number"
+          },
+          "key": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "summary"
+        ]
+      },
+      "ResourcePlan": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grouping": {
+            "type": "string",
+            "enum": [
+              "team",
+              "person"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceRow"
+            }
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unestimated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceIssue"
+            }
+          },
+          "unscheduled": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceIssue"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Warning"
+            }
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "required": [
+          "projectKey",
+          "method",
+          "grouping",
+          "from",
+          "to",
+          "weeks",
+          "rows",
+          "unscheduled",
+          "unestimated",
+          "warnings"
+        ]
+      },
+      "ResourceRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "team",
+              "person",
+              "unassigned"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceWeek"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "weeks"
+        ]
+      },
+      "ResourceWeek": {
+        "type": "object",
+        "properties": {
+          "capacityHours": {
+            "type": "number"
+          },
+          "daysAway": {
+            "type": "number"
+          },
+          "holidays": {
+            "type": "integer"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeekIssue"
+            }
+          },
+          "loadHours": {
+            "type": "number"
+          },
+          "nominalHours": {
+            "type": "number"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "start",
+          "loadHours",
+          "issues"
         ]
       },
       "Response": {
@@ -25963,6 +26197,7 @@
                 "sprints",
                 "plan",
                 "calendar",
+                "resources",
                 "milestones",
                 "releases",
                 "components",
@@ -25991,6 +26226,13 @@
           "name": {
             "type": "string"
           },
+          "planningMethod": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
           "workflowName": {
             "type": "string"
           }
@@ -26001,6 +26243,7 @@
           "description",
           "kind",
           "boardType",
+          "planningMethod",
           "desk",
           "features"
         ]
@@ -26509,8 +26752,22 @@
           "name": {
             "type": "string"
           },
+          "planningMethod": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
           "portalVerifies": {
             "type": "boolean"
+          },
+          "resourceGrouping": {
+            "type": "string",
+            "enum": [
+              "team",
+              "person"
+            ]
           },
           "trustedDomains": {
             "type": "array",
@@ -26901,6 +27158,9 @@
           "message": {
             "type": "string"
           },
+          "person": {
+            "type": "string"
+          },
           "sprint": {
             "type": "string"
           },
@@ -26985,6 +27245,25 @@
           "start",
           "created",
           "resolved"
+        ]
+      },
+      "WeekIssue": {
+        "type": "object",
+        "properties": {
+          "hours": {
+            "type": "number"
+          },
+          "key": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "summary",
+          "hours"
         ]
       },
       "Widget": {

@@ -302,6 +302,8 @@ func (s *Server) projectRoutes(r chi.Router) {
 
 	// And the same tree laid out against a calendar.
 	r.Get("/projects/{projectKey}/plan", s.handleGetPlan)
+	// And the work set against the hours there are, per team or person.
+	r.With(s.requireFeature(project.FeatureResources)).Get("/projects/{projectKey}/resources", s.handleGetResources)
 
 	// Sprints. Reading them is ordinary; running them is what a
 	// scrum master is for.

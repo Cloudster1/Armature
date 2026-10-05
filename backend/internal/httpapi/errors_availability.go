@@ -5,12 +5,22 @@ import (
 	"net/http"
 
 	"github.com/armature/armature/backend/internal/availability"
+	"github.com/armature/armature/backend/internal/plan"
+	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/tenant"
 )
 
-// availabilityAPIError ends moreAPIError's mapping: calendars, weeks and absences.
+// availabilityAPIError ends moreAPIError's mapping: calendars, weeks, absences
+// and what the resource view is set against.
 func availabilityAPIError(err error) *APIError {
 	switch {
+	case errors.Is(err, project.ErrScrumByTeam):
+		message := "A scrum project plans by team. Switch the project to kanban to plan by person."
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: message, Fields: map[string]string{"resourceGrouping": message}}
+	case errors.Is(err, project.ErrBadPlanning):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: withoutSentinel(err, project.ErrBadPlanning) + "."}
+	case errors.Is(err, plan.ErrBadWindow):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: withoutSentinel(err, plan.ErrBadWindow) + "."}
 	case errors.Is(err, availability.ErrNotFound):
 		return ErrNotFound("That holiday calendar was not found.")
 	case errors.Is(err, availability.ErrNameTaken):

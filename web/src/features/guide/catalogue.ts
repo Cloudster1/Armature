@@ -39,6 +39,7 @@ const PROJECT_PAGE_WORDS: Record<string, { sentence: string; keywords: string[];
   "/sprints": { sentence: "Sprints planned, running and done, with what each carried.", keywords: ["sprint", "iteration", "velocity", "commit", "backlog"] },
   "/plan": { sentence: "The project as a timeline: bars, dependencies and what is late.", keywords: ["plan", "gantt", "timeline", "schedule", "dependency", "late", "roadmap"] },
   "/calendar": { sentence: "A month of the project's dated work, sprints, milestones and versions; drag an issue to move its dates.", keywords: ["calendar", "month", "week", "day", "date", "due", "agenda", "when"] },
+  "/resources": { sentence: "The work per team or person per week, in hours, against the hours they have after holidays and absences.", keywords: ["resource", "capacity", "allocation", "workload", "utilisation", "overloaded", "hours", "people", "availability"] },
   "/milestones": { sentence: "Milestones with their due days and how far each has got.", keywords: ["milestone", "release", "due", "overdue", "progress", "deadline"] },
   "/dashboard": { sentence: "Dashboards of widgets and charts over the project's own numbers.", keywords: ["dashboard", "chart", "widget", "report", "burndown", "throughput", "graph", "statistic", "metric"] },
   "/hierarchy": { sentence: "The project as a tree: epics, their children and how far each has come.", keywords: ["hierarchy", "epic", "tree", "parent", "child", "breakdown"] },

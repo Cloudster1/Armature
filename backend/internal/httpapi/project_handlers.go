@@ -101,6 +101,10 @@ type updateProjectRequest struct {
 	// clears the link. DocsLabel names it in the sidebar.
 	DocsURL   *string `json:"docsUrl,omitempty"`
 	DocsLabel *string `json:"docsLabel,omitempty"`
+	// PlanningMethod is scrum or kanban; turning to scrum takes the grouping
+	// back to teams. ResourceGrouping is team, or person on a kanban project.
+	PlanningMethod   *project.PlanningMethod   `json:"planningMethod,omitempty"`
+	ResourceGrouping *project.ResourceGrouping `json:"resourceGrouping,omitempty"`
 }
 
 // leadPatch distinguishes an absent field from an explicit null.
@@ -134,6 +138,14 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 	if req.Kind != nil {
 		kind := project.Kind(*req.Kind)
 		in.Kind = &kind
+	}
+	if req.PlanningMethod != nil {
+		method := string(*req.PlanningMethod)
+		in.PlanningMethod = &method
+	}
+	if req.ResourceGrouping != nil {
+		grouping := string(*req.ResourceGrouping)
+		in.ResourceGrouping = &grouping
 	}
 	if req.LeadID.Set {
 		value := req.LeadID.Value

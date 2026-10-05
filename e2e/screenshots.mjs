@@ -22,6 +22,7 @@ const SHOTS = [
   ["plan", "/projects/CP/plan", "[data-plan-row]"],
   ["plan-quarters", "/projects/CP/plan?view=timeline", "[data-plan-row]", { zoom: "Quarters" }],
   ["calendar", "/projects/CP/calendar", "[data-calendar-item]"],
+  ["resources", "/projects/CP/resources", "[data-resource-week]"],
   ["audit-log", "/settings/audit", "[data-audit-row]"],
   ["hierarchy", "/projects/CP/hierarchy", "main li"],
   ["dashboard-software", "/projects/CP/dashboard", "[data-widget]"],

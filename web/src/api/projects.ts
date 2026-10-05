@@ -4,12 +4,17 @@ import { META_STALE_MS } from "@/config";
 
 export type ProjectKind = "software" | "service" | "business";
 
+/** How a project plans: in sprints, by team, or flowing, by team or by person. */
+export type PlanningMethod = "scrum" | "kanban";
+export type ResourceGrouping = "team" | "person";
+
 /** A page a project may have, named by its route slug. */
 export type Feature =
   | "board"
   | "sprints"
   | "plan"
   | "calendar"
+  | "resources"
   | "milestones"
   | "releases"
   | "components"
@@ -48,6 +53,9 @@ export interface Project {
   trustedDomains: string[];
   /** The pages the project has, from its template and its administrators. */
   features: Feature[];
+  /** What the resource view sets the work against; a scrum project always plans by team. */
+  planningMethod: PlanningMethod;
+  resourceGrouping: ResourceGrouping;
   createdAt: string;
   updatedAt: string;
   archivedAt?: string;
@@ -121,6 +129,7 @@ export interface ProjectTemplate {
   description: string;
   kind: ProjectKind;
   boardType: "scrum" | "kanban";
+  planningMethod: PlanningMethod;
   workflowName?: string;
   /** The pages a project made from it starts with. */
   features: Feature[];
@@ -180,6 +189,9 @@ export interface UpdateProjectInput {
   /** An empty string clears the link and its label. */
   docsUrl?: string;
   docsLabel?: string;
+  /** Turning to scrum takes the grouping back to teams. */
+  planningMethod?: PlanningMethod;
+  resourceGrouping?: ResourceGrouping;
 }
 
 export function useUpdateProject() {

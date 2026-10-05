@@ -290,6 +290,11 @@
   background: radial-gradient(120% 80% at 20% 0%, var(--color-backdrop-from), var(--color-backdrop-to));
 }
 
+/* Time nobody has: holidays and days away, struck through rather than coloured. */
+@utility bg-hatched {
+  background: repeating-linear-gradient(135deg, var(--color-border-strong) 0 1px, transparent 1px 5px);
+}
+
 /* Print, which is also how a PDF is made: the page's controls go, colours are
    kept so the bars survive, and a widget is never cut across two pages. */
 @media print {
