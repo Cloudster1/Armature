@@ -1260,6 +1260,25 @@ than imported, because the schemas use a small part of JSON Schema and a
 validating library would bring its dependencies into a binary the endpoint
 protection agent may then kill.
 
+### The application is versioned by semver; the API by its own number
+
+A release is a tag `vX.Y.Z` on main, cut by `make release`, and `VERSION` at
+the root says which one the tree is. Four files carry it: `VERSION`, the web
+package and its lockfile, and the chart's `version` and `appVersion`. A test
+refuses them disagreeing, because a chart whose `appVersion` names an image
+nobody built installs nothing. A build between releases does not pretend to
+be one: past a tag it reads `1.2.3+4.gabc1234`, and with no tag in reach
+`VERSION+dev`. The bump is a release branch merged like any other, so main
+still never takes a commit of its own.
+
+`info.version` in the OpenAPI document stays `1` and moves only when a client
+written against it would break. The application releasing weekly is not news
+to a script calling the API, and a contract number that moved with every
+release would say nothing.
+
+**Reconsider if** the API is published for others to build on, which wants
+its version in the path and the two numbers documented side by side.
+
 ### MCP is the same table, dispatched in process
 
 A tool is a row of the operation table marked with a name and a sentence, and
