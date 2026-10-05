@@ -8,8 +8,9 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Icon } from "@/components/icons";
 import { AVATAR_MAX_BYTES } from "@/config";
 import { makeFormat } from "@/lib/format";
-import { useWorkingWeek } from "@/api/availability";
+import { useAbsences, useWorkingWeek } from "@/api/availability";
 import { WorkingWeekTable } from "@/features/availability/WorkingWeek";
+import { AbsenceEditor } from "@/features/availability/Absences";
 
 /** Also reachable as /me, which is where a person guesses their own page is. */
 export const profileRoute = createRoute({
@@ -154,6 +155,8 @@ function ProfilePage() {
 
       <YourWeek userId={user.id} />
 
+      <YourAbsences userId={user.id} />
+
       <section className="mt-8">
         <SectionTitle className="mb-2">Organizations</SectionTitle>
         <Card className="divide-y divide-border">
@@ -182,6 +185,22 @@ function YourWeek({ userId }: { userId: string }) {
       <Card className="space-y-3 p-5">
         <WorkingWeekTable week={data.week} />
         <p className="text-sm text-ink-subtle">An administrator sets your hours and calendar under Users.</p>
+      </Card>
+    </section>
+  );
+}
+
+// The person's own days away, theirs to change whoever recorded them. A portal
+// customer is refused the list, and sees nothing here.
+function YourAbsences({ userId }: { userId: string }) {
+  const { data } = useAbsences({ userId });
+  if (!data) return null;
+  return (
+    <section className="mt-8">
+      <SectionTitle className="mb-2">Absences</SectionTitle>
+      <Card className="space-y-3 p-5">
+        <p className="text-sm text-ink-muted">The days you are away, so the plan stops counting on you. Colleagues see the days and never a reason; there is nowhere to give one.</p>
+        <AbsenceEditor userId={userId} absences={data.absences} empty="You are not away in the last month or the year ahead." />
       </Card>
     </section>
   );

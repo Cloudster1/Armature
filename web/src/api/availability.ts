@@ -114,3 +114,59 @@ export function useSetWorkingWeek() {
     request<{ week: WorkingWeek }>(`/users/${userId}/schedule`, { method: "PUT", body: { calendarId, minutes } }),
   );
 }
+
+/** Days one person is away, both ends included. It says when and never why. */
+export interface Absence {
+  id: string;
+  userId: string;
+  userName: string;
+  startsOn: string;
+  endsOn: string;
+  /** Half of a single day away. */
+  halfDay: boolean;
+}
+
+/** A new absence, or what an edit changes. Left out, endsOn is startsOn and userId is the caller. */
+export interface AbsenceInput {
+  userId?: string;
+  startsOn?: string;
+  endsOn?: string;
+  halfDay?: boolean;
+}
+
+const absencesQueryKey = ["absences"] as const;
+
+/** Who is away; without from and to, the server's month back and year ahead. */
+export function useAbsences(filter: { userId?: string; from?: string; to?: string } = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filter)) if (value) params.set(key, value);
+  const query = params.toString();
+  return useQuery({
+    queryKey: [...absencesQueryKey, filter],
+    queryFn: () => request<{ absences: Absence[]; from: string; to: string }>(`/absences${query ? `?${query}` : ""}`),
+    // A portal customer is refused; asking again would not let them in.
+    retry: false,
+  });
+}
+
+function useAbsenceMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: run,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: absencesQueryKey }),
+  });
+}
+
+export function useRecordAbsence() {
+  return useAbsenceMutation((input: AbsenceInput) => request<{ absence: Absence }>("/absences", { method: "POST", body: input }));
+}
+
+export function useUpdateAbsence() {
+  return useAbsenceMutation(({ id, ...body }: Omit<AbsenceInput, "userId"> & { id: string }) =>
+    request<{ absence: Absence }>(`/absences/${id}`, { method: "PATCH", body }),
+  );
+}
+
+export function useRemoveAbsence() {
+  return useAbsenceMutation((id: string) => request<void>(`/absences/${id}`, { method: "DELETE" }));
+}

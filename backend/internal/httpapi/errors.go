@@ -13,7 +13,6 @@ import (
 	"github.com/armature/armature/backend/internal/attachment"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/automation"
-	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/board"
 	"github.com/armature/armature/backend/internal/component"
 	"github.com/armature/armature/backend/internal/desk"
@@ -34,7 +33,6 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
-	"github.com/armature/armature/backend/internal/tenant"
 	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
@@ -475,29 +473,8 @@ func moreAPIError(err error) *APIError {
 		return ErrBadRequest(capitalize(err.Error()) + ".")
 	case errors.Is(err, theme.ErrAssetTooLarge):
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: capitalize(theme.ErrAssetTooLarge.Error()) + "."}
-	case errors.Is(err, availability.ErrNotFound):
-		return ErrNotFound("That holiday calendar was not found.")
-	case errors.Is(err, availability.ErrNameTaken):
-		return ErrConflict("This organization already has a holiday calendar by that name. Choose another.")
-	case errors.Is(err, availability.ErrDefaultCalendar):
-		return ErrConflict("The default calendar stays the default until another one takes its place. Make another calendar the default first.")
-	case errors.Is(err, availability.ErrInvalid):
-		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: withoutSentinel(err, availability.ErrInvalid) + "."}
-	case errors.Is(err, availability.ErrBadFile):
-		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: withoutSentinel(err, availability.ErrBadFile) + "."}
-	case errors.Is(err, availability.ErrNotAMember):
-		return ErrNotFound("That person is not a member of this organization.")
-	case errors.Is(err, availability.ErrCustomer):
-		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed",
-			Message: "A portal customer has no working week here. Only members and administrators have one."}
-	case errors.Is(err, tenant.ErrNoTenant):
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Code:    "no_organization",
-			Message: "Select an organization first.",
-		}
 	default:
-		return ErrInternal(err)
+		return availabilityAPIError(err)
 	}
 }
 

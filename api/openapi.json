@@ -119,6 +119,225 @@
     }
   ],
   "paths": {
+    "/absences": {
+      "get": {
+        "operationId": "listAbsences",
+        "summary": "Who is away between two days, both included; a month back and a year ahead when not asked.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "description": "Only this person's absences.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "The first day, YYYY-MM-DD.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "The last day, YYYY-MM-DD; at most two years after from.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "absences": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Absence"
+                      }
+                    },
+                    "from": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "absences",
+                    "from",
+                    "to"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "recordAbsence",
+        "summary": "Record an absence: the caller's own, or one of somebody an administrator or a manager of their team answers for.",
+        "tags": [
+          "availability"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "absence": {
+                      "$ref": "#/components/schemas/Absence"
+                    }
+                  },
+                  "required": [
+                    "absence"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/absences/{absenceID}": {
+      "delete": {
+        "operationId": "removeAbsence",
+        "summary": "Take an absence back.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "absenceID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateAbsence",
+        "summary": "Move an absence's days, or make it a half day or not.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "absenceID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "absence": {
+                      "$ref": "#/components/schemas/Absence"
+                    }
+                  },
+                  "required": [
+                    "absence"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/access/me": {
       "get": {
         "operationId": "myAccess",
@@ -17243,6 +17462,57 @@
           "createdAt",
           "projects"
         ]
+      },
+      "Absence": {
+        "type": "object",
+        "properties": {
+          "endsOn": {
+            "type": "string"
+          },
+          "halfDay": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startsOn": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "userName",
+          "startsOn",
+          "endsOn",
+          "halfDay"
+        ]
+      },
+      "AbsenceRequest": {
+        "type": "object",
+        "properties": {
+          "endsOn": {
+            "type": "string"
+          },
+          "halfDay": {
+            "type": "boolean"
+          },
+          "startsOn": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "AcceptInviteRequest": {
         "type": "object",

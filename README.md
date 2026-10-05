@@ -99,7 +99,8 @@ everything), backlogs, sprints per team with capacity, a timeline where epics
 span their children and dependencies are drawn and checked, milestones and
 versions, and a dependency graph laid out by longest path. Named holiday
 calendars, imported from an .ics file, and a working week per person say which
-days somebody can work.
+days somebody can work; a person records the days they are away, and colleagues
+see the days and never a reason.
 
 ![A board](docs/ui-board.png)
 
@@ -342,6 +343,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_RETAIN_IMPORT_JOBS` | `2160h` | from the import |
 | `ARMATURE_RETAIN_NOTIFICATIONS` | `4320h` | from being made |
 | `ARMATURE_RETAIN_AUDIT` | `8760h` | from the entry |
+| `ARMATURE_RETAIN_ABSENCES` | `9600h` | after the last day away |
 
 Zero keeps a kind forever, which nothing here recommends.
 

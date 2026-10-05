@@ -89,6 +89,7 @@ type Export struct {
 	SavedFilters  []SavedFilter  `json:"savedFilters"`
 	AuditActions  []AuditAction  `json:"auditActions"`
 	WorkingHours  []WorkingHours `json:"workingHours"`
+	Absences      []Absence      `json:"absences"`
 }
 
 type Profile struct {
@@ -163,6 +164,15 @@ type WorkingHours struct {
 	Organization string         `json:"organization"`
 	Calendar     string         `json:"calendar,omitempty"`
 	Minutes      map[string]int `json:"minutes"`
+}
+
+// Absence is days the person is away, and who wrote them down.
+type Absence struct {
+	Organization string `json:"organization"`
+	StartsOn     string `json:"startsOn"`
+	EndsOn       string `json:"endsOn"`
+	HalfDay      bool   `json:"halfDay"`
+	RecordedBy   string `json:"recordedBy"`
 }
 
 type AuditAction struct {
@@ -285,6 +295,18 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 				err := row.Scan(&x.Organization, &x.Calendar, &x.Minutes)
 				return x, err
 			})
+		if err != nil {
+			return err
+		}
+		out.Absences, err = collect(ctx, tx, `
+			SELECT o.name, to_char(a.starts_on, 'YYYY-MM-DD'), to_char(a.ends_on, 'YYYY-MM-DD'), a.half_day, COALESCE(u.name, '')
+			FROM absence a JOIN org o ON o.id = a.org_id LEFT JOIN app_user u ON u.id = a.created_by
+			WHERE a.user_id = $1 ORDER BY o.name, a.starts_on`, userID,
+			func(row pgx.Rows) (Absence, error) {
+				var x Absence
+				err := row.Scan(&x.Organization, &x.StartsOn, &x.EndsOn, &x.HalfDay, &x.RecordedBy)
+				return x, err
+			})
 		return err
 	})
 	if err != nil {
@@ -380,6 +402,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM group_member WHERE user_id = $1`,
 			`DELETE FROM team_member WHERE user_id = $1`,
 			`DELETE FROM member_schedule WHERE user_id = $1`,
+			`DELETE FROM absence WHERE user_id = $1`,
 			`DELETE FROM org_member WHERE user_id = $1`,
 		} {
 			if _, err := tx.Exec(ctx, q, userID); err != nil {
@@ -458,6 +481,7 @@ func (s *Service) RemoveMember(ctx context.Context, orgID, userID, actor uuid.UU
 			`DELETE FROM group_member WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM team_member WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM member_schedule WHERE org_id = $1 AND user_id = $2`,
+			`DELETE FROM absence WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM notification WHERE org_id = $1 AND user_id = $2`,
 			// What would keep telling them about work here once they are gone.
 			`DELETE FROM saved_filter_subscription WHERE org_id = $1 AND user_id = $2`,

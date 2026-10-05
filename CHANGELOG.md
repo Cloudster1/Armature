@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Absences: a person records the days they are away on their profile, and an
+  administrator or the scrum master of their team may record them too; every
+  colleague sees the days, never a reason, and customers see nothing (#29).
 - Holiday calendars and working weeks: an organization keeps named calendars of
   days off, typed in or imported from an .ics file, and an administrator gives
   each person a calendar and their hours per weekday (#28).

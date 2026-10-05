@@ -91,13 +91,13 @@ var (
 	// without naming another: somebody always needs a calendar to fall back to.
 	ErrDefaultCalendar = errors.New("the default calendar stays until another one is made the default")
 	// ErrInvalid wraps a refusal of what was sent; the words after it are for the person.
-	ErrInvalid = errors.New("holiday calendar input refused")
+	ErrInvalid = errors.New("availability input refused")
 	// ErrBadFile wraps a refusal of an uploaded calendar file, likewise.
 	ErrBadFile = errors.New("calendar file refused")
 	// ErrNotAMember is returned for a person who is not in the organization.
 	ErrNotAMember = errors.New("that person is not a member of this organization")
-	// ErrCustomer is returned for a portal customer, who has no working week here.
-	ErrCustomer = errors.New("a portal customer has no working week")
+	// ErrCustomer is returned for a portal customer, who has no working week or absences here.
+	ErrCustomer = errors.New("a portal customer keeps no working week or absences")
 )
 
 func invalid(format string, args ...any) error {

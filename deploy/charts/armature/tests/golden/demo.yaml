@@ -126,6 +126,7 @@ data:
   ARMATURE_RETAIN_INBOUND_MAIL: "2160h"
   ARMATURE_RETAIN_IMPORT_JOBS: "2160h"
   ARMATURE_RETAIN_AUDIT: "8760h"
+  ARMATURE_RETAIN_ABSENCES: "9600h"
 ---
 # Source: armature/templates/configmap-nginx.yaml
 apiVersion: v1
@@ -632,7 +633,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: b91b74f86c0fe421522174c573fd6fb5377f27815339191485a7e8427904634c
+        checksum/env: 2c071c95c480c17d048524741dde285a701cec27e282e81a08851f8ef934aab8
     spec:
       serviceAccountName: armature
       securityContext:
@@ -839,7 +840,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: b91b74f86c0fe421522174c573fd6fb5377f27815339191485a7e8427904634c
+        checksum/env: 2c071c95c480c17d048524741dde285a701cec27e282e81a08851f8ef934aab8
     spec:
       serviceAccountName: armature
       securityContext:
