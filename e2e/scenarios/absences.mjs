@@ -8,6 +8,7 @@ import {
   day,
   goto,
   joinTeam,
+  openMonth,
   PASSWORD,
   setDate,
   signIn,
@@ -81,4 +82,26 @@ scenario("a scrum master records an absence for somebody on their team", async (
   await waitForApp(page);
   await goto(page, "/settings/profile");
   await page.waitForSelector(`[data-absences] [data-absence="${day(TEAM_AWAY_DAY)}"]`, { timeout: WAIT });
+});
+
+scenario("a person records an absence and the project calendar shows them away", async ({ page }) => {
+  const who = await signUp(page);
+  const key = await createProject(page, "Away on the calendar");
+  await createTeam(page, key, "Crew");
+  await joinTeam(page, key, "Crew", who.name);
+  await goto(page, "/settings/profile");
+  await page.waitForSelector("[data-absence-form]", { timeout: WAIT });
+  const first = day(AWAY_FIRST_DAY);
+  await recordAbsence(page, "[data-absences]", first, day(AWAY_LAST_DAY));
+
+  await openMonth(page, key, first.slice(0, 7));
+  const chip = `[data-day="${first}"] [data-calendar-kind="absence"]`;
+  await page.waitForSelector(chip, { timeout: WAIT });
+  expect.equal(await textOf(page, chip), `${who.name} away`, "the chip says who, and that they are away");
+
+  // The toggle hides them, and shows them again.
+  await page.click('[data-action="calendar-days-off"]');
+  await page.waitForFunction((sel) => !document.querySelector(sel), { timeout: WAIT }, chip);
+  await page.click('[data-action="calendar-days-off"]');
+  await page.waitForSelector(chip, { timeout: WAIT });
 });

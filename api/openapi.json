@@ -10607,7 +10607,7 @@
     "/projects/{projectKey}/calendar": {
       "get": {
         "operationId": "calendarMonth",
-        "summary": "Everything dated in a month: issues, sprints, milestones and versions.",
+        "summary": "Everything dated in a month: issues, sprints, milestones, versions, holidays and who of the project is away.",
         "tags": [
           "plan"
         ],
@@ -18640,6 +18640,9 @@
       "CalendarItem": {
         "type": "object",
         "properties": {
+          "calendar": {
+            "type": "string"
+          },
           "category": {
             "type": "string"
           },
@@ -18648,6 +18651,9 @@
           },
           "from": {
             "type": "string"
+          },
+          "halfDay": {
+            "type": "boolean"
           },
           "id": {
             "type": "string",
@@ -18662,7 +18668,9 @@
               "issue",
               "sprint",
               "milestone",
-              "version"
+              "version",
+              "holiday",
+              "absence"
             ]
           },
           "title": {
@@ -21768,10 +21776,19 @@
           "capacity": {
             "type": "number"
           },
+          "daysAway": {
+            "type": "number"
+          },
+          "holidays": {
+            "type": "integer"
+          },
           "issues": {
             "type": "integer"
           },
           "load": {
+            "type": "number"
+          },
+          "nominalCapacity": {
             "type": "number"
           },
           "start": {
@@ -22747,6 +22764,12 @@
             "type": "string",
             "format": "date-time"
           },
+          "holidays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            }
+          },
           "items": {
             "type": "array",
             "items": {
@@ -22807,6 +22830,7 @@
           "sprints",
           "milestones",
           "load",
+          "holidays",
           "warnings",
           "from",
           "to",
@@ -25238,6 +25262,9 @@
       "SprintPlan": {
         "type": "object",
         "properties": {
+          "availableHours": {
+            "type": "number"
+          },
           "committed": {
             "type": "number"
           },
@@ -25249,6 +25276,9 @@
           },
           "issuesDone": {
             "type": "integer"
+          },
+          "nominalHours": {
+            "type": "number"
           },
           "sprint": {
             "$ref": "#/components/schemas/Sprint"
@@ -25385,6 +25415,9 @@
       "SprintStanding": {
         "type": "object",
         "properties": {
+          "availableHours": {
+            "type": "number"
+          },
           "committed": {
             "type": "number"
           },
@@ -25402,6 +25435,9 @@
           },
           "issuesDone": {
             "type": "integer"
+          },
+          "nominalHours": {
+            "type": "number"
           },
           "sprint": {
             "$ref": "#/components/schemas/Sprint"

@@ -370,7 +370,7 @@ var operations = []operation{
 	{method: "POST", path: "/fields/{fieldID}/promote", handler: "handlePromoteField", tag: "fields", summary: "Make a project's field the organization's, folding same-named fields into it.", responses: ok(env{"field": field.Field{}})},
 	{method: "GET", path: "/projects/{projectKey}/status-updates", handler: "handleListStatusUpdates", tool: "list_status_updates", toolHelp: "How a project has said it is doing, newest first.", tag: "projects", summary: "The project's status updates, newest first.", responses: ok(env{"updates": []project.StatusUpdate{}})},
 	{method: "POST", path: "/projects/{projectKey}/status-updates", handler: "handlePostStatusUpdate", tool: "post_status_update", toolHelp: "Say how a project is doing: on_track, at_risk or off_track, with a note and an optional target date.", tag: "projects", summary: "Post how the project is doing.", request: statusUpdateRequest{}, responses: created(env{"update": project.StatusUpdate{}})},
-	{method: "GET", path: "/projects/{projectKey}/calendar", handler: "handleCalendarMonth", tag: "plan", summary: "Everything dated in a month: issues, sprints, milestones and versions.",
+	{method: "GET", path: "/projects/{projectKey}/calendar", handler: "handleCalendarMonth", tag: "plan", summary: "Everything dated in a month: issues, sprints, milestones, versions, holidays and who of the project is away.",
 		query:     []param{{name: "month", description: "YYYY-MM; this month when left out."}},
 		responses: ok(env{"month": calendar.Month{}})},
 

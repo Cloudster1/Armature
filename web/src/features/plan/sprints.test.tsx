@@ -1,7 +1,7 @@
 import { describe as group, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { overBy, type Sprint, type SprintPlan } from "@/api/sprints";
-import { SprintBands, describe, number } from "./SprintBands";
+import { SprintBands, describe, number, teamHours } from "./SprintBands";
 import { SprintCapacity } from "./SprintCapacity";
 import { makeScale, day } from "./scale";
 
@@ -48,6 +48,11 @@ group("describe", () => {
 
   it("gives only the total when there is no capacity to measure against", () => {
     expect(describe(plan({ committed: 8, sprint: sprint({ capacity: undefined }) }))).toBe("8 pts");
+  });
+
+  it("hints at the team's hours, and says nothing without them", () => {
+    expect(teamHours(plan({ availableHours: 52, nominalHours: 64 }))).toBe("Team available 52 of 64 h in this sprint");
+    expect(teamHours(plan())).toBeNull();
   });
 
   it("writes a half as a half rather than as 0.50", () => {
@@ -97,6 +102,11 @@ group("SprintCapacity", () => {
   it("counts the unestimated work beside the total", () => {
     render(<SprintCapacity sprints={[plan({ unestimated: 5 })]} />);
     expect(screen.getByText(/5 unestimated/)).toBeInTheDocument();
+  });
+
+  it("hints at the team's hours beside the points", () => {
+    render(<SprintCapacity sprints={[plan({ availableHours: 52, nominalHours: 64 })]} />);
+    expect(screen.getByText("Team available 52 of 64 h in this sprint")).toBeInTheDocument();
   });
 
   it("marks the sprint the team is working in", () => {

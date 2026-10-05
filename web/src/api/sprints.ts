@@ -40,6 +40,9 @@ export interface SprintPlan {
   issues: number;
   /** How many of those issues nobody has sized. */
   unestimated: number;
+  /** The team's hours in the sprint's days after holidays and absences, and before them. */
+  availableHours?: number;
+  nominalHours?: number;
 }
 
 export interface SprintReport {

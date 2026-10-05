@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Holidays and absences reach planning: the project calendar shades the
+  default calendar's holidays, lists the other calendars' and who is away, and
+  hides them all at a switch; the timeline shades the holidays; a team's load
+  falls on its working days and its weekly capacity shrinks with its members'
+  days off; sprint planning shows the team's available hours as a hint (#30).
 - Absences: a person records the days they are away on their profile, and an
   administrator or the scrum master of their team may record them too; every
   colleague sees the days, never a reason, and customers see nothing (#29).

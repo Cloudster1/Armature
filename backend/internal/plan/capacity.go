@@ -22,6 +22,26 @@ type SprintPlan struct {
 	Unestimated int `json:"unestimated"`
 	// IssuesDone counts the rows that are done, estimated or not.
 	IssuesDone int `json:"issuesDone"`
+	// AvailableHours is what the sprint's team has in its days after holidays
+	// and absences, NominalHours what their weeks alone give. A hint, never a limit.
+	AvailableHours *float64 `json:"availableHours,omitempty"`
+	NominalHours   *float64 `json:"nominalHours,omitempty"`
+}
+
+// TeamHours fills in the hours of every dated sprint whose team has members.
+func TeamHours(plans []SprintPlan, work Workdays) {
+	for i := range plans {
+		s := plans[i].Sprint
+		if s.TeamID == nil || s.StartsOn == nil || s.EndsOn == nil {
+			continue
+		}
+		t := work.teamTime(*s.TeamID, midnight(*s.StartsOn), midnight(*s.EndsOn))
+		if t.nominal == 0 {
+			continue
+		}
+		available, nominal := hours(t.available), hours(t.nominal)
+		plans[i].AvailableHours, plans[i].NominalHours = &available, &nominal
+	}
 }
 
 // OverBy is how far past its capacity the sprint is committed, or zero.

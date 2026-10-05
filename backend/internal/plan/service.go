@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/nql"
@@ -25,6 +26,13 @@ type TeamReader interface {
 	List(ctx context.Context, projectKey string) ([]team.Team, error)
 }
 
+// AvailabilityReader is who can work when, declared the same way.
+type AvailabilityReader interface {
+	ProjectPeople(ctx context.Context, projectKey string, from, to time.Time) (*availability.ProjectPeople, error)
+	ForPeople(ctx context.Context, ids []uuid.UUID, from, to time.Time) (map[uuid.UUID]availability.Person, error)
+	DefaultHolidays(ctx context.Context, from, to time.Time) ([]availability.Holiday, error)
+}
+
 // Service assembles a project's plan. It owns no tables of its own: a plan is a
 // reading of the issues, their hierarchy, their links and their sprints, not a
 // second copy of any of them.
@@ -33,6 +41,7 @@ type Service struct {
 	sprints    SprintReader
 	milestones MilestoneReader
 	teams      TeamReader
+	people     AvailabilityReader
 	// now is injectable so the window a plan opens on can be tested.
 	now func() time.Time
 }
@@ -50,6 +59,12 @@ func (s *Service) WithMilestones(reader MilestoneReader) *Service {
 // WithTeams makes the plan read the load per team as well.
 func (s *Service) WithTeams(reader TeamReader) *Service {
 	s.teams = reader
+	return s
+}
+
+// WithAvailability makes the load and the sprints count holidays and absences.
+func (s *Service) WithAvailability(reader AvailabilityReader) *Service {
+	s.people = reader
 	return s
 }
 
@@ -122,7 +137,12 @@ func (s *Service) ForProjectMatching(ctx context.Context, projectKey string, que
 		}
 		teams = found
 	}
-	load := Loads(items, teams, from, to)
+	work, holidays, err := s.workdays(ctx, projectKey, items, from, to)
+	if err != nil {
+		return nil, err
+	}
+	load := Loads(items, teams, from, to, work)
+	TeamHours(sprints, work)
 
 	warnings := append(Check(items, blockers), CheckSprints(items, sprints)...)
 	warnings = append(warnings, CheckMilestones(items, milestones)...)
@@ -138,6 +158,7 @@ func (s *Service) ForProjectMatching(ctx context.Context, projectKey string, que
 		Sprints:      sprints,
 		Milestones:   milestones,
 		Load:         load,
+		Holidays:     holidays,
 		Warnings:     warnings,
 		From:         from,
 		To:           to,
@@ -146,6 +167,63 @@ func (s *Service) ForProjectMatching(ctx context.Context, projectKey string, que
 		LinkTypes:    linkTypes,
 		Matched:      matched,
 	}, nil
+}
+
+// workdays reads who on the project's teams works when over the window's
+// weeks, and the default calendar's holidays over every scheduled range.
+func (s *Service) workdays(ctx context.Context, projectKey string, items []Item, from, to time.Time) (Workdays, []availability.Holiday, error) {
+	shown := []availability.Holiday{}
+	if s.people == nil {
+		return Workdays{}, shown, nil
+	}
+	first, last := mondayOf(from), mondayOf(to).AddDate(0, 0, daysPerWeek-1)
+	reach, until := first, last
+	if start, due := spanOf(Flatten(items)); start != nil && due != nil {
+		reach, until = minTime(reach, midnight(*start)), maxTime(until, midnight(*due))
+	}
+	holidays, err := s.people.DefaultHolidays(ctx, reach, until)
+	if err != nil {
+		return Workdays{}, nil, err
+	}
+	people, err := s.people.ProjectPeople(ctx, projectKey, first, last)
+	if err != nil {
+		return Workdays{}, nil, err
+	}
+	var ids []uuid.UUID
+	seen := map[uuid.UUID]bool{}
+	for _, members := range people.Teams {
+		for _, id := range members {
+			if !seen[id] {
+				seen[id] = true
+				ids = append(ids, id)
+			}
+		}
+	}
+	days, err := s.people.ForPeople(ctx, ids, first, last)
+	if err != nil {
+		return Workdays{}, nil, err
+	}
+	since, through := midnight(from).Format(availability.DateLayout), midnight(to).Format(availability.DateLayout)
+	for _, h := range holidays {
+		if h.Day >= since && h.Day <= through {
+			shown = append(shown, h)
+		}
+	}
+	return NewWorkdays(holidays, people.Teams, days), shown, nil
+}
+
+func minTime(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if b.After(a) {
+		return b
+	}
+	return a
 }
 
 // SprintTotals counts what one sprint holds, so that completing it can record a
