@@ -194,6 +194,10 @@ mail:
   # The desk's own address. Required if pop3.addr is set, or the worker
   # refuses to start.
   inbox: ""
+  # Accept any certificate from the relay and the mailbox, for a server whose
+  # certificate has expired or is self-signed. The connection is still
+  # encrypted, but no longer proves who is at the other end.
+  insecureTLS: false
   pop3:
     addr: ""
     user: ""

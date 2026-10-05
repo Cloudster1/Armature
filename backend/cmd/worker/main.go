@@ -145,7 +145,10 @@ func run() error {
 	// on; mail is a copy of the inbox when there is a relay to send it through.
 	var inboxMailer mail.Mailer
 	if cfg.Mail.SMTPAddr != "" {
-		inboxMailer = mail.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From}
+		inboxMailer = mail.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From, InsecureTLS: cfg.Mail.InsecureTLS}
+		if cfg.Mail.InsecureTLS {
+			log.Warn("mail accepts any certificate: ARMATURE_MAIL_INSECURE_TLS is set")
+		}
 	}
 	g.Go(func() error { return notify.NewFanOut(cluster, rdb, inboxMailer, cfg.Mail.AppBaseURL, log).Run(ctx) })
 	g.Go(func() error { return audit.NewConsumer(cluster, rdb, log).Run(ctx) })
@@ -168,7 +171,7 @@ func run() error {
 	})
 
 	if cfg.Mail.SMTPAddr != "" {
-		mailer := desk.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From}
+		mailer := desk.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From, InsecureTLS: cfg.Mail.InsecureTLS}
 		notifier := desk.NewNotifier(cluster, rdb, mailer, cfg.Mail.AppBaseURL, log).WithInbox(cfg.Mail.Inbox)
 		g.Go(func() error { return notifier.Run(ctx) })
 		// Replies come back to the inbox, which is read over POP3. It needs
@@ -179,7 +182,7 @@ func run() error {
 		case cfg.Mail.Inbox == "":
 			return errors.New("ARMATURE_POP3_ADDR is set but ARMATURE_MAIL_INBOX is not: the reader needs to know which address is the desk's")
 		default:
-			box := mailin.POP3{Addr: cfg.Mail.POP3.Addr, User: cfg.Mail.POP3.User, Password: cfg.Mail.POP3.Password, TLS: cfg.Mail.POP3.TLS}
+			box := mailin.POP3{Addr: cfg.Mail.POP3.Addr, User: cfg.Mail.POP3.User, Password: cfg.Mail.POP3.Password, TLS: cfg.Mail.POP3.TLS, InsecureTLS: cfg.Mail.InsecureTLS}
 			reader := desk.NewInbound(cluster, deskService, issues, mailer, box,
 				desk.InboundConfig{Address: cfg.Mail.Inbox, From: cfg.Mail.From, AppURL: cfg.Mail.AppBaseURL, Interval: cfg.Mail.POP3.Interval}, log)
 			g.Go(func() error { return reader.Run(ctx) })

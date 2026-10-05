@@ -83,6 +83,7 @@ data:
   ARMATURE_S3_USE_SSL: "true"
   ARMATURE_SMTP_ADDR: "smtp.example.com:587"
   ARMATURE_MAIL_FROM: "Armature <no-reply@armature.example.com>"
+  ARMATURE_MAIL_INSECURE_TLS: "true"
   ARMATURE_MAIL_INBOX: "desk@example.com"
   ARMATURE_RENDER_URL: "http://armature-render:8090"
   ARMATURE_RENDER_TIMEOUT: "20s"
@@ -279,7 +280,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 91af7e3d95e2a68493442d6ba3dabab494dc3907713283abe55bf3027cfe2c8c
+        checksum/env: 989052371bfd4715c4eb1bd4b9d46d0d2437ccc26198e31395f5f10728b384d5
     spec:
       serviceAccountName: armature
       securityContext:
@@ -570,7 +571,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 91af7e3d95e2a68493442d6ba3dabab494dc3907713283abe55bf3027cfe2c8c
+        checksum/env: 989052371bfd4715c4eb1bd4b9d46d0d2437ccc26198e31395f5f10728b384d5
     spec:
       serviceAccountName: armature
       securityContext:
@@ -843,6 +844,17 @@ spec:
                   key: password
             - name: ARMATURE_REDIS_URL
               value: "redis://:$(REDIS_PASSWORD)@redis.example.com:6379/0"
+            
+            - name: ARMATURE_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: s3-access-key
+            - name: ARMATURE_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: s3-secret-key
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }

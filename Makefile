@@ -119,6 +119,7 @@ test-integration: ## Run the integration suite against the running stack
 		-e ARMATURE_S3_ENDPOINT=seaweedfs:8333 -e ARMATURE_S3_BUCKET=armature-test-attachments \
 		-e ARMATURE_S3_ACCESS_KEY='$(S3_ACCESS_KEY)' -e ARMATURE_S3_SECRET_KEY='$(S3_SECRET_KEY)' \
 		-e ARMATURE_SMTP_ADDR=mailpit:1025 -e ARMATURE_POP3_ADDR=mailpit:1110 -e ARMATURE_POP3_USER=armature -e ARMATURE_POP3_PASSWORD=armature \
+		-e ARMATURE_TEST_TLS_SMTP_ADDR=mailpit-tls:1025 -e ARMATURE_TEST_TLS_POP3_ADDR=mailpit-tls:1110 \
 		-w /src $(GO_IMAGE) go test -tags integration -count=1 $(TESTFLAGS) ./test/... ; \
 		status=$$? ; \
 		docker compose -f deploy/docker-compose.yml start worker >/dev/null 2>&1 || true ; \
@@ -286,7 +287,7 @@ helm-template: ## Render the chart into the golden files
 	$(DOCKER_HELM) template armature $(CHART) -f $(CHART)/values-demo.yaml > $(GOLDEN)/demo.yaml
 	$(DOCKER_HELM) template armature $(CHART) $(GOLDEN_ARGS) --set s3.enabled=true --set s3.endpoint=s3.example.com \
 		--set secrets.s3AccessKey=key --set secrets.s3SecretKey=secret --set render.enabled=true \
-		--set mail.smtpAddr=smtp.example.com:587 --set mail.inbox=desk@example.com \
+		--set mail.smtpAddr=smtp.example.com:587 --set mail.inbox=desk@example.com --set mail.insecureTLS=true \
 		--set database.replicaHosts={replica.example.com} --set externalRedis.auth=true \
 		--set attachments.persistence.enabled=true > $(GOLDEN)/everything.yaml
 	$(DOCKER_HELM) template armature $(CHART) $(CNPG_ARGS) > $(GOLDEN)/cnpg.yaml
