@@ -343,3 +343,5 @@ export const RESOURCE_BAR_HEIGHT = 40;
 export const RESOURCE_WEEK_MIN_PX = 84;
 /** How many issues the unscheduled and unestimated lists show before counting the rest. */
 export const RESOURCE_LIST_LIMIT = 25;
+/** Decimals an hour figure keeps in the resource view: six minutes is as fine as a plan reads. */
+export const RESOURCE_HOUR_DECIMALS = 1;

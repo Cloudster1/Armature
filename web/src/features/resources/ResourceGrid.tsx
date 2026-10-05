@@ -5,8 +5,7 @@ import { Choice, Popover } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { RESOURCE_BAR_HEIGHT, RESOURCE_WEEK_MIN_PX } from "@/config";
 import type { Utilisation } from "@/features/plan/load";
-import { number } from "@/features/plan/SprintBands";
-import { cellShares, cellState, describeCell, describeHours, weekLabel } from "./cells";
+import { cellShares, cellState, describeCell, describeHours, hours, weekLabel } from "./cells";
 
 const tone: Record<Utilisation, string> = {
   unmeasured: "bg-status-todo/70",
@@ -76,7 +75,7 @@ function Cell({ row, week, open, onToggle, onClose }: { row: ResourceRow; week: 
             className="flex w-full flex-col gap-1 px-1 pt-0.5 hover:bg-surface-raised"
           >
             <span className={cx("text-2xs tabular-nums", state === "over" ? "font-medium text-danger" : "text-ink-muted")}>
-              {week.capacityHours !== undefined ? `${number(week.loadHours)} / ${number(week.capacityHours)} h` : `${number(week.loadHours)} h`}
+              {week.capacityHours !== undefined ? `${hours(week.loadHours)} / ${hours(week.capacityHours)} h` : `${hours(week.loadHours)} h`}
             </span>
             <span aria-hidden="true" className="relative block w-full" style={{ height: RESOURCE_BAR_HEIGHT }}>
               {daysOff && (
@@ -113,7 +112,7 @@ export function WeekIssues({ row, week }: { row: ResourceRow; week: ResourceWeek
               <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="min-w-0 truncate text-ink hover:text-accent">
                 <span className="font-mono text-xs text-ink-muted">{issue.key}</span> {issue.summary}
               </Link>
-              <span className="shrink-0 text-xs text-ink-muted tabular-nums">{number(issue.hours)} h</span>
+              <span className="shrink-0 text-xs text-ink-muted tabular-nums">{hours(issue.hours)} h</span>
             </li>
           ))}
         </ul>

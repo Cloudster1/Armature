@@ -1,4 +1,5 @@
 import type { ResourceRow, ResourceWeek } from "@/api/resources";
+import { RESOURCE_HOUR_DECIMALS } from "@/config";
 import { utilisation, type Utilisation } from "@/features/plan/load";
 import { number } from "@/features/plan/SprintBands";
 import { DAYS_PER_WEEK, addDays, day, isoDay } from "@/features/plan/scale";
@@ -22,9 +23,16 @@ export function cellShares(row: ResourceRow, week: ResourceWeek): { load: number
   };
 }
 
+const hourScale = 10 ** RESOURCE_HOUR_DECIMALS;
+
+/** Writes hours to the view's precision, without trailing zeros: 9.8 rather than 9.79 or 9.80. */
+export function hours(value: number): string {
+  return String(Math.round(value * hourScale) / hourScale);
+}
+
 /** What a week says on hover: "32 of 40 h; 1 day away; 1 holiday". */
 export function describeHours(week: ResourceWeek): string {
-  const parts = [week.capacityHours !== undefined ? `${number(week.loadHours)} of ${number(week.capacityHours)} h` : `${number(week.loadHours)} h`];
+  const parts = [week.capacityHours !== undefined ? `${hours(week.loadHours)} of ${hours(week.capacityHours)} h` : `${hours(week.loadHours)} h`];
   if (week.daysAway) parts.push(`${number(week.daysAway)} day${week.daysAway === 1 ? "" : "s"} away`);
   if (week.holidays) parts.push(`${week.holidays} holiday${week.holidays === 1 ? "" : "s"}`);
   return parts.join("; ");

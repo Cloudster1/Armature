@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ResourceRow, ResourceWeek } from "@/api/resources";
-import { cellShares, cellState, describeCell, describeHours, hasPlannedRows, mondayOf, shiftWeeks, windowFrom } from "./cells";
+import { cellShares, cellState, describeCell, describeHours, hasPlannedRows, hours, mondayOf, shiftWeeks, windowFrom } from "./cells";
 
 const week = (over: Partial<ResourceWeek> = {}): ResourceWeek => ({ start: "2031-03-03T00:00:00Z", loadHours: 0, issues: [], ...over });
 const row = (weeks: ResourceWeek[], over: Partial<ResourceRow> = {}): ResourceRow => ({ kind: "person", id: "p1", name: "Ada", weeks, ...over });
@@ -12,6 +12,15 @@ describe("a resource cell", () => {
     expect(describeHours(week({ loadHours: 12.5, capacityHours: 20, daysAway: 1.5, holidays: 2 }))).toBe("12.5 of 20 h; 1.5 days away; 2 holidays");
     expect(describeHours(week({ loadHours: 6 }))).toBe("6 h");
     expect(describeCell(row([]), week({ loadHours: 6, capacityHours: 8 }))).toMatch(/^Ada, week of .+: 6 of 8 h$/);
+  });
+
+  it("writes hours to one decimal and drops a trailing zero", () => {
+    expect(hours(9.79)).toBe("9.8");
+    expect(hours(6.86)).toBe("6.9");
+    expect(hours(0.04)).toBe("0");
+    expect(hours(40)).toBe("40");
+    expect(hours(39.96)).toBe("40");
+    expect(describeHours(week({ loadHours: 3.42, capacityHours: 37.333, daysAway: 0.5 }))).toBe("3.4 of 37.3 h; 0.5 days away");
   });
 
   it("is coloured by how full the week is", () => {

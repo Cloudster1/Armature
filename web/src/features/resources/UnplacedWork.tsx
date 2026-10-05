@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ResourceIssue } from "@/api/resources";
 import { Card, SectionTitle } from "@/components/ui";
 import { RESOURCE_LIST_LIMIT } from "@/config";
-import { number } from "@/features/plan/SprintBands";
+import { hours } from "./cells";
 
 /** The open work the grid cannot place, listed rather than guessed at. */
 export function UnplacedWork({ unscheduled, unestimated }: { unscheduled: ResourceIssue[]; unestimated: ResourceIssue[] }) {
@@ -36,7 +36,7 @@ function IssueList({ id, title, hint, empty, issues }: { id: string; title: stri
                 <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="min-w-0 truncate text-ink hover:text-accent">
                   <span className="font-mono text-xs text-ink-muted">{issue.key}</span> {issue.summary}
                 </Link>
-                {issue.hours !== undefined && <span className="shrink-0 text-xs text-ink-muted tabular-nums">{number(issue.hours)} h</span>}
+                {issue.hours !== undefined && <span className="shrink-0 text-xs text-ink-muted tabular-nums">{hours(issue.hours)} h</span>}
               </li>
             ))}
           </ul>
