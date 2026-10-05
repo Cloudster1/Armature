@@ -78,6 +78,9 @@ type Mail struct {
 	Inbox string
 	// POP3 is the mailbox the inbox is read from.
 	POP3 POP3
+	// InsecureTLS accepts any certificate from the relay and the mailbox, for
+	// a server whose certificate has expired or was never signed.
+	InsecureTLS bool
 }
 
 // POP3 is where the desk's replies wait. An empty address turns reading off.
@@ -190,10 +193,11 @@ func Load() (Config, error) {
 			Timeout: envDur("ARMATURE_ASSISTANT_TIMEOUT", 25*time.Second),
 		},
 		Mail: Mail{
-			SMTPAddr:   env("ARMATURE_SMTP_ADDR", ""),
-			From:       env("ARMATURE_MAIL_FROM", "Armature <no-reply@armature.test>"),
-			AppBaseURL: env("ARMATURE_APP_URL", "http://localhost:5173"),
-			Inbox:      env("ARMATURE_MAIL_INBOX", ""),
+			SMTPAddr:    env("ARMATURE_SMTP_ADDR", ""),
+			From:        env("ARMATURE_MAIL_FROM", "Armature <no-reply@armature.test>"),
+			AppBaseURL:  env("ARMATURE_APP_URL", "http://localhost:5173"),
+			Inbox:       env("ARMATURE_MAIL_INBOX", ""),
+			InsecureTLS: envBool("ARMATURE_MAIL_INSECURE_TLS", false),
 			POP3: POP3{
 				Addr:     env("ARMATURE_POP3_ADDR", ""),
 				User:     env("ARMATURE_POP3_USER", ""),

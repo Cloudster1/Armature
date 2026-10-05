@@ -111,3 +111,22 @@ func TestUploadLimitReadsSizes(t *testing.T) {
 		}
 	}
 }
+
+func TestMailChecksCertificatesUnlessToldNotTo(t *testing.T) {
+	t.Setenv("ARMATURE_DB_PRIMARY_URL", "postgres://x")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Mail.InsecureTLS {
+		t.Error("mail should check certificates by default")
+	}
+
+	t.Setenv("ARMATURE_MAIL_INSECURE_TLS", "true")
+	if cfg, err = Load(); err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Mail.InsecureTLS {
+		t.Error("ARMATURE_MAIL_INSECURE_TLS=true should turn the check off")
+	}
+}

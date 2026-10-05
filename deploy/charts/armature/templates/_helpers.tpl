@@ -248,6 +248,9 @@ ARMATURE_S3_USE_SSL: {{ .Values.s3.useSSL | quote }}
 ARMATURE_SMTP_ADDR: {{ . | quote }}
 ARMATURE_MAIL_FROM: {{ $.Values.mail.from | quote }}
 {{- end }}
+{{- if .Values.mail.insecureTLS }}
+ARMATURE_MAIL_INSECURE_TLS: "true"
+{{- end }}
 {{- with .Values.mail.inbox }}
 ARMATURE_MAIL_INBOX: {{ . | quote }}
 {{- end }}

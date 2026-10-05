@@ -3,10 +3,13 @@ package mailin
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"net"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/testcert"
 )
 
 // fakePOP3 speaks enough of the protocol to be polled, and remembers what it
@@ -15,6 +18,8 @@ type fakePOP3 struct {
 	messages map[string]string // number -> raw
 	uids     []string          // "number uid"
 	badPass  bool
+	// tls serves the session over TLS with this configuration when set.
+	tls      *tls.Config
 	mu       sync.Mutex
 	commands []string
 }
@@ -30,6 +35,9 @@ func (f *fakePOP3) serve(t *testing.T) string {
 		c, err := ln.Accept()
 		if err != nil {
 			return
+		}
+		if f.tls != nil {
+			c = tls.Server(c, f.tls)
 		}
 		defer c.Close()
 		w := func(s string) { _, _ = c.Write([]byte(s + "\r\n")) }
@@ -119,5 +127,27 @@ func TestPollReportsARefusedPassword(t *testing.T) {
 		func(string) bool { return false }, func(string, []byte) bool { return false })
 	if err == nil || !strings.Contains(err.Error(), "PASS") {
 		t.Errorf("err = %v, want the refused PASS", err)
+	}
+}
+
+func TestPollRefusesAnExpiredCertificateUnlessToldNotToCheck(t *testing.T) {
+	cfg := &tls.Config{Certificates: []tls.Certificate{testcert.Expired(t)}}
+	none := func(string) bool { return false }
+
+	f := &fakePOP3{tls: cfg}
+	err := POP3{Addr: f.serve(t), User: "u", Password: "p", TLS: true}.Poll(context.Background(), none, func(string, []byte) bool { return false })
+	if err == nil || !strings.Contains(err.Error(), "certificate") {
+		t.Fatalf("an expired certificate should be refused, got %v", err)
+	}
+
+	f = &fakePOP3{tls: cfg, messages: map[string]string{"1": "Subject: one\r\n\r\nbody"}, uids: []string{"1 uid-a"}}
+	var fetched int
+	err = POP3{Addr: f.serve(t), User: "u", Password: "p", TLS: true, InsecureTLS: true}.Poll(context.Background(), none,
+		func(string, []byte) bool { fetched++; return false })
+	if err != nil {
+		t.Fatalf("with InsecureTLS the mailbox should be read: %v", err)
+	}
+	if fetched != 1 {
+		t.Errorf("fetched %d messages, want 1", fetched)
 	}
 }

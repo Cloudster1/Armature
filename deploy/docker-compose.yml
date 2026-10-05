@@ -112,6 +112,19 @@ services:
       - "1025"
       - "1110"
 
+  # A second mailbox behind a certificate nobody signed, which is what a relay
+  # with an expired or self-made certificate looks like to the mailer.
+  mailpit-tls:
+    image: axllent/mailpit:latest
+    environment:
+      MP_POP3_AUTH_FILE: /etc/mailpit/pop3-auth
+      MP_SMTP_TLS_CERT: sans:mailpit-tls
+      MP_SMTP_TLS_KEY: sans:mailpit-tls
+      MP_POP3_TLS_CERT: sans:mailpit-tls
+      MP_POP3_TLS_KEY: sans:mailpit-tls
+    volumes:
+      - ./mailpit/pop3-auth:/etc/mailpit/pop3-auth:ro
+
   # S3 compatible attachment storage, so the storage code path is identical in
   # development and production. One container is the whole of SeaweedFS here:
   # master, volume server, filer and the S3 gateway, which is what `server -s3`

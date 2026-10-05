@@ -4,7 +4,9 @@ package mail
 
 import (
 	"context"
+	"crypto/tls"
 	"github.com/armature/armature/backend/internal/observability"
+	"net"
 	"net/mail"
 	"net/smtp"
 	"strings"
@@ -43,6 +45,9 @@ type Mailer interface {
 type SMTPMailer struct {
 	Addr string
 	From string
+	// InsecureTLS accepts any certificate the relay offers on STARTTLS: an
+	// expired or self-signed one stops no mail, and protects none either.
+	InsecureTLS bool
 }
 
 func (m SMTPMailer) Send(ctx context.Context, msg Mail) error {
@@ -69,7 +74,40 @@ func (m SMTPMailer) Send(ctx context.Context, msg Mail) error {
 		headers = append(headers, "Reply-To: "+headerValue(msg.ReplyTo))
 	}
 	text := strings.Join(append(headers, "", msg.Body), "\r\n")
-	err := smtp.SendMail(m.Addr, nil, sender, []string{msg.To}, []byte(text))
+	err := m.deliver(sender, msg.To, []byte(text))
 	observability.Current().Mailed(err)
 	return err
+}
+
+// deliver is smtp.SendMail without authentication, spelled out because
+// SendMail has no way to be told which certificates to accept.
+func (m SMTPMailer) deliver(sender, to string, text []byte) error {
+	c, err := smtp.Dial(m.Addr)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	if ok, _ := c.Extension("STARTTLS"); ok {
+		host, _, _ := net.SplitHostPort(m.Addr)
+		if err := c.StartTLS(&tls.Config{ServerName: host, InsecureSkipVerify: m.InsecureTLS}); err != nil {
+			return err
+		}
+	}
+	if err := c.Mail(sender); err != nil {
+		return err
+	}
+	if err := c.Rcpt(to); err != nil {
+		return err
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(text); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
 }

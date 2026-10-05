@@ -151,7 +151,10 @@ func run() error {
 	// Without SMTP the door says mail is off rather than pretending.
 	var mailer desk.Mailer
 	if cfg.Mail.SMTPAddr != "" {
-		mailer = desk.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From}
+		mailer = desk.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From, InsecureTLS: cfg.Mail.InsecureTLS}
+		if cfg.Mail.InsecureTLS {
+			log.Warn("mail accepts any certificate: ARMATURE_MAIL_INSECURE_TLS is set")
+		}
 	}
 
 	// Attachments live in a bucket. Making sure it exists at startup is what a

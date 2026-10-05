@@ -30,7 +30,9 @@ type POP3 struct {
 	User     string
 	Password string
 	TLS      bool
-	Timeout  time.Duration
+	// InsecureTLS accepts any certificate the mailbox offers.
+	InsecureTLS bool
+	Timeout     time.Duration
 }
 
 const defaultTimeout = 30 * time.Second
@@ -40,7 +42,7 @@ func (p POP3) Poll(ctx context.Context, skip func(string) bool, handle func(stri
 	if timeout == 0 {
 		timeout = defaultTimeout
 	}
-	c, err := dial(ctx, p.Addr, p.TLS, timeout)
+	c, err := dial(ctx, p.Addr, p.TLS, p.InsecureTLS, timeout)
 	if err != nil {
 		return err
 	}
@@ -99,7 +101,7 @@ type conn struct {
 	timeout time.Duration
 }
 
-func dial(ctx context.Context, addr string, useTLS bool, timeout time.Duration) (*conn, error) {
+func dial(ctx context.Context, addr string, useTLS, insecure bool, timeout time.Duration) (*conn, error) {
 	d := net.Dialer{Timeout: timeout}
 	raw, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
@@ -107,7 +109,7 @@ func dial(ctx context.Context, addr string, useTLS bool, timeout time.Duration) 
 	}
 	if useTLS {
 		host, _, _ := net.SplitHostPort(addr)
-		t := tls.Client(raw, &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12})
+		t := tls.Client(raw, &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12, InsecureSkipVerify: insecure})
 		if err := t.HandshakeContext(ctx); err != nil {
 			raw.Close()
 			return nil, fmt.Errorf("secure the connection to %s: %w", addr, err)
