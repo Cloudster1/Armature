@@ -350,9 +350,24 @@ Capacity lived only on the sprint, which says nothing about a project that plans
 in weeks and months. A team says how many points it can take in a week, in the
 unit its issues are already estimated in; hours would have put a second unit
 beside the first. Load is read off the schedule, each estimate spread evenly
-between start and due date and summed into Monday weeks, with the same
-count-once rule the sprints use. A week over its capacity is a warning with the
-team as its subject, never a refusal.
+over the working days between start and due date and summed into Monday weeks,
+with the same count-once rule the sprints use. A week over its capacity is a
+warning with the team as its subject, never a refusal.
+
+A working day is one some member's week holds and the default calendar does not
+take whole; a team of nobody works Monday to Friday. Spreading over every
+calendar day put two sevenths of a week's work on Saturday and Sunday, so a
+Monday to Friday ticket read lighter than it was. A ticket scheduled on no
+working day at all keeps its points over its calendar days rather than losing
+them.
+
+The points a team said are what it can take with everybody there. Each week's
+capacity is scaled by the minutes its members have left after holidays and
+absences against the minutes their weeks give, so a fortnight with two people
+away warns where it would otherwise have read as fine. The scaling is a ratio,
+not a conversion: points stay the one unit, and the sprint shows the team's
+hours only as a hint beside them. Absences move capacity, never the work, since
+a ticket does not reschedule itself because somebody is on leave.
 
 The load is rows under the plan rather than a band over it: a band per team
 would swallow the calendar in a project with several, and rows read where a

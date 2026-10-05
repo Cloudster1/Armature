@@ -301,7 +301,7 @@ func declareEnums(b *openapi.Builder) {
 		features = append(features, string(f))
 	}
 	b.Enums[reflect.TypeOf(project.Feature(""))] = features
-	set(calendar.Kind(""), "issue", "sprint", "milestone", "version")
+	set(calendar.Kind(""), "issue", "sprint", "milestone", "version", "holiday", "absence")
 	b.FieldOverrides["Label.color"] = &openapi.Schema{Type: "string", Enum: label.Colors}
 	b.FieldOverrides["LabelRef.color"] = &openapi.Schema{Type: "string", Enum: label.Colors}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}

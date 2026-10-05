@@ -2539,7 +2539,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Everything dated in a month: issues, sprints, milestones and versions. */
+        /** Everything dated in a month: issues, sprints, milestones, versions, holidays and who of the project is away. */
         get: operations["calendarMonth"];
         put?: never;
         post?: never;
@@ -4399,14 +4399,16 @@ export interface components {
             timezone: string;
         };
         CalendarItem: {
+            calendar?: string;
             category?: string;
             done?: boolean;
             from: string;
+            halfDay?: boolean;
             /** Format: uuid */
             id: string;
             key?: string;
             /** @enum {string} */
-            kind: "issue" | "sprint" | "milestone" | "version";
+            kind: "issue" | "sprint" | "milestone" | "version" | "holiday" | "absence";
             title: string;
             to: string;
         };
@@ -5282,8 +5284,11 @@ export interface components {
         };
         LoadWeek: {
             capacity?: number;
+            daysAway?: number;
+            holidays?: number;
             issues: number;
             load: number;
+            nominalCapacity?: number;
             /** Format: date-time */
             start: string;
             unestimated: number;
@@ -5559,6 +5564,7 @@ export interface components {
             dependencies: components["schemas"]["Blocker"][];
             /** Format: date-time */
             from: string;
+            holidays: components["schemas"]["Holiday"][];
             items: components["schemas"]["Item"][];
             linkTypes: components["schemas"]["LinkTypeRef"][];
             load: components["schemas"]["PlanLoad"];
@@ -6242,10 +6248,12 @@ export interface components {
             team?: string;
         };
         SprintPlan: {
+            availableHours?: number;
             committed: number;
             completed: number;
             issues: number;
             issuesDone: number;
+            nominalHours?: number;
             sprint: components["schemas"]["Sprint"];
             unestimated: number;
         };
@@ -6286,12 +6294,14 @@ export interface components {
             team?: string;
         };
         SprintStanding: {
+            availableHours?: number;
             committed: number;
             completed: number;
             daysLeft: number;
             daysTotal: number;
             issues: number;
             issuesDone: number;
+            nominalHours?: number;
             sprint: components["schemas"]["Sprint"];
             unestimated: number;
         };

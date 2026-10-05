@@ -2,9 +2,10 @@ import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } fro
 import { Link } from "@tanstack/react-router";
 import { useCalendarMonth, type CalendarItem } from "@/api/calendar";
 import { useSchedule } from "@/api/plan";
-import { Button, ErrorBanner } from "@/components/ui";
+import { Button, ErrorBanner, Switch } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
-import { draggedSchedule, isoDay, monthGrid, monthTitle, placeItems, shiftMonth, type Placed } from "./grid";
+import { draggedSchedule, isoDay, labelOf, listedItems, monthGrid, monthTitle, placeItems, shiftMonth, withHolidays, type Placed } from "./grid";
+import { useShowDaysOff } from "./settings";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -13,6 +14,8 @@ function toneOf(item: CalendarItem): string {
   if (item.kind === "sprint") return "bg-chart-2/20 text-ink border-chart-2/40";
   if (item.kind === "milestone") return "bg-chart-4/20 text-ink border-chart-4/40";
   if (item.kind === "version") return "bg-chart-5/20 text-ink border-chart-5/40";
+  if (item.kind === "absence") return "bg-chart-3/15 text-ink border-chart-3/40";
+  if (item.kind === "holiday") return "bg-surface-raised text-ink-muted border-border";
   if (item.category === "done" || item.done) return "bg-surface-raised text-ink-subtle border-border line-through";
   return "bg-accent/15 text-ink border-accent/30";
 }
@@ -26,9 +29,10 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
   const [{ year, month }, setMonth] = useState({ year: today.getFullYear(), month: today.getMonth() + 1 });
   const { data, error } = useCalendarMonth(projectKey, year, month);
   const schedule = useSchedule();
-  const cells = useMemo(() => monthGrid(year, month), [year, month]);
-  const items = data?.month.items ?? [];
-  const byDay = useMemo(() => placeItems(cells, items), [cells, items]);
+  const [showDaysOff, setShowDaysOff] = useShowDaysOff();
+  const items = useMemo(() => data?.month.items ?? [], [data]);
+  const cells = useMemo(() => withHolidays(monthGrid(year, month), showDaysOff ? items : []), [year, month, items, showDaysOff]);
+  const byDay = useMemo(() => placeItems(cells, listedItems(items, showDaysOff)), [cells, items, showDaysOff]);
 
   // The drag: which issue was grabbed on which day, and which day the pointer is over now.
   const drag = useRef<{ item: CalendarItem; grabbed: string } | null>(null);
@@ -74,7 +78,11 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
         <h2 className="text-base font-semibold text-ink" data-calendar-title>
           {monthTitle(year, month)}
         </h2>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1">
+          <label className="mr-3 flex items-center gap-2 text-xs text-ink-muted">
+            <Switch checked={showDaysOff} onChange={setShowDaysOff} label="Show holidays and absences" data-action="calendar-days-off" />
+            Holidays and absences
+          </label>
           <Button size="sm" variant="ghost" onClick={() => setMonth(shiftMonth(year, month, -1))} data-action="calendar-prev">
             Previous
           </Button>
@@ -104,14 +112,19 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
               role="gridcell"
               data-day={cell.day}
               data-drop={over === cell.day ? "true" : undefined}
+              data-holiday={cell.holiday}
+              title={cell.holiday}
               className={cx(
                 "min-h-24 bg-surface p-1",
                 !cell.inMonth && "bg-surface-raised/60 text-ink-subtle",
-                cell.weekend && cell.inMonth && "bg-surface-raised/30",
+                (cell.weekend || cell.holiday) && cell.inMonth && "bg-surface-raised/30",
                 over === cell.day && "ring-2 ring-inset ring-accent",
               )}
             >
-              <div className={cx("mb-1 text-right tabular-nums", isToday && "font-semibold text-accent")}>{Number(cell.day.slice(-2))}</div>
+              <div className="mb-1 flex items-baseline justify-between gap-1">
+                <span className="truncate text-2xs text-ink-subtle">{cell.holiday}</span>
+                <span className={cx("tabular-nums", isToday && "font-semibold text-accent")}>{Number(cell.day.slice(-2))}</span>
+              </div>
               <ul className="space-y-0.5">
                 {onDay.shown.map((placed) => (
                   <Item key={`${placed.item.kind}-${placed.item.id}`} placed={placed} day={cell.day} draggable={canWrite && placed.item.kind === "issue"} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
@@ -142,7 +155,7 @@ function Item({
   onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
 }) {
   const { item, starts, ends } = placed;
-  const label = item.key ? `${item.key} ${item.title}` : item.title;
+  const label = labelOf(item);
   const shape = cx("block truncate border px-1 py-0.5 leading-4", toneOf(item), starts ? "rounded-l" : "-ml-1 border-l-0", ends ? "rounded-r" : "-mr-1 border-r-0");
   return (
     <li

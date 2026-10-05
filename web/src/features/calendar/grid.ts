@@ -34,6 +34,8 @@ export interface Cell {
   /** Whether the day belongs to the month being shown, or pads the first or last week. */
   inMonth: boolean;
   weekend: boolean;
+  /** The default calendar's holiday on the day, shaded like a weekend rather than listed. */
+  holiday?: string;
 }
 
 /** The six weeks a month grid draws, Monday first, padded from the neighbours. */
@@ -100,4 +102,37 @@ export function placeItems(cells: Cell[], items: CalendarItem[], max: number = C
 export function draggedSchedule(item: CalendarItem, toDay: string, grabbedDay: string): { startDate: string; dueDate: string } {
   const by = daysBetween(grabbedDay, toDay);
   return { startDate: shiftDay(item.from, by), dueDate: shiftDay(item.to, by) };
+}
+
+/** Whether an item is a day off of everybody's, which the cell's shading says. */
+function isDefaultHoliday(item: CalendarItem): boolean {
+  return item.kind === "holiday" && !item.calendar;
+}
+
+/** Marks the days the default calendar has off, by name, a half day saying so. */
+export function withHolidays(cells: Cell[], items: CalendarItem[]): Cell[] {
+  const names = new Map<string, string>();
+  for (const item of items) {
+    if (!isDefaultHoliday(item)) continue;
+    names.set(item.from, item.halfDay ? `${item.title} (half day)` : item.title);
+  }
+  return cells.map((cell) => (names.has(cell.day) ? { ...cell, holiday: names.get(cell.day) } : cell));
+}
+
+/**
+ * What the grid lists on the days: the default calendar's holidays are in the
+ * shading instead, and the holidays and absences go when the reader hid them.
+ */
+export function listedItems(items: CalendarItem[], showDaysOff: boolean): CalendarItem[] {
+  return items.filter((item) => {
+    if (item.kind !== "holiday" && item.kind !== "absence") return true;
+    return showDaysOff && !isDefaultHoliday(item);
+  });
+}
+
+/** What an item's chip says; an absence says who and nothing more. */
+export function labelOf(item: CalendarItem): string {
+  if (item.kind === "absence") return item.halfDay ? `${item.title} away half the day` : `${item.title} away`;
+  if (item.kind === "holiday" && item.halfDay) return `${item.title} (half day)`;
+  return item.key ? `${item.key} ${item.title}` : item.title;
 }

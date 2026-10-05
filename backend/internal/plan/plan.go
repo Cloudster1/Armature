@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/milestone"
 )
@@ -68,10 +69,12 @@ type Plan struct {
 	// along it is.
 	Milestones []milestone.Milestone `json:"milestones"`
 	// Load is the work per team per week against what each team can take.
-	Load     Load      `json:"load"`
-	Warnings []Warning `json:"warnings"`
-	From     time.Time `json:"from"`
-	To       time.Time `json:"to"`
+	Load Load `json:"load"`
+	// Holidays are the default calendar's days off in the window, shaded beside the weekends.
+	Holidays []availability.Holiday `json:"holidays"`
+	Warnings []Warning              `json:"warnings"`
+	From     time.Time              `json:"from"`
+	To       time.Time              `json:"to"`
 	// Unscheduled and Unestimated are the two kinds of row a plan cannot say
 	// anything about, counted rather than hidden.
 	Unscheduled int                 `json:"unscheduled"`

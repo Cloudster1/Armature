@@ -100,7 +100,8 @@ span their children and dependencies are drawn and checked, milestones and
 versions, and a dependency graph laid out by longest path. Named holiday
 calendars, imported from an .ics file, and a working week per person say which
 days somebody can work; a person records the days they are away, and colleagues
-see the days and never a reason.
+see the days and never a reason. The project calendar shows the holidays and who
+is away, and each team's weekly capacity shrinks with its members' days off.
 
 ![A board](docs/ui-board.png)
 

@@ -82,6 +82,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	plans.WithMilestones(milestones)
 	sprints.CountWith(plans)
 	plans.WithTeams(team.NewService(h.cluster))
+	plans.WithAvailability(availability.NewService(h.cluster))
 	projects := project.NewService(h.cluster, board.Provisioner{}, report.Provisioner{})
 	workflowAdmin := workflow.NewAdmin(h.cluster, workflowStore).WithRegistry(engine.Registry()).WithObserver(board.Follower{})
 	attachments := attachment.NewService(h.cluster, h.attachmentStore(t), issues)

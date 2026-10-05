@@ -3,6 +3,7 @@ import { request } from "./client";
 import { issuesQueryKey, type Issue, type Progress } from "./issues";
 import type { SprintPlan } from "./sprints";
 import type { Milestone } from "./milestones";
+import type { Holiday } from "./availability";
 
 export interface PlanItem {
   issue: Issue;
@@ -49,7 +50,13 @@ export interface PlanWarning {
 export interface LoadWeek {
   start: string;
   load: number;
+  /** What the team said, shrunk by the holidays and absences of its members. */
   capacity?: number;
+  /** What the team said, before holidays and absences. */
+  nominalCapacity?: number;
+  /** The members' working days away, half days as halves, and the days some member has a holiday on. */
+  daysAway?: number;
+  holidays?: number;
   issues: number;
   unestimated: number;
 }
@@ -86,6 +93,8 @@ export interface Plan {
   milestones: Milestone[];
   /** The work per team per week against what each team can take. */
   load: Load;
+  /** The default calendar's days off in the window, shaded beside the weekends. */
+  holidays: Holiday[];
   warnings: PlanWarning[];
   from: string;
   to: string;

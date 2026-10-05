@@ -59,6 +59,12 @@ export function describe(plan: SprintPlan): string {
   return `${committed}/${number(plan.sprint.capacity)} pts`;
 }
 
+/** The team's hours in the sprint, as a hint beside the points; nothing for a sprint with no team or no dates. */
+export function teamHours(plan: SprintPlan): string | null {
+  if (plan.availableHours === undefined || plan.nominalHours === undefined) return null;
+  return `Team available ${number(plan.availableHours)} of ${number(plan.nominalHours)} h in this sprint`;
+}
+
 /** Writes an estimate the way a person does: 5 rather than 5.00. */
 export function number(value: number): string {
   return String(Math.round(value * 100) / 100);

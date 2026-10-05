@@ -2110,3 +2110,15 @@ export async function auditRowsFor(page, action) {
   await page.waitForSelector(`[data-audit-row="${action}"]`, { timeout: WAIT });
   return page.$$eval("[data-audit-row]", (rows) => rows.map((r) => ({ action: r.getAttribute("data-audit-row"), text: r.innerText })));
 }
+
+/** Walks the project calendar to a month, written YYYY-MM. */
+export async function openMonth(page, projectKey, month) {
+  await goto(page, `/projects/${projectKey}/calendar`);
+  await page.waitForSelector("[data-calendar]", { timeout: WAIT });
+  for (;;) {
+    const shown = await page.$eval("[data-calendar]", (el) => el.getAttribute("data-calendar"));
+    if (shown === month) return;
+    await page.click(shown < month ? '[data-action="calendar-next"]' : '[data-action="calendar-prev"]');
+    await page.waitForFunction((was) => document.querySelector("[data-calendar]")?.getAttribute("data-calendar") !== was, { timeout: WAIT }, shown);
+  }
+}

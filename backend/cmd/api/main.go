@@ -137,6 +137,7 @@ func run() error {
 	plans.WithMilestones(milestones)
 	sprints.CountWith(plans)
 	plans.WithTeams(team.NewService(cluster))
+	plans.WithAvailability(availability.NewService(cluster))
 
 	// The board provisioner gives every new project a board in the same
 	// transaction that creates the project.
