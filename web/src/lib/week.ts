@@ -1,5 +1,5 @@
-import { HOURS_PER_DAY, MINUTES_PER_HOUR, WEEKDAY_REFERENCE_MONDAY, WORKING_HOURS_DECIMALS } from "@/config";
-import { WEEKDAYS, type Weekday } from "@/api/availability";
+import { ABSENCE_MAX_DAYS, HOURS_PER_DAY, MINUTES_PER_HOUR, MS_PER_DAY, WEEKDAY_REFERENCE_MONDAY, WORKING_HOURS_DECIMALS } from "@/config";
+import { WEEKDAYS, type Absence, type Weekday } from "@/api/availability";
 
 /** Minutes as the hours a person types: 480 is "8", 450 is "7.5". */
 export function hoursText(minutes: number): string {
@@ -40,4 +40,27 @@ export function formatDay(day: string, locale: string): string {
   } catch {
     return day;
   }
+}
+
+/** Today as YYYY-MM-DD where the reader is, which is the day they mean by today. */
+export function today(now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** What is wrong with an absence before it is sent, as a sentence; null when nothing is. */
+export function absenceProblem(startsOn: string, endsOn: string, halfDay: boolean): string | null {
+  if (!startsOn) return "Choose the first day away.";
+  if (endsOn < startsOn) return "The last day is before the first. Swap them.";
+  const days = (Date.parse(`${endsOn}T00:00:00Z`) - Date.parse(`${startsOn}T00:00:00Z`)) / MS_PER_DAY;
+  if (days >= ABSENCE_MAX_DAYS) return `One absence runs at most ${ABSENCE_MAX_DAYS} days. Record a longer one in parts.`;
+  if (halfDay && endsOn !== startsOn) return "Only a single day can be a half day. Make the last day the first, or untick half day.";
+  return null;
+}
+
+/** An absence's days in the reader's language: one day, half of one, or a first and a last. */
+export function formatAbsence(absence: Pick<Absence, "startsOn" | "endsOn" | "halfDay">, locale: string): string {
+  const first = formatDay(absence.startsOn, locale);
+  if (absence.startsOn !== absence.endsOn) return `${first} to ${formatDay(absence.endsOn, locale)}`;
+  return absence.halfDay ? `${first}, half the day` : first;
 }

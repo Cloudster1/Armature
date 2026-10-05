@@ -331,3 +331,7 @@ export const WEEKDAY_REFERENCE_MONDAY = "2024-01-01";
 export const HOLIDAY_FILE_ACCEPT = ".ics,text/calendar";
 /** The longest name a holiday or a calendar may have; the server holds the same bound. */
 export const HOLIDAY_NAME_MAX_LENGTH = 100;
+/** The longest one absence may run, both ends counted; the server holds the same bound. */
+export const ABSENCE_MAX_DAYS = 366;
+/** Milliseconds in a day, for counting the days between two dates. */
+export const MS_PER_DAY = 86_400_000;

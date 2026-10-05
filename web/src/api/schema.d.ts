@@ -4,6 +4,42 @@
  */
 
 export interface paths {
+    "/absences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who is away between two days, both included; a month back and a year ahead when not asked. */
+        get: operations["listAbsences"];
+        put?: never;
+        /** Record an absence: the caller's own, or one of somebody an administrator or a manager of their team answers for. */
+        post: operations["recordAbsence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/absences/{absenceID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take an absence back. */
+        delete: operations["removeAbsence"];
+        options?: never;
+        head?: never;
+        /** Move an absence's days, or make it a half day or not. */
+        patch: operations["updateAbsence"];
+        trace?: never;
+    };
     "/access/me": {
         parameters: {
             query?: never;
@@ -4025,6 +4061,23 @@ export interface components {
             scopes: string[];
             secret?: string;
         };
+        Absence: {
+            endsOn: string;
+            halfDay: boolean;
+            /** Format: uuid */
+            id: string;
+            startsOn: string;
+            /** Format: uuid */
+            userId: string;
+            userName: string;
+        };
+        AbsenceRequest: {
+            endsOn?: string;
+            halfDay?: boolean;
+            startsOn?: string;
+            /** Format: uuid */
+            userId?: string;
+        };
         AcceptInviteRequest: {
             name?: string;
             password?: string;
@@ -6776,6 +6829,147 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAbsences: {
+        parameters: {
+            query?: {
+                /** @description Only this person's absences. */
+                userId?: string;
+                /** @description The first day, YYYY-MM-DD. */
+                from?: string;
+                /** @description The last day, YYYY-MM-DD; at most two years after from. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        absences: components["schemas"]["Absence"][];
+                        from: string;
+                        to: string;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    recordAbsence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        absence: components["schemas"]["Absence"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeAbsence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                absenceID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateAbsence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                absenceID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        absence: components["schemas"]["Absence"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     myAccess: {
         parameters: {
             query?: never;

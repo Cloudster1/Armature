@@ -11,6 +11,8 @@ import {
   type Team,
 } from "@/api/teams";
 import { useCreateBoard } from "@/api/boards";
+import { holds, useAccess } from "@/api/access";
+import { AbsenceDialog } from "@/features/availability/Absences";
 import { Button, Card, EmptyState, ErrorBanner, Field, Input, SelectInput } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Avatar } from "@/features/issues/badges";
@@ -99,7 +101,11 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
   const deleteTeam = useDeleteTeam();
   const confirm = useConfirm();
   const createBoard = useCreateBoard(projectKey);
+  const { data: access } = useAccess();
   const [picked, setPicked] = useState("");
+  // Whoever manages the teams here plans with their people, so records their days away.
+  const [away, setAway] = useState<{ userId: string; name: string } | null>(null);
+  const managesTeams = holds(access, "team.manage", projectKey);
 
   const members = data?.team?.members ?? [];
   const onTeam = new Set(members.map((member) => member.userId));
@@ -151,7 +157,7 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
 
       <ul className="mt-3 space-y-1">
         {members.map((member) => (
-          <li key={member.userId} className="flex items-center gap-2 text-sm">
+          <li key={member.userId} className="flex items-center gap-2 text-sm" data-team-member={member.name}>
             <Avatar name={member.name} />
             <span className="text-ink">{member.name}</span>
             {member.lead && (
@@ -159,10 +165,21 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
                 Lead
               </span>
             )}
+            {managesTeams && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-auto h-6 px-1.5 text-2xs"
+                onClick={() => setAway({ userId: member.userId, name: member.name })}
+                data-action="record-member-absence"
+              >
+                Away
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
-              className="ml-auto h-6 px-1.5 text-2xs"
+              className={managesTeams ? "h-6 px-1.5 text-2xs" : "ml-auto h-6 px-1.5 text-2xs"}
               onClick={async () => (await confirm({ noun: "member", verb: "Remove", body: `${member.name} leaves ${team.name}.` })) && remove.mutate({ id: team.id, userId: member.userId })}
             >
               Remove
@@ -198,6 +215,7 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
       </div>
 
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
+      {away && <AbsenceDialog userId={away.userId} name={away.name} onClose={() => setAway(null)} />}
     </Card>
   );
 }

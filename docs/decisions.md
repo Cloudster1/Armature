@@ -485,6 +485,28 @@ This is not the service desk's business calendar, which says when a desk is
 open for its clocks and answers a different question. A desk could later point
 its calendar at a holiday calendar instead of keeping a list of its own.
 
+### An absence says when, never why, and nobody approves it
+
+An absence is a first day, a last day and whether it is half of a single day.
+There is no reason column and no note: a colleague planning a sprint needs to
+know that somebody is away, and nobody needs to know whether it is leave, a
+doctor or a funeral. Leaving the column out makes "colleagues see only that you
+are away" true by construction, where a hidden field would be one query away from
+showing. The events say an absence was recorded and for whom, never the days,
+since the stream reaches webhooks.
+
+Nothing is approved. The tracker plans around absences; it does not grant them,
+and an approval step would make it the leave system of record, which every
+company already has somewhere else. So the person records their own, and the
+people who plan with them may record one on their behalf: an administrator, or
+whoever holds the permission to manage teams in a project where the person is on
+a team. Leading a team is not enough, since a lead is a person to ask rather
+than a permission. Two absences of one person over the same day are refused by
+an exclusion constraint, so the plan never counts somebody away twice.
+
+**Reconsider if** an organization needs leave approval inside the tracker, which
+would be a state on the absence and a person who decides, not a reason.
+
 ## Projects, git and the service desk
 
 ### Templates are code, not rows

@@ -37,6 +37,7 @@ var sweeps = []sweep{
 	{"inbound-mail", "inbound_mail", "received_at < $1", false, func(p Policy) time.Duration { return p.InboundMail }},
 	{"import-jobs", "import_job", "created_at < $1", true, func(p Policy) time.Duration { return p.ImportJobs }},
 	{"audit", "audit_log", "created_at < $1", true, func(p Policy) time.Duration { return p.Audit }},
+	{"absences", "absence", "ends_on < $1::date", true, func(p Policy) time.Duration { return p.Absences }},
 }
 
 // Retention prunes what the policy says is past its time, once a day.

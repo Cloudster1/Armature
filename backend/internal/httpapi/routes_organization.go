@@ -91,6 +91,12 @@ func (s *Server) organizationRoutes(r chi.Router) {
 		r.Post("/holiday-calendars/{calendarID}/import", s.handleImportHolidays)
 		r.Put("/users/{userID}/schedule", s.handleSetWorkingWeek)
 	})
+	// Who is away, for every agent to plan around. Whether a caller may
+	// write one down depends on whose teams the person is on: the service decides.
+	r.Get("/absences", s.handleListAbsences)
+	r.Post("/absences", s.handleRecordAbsence)
+	r.Patch("/absences/{absenceID}", s.handleUpdateAbsence)
+	r.Delete("/absences/{absenceID}", s.handleRemoveAbsence)
 	r.Get("/issue-types", s.handleListIssueTypes)
 	r.Get("/statuses", s.handleListStatuses)
 	r.Get("/link-types", s.handleListLinkTypes)
