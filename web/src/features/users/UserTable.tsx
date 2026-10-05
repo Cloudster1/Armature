@@ -4,6 +4,7 @@ import { useManagedUsers, useSetUserPassword, useUpdateUser, type ManagedUser } 
 import { Button, Dialog, EmptyState, ErrorBanner, Field, IconButton, Menu, Select, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { WorkingWeekDialog } from "@/features/availability/WorkingWeek";
 
 const signsInWords: Record<ManagedUser["signsInWith"], string> = { password: "Password", provider: "Identity provider", none: "Nothing yet" };
 const roleWords: Record<ManagedUser["role"], string> = { owner: "Owner", admin: "Administrator", member: "Member", customer: "Customer" };
@@ -22,6 +23,7 @@ export function UserTable() {
   const [renaming, setRenaming] = useState<ManagedUser | null>(null);
   const [changingRole, setChangingRole] = useState<ManagedUser | null>(null);
   const [settingPassword, setSettingPassword] = useState<ManagedUser | null>(null);
+  const [settingWeek, setSettingWeek] = useState<ManagedUser | null>(null);
   const users = data?.users ?? [];
   const myID = me?.principal?.user.id;
 
@@ -83,6 +85,8 @@ export function UserTable() {
                       { label: "Rename", icon: <Icon.Edit />, disabled: locked, onSelect: () => setRenaming(user), attrs: { "data-action": "rename-user" } },
                       { label: "Change role", icon: <Icon.Key />, disabled: locked || user.role === "owner", onSelect: () => setChangingRole(user), attrs: { "data-action": "change-role" } },
                       { label: "Set password", icon: <Icon.Shield />, disabled: locked || user.signsInWith === "provider", onSelect: () => setSettingPassword(user), attrs: { "data-action": "set-password" } },
+                      // Hours worked are not the account's, so a shared account's week is set here too; a customer has none.
+                      { label: "Working week", icon: <Icon.Calendar />, disabled: user.role === "customer", onSelect: () => setSettingWeek(user), attrs: { "data-action": "working-week" } },
                       user.isActive
                         ? { label: "Deactivate", icon: <Icon.EyeOff />, danger: true, disabled: locked, onSelect: () => void switchOff(user), attrs: { "data-action": "deactivate-user" } }
                         : { label: "Reactivate", icon: <Icon.Eye />, disabled: locked, onSelect: () => update.mutate({ id: user.id, isActive: true }, { onSuccess: () => toast.success(`Reactivated ${user.name}`) }), attrs: { "data-action": "reactivate-user" } },
@@ -99,6 +103,7 @@ export function UserTable() {
       {renaming && <RenameDialog user={renaming} onClose={() => setRenaming(null)} />}
       {changingRole && <RoleDialog user={changingRole} onClose={() => setChangingRole(null)} />}
       {settingPassword && <PasswordDialog user={settingPassword} onClose={() => setSettingPassword(null)} />}
+      {settingWeek && <WorkingWeekDialog userId={settingWeek.id} name={settingWeek.name} onClose={() => setSettingWeek(null)} />}
     </div>
   );
 }

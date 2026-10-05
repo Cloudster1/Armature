@@ -4,6 +4,42 @@
  */
 
 export interface paths {
+    "/absences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who is away between two days, both included; a month back and a year ahead when not asked. */
+        get: operations["listAbsences"];
+        put?: never;
+        /** Record an absence: the caller's own, or one of somebody an administrator or a manager of their team answers for. */
+        post: operations["recordAbsence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/absences/{absenceID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take an absence back. */
+        delete: operations["removeAbsence"];
+        options?: never;
+        head?: never;
+        /** Move an absence's days, or make it a half day or not. */
+        patch: operations["updateAbsence"];
+        trace?: never;
+    };
     "/access/me": {
         parameters: {
             query?: never;
@@ -1010,6 +1046,77 @@ export interface paths {
         get: operations["liveness"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/holiday-calendars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's holiday calendars, the default first. */
+        get: operations["listHolidayCalendars"];
+        put?: never;
+        /** Make a holiday calendar; the first one, or one sent with default true, becomes the default. */
+        post: operations["createHolidayCalendar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/holiday-calendars/{calendarID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One holiday calendar with its days. */
+        get: operations["getHolidayCalendar"];
+        put?: never;
+        post?: never;
+        /** Delete a calendar that is not the default; the people given it fall back to the default. */
+        delete: operations["deleteHolidayCalendar"];
+        options?: never;
+        head?: never;
+        /** Rename a calendar, or make it the default. */
+        patch: operations["updateHolidayCalendar"];
+        trace?: never;
+    };
+    "/holiday-calendars/{calendarID}/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Make the calendar hold exactly these days. */
+        put: operations["setHolidays"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/holiday-calendars/{calendarID}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add the all-day events of an .ics file, sent as a multipart part named file; a day already there takes the file's name. */
+        post: operations["importHolidays"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2432,7 +2539,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Everything dated in a month: issues, sprints, milestones and versions. */
+        /** Everything dated in a month: issues, sprints, milestones, versions, holidays and who of the project is away. */
         get: operations["calendarMonth"];
         put?: never;
         post?: never;
@@ -2717,6 +2824,23 @@ export interface paths {
         put?: never;
         /** Add a request type. */
         post: operations["createRequestType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectKey}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The work per team or person per week, in hours, against the hours available. */
+        get: operations["getResources"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3559,6 +3683,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{userID}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A person's working week and calendar: their own for anybody, anybody's for an administrator. */
+        get: operations["getWorkingWeek"];
+        /** Set a person's working week and calendar. */
+        put: operations["setWorkingWeek"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/versions/{versionID}": {
         parameters: {
             query?: never;
@@ -3936,6 +4078,23 @@ export interface components {
             scopes: string[];
             secret?: string;
         };
+        Absence: {
+            endsOn: string;
+            halfDay: boolean;
+            /** Format: uuid */
+            id: string;
+            startsOn: string;
+            /** Format: uuid */
+            userId: string;
+            userName: string;
+        };
+        AbsenceRequest: {
+            endsOn?: string;
+            halfDay?: boolean;
+            startsOn?: string;
+            /** Format: uuid */
+            userId?: string;
+        };
         AcceptInviteRequest: {
             name?: string;
             password?: string;
@@ -4257,16 +4416,23 @@ export interface components {
             timezone: string;
         };
         CalendarItem: {
+            calendar?: string;
             category?: string;
             done?: boolean;
             from: string;
+            halfDay?: boolean;
             /** Format: uuid */
             id: string;
             key?: string;
             /** @enum {string} */
-            kind: "issue" | "sprint" | "milestone" | "version";
+            kind: "issue" | "sprint" | "milestone" | "version" | "holiday" | "absence";
             title: string;
             to: string;
+        };
+        CalendarRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         CannedInput: {
             body?: string;
@@ -4878,6 +5044,31 @@ export interface components {
             /** Format: uuid */
             issueId: string;
         };
+        Holiday: {
+            day: string;
+            halfDay: boolean;
+            name: string;
+        };
+        HolidayCalendar: {
+            /** Format: date-time */
+            createdAt: string;
+            dayCount: number;
+            days?: components["schemas"]["Holiday"][];
+            default: boolean;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            peopleCount: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        HolidayCalendarRequest: {
+            default: boolean | null;
+            name: string | null;
+        };
+        HolidayDaysRequest: {
+            days: components["schemas"]["Holiday"][];
+        };
         Icon: {
             /** Format: uuid */
             assetId?: string;
@@ -5110,8 +5301,11 @@ export interface components {
         };
         LoadWeek: {
             capacity?: number;
+            daysAway?: number;
+            holidays?: number;
             issues: number;
             load: number;
+            nominalCapacity?: number;
             /** Format: date-time */
             start: string;
             unestimated: number;
@@ -5387,6 +5581,7 @@ export interface components {
             dependencies: components["schemas"]["Blocker"][];
             /** Format: date-time */
             from: string;
+            holidays: components["schemas"]["Holiday"][];
             items: components["schemas"]["Item"][];
             linkTypes: components["schemas"]["LinkTypeRef"][];
             load: components["schemas"]["PlanLoad"];
@@ -5486,7 +5681,7 @@ export interface components {
             description: string;
             docsLabel?: string;
             docsUrl?: string;
-            features: ("board" | "sprints" | "plan" | "calendar" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
+            features: ("board" | "sprints" | "plan" | "calendar" | "resources" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
             /** Format: uuid */
             id: string;
             issueCount: number;
@@ -5498,7 +5693,11 @@ export interface components {
             leadName?: string;
             name: string;
             openIssueCount: number;
+            /** @enum {string} */
+            planningMethod: "scrum" | "kanban";
             portalVerifies: boolean;
+            /** @enum {string} */
+            resourceGrouping: "team" | "person";
             status?: components["schemas"]["StatusUpdate"];
             template?: string;
             trustedDomains: string[];
@@ -5726,6 +5925,45 @@ export interface components {
             bands: components["schemas"]["Band"][];
             resolved: number;
             window: number;
+        };
+        ResourceIssue: {
+            hours?: number;
+            key: string;
+            summary: string;
+        };
+        ResourcePlan: {
+            /** Format: date-time */
+            from: string;
+            /** @enum {string} */
+            grouping: "team" | "person";
+            /** @enum {string} */
+            method: "scrum" | "kanban";
+            projectKey: string;
+            rows: components["schemas"]["ResourceRow"][];
+            /** Format: date-time */
+            to: string;
+            unestimated: components["schemas"]["ResourceIssue"][];
+            unscheduled: components["schemas"]["ResourceIssue"][];
+            warnings: components["schemas"]["Warning"][];
+            weeks: string[];
+        };
+        ResourceRow: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind: "team" | "person" | "unassigned";
+            name: string;
+            weeks: components["schemas"]["ResourceWeek"][];
+        };
+        ResourceWeek: {
+            capacityHours?: number;
+            daysAway?: number;
+            holidays?: number;
+            issues: components["schemas"]["WeekIssue"][];
+            loadHours: number;
+            nominalHours?: number;
+            /** Format: date-time */
+            start: string;
         };
         Response: {
             content?: {
@@ -6070,10 +6308,12 @@ export interface components {
             team?: string;
         };
         SprintPlan: {
+            availableHours?: number;
             committed: number;
             completed: number;
             issues: number;
             issuesDone: number;
+            nominalHours?: number;
             sprint: components["schemas"]["Sprint"];
             unestimated: number;
         };
@@ -6114,12 +6354,14 @@ export interface components {
             team?: string;
         };
         SprintStanding: {
+            availableHours?: number;
             committed: number;
             completed: number;
             daysLeft: number;
             daysTotal: number;
             issues: number;
             issuesDone: number;
+            nominalHours?: number;
             sprint: components["schemas"]["Sprint"];
             unestimated: number;
         };
@@ -6261,11 +6503,13 @@ export interface components {
             boardType: "scrum" | "kanban";
             description: string;
             desk: boolean;
-            features: ("board" | "sprints" | "plan" | "calendar" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
+            features: ("board" | "sprints" | "plan" | "calendar" | "resources" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
             key: string;
             /** @enum {string} */
             kind: "software" | "service" | "business";
             name: string;
+            /** @enum {string} */
+            planningMethod: "scrum" | "kanban";
             workflowName?: string;
         };
         TemplateWidget: {
@@ -6413,7 +6657,11 @@ export interface components {
             /** Format: uuid */
             leadId?: string | null;
             name?: string;
+            /** @enum {string} */
+            planningMethod?: "scrum" | "kanban";
             portalVerifies?: boolean;
+            /** @enum {string} */
+            resourceGrouping?: "team" | "person";
             trustedDomains?: string[];
         };
         UpdateRequestTypeRequest: {
@@ -6527,6 +6775,7 @@ export interface components {
             issueKey?: string;
             kind: string;
             message: string;
+            person?: string;
             sprint?: string;
             team?: string;
         };
@@ -6551,6 +6800,11 @@ export interface components {
             resolved: number;
             /** Format: date-time */
             start: string;
+        };
+        WeekIssue: {
+            hours: number;
+            key: string;
+            summary: string;
         };
         Widget: {
             /** @description A JSON value. */
@@ -6602,6 +6856,24 @@ export interface components {
             position: number;
             type: string;
         };
+        WorkingWeek: {
+            calendar: components["schemas"]["CalendarRef"] | null;
+            /** Format: uuid */
+            calendarId: string | null;
+            minutes: {
+                [key: string]: number;
+            };
+            saved: boolean;
+            /** Format: uuid */
+            userId: string;
+        };
+        WorkingWeekRequest: {
+            /** Format: uuid */
+            calendarId: string | null;
+            minutes: {
+                [key: string]: number;
+            };
+        };
         WorkloadReport: {
             days: number;
             rows: components["schemas"]["Load"][];
@@ -6639,6 +6911,147 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAbsences: {
+        parameters: {
+            query?: {
+                /** @description Only this person's absences. */
+                userId?: string;
+                /** @description The first day, YYYY-MM-DD. */
+                from?: string;
+                /** @description The last day, YYYY-MM-DD; at most two years after from. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        absences: components["schemas"]["Absence"][];
+                        from: string;
+                        to: string;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    recordAbsence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        absence: components["schemas"]["Absence"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeAbsence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                absenceID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateAbsence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                absenceID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        absence: components["schemas"]["Absence"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     myAccess: {
         parameters: {
             query?: never;
@@ -9425,6 +9838,249 @@ export interface operations {
                 content: {
                     "application/json": {
                         status: string;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listHolidayCalendars: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendars: components["schemas"]["HolidayCalendar"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createHolidayCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HolidayCalendarRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["HolidayCalendar"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getHolidayCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["HolidayCalendar"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteHolidayCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateHolidayCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HolidayCalendarRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["HolidayCalendar"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setHolidays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HolidayDaysRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["HolidayCalendar"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importHolidays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["HolidayCalendar"];
+                        imported: number;
                     };
                 };
             };
@@ -14273,6 +14929,42 @@ export interface operations {
             };
         };
     };
+    getResources: {
+        parameters: {
+            query?: {
+                /** @description A day in the first week, YYYY-MM-DD; this week when absent. */
+                from?: string;
+                /** @description A day in the last week, YYYY-MM-DD; at most 26 weeks after from. */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourcePlan"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     restoreProject: {
         parameters: {
             query?: never;
@@ -16539,6 +17231,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getWorkingWeek: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        week: components["schemas"]["WorkingWeek"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setWorkingWeek: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkingWeekRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        week: components["schemas"]["WorkingWeek"];
+                    };
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

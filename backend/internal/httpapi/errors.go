@@ -33,7 +33,6 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
-	"github.com/armature/armature/backend/internal/tenant"
 	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
@@ -474,14 +473,8 @@ func moreAPIError(err error) *APIError {
 		return ErrBadRequest(capitalize(err.Error()) + ".")
 	case errors.Is(err, theme.ErrAssetTooLarge):
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: capitalize(theme.ErrAssetTooLarge.Error()) + "."}
-	case errors.Is(err, tenant.ErrNoTenant):
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Code:    "no_organization",
-			Message: "Select an organization first.",
-		}
 	default:
-		return ErrInternal(err)
+		return availabilityAPIError(err)
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/automation"
+	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/board"
 	"github.com/armature/armature/backend/internal/bulk"
 	"github.com/armature/armature/backend/internal/calendar"
@@ -213,6 +214,8 @@ type Server struct {
 	Versions   *version.Service
 	Components *component.Service
 	Teams      *team.Service
+	// Availability is the holiday calendars and everybody's working week.
+	Availability *availability.Service
 	// Templates makes projects the way a template says; Projects makes them
 	// plain. Both are kept because the seed and the tests use the plain one.
 	Templates *template.Service

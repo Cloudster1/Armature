@@ -5,7 +5,7 @@ import { canWriteIssues, useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
 import { MonthGrid } from "@/features/calendar/MonthGrid";
 
-/** A month of the project's dated work, sprints, milestones and versions. */
+/** A month of the project's dated work, sprints, milestones, versions and days off. */
 export const calendarRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/calendar",
@@ -25,7 +25,7 @@ function CalendarPage() {
           </Link>
         }
         title="Calendar"
-        meta="Issues on their dates, with the sprints, milestones and versions around them. Drag an issue to move both its dates."
+        meta="Issues on their dates, with the sprints, milestones, versions, holidays and absences around them. Drag an issue to move both its dates."
       />
       <MonthGrid projectKey={projectKey} canWrite={canWriteIssues(access, projectKey)} />
     </Page>

@@ -17,7 +17,7 @@ import {
 import { Button, Card, EmptyState, ErrorBanner, Field, Input, Segmented, SelectInput, cx } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { StatusBadge, TypeBadge } from "@/features/issues/badges";
-import { describe } from "@/features/plan/SprintBands";
+import { describe, teamHours } from "@/features/plan/SprintBands";
 import { useTeams } from "@/api/teams";
 import { MAX_PAGE_SIZE } from "@/config";
 
@@ -196,7 +196,7 @@ function SprintCard({
           </p>
         )}
 
-        {!closed && <SprintSettings sprint={sprint} />}
+        {!closed && <SprintSettings sprint={sprint} hours={plan ? teamHours(plan) : null} />}
 
         {error && <ErrorBanner>{error.message}</ErrorBanner>}
       </Card>
@@ -239,8 +239,9 @@ function shortDay(iso: string): string {
   });
 }
 
-/** The dates and the capacity, editable in place while the sprint is not over. */
-function SprintSettings({ sprint }: { sprint: Sprint }) {
+/** The dates and the capacity, editable in place while the sprint is not over,
+ * with the team's hours beside the points as a hint. */
+function SprintSettings({ sprint, hours }: { sprint: Sprint; hours: string | null }) {
   const update = useUpdateSprint();
 
   function set(field: "startsOn" | "endsOn", value: string) {
@@ -278,6 +279,11 @@ function SprintSettings({ sprint }: { sprint: Sprint }) {
         className="w-24 text-right"
       />
       <span>points</span>
+      {hours && (
+        <span className="ml-2" data-sprint-hours={sprint.name}>
+          {hours}
+        </span>
+      )}
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
     </div>
   );

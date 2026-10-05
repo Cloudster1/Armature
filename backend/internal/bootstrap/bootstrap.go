@@ -39,6 +39,10 @@ const (
 	LinkBlocks     = "Blocks"
 	LinkRelates    = "Relates"
 	LinkDuplicates = "Duplicates"
+
+	// DefaultHolidayCalendarName is the calendar everybody keeps until given
+	// another; migration 00909 gives organizations made before it the same.
+	DefaultHolidayCalendarName = "Holidays"
 )
 
 // The hierarchy levels the default types occupy. They are duplicated from the
@@ -60,8 +64,8 @@ type Result struct {
 	IssueTypeIDs     map[string]uuid.UUID
 }
 
-// Org creates the default statuses, issue types, workflow, workflow scheme and
-// link types for an organization.
+// Org creates the default statuses, issue types, workflow, workflow scheme,
+// link types and holiday calendar for an organization.
 //
 // It must run in the same transaction as the organization's own creation. It is
 // not idempotent: calling it twice for one organization violates the uniqueness
@@ -166,6 +170,14 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 		); err != nil {
 			return nil, fmt.Errorf("create link type %q: %w", l.name, err)
 		}
+	}
+
+	// An empty calendar of days off, so a working week always has one to read.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO holiday_calendar (org_id, name, is_default) VALUES ($1, $2, true)`,
+		orgID, DefaultHolidayCalendarName,
+	); err != nil {
+		return nil, fmt.Errorf("create the holiday calendar: %w", err)
 	}
 
 	// The automation account: the actor of every rule's act, an inactive

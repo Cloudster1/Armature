@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { request } from "./client";
 
 /** Everything dated in one month of a project, as ranges of days. */
-export type CalendarKind = "issue" | "sprint" | "milestone" | "version";
+export type CalendarKind = "issue" | "sprint" | "milestone" | "version" | "holiday" | "absence";
 
 export interface CalendarItem {
   kind: CalendarKind;
@@ -14,6 +14,10 @@ export interface CalendarItem {
   to: string;
   category?: string;
   done?: boolean;
+  /** The calendar of a holiday that is not the default's, whose days are everybody's. */
+  calendar?: string;
+  /** A holiday or an absence that takes half of its one day. */
+  halfDay?: boolean;
 }
 
 export interface CalendarMonth {

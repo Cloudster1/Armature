@@ -60,6 +60,10 @@ type Project struct {
 	// changed by its administrators. Issues, workflow, fields and settings
 	// are not features: every project has them.
 	Features []Feature `json:"features"`
+	// PlanningMethod and ResourceGrouping decide what the resource view sets the
+	// work against: teams, or for a kanban project, people if it says so.
+	PlanningMethod   PlanningMethod   `json:"planningMethod"`
+	ResourceGrouping ResourceGrouping `json:"resourceGrouping"`
 	// DocsURL is where the project's documentation lives, shown in its sidebar;
 	// empty when it has none. DocsLabel names the link and may be empty.
 	DocsURL    string     `json:"docsUrl,omitempty"`

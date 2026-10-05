@@ -11,7 +11,7 @@ vi.mock("@/api/projects", () => ({
 
 const { TemplateChooser, templateShape } = await import("./TemplateChooser");
 
-const everything: ProjectTemplate["features"] = ["board", "sprints", "plan", "calendar", "milestones", "releases", "components", "hierarchy", "dashboard", "teams", "repositories", "automation", "import"];
+const everything: ProjectTemplate["features"] = ["board", "sprints", "plan", "calendar", "resources", "milestones", "releases", "components", "hierarchy", "dashboard", "teams", "repositories", "automation", "import"];
 
 const kanban: ProjectTemplate = {
   key: "kanban",
@@ -19,6 +19,7 @@ const kanban: ProjectTemplate = {
   description: "Work flows continuously.",
   kind: "software",
   boardType: "kanban",
+  planningMethod: "kanban",
   features: everything,
 };
 const scrum: ProjectTemplate = {
@@ -27,6 +28,7 @@ const scrum: ProjectTemplate = {
   description: "Work is planned into sprints.",
   kind: "software",
   boardType: "scrum",
+  planningMethod: "scrum",
   features: everything,
 };
 const tasks: ProjectTemplate = {
@@ -35,6 +37,7 @@ const tasks: ProjectTemplate = {
   description: "For work that is not software.",
   kind: "business",
   boardType: "kanban",
+  planningMethod: "kanban",
   workflowName: "Simple task workflow",
   features: ["board", "plan", "calendar", "milestones", "dashboard", "hierarchy", "teams", "automation", "import"],
 };
@@ -61,6 +64,6 @@ describe("TemplateChooser", () => {
 
   it("says what each template brings", () => {
     expect(templateShape(scrum)).toBe("Scrum board · the organization's workflows");
-    expect(templateShape(tasks)).toBe("Kanban board · Simple task workflow · no sprints, releases, components, repositories");
+    expect(templateShape(tasks)).toBe("Kanban board · Simple task workflow · no sprints, resources, releases, components, repositories");
   });
 });

@@ -23,6 +23,7 @@ import { auditRoute } from "./audit";
 import { orgFieldsRoute } from "./org-fields";
 import { orgIssueArrangementRoute } from "./org-issue-arrangement";
 import { calendarRoute } from "./calendar";
+import { resourcesRoute } from "./resources";
 import { projectsRoute } from "./projects";
 import { projectDetailRoute } from "./project-detail";
 import { projectSettingsRoute } from "./project-settings";
@@ -44,6 +45,7 @@ import { repositoriesRoute } from "./repositories";
 import { fieldsRoute } from "./fields";
 import { issueArrangementRoute } from "./issue-arrangement";
 import { labelsRoute } from "./labels";
+import { holidaysRoute } from "./holidays";
 import { usersRoute } from "./users";
 import { themesRoute } from "./themes";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
@@ -73,6 +75,7 @@ const routeTree = rootRoute.addChildren([
       hierarchyRoute,
       planRoute,
       calendarRoute,
+      resourcesRoute,
       projectWorkflowsRoute,
       sprintsRoute,
       milestonesRoute,
@@ -110,6 +113,7 @@ const routeTree = rootRoute.addChildren([
     accessRoute,
     organizationRoute,
     labelsRoute,
+    holidaysRoute,
     usersRoute,
     themesRoute,
     themeNewRoute,

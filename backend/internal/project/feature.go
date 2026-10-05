@@ -16,6 +16,7 @@ const (
 	FeatureSprints      Feature = "sprints"
 	FeaturePlan         Feature = "plan"
 	FeatureCalendar     Feature = "calendar"
+	FeatureResources    Feature = "resources"
 	FeatureMilestones   Feature = "milestones"
 	FeatureReleases     Feature = "releases"
 	FeatureComponents   Feature = "components"
@@ -31,7 +32,7 @@ const (
 
 // allFeatures is every feature in the order pages are listed.
 var allFeatures = []Feature{
-	FeatureBoard, FeatureSprints, FeaturePlan, FeatureCalendar, FeatureMilestones,
+	FeatureBoard, FeatureSprints, FeaturePlan, FeatureCalendar, FeatureResources, FeatureMilestones,
 	FeatureReleases, FeatureComponents, FeatureHierarchy, FeatureDashboard,
 	FeatureQueues, FeatureDesk, FeatureTeams, FeatureRepositories,
 	FeatureAutomation, FeatureImport,
@@ -63,6 +64,8 @@ func (f Feature) Word() string {
 		return "dashboards"
 	case FeatureImport:
 		return "imports"
+	case FeatureResources:
+		return "resource planning"
 	}
 	return string(f)
 }

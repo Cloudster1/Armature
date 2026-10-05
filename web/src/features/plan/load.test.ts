@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Load, TeamLoad } from "@/api/plan";
-import { barShare, describeLoad, loadRows, utilisation, weekCells } from "./load";
+import { barShare, describeLoad, describeWeek, loadRows, utilisation, weekCells } from "./load";
 import { makeScale } from "./scale";
 import { NO_FILTERS } from "./views";
 
@@ -77,5 +77,24 @@ describe("barShare and words", () => {
   it("says what the sidebar needs", () => {
     expect(describeLoad(load.rows[0]!)).toBe("10 pts/week");
     expect(describeLoad({ ...load.rows[1]!, unscheduled: 2 })).toBe("no capacity set · 2 unscheduled");
+  });
+});
+
+describe("describeWeek", () => {
+  const alpha = load.rows[0]!;
+
+  it("says the load against the capacity", () => {
+    expect(describeWeek(alpha, alpha.weeks[1]!)).toBe("Alpha, week of 2026-09-14: 4/10 pts over 1 issue");
+  });
+
+  it("says what holidays and absences took from the capacity", () => {
+    const week = { ...alpha.weeks[0]!, load: 14, capacity: 16, nominalCapacity: 20, daysAway: 2, holidays: 1 };
+    expect(describeWeek(alpha, week)).toBe("Alpha, week of 2026-09-07: 14/16 pts over 1 issue. Capacity 20 pts, 16 after 2 days away and 1 holiday");
+    expect(describeWeek(alpha, { ...week, daysAway: 0.5, holidays: 0, capacity: 19 })).toContain("19 after 0.5 days away");
+  });
+
+  it("says who is away even where no capacity was set", () => {
+    const week = { ...load.rows[1]!.weeks[0]!, daysAway: 1 };
+    expect(describeWeek(load.rows[1]!, week)).toBe("Unassigned, week of 2026-09-07: 3 pts over 1 issue. 1 day away");
   });
 });

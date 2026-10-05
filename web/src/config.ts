@@ -318,3 +318,30 @@ export const CONSTELLATION_LINK_PX = 150;
 
 /** How fast a point wanders, in pixels per second, before its own variation. */
 export const CONSTELLATION_SPEED_PX_PER_S = 14;
+
+/** Minutes in an hour and hours in a day, for a working week written in hours. */
+export const MINUTES_PER_HOUR = 60;
+export const HOURS_PER_DAY = 24;
+/** A working day is entered to the quarter hour, and shown to two places at most. */
+export const WORKING_HOURS_STEP = 0.25;
+export const WORKING_HOURS_DECIMALS = 2;
+/** A Monday, for naming the weekdays in the reader's language. */
+export const WEEKDAY_REFERENCE_MONDAY = "2024-01-01";
+/** What the holiday import offers to pick: iCalendar files. */
+export const HOLIDAY_FILE_ACCEPT = ".ics,text/calendar";
+/** The longest name a holiday or a calendar may have; the server holds the same bound. */
+export const HOLIDAY_NAME_MAX_LENGTH = 100;
+/** The longest one absence may run, both ends counted; the server holds the same bound. */
+export const ABSENCE_MAX_DAYS = 366;
+/** Milliseconds in a day, for counting the days between two dates. */
+export const MS_PER_DAY = 86_400_000;
+/** How many weeks the resource view shows, and how far Previous and Next move it. */
+export const RESOURCE_WINDOW_WEEKS = 8;
+export const RESOURCE_STEP_WEEKS = 4;
+/** How tall a week's bar may grow in the resource view, and the narrowest a week's column gets. */
+export const RESOURCE_BAR_HEIGHT = 40;
+export const RESOURCE_WEEK_MIN_PX = 84;
+/** How many issues the unscheduled and unestimated lists show before counting the rest. */
+export const RESOURCE_LIST_LIMIT = 25;
+/** Decimals an hour figure keeps in the resource view: six minutes is as fine as a plan reads. */
+export const RESOURCE_HOUR_DECIMALS = 1;

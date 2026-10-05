@@ -33,7 +33,6 @@ import {
   PLAN_INDENT_PER_LEVEL,
   PLAN_LINK_HANDLE_PX,
   PLAN_LOAD_CELL_INSET,
-  PLAN_MIN_TICK_LABEL_PX,
   PLAN_ROW_HEIGHT,
   PLAN_SIDEBAR_WIDTH,
 } from "@/config";
@@ -44,14 +43,13 @@ import {
   day,
   filled,
   fitted,
-  headingTicks,
   daysBetween,
   isoDay,
   makeScale,
-  ticksFor,
   zoomFor,
   type Zoom,
 } from "./scale";
+import { TimelineHeader } from "./TimelineHeader";
 
 /** What the pane is assumed to measure before it has been measured. */
 const FALLBACK_PANE_WIDTH = 800;
@@ -556,7 +554,7 @@ export function Timeline({
             {/* Clipped, so a band or a flag past the last day cannot widen the
                 calendar and put a scrollbar under a view that was meant to fit. */}
             <div className="relative overflow-hidden" style={{ width: scale.width }} data-testid="plan-canvas">
-              <TimelineHeader scale={scale} zoom={zoom} todayX={todayX} />
+              <TimelineHeader scale={scale} zoom={zoom} todayX={todayX} holidays={data.holidays} />
               {showSprints && <SprintBands scale={scale} sprints={data.sprints} />}
               <MilestoneBand scale={scale} milestones={data.milestones} />
 
@@ -873,60 +871,6 @@ function SidebarRow({
       <span className="min-w-0 flex-1 truncate text-ink" title={words || item.issue.summary}>
         {item.issue.summary}
       </span>
-    </div>
-  );
-}
-
-function TimelineHeader({
-  scale,
-  zoom,
-  todayX,
-}: {
-  scale: ReturnType<typeof makeScale>;
-  zoom: Zoom;
-  todayX: number;
-}) {
-  const heading = useMemo(() => headingTicks(scale, zoom), [scale, zoom]);
-  const ticks = useMemo(() => ticksFor(scale, zoom), [scale, zoom]);
-
-  // Sized border-box like the bands beneath it, so its own bottom border is
-  // part of the height the sidebar was told about rather than an extra pixel.
-  return (
-    <div
-      className="relative flex flex-col border-b border-border"
-      style={{ height: headerLayout({ sprints: false, milestones: false }).header }}
-      data-testid="plan-header"
-    >
-      <div className="relative flex-1">
-        {heading.map((tick) => (
-          <span
-            key={tick.key}
-            className="absolute truncate border-l border-border px-1.5 text-2xs font-medium text-ink"
-            style={{ left: tick.x, width: tick.width }}
-          >
-            {tick.width >= PLAN_MIN_TICK_LABEL_PX && tick.label}
-          </span>
-        ))}
-      </div>
-      <div className="relative flex-1">
-        {ticks.map((tick) => (
-          <span
-            key={tick.key}
-            className={cx(
-              "absolute truncate border-l px-1.5 text-2xs text-ink-subtle",
-              tick.emphasis ? "border-border-strong" : "border-border/60",
-            )}
-            style={{ left: tick.x, width: tick.width }}
-          >
-            {tick.width >= PLAN_MIN_TICK_LABEL_PX && tick.label}
-          </span>
-        ))}
-        <span
-          aria-hidden="true"
-          className="absolute -top-1 w-px bg-accent"
-          style={{ left: todayX, height: PLAN_ROW_HEIGHT }}
-        />
-      </div>
     </div>
   );
 }

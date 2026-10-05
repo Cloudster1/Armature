@@ -97,7 +97,13 @@ found.
 **Planning.** Boards (scrum follows the running sprint, kanban shows
 everything), backlogs, sprints per team with capacity, a timeline where epics
 span their children and dependencies are drawn and checked, milestones and
-versions, and a dependency graph laid out by longest path.
+versions, and a dependency graph laid out by longest path. Named holiday
+calendars, imported from an .ics file, and a working week per person say which
+days somebody can work; a person records the days they are away, and colleagues
+see the days and never a reason. The project calendar shows the holidays and who
+is away, and each team's weekly capacity shrinks with its members' days off.
+A resources page sets each week's scheduled hours against the hours left, per
+team, or per person in a kanban project, and lists the work it cannot place.
 
 ![A board](docs/ui-board.png)
 
@@ -340,6 +346,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_RETAIN_IMPORT_JOBS` | `2160h` | from the import |
 | `ARMATURE_RETAIN_NOTIFICATIONS` | `4320h` | from being made |
 | `ARMATURE_RETAIN_AUDIT` | `8760h` | from the entry |
+| `ARMATURE_RETAIN_ABSENCES` | `9600h` | after the last day away |
 
 Zero keeps a kind forever, which nothing here recommends.
 

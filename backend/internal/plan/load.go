@@ -11,13 +11,20 @@ import (
 )
 
 // LoadWeek is one team's week: what is scheduled into it against what the team
-// said it could take.
+// can take in it.
 type LoadWeek struct {
 	Start time.Time `json:"start"`
 	// Load is the estimated work falling in the week, each scheduled issue's
-	// estimate spread evenly over the days it covers.
-	Load     float64  `json:"load"`
-	Capacity *float64 `json:"capacity,omitempty"`
+	// estimate spread evenly over the working days it covers.
+	Load float64 `json:"load"`
+	// Capacity is what the team said, shrunk by the share of its members' time
+	// that holidays and absences take; NominalCapacity is what it said.
+	Capacity        *float64 `json:"capacity,omitempty"`
+	NominalCapacity *float64 `json:"nominalCapacity,omitempty"`
+	// DaysAway counts the members' working days away, a half day as a half,
+	// and Holidays the days some member has a holiday on.
+	DaysAway float64 `json:"daysAway,omitempty"`
+	Holidays int     `json:"holidays,omitempty"`
 	// Issues counts the rows touching the week, Unestimated those of them that
 	// nobody has sized: work that is there but not in the number.
 	Issues      int `json:"issues"`
@@ -63,13 +70,18 @@ type Load struct {
 	Rows  []TeamLoad  `json:"rows"`
 }
 
-// WarnOverLoad is a team scheduled beyond what it said it could take in a week.
+// WarnOverLoad is a team scheduled beyond what it can take in a week.
 const WarnOverLoad = "over-load"
+
+const (
+	daysPerWeek = 7
+	hoursPerDay = 24
+)
 
 // Weeks returns the Monday of every week the window touches, oldest first.
 func Weeks(from, to time.Time) []time.Time {
 	var out []time.Time
-	for w := mondayOf(from); !w.After(midnight(to)); w = w.AddDate(0, 0, 7) {
+	for w := mondayOf(from); !w.After(midnight(to)); w = w.AddDate(0, 0, daysPerWeek) {
 		out = append(out, w)
 	}
 	return out
@@ -79,28 +91,32 @@ func Weeks(from, to time.Time) []time.Time {
 // week ticks are placed.
 func mondayOf(t time.Time) time.Time {
 	t = midnight(t)
-	back := (int(t.Weekday()) + 6) % 7
+	back := (int(t.Weekday()) + daysPerWeek - 1) % daysPerWeek
 	return t.AddDate(0, 0, -back)
 }
 
 // Loads reads the load per team over the window. Work is counted once: a row
 // whose ancestor is on the same team contributes through that ancestor, as it
 // does in a sprint. A child on another team counts for its own team.
-func Loads(items []Item, teams []team.Team, from, to time.Time) Load {
+func Loads(items []Item, teams []team.Team, from, to time.Time, work Workdays) Load {
 	weeks := Weeks(from, to)
 	byTeam := topmostByTeam(items)
 
 	rowFor := func(id *uuid.UUID, name, kind string, capacity *float64) TeamLoad {
 		row := TeamLoad{TeamID: id, Team: name, Kind: kind, WeeklyCapacity: capacity, Weeks: make([]LoadWeek, len(weeks))}
 		for i, start := range weeks {
-			row.Weeks[i] = LoadWeek{Start: start, Capacity: capacity}
+			row.Weeks[i] = LoadWeek{Start: start}
+			if id != nil {
+				weekOf(&row.Weeks[i], work.teamTime(*id, start, start.AddDate(0, 0, daysPerWeek-1)), capacity)
+			}
 		}
 		key := ""
 		if id != nil {
 			key = id.String()
 		}
+		works := func(d time.Time) bool { return work.works(id, d) }
 		for _, item := range byTeam[key] {
-			spread(&row, weeks, item)
+			spread(&row, weeks, item, works)
 		}
 		return row
 	}
@@ -116,25 +132,27 @@ func Loads(items []Item, teams []team.Team, from, to time.Time) Load {
 	for i, start := range weeks {
 		total.Weeks[i] = LoadWeek{Start: start}
 	}
-	var capacity float64
-	anyCapacity := false
 	for _, row := range out.Rows {
 		total.Unscheduled += row.Unscheduled
-		for i := range row.Weeks {
-			total.Weeks[i].Load += row.Weeks[i].Load
-			total.Weeks[i].Issues += row.Weeks[i].Issues
-			total.Weeks[i].Unestimated += row.Weeks[i].Unestimated
+		for i, w := range row.Weeks {
+			sum := &total.Weeks[i]
+			sum.Load += w.Load
+			sum.Issues += w.Issues
+			sum.Unestimated += w.Unestimated
+			sum.DaysAway += w.DaysAway
+			sum.Holidays = max(sum.Holidays, w.Holidays)
+			if w.Capacity != nil {
+				sum.Capacity = ptrTo(valueOr(sum.Capacity) + *w.Capacity)
+				sum.NominalCapacity = ptrTo(valueOr(sum.NominalCapacity) + *w.NominalCapacity)
+			}
 		}
 		if row.WeeklyCapacity != nil {
-			capacity += *row.WeeklyCapacity
-			anyCapacity = true
+			total.WeeklyCapacity = ptrTo(valueOr(total.WeeklyCapacity) + *row.WeeklyCapacity)
 		}
 	}
-	if anyCapacity {
-		c := capacity
-		total.WeeklyCapacity = &c
-		for i := range total.Weeks {
-			total.Weeks[i].Capacity = &c
+	for i := range total.Weeks {
+		if c := total.Weeks[i].Capacity; c != nil {
+			*c = roundHundredths(*c)
 		}
 	}
 	out.Rows = append(out.Rows, total)
@@ -148,36 +166,67 @@ func Loads(items []Item, teams []team.Team, from, to time.Time) Load {
 	return out
 }
 
-// spread puts one row's work into the weeks it covers.
-func spread(row *TeamLoad, weeks []time.Time, item Item) {
+// weekOf fills in a team's week from its members' time: the capacity they
+// said, shrunk by what holidays and absences take, and why.
+func weekOf(week *LoadWeek, t teamTime, capacity *float64) {
+	week.DaysAway, week.Holidays = t.away, t.holidays
+	if capacity == nil {
+		return
+	}
+	nominal, scaled := *capacity, t.scaled(*capacity)
+	week.NominalCapacity, week.Capacity = &nominal, &scaled
+}
+
+// spread puts a row's work on the days its team works, and work scheduled on
+// no working day at all on its calendar days, so that no point disappears.
+func spread(row *TeamLoad, weeks []time.Time, item Item, works func(time.Time) bool) {
 	if !item.Scheduled() {
 		row.Unscheduled++
 		return
 	}
 	start, due := midnight(*item.Start), midnight(*item.Due)
-	days := int(due.Sub(start).Hours()/24) + 1
-	if days < 1 {
-		days = 1
-	}
-	var perDay float64
-	if item.Estimate != nil {
-		perDay = *item.Estimate / float64(days)
-	}
-	touched := map[int]bool{}
+	var all, working []time.Time
 	for d := start; !d.After(due); d = d.AddDate(0, 0, 1) {
-		i := weekIndex(weeks, d)
-		if i < 0 {
-			continue
+		all = append(all, d)
+		if works(d) {
+			working = append(working, d)
 		}
-		row.Weeks[i].Load += perDay
-		if !touched[i] {
-			touched[i] = true
-			row.Weeks[i].Issues++
-			if item.Estimate == nil {
-				row.Weeks[i].Unestimated++
+	}
+	if len(all) == 0 {
+		all = []time.Time{start}
+	}
+	if len(working) == 0 {
+		working = all
+	}
+	if item.Estimate != nil {
+		perDay := *item.Estimate / float64(len(working))
+		for _, d := range working {
+			if i := weekIndex(weeks, d); i >= 0 {
+				row.Weeks[i].Load += perDay
 			}
 		}
 	}
+	touched := map[int]bool{}
+	for _, d := range all {
+		i := weekIndex(weeks, d)
+		if i < 0 || touched[i] {
+			continue
+		}
+		touched[i] = true
+		row.Weeks[i].Issues++
+		if item.Estimate == nil {
+			row.Weeks[i].Unestimated++
+		}
+	}
+}
+
+func ptrTo(v float64) *float64 { return &v }
+
+func valueOr(p *float64) float64 {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
 
 // weekIndex is which of the weeks a day falls in, or -1 outside the window.
@@ -185,7 +234,7 @@ func weekIndex(weeks []time.Time, d time.Time) int {
 	if len(weeks) == 0 {
 		return -1
 	}
-	i := int(d.Sub(weeks[0]).Hours() / 24 / 7)
+	i := int(d.Sub(weeks[0]).Hours() / hoursPerDay / daysPerWeek)
 	if i < 0 || i >= len(weeks) {
 		return -1
 	}
@@ -219,8 +268,8 @@ func topmostByTeam(items []Item) map[string][]Item {
 	return out
 }
 
-// CheckLoad reports each week a team is loaded beyond what it said it could
-// take. A warning, not a refusal: the plan is a draft.
+// CheckLoad reports each week a team is loaded beyond what it can take that
+// week. A warning, not a refusal: the plan is a draft.
 func CheckLoad(load Load) []Warning {
 	var out []Warning
 	for _, row := range load.Rows {
@@ -231,11 +280,12 @@ func CheckLoad(load Load) []Warning {
 			if week.OverBy() <= 0 {
 				continue
 			}
-			out = append(out, Warning{
-				Team: row.Team, Kind: WarnOverLoad,
-				Message: fmt.Sprintf("%s is loaded with %s in the week of %s against a capacity of %s",
-					row.Team, points(week.Load), week.Start.Format("2 Jan"), points(*week.Capacity)),
-			})
+			message := fmt.Sprintf("%s is loaded with %s in the week of %s against a capacity of %s",
+				row.Team, points(week.Load), week.Start.Format("2 Jan"), points(*week.Capacity))
+			if week.NominalCapacity != nil && *week.NominalCapacity != *week.Capacity {
+				message += fmt.Sprintf(", %s before holidays and absences", points(*week.NominalCapacity))
+			}
+			out = append(out, Warning{Team: row.Team, Kind: WarnOverLoad, Message: message})
 		}
 	}
 	return out

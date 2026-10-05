@@ -11,6 +11,7 @@ import {
   filled,
   fitted,
   headingTicks,
+  holidayBands,
   isoDay,
   makeScale,
   monthTicks,
@@ -219,5 +220,22 @@ describe("fitted", () => {
 
   it("is the zoom a plan opens on", () => {
     expect(zoomFor("nonsense").id).toBe("fit");
+  });
+});
+
+describe("holidayBands", () => {
+  it("puts each day off where the calendar draws that day, a day wide", () => {
+    const bands = holidayBands(scale, [
+      { day: "2026-03-10", name: "Founders' Day", halfDay: false },
+      { day: "2026-03-20", name: "Fair", halfDay: true },
+    ]);
+    expect(bands).toEqual([
+      { key: "2026-03-10", label: "Founders' Day", x: 90, width: 10 },
+      { key: "2026-03-20", label: "Fair (half day)", x: 190, width: 10 },
+    ]);
+  });
+
+  it("leaves out the days off the calendar", () => {
+    expect(holidayBands(scale, [{ day: "2026-02-27", name: "Before", halfDay: false }, { day: "2026-04-01", name: "After", halfDay: false }])).toEqual([]);
   });
 });

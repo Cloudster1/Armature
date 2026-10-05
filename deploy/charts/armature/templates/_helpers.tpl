@@ -301,6 +301,7 @@ ARMATURE_RETAIN_AUTOMATION_RUNS: {{ .Values.retention.automationRuns | quote }}
 ARMATURE_RETAIN_INBOUND_MAIL: {{ .Values.retention.inboundMail | quote }}
 ARMATURE_RETAIN_IMPORT_JOBS: {{ .Values.retention.importJobs | quote }}
 ARMATURE_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
+ARMATURE_RETAIN_ABSENCES: {{ .Values.retention.absences | quote }}
 {{- end -}}
 
 {{/* The credentials, by reference. Never rendered into a pod spec. */}}

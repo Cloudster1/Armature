@@ -85,6 +85,7 @@ export const Icon = {
   Unlink: makeIcon("unlink", ["M7 4.5l1.3-1.3a2.8 2.8 0 0 1 4 4L11 8.5", "M9 11.5l-1.3 1.3a2.8 2.8 0 0 1-4-4L5 7.5", "m3 3 10 10"]),
   Attach: makeIcon("attach", ["M10.5 5 6 9.5a1.4 1.4 0 0 0 2 2l5-5a2.8 2.8 0 0 0-4-4L4 7.5a4.2 4.2 0 0 0 6 6l3-3"]),
   Clock: makeIcon("clock", ["M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12Z", "M8 4.5V8l2.5 1.5"]),
+  Capacity: makeIcon("capacity", ["M2.5 13.5h11", "M4.5 13.5V9", "M8 13.5V6", "M11.5 13.5v-3", "M2.5 3.5h11"]),
   Calendar: makeIcon("calendar", ["M2.5 4h11v9.5h-11z", "M2.5 7h11", "M5.5 2.5V5", "M10.5 2.5V5"]),
   Shield: makeIcon("shield", ["M8 2 3 4v4c0 3 2.2 5 5 6 2.8-1 5-3 5-6V4z", "m6 8 1.5 1.5L10.5 6"]),
   Comment: makeIcon("comment", ["M2.5 3h11v7.5H7l-3 2.5v-2.5H2.5z"]),
