@@ -27,6 +27,8 @@ type Template struct {
 	Description string       `json:"description"`
 	Kind        project.Kind `json:"kind"`
 	BoardType   board.Type   `json:"boardType"`
+	// PlanningMethod is how a project made from it plans: in sprints or flowing.
+	PlanningMethod project.PlanningMethod `json:"planningMethod"`
 	// WorkflowName is the workflow the template brings with it, or empty when
 	// projects made from it follow whatever the organization has decided.
 	WorkflowName string `json:"workflowName,omitempty"`
@@ -149,28 +151,31 @@ var all = []Template{
 		Name: "Kanban",
 		Description: "Work flows continuously. The board shows everything in flight, " +
 			"and a swimlane can carry a limit that says when too much is.",
-		Kind:      project.KindSoftware,
-		BoardType: board.TypeKanban,
-		Features:  softwareFeatures,
+		Kind:           project.KindSoftware,
+		BoardType:      board.TypeKanban,
+		PlanningMethod: project.MethodKanban,
+		Features:       softwareFeatures,
 	},
 	{
 		Key:  "scrum",
 		Name: "Scrum",
 		Description: "Work is planned into sprints with a capacity. The board shows the " +
 			"sprint that is running; the next one is planned from the backlog.",
-		Kind:      project.KindSoftware,
-		BoardType: board.TypeScrum,
-		Features:  softwareFeatures,
+		Kind:           project.KindSoftware,
+		BoardType:      board.TypeScrum,
+		PlanningMethod: project.MethodScrum,
+		Features:       softwareFeatures,
 	},
 	{
 		Key:  "task-tracking",
 		Name: "Task tracking",
 		Description: "For work that is not software. Three states with no review step, " +
 			"and a kanban board over them.",
-		Kind:         project.KindBusiness,
-		BoardType:    board.TypeKanban,
-		WorkflowName: simpleTasks.name,
-		workflow:     simpleTasks,
+		Kind:           project.KindBusiness,
+		BoardType:      board.TypeKanban,
+		PlanningMethod: project.MethodKanban,
+		WorkflowName:   simpleTasks.name,
+		workflow:       simpleTasks,
 		Features: []project.Feature{
 			project.FeatureBoard, project.FeaturePlan, project.FeatureCalendar, project.FeatureMilestones,
 			project.FeatureDashboard, project.FeatureHierarchy, project.FeatureTeams, project.FeatureAutomation,
@@ -182,11 +187,12 @@ var all = []Template{
 		Name: "Service desk",
 		Description: "Customers raise requests through a portal; agents answer them against " +
 			"response and resolution goals, with notes the customer does not see.",
-		Kind:         project.KindService,
-		BoardType:    board.TypeKanban,
-		WorkflowName: serviceRequests.name,
-		workflow:     serviceRequests,
-		Desk:         true,
+		Kind:           project.KindService,
+		BoardType:      board.TypeKanban,
+		PlanningMethod: project.MethodKanban,
+		WorkflowName:   serviceRequests.name,
+		workflow:       serviceRequests,
+		Desk:           true,
 		Features: []project.Feature{
 			project.FeatureBoard, project.FeatureCalendar, project.FeatureDashboard, project.FeatureQueues,
 			project.FeatureDesk, project.FeatureTeams, project.FeatureAutomation, project.FeatureImport,

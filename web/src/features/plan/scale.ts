@@ -3,6 +3,7 @@
  * arithmetic behind every bar, tick and drag can be tested on its own.
  */
 
+import type { Holiday } from "@/api/availability";
 import { PLAN_MIN_PX_PER_DAY, PLAN_WEEK_LABEL_MIN_PX_PER_DAY } from "@/config";
 
 export const MS_PER_DAY = 86_400_000;
@@ -231,4 +232,23 @@ export function applyDrag(
       return { start, due: moved < start ? start : moved };
     }
   }
+}
+
+export interface HolidayBand {
+  key: string;
+  /** The holiday's name, a half day saying so, for the tooltip. */
+  label: string;
+  x: number;
+  width: number;
+}
+
+/** Where the default calendar's days off fall, each a day wide; those off the calendar are left out. */
+export function holidayBands(scale: Scale, holidays: Holiday[]): HolidayBand[] {
+  const out: HolidayBand[] = [];
+  for (const holiday of holidays) {
+    const x = scale.x(holiday.day);
+    if (x < 0 || x >= scale.width) continue;
+    out.push({ key: holiday.day, label: holiday.halfDay ? `${holiday.name} (half day)` : holiday.name, x, width: scale.pxPerDay });
+  }
+  return out;
 }

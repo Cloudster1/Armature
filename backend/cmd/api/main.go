@@ -22,6 +22,7 @@ import (
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/automation"
+	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/board"
 	"github.com/armature/armature/backend/internal/buildinfo"
 	"github.com/armature/armature/backend/internal/bulk"
@@ -136,6 +137,7 @@ func run() error {
 	plans.WithMilestones(milestones)
 	sprints.CountWith(plans)
 	plans.WithTeams(team.NewService(cluster))
+	plans.WithAvailability(availability.NewService(cluster))
 
 	// The board provisioner gives every new project a board in the same
 	// transaction that creates the project.
@@ -191,33 +193,34 @@ func run() error {
 		Bulk:       bulk.NewService(issues, labels),
 		CSV: csvio.NewService(cluster, issues, labels, field.NewService(cluster), accounts).
 			WithPlanning(sprints, version.NewService(cluster), component.NewService(cluster), team.NewService(cluster)),
-		Attachments: attachments,
-		Projects:    projects,
-		Templates:   template.NewService(cluster, projects, workflowAdmin).WithDesk(deskService),
-		Git:         git.NewService(cluster, issues),
-		Desk:        deskService,
-		Reports:     report.NewService(cluster, plans).WithSprints(sprints),
-		Issues:      issues,
-		Boards:      board.NewService(cluster, issues),
-		Plans:       plans,
-		Sprints:     sprints,
-		Milestones:  milestones,
-		Versions:    version.NewService(cluster),
-		Components:  component.NewService(cluster),
-		Teams:       team.NewService(cluster),
-		Perms:       perm.NewStore(cluster),
-		OIDC:        oidc.NewService(cluster, oidcRedirectURL()).WithHTTPClient(oidc.Backchannel(oidc.ParseRewrites(os.Getenv("ARMATURE_OIDC_BACKCHANNEL")))),
-		AppBaseURL:  appBaseURL(),
-		Renderer:    renderer(cfg.Render),
-		Assistant:   asker(cfg.Assistant),
-		Workflow:    &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
-		DB:          cluster,
-		Telemetry:   tel,
-		Fresh:       freshness.NewRedisTracker(rdb, cfg.Auth.ReadYourWritesTTL),
-		Log:         log,
-		Secure:      cfg.Auth.SecureCookies,
-		CookieName:  cfg.Auth.SessionCookie,
-		SessionTTL:  cfg.Auth.SessionTTL,
+		Attachments:  attachments,
+		Projects:     projects,
+		Templates:    template.NewService(cluster, projects, workflowAdmin).WithDesk(deskService),
+		Git:          git.NewService(cluster, issues),
+		Desk:         deskService,
+		Reports:      report.NewService(cluster, plans).WithSprints(sprints),
+		Issues:       issues,
+		Boards:       board.NewService(cluster, issues),
+		Plans:        plans,
+		Sprints:      sprints,
+		Milestones:   milestones,
+		Versions:     version.NewService(cluster),
+		Components:   component.NewService(cluster),
+		Teams:        team.NewService(cluster),
+		Availability: availability.NewService(cluster),
+		Perms:        perm.NewStore(cluster),
+		OIDC:         oidc.NewService(cluster, oidcRedirectURL()).WithHTTPClient(oidc.Backchannel(oidc.ParseRewrites(os.Getenv("ARMATURE_OIDC_BACKCHANNEL")))),
+		AppBaseURL:   appBaseURL(),
+		Renderer:     renderer(cfg.Render),
+		Assistant:    asker(cfg.Assistant),
+		Workflow:     &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
+		DB:           cluster,
+		Telemetry:    tel,
+		Fresh:        freshness.NewRedisTracker(rdb, cfg.Auth.ReadYourWritesTTL),
+		Log:          log,
+		Secure:       cfg.Auth.SecureCookies,
+		CookieName:   cfg.Auth.SessionCookie,
+		SessionTTL:   cfg.Auth.SessionTTL,
 	}
 	// In development the dev server proxies from an origin of its own, so the
 	// origin check would refuse every write it forwards.

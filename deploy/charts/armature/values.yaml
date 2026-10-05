@@ -270,6 +270,7 @@ retention:
   inboundMail: 2160h
   importJobs: 2160h
   audit: 8760h
+  absences: 9600h
 
 logLevel: info
 

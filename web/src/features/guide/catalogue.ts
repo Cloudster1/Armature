@@ -39,6 +39,7 @@ const PROJECT_PAGE_WORDS: Record<string, { sentence: string; keywords: string[];
   "/sprints": { sentence: "Sprints planned, running and done, with what each carried.", keywords: ["sprint", "iteration", "velocity", "commit", "backlog"] },
   "/plan": { sentence: "The project as a timeline: bars, dependencies and what is late.", keywords: ["plan", "gantt", "timeline", "schedule", "dependency", "late", "roadmap"] },
   "/calendar": { sentence: "A month of the project's dated work, sprints, milestones and versions; drag an issue to move its dates.", keywords: ["calendar", "month", "week", "day", "date", "due", "agenda", "when"] },
+  "/resources": { sentence: "The work per team or person per week, in hours, against the hours they have after holidays and absences.", keywords: ["resource", "capacity", "allocation", "workload", "utilisation", "overloaded", "hours", "people", "availability"] },
   "/milestones": { sentence: "Milestones with their due days and how far each has got.", keywords: ["milestone", "release", "due", "overdue", "progress", "deadline"] },
   "/dashboard": { sentence: "Dashboards of widgets and charts over the project's own numbers.", keywords: ["dashboard", "chart", "widget", "report", "burndown", "throughput", "graph", "statistic", "metric"] },
   "/hierarchy": { sentence: "The project as a tree: epics, their children and how far each has come.", keywords: ["hierarchy", "epic", "tree", "parent", "child", "breakdown"] },
@@ -84,6 +85,7 @@ const pages: GuideEntry[] = [
   { id: "page:org-workflows", title: "Workflows", sentence: "The organization's workflows and the schemes that hand them to issue types.", keywords: ["workflow", "scheme", "status", "transition", "design", "designer", "canvas", "organization"], needs: "admin", to: () => ({ to: "/settings/workflows" }) },
   { id: "page:org-automation", title: "Automation across projects", sentence: "The organization's rules, which watch every project: when something happens, check it, do things.", keywords: ["automation", "rule", "automate", "trigger", "when", "then", "organization"], needs: "admin", to: () => ({ to: "/settings/automation" }) },
   { id: "page:webhooks", title: "Webhooks", sentence: "Where the organization's events are posted, signed with a secret shown once, with a log of every try and a retry.", keywords: ["webhook", "hook", "post", "endpoint", "slack", "teams", "chat", "integration", "event", "signature", "secret", "delivery"], needs: "admin", target: "new-webhook", to: () => ({ to: "/settings/webhooks" }) },
+  { id: "page:holidays", title: "Holidays", sentence: "Calendars of days off, imported from an .ics file or typed in; everybody keeps the default until given another under Users.", keywords: ["holiday", "holidays", "calendar", "day off", "vacation", "public", "bank", "ics", "working week", "hours", "part-time"], to: () => ({ to: "/settings/holidays" }) },
   { id: "page:labels", title: "Labels", sentence: "Words shared by every project, with how often each is used.", keywords: ["label", "tag", "word"], to: () => ({ to: "/settings/labels" }) },
 ];
 

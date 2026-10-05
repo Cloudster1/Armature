@@ -9,6 +9,7 @@ import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, Section
 import { DOCS_LABEL_MAX_LENGTH } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { FEATURES } from "@/features/projects/features";
+import { PlanningSettings } from "@/features/projects/PlanningSettings";
 
 export const projectSettingsRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -154,6 +155,8 @@ function ProjectSettingsPage() {
           )}
         </Card>
       </section>
+
+      <PlanningSettings project={project} />
 
       <section className="mt-8">
         <SectionTitle className="mb-2">Archive</SectionTitle>

@@ -1,6 +1,10 @@
 package template
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/armature/armature/backend/internal/board"
+)
 
 func TestEveryTemplateIsWellFormed(t *testing.T) {
 	seen := map[string]bool{}
@@ -17,6 +21,10 @@ func TestEveryTemplateIsWellFormed(t *testing.T) {
 		}
 		if !tpl.BoardType.Valid() {
 			t.Errorf("%s has board type %q, which is not one", tpl.Key, tpl.BoardType)
+		}
+		// A scrum board runs sprints, and sprints are planned by team.
+		if !tpl.PlanningMethod.Valid() || (string(tpl.PlanningMethod) == string(board.TypeScrum)) != (tpl.BoardType == board.TypeScrum) {
+			t.Errorf("%s plans as %q with a %s board", tpl.Key, tpl.PlanningMethod, tpl.BoardType)
 		}
 		if (tpl.workflow != nil) != (tpl.WorkflowName != "") {
 			t.Errorf("%s names a workflow it does not bring, or the other way round", tpl.Key)

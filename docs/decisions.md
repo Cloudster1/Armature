@@ -350,9 +350,24 @@ Capacity lived only on the sprint, which says nothing about a project that plans
 in weeks and months. A team says how many points it can take in a week, in the
 unit its issues are already estimated in; hours would have put a second unit
 beside the first. Load is read off the schedule, each estimate spread evenly
-between start and due date and summed into Monday weeks, with the same
-count-once rule the sprints use. A week over its capacity is a warning with the
-team as its subject, never a refusal.
+over the working days between start and due date and summed into Monday weeks,
+with the same count-once rule the sprints use. A week over its capacity is a
+warning with the team as its subject, never a refusal.
+
+A working day is one some member's week holds and the default calendar does not
+take whole; a team of nobody works Monday to Friday. Spreading over every
+calendar day put two sevenths of a week's work on Saturday and Sunday, so a
+Monday to Friday ticket read lighter than it was. A ticket scheduled on no
+working day at all keeps its points over its calendar days rather than losing
+them.
+
+The points a team said are what it can take with everybody there. Each week's
+capacity is scaled by the minutes its members have left after holidays and
+absences against the minutes their weeks give, so a fortnight with two people
+away warns where it would otherwise have read as fine. The scaling is a ratio,
+not a conversion: points stay the one unit, and the sprint shows the team's
+hours only as a hint beside them. Absences move capacity, never the work, since
+a ticket does not reschedule itself because somebody is on leave.
 
 The load is rows under the plan rather than a band over it: a band per team
 would swallow the calendar in a project with several, and rows read where a
@@ -460,6 +475,87 @@ reports over them need no snapshot; the control chart measures from the first
 step into an in-progress status, because the question is how long work takes
 once somebody is on it, and the resolution histogram from creation, because the
 question is how long the asker waited.
+
+### Holidays are named calendars a person is given, and a week is minutes per weekday
+
+A team spread over several countries does not share its days off, so one list
+per organization would be wrong for half of it. A calendar is named, a person is
+given one, and whoever has not been given one keeps the organization's default,
+which every organization is made with and which cannot be deleted while it is
+the default. A day off is a date rather than an instant, so no time zone moves
+it, and a half day halves what the person would have worked.
+
+The week is minutes per weekday rather than a flag per day, because part-time is
+the common case and a flag cannot say "mornings on Wednesday". Minutes because
+worklogs and estimates are already minutes. Somebody with no week set works the
+standard one, eight hours Monday to Friday, so nothing has to be filled in before
+planning can read it; a portal customer has none, and a trigger says so too.
+
+An .ics import takes all-day events and refuses a recurring one rather than
+expanding the rule: RRULE is a language of its own, and a wrong guess about a
+moving feast is a day off in the wrong week that nobody notices. Calendar
+applications export the days written out, and the refusal says to do that.
+
+This is not the service desk's business calendar, which says when a desk is
+open for its clocks and answers a different question. A desk could later point
+its calendar at a holiday calendar instead of keeping a list of its own.
+
+### An absence says when, never why, and nobody approves it
+
+An absence is a first day, a last day and whether it is half of a single day.
+There is no reason column and no note: a colleague planning a sprint needs to
+know that somebody is away, and nobody needs to know whether it is leave, a
+doctor or a funeral. Leaving the column out makes "colleagues see only that you
+are away" true by construction, where a hidden field would be one query away from
+showing. The events say an absence was recorded and for whom, never the days,
+since the stream reaches webhooks.
+
+Nothing is approved. The tracker plans around absences; it does not grant them,
+and an approval step would make it the leave system of record, which every
+company already has somewhere else. So the person records their own, and the
+people who plan with them may record one on their behalf: an administrator, or
+whoever holds the permission to manage teams in a project where the person is on
+a team. Leading a team is not enough, since a lead is a person to ask rather
+than a permission. Two absences of one person over the same day are refused by
+an exclusion constraint, so the plan never counts somebody away twice.
+
+**Reconsider if** an organization needs leave approval inside the tracker, which
+would be a state on the absence and a person who decides, not a reason.
+
+### Scrum plans by team; kanban chooses team or person
+
+A project has a planning method, scrum or kanban, and a grouping for its
+resource view, team or person. Scrum is planned by team because a sprint is a
+team's commitment: setting one person's hours against work the team took on
+together reads a shared promise as one person's debt. A kanban project has no
+sprint to keep together, so it may set the work against each person's own week,
+which is how a small project of specialists is usually run.
+
+The method is backfilled from the boards, scrum where a project has a scrum
+board, and a new project takes it from its template. It is a column of its own
+rather than read off the boards, because a project may have boards of both types
+and the resource view needs one answer. A check constraint holds "scrum plans by
+team", so a row written past the service is refused too. Turning a project to
+scrum takes its grouping back to teams rather than refusing the change; asking
+for people on a scrum project is refused with a sentence that says to switch it
+to kanban first.
+
+### Resource planning is in hours; team capacity stays in points
+
+The resource view sets each open issue's remaining time, or its estimate where
+nothing remains to say, against the hours its team or person has in each Monday
+week after holidays and absences. Hours, because availability is measured in
+them: a working week is minutes per weekday, and a day away takes hours, not
+points. Points measure a team's pace against itself, and a person's day has no
+pace; converting one into the other would need a rate nobody can state.
+
+The team load under the plan stays in points, scaled by the same holidays and
+absences, so a team that estimates in points is not made to estimate twice.
+Work is spread evenly over the row's working days between start and due, as the
+team load is; a person's working days are their own, so an absence moves their
+share of an issue onto the days they are there. Work with hours but without both
+dates, and work with no hours at all, is listed rather than guessed into a week.
+A week over its hours is an over-allocated warning, never a refusal.
 
 ## Projects, git and the service desk
 
@@ -1259,6 +1355,25 @@ property the suite proves about itself. The validator is written here rather
 than imported, because the schemas use a small part of JSON Schema and a
 validating library would bring its dependencies into a binary the endpoint
 protection agent may then kill.
+
+### The application is versioned by semver; the API by its own number
+
+A release is a tag `vX.Y.Z` on main, cut by `make release`, and `VERSION` at
+the root says which one the tree is. Four files carry it: `VERSION`, the web
+package and its lockfile, and the chart's `version` and `appVersion`. A test
+refuses them disagreeing, because a chart whose `appVersion` names an image
+nobody built installs nothing. A build between releases does not pretend to
+be one: past a tag it reads `1.2.3+4.gabc1234`, and with no tag in reach
+`VERSION+dev`. The bump is a release branch merged like any other, so main
+still never takes a commit of its own.
+
+`info.version` in the OpenAPI document stays `1` and moves only when a client
+written against it would break. The application releasing weekly is not news
+to a script calling the API, and a contract number that moved with every
+release would say nothing.
+
+**Reconsider if** the API is published for others to build on, which wants
+its version in the path and the two numbers documented side by side.
 
 ### MCP is the same table, dispatched in process
 

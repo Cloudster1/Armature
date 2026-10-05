@@ -59,6 +59,8 @@ type CreateInput struct {
 	// Features narrows what the project has; empty means everything its kind
 	// allows.
 	Features []Feature
+	// PlanningMethod is how the project plans; empty is kanban.
+	PlanningMethod PlanningMethod
 }
 
 // Create makes a project. The returned LSN lets the caller pin their own next
@@ -104,6 +106,12 @@ func (in *CreateInput) check() error {
 	if len(in.Features) == 0 {
 		in.Features = DefaultFeatures(in.Kind)
 	}
+	if in.PlanningMethod == "" {
+		in.PlanningMethod = MethodKanban
+	}
+	if !in.PlanningMethod.Valid() {
+		return fmt.Errorf("%w: plan as scrum or kanban", ErrBadPlanning)
+	}
 	for _, f := range in.Features {
 		if !f.Valid() {
 			return fmt.Errorf("%w: %q", ErrBadFeature, f)
@@ -135,11 +143,13 @@ func (s *Service) CreateIn(ctx context.Context, tx db.DBTX, in CreateInput, acto
 		features []string
 	)
 	err := tx.QueryRow(ctx, `
-		INSERT INTO project (org_id, key, name, description, kind, lead_id, workflow_scheme_id, template, features)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id, key, name, description, kind, lead_id, workflow_scheme_id, template, portal_verifies, trusted_domains, features, created_at, updated_at`,
-		in.Key, in.Name, strings.TrimSpace(in.Description), string(in.Kind), in.LeadID, schemeID, in.Template, featureNames(in.Features),
-	).Scan(&p.ID, &p.Key, &p.Name, &p.Description, &p.Kind, &p.LeadID, &p.WorkflowSchemeID, &p.Template, &p.PortalVerifies, &p.TrustedDomains, &features, &p.CreatedAt, &p.UpdatedAt)
+		INSERT INTO project (org_id, key, name, description, kind, lead_id, workflow_scheme_id, template, features, planning_method)
+		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id, key, name, description, kind, lead_id, workflow_scheme_id, template, portal_verifies, trusted_domains, features,
+		          planning_method, resource_grouping, created_at, updated_at`,
+		in.Key, in.Name, strings.TrimSpace(in.Description), string(in.Kind), in.LeadID, schemeID, in.Template, featureNames(in.Features), string(in.PlanningMethod),
+	).Scan(&p.ID, &p.Key, &p.Name, &p.Description, &p.Kind, &p.LeadID, &p.WorkflowSchemeID, &p.Template, &p.PortalVerifies, &p.TrustedDomains, &features,
+		&p.PlanningMethod, &p.ResourceGrouping, &p.CreatedAt, &p.UpdatedAt)
 	if isUniqueViolation(err) {
 		return nil, ErrKeyTaken
 	}
@@ -183,7 +193,7 @@ SELECT p.id, p.key, p.name, p.description, p.kind, p.lead_id,
           JOIN issue_status st ON st.id = i.status_id
          WHERE i.project_id = p.id AND st.category <> 'done'),
        p.created_at, p.updated_at, p.archived_at, p.portal_verifies, p.trusted_domains, p.features,
-       COALESCE(p.docs_url, ''), COALESCE(p.docs_label, ''),
+       COALESCE(p.docs_url, ''), COALESCE(p.docs_label, ''), p.planning_method, p.resource_grouping,
        s.id, s.status, s.note, to_char(s.target_on, 'YYYY-MM-DD'), s.author_id, COALESCE(su.name, ''), s.created_at
 FROM project p
 LEFT JOIN app_user u ON u.id = p.lead_id
@@ -211,7 +221,7 @@ func scanProject(row pgx.Row) (*Project, error) {
 		&p.LeadName, &p.WorkflowSchemeID, &p.Template,
 		&p.IssueCount, &p.OpenIssueCount,
 		&p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt, &p.PortalVerifies, &p.TrustedDomains, &features,
-		&p.DocsURL, &p.DocsLabel,
+		&p.DocsURL, &p.DocsLabel, &p.PlanningMethod, &p.ResourceGrouping,
 		&statusID, &health, &note, &target, &author, &authorName, &postedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -289,6 +299,9 @@ type UpdateInput struct {
 	// address clears it. Either absent keeps what the project has.
 	DocsURL   *string
 	DocsLabel *string
+	// PlanningMethod and ResourceGrouping are checked together: a scrum project plans by team.
+	PlanningMethod   *string
+	ResourceGrouping *string
 }
 
 // Update changes a project's details. The key is deliberately not changeable:
@@ -418,6 +431,12 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput) (*Proj
 			}
 		}
 
+		if in.PlanningMethod != nil || in.ResourceGrouping != nil {
+			if err := setPlanning(ctx, tx, id, in.PlanningMethod, in.ResourceGrouping); err != nil {
+				return err
+			}
+		}
+
 		p, err = scanProject(tx.QueryRow(ctx, selectProject+` WHERE p.id = $1`, id))
 		return err
 	})
@@ -521,73 +540,4 @@ func (s *Service) KeyAvailable(ctx context.Context, key string) (bool, error) {
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
-}
-
-// SetWorkflowAssignment decides which workflow one issue type follows in a
-// project, or hands that type back to the organization with a nil workflow.
-func (s *Service) SetWorkflowAssignment(ctx context.Context, key string, issueTypeID uuid.UUID, workflowID *uuid.UUID, actor uuid.UUID) (*Project, db.LSN, error) {
-	var p *Project
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		current, err := scanProject(tx.QueryRow(ctx, selectProject+` WHERE p.key = $1 AND p.archived_at IS NULL`, NormalizeKey(key)))
-		if err != nil {
-			return err
-		}
-		var typeExists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM issue_type WHERE id = $1)`, issueTypeID).Scan(&typeExists); err != nil {
-			return err
-		}
-		if !typeExists {
-			return fmt.Errorf("%w: this organization has no such issue type.", workflow.ErrInvalid)
-		}
-
-		// The scheme is bookkeeping: a project needs one of its own to disagree in.
-		schemeID, created, err := workflow.EnsureOwnScheme(ctx, tx, current.ID, current.Name, current.Key, current.WorkflowSchemeID)
-		if err != nil {
-			return err
-		}
-		if err := workflow.SetSchemeItem(ctx, tx, schemeID, issueTypeID, workflowID); err != nil {
-			return err
-		}
-
-		next := &schemeID
-		empty, err := workflow.SchemeIsEmpty(ctx, tx, schemeID)
-		if err != nil {
-			return err
-		}
-		if empty {
-			// A project that disagrees about nothing follows the organization
-			// again, and the scheme that said nothing goes with it.
-			next = nil
-			if _, err := tx.Exec(ctx, `UPDATE project SET workflow_scheme_id = NULL WHERE id = $1`, current.ID); err != nil {
-				return fmt.Errorf("hand the decision back: %w", err)
-			}
-			if _, err := tx.Exec(ctx, `DELETE FROM workflow_scheme WHERE id = $1`, schemeID); err != nil {
-				return fmt.Errorf("drop the empty scheme: %w", err)
-			}
-		} else if created {
-			if _, err := tx.Exec(ctx, `UPDATE project SET workflow_scheme_id = $2 WHERE id = $1`, current.ID, schemeID); err != nil {
-				return fmt.Errorf("set the project's workflow scheme: %w", err)
-			}
-		}
-
-		p, err = scanProject(tx.QueryRow(ctx, selectProject+` WHERE p.key = $1`, current.Key))
-		if err != nil {
-			return err
-		}
-		if err := events.EmitInTenant(ctx, tx, "project.workflow_assignment_changed", map[string]any{
-			"projectId": p.ID, "key": p.Key, "issueTypeId": issueTypeID, "workflowId": workflowID, "schemeId": next, "actorId": actor,
-		}); err != nil {
-			return err
-		}
-		if (current.WorkflowSchemeID == nil) != (next == nil) || (next != nil && current.WorkflowSchemeID != nil && *next != *current.WorkflowSchemeID) {
-			return events.EmitInTenant(ctx, tx, "project.workflow_scheme_changed", map[string]any{
-				"projectId": p.ID, "key": p.Key, "schemeId": next, "actorId": actor,
-			})
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	return p, lsn, nil
 }

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/milestone"
 )
@@ -36,12 +37,12 @@ func (i Item) Scheduled() bool { return i.Start != nil && i.Due != nil }
 // Warning is a place the schedule disagrees with itself. Warnings never refuse
 // a change: a plan is a draft, and a draft you cannot write down is useless.
 type Warning struct {
-	// Exactly one of these names what the warning is about. A sprint committed
-	// beyond its capacity, or a team loaded beyond its week, is not any one
-	// issue's fault.
+	// Exactly one of these names what the warning is about: a sprint, team or
+	// person loaded beyond its capacity is not any one issue's fault.
 	IssueKey string `json:"issueKey,omitempty"`
 	Sprint   string `json:"sprint,omitempty"`
 	Team     string `json:"team,omitempty"`
+	Person   string `json:"person,omitempty"`
 	Kind     string `json:"kind"`
 	Message  string `json:"message"`
 }
@@ -68,10 +69,12 @@ type Plan struct {
 	// along it is.
 	Milestones []milestone.Milestone `json:"milestones"`
 	// Load is the work per team per week against what each team can take.
-	Load     Load      `json:"load"`
-	Warnings []Warning `json:"warnings"`
-	From     time.Time `json:"from"`
-	To       time.Time `json:"to"`
+	Load Load `json:"load"`
+	// Holidays are the default calendar's days off in the window, shaded beside the weekends.
+	Holidays []availability.Holiday `json:"holidays"`
+	Warnings []Warning              `json:"warnings"`
+	From     time.Time              `json:"from"`
+	To       time.Time              `json:"to"`
 	// Unscheduled and Unestimated are the two kinds of row a plan cannot say
 	// anything about, counted rather than hidden.
 	Unscheduled int                 `json:"unscheduled"`

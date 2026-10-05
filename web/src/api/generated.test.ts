@@ -8,6 +8,7 @@ import type { Attachment } from "./attachments";
 import type { ManagedUser } from "./users";
 import type { Theme, ThemeExample } from "./themes";
 import type { Build } from "./build";
+import type { Absence, Holiday, HolidayCalendar, WorkingWeek } from "./availability";
 
 // The hand written types are what the components render; the generated ones
 // are what the server promises. Each hand written type has to be satisfied by
@@ -33,6 +34,13 @@ describe("the hand written types agree with the document", () => {
   it("for themes", () => {
     expectTypeOf<Schemas["Theme"]>().toMatchTypeOf<Theme>();
     expectTypeOf<Schemas["Example"]>().toMatchTypeOf<ThemeExample>();
+  });
+
+  it("for holiday calendars, working weeks and absences", () => {
+    expectTypeOf<Schemas["HolidayCalendar"]>().toMatchTypeOf<HolidayCalendar>();
+    expectTypeOf<Schemas["Holiday"]>().toMatchTypeOf<Holiday>();
+    expectTypeOf<Schemas["WorkingWeek"]>().toMatchTypeOf<WorkingWeek>();
+    expectTypeOf<Schemas["Absence"]>().toMatchTypeOf<Absence>();
   });
 
   it("for the build", () => {

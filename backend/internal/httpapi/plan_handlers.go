@@ -28,6 +28,23 @@ func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, found)
 }
 
+// handleGetResources reads the project's resource view; from and to are days,
+// taken to their whole weeks.
+func (s *Server) handleGetResources(w http.ResponseWriter, r *http.Request) {
+	p, err := s.Projects.ByKey(r.Context(), r.PathValue("projectKey"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	query := r.URL.Query()
+	found, err := s.Plans.Resources(r.Context(), p, query.Get("from"), query.Get("to"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, found)
+}
+
 // scheduleRequest carries the two ends of an issue's range. Each accepts an
 // explicit null to clear that end, which an omitted field cannot express.
 type scheduleRequest struct {

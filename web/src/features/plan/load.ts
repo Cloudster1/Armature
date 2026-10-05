@@ -72,9 +72,25 @@ export function describeLoad(row: TeamLoad): string {
   return parts.join(" · ");
 }
 
-/** What a week's cell says on hover. */
+/** What a week's cell says on hover, and why its capacity is short when it is. */
 export function describeWeek(row: TeamLoad, week: LoadWeek): string {
   const load = week.capacity !== undefined ? `${number(week.load)}/${number(week.capacity)} pts` : `${number(week.load)} pts`;
   const extra = week.unestimated > 0 ? `, ${week.unestimated} unestimated` : "";
-  return `${row.team}, week of ${isoDay(new Date(week.start))}: ${load} over ${week.issues} issue${week.issues === 1 ? "" : "s"}${extra}`;
+  const said = `${row.team}, week of ${isoDay(new Date(week.start))}: ${load} over ${week.issues} issue${week.issues === 1 ? "" : "s"}${extra}`;
+  const why = daysOff(week);
+  if (!why) return said;
+  if (week.nominalCapacity === undefined || week.capacity === undefined) return `${said}. ${capitalised(why)}`;
+  return `${said}. Capacity ${number(week.nominalCapacity)} pts, ${number(week.capacity)} after ${why}`;
+}
+
+/** The days away and the holidays of a week, in words, or nothing. */
+export function daysOff(week: LoadWeek): string {
+  const parts: string[] = [];
+  if (week.daysAway) parts.push(`${number(week.daysAway)} day${week.daysAway === 1 ? "" : "s"} away`);
+  if (week.holidays) parts.push(`${week.holidays} holiday${week.holidays === 1 ? "" : "s"}`);
+  return parts.join(" and ");
+}
+
+function capitalised(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

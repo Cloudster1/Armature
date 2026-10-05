@@ -231,6 +231,7 @@ func Load() (Config, error) {
 			InboundMail:       envDur("ARMATURE_RETAIN_INBOUND_MAIL", defaults.InboundMail),
 			ImportJobs:        envDur("ARMATURE_RETAIN_IMPORT_JOBS", defaults.ImportJobs),
 			Audit:             envDur("ARMATURE_RETAIN_AUDIT", defaults.Audit),
+			Absences:          envDur("ARMATURE_RETAIN_ABSENCES", defaults.Absences),
 		},
 		Auth: Auth{
 			SessionTTL:         envDur("ARMATURE_SESSION_TTL", 720*time.Hour),
@@ -430,6 +431,8 @@ type Retention struct {
 	ImportJobs time.Duration
 	// The audit log, from when the row was written.
 	Audit time.Duration
+	// Absences, from their last day: long enough to plan a year against the last.
+	Absences time.Duration
 }
 
 // DefaultRetention is what a fresh installation keeps: short for what only served
@@ -449,5 +452,6 @@ func DefaultRetention() Retention {
 		InboundMail:       90 * day,
 		ImportJobs:        90 * day,
 		Audit:             365 * day,
+		Absences:          400 * day,
 	}
 }

@@ -31,6 +31,9 @@
       "name": "automation"
     },
     {
+      "name": "availability"
+    },
+    {
       "name": "boards"
     },
     {
@@ -116,6 +119,225 @@
     }
   ],
   "paths": {
+    "/absences": {
+      "get": {
+        "operationId": "listAbsences",
+        "summary": "Who is away between two days, both included; a month back and a year ahead when not asked.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "description": "Only this person's absences.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "The first day, YYYY-MM-DD.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "The last day, YYYY-MM-DD; at most two years after from.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "absences": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Absence"
+                      }
+                    },
+                    "from": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "absences",
+                    "from",
+                    "to"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "recordAbsence",
+        "summary": "Record an absence: the caller's own, or one of somebody an administrator or a manager of their team answers for.",
+        "tags": [
+          "availability"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "absence": {
+                      "$ref": "#/components/schemas/Absence"
+                    }
+                  },
+                  "required": [
+                    "absence"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/absences/{absenceID}": {
+      "delete": {
+        "operationId": "removeAbsence",
+        "summary": "Take an absence back.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "absenceID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateAbsence",
+        "summary": "Move an absence's days, or make it a half day or not.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "absenceID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "absence": {
+                      "$ref": "#/components/schemas/Absence"
+                    }
+                  },
+                  "required": [
+                    "absence"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/access/me": {
       "get": {
         "operationId": "myAccess",
@@ -4144,6 +4366,369 @@
                   },
                   "required": [
                     "status"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holiday-calendars": {
+      "get": {
+        "operationId": "listHolidayCalendars",
+        "summary": "The organization's holiday calendars, the default first.",
+        "tags": [
+          "availability"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendars": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HolidayCalendar"
+                      }
+                    }
+                  },
+                  "required": [
+                    "calendars"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createHolidayCalendar",
+        "summary": "Make a holiday calendar; the first one, or one sent with default true, becomes the default.",
+        "tags": [
+          "availability"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayCalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    }
+                  },
+                  "required": [
+                    "calendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holiday-calendars/{calendarID}": {
+      "delete": {
+        "operationId": "deleteHolidayCalendar",
+        "summary": "Delete a calendar that is not the default; the people given it fall back to the default.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getHolidayCalendar",
+        "summary": "One holiday calendar with its days.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    }
+                  },
+                  "required": [
+                    "calendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateHolidayCalendar",
+        "summary": "Rename a calendar, or make it the default.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayCalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    }
+                  },
+                  "required": [
+                    "calendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holiday-calendars/{calendarID}/days": {
+      "put": {
+        "operationId": "setHolidays",
+        "summary": "Make the calendar hold exactly these days.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayDaysRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    }
+                  },
+                  "required": [
+                    "calendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holiday-calendars/{calendarID}/import": {
+      "post": {
+        "operationId": "importHolidays",
+        "summary": "Add the all-day events of an .ics file, sent as a multipart part named file; a day already there takes the file's name.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    },
+                    "imported": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "calendar",
+                    "imported"
                   ]
                 }
               }
@@ -10022,7 +10607,7 @@
     "/projects/{projectKey}/calendar": {
       "get": {
         "operationId": "calendarMonth",
-        "summary": "Everything dated in a month: issues, sprints, milestones and versions.",
+        "summary": "Everything dated in a month: issues, sprints, milestones, versions, holidays and who of the project is away.",
         "tags": [
           "plan"
         ],
@@ -11791,6 +12376,66 @@
                   "required": [
                     "requestType"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectKey}/resources": {
+      "get": {
+        "operationId": "getResources",
+        "summary": "The work per team or person per week, in hours, against the hours available.",
+        "tags": [
+          "plan"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "A day in the first week, YYYY-MM-DD; this week when absent.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "A day in the last week, YYYY-MM-DD; at most 26 weeks after from.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePlan"
                 }
               }
             }
@@ -15254,6 +15899,114 @@
         }
       }
     },
+    "/users/{userID}/schedule": {
+      "get": {
+        "operationId": "getWorkingWeek",
+        "summary": "A person's working week and calendar: their own for anybody, anybody's for an administrator.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "week": {
+                      "$ref": "#/components/schemas/WorkingWeek"
+                    }
+                  },
+                  "required": [
+                    "week"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setWorkingWeek",
+        "summary": "Set a person's working week and calendar.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkingWeekRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "week": {
+                      "$ref": "#/components/schemas/WorkingWeek"
+                    }
+                  },
+                  "required": [
+                    "week"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/versions/{versionID}": {
       "delete": {
         "operationId": "deleteVersion",
@@ -16770,6 +17523,57 @@
           "projects"
         ]
       },
+      "Absence": {
+        "type": "object",
+        "properties": {
+          "endsOn": {
+            "type": "string"
+          },
+          "halfDay": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startsOn": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "userName",
+          "startsOn",
+          "endsOn",
+          "halfDay"
+        ]
+      },
+      "AbsenceRequest": {
+        "type": "object",
+        "properties": {
+          "endsOn": {
+            "type": "string"
+          },
+          "halfDay": {
+            "type": "boolean"
+          },
+          "startsOn": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "AcceptInviteRequest": {
         "type": "object",
         "properties": {
@@ -17896,6 +18700,9 @@
       "CalendarItem": {
         "type": "object",
         "properties": {
+          "calendar": {
+            "type": "string"
+          },
           "category": {
             "type": "string"
           },
@@ -17904,6 +18711,9 @@
           },
           "from": {
             "type": "string"
+          },
+          "halfDay": {
+            "type": "boolean"
           },
           "id": {
             "type": "string",
@@ -17918,7 +18728,9 @@
               "issue",
               "sprint",
               "milestone",
-              "version"
+              "version",
+              "holiday",
+              "absence"
             ]
           },
           "title": {
@@ -17934,6 +18746,22 @@
           "title",
           "from",
           "to"
+        ]
+      },
+      "CalendarRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "CannedInput": {
@@ -20102,6 +20930,104 @@
           "createdAt"
         ]
       },
+      "Holiday": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string"
+          },
+          "halfDay": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "day",
+          "name",
+          "halfDay"
+        ]
+      },
+      "HolidayCalendar": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dayCount": {
+            "type": "integer"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            }
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "peopleCount": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "default",
+          "dayCount",
+          "peopleCount",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "HolidayCalendarRequest": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "default"
+        ]
+      },
+      "HolidayDaysRequest": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            }
+          }
+        },
+        "required": [
+          "days"
+        ]
+      },
       "Icon": {
         "type": "object",
         "properties": {
@@ -20910,10 +21836,19 @@
           "capacity": {
             "type": "number"
           },
+          "daysAway": {
+            "type": "number"
+          },
+          "holidays": {
+            "type": "integer"
+          },
           "issues": {
             "type": "integer"
           },
           "load": {
+            "type": "number"
+          },
+          "nominalCapacity": {
             "type": "number"
           },
           "start": {
@@ -21889,6 +22824,12 @@
             "type": "string",
             "format": "date-time"
           },
+          "holidays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            }
+          },
           "items": {
             "type": "array",
             "items": {
@@ -21949,6 +22890,7 @@
           "sprints",
           "milestones",
           "load",
+          "holidays",
           "warnings",
           "from",
           "to",
@@ -22281,6 +23223,7 @@
                 "sprints",
                 "plan",
                 "calendar",
+                "resources",
                 "milestones",
                 "releases",
                 "components",
@@ -22326,8 +23269,22 @@
           "openIssueCount": {
             "type": "integer"
           },
+          "planningMethod": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
           "portalVerifies": {
             "type": "boolean"
+          },
+          "resourceGrouping": {
+            "type": "string",
+            "enum": [
+              "team",
+              "person"
+            ]
           },
           "status": {
             "$ref": "#/components/schemas/StatusUpdate"
@@ -22361,6 +23318,8 @@
           "portalVerifies",
           "trustedDomains",
           "features",
+          "planningMethod",
+          "resourceGrouping",
           "createdAt",
           "updatedAt"
         ]
@@ -23203,6 +24162,163 @@
           "bands",
           "resolved",
           "window"
+        ]
+      },
+      "ResourceIssue": {
+        "type": "object",
+        "properties": {
+          "hours": {
+            "type": "number"
+          },
+          "key": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "summary"
+        ]
+      },
+      "ResourcePlan": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grouping": {
+            "type": "string",
+            "enum": [
+              "team",
+              "person"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceRow"
+            }
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unestimated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceIssue"
+            }
+          },
+          "unscheduled": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceIssue"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Warning"
+            }
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "required": [
+          "projectKey",
+          "method",
+          "grouping",
+          "from",
+          "to",
+          "weeks",
+          "rows",
+          "unscheduled",
+          "unestimated",
+          "warnings"
+        ]
+      },
+      "ResourceRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "team",
+              "person",
+              "unassigned"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceWeek"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "weeks"
+        ]
+      },
+      "ResourceWeek": {
+        "type": "object",
+        "properties": {
+          "capacityHours": {
+            "type": "number"
+          },
+          "daysAway": {
+            "type": "number"
+          },
+          "holidays": {
+            "type": "integer"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeekIssue"
+            }
+          },
+          "loadHours": {
+            "type": "number"
+          },
+          "nominalHours": {
+            "type": "number"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "start",
+          "loadHours",
+          "issues"
         ]
       },
       "Response": {
@@ -24380,6 +25496,9 @@
       "SprintPlan": {
         "type": "object",
         "properties": {
+          "availableHours": {
+            "type": "number"
+          },
           "committed": {
             "type": "number"
           },
@@ -24391,6 +25510,9 @@
           },
           "issuesDone": {
             "type": "integer"
+          },
+          "nominalHours": {
+            "type": "number"
           },
           "sprint": {
             "$ref": "#/components/schemas/Sprint"
@@ -24527,6 +25649,9 @@
       "SprintStanding": {
         "type": "object",
         "properties": {
+          "availableHours": {
+            "type": "number"
+          },
           "committed": {
             "type": "number"
           },
@@ -24544,6 +25669,9 @@
           },
           "issuesDone": {
             "type": "integer"
+          },
+          "nominalHours": {
+            "type": "number"
           },
           "sprint": {
             "$ref": "#/components/schemas/Sprint"
@@ -25069,6 +26197,7 @@
                 "sprints",
                 "plan",
                 "calendar",
+                "resources",
                 "milestones",
                 "releases",
                 "components",
@@ -25097,6 +26226,13 @@
           "name": {
             "type": "string"
           },
+          "planningMethod": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
           "workflowName": {
             "type": "string"
           }
@@ -25107,6 +26243,7 @@
           "description",
           "kind",
           "boardType",
+          "planningMethod",
           "desk",
           "features"
         ]
@@ -25615,8 +26752,22 @@
           "name": {
             "type": "string"
           },
+          "planningMethod": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
           "portalVerifies": {
             "type": "boolean"
+          },
+          "resourceGrouping": {
+            "type": "string",
+            "enum": [
+              "team",
+              "person"
+            ]
           },
           "trustedDomains": {
             "type": "array",
@@ -26007,6 +27158,9 @@
           "message": {
             "type": "string"
           },
+          "person": {
+            "type": "string"
+          },
           "sprint": {
             "type": "string"
           },
@@ -26091,6 +27245,25 @@
           "start",
           "created",
           "resolved"
+        ]
+      },
+      "WeekIssue": {
+        "type": "object",
+        "properties": {
+          "hours": {
+            "type": "number"
+          },
+          "key": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "summary",
+          "hours"
         ]
       },
       "Widget": {
@@ -26300,6 +27473,70 @@
           "kind",
           "type",
           "position"
+        ]
+      },
+      "WorkingWeek": {
+        "type": "object",
+        "properties": {
+          "calendar": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CalendarRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "calendarId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "minutes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "saved": {
+            "type": "boolean"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "calendarId",
+          "calendar",
+          "minutes",
+          "saved"
+        ]
+      },
+      "WorkingWeekRequest": {
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "minutes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "calendarId",
+          "minutes"
         ]
       },
       "WorkloadReport": {

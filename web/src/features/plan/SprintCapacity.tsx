@@ -1,6 +1,6 @@
 import { overBy, type SprintPlan } from "@/api/sprints";
 import { cx } from "@/components/ui";
-import { number } from "./SprintBands";
+import { number, teamHours } from "./SprintBands";
 
 /**
  * What each sprint holds, against what the team said fits.
@@ -27,6 +27,7 @@ export function SprintCapacity({ sprints }: { sprints: SprintPlan[] }) {
 }
 
 function CapacityRow({ plan }: { plan: SprintPlan }) {
+  const hours = teamHours(plan);
   const capacity = plan.sprint.capacity ?? 0;
   const over = overBy(plan) > 0;
   // The bar is drawn against whichever is larger, so an over-committed sprint
@@ -50,6 +51,11 @@ function CapacityRow({ plan }: { plan: SprintPlan }) {
           {plan.unestimated > 0 && `, ${plan.unestimated} unestimated`}
         </span>
       </div>
+      {hours && (
+        <p className="text-xs text-ink-muted" data-sprint-hours={plan.sprint.name}>
+          {hours}
+        </p>
+      )}
 
       <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface-raised">
         <div className="flex h-full">

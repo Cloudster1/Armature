@@ -102,6 +102,7 @@ data:
   ARMATURE_RETAIN_INBOUND_MAIL: "2160h"
   ARMATURE_RETAIN_IMPORT_JOBS: "2160h"
   ARMATURE_RETAIN_AUDIT: "8760h"
+  ARMATURE_RETAIN_ABSENCES: "9600h"
 ---
 # Source: armature/templates/configmap-nginx.yaml
 apiVersion: v1

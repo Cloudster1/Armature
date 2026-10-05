@@ -256,6 +256,12 @@ var Copied = map[string]string{
 	"issue.deleted":                       "issue",
 	"vcs.repository.connected":            "repository",
 	"field.promoted":                      "field",
+	"holiday_calendar.created":            "holiday_calendar",
+	"holiday_calendar.deleted":            "holiday_calendar",
+	"working_week.saved":                  "user",
+	"absence.recorded":                    "user",
+	"absence.changed":                     "user",
+	"absence.removed":                     "user",
 }
 
 // Consumer copies the administrative topics off the stream into the log.

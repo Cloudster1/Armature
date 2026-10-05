@@ -1,6 +1,6 @@
 // Package calendar lays a project's dated things over a month: issues by their
-// start and due dates, sprints, milestones and versions. It stores nothing; a
-// day is read from the same columns the plan and the releases page read.
+// start and due dates, sprints, milestones, versions, holidays and who is away.
+// It stores nothing; a day is read from the same columns the plan reads.
 package calendar
 
 import (
@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/project"
 )
@@ -27,6 +28,8 @@ const (
 	KindSprint    Kind = "sprint"
 	KindMilestone Kind = "milestone"
 	KindVersion   Kind = "version"
+	KindHoliday   Kind = "holiday"
+	KindAbsence   Kind = "absence"
 )
 
 // Item is one thing with a date or a range of dates.
@@ -42,6 +45,11 @@ type Item struct {
 	Category string `json:"category,omitempty"`
 	// Done says a sprint completed, a milestone closed or a version released.
 	Done bool `json:"done,omitempty"`
+	// Calendar names a holiday's calendar when it is not the default, whose
+	// days are everybody's and so are shaded rather than listed.
+	Calendar string `json:"calendar,omitempty"`
+	// HalfDay is a holiday or an absence that takes half of its one day.
+	HalfDay bool `json:"halfDay,omitempty"`
 }
 
 // Month is what the calendar page draws.
@@ -58,11 +66,12 @@ var ErrBadMonth = errors.New("a month is written as YYYY-MM, such as 2026-09")
 
 // Service reads months.
 type Service struct {
-	db *db.Cluster
+	db     *db.Cluster
+	people *availability.Service
 }
 
 func NewService(cluster *db.Cluster) *Service {
-	return &Service{db: cluster}
+	return &Service{db: cluster, people: availability.NewService(cluster)}
 }
 
 // ParseMonth reads YYYY-MM.
@@ -155,8 +164,48 @@ func (s *Service) Month(ctx context.Context, projectKey string, year, month int)
 		}
 		return more.Err()
 	})
+	if err == nil {
+		err = s.daysOff(ctx, key, first, next.AddDate(0, 0, -1), out)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("read calendar month: %w", err)
 	}
 	return out, nil
+}
+
+// daysOff adds the holidays and the absences of the project's people. An
+// absence says who and when, and nothing else, as it does everywhere.
+func (s *Service) daysOff(ctx context.Context, key string, first, last time.Time, out *Month) error {
+	people, err := s.people.ProjectPeople(ctx, key, first, last)
+	if err != nil {
+		return err
+	}
+	ids := people.IDs()
+	holidays, err := s.people.CalendarHolidays(ctx, ids, first, last)
+	if err != nil {
+		return err
+	}
+	for _, h := range holidays {
+		it := Item{Kind: KindHoliday, ID: h.ID, Title: h.Name, From: h.Day, To: h.Day, HalfDay: h.HalfDay}
+		if !h.Default {
+			it.Calendar = h.Calendar.Name
+			it.Title = fmt.Sprintf("%s (%s)", h.Name, h.Calendar.Name)
+		}
+		out.Items = append(out.Items, it)
+	}
+	away, err := s.people.AbsencesOf(ctx, ids, first, last)
+	if err != nil {
+		return err
+	}
+	if len(away) > MaxItems {
+		away, out.Truncated = away[:MaxItems], true
+	}
+	from, to := first.Format(dateLayout), last.Format(dateLayout)
+	for _, a := range away {
+		out.Items = append(out.Items, Item{
+			Kind: KindAbsence, ID: a.ID, Title: a.UserName,
+			From: max(a.StartsOn, from), To: min(a.EndsOn, to), HalfDay: a.HalfDay,
+		})
+	}
+	return nil
 }
