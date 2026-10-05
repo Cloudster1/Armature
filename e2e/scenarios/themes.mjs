@@ -109,7 +109,7 @@ scenario("a new theme starts from the shipped Deep-Tech example", async ({ page 
   await page.click('[data-action="preview-theme"]');
   await page.waitForFunction(() => {
     const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim().toLowerCase();
-    return accent === "#2f6fd6" || accent === "#5cc8ff";
+    return accent === "#1f5fc5" || accent === "#5cc8ff";
   }, { timeout: WAIT });
 
   await clickButton(page, "Save theme");

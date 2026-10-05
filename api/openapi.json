@@ -805,7 +805,7 @@
       },
       "get": {
         "operationId": "me",
-        "summary": "Who is signed in, and which organizations they belong to.",
+        "summary": "Who is signed in, which organizations they belong to, and the token they called with; null for a browser session.",
         "tags": [
           "auth"
         ],
@@ -828,12 +828,23 @@
                     },
                     "principal": {
                       "$ref": "#/components/schemas/Principal"
+                    },
+                    "token": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/APIToken"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "limits",
                     "organizations",
-                    "principal"
+                    "principal",
+                    "token"
                   ]
                 }
               }
@@ -22255,6 +22266,12 @@
           "description": {
             "type": "string"
           },
+          "docsLabel": {
+            "type": "string"
+          },
+          "docsUrl": {
+            "type": "string"
+          },
           "features": {
             "type": "array",
             "items": {
@@ -25571,6 +25588,12 @@
         "type": "object",
         "properties": {
           "description": {
+            "type": "string"
+          },
+          "docsLabel": {
+            "type": "string"
+          },
+          "docsUrl": {
             "type": "string"
           },
           "features": {

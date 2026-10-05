@@ -200,7 +200,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Who is signed in, and which organizations they belong to. */
+        /** Who is signed in, which organizations they belong to, and the token they called with; null for a browser session. */
         get: operations["me"];
         put?: never;
         post?: never;
@@ -5484,6 +5484,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             description: string;
+            docsLabel?: string;
+            docsUrl?: string;
             features: ("board" | "sprints" | "plan" | "calendar" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
             /** Format: uuid */
             id: string;
@@ -6404,6 +6406,8 @@ export interface components {
         };
         UpdateProjectRequest: {
             description?: string;
+            docsLabel?: string;
+            docsUrl?: string;
             features?: string[];
             kind?: string;
             /** Format: uuid */
@@ -7100,6 +7104,7 @@ export interface operations {
                         limits: components["schemas"]["Limits"];
                         organizations: components["schemas"]["Membership"][];
                         principal: components["schemas"]["Principal"];
+                        token: components["schemas"]["APIToken"] | null;
                     };
                 };
             };

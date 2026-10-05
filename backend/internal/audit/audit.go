@@ -229,9 +229,8 @@ func (s *Service) CSV(ctx context.Context, f Filter) ([]byte, error) {
 	return []byte(buf.String()), w.Error()
 }
 
-// Copied is the set of topics the log takes from the stream: the acts that
-// change who may do what and how the organization is shaped. Issue traffic
-// stays in each issue's own history.
+// Copied is the topics the log takes from the stream: who may do what, how the
+// organization is shaped, and a deletion, which takes the issue's history along.
 var Copied = map[string]string{
 	"role.granted":                        "role",
 	"role.revoked":                        "role",
@@ -254,6 +253,7 @@ var Copied = map[string]string{
 	"team.member_removed":                 "team",
 	"version.archived":                    "version",
 	"sla.breached":                        "issue",
+	"issue.deleted":                       "issue",
 	"vcs.repository.connected":            "repository",
 	"field.promoted":                      "field",
 }

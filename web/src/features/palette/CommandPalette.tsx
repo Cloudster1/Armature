@@ -236,7 +236,7 @@ export function CommandPalette({
                 >
                   <Glyph className="shrink-0 text-ink-muted" />
                   <span className="min-w-0 flex-1 truncate">{command.label}</span>
-                  {command.detail && <span className="shrink-0 font-mono text-2xs text-ink-subtle">{command.detail}</span>}
+                  {command.detail && <span className={cx("shrink-0 font-mono text-2xs", index === active ? "text-ink-muted" : "text-ink-subtle")}>{command.detail}</span>}
                 </div>
               </li>
             );

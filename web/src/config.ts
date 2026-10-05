@@ -1,5 +1,8 @@
 /** Tunable values shared across the client. */
 
+/** The longest name a project's documentation link may have; the server holds the same bound. */
+export const DOCS_LABEL_MAX_LENGTH = 60;
+
 /** The largest page the API will serve; asking for more is clamped anyway. */
 export const MAX_PAGE_SIZE = 200;
 

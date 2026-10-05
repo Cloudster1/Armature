@@ -52,6 +52,9 @@ spec:
             - name: ARMATURE_DB_PRIMARY_URL
               value: {{ include "armature.dbURL" (dict "root" . "role" (include "armature.ownerRole" .) "var" "DB_OWNER_PASSWORD" "host" (include "armature.dbHost" .)) | quote }}
             {{- include "armature.redisEnv" . | nindent 12 }}
+            {{- if .Values.s3.enabled }}
+            {{- include "armature.s3SecretEnv" . | nindent 12 }}
+            {{- end }}
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }

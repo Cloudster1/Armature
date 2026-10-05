@@ -16,6 +16,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -99,6 +100,34 @@ func Sign(body []byte, secret string) string {
 // Verify says whether a signature header matches the body.
 func Verify(body []byte, secret, header string) bool {
 	return hmac.Equal([]byte(Sign(body, secret)), []byte(header))
+}
+
+// The headers a delivery is signed in. The timestamped signature also covers
+// when it was sent, so a receiver can refuse one replayed later.
+const (
+	HeaderSignature            = "X-Armature-Signature-256"
+	HeaderTimestamp            = "X-Armature-Timestamp"
+	HeaderTimestampedSignature = "X-Armature-Signature-Timestamped-256"
+)
+
+// SignTimestamped signs "{timestamp}.{body}", the time in Unix seconds as the
+// timestamp header carries it.
+func SignTimestamped(body []byte, secret string, at time.Time) string {
+	return Sign(append([]byte(strconv.FormatInt(at.Unix(), 10)+"."), body...), secret)
+}
+
+// VerifyTimestamped says whether the timestamped signature matches and the time
+// it names is within tolerance of now; a replay outside that window is refused.
+func VerifyTimestamped(body []byte, secret, timestamp, header string, tolerance time.Duration, now time.Time) bool {
+	seconds, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil || strconv.FormatInt(seconds, 10) != timestamp {
+		return false
+	}
+	at := time.Unix(seconds, 0)
+	if drift := now.Sub(at); drift > tolerance || drift < -tolerance {
+		return false
+	}
+	return hmac.Equal([]byte(SignTimestamped(body, secret, at)), []byte(header))
 }
 
 // Service keeps endpoints and deliveries and does the posting.
@@ -580,7 +609,11 @@ func (s *Service) post(ctx context.Context, url, secret, topic string, deliveryI
 	req.Header.Set("User-Agent", "Armature-Webhook")
 	req.Header.Set("X-Armature-Event", topic)
 	req.Header.Set("X-Armature-Delivery", deliveryID.String())
-	req.Header.Set("X-Armature-Signature-256", Sign(body, secret))
+	// Signed as sent, so a retry or a redelivery carries its own time.
+	sent := s.now()
+	req.Header.Set(HeaderSignature, Sign(body, secret))
+	req.Header.Set(HeaderTimestamp, strconv.FormatInt(sent.Unix(), 10))
+	req.Header.Set(HeaderTimestampedSignature, SignTimestamped(body, secret, sent))
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return 0, err

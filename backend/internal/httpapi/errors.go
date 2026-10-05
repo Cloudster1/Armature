@@ -221,6 +221,10 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That person is not a member of this organization.")
 	case errors.Is(err, privacy.ErrNotFound):
 		return ErrNotFound("That person was not found.")
+	case errors.Is(err, project.ErrBadDocsURL):
+		return ErrValidation(map[string]string{"docsUrl": withoutSentinel(err, project.ErrBadDocsURL) + "."})
+	case errors.Is(err, project.ErrBadDocsLabel):
+		return ErrValidation(map[string]string{"docsLabel": withoutSentinel(err, project.ErrBadDocsLabel) + "."})
 	case errors.Is(err, project.ErrBadFeature):
 		return ErrValidation(map[string]string{"features": "Name pages the project has: board, sprints, plan and the rest."})
 	case errors.Is(err, project.ErrFeatureOff):

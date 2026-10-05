@@ -240,10 +240,12 @@ func (n *Notifier) Handle(ctx context.Context, e events.Event) error {
 	switch e.Topic {
 	case events.TopicIssueCreated:
 		var p struct {
-			Key     string    `json:"key"`
-			ActorID uuid.UUID `json:"actorId"`
+			Key      string    `json:"key"`
+			ActorID  uuid.UUID `json:"actorId"`
+			Imported bool      `json:"imported"`
 		}
-		if err := json.Unmarshal(e.Payload, &p); err != nil || p.Key == "" {
+		// A request brought in from a file was raised long ago, elsewhere.
+		if err := json.Unmarshal(e.Payload, &p); err != nil || p.Key == "" || p.Imported {
 			return nil
 		}
 		a, err := n.lookup(ctx, p.Key)

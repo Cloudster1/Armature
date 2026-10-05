@@ -22,11 +22,13 @@ import (
 // Topics are dotted names, coarse enough to subscribe to and specific enough to
 // route on.
 const (
-	TopicOrgCreated          = "org.created"
-	TopicMemberJoined        = "member.joined"
-	TopicIssueCreated        = "issue.created"
-	TopicIssueUpdated        = "issue.updated"
-	TopicIssueTransitioned   = "issue.transitioned"
+	TopicOrgCreated        = "org.created"
+	TopicMemberJoined      = "member.joined"
+	TopicIssueCreated      = "issue.created"
+	TopicIssueUpdated      = "issue.updated"
+	TopicIssueTransitioned = "issue.transitioned"
+	// An issue gone for good, so a copy kept elsewhere can let it go too.
+	TopicIssueDeleted        = "issue.deleted"
 	TopicCommentAdded        = "comment.added"
 	TopicPullRequestLinked   = "vcs.pull_request.linked"
 	TopicCommitLinked        = "vcs.commit.linked"
@@ -49,7 +51,7 @@ const (
 
 // Topics lists every topic, in the order a subscription picker shows them.
 var Topics = []string{
-	TopicOrgCreated, TopicMemberJoined, TopicIssueCreated, TopicIssueUpdated, TopicIssueTransitioned,
+	TopicOrgCreated, TopicMemberJoined, TopicIssueCreated, TopicIssueUpdated, TopicIssueTransitioned, TopicIssueDeleted,
 	TopicCommentAdded, TopicPullRequestLinked, TopicCommitLinked, TopicCIRunRecorded, TopicDeploymentSucceeded,
 	TopicSLABreached, TopicAttachmentAdded, TopicWorkLogged, TopicWatcherAdded,
 	TopicRemoteLinkAdded, TopicRemoteLinkRemoved,

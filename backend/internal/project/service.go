@@ -183,6 +183,7 @@ SELECT p.id, p.key, p.name, p.description, p.kind, p.lead_id,
           JOIN issue_status st ON st.id = i.status_id
          WHERE i.project_id = p.id AND st.category <> 'done'),
        p.created_at, p.updated_at, p.archived_at, p.portal_verifies, p.trusted_domains, p.features,
+       COALESCE(p.docs_url, ''), COALESCE(p.docs_label, ''),
        s.id, s.status, s.note, to_char(s.target_on, 'YYYY-MM-DD'), s.author_id, COALESCE(su.name, ''), s.created_at
 FROM project p
 LEFT JOIN app_user u ON u.id = p.lead_id
@@ -210,6 +211,7 @@ func scanProject(row pgx.Row) (*Project, error) {
 		&p.LeadName, &p.WorkflowSchemeID, &p.Template,
 		&p.IssueCount, &p.OpenIssueCount,
 		&p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt, &p.PortalVerifies, &p.TrustedDomains, &features,
+		&p.DocsURL, &p.DocsLabel,
 		&statusID, &health, &note, &target, &author, &authorName, &postedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -283,6 +285,10 @@ type UpdateInput struct {
 	PortalVerifies *bool
 	TrustedDomains *[]string
 	Features       *[]string
+	// DocsURL and DocsLabel replace the documentation link together; an empty
+	// address clears it. Either absent keeps what the project has.
+	DocsURL   *string
+	DocsLabel *string
 }
 
 // Update changes a project's details. The key is deliberately not changeable:
@@ -383,6 +389,32 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput) (*Proj
 			}
 			if tag.RowsAffected() == 0 {
 				return ErrNotADesk
+			}
+		}
+
+		if in.DocsURL != nil || in.DocsLabel != nil {
+			var current Project
+			if err := tx.QueryRow(ctx, `SELECT COALESCE(docs_url, ''), COALESCE(docs_label, '') FROM project WHERE id = $1`, id).
+				Scan(&current.DocsURL, &current.DocsLabel); err != nil {
+				return err
+			}
+			rawURL, rawLabel := current.DocsURL, current.DocsLabel
+			if in.DocsURL != nil {
+				rawURL = *in.DocsURL
+				// A new address does not keep the old one's name unless it is given again.
+				if in.DocsLabel == nil {
+					rawLabel = ""
+				}
+			}
+			if in.DocsLabel != nil {
+				rawLabel = *in.DocsLabel
+			}
+			docsURL, label, err := NormalizeDocsLink(rawURL, rawLabel)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `UPDATE project SET docs_url = $2, docs_label = $3 WHERE id = $1`, id, docsURL, label); err != nil {
+				return err
 			}
 		}
 
