@@ -461,6 +461,30 @@ step into an in-progress status, because the question is how long work takes
 once somebody is on it, and the resolution histogram from creation, because the
 question is how long the asker waited.
 
+### Holidays are named calendars a person is given, and a week is minutes per weekday
+
+A team spread over several countries does not share its days off, so one list
+per organization would be wrong for half of it. A calendar is named, a person is
+given one, and whoever has not been given one keeps the organization's default,
+which every organization is made with and which cannot be deleted while it is
+the default. A day off is a date rather than an instant, so no time zone moves
+it, and a half day halves what the person would have worked.
+
+The week is minutes per weekday rather than a flag per day, because part-time is
+the common case and a flag cannot say "mornings on Wednesday". Minutes because
+worklogs and estimates are already minutes. Somebody with no week set works the
+standard one, eight hours Monday to Friday, so nothing has to be filled in before
+planning can read it; a portal customer has none, and a trigger says so too.
+
+An .ics import takes all-day events and refuses a recurring one rather than
+expanding the rule: RRULE is a language of its own, and a wrong guess about a
+moving feast is a day off in the wrong week that nobody notices. Calendar
+applications export the days written out, and the refusal says to do that.
+
+This is not the service desk's business calendar, which says when a desk is
+open for its clocks and answers a different question. A desk could later point
+its calendar at a holiday calendar instead of keeping a list of its own.
+
 ## Projects, git and the service desk
 
 ### Templates are code, not rows

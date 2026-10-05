@@ -44,6 +44,7 @@ import { repositoriesRoute } from "./repositories";
 import { fieldsRoute } from "./fields";
 import { issueArrangementRoute } from "./issue-arrangement";
 import { labelsRoute } from "./labels";
+import { holidaysRoute } from "./holidays";
 import { usersRoute } from "./users";
 import { themesRoute } from "./themes";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
@@ -110,6 +111,7 @@ const routeTree = rootRoute.addChildren([
     accessRoute,
     organizationRoute,
     labelsRoute,
+    holidaysRoute,
     usersRoute,
     themesRoute,
     themeNewRoute,

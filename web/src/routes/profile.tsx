@@ -8,6 +8,8 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Icon } from "@/components/icons";
 import { AVATAR_MAX_BYTES } from "@/config";
 import { makeFormat } from "@/lib/format";
+import { useWorkingWeek } from "@/api/availability";
+import { WorkingWeekTable } from "@/features/availability/WorkingWeek";
 
 /** Also reachable as /me, which is where a person guesses their own page is. */
 export const profileRoute = createRoute({
@@ -150,6 +152,8 @@ function ProfilePage() {
 
       <NotificationSettings />
 
+      <YourWeek userId={user.id} />
+
       <section className="mt-8">
         <SectionTitle className="mb-2">Organizations</SectionTitle>
         <Card className="divide-y divide-border">
@@ -164,6 +168,22 @@ function ProfilePage() {
 
       <YourData name={user.name} />
     </Page>
+  );
+}
+
+// Read only: the week is set by an administrator, who decides what the
+// organization plans with. A portal customer has none, and sees nothing here.
+function YourWeek({ userId }: { userId: string }) {
+  const { data } = useWorkingWeek(userId);
+  if (!data) return null;
+  return (
+    <section className="mt-8">
+      <SectionTitle className="mb-2">Working week</SectionTitle>
+      <Card className="space-y-3 p-5">
+        <WorkingWeekTable week={data.week} />
+        <p className="text-sm text-ink-subtle">An administrator sets your hours and calendar under Users.</p>
+      </Card>
+    </section>
   );
 }
 

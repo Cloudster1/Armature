@@ -31,6 +31,9 @@
       "name": "automation"
     },
     {
+      "name": "availability"
+    },
+    {
       "name": "boards"
     },
     {
@@ -4144,6 +4147,369 @@
                   },
                   "required": [
                     "status"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holiday-calendars": {
+      "get": {
+        "operationId": "listHolidayCalendars",
+        "summary": "The organization's holiday calendars, the default first.",
+        "tags": [
+          "availability"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendars": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HolidayCalendar"
+                      }
+                    }
+                  },
+                  "required": [
+                    "calendars"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createHolidayCalendar",
+        "summary": "Make a holiday calendar; the first one, or one sent with default true, becomes the default.",
+        "tags": [
+          "availability"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayCalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    }
+                  },
+                  "required": [
+                    "calendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holiday-calendars/{calendarID}": {
+      "delete": {
+        "operationId": "deleteHolidayCalendar",
+        "summary": "Delete a calendar that is not the default; the people given it fall back to the default.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getHolidayCalendar",
+        "summary": "One holiday calendar with its days.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    }
+                  },
+                  "required": [
+                    "calendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateHolidayCalendar",
+        "summary": "Rename a calendar, or make it the default.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayCalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    }
+                  },
+                  "required": [
+                    "calendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holiday-calendars/{calendarID}/days": {
+      "put": {
+        "operationId": "setHolidays",
+        "summary": "Make the calendar hold exactly these days.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayDaysRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    }
+                  },
+                  "required": [
+                    "calendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holiday-calendars/{calendarID}/import": {
+      "post": {
+        "operationId": "importHolidays",
+        "summary": "Add the all-day events of an .ics file, sent as a multipart part named file; a day already there takes the file's name.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendar": {
+                      "$ref": "#/components/schemas/HolidayCalendar"
+                    },
+                    "imported": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "calendar",
+                    "imported"
                   ]
                 }
               }
@@ -15254,6 +15620,114 @@
         }
       }
     },
+    "/users/{userID}/schedule": {
+      "get": {
+        "operationId": "getWorkingWeek",
+        "summary": "A person's working week and calendar: their own for anybody, anybody's for an administrator.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "week": {
+                      "$ref": "#/components/schemas/WorkingWeek"
+                    }
+                  },
+                  "required": [
+                    "week"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setWorkingWeek",
+        "summary": "Set a person's working week and calendar.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkingWeekRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "week": {
+                      "$ref": "#/components/schemas/WorkingWeek"
+                    }
+                  },
+                  "required": [
+                    "week"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/versions/{versionID}": {
       "delete": {
         "operationId": "deleteVersion",
@@ -17936,6 +18410,22 @@
           "to"
         ]
       },
+      "CalendarRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
       "CannedInput": {
         "type": "object",
         "properties": {
@@ -20100,6 +20590,104 @@
           "issueId",
           "changes",
           "createdAt"
+        ]
+      },
+      "Holiday": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string"
+          },
+          "halfDay": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "day",
+          "name",
+          "halfDay"
+        ]
+      },
+      "HolidayCalendar": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dayCount": {
+            "type": "integer"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            }
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "peopleCount": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "default",
+          "dayCount",
+          "peopleCount",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "HolidayCalendarRequest": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "default"
+        ]
+      },
+      "HolidayDaysRequest": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            }
+          }
+        },
+        "required": [
+          "days"
         ]
       },
       "Icon": {
@@ -26300,6 +26888,70 @@
           "kind",
           "type",
           "position"
+        ]
+      },
+      "WorkingWeek": {
+        "type": "object",
+        "properties": {
+          "calendar": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CalendarRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "calendarId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "minutes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "saved": {
+            "type": "boolean"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "calendarId",
+          "calendar",
+          "minutes",
+          "saved"
+        ]
+      },
+      "WorkingWeekRequest": {
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "minutes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "calendarId",
+          "minutes"
         ]
       },
       "WorkloadReport": {

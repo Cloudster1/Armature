@@ -88,6 +88,7 @@ type Export struct {
 	Notifications []Notification `json:"notifications"`
 	SavedFilters  []SavedFilter  `json:"savedFilters"`
 	AuditActions  []AuditAction  `json:"auditActions"`
+	WorkingHours  []WorkingHours `json:"workingHours"`
 }
 
 type Profile struct {
@@ -154,6 +155,14 @@ type SavedFilter struct {
 	Name   string `json:"name"`
 	Query  string `json:"query"`
 	Shared bool   `json:"shared"`
+}
+
+// WorkingHours is the week an organization set for the person, and the
+// holiday calendar it gave them; none named is the organization's default.
+type WorkingHours struct {
+	Organization string         `json:"organization"`
+	Calendar     string         `json:"calendar,omitempty"`
+	Minutes      map[string]int `json:"minutes"`
 }
 
 type AuditAction struct {
@@ -264,6 +273,18 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 				err := row.Scan(&x.At, &x.Action, &x.TargetType, &x.TargetID)
 				return x, err
 			})
+		if err != nil {
+			return err
+		}
+		out.WorkingHours, err = collect(ctx, tx, `
+			SELECT o.name, COALESCE(c.name, ''), s.minutes FROM member_schedule s
+			JOIN org o ON o.id = s.org_id LEFT JOIN holiday_calendar c ON c.id = s.calendar_id
+			WHERE s.user_id = $1 ORDER BY o.name`, userID,
+			func(row pgx.Rows) (WorkingHours, error) {
+				var x WorkingHours
+				err := row.Scan(&x.Organization, &x.Calendar, &x.Minutes)
+				return x, err
+			})
 		return err
 	})
 	if err != nil {
@@ -358,6 +379,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM role_assignment WHERE user_id = $1`,
 			`DELETE FROM group_member WHERE user_id = $1`,
 			`DELETE FROM team_member WHERE user_id = $1`,
+			`DELETE FROM member_schedule WHERE user_id = $1`,
 			`DELETE FROM org_member WHERE user_id = $1`,
 		} {
 			if _, err := tx.Exec(ctx, q, userID); err != nil {
@@ -435,6 +457,7 @@ func (s *Service) RemoveMember(ctx context.Context, orgID, userID, actor uuid.UU
 			`DELETE FROM role_assignment WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM group_member WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM team_member WHERE org_id = $1 AND user_id = $2`,
+			`DELETE FROM member_schedule WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM notification WHERE org_id = $1 AND user_id = $2`,
 			// What would keep telling them about work here once they are gone.
 			`DELETE FROM saved_filter_subscription WHERE org_id = $1 AND user_id = $2`,

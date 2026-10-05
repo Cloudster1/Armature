@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Holiday calendars and working weeks: an organization keeps named calendars of
+  days off, typed in or imported from an .ics file, and an administrator gives
+  each person a calendar and their hours per weekday (#28).
 - The application is versioned: `VERSION` names the release, `make release`
   cuts one, and a build past a tag says how far past it is (#27).
 - Everything before this point: projects and issues, workflows, roles,
