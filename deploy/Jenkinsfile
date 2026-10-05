@@ -5,8 +5,9 @@
 // find it already compiled.
 //
 // The parameters name the repository to clone, the branch or tag to build, and
-// where to push. A tag that looks like a release becomes the image tag; every
-// other build is pushed as latest.
+// where to push. A release tag v1.2.3 pushes the images as 1.2.3, the chart's
+// appVersion; any other build is pushed as <branch>-<build number>, so a
+// branch never replaces what a release or another branch pushed.
 
 def kanikoPod = '''
 kind: Pod
@@ -41,6 +42,7 @@ def buildImage(Map img) {
       --registry-mirror ${params.REGISTRY_MIRROR} \
       --build-arg http_proxy=${env.INTERNET_PROXY} \
       --build-arg https_proxy=${env.INTERNET_PROXY} \
+      ${env.VERSION_ARG} \
       --verbosity info \
       --destination ${params.DESTINATION_REPOSITORY}/${params.IMAGE_NAME}/${img.name}:${env.IMAGE_TAG}
   """
@@ -82,7 +84,7 @@ pipeline {
     string(name: 'REGISTRY_HOST', defaultValue: 'registry.example.com', description: 'the registry the login is for')
     string(name: 'REGISTRY_MIRROR', defaultValue: 'registry.example.com/cache', description: 'a pull-through cache for the base images')
     string(name: 'REGISTRY_CREDENTIALS', defaultValue: 'registry-robot', description: 'the Jenkins credential holding the registry login')
-    string(name: 'TAG_REGEX', defaultValue: '^v\\d+\\.\\d+\\.\\d+$', description: 'a branch matching this is a release and tags the images with its name')
+    string(name: 'TAG_REGEX', defaultValue: '^v\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$', description: 'a branch matching this is a release and tags the images with its version, without the v')
   }
 
   environment {
@@ -96,7 +98,15 @@ pipeline {
       agent any
       steps {
         script {
-          env.IMAGE_TAG = (params.GIT_BRANCH =~ params.TAG_REGEX) ? params.GIT_BRANCH : 'latest'
+          // A release names its version outright; any other build leaves the
+          // Dockerfile to read it from the clone, which ends in +dev.
+          if (params.GIT_BRANCH =~ params.TAG_REGEX) {
+            env.IMAGE_TAG = params.GIT_BRANCH.substring(1)
+            env.VERSION_ARG = "--build-arg VERSION=${env.IMAGE_TAG}"
+          } else {
+            env.IMAGE_TAG = "${params.GIT_BRANCH.replaceAll('[^0-9A-Za-z_.-]', '-')}-${env.BUILD_NUMBER}"
+            env.VERSION_ARG = ''
+          }
         }
       }
     }

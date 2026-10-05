@@ -13,8 +13,9 @@ agile planning, bidirectional git and CI integration, and a service desk.
 ![Armature](docs/ui-home.png)
 
 Go API and worker, React SPA, PostgreSQL with read replicas, multi-tenant from
-the first table. Pre-1.0 and unreleased: it runs, it is tested four ways, and
-nothing is tagged yet.
+the first table. Pre-1.0: it runs, it is tested four ways, and releases are
+tagged by [semantic version](#releasing) with what changed in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 This file is how to run it, test it and operate it. What it does is summarised
 below and argued in [`docs/decisions.md`](docs/decisions.md); the whole product
@@ -400,7 +401,33 @@ import changes, so a commit compiles Armature's own packages and nothing else.
 three pods side by side and pushes them to a registry, with the flags that
 keep kaniko quick: `--snapshot-mode=redo`, `--skip-unused-stages` and a layer
 cache in the registry. Point its parameters at your repository, registry and
-proxy.
+proxy. A release tag `v1.2.3` pushes the images as `1.2.3`, which is the
+chart's `appVersion`, so a chart of a release pulls exactly its images; any
+other build is pushed as `<branch>-<build number>` and never replaces them.
+
+## Releasing
+
+`VERSION` holds the release the tree is, as semver. While it is below 1.0 a
+minor version may break things and a patch does not.
+
+```sh
+git switch main && git pull
+# write what changed under "## Unreleased" in CHANGELOG.md, in the branches
+# that change it, so that this step only moves it
+make release VERSION=0.2.0
+git push origin main v0.2.0
+```
+
+`make release` refuses unless it is on a clean `main`, the version is newer
+than the last tag and the changelog says something. It writes the version
+into `VERSION`, `web/package.json` and its lockfile and the chart, moves the
+changelog's Unreleased section under the new version, renders the chart's
+golden files, and merges that as a `release/x.y.z` branch with a tag `vx.y.z`
+on the merge. It does not push.
+
+A build reports what it is at `GET /api/v1/build` and at the foot of the
+sidebar: `0.2.0` on the tag, `0.2.0+3.g1a2b3c4` three commits past it, and
+`0.2.0+dev` when no tag is in reach, as in a shallow clone of a branch.
 
 ## Build notes
 

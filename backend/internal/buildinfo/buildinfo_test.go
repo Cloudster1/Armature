@@ -13,3 +13,10 @@ func TestCurrentPrefersTheLinkerAndNeverLeavesVersionEmpty(t *testing.T) {
 		t.Fatalf("linker values were not kept: %+v", got)
 	}
 }
+
+func TestATagReadsAsTheVersionWithoutItsPrefix(t *testing.T) {
+	Version, Commit, BuiltAt = "v0.2.0", "", ""
+	if got := Current().Version; got != "0.2.0" {
+		t.Fatalf("the v of a tag should not reach the version, got %q", got)
+	}
+}
