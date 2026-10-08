@@ -279,7 +279,8 @@ func (s *Service) Import(ctx context.Context, id uuid.UUID, file io.Reader, acto
 	return out, len(days), lsn, nil
 }
 
-// putDays writes days onto a calendar, a day already there taking the new name.
+// putDays writes days onto a calendar. A day already there takes only the new
+// name: a file has no half days, so it must not undo the one somebody set.
 func putDays(ctx context.Context, tx db.DBTX, calendarID uuid.UUID, days []Holiday) error {
 	if len(days) == 0 {
 		return nil
@@ -294,7 +295,7 @@ func putDays(ctx context.Context, tx db.DBTX, calendarID uuid.UUID, days []Holid
 		INSERT INTO holiday (org_id, calendar_id, day, name, half_day)
 		SELECT current_org_id(), $1, d.day::date, d.name, d.half_day
 		FROM unnest($2::text[], $3::text[], $4::boolean[]) AS d(day, name, half_day)
-		ON CONFLICT (calendar_id, day) DO UPDATE SET name = EXCLUDED.name, half_day = EXCLUDED.half_day`,
+		ON CONFLICT (calendar_id, day) DO UPDATE SET name = EXCLUDED.name`,
 		calendarID, dates, names, halves)
 	if err != nil {
 		return fmt.Errorf("write holidays: %w", err)
