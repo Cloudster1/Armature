@@ -215,15 +215,9 @@ func resourceRows(in ResourceInput, issues []issue.Issue, weeks []time.Time) ([]
 	}
 
 	if in.Grouping == project.GroupByPerson {
-		names := map[uuid.UUID]string{}
-		for id, name := range in.People {
-			names[id] = name
-		}
-		for _, i := range issues {
-			if i.Assignee != nil && names[i.Assignee.ID] == "" {
-				names[i.Assignee.ID] = i.Assignee.Name
-			}
-		}
+		// People are who works here now. Work assigned to anybody else, such as
+		// somebody who has left, is nobody's and falls to the unassigned row.
+		names := in.People
 		ids := make([]uuid.UUID, 0, len(names))
 		for id := range names {
 			ids = append(ids, id)

@@ -62,16 +62,23 @@ func (s *Service) resourcePeople(ctx context.Context, projectKey string, in *Res
 	ids := people.IDs()
 	for _, i := range in.Issues {
 		if i.Assignee != nil {
-			if _, known := people.Names[i.Assignee.ID]; !known {
-				ids = append(ids, i.Assignee.ID)
-			}
+			ids = append(ids, i.Assignee.ID)
 		}
 	}
-	days, err := s.people.ForPeople(ctx, uniqueIDs(ids), reach, until)
+	// An assignee who has left keeps their issues but has no week here.
+	members, err := s.people.Members(ctx, uniqueIDs(ids))
 	if err != nil {
 		return err
 	}
-	in.People, in.Work = people.Names, NewWorkdays(holidays, people.Teams, days)
+	ids = ids[:0]
+	for id := range members {
+		ids = append(ids, id)
+	}
+	days, err := s.people.ForPeople(ctx, ids, reach, until)
+	if err != nil {
+		return err
+	}
+	in.People, in.Work = members, NewWorkdays(holidays, people.Teams, days)
 	return nil
 }
 

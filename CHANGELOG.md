@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: somebody who has left the organization no longer shows on the
+  Resources page with a full week free; work still assigned to them is counted
+  as nobody's, and the project calendar no longer counts them among its people
+  (#42).
 - Resource planning: a Resources page sets each week's scheduled hours against
   the hours left after holidays and absences, per team, or per person in a
   kanban project, hatches the days off, lists a week's issues on a click and the
