@@ -163,7 +163,11 @@ func ReadResources(in ResourceInput) ResourcePlan {
 			parents[*i.ParentID] = true
 		}
 	}
+	covered := coveredByAncestor(issues, rowOf)
 	for _, i := range issues {
+		if covered[i.ID] {
+			continue
+		}
 		hours := hoursOf(i)
 		scheduled := i.StartDate != nil && i.DueDate != nil
 		switch {
@@ -260,6 +264,34 @@ func resourceRows(in ResourceInput, issues []issue.Issue, weeks []time.Time) ([]
 		return unassigned
 	}
 	return rows, rowOf
+}
+
+// coveredByAncestor finds the issues whose work an open ancestor in the same
+// row already states in hours, so that estimating a story and its subtasks both
+// does not count the work twice.
+func coveredByAncestor(issues []issue.Issue, rowOf func(issue.Issue) int) map[uuid.UUID]bool {
+	byID := make(map[uuid.UUID]issue.Issue, len(issues))
+	for _, i := range issues {
+		byID[i.ID] = i
+	}
+	out := map[uuid.UUID]bool{}
+	for _, i := range issues {
+		row := rowOf(i)
+		seen := map[uuid.UUID]bool{i.ID: true}
+		for at := i.ParentID; at != nil && !seen[*at]; {
+			parent, open := byID[*at]
+			if !open {
+				break
+			}
+			if hoursOf(parent) != nil && rowOf(parent) == row {
+				out[i.ID] = true
+				break
+			}
+			seen[*at] = true
+			at = parent.ParentID
+		}
+	}
+	return out
 }
 
 // hoursOfWeek fills a week's hours from the time of the people in its row.

@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: the Resources page counts work once per row, at the highest open level
+  that carries hours, so a story and its subtasks are no longer booked twice
+  (#41).
 - Resource planning: a Resources page sets each week's scheduled hours against
   the hours left after holidays and absences, per team, or per person in a
   kanban project, hatches the days off, lists a week's issues on a click and the

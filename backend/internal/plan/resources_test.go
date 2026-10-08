@@ -170,6 +170,63 @@ func TestUnscheduledAndUnestimatedWorkIsListedNotGuessed(t *testing.T) {
 	}
 }
 
+func TestWorkIsCountedOnceAtTheLevelThatCarriesItsHours(t *testing.T) {
+	alpha, beta := uuid.New(), uuid.New()
+	onTeam := func(i issue.Issue, team uuid.UUID, parent *issue.Issue) issue.Issue {
+		i.TeamID = &team
+		if parent != nil {
+			i.ParentID = &parent.ID
+		}
+		return i
+	}
+	in := fortnight
+	in.Grouping = project.GroupByTeam
+	in.Teams = []team.Team{{ID: alpha, Name: "Alpha"}, {ID: beta, Name: "Beta"}}
+
+	// A story sized at 16 h speaks for its subtasks: their 8 h each are inside it.
+	story := onTeam(work("PR-1", minutesIn(16), "2026-09-07", "2026-09-11"), alpha, nil)
+	in.Issues = []issue.Issue{
+		story,
+		onTeam(work("PR-2", minutesIn(8), "2026-09-07", "2026-09-08"), alpha, &story),
+		onTeam(work("PR-3", minutesIn(8), "2026-09-09", "2026-09-11"), alpha, &story),
+		// A subtask nobody sized is not missing an estimate when its story has one.
+		onTeam(work("PR-4", nil, "", ""), alpha, &story),
+		// Handed to another team, a subtask is that team's own work.
+		onTeam(work("PR-5", minutesIn(4), "2026-09-07", "2026-09-07"), beta, &story),
+	}
+	got := ReadResources(in)
+	if a := resourceRowNamed(t, got, "Alpha").Weeks[0]; a.LoadHours != 16 || len(a.Issues) != 1 || a.Issues[0].Key != "PR-1" {
+		t.Errorf("Alpha's week = %+v, want the story's 16 h and not its subtasks' again", a)
+	}
+	if b := resourceRowNamed(t, got, "Beta").Weeks[0]; b.LoadHours != 4 {
+		t.Errorf("Beta's week = %+v, want the 4 h of the subtask handed to it", b)
+	}
+	if len(got.Unestimated) != 0 {
+		t.Errorf("unestimated = %+v, want nothing: the story carries its subtasks", got.Unestimated)
+	}
+
+	// A story nobody sized is the sum of its subtasks.
+	unsized := onTeam(work("PR-6", nil, "2026-09-07", "2026-09-11"), alpha, nil)
+	in.Issues = []issue.Issue{
+		unsized,
+		onTeam(work("PR-7", minutesIn(8), "2026-09-07", "2026-09-08"), alpha, &unsized),
+		onTeam(work("PR-8", minutesIn(8), "2026-09-09", "2026-09-11"), alpha, &unsized),
+	}
+	got = ReadResources(in)
+	if a := resourceRowNamed(t, got, "Alpha").Weeks[0]; a.LoadHours != 16 || len(a.Issues) != 2 {
+		t.Errorf("Alpha's week = %+v, want the two subtasks' 16 h", a)
+	}
+
+	// A story with hours but no dates is listed with them, and its dated
+	// subtasks are not counted a second time in the grid.
+	undated := onTeam(work("PR-9", minutesIn(10), "", ""), alpha, nil)
+	in.Issues = []issue.Issue{undated, onTeam(work("PR-10", minutesIn(6), "2026-09-07", "2026-09-07"), alpha, &undated)}
+	got = ReadResources(in)
+	if a := resourceRowNamed(t, got, "Alpha").Weeks[0]; a.LoadHours != 0 || len(got.Unscheduled) != 1 || got.Unscheduled[0].Key != "PR-9" {
+		t.Errorf("Alpha's week = %+v, unscheduled = %+v; want the 10 h listed once, on the story", a, got.Unscheduled)
+	}
+}
+
 func TestATeamWithNobodyIsOverWithAnyWork(t *testing.T) {
 	nobody := uuid.New()
 	busy := work("PR-1", minutesIn(8), "2026-09-07", "2026-09-07")
