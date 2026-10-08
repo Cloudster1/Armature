@@ -121,6 +121,9 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor 
 		}
 
 		if in.DueDate != nil {
+			if err := CheckDates(before.StartDate, *in.DueDate); err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `UPDATE issue SET due_date = $2 WHERE id = $1`, before.ID, *in.DueDate); err != nil {
 				return err
 			}

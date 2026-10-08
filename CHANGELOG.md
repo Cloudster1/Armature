@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: one issue dated far in the future no longer makes every plan read
+  that far: the load is read over at most ten years, and issue dates
+  outside 1900 to 2199 are refused with a sentence, also by the database (#40).
 - Resource planning: a Resources page sets each week's scheduled hours against
   the hours left after holidays and absences, per team, or per person in a
   kanban project, hatches the days off, lists a week's issues on a click and the

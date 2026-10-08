@@ -256,6 +256,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actor Actor) (*Iss
 	if err != nil {
 		return nil, 0, err
 	}
+	if err := CheckDates(in.StartDate, in.DueDate); err != nil {
+		return nil, 0, err
+	}
 	in.Description = description
 
 	var created *Issue
