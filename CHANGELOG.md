@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Share of the week: a project administrator sets how much of each person's
+  week the project has, and the Resources page counts their hours at it, per
+  person and inside their team; a person given more than a whole week across
+  projects is warned about, never refused (#43).
 - Resource planning: a Resources page sets each week's scheduled hours against
   the hours left after holidays and absences, per team, or per person in a
   kanban project, hatches the days off, lists a week's issues on a click and the

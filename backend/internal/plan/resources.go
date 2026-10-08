@@ -39,10 +39,13 @@ const RowPerson = "person"
 
 // ResourceRow is one team or person, or the work nobody carries, across the weeks.
 type ResourceRow struct {
-	Kind  string         `json:"kind"`
-	ID    *uuid.UUID     `json:"id,omitempty"`
-	Name  string         `json:"name"`
-	Weeks []ResourceWeek `json:"weeks"`
+	Kind string     `json:"kind"`
+	ID   *uuid.UUID `json:"id,omitempty"`
+	Name string     `json:"name"`
+	// SharePercent is the part of a person's week the project has, when that
+	// is less than all of it; their hours are already counted at it.
+	SharePercent *int           `json:"sharePercent,omitempty"`
+	Weeks        []ResourceWeek `json:"weeks"`
 }
 
 // ResourceWeek is one row's week: the hours scheduled into it against the
@@ -137,6 +140,9 @@ type ResourceInput struct {
 	// People are who the person rows are for, by name.
 	People map[uuid.UUID]string
 	Work   Workdays
+	// Shares are the percent of a person's week the project has; anybody
+	// missing gives it all of their week.
+	Shares map[uuid.UUID]int
 }
 
 // resourceRow is a row being filled, with the days its work is spread onto.
@@ -205,7 +211,7 @@ func resourceRows(in ResourceInput, issues []issue.Issue, weeks []time.Time) ([]
 		for w, start := range weeks {
 			row.Weeks[w] = ResourceWeek{Start: start, Issues: []WeekIssue{}}
 			if id != nil {
-				hoursOfWeek(&row.Weeks[w], in.Work.peopleTime(people, start, start.AddDate(0, 0, daysPerWeek-1)))
+				hoursOfWeek(&row.Weeks[w], in.Work.sharedTime(people, in.Shares, start, start.AddDate(0, 0, daysPerWeek-1)))
 			}
 		}
 		if id != nil {
@@ -234,6 +240,9 @@ func resourceRows(in ResourceInput, issues []issue.Issue, weeks []time.Time) ([]
 		})
 		for _, id := range ids {
 			add(&id, RowPerson, names[id], []uuid.UUID{id}, func(d time.Time) bool { return in.Work.personWorks(id, d) })
+			if share, set := in.Shares[id]; set && share < availability.FullShare {
+				rows[len(rows)-1].SharePercent = &share
+			}
 		}
 	} else {
 		for _, t := range in.Teams {

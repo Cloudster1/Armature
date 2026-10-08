@@ -124,6 +124,27 @@ func (w Workdays) peopleTime(people []uuid.UUID, from, to time.Time) teamTime {
 	return out
 }
 
+// sharedTime is peopleTime with each person's minutes counted at the share of
+// their week the project has. Days away and holidays are counted whole: they
+// say why a week is short, not how many hours it holds.
+func (w Workdays) sharedTime(people []uuid.UUID, shares map[uuid.UUID]int, from, to time.Time) teamTime {
+	out := w.peopleTime(people, from, to)
+	if len(shares) == 0 {
+		return out
+	}
+	out.available, out.nominal = 0, 0
+	for _, m := range people {
+		share, set := shares[m]
+		if !set {
+			share = availability.FullShare
+		}
+		t := w.peopleTime([]uuid.UUID{m}, from, to)
+		out.available += t.available * share / availability.FullShare
+		out.nominal += t.nominal * share / availability.FullShare
+	}
+	return out
+}
+
 // scaled is a capacity shrunk by the share of the team's time that is left.
 // A team with nobody, or nobody due to work, keeps what it said.
 func (t teamTime) scaled(capacity float64) float64 {
