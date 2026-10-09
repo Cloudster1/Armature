@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: Themes has an icon of its own, a palette, instead of the sun the
+  light mode wears, in the sidebar, the settings page and the command palette
+  (#122).
 - Resource planning: a Resources page sets each week's scheduled hours against
   the hours left after holidays and absences, per team, or per person in a
   kanban project, hatches the days off, lists a week's issues on a click and the

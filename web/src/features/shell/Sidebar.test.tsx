@@ -53,6 +53,13 @@ describe("the shell's chrome", () => {
     expect(JSON.parse(localStorage.getItem("armature.sidebar-groups") ?? "{}")).toEqual({ settings: false });
   });
 
+  it("draws Themes with a glyph of its own, not one the light and dark switch wears", () => {
+    render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
+    const glyph = document.querySelector('a[href="/settings/themes"] svg')?.getAttribute("data-icon");
+    expect(glyph).toBe("palette");
+    expect(["sun", "moon", "monitor"]).not.toContain(glyph);
+  });
+
   it("keeps every pressed control exactly once in either mode", () => {
     const { unmount } = render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     for (const action of ["sidebar", "sign-out", "theme", "guide", "inbox", "new-issue", "profile"]) {
