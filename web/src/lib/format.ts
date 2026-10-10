@@ -56,10 +56,15 @@ export function makeFormat(locale: string, timezone: string): Format {
   };
 }
 
+/** The browser's language, for whoever has not chosen one in their profile. */
+export function browserLocale(): string {
+  return navigator.language;
+}
+
 /** The reader's formatting, from their profile; before it loads, the browser's. */
 export function useFormat(): Format {
   const { data } = useMe();
-  const locale = data?.principal?.user.locale || navigator.language;
+  const locale = data?.principal?.user.locale || browserLocale();
   const timezone = data?.principal?.user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   return useMemo(() => makeFormat(locale, timezone), [locale, timezone]);
 }

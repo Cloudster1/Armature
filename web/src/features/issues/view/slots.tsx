@@ -3,7 +3,7 @@ import type { Placement, Slot } from "@/api/arrange";
 import { PRIORITIES, type Issue, type Priority, useUpdateIssue } from "@/api/issues";
 import { useTimers } from "@/api/desk";
 import { SelectInput } from "@/components/ui";
-import { PriorityBadge, relativeTime } from "../badges";
+import { PriorityBadge, RelativeTime } from "../badges";
 import { ParentPicker } from "../hierarchy";
 import { AssigneeField, ReporterField } from "../PeopleFields";
 import { ScheduleField } from "@/features/plan/ScheduleField";
@@ -109,13 +109,13 @@ export const slotViews: Record<Slot, (props: SlotProps) => ReactNode> = {
   otherFields: ({ issue, editable, named }) => <IssueFields issueKey={issue.key} editable={editable} except={named} />,
   created: ({ issue }) => (
     <Detail label="Created">
-      <span className="text-ink-muted">{relativeTime(issue.createdAt)}</span>
+      <span className="text-ink-muted"><RelativeTime iso={issue.createdAt} /></span>
     </Detail>
   ),
   resolved: ({ issue }) =>
     issue.resolvedAt ? (
       <Detail label="Resolved">
-        <span className="text-ink-muted">{relativeTime(issue.resolvedAt)}</span>
+        <span className="text-ink-muted"><RelativeTime iso={issue.resolvedAt} /></span>
       </Detail>
     ) : null,
 };

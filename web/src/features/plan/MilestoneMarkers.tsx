@@ -3,6 +3,7 @@ import { describeProgress, formatDay, isOverdue, type Milestone } from "@/api/mi
 import { cx } from "@/components/ui";
 import { PLAN_MILESTONE_BAND_HEIGHT } from "@/config";
 import { ProgressBar } from "@/features/milestones/ProgressBar";
+import { useFormat } from "@/lib/format";
 import { flagSide, labelledFlags } from "./layout";
 import { markersFor } from "./markers";
 import type { Scale } from "./scale";
@@ -70,6 +71,7 @@ export function MilestoneLines({ scale, milestones }: { scale: Scale; milestones
 
 /** How far along each milestone is, dated or not. */
 export function MilestoneProgress({ projectKey, milestones }: { projectKey: string; milestones: Milestone[] }) {
+  const { locale } = useFormat();
   if (milestones.length === 0) return null;
   return (
     <section>
@@ -86,7 +88,7 @@ export function MilestoneProgress({ projectKey, milestones }: { projectKey: stri
               <span className="font-medium text-ink">
                 {milestone.name}
                 {milestone.dueOn && (
-                  <span className="ml-2 text-xs font-normal text-ink-muted">due {formatDay(milestone.dueOn)}</span>
+                  <span className="ml-2 text-xs font-normal text-ink-muted">due {formatDay(milestone.dueOn, locale)}</span>
                 )}
               </span>
               <span className="text-ink-muted tabular-nums">{describeProgress(milestone.progress)}</span>

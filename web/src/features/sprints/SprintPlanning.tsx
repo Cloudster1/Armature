@@ -20,6 +20,7 @@ import { StatusBadge, TypeBadge } from "@/features/issues/badges";
 import { describe, teamHours } from "@/features/plan/SprintBands";
 import { useTeams } from "@/api/teams";
 import { MAX_PAGE_SIZE } from "@/config";
+import { useFormat } from "@/lib/format";
 
 /**
  * Sprint planning: the backlog on one side, the sprints on the other, and the
@@ -114,6 +115,7 @@ function SprintCard({
   const complete = useCompleteSprint();
   const remove = useDeleteSprint();
   const confirm = useConfirm();
+  const { locale } = useFormat();
   const [moveTo, setMoveTo] = useState("");
 
   const error = (start.error ?? complete.error ?? remove.error) as Error | undefined;
@@ -130,7 +132,7 @@ function SprintCard({
               <StateBadge state={sprint.state} />
             </h2>
             <p className="mt-0.5 text-xs text-ink-muted">
-              {dates(sprint)}
+              {dates(sprint, locale)}
               {plan && ` · ${describe(plan)}`}
               {plan && plan.unestimated > 0 && ` · ${plan.unestimated} unestimated`}
               {closed && sprint.completed != null && ` · ${sprint.completed} completed`}
@@ -226,13 +228,13 @@ function StateBadge({ state }: { state: Sprint["state"] }) {
   );
 }
 
-function dates(sprint: Sprint): string {
+function dates(sprint: Sprint, locale: string): string {
   if (!sprint.startsOn || !sprint.endsOn) return "No dates yet";
-  return `${shortDay(sprint.startsOn)} to ${shortDay(sprint.endsOn)}`;
+  return `${shortDay(sprint.startsOn, locale)} to ${shortDay(sprint.endsOn, locale)}`;
 }
 
-function shortDay(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+function shortDay(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
     timeZone: "UTC",

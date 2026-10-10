@@ -58,9 +58,9 @@ export function shiftMonth(year: number, month: number, by: number): { year: num
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
 }
 
-/** The month's name and year, as the header says it. */
-export function monthTitle(year: number, month: number): string {
-  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+/** The month's name and year, as the header says it in the reader's language. */
+export function monthTitle(year: number, month: number, locale: string): string {
+  return new Date(year, month - 1, 1).toLocaleDateString(locale, { month: "long", year: "numeric" });
 }
 
 export interface Placed {

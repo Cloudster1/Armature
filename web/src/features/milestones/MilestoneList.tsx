@@ -18,6 +18,7 @@ import { Button, Card, EmptyState, ErrorBanner, Field, cx } from "@/components/u
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { StatusBadge, TypeBadge } from "@/features/issues/badges";
 import { MAX_PAGE_SIZE } from "@/config";
+import { useFormat } from "@/lib/format";
 import { MilestoneDashboardDialog } from "./MilestoneDashboardDialog";
 import { ProgressBar } from "./ProgressBar";
 
@@ -133,6 +134,7 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
   const reopen = useReopenMilestone();
   const remove = useDeleteMilestone();
   const confirm = useConfirm();
+  const { locale } = useFormat();
   const [showing, setShowing] = useState(false);
   const [dashboarding, setDashboarding] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -189,7 +191,7 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
                 )}
               </h3>
               <p className="mt-0.5 text-xs text-ink-muted">
-                {milestone.dueOn ? `Due ${formatDay(milestone.dueOn)}` : "No date yet"}
+                {milestone.dueOn ? `Due ${formatDay(milestone.dueOn, locale)}` : "No date yet"}
                 {milestone.description && ` · ${milestone.description}`}
               </p>
             </>

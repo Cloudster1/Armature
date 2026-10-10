@@ -1095,6 +1095,11 @@ The language changes formatting only, and the page says so: translating the
 interface is a different undertaking, and a setting that promises it and does
 not would be worse than none.
 
+Pages kept slipping back to en-GB or the browser's language one helper at a
+time, so a unit test now reads the source: outside `lib/format.ts`, no date
+or number is written with `undefined`, no locale at all, a literal locale or
+`navigator.language`. Helpers take `format.locale` instead.
+
 ### A person can see and change what is theirs
 
 The profile page shows the name, the address that signs them in, the zone, the

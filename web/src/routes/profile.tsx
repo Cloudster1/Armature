@@ -7,7 +7,7 @@ import { Avatar, Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Page, P
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Icon } from "@/components/icons";
 import { AVATAR_MAX_BYTES } from "@/config";
-import { makeFormat } from "@/lib/format";
+import { browserLocale, makeFormat } from "@/lib/format";
 import { useAbsences, useWorkingWeek } from "@/api/availability";
 import { WorkingWeekTable } from "@/features/availability/WorkingWeek";
 import { AbsenceEditor } from "@/features/availability/Absences";
@@ -133,7 +133,7 @@ function ProfilePage() {
           </Select>
           <Select label="Language" value={locale} onChange={(e) => setLocale(e.target.value)} hint="Changes how dates, times and numbers are written; the interface itself stays in English.">
             {/* Empty is what a new account has: the browser decides, and the select says so. */}
-            <option value="">Same as the browser ({navigator.language})</option>
+            <option value="">Same as the browser ({browserLocale()})</option>
             {LOCALES.map((l) => (
               <option key={l.code} value={l.code}>
                 {l.label}

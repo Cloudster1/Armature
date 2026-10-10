@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: milestones, chart axes, sprints, the calendar's month, the
+  Resources weeks, invitations, work logs and anything older than a month
+  are written in the language set in the profile, not in British English or
+  the browser's language (#117).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

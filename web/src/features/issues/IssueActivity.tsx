@@ -6,7 +6,7 @@ import { useProject } from "@/api/projects";
 import { Button, Checkbox, ErrorBanner, Menu, Tag } from "@/components/ui";
 import { DocView } from "@/features/editor/DocView";
 import { Editor, type EditorHandle } from "@/features/editor/Editor";
-import { Avatar, relativeTime } from "./badges";
+import { Avatar, RelativeTime } from "./badges";
 
 // The conversation sits near the top, where it is read and added to; the
 // changelog is the last section, for whoever wants to know how it got here.
@@ -52,7 +52,7 @@ function CommentItem({ comment }: { comment: Comment }) {
         <p className="flex items-center gap-1.5 text-xs text-ink-muted">
           <span className="font-medium text-ink">{comment.author?.name ?? "Armature"}</span>
           {" · "}
-          {relativeTime(comment.createdAt)}
+          <RelativeTime iso={comment.createdAt} />
           {comment.editedAt && " · edited"}
           {comment.internal && (
             <Tag data-internal-note className="text-warning">
