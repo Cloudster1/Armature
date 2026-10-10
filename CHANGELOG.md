@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: Escape closes only what is on top: a menu or a confirm closes and
+  the drawer or dialog under it stays, focus goes back to what opened it, and
+  the issue drawer no longer closes while a comment is being written (#111).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
