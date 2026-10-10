@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: only the customer who raised a request finds the rating link in its
+  resolution mail; followers and watching agents are told it is resolved
+  without one, so nobody can rate it before the customer does (#79).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

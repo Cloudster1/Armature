@@ -722,6 +722,19 @@ carries a link that ends the following with one press and no sign-in, keyed on a
 token the row keeps only as a digest. It is a button on the page, not an action
 on arrival: a link must not change anything just by being opened.
 
+### A rating is asked of the reporter alone
+
+A resolved request invites one rating, through a link minted once and good for
+one answer, so whoever holds it can rate. The reporter's copy of the resolution
+mail carries it; followers and watching agents are told the request is resolved
+without it, because the score is the customer's verdict on the desk and an
+agent or a colleague who rated first would leave the customer's click with
+nothing to do. The page behind the link asks for no sign-in, which is what
+makes one click enough and why the link goes to one person.
+
+**Reconsider if** a desk wants followers' opinions too, at which point each
+recipient gets a token of their own and the report counts people, not requests.
+
 ### Replies come in by POP3, and are accepted from whoever could have typed them
 
 An IMAP library is a large tree of code for six commands, on a host whose
