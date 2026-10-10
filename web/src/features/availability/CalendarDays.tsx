@@ -5,6 +5,16 @@ import { Icon } from "@/components/icons";
 import { HOLIDAY_FILE_ACCEPT, HOLIDAY_NAME_MAX_LENGTH } from "@/config";
 import { useFormat } from "@/lib/format";
 import { formatDay } from "@/lib/week";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
+
+// A changed row counts once and a removed day once, so a table edited back to
+// what is saved asks nothing.
+function unsavedDays(draft: Holiday[], saved: Holiday[]): number {
+  const same = (a: Holiday, b: Holiday) => a.day === b.day && a.name === b.name && a.halfDay === b.halfDay;
+  const changed = draft.filter((row) => !saved.some((day) => same(day, row))).length;
+  const removed = saved.filter((day) => !draft.some((row) => row.day === day.day)).length;
+  return changed + removed;
+}
 
 /**
  * One calendar's days off. An administrator edits them in place and saves the
@@ -15,6 +25,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
   const setDays = useSetHolidays();
   const importDays = useImportHolidays();
   const toast = useToast();
+  const confirm = useConfirm();
   const format = useFormat();
   const fileInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<Holiday[] | null>(null);
@@ -25,8 +36,17 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
 
   const change = (index: number, patch: Partial<Holiday>) => setDraft(days.map((day, i) => (i === index ? { ...day, ...patch } : day)));
 
-  function onFile(file: File | undefined) {
+  // The import replaces the table with what the server holds, so typed days
+  // stay until the administrator agrees to lose them and the file has landed.
+  async function onFile(file: File | undefined) {
+    if (fileInput.current) fileInput.current.value = "";
     if (!file || !calendar) return;
+    const unsaved = draft ? unsavedDays(draft, calendar.days ?? []) : 0;
+    if (unsaved > 0) {
+      const noun = `${unsaved} unsaved ${unsaved === 1 ? "day" : "days"}`;
+      const body = `What you changed in the table and did not save is lost, and the days in ${file.name} are added to ${calendar.name}. To keep your changes, cancel and press "Save days" first.`;
+      if (!(await confirm({ noun, verb: "Import and discard", body }))) return;
+    }
     importDays.mutate(
       { id: calendar.id, file },
       {
@@ -36,7 +56,6 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
         },
       },
     );
-    if (fileInput.current) fileInput.current.value = "";
   }
 
   function save() {
@@ -56,7 +75,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
             <Button size="sm" variant="secondary" icon={<Icon.Plus />} onClick={() => setDraft([...days, { day: "", name: "", halfDay: false }])} data-action="add-holiday">
               Add a day
             </Button>
-            <input ref={fileInput} type="file" accept={HOLIDAY_FILE_ACCEPT} className="hidden" aria-label="Choose an .ics file" data-holiday-file onChange={(e) => onFile(e.target.files?.[0])} />
+            <input ref={fileInput} type="file" accept={HOLIDAY_FILE_ACCEPT} className="hidden" aria-label="Choose an .ics file" data-holiday-file onChange={(e) => void onFile(e.target.files?.[0])} />
           </span>
         )}
       </div>
