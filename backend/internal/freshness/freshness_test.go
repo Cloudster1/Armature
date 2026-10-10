@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/armature/armature/backend/internal/db"
 )
 
@@ -66,6 +68,24 @@ func TestMemoryTrackerIgnoresEmptyInput(t *testing.T) {
 	}
 	if got := tr.Required(ctx, "s"); got != 0 {
 		t.Errorf("a zero position should not be recorded, got %v", got)
+	}
+}
+
+func TestRedisTrackerFailureIsBestEffort(t *testing.T) {
+	// Pointed at nothing: noting must not fail or hang, and a read requires
+	// nothing, so it goes to the primary as before.
+	client := redis.NewClient(&redis.Options{
+		Addr:        "127.0.0.1:1",
+		DialTimeout: 200 * time.Millisecond,
+		MaxRetries:  -1,
+	})
+	defer client.Close()
+	tr := NewRedisTracker(client, time.Minute)
+	ctx := context.Background()
+
+	tr.Note(ctx, "s", 100)
+	if got := tr.Required(ctx, "s"); got != 0 {
+		t.Errorf("Required = %v with Redis unreachable, want 0", got)
 	}
 }
 
