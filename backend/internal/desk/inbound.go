@@ -204,15 +204,15 @@ func (n *Inbound) Handle(ctx context.Context, raw []byte) (Outcome, error) {
 	case p.role.IsAgent():
 		// Nothing proves a colleague's address, so their mail is filed where
 		// the desk can see it and the customer cannot; they answer in the app.
-		comment, _, err = n.issues.AddNote(orgCtx, key, issue.TextDocument(text), actor)
+		comment, _, err = n.issues.AddNote(orgCtx, p.key, issue.TextDocument(text), actor)
 	case !p.reporter:
 		// A follower's word is a comment like any other.
-		comment, _, err = n.issues.AddComment(orgCtx, key, issue.TextDocument(text), actor)
+		comment, _, err = n.issues.AddComment(orgCtx, p.key, issue.TextDocument(text), actor)
 	default:
-		comment, _, err = n.desk.Reply(orgCtx, key, text, actor)
+		comment, _, err = n.desk.Reply(orgCtx, p.key, text, actor)
 	}
 	if err != nil {
-		return "", fmt.Errorf("comment on %s: %w", key, err)
+		return "", fmt.Errorf("comment on %s: %w", p.key, err)
 	}
 	p.commentID = &comment.ID
 	return n.finish(ctx, messageID, &p, Commented, "", m, Message{})
@@ -232,10 +232,12 @@ func (n *Inbound) forTheDesk(m *mailin.Message) bool {
 	return false
 }
 
-// placement is where a mail landed: the request, and who the sender is there.
+// placement is where a mail landed: the request, under the key it has now
+// rather than the one the mail named, and who the sender is there.
 type placement struct {
 	orgID          uuid.UUID
 	issueID        uuid.UUID
+	key            string
 	userID         uuid.UUID
 	role           auth.OrgRole
 	reporter       bool
@@ -251,18 +253,30 @@ func (n *Inbound) place(ctx context.Context, key, from string) ([]placement, err
 	if err != nil {
 		return nil, nil
 	}
+	out, err := n.placeWhere(ctx, `p.key = $2 AND i.key_num = $3`, from, projectKey, num)
+	if err != nil || len(out) > 0 {
+		return out, err
+	}
+	// A key the request had before it moved, as the subject of a mail sent
+	// then still says.
+	return n.placeWhere(ctx, `i.id IN (SELECT k.issue_id FROM issue_old_key k WHERE k.org_id = p.org_id AND k.key = $2)`,
+		from, issue.FormatKey(projectKey, num))
+}
+
+// placeWhere asks place's question of the requests the condition names.
+func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...any) ([]placement, error) {
 	var out []placement
-	err = n.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err := n.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT p.org_id, i.id, u.id, m.org_role,
+			SELECT p.org_id, i.id, p.key || '-' || i.key_num, u.id, m.org_role,
 			       i.reporter_id = u.id,
 			       EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id AND w.user_id = u.id),
 			       p.trusted_domains
 			FROM project p
-			JOIN issue i ON i.project_id = p.id AND i.key_num = $2
-			JOIN app_user u ON u.email = $3 AND u.is_active
+			JOIN issue i ON i.project_id = p.id
+			JOIN app_user u ON u.email = $1 AND u.is_active
 			JOIN org_member m ON m.org_id = p.org_id AND m.user_id = u.id
-			WHERE p.key = $1 AND p.kind = 'service' AND i.request_type_id IS NOT NULL`, projectKey, num, from)
+			WHERE p.kind = 'service' AND i.request_type_id IS NOT NULL AND `+which, append([]any{from}, args...)...)
 		if err != nil {
 			return err
 		}
@@ -272,7 +286,7 @@ func (n *Inbound) place(ctx context.Context, key, from string) ([]placement, err
 				p        placement
 				watching bool
 			)
-			if err := rows.Scan(&p.orgID, &p.issueID, &p.userID, &p.role, &p.reporter, &watching, &p.trustedDomains); err != nil {
+			if err := rows.Scan(&p.orgID, &p.issueID, &p.key, &p.userID, &p.role, &p.reporter, &watching, &p.trustedDomains); err != nil {
 				return err
 			}
 			if p.reporter || watching || p.role.IsAgent() {

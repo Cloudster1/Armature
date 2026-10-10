@@ -798,8 +798,10 @@ would see, not what the owner would.
 Bulk edit is one transaction per issue, so a workflow that does not offer a
 transition refuses its own issue and names itself while the others are already
 done. A moved issue keeps its row and gets a new key, because history, comments
-and files hang off the row; the old key stays on the row so the address that was
-mailed around still finds it.
+and files hang off the row. Every key it leaves is kept beside it, one row each
+and unique in the organization, so every address that was mailed around still
+finds it however often it moves again, and a reply by mail under one still
+lands on the request.
 
 ### A dashboard is an arrangement, and every number is computed on read
 
