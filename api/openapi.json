@@ -18748,6 +18748,24 @@
           "sprints"
         ]
       },
+      "CIChecks": {
+        "type": "object",
+        "properties": {
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CIRun"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ]
+      },
       "CIRun": {
         "type": "object",
         "properties": {
@@ -19364,6 +19382,9 @@
           },
           "branch": {
             "type": "string"
+          },
+          "ci": {
+            "$ref": "#/components/schemas/CIChecks"
           },
           "committedAt": {
             "type": "string",
@@ -23552,7 +23573,7 @@
             "type": "string"
           },
           "ci": {
-            "$ref": "#/components/schemas/CIRun"
+            "$ref": "#/components/schemas/CIChecks"
           },
           "headSha": {
             "type": "string"

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   useDevelopment,
   useRepositories,
@@ -6,6 +6,7 @@ import {
   checkoutCommand,
   pullWord,
   type Branch,
+  type CIChecks,
   type CIRun,
   type CIStatus,
   type Repository,
@@ -59,32 +60,40 @@ export function DevelopmentPanel({ issueKey, projectKey }: { issueKey: string; p
       ) : (
         <div className="divide-y divide-border rounded-md border border-border bg-surface">
           {pullRequests.map((pr) => (
-            <div key={pr.id} className="flex items-center gap-3 px-3 py-2 text-sm" data-pull-request={pr.number}>
-              <PullStateTag state={pr.state} />
-              <a href={pr.url || undefined} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-ink hover:text-accent">
-                <span className="font-mono text-ink-muted">#{pr.number}</span> {pr.title}
-              </a>
-              {pr.ci && <CIBadge run={pr.ci} />}
-              <span className="shrink-0 text-ink-subtle">{pr.repository}</span>
-            </div>
+            <WithChecks key={pr.id} ci={pr.ci}>
+              {(badge) => (
+                <div className="flex items-center gap-3 px-3 py-2 text-sm" data-pull-request={pr.number}>
+                  <PullStateTag state={pr.state} />
+                  <a href={pr.url || undefined} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-ink hover:text-accent">
+                    <span className="font-mono text-ink-muted">#{pr.number}</span> {pr.title}
+                  </a>
+                  {badge}
+                  <span className="shrink-0 text-ink-subtle">{pr.repository}</span>
+                </div>
+              )}
+            </WithChecks>
           ))}
           {branches.map((branch) => (
             <BranchRow key={branch.id} branch={branch} />
           ))}
           {commits.map((commit) => (
-            <div key={commit.id} className="flex items-center gap-3 px-3 py-2 text-sm" data-commit={commit.sha}>
-              <a href={commit.url || undefined} target="_blank" rel="noreferrer" className="shrink-0 font-mono text-ink-muted hover:text-accent">
-                {commit.sha.slice(0, GIT_SHORT_SHA_LENGTH)}
-              </a>
-              <span className="min-w-0 flex-1 truncate text-ink" title={commit.message}>
-                {commit.message.split("\n")[0]}
-              </span>
-              <CIForCommit runs={data.runs} sha={commit.sha} />
-              <span className="shrink-0 text-ink-subtle">
-                {commit.authorName ? `${commit.authorName} · ` : ""}
-                {relativeTime(commit.committedAt)}
-              </span>
-            </div>
+            <WithChecks key={commit.id} ci={commit.ci}>
+              {(badge) => (
+                <div className="flex items-center gap-3 px-3 py-2 text-sm" data-commit={commit.sha}>
+                  <a href={commit.url || undefined} target="_blank" rel="noreferrer" className="shrink-0 font-mono text-ink-muted hover:text-accent">
+                    {commit.sha.slice(0, GIT_SHORT_SHA_LENGTH)}
+                  </a>
+                  <span className="min-w-0 flex-1 truncate text-ink" title={commit.message}>
+                    {commit.message.split("\n")[0]}
+                  </span>
+                  {badge}
+                  <span className="shrink-0 text-ink-subtle">
+                    {commit.authorName ? `${commit.authorName} · ` : ""}
+                    {relativeTime(commit.committedAt)}
+                  </span>
+                </div>
+              )}
+            </WithChecks>
           ))}
         </div>
       )}
@@ -115,7 +124,7 @@ const ciLook: Record<CIStatus, string> = {
   cancelled: "bg-status-todo",
 };
 
-/** How a run came out, as a dot and a word, the way a status reads. */
+/** How one check's run came out, as a dot and a word, the way a status reads. */
 export function CIBadge({ run }: { run: CIRun }) {
   return (
     <a
@@ -132,9 +141,41 @@ export function CIBadge({ run }: { run: CIRun }) {
   );
 }
 
-function CIForCommit({ runs, sha }: { runs: CIRun[]; sha: string }) {
-  const run = runs.find((r) => r.sha === sha);
-  return run ? <CIBadge run={run} /> : null;
+/**
+ * A row whose CI answer opens the checks behind it, so a red badge leads
+ * straight to the check that failed.
+ */
+function WithChecks({ ci, children }: { ci?: CIChecks; children: (badge: ReactNode) => ReactNode }) {
+  const [open, setOpen] = useState(false);
+  if (!ci) return <div>{children(null)}</div>;
+  const badge = (
+    <Button
+      type="button"
+      variant="link"
+      onClick={() => setOpen(!open)}
+      aria-expanded={open}
+      className="shrink-0"
+      title={open ? "Hide the checks" : "Show the checks"}
+      data-ci={ci.status}
+      icon={<span aria-hidden="true" className={cx("size-2 rounded-full", ciLook[ci.status])} />}
+    >
+      CI {ciWords[ci.status]}
+    </Button>
+  );
+  return (
+    <div>
+      {children(badge)}
+      {open && (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 px-3 pb-2" data-testid="ci-checks">
+          {ci.checks.map((run) => (
+            <li key={run.id}>
+              <CIBadge run={run} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 /**
