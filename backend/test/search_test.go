@@ -11,11 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/nql"
+	"github.com/armature/armature/backend/internal/project"
 )
 
 // TestIssuesAreFoundByWhatIsSaidAboutThem runs queries through the compiler and
@@ -277,4 +280,110 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 			t.Errorf("without a query matched is %v, want an empty list", whole.Matched)
 		}
 	})
+}
+
+// TestCustomNumberAndDateFieldsAnswerEveryOperator runs every operator against
+// number and date fields whose issues also hold text, and a project where the
+// same names are text fields: a cast that meets "high" fails the whole query.
+func TestCustomNumberAndDateFieldsAnswerEveryOperator(t *testing.T) {
+	h := newHarness(t)
+	ws := h.newWorkspace(t, "measured")
+	fields := field.NewService(h.cluster)
+	elsewhere, _, err := ws.projects.Create(ws.ctx, project.CreateInput{
+		Name: "Worded", Key: "WD" + strings.ToUpper(uuid.New().String()[:4]),
+	}, ws.actor.UserID)
+	if err != nil {
+		t.Fatalf("the second project: %v", err)
+	}
+	define := func(projectKey, name string, kind field.Kind) uuid.UUID {
+		f, _, err := fields.Create(ws.ctx, projectKey, field.Input{Name: name, Kind: kind})
+		if err != nil {
+			t.Fatalf("field %s in %s: %v", name, projectKey, err)
+		}
+		return f.ID
+	}
+	score, shipOn, severity := define(ws.project.Key, "Score", field.Number), define(ws.project.Key, "Ship on", field.Date), define(ws.project.Key, "Severity", field.Text)
+	wordedScore, wordedShipOn := define(elsewhere.Key, "Score", field.Text), define(elsewhere.Key, "Ship on", field.Text)
+
+	create := func(projectKey, summary string, values map[uuid.UUID]string) string {
+		created, _, err := ws.issues.Create(ws.ctx, issue.CreateInput{ProjectKey: projectKey, TypeID: h.issueTypeID(t, ws, "Story"), Summary: summary}, ws.actor)
+		if err != nil {
+			t.Fatalf("create %q: %v", summary, err)
+		}
+		for id, raw := range values {
+			if _, _, err := fields.Set(ws.ctx, created.Key, id, json.RawMessage(raw), ws.actor); err != nil {
+				t.Fatalf("set a field on %q: %v", summary, err)
+			}
+		}
+		return created.Key
+	}
+	low := create(ws.project.Key, "Scored low", map[uuid.UUID]string{score: `2`, shipOn: `"2026-09-01"`, severity: `"high"`})
+	high := create(ws.project.Key, "Scored high", map[uuid.UUID]string{score: `4711`, shipOn: `"2026-09-30"`, severity: `"high"`})
+	bare := create(ws.project.Key, "Not scored", map[uuid.UUID]string{severity: `"high"`})
+	worded := create(elsewhere.Key, "Scored in words", map[uuid.UUID]string{wordedScore: `"high"`, wordedShipOn: `"soon"`})
+
+	// Mid-September, so the relative dates below land between the two days.
+	now := time.Date(2026, 9, 15, 10, 0, 0, 0, time.UTC)
+	keys := func(keys ...string) string {
+		sort.Strings(keys)
+		return strings.Join(keys, ",")
+	}
+	cases := []struct{ q, want string }{
+		{`"Score" = 4711`, keys(high)},
+		{`"Score" != 4711`, keys(low, bare, worded)},
+		{`"Score" < 100`, keys(low)},
+		{`"Score" <= 2`, keys(low)},
+		{`"Score" > 2`, keys(high)},
+		{`"Score" >= 2`, keys(low, high)},
+		{`"Score" ~ 4711`, keys(high)},
+		{`"Score" ~ 71`, keys(high)},
+		{`"Score" ~ high`, keys(worded)},
+		{`"Score" !~ 4711`, keys(low, bare, worded)},
+		{`"Score" IN (2, 4711)`, keys(low, high)},
+		{`"Score" NOT IN (2, 4711)`, keys(bare, worded)},
+		{`"Score" IS EMPTY`, keys(bare)},
+		{`"Score" IS NOT EMPTY`, keys(low, high, worded)},
+		{`"Score" >= high`, keys(worded)},
+		{`"Score" > 2026-09-01`, keys()},
+		{`"Ship on" = 2026-09-01`, keys(low)},
+		{`"Ship on" != 2026-09-01`, keys(high, bare, worded)},
+		{`"Ship on" < 2026-09-30`, keys(low)},
+		{`"Ship on" <= 2026-09-30`, keys(low, high)},
+		{`"Ship on" > 2026-09-01`, keys(high)},
+		{`"Ship on" >= startOfMonth()`, keys(low, high)},
+		{`"Ship on" > -7d`, keys(high)},
+		{`"Ship on" < startOfMonth()`, keys()},
+		{`"Ship on" ~ 2026-09-30`, keys(high)},
+		{`"Ship on" ~ 2026`, keys(low, high)},
+		{`"Ship on" ~ soon`, keys(worded)},
+		{`"Ship on" !~ 2026-09-01`, keys(high, bare, worded)},
+		{`"Ship on" IN (2026-09-01, 2026-09-30)`, keys(low, high)},
+		{`"Ship on" NOT IN (2026-09-01, 2026-09-30)`, keys(bare, worded)},
+		{`"Ship on" IS EMPTY`, keys(bare)},
+		{`"Ship on" > 3`, keys()},
+		{`"Severity" ~ high AND "Score" > 1`, keys(low, high)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.q, func(t *testing.T) {
+			q, err := nql.Parse(tc.q)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			compiled, err := q.Compile(nql.Env{UserID: ws.actor.UserID, Now: now})
+			if err != nil {
+				t.Fatalf("compile: %v", err)
+			}
+			res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled}, issue.Page{Limit: 50})
+			if err != nil {
+				t.Fatalf("a query that compiled failed in the database: %v", err)
+			}
+			got := make([]string, len(res.Issues))
+			for i, each := range res.Issues {
+				got[i] = each.Key
+			}
+			if keys(got...) != tc.want {
+				t.Errorf("got %v, want %s", got, tc.want)
+			}
+		})
+	}
 }
