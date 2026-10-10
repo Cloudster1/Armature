@@ -1,6 +1,7 @@
 package notify
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -64,5 +65,31 @@ func TestPreferencesDefaultToOn(t *testing.T) {
 	}
 	if err := (Preferences{Digest: DigestOff, Mail: map[string]bool{"shouting": true}}).Validate(); err == nil {
 		t.Fatal("an unknown kind was accepted")
+	}
+}
+
+// A customer's reply that the workflow could not take back out of done tells
+// the agents on the request, or whoever finished it when nobody is on it.
+func TestAReplyLeftInDoneIsToldToTheAgents(t *testing.T) {
+	sam, bob, cy, dee := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	p := payload{ActorID: sam, Status: "Resolved"}
+
+	on := &subject{key: "SD-1", summary: "Printer", assignee: &bob, watchers: []uuid.UUID{cy}, resolver: &dee, actor: "Sam", comment: "still broken"}
+	got := tellsFor(events.TopicRequestStaysDone, p, on)
+	if len(got) != 2 || got[0].user != bob || got[1].user != cy {
+		t.Fatalf("tells = %+v, want the assignee and the agent following, not the resolver", got)
+	}
+	for _, tl := range got {
+		if tl.kind != KindCommented || tl.title != "Sam replied to SD-1, which stays Resolved" {
+			t.Errorf("tell = %+v", tl)
+		}
+		if !strings.Contains(tl.body, "still broken") || !strings.Contains(tl.body, "Move it by hand") {
+			t.Errorf("body = %q, want the reply and what to do about it", tl.body)
+		}
+	}
+
+	nobody := &subject{key: "SD-2", summary: "Printer", resolver: &dee, actor: "Sam", comment: "still broken"}
+	if got := tellsFor(events.TopicRequestStaysDone, p, nobody); len(got) != 1 || got[0].user != dee {
+		t.Errorf("tells = %+v, want whoever finished it", got)
 	}
 }
