@@ -83,10 +83,23 @@ function CommentForm({ issueKey }: { issueKey: string }) {
   // An internal note stays between agents; a comment reaches the customer.
   const [internal, setInternal] = useState(false);
 
+  // A ref, not isPending: a second Ctrl+Enter can land before the render that
+  // would show the first one pending.
+  const posting = useRef(false);
+
   function post() {
-    if (!body) return;
+    if (!body || posting.current) return;
+    posting.current = true;
     const send = internal ? note : add;
-    send.mutate({ key: issueKey, body }, { onSuccess: () => editor.current?.clear() });
+    send.mutate(
+      { key: issueKey, body },
+      {
+        onSuccess: () => editor.current?.clear(),
+        onSettled: () => {
+          posting.current = false;
+        },
+      },
+    );
   }
 
   function onSubmit(event: FormEvent) {

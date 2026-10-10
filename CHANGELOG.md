@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a session that ended in another tab or expired now sends the next
+  action to sign in, which returns to the same page; the project switcher on
+  a sprint board opens the other project's Sprints instead of this sprint; a
+  comment posts once however often Ctrl+Enter is pressed; and sprint and issue
+  dates save once a whole date is typed, or on leaving the input (#118).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

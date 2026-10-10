@@ -24,6 +24,12 @@ export const PLAN_INDENT_PER_LEVEL = 14;
 /** Height of each of the two header rows above the timeline. */
 export const PLAN_HEADER_ROW_HEIGHT = 23;
 
+/** How long any answer stays fresh before a page that shows it asks again. */
+export const QUERY_STALE_MS = 10_000;
+
+/** A typed date's year below this is one still being typed, such as 0002 on the way to 2026. */
+export const MIN_DATE_YEAR = 1000;
+
 /** How long the rarely-changing metadata lists stay fresh before a refetch. */
 export const META_STALE_MS = 5 * 60_000;
 
