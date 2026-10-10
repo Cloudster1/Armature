@@ -143,6 +143,25 @@ func TestAPersonsWorkIsSpreadOverTheDaysTheyAreThere(t *testing.T) {
 	}
 }
 
+func TestWorkOfSomebodyWhoIsNotAmongThePeopleIsUnassigned(t *testing.T) {
+	ada, gone := uuid.New(), uuid.New()
+	in := fortnight
+	in.Grouping = project.GroupByPerson
+	// People are who works here now; whoever left is not among them.
+	in.People = map[uuid.UUID]string{ada: "Ada"}
+	in.Work = NewWorkdays(nil, nil, map[uuid.UUID]availability.Person{ada: standardPerson(t, nil)})
+	theirs := work("PR-1", minutesIn(6), "2026-09-07", "2026-09-07")
+	theirs.Assignee = &issue.UserRef{ID: gone, Name: "Alice"}
+	in.Issues = []issue.Issue{theirs}
+	got := ReadResources(in)
+	if len(got.Rows) != 2 || got.Rows[0].Name != "Ada" || got.Rows[1].Kind != LoadUnassigned {
+		t.Fatalf("rows = %+v, want Ada and the unassigned row, and no row for somebody who left", got.Rows)
+	}
+	if u := got.Rows[1].Weeks[0]; u.LoadHours != 6 || len(u.Issues) != 1 || u.Issues[0].Key != "PR-1" {
+		t.Errorf("the unassigned week = %+v, want the 6 h of the work left behind", u)
+	}
+}
+
 func TestAShareOfTheWeekScalesThePersonAndTheirTeam(t *testing.T) {
 	alpha := uuid.New()
 	ada, bea, cleo := uuid.New(), uuid.New(), uuid.New()
