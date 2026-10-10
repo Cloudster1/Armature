@@ -256,7 +256,7 @@ scenario("a team carrying work cannot just be deleted", async ({ page }) => {
   });
   await confirm(page);
   await page.waitForFunction(
-    () => document.body.innerText.includes("still assigned to Platform"),
+    () => document.body.innerText.includes("Platform still has 1 issue."),
     { timeout: WAIT },
   );
 });

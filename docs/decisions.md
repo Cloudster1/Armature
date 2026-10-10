@@ -328,6 +328,21 @@ Deleting a team with work in it is refused rather than quietly returning the
 work to the project, because work that was somebody's and is now nobody's is
 discovered weeks later and the fix by then is archaeology.
 
+### A team that has run a sprint is kept
+
+Deleting a team is refused while it still has sprints or request types routed
+to it, by the service with a sentence and by the database, whose foreign keys
+from `sprint.team_id` and `request_type.team_id` no longer null the column.
+Nulling them made a team's running sprint the project's, or collided with the
+project's own running one, and quietly stopped requests routing. Sprints that
+have not started can be deleted and request types routed elsewhere, after which
+the team goes. A sprint that has run is the record of what the team delivered
+and cannot be deleted, so a team that has run one is renamed rather than
+deleted. Deleting its sprints with it would rewrite history, and archiving
+teams is a feature of its own that nothing yet needs. The keys are NO ACTION
+rather than RESTRICT so that an organization deleted with everything in it
+still takes its teams and their sprints along.
+
 ### A board is scoped by team, and its type is behaviour
 
 `board.team_id` decides what a board draws, and a null means the whole project.
