@@ -473,6 +473,10 @@ than ids: a renamed status or sprint would quietly bend a chart drawn months
 later, and walking a project's whole history on every read is the wrong price
 for a widget. The worker writes the day's counts, the day's last write stands,
 and a day with no row is rebuilt from the changelog once and marked as rebuilt.
+A sprint's last word is the one completion wrote, before its unfinished work
+moved on: the worker writes a sprint's day only while holding the sprint's lock
+and finding it still running, so a sprint completed after the worker listed it
+keeps its point.
 
 Today is read live and every earlier day from its snapshot, so the chart agrees
 with the widget to the second and the browser suite is deterministic without a

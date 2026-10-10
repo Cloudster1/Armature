@@ -90,7 +90,8 @@ var (
 	// ErrNotStartable is returned when a sprint cannot begin: it has no dates,
 	// it has already run, or another sprint is running in the same project.
 	ErrNotStartable = errors.New("that sprint cannot be started")
-	// ErrNotRunning is returned when completing a sprint that is not running.
+	// ErrNotRunning is returned when completing or snapshotting a sprint that
+	// is not running.
 	ErrNotRunning = errors.New("that sprint is not running")
 	// ErrClosed is returned when changing a sprint that has already been
 	// completed. Its report has been written and will not be rewritten.

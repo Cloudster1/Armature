@@ -2,6 +2,7 @@ package sprint
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -77,7 +78,12 @@ func (w *Snapshots) Once(ctx context.Context) (int, error) {
 	written := 0
 	for _, r := range found {
 		orgCtx := db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: r.orgID}))
-		if _, err := w.sprints.Snapshot(orgCtx, r.sprintID, today); err != nil {
+		_, err := w.sprints.Snapshot(orgCtx, r.sprintID, today)
+		if errors.Is(err, ErrNotRunning) {
+			// Completed since it was listed; completion wrote its last point.
+			continue
+		}
+		if err != nil {
 			w.log.Warn("could not snapshot a sprint", "sprint", r.sprintID, "error", err)
 			continue
 		}
