@@ -669,6 +669,13 @@ minute or a function taught about daylight saving. So the database finds the
 suspects with a wall-clock comparison, which contains every calendar breach and
 some false ones, and the Go clock decides.
 
+Two spans of one day that overlap are refused when the hours are saved, naming
+both, because the person who typed them meant one stretch and should say so.
+The database does not refuse them: the hours are a JSON document it does not
+read, and a calendar saved with overlaps before the rule must still load. The
+clock merges a day's spans before counting, so such a calendar counts each open
+minute once.
+
 ### Customers are refused uniformly, not route by route
 
 A customer's role holds no permission, so most of the agents' API refuses them
