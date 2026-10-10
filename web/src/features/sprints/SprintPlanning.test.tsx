@@ -14,6 +14,9 @@ vi.mock("@/features/shell/ConfirmProvider", () => ({ useConfirm: () => vi.fn() }
 const { SprintPlanning } = await import("./SprintPlanning");
 
 const PAGE = 200;
+// Drawing a page and a bit of backlog rows is slow in jsdom, more so beside the
+// rest of the suite, so the page is given longer than the default to settle.
+const SETTLED = { timeout: 5_000 };
 
 function issue(n: number, over: Partial<Issue> = {}): Issue {
   return {
@@ -44,8 +47,9 @@ const committed = issue(10, { summary: "old committed work", sprintId: "s3" });
 // The newest page of the whole project: none of it is in a sprint, and the
 // committed work is too old to be on it.
 const newest = Array.from({ length: PAGE }, (_, i) => issue(300 - i));
-// The backlog is one page and a bit, so reading only the first loses work.
-const backlog = Array.from({ length: PAGE + 50 }, (_, i) => issue(1000 + i));
+// A long backlog is one page and a bit, so reading only the first loses work.
+const longBacklog = Array.from({ length: PAGE + 50 }, (_, i) => issue(1000 + i));
+let backlog: Issue[] = [];
 
 const requested: URL[] = [];
 
@@ -87,6 +91,7 @@ function sprintCard(name: string): HTMLElement {
 describe("the sprint planning page", () => {
   beforeEach(() => {
     requested.length = 0;
+    backlog = longBacklog.slice(0, 1);
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: string) => {
@@ -100,25 +105,26 @@ describe("the sprint planning page", () => {
 
   it("draws a sprint's issues from the sprint's own read, however old they are", async () => {
     mount();
-    await waitFor(() => expect(within(sprintCard("Sprint 3")).getByText("old committed work")).toBeInTheDocument());
+    await waitFor(() => expect(within(sprintCard("Sprint 3")).getByText("old committed work")).toBeInTheDocument(), SETTLED);
     expect(requested.some((url) => url.searchParams.get("sprint") === "s3")).toBe(true);
   });
 
   it("offers to delete only a sprint the server says is empty", async () => {
     mount();
-    await waitFor(() => expect(within(sprintCard("Sprint 4")).getByRole("button", { name: "Delete" })).toBeInTheDocument());
-    await waitFor(() => expect(within(sprintCard("Sprint 3")).getByText("old committed work")).toBeInTheDocument());
+    await waitFor(() => expect(within(sprintCard("Sprint 4")).getByRole("button", { name: "Delete" })).toBeInTheDocument(), SETTLED);
+    await waitFor(() => expect(within(sprintCard("Sprint 3")).getByText("old committed work")).toBeInTheDocument(), SETTLED);
     expect(within(sprintCard("Sprint 3")).queryByRole("button", { name: "Delete" })).toBeNull();
   });
 
   it("reads the whole backlog, ranked and without the done work", async () => {
+    backlog = longBacklog;
     mount();
     const section = await screen.findByTestId("backlog");
-    await waitFor(() => expect(section).toHaveTextContent(`Backlog (${backlog.length})`));
+    await waitFor(() => expect(section).toHaveTextContent(`Backlog (${backlog.length})`), SETTLED);
 
     const reads = requested.filter((url) => url.searchParams.get("sprint") === "none");
     expect(reads.map((url) => url.searchParams.get("offset") ?? "0")).toEqual(["0", String(PAGE)]);
-    const first = reads[0].searchParams;
+    const first = reads[0]!.searchParams;
     expect(first.getAll("category")).toEqual(["todo", "in_progress"]);
     expect(first.get("orderBy")).toBe("rank");
     expect(first.get("order")).toBe("asc");

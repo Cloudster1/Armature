@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: the Sprints page shows every issue committed to a sprint however old,
+  offers Delete only for a sprint the server says is empty, and lists the
+  whole backlog in rank order without done work; the parent picker searches
+  the project instead of offering its 200 newest issues (#53).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

@@ -10356,7 +10356,11 @@ export interface operations {
                 label?: string[];
                 /** @description Issues counting towards this milestone. */
                 milestone?: string;
-                /** @description created, updated, priority, key, summary or status. */
+                /** @description A sprint id for the work committed to it, or "none" for the backlog. */
+                sprint?: string;
+                /** @description A team id for the work it carries, or "none" for the project's own. */
+                team?: string;
+                /** @description created, updated, priority, key, summary, status or rank. */
                 orderBy?: string;
                 /** @description asc or desc; desc unless said. */
                 order?: string;
@@ -14600,7 +14604,11 @@ export interface operations {
                 label?: string[];
                 /** @description Issues counting towards this milestone. */
                 milestone?: string;
-                /** @description created, updated, priority, key, summary or status. */
+                /** @description A sprint id for the work committed to it, or "none" for the backlog. */
+                sprint?: string;
+                /** @description A team id for the work it carries, or "none" for the project's own. */
+                team?: string;
+                /** @description created, updated, priority, key, summary, status or rank. */
                 orderBy?: string;
                 /** @description asc or desc; desc unless said. */
                 order?: string;

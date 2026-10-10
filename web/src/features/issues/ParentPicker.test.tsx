@@ -83,6 +83,6 @@ describe("the parent picker", () => {
 
     const search = requested.filter((url) => url.searchParams.get("text") === "portal");
     expect(search.length).toBeGreaterThan(0);
-    expect(search[0].searchParams.getAll("type")).toEqual(["epic"]);
+    expect(search[0]!.searchParams.getAll("type")).toEqual(["epic"]);
   });
 });

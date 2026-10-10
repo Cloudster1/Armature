@@ -220,11 +220,8 @@ func (s *Service) loadShowing(ctx context.Context, tx db.DBTX, showing *SprintRe
 	return &b, nil
 }
 
-// Backlog returns the work in a board's scope that is not in any sprint.
-//
-// A project with two teams has two backlogs, because each board draws from the
-// work its own team carries. The board over the whole project sees everything,
-// which is what a project without teams has always had.
+// Backlog is the unfinished work in a board's scope and in no sprint: a team's
+// board draws its own team's work, the project's board everything.
 func (s *Service) Backlog(ctx context.Context, boardID uuid.UUID) ([]Card, error) {
 	var out []Card
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -361,7 +358,8 @@ func (s *Service) loadCards(ctx context.Context, tx db.DBTX, scope cardScope, gr
 	sprintFilter := ""
 	switch scope.sprint {
 	case noSprint:
-		sprintFilter = " AND i.sprint_id IS NULL"
+		// Done work in no sprint is history, not something to plan.
+		sprintFilter = " AND i.sprint_id IS NULL AND st.category <> 'done'"
 	case oneSprint:
 		args = append(args, scope.sprintID)
 		sprintFilter = fmt.Sprintf(" AND i.sprint_id = $%d", len(args))

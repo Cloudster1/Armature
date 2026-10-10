@@ -44,6 +44,13 @@ type Filter struct {
 	LabelIDs []uuid.UUID
 	// MilestoneID keeps the issues counting towards one milestone.
 	MilestoneID *uuid.UUID
+	// SprintID keeps one sprint's work; NoSprint, which wins, keeps the
+	// backlog. Separate for the same reason as Unassigned.
+	SprintID *uuid.UUID
+	NoSprint bool
+	// TeamID keeps one team's work; NoTeam, which wins, the project's own.
+	TeamID *uuid.UUID
+	NoTeam bool
 	// Text matches the summary.
 	Text string
 	// Priorities filters by priority.
@@ -88,6 +95,7 @@ var orderColumns = map[string]string{
 	// Priority is an enum, and Postgres orders enums by their declaration
 	// order, which runs lowest to highest.
 	"priority": "i.priority",
+	"rank":     "i.rank",
 }
 
 // listCap is the most issues one unpaged read returns, matching the tree.
@@ -260,6 +268,16 @@ func (f Filter) build() (string, []any) {
 	}
 	if f.MilestoneID != nil {
 		add("i.milestone_id = $%d", *f.MilestoneID)
+	}
+	if f.NoSprint {
+		clauses = append(clauses, "i.sprint_id IS NULL")
+	} else if f.SprintID != nil {
+		add("i.sprint_id = $%d", *f.SprintID)
+	}
+	if f.NoTeam {
+		clauses = append(clauses, "i.team_id IS NULL")
+	} else if f.TeamID != nil {
+		add("i.team_id = $%d", *f.TeamID)
 	}
 	if len(f.LabelIDs) > 0 {
 		add("EXISTS (SELECT 1 FROM issue_label il WHERE il.issue_id = i.id AND il.label_id = ANY($%d))", f.LabelIDs)
