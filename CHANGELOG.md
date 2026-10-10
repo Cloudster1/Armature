@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: an out-of-office or other automatic reply to a request is no longer
+  posted as the customer's answer; the request stays Waiting for customer
+  with its clocks held, and the mail is logged as automatic (#65).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
