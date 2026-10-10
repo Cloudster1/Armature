@@ -287,3 +287,32 @@ func TestDistance(t *testing.T) {
 		t.Errorf("got %q", nearest("Statuss"))
 	}
 }
+
+// A text search looks for what was typed: % and _ are characters a summary can
+// hold, so they reach ILIKE escaped and never as wildcards that match anything.
+func TestTextSearchTakesWildcardsLiterally(t *testing.T) {
+	cases := []struct {
+		in   string
+		args []any
+	}{
+		{`summary ~ "50%"`, []any{`50\%`}},
+		{`summary ~ snake_case`, []any{`snake\_case`}},
+		{`summary ~ "C:\\temp"`, []any{`C:\\temp`}},
+		{`summary !~ "100%_done\\"`, []any{`100\%\_done\\`}},
+		// The description is matched by words, not by a pattern, so it stays as typed.
+		{`text ~ "50%"`, []any{`50\%`, `50%`}},
+		{`"Customer" ~ "a_b%"`, []any{`a\_b\%`, "Customer"}},
+	}
+	for _, c := range cases {
+		_, args := compile(t, c.in).SQL(1)
+		if len(args) != len(c.args) {
+			t.Errorf("%q: got %d args %v, want %v", c.in, len(args), args, c.args)
+			continue
+		}
+		for i := range args {
+			if got, want := sprint(args[i]), sprint(c.args[i]); got != want {
+				t.Errorf("%q: arg %d got %s want %s", c.in, i, got, want)
+			}
+		}
+	}
+}
