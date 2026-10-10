@@ -36,6 +36,8 @@ func availabilityAPIError(err error) *APIError {
 	case errors.Is(err, availability.ErrCustomer):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed",
 			Message: "A portal customer keeps no working week or absences here. Choose somebody who works in the organization."}
+	case errors.Is(err, availability.ErrProjectNotFound):
+		return ErrNotFound("That project was not found.")
 	case errors.Is(err, availability.ErrAbsenceNotFound):
 		return ErrNotFound("That absence was not found.")
 	case errors.Is(err, availability.ErrOverlap):

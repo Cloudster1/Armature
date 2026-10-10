@@ -90,6 +90,7 @@ type Export struct {
 	AuditActions  []AuditAction  `json:"auditActions"`
 	WorkingHours  []WorkingHours `json:"workingHours"`
 	Absences      []Absence      `json:"absences"`
+	Shares        []Share        `json:"shares"`
 }
 
 type Profile struct {
@@ -156,23 +157,6 @@ type SavedFilter struct {
 	Name   string `json:"name"`
 	Query  string `json:"query"`
 	Shared bool   `json:"shared"`
-}
-
-// WorkingHours is the week an organization set for the person, and the
-// holiday calendar it gave them; none named is the organization's default.
-type WorkingHours struct {
-	Organization string         `json:"organization"`
-	Calendar     string         `json:"calendar,omitempty"`
-	Minutes      map[string]int `json:"minutes"`
-}
-
-// Absence is days the person is away, and who wrote them down.
-type Absence struct {
-	Organization string `json:"organization"`
-	StartsOn     string `json:"startsOn"`
-	EndsOn       string `json:"endsOn"`
-	HalfDay      bool   `json:"halfDay"`
-	RecordedBy   string `json:"recordedBy"`
 }
 
 type AuditAction struct {
@@ -307,6 +291,18 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 				err := row.Scan(&x.Organization, &x.StartsOn, &x.EndsOn, &x.HalfDay, &x.RecordedBy)
 				return x, err
 			})
+		if err != nil {
+			return err
+		}
+		out.Shares, err = collect(ctx, tx, `
+			SELECT o.name, p.name, a.percent FROM project_allocation a
+			JOIN org o ON o.id = a.org_id JOIN project p ON p.id = a.project_id
+			WHERE a.user_id = $1 ORDER BY o.name, p.name`, userID,
+			func(row pgx.Rows) (Share, error) {
+				var x Share
+				err := row.Scan(&x.Organization, &x.Project, &x.Percent)
+				return x, err
+			})
 		return err
 	})
 	if err != nil {
@@ -403,6 +399,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM team_member WHERE user_id = $1`,
 			`DELETE FROM member_schedule WHERE user_id = $1`,
 			`DELETE FROM absence WHERE user_id = $1`,
+			`DELETE FROM project_allocation WHERE user_id = $1`,
 			`DELETE FROM org_member WHERE user_id = $1`,
 		} {
 			if _, err := tx.Exec(ctx, q, userID); err != nil {
@@ -482,6 +479,7 @@ func (s *Service) RemoveMember(ctx context.Context, orgID, userID, actor uuid.UU
 			`DELETE FROM team_member WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM member_schedule WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM absence WHERE org_id = $1 AND user_id = $2`,
+			`DELETE FROM project_allocation WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM notification WHERE org_id = $1 AND user_id = $2`,
 			// What would keep telling them about work here once they are gone.
 			`DELETE FROM saved_filter_subscription WHERE org_id = $1 AND user_id = $2`,

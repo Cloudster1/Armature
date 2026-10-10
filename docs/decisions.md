@@ -563,6 +563,15 @@ share of an issue onto the days they are there. Work with hours but without both
 dates, and work with no hours at all, is listed rather than guessed into a week.
 A week over its hours is an over-allocated warning, never a refusal.
 
+A project may have only part of somebody's week. A project administrator sets
+the share in percent, and the person's available and nominal hours are counted
+at it, on their own row and inside their team's; nobody set gives the project
+the whole week, which is what every project assumed before. The shares a
+person has elsewhere are added up beside it, so a week given out at 130% is
+seen and warned about, as capacity is, and never refused: the share is what
+the project was told, and the warning is the place to argue about it. The
+total names no other project, so a walled one is not found through it.
+
 ## Projects, git and the service desk
 
 ### Templates are code, not rows

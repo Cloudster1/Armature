@@ -62,6 +62,34 @@ scenario("a kanban project switches to people and sees a person's week shortened
   await page.waitForSelector(`[data-resources="person"] [data-resource-row="${who.name}"]`, { timeout: WAIT });
 });
 
+scenario("somebody who gives the project half their week has half its hours", async ({ page }) => {
+  const who = await signUp(page);
+  const key = await createProject(page, "Halved", "kanban");
+  await createTeam(page, key, "Crew");
+  await joinTeam(page, key, "Crew", who.name);
+
+  await goto(page, `/projects/${key}/settings`);
+  const share = `[data-share-input="${who.name}"]`;
+  await page.waitForSelector(share, { timeout: WAIT });
+  await page.click(share, { clickCount: 3 });
+  await page.type(share, "50");
+  await page.click(`[data-share-person="${who.name}"] [data-action="save-share"]`);
+  await page.waitForFunction(
+    (row) => document.querySelector(`[data-share-person="${row}"] [data-action="save-share"]`)?.disabled === true,
+    { timeout: WAIT },
+    who.name,
+  );
+
+  await goto(page, `/projects/${key}/resources`);
+  await page.waitForSelector('[data-resources="team"] [data-resource-row="Crew"]', { timeout: WAIT });
+  expect.equal((await page.$eval(`[data-resource-row="Crew"] [data-resource-week="${monday(1)}"]`, (el) => el.dataset.capacity)), "20", "the team counts half of them");
+  await page.click('[data-action="group-by-person"]');
+  await page.waitForSelector(`[data-resources="person"] [data-resource-row="${who.name}"]`, { timeout: WAIT });
+  const halved = await weekOf(page, who.name, monday(1));
+  expect.equal(halved.capacity, "20", "half of a forty-hour week");
+  expect.contains(halved.title, "0 of 20 h (50% of the week)", "the cell says the share");
+});
+
 scenario("a scrum project offers only teams", async ({ page }) => {
   await signUp(page);
   const key = await createProject(page, "Sprinted", "scrum");

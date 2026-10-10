@@ -58,6 +58,7 @@ The set: home, search, plus, issue, board, sprint, plan, milestone, dashboard,
 hierarchy, queue, desk, team, users, user, workflow, field, repository,
 settings, key, tag, chevrons, check, x, more, edit, trash, archive, link,
 unlink, attach, clock, calendar, comment, eye, eye-off, sun, moon, monitor,
+palette (Themes, so it never reads as the light mode's sun),
 external, filter, zoom in and out, warning, info, drag, collapse, expand,
 command, bell, upload, mail, help.
 
