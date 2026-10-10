@@ -10,6 +10,7 @@ import {
   joinTeam,
   openMonth,
   PASSWORD,
+  reload,
   setDate,
   signIn,
   signUp,
@@ -24,6 +25,8 @@ import {
 const AWAY_FIRST_DAY = 10;
 const AWAY_LAST_DAY = 12;
 const TEAM_AWAY_DAY = 20;
+// Fourteen months ahead: past the year the list once stopped at.
+const FAR_AHEAD_DAY = 426;
 
 /** Records an absence in the form inside scope and waits for its row to be listed. */
 async function recordAbsence(page, scope, from, to) {
@@ -41,6 +44,16 @@ scenario("a person records an absence on their profile and sees it listed", asyn
   await recordAbsence(page, "[data-absences]", day(AWAY_FIRST_DAY), day(AWAY_LAST_DAY));
   const listed = await textOf(page, `[data-absence="${day(AWAY_FIRST_DAY)}"]`);
   expect.contains(listed, " to ", "the absence reads as a first and a last day");
+});
+
+scenario("a person records an absence fourteen months ahead and it stays listed", async ({ page }) => {
+  await signUp(page);
+  await goto(page, "/settings/profile");
+  await page.waitForSelector("[data-absence-form]", { timeout: WAIT });
+  const far = day(FAR_AHEAD_DAY);
+  await recordAbsence(page, "[data-absences]", far, far);
+  await reload(page);
+  await page.waitForSelector(`[data-absences] [data-absence="${far}"]`, { timeout: WAIT });
 });
 
 scenario("a scrum master records an absence for somebody on their team", async ({ page }) => {
