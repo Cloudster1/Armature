@@ -501,6 +501,9 @@ An .ics import takes all-day events and refuses a recurring one rather than
 expanding the rule: RRULE is a language of its own, and a wrong guess about a
 moving feast is a day off in the wrong week that nobody notices. Calendar
 applications export the days written out, and the refusal says to do that.
+An import lands on the server, not in the table being edited, so while that
+table holds unsaved days the import asks before it discards them rather than
+merging the file into a draft the server has not seen.
 
 This is not the service desk's business calendar, which says when a desk is
 open for its clocks and answers a different question. A desk could later point
