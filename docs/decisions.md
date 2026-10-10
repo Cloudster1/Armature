@@ -26,6 +26,9 @@ what keeps replicas honest: a user is never shown a stale answer to a question
 about their own change. The fallback direction matters. A read that cannot be
 served freshly by a replica goes to the primary, and is never made to wait for
 replication, so a lagging replica costs latency and never correctness.
+The pin only works if every write hands its position to its handler, so a
+unit test refuses a service that throws one away, unless it is listed with
+why no read of the caller's depends on it.
 
 **Reconsider if** replica lag is routinely under a millisecond and the pinning
 machinery is buying nothing, or if the primary is so overloaded that fallback
