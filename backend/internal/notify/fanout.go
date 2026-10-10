@@ -88,6 +88,7 @@ type payload struct {
 	Internal  bool        `json:"internal"`
 	Mentions  []uuid.UUID `json:"mentions"`
 	ToStatus  string      `json:"toStatus"`
+	Status    string      `json:"status"`
 	Metric    string      `json:"metric"`
 	// Imported marks an issue brought in from a file, which nobody is told of.
 	Imported bool `json:"imported"`
@@ -114,6 +115,9 @@ type subject struct {
 	actor     string
 	watchers  []uuid.UUID
 	comment   string
+	// resolver is whoever last moved the issue, read only for a reply left in
+	// done, which has to reach somebody even when nobody is on the request.
+	resolver *uuid.UUID
 }
 
 // tell is one row to write: who, why, and the words.
@@ -229,6 +233,16 @@ func tellsFor(topic string, p payload, s *subject) []tell {
 		for _, id := range participants(p.Mentions...) {
 			out = append(out, tell{id, KindCommented, title, s.comment})
 		}
+	case events.TopicRequestStaysDone:
+		title := fmt.Sprintf("%s replied to %s, which stays %s", s.actor, link, p.Status)
+		body := strings.TrimSpace(fmt.Sprintf("%s\n\nIts workflow has no way back out of %s. Move it by hand if it needs more work.", s.comment, p.Status))
+		told := participants()
+		if len(told) == 0 && s.resolver != nil && *s.resolver != p.ActorID {
+			told = []uuid.UUID{*s.resolver}
+		}
+		for _, id := range told {
+			out = append(out, tell{id, KindCommented, title, body})
+		}
 	case events.TopicWatcherAdded:
 		if p.UserID != uuid.Nil && p.UserID != p.ActorID {
 			out = append(out, tell{p.UserID, KindWatching, fmt.Sprintf("%s added you to watch %s", s.actor, link), s.summary})
@@ -287,15 +301,24 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 		if err := rows.Err(); err != nil {
 			return err
 		}
-		if topic == events.TopicCommentAdded && p.CommentID != uuid.Nil {
+		if (topic == events.TopicCommentAdded || topic == events.TopicRequestStaysDone) && p.CommentID != uuid.Nil {
 			var body []byte
 			if err := tx.QueryRow(ctx, `SELECT body FROM issue_comment WHERE id = $1`, p.CommentID).Scan(&body); err == nil {
 				s.comment = issue.PlainText(body)
 			}
 		}
-		// The assignee and the reporter count only when they are members who
-		// are not customers; a customer reporter is the desk's to tell.
-		for _, who := range []**uuid.UUID{&s.assignee, &s.reporter} {
+		if topic == events.TopicRequestStaysDone {
+			err := tx.QueryRow(ctx, `
+				SELECT h.actor_id FROM issue_history h
+				WHERE h.issue_id = $1 AND h.actor_id IS NOT NULL AND h.changes @> '[{"field": "status"}]'
+				ORDER BY h.created_at DESC, h.id DESC LIMIT 1`, s.id).Scan(&s.resolver)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return err
+			}
+		}
+		// Only members who are not customers count here; a customer is the
+		// desk's to tell.
+		for _, who := range []**uuid.UUID{&s.assignee, &s.reporter, &s.resolver} {
 			if *who == nil {
 				continue
 			}
