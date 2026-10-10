@@ -172,7 +172,8 @@ export function Editor({ id, value, onChange, people, placeholder, autoFocus = f
       },
       clear: () => {
         setText("");
-        editor?.commands.clearContent(true);
+        // A form may clear after its page has gone, when the editor is too.
+        if (editor && !editor.isDestroyed) editor.commands.clearContent(true);
         onChange(null);
       },
     });
