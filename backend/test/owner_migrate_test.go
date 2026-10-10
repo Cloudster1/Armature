@@ -97,7 +97,7 @@ func TestMigrationsRunAsPlainOwner(t *testing.T) {
 	insertOrg := func(slug string) uuid.UUID {
 		t.Helper()
 		var id uuid.UUID
-		if err := superFresh.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $1) RETURNING id`, slug).Scan(&id); err != nil {
+		if err := superFresh.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, slug, slug).Scan(&id); err != nil {
 			t.Fatalf("insert organization %s: %v", slug, err)
 		}
 		return id
