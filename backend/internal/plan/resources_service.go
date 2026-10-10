@@ -71,7 +71,11 @@ func (s *Service) resourcePeople(ctx context.Context, projectKey string, in *Res
 	if err != nil {
 		return err
 	}
-	in.People, in.Work = people.Names, NewWorkdays(holidays, people.Teams, days)
+	shares, err := s.people.Shares(ctx, projectKey)
+	if err != nil {
+		return err
+	}
+	in.People, in.Work, in.Shares = people.Names, NewWorkdays(holidays, people.Teams, days), shares
 	return nil
 }
 
