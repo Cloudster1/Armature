@@ -799,7 +799,10 @@ Bulk edit is one transaction per issue, so a workflow that does not offer a
 transition refuses its own issue and names itself while the others are already
 done. A moved issue keeps its row and gets a new key, because history, comments
 and files hang off the row; the old key stays on the row so the address that was
-mailed around still finds it.
+mailed around still finds it. Everything under it moves too, at every depth and
+parents first, in the same transaction. A descendant whose status its workflow
+in the target does not have refuses the whole move and is named, rather than
+landing in a status nobody chose or staying behind under a parent elsewhere.
 
 ### A dashboard is an arrangement, and every number is computed on read
 
