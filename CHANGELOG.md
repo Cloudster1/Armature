@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a request resolved without a public reply no longer misses its first
+  response goal hours later; resolving completes every running clock, a
+  breach that already happened is kept, and reopening restarts only the
+  resolution clock (#66).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

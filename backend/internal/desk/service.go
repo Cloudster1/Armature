@@ -613,9 +613,8 @@ func (s *Service) IssueCreated(ctx context.Context, tx db.DBTX, created *issue.I
 	return nil
 }
 
-// IssueTransitioned moves the clocks with the status: a done status completes
-// the resolution clock, a pause status stops both, leaving one starts them
-// again, and reopening from done starts a fresh resolution clock.
+// IssueTransitioned moves the clocks with the status. Done completes every open
+// clock, breach kept, as nobody is left to answer; docs/decisions.md has the rule.
 func (s *Service) IssueTransitioned(ctx context.Context, tx db.DBTX, before, after *issue.Issue, actor issue.Actor) error {
 	rows, err := tx.Query(ctx, selectTimer+` WHERE t.issue_id = $1`, after.ID)
 	if err != nil {
@@ -666,7 +665,7 @@ func (s *Service) IssueTransitioned(ctx context.Context, tx db.DBTX, before, aft
 			}
 		case t.CompletedAt != nil:
 			continue
-		case t.Metric == Resolution && toDone:
+		case toDone:
 			if err := s.stop(ctx, tx, t, true); err != nil {
 				return err
 			}

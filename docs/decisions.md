@@ -663,6 +663,14 @@ that can disagree for a while, or forever if the worker is down. The one thing
 that cannot happen inside a transaction is noticing that time has passed, so
 breaches are the worker's, on a thirty second look, recorded once each.
 
+Moving to the done category completes every clock still open, first response
+as well as resolution, because a closed request has nobody waiting for an
+answer and a clock left running would only ever end in a breach. A breach that
+had already happened stays recorded, and one the worker had not seen yet is
+recorded as the clock completes, so closing a request never hides a missed
+goal. Reopening starts a fresh resolution clock; first response stays answered
+once it has been, by a reply or by resolving.
+
 A goal measured in business hours is arithmetic over a zone, a set of daily
 spans and a list of holidays, which in SQL means either a table of every working
 minute or a function taught about daylight saving. So the database finds the
