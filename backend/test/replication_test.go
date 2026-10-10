@@ -4,6 +4,8 @@ package test
 
 import (
 	"context"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -246,4 +248,103 @@ func TestIdleReplicaStaysHealthy(t *testing.T) {
 	}
 }
 
-var _ = uuid.Nil
+// holdTheReplicaHere lets the replica replay everything written so far, waits
+// until the router has seen it do so, and stops it: what follows is primary only.
+func (h *harness) holdTheReplicaHere(t *testing.T) {
+	t.Helper()
+	var text string
+	if err := h.super.QueryRow(context.Background(), `SELECT pg_current_wal_lsn()::text`).Scan(&text); err != nil {
+		t.Fatalf("read the primary's position: %v", err)
+	}
+	reached, err := db.ParseLSN(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !h.waitForReplica(t, reached, 10*time.Second) {
+		t.Fatal("the replica never caught up")
+	}
+	routable := func() bool {
+		for _, r := range h.cluster.Stats().Replicas {
+			if r.Healthy && r.ReplayLSN >= reached {
+				return true
+			}
+		}
+		return false
+	}
+	for deadline := time.Now().Add(10 * time.Second); !routable(); time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("the cluster never saw the replica catch up")
+		}
+	}
+	h.pauseReplay(t)
+}
+
+// listsInvite says whether the caller's list of invitations holds one.
+func listsInvite(t *testing.T, c *client, inviteID string) bool {
+	t.Helper()
+	for _, item := range list(t, want(t, c.get("/api/v1/invites"), http.StatusOK, "invitations"), "invites") {
+		if item.(map[string]any)["id"] == inviteID {
+			return true
+		}
+	}
+	return false
+}
+
+// An administrator who sends or withdraws an invitation sees the list as they
+// left it, however far a replica lags (issue #100).
+func TestTheInvitationsListShowsWhatWasJustSentOrWithdrawn(t *testing.T) {
+	h := newHarness(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+
+	// Two sessions, so that the one write each makes is the only one pinning it.
+	sender := api.client(t)
+	sender.signup(t, h, "invsend")
+	withdrawer := api.client(t)
+	withdrawer.signup(t, h, "invwithdraw")
+	withdrawn := idOf(t, want(t, withdrawer.post("/api/v1/invites", map[string]string{"email": h.email(t, "invgone"), "role": "member"}), http.StatusCreated, "an invitation"), "invite")
+
+	h.holdTheReplicaHere(t)
+
+	t.Run("an invitation just sent is listed", func(t *testing.T) {
+		sent := idOf(t, want(t, sender.post("/api/v1/invites", map[string]string{"email": h.email(t, "invnew"), "role": "member"}), http.StatusCreated, "an invitation"), "invite")
+		if !listsInvite(t, sender, sent) {
+			t.Error("the invitation just sent is missing from the list read straight after")
+		}
+	})
+
+	t.Run("an invitation just withdrawn is gone", func(t *testing.T) {
+		want(t, withdrawer.delete("/api/v1/invites/"+withdrawn), http.StatusNoContent, "withdrawing the invitation")
+		if listsInvite(t, withdrawer, withdrawn) {
+			t.Error("the invitation just withdrawn is still in the list read straight after")
+		}
+	})
+}
+
+// A project with no dashboard is given its default one on first sight; that
+// same answer must show it, not a replica that has not seen it made.
+func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
+	h := newHarness(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+	c := api.client(t)
+	orgID := principalField(t, c.signup(t, h, "dashsight"), "principal", "org", "id").(string)
+	key := "DSH" + strings.ToUpper(uuid.New().String()[:3])
+	want(t, c.post("/api/v1/projects", map[string]any{"name": "Sighted", "key": key, "template": "kanban"}), http.StatusCreated, "a project")
+
+	// As a project made before dashboards existed: it has none at all.
+	if _, err := h.super.Exec(context.Background(), `
+		DELETE FROM dashboard WHERE project_id = (SELECT id FROM project WHERE org_id = $1 AND key = $2)`, orgID, key); err != nil {
+		t.Fatal(err)
+	}
+	h.holdTheReplicaHere(t)
+
+	boards := list(t, want(t, c.get("/api/v1/projects/"+key+"/dashboards"), http.StatusOK, "dashboards"), "dashboards")
+	if len(boards) == 0 {
+		t.Error("the dashboard made on first sight is missing from the answer that made it")
+	}
+}
