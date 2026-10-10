@@ -32,6 +32,7 @@ type AvailabilityReader interface {
 	ForPeople(ctx context.Context, ids []uuid.UUID, from, to time.Time) (map[uuid.UUID]availability.Person, error)
 	DefaultHolidays(ctx context.Context, from, to time.Time) ([]availability.Holiday, error)
 	Shares(ctx context.Context, projectKey string) (map[uuid.UUID]int, error)
+	Members(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
 }
 
 // Service assembles a project's plan. It owns no tables of its own: a plan is a

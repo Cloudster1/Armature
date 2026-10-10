@@ -17,6 +17,10 @@ here in the branch that makes it.
 - Fixed: Themes has an icon of its own, a palette, instead of the sun the
   light mode wears, in the sidebar, the settings page and the command palette
   (#122).
+- Fixed: somebody who has left the organization no longer shows on the
+  Resources page with a full week free; work still assigned to them is counted
+  as nobody's, and the project calendar no longer counts them among its people
+  (#42).
 - Fixed: the Resources page counts work once per row, at the highest open level
   that carries hours, so a story and its subtasks are no longer booked twice
   (#41).
