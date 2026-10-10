@@ -65,6 +65,6 @@ describe("the description", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save description" }));
     await waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toMatchObject({ expectedUpdatedAt: THEIRS_AT });
-    expect(JSON.stringify(sent[1].description)).toContain("and mine");
+    expect(JSON.stringify(sent[1]?.description)).toContain("and mine");
   });
 });

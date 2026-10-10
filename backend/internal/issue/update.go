@@ -33,6 +33,8 @@ type UpdateInput struct {
 	// TimeEstimate and TimeRemaining are minutes; the inner nil clears.
 	TimeEstimate  *(*int)
 	TimeRemaining *(*int)
+	// ExpectedUpdatedAt is the updatedAt the editor read; see CheckFresh.
+	ExpectedUpdatedAt *time.Time
 }
 
 // Update edits an issue's fields and records every change in the changelog.
@@ -51,6 +53,10 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor 
 		before, err := scanIssue(tx.QueryRow(ctx,
 			selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
 		if err != nil {
+			return err
+		}
+		// Checked under the row lock, so two saves cannot both pass it.
+		if err := CheckFresh(before.UpdatedAt, in.ExpectedUpdatedAt); err != nil {
 			return err
 		}
 
@@ -79,8 +85,11 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor 
 			} else if err := ValidateDocument(body, "description"); err != nil {
 				return err
 			}
-			if _, err := tx.Exec(ctx, `UPDATE issue SET description = $2 WHERE id = $1`,
-				before.ID, nullableJSON(body)); err != nil {
+			// jsonb equality ignores key order and spacing, so an editor that
+			// re-serialises the same document has not changed it.
+			tag, err := tx.Exec(ctx, `UPDATE issue SET description = $2
+				WHERE id = $1 AND description IS DISTINCT FROM $2::jsonb`, before.ID, nullableJSON(body))
+			if err != nil {
 				return err
 			}
 			// The body of a rich text document is not worth reproducing in the
@@ -89,10 +98,12 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor 
 			if nullableJSON(body) == nil {
 				to = "cleared"
 			}
-			changes = append(changes, Change{Field: "description", To: to})
-			if body != nil {
-				if _, err := s.mentionWatchers(ctx, tx, before.ID, before.Key, body, actor); err != nil {
-					return err
+			if tag.RowsAffected() > 0 {
+				changes = append(changes, Change{Field: "description", To: to})
+				if body != nil {
+					if _, err := s.mentionWatchers(ctx, tx, before.ID, before.Key, body, actor); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -120,7 +131,7 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor 
 			}
 		}
 
-		if in.DueDate != nil {
+		if in.DueDate != nil && formatDate(before.DueDate) != formatDate(*in.DueDate) {
 			if err := CheckDates(before.StartDate, *in.DueDate); err != nil {
 				return err
 			}

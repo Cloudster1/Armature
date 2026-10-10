@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { request } from "./client";
+import { ApiError, request } from "./client";
 import { META_STALE_MS } from "@/config";
 
 export type StatusCategory = "todo" | "in_progress" | "done";
@@ -351,6 +351,13 @@ export interface UpdateIssueInput {
   /** Minutes; null clears. */
   timeEstimateMinutes?: number | null;
   timeRemainingMinutes?: number | null;
+  /** The issue's updatedAt when the edit began; a newer one is refused with 409. */
+  expectedUpdatedAt?: string;
+}
+
+/** True when the server refused an edit because somebody saved first. */
+export function isStaleEdit(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409 && error.code === "stale_edit";
 }
 
 export function useUpdateIssue() {
@@ -359,6 +366,10 @@ export function useUpdateIssue() {
     mutationFn: ({ key, ...body }: UpdateIssueInput) =>
       request<{ issue: Issue }>(`/issues/${key}`, { method: "PATCH", body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    // A refused edit means this copy is old: fetch the newer one to show beside the draft.
+    onError: (error) => {
+      if (isStaleEdit(error)) void queryClient.invalidateQueries({ queryKey: issuesQueryKey });
+    },
   });
 }
 

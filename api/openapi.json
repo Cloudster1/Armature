@@ -26798,6 +26798,10 @@
             "format": "date",
             "description": "A day, YYYY-MM-DD; null clears it."
           },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "priority": {
             "type": "string"
           },
