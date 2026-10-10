@@ -52,6 +52,22 @@ the cost of a relay and at-least-once delivery.
 **Reconsider if** we adopt a broker with transactional guarantees against
 Postgres itself.
 
+### The stream is trimmed by what was acknowledged, and the relay waits at the cap
+
+The stream used to be capped by length, which trimmed whatever was oldest
+whether every consumer group had read it or not: a 15,000 row import outran
+the groups that write once per event, and their reads skipped the trimmed
+issues without a word. Now the relay trims below the oldest entry one of the
+worker's groups has not acknowledged, and adds nothing while the slowest group
+is the cap behind. The cap still bounds what Redis holds; the outbox, which is
+the record anyway, holds the rest until there is room. Holding back alone would
+not have been enough, since a trim by length can still take an entry a group
+was handed and has not acknowledged. A group no longer in `events.Groups` is
+not waited for, or a feature removed would stop every event behind it.
+
+**Reconsider if** a consumer needs to replay the stream from further back than
+its group's position, at which point the stream wants a retention of its own.
+
 ### Hand written SQL and sqlc rather than an ORM
 
 The expensive queries in a tracker are issue search, board load and permission

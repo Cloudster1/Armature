@@ -111,11 +111,13 @@ func TestOutboxRelayWaitsForTheSlowestGroup(t *testing.T) {
 	seen := map[uuid.UUID]bool{}
 	deadline = time.Now().Add(90 * time.Second)
 	for time.Now().Before(deadline) {
+		// Asked before the read, so an event published during it is not missed.
+		relayed := h.countUnpublished(t, orgID) == 0
 		res, err := rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group: group, Consumer: "test", Streams: []string{stream, ">"}, Count: 10, Block: 500 * time.Millisecond,
 		}).Result()
 		if errors.Is(err, redis.Nil) {
-			if h.countUnpublished(t, orgID) == 0 {
+			if relayed {
 				break
 			}
 			continue

@@ -255,10 +255,27 @@ exposition format on `ARMATURE_METRICS_ADDR`. It is a listener of its own, never
 a route in the API, and neither the compose file nor the chart's ingress
 publishes it. The series are all named `armature_*` and written down once in
 `internal/observability/metrics.go`: requests by method, route pattern and
-status, request and statement durations, the outbox's backlog and throughput,
-every consumer group's handled events and unacknowledged count, every periodic
-job's passes, mails handed to SMTP, the cluster's routing counters and pool
-sizes, and the Go runtime.
+status, request and statement durations, the outbox's backlog, throughput and
+lag, every consumer group's handled events, unacknowledged count and lag,
+every periodic job's passes, mails handed to SMTP, the cluster's routing
+counters and pool sizes, and the Go runtime.
+
+**The event stream waits for its slowest reader.** The relay trims from the
+Redis stream only what every consumer group the worker runs has acknowledged,
+and stops adding once the slowest group is 10,000 entries behind
+(`StreamMaxLen`). Until it catches up the events wait in the outbox, so a large
+import is slower to reach the notifications and the webhooks, never skipped.
+Alert at these thresholds, each held for five minutes:
+
+| Series | Threshold | Means |
+|---|---|---|
+| `armature_outbox_relay_held` | `== 1` | a group is a full cap behind and the relay waits |
+| `armature_stream_backlog` | `> 8000` | the slowest group is near the cap |
+| `armature_outbox_oldest_seconds` | `> 300` | events wait that long to reach the stream |
+
+`armature_stream_lag` and `armature_stream_pending`, by group, say which group
+is slow. A group nobody reads any more is not waited for once its name is gone
+from `events.Groups`; `XGROUP DESTROY` removes it from Redis.
 
 **Traces.** With `ARMATURE_OTEL_ENDPOINT` set to a collector's traces URL, each
 binary sends OpenTelemetry spans over HTTP: one per request, one per statement

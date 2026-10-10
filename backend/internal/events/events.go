@@ -68,8 +68,8 @@ func Known(topic string) bool {
 	return false
 }
 
-// Groups names every consumer group the worker runs on the stream, so a
-// collector can ask after each without knowing the packages.
+// Groups names every consumer group the worker runs on the stream: the relay
+// trims nothing one of them has not acknowledged, and the metrics report each.
 var Groups = []string{"audit", "automation", "desk-mail", "git-sync", "notify", "webhooks"}
 
 // Event is one committed domain event.
