@@ -311,7 +311,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_DB_ADMIN_URL` | the primary | the role exempt from row level security |
 | `ARMATURE_DB_MAX_CONNS` / `_MIN_CONNS` | `20` / `2` | pool bounds per process |
 | `ARMATURE_DB_CONN_MAX_LIFETIME` | `1h` | how long a connection is kept |
-| `ARMATURE_DB_HEALTH_INTERVAL` | `5s` | how often a replica's lag is re-read |
+| `ARMATURE_DB_HEALTH_INTERVAL` | `5s` | how often a replica's lag is re-read, and one that is down is tried again |
 | `ARMATURE_DB_MAX_REPLICA_LAG` | `2s` | lag past which a replica is not used |
 | `ARMATURE_DB_REPLICA_LAG_SAMPLES` | `3` | samples kept per replica |
 | `ARMATURE_REDIS_URL` | `redis://localhost:6379/0` | the event stream |
