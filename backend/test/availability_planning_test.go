@@ -73,8 +73,8 @@ func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
 		if it := byTitle["Lisbon day (Lisbon)"]; it == nil || it["calendar"] != "Lisbon" || it["from"] != "2031-03-14" {
 			t.Errorf("the holiday of a calendar somebody on the project keeps = %v", it)
 		}
-		if it := byTitle["Ada Lovelace"]; it == nil || it["kind"] != "absence" || it["from"] != "2031-03-01" || it["to"] != "2031-03-04" {
-			t.Errorf("Ada's absence, cut to the month = %v", it)
+		if it := byTitle["Ada Lovelace"]; it == nil || it["kind"] != "absence" || it["from"] != "2031-02-26" || it["to"] != "2031-03-04" {
+			t.Errorf("Ada's absence, from February's last week the grid draws = %v", it)
 		}
 		if it := byTitle["Carl Assigned"]; it == nil || it["from"] != "2031-03-24" {
 			t.Errorf("the absence of somebody assigned work in the month = %v", it)
