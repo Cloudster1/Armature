@@ -265,6 +265,8 @@ function BurndownChart({ curve }: { curve: SprintBurndown }) {
 
 function SprintHistoryBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<SprintHistoryReport>(projectKey, widget, narrow);
+  // A shared link answers only for its widgets, so it has no curve to give a visitor.
+  const { readOnly } = useReportSource();
   const [curveOf, setCurveOf] = useState<string | null>(null);
   if (!data) return <WidgetState error={error} />;
   if (data.sprints.length === 0) return <p className="text-sm text-ink-subtle">No sprint has been completed yet.</p>;
@@ -277,7 +279,7 @@ function SprintHistoryBody({ projectKey, widget, narrow }: BodyProps) {
             <th className="py-1 text-right font-medium">Committed</th>
             <th className="py-1 text-right font-medium">Completed</th>
             <th className="py-1 text-right font-medium">Issues</th>
-            <th className="py-1"></th>
+            {!readOnly && <th className="py-1"></th>}
           </tr>
         </thead>
         <tbody>
@@ -292,16 +294,18 @@ function SprintHistoryBody({ projectKey, widget, narrow }: BodyProps) {
               <td className="py-1.5 text-right text-ink-muted tabular-nums">
                 {s.finished} finished, {s.carried} carried
               </td>
-              <td className="py-1.5 text-right">
-                <Button size="sm" variant="ghost" onClick={() => setCurveOf(curveOf === s.id ? null : s.id)}>
-                  {curveOf === s.id ? "Hide" : "Curve"}
-                </Button>
-              </td>
+              {!readOnly && (
+                <td className="py-1.5 text-right">
+                  <Button size="sm" variant="ghost" onClick={() => setCurveOf(curveOf === s.id ? null : s.id)}>
+                    {curveOf === s.id ? "Hide" : "Curve"}
+                  </Button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
-      {curveOf && <PastBurndown projectKey={projectKey} sprintId={curveOf} />}
+      {curveOf && !readOnly && <PastBurndown projectKey={projectKey} sprintId={curveOf} />}
     </div>
   );
 }

@@ -847,7 +847,8 @@ the first anonymous read: a random token whose digest finds the organization and
 the dashboard, after which the ordinary report code runs inside that
 organization. What a visitor can ask is each widget of that one dashboard, by
 id, with the widget's own stored settings; there is no route that takes a kind
-and parameters. The filter is frozen when the link is made and compiled as the
+and parameters, so a widget that opens more on a click, like a past sprint's
+curve in Sprint history, offers nothing to click on a shared page. The filter is frozen when the link is made and compiled as the
 sharer, so a visitor cannot widen the view. The address is shown once, like an
 API token, and the access log writes the path with the token blanked.
 

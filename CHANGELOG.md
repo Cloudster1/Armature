@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: on a shared dashboard the Sprint history widget no longer offers a
+  Curve button that only led to an error; the link shows the sprints and
+  nothing a visitor cannot open (#58).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
