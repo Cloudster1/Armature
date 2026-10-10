@@ -38,6 +38,12 @@ func NewDigest(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog
 	return &Digest{db: cluster, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), now: time.Now, sent: map[uuid.UUID]time.Time{}}
 }
 
+// WithClock sets where the digest reads the time, which a test moves by hand.
+func (d *Digest) WithClock(now func() time.Time) *Digest {
+	d.now = now
+	return d
+}
+
 // Run sends on start and then every interval until the context ends.
 func (d *Digest) Run(ctx context.Context) error {
 	ticker := time.NewTicker(digestInterval)
