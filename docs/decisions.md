@@ -1442,6 +1442,15 @@ complete whatever asked for the send. The secret is stored as it is, because
 signing needs it; the git integration's inbound secrets stay digests, because
 verifying does not.
 
+Deliveries are posted side by side, never one after another: a pool of
+`ARMATURE_WEBHOOK_CONCURRENCY` places, at most two of them to any one endpoint,
+so an organization whose endpoint hangs holds two places and not the queue.
+Three timeouts in a row pause an endpoint: everything it has waiting is put off
+five minutes, without counting as an attempt, and the pass goes on without it.
+The pause is written on the deliveries rather than kept in memory, so a restart
+does not forget it and no migration was needed; a test or a redelivery by hand
+still goes at once.
+
 ### A rule runs as an account of its own, once per event
 
 Running a rule as the person whose act triggered it is wrong: the person may

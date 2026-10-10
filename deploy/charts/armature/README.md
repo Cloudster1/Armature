@@ -219,6 +219,10 @@ no leader election; the Redis consumers all identify themselves as the literal
 `worker`; and the hourly digest remembers what it has sent in an in-process
 map, so a second replica mails every digest twice.
 
+What the one replica does side by side is set instead. `worker.webhookConcurrency`
+(8) is how many webhook deliveries it posts at once, at most two to any one
+endpoint, so an organization whose endpoint hangs does not hold up the others.
+
 ## Verifying a change
 
 ```sh
