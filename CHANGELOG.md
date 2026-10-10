@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a change the server refuses, such as an assignee, a priority, an
+  archived project or a saved search, says why in a toast in the server's
+  words, and a field that shows its own error still says it only once (#116).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

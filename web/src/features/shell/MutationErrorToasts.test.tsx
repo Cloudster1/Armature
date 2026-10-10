@@ -87,6 +87,7 @@ describe("a failed change that reports itself", () => {
 describe("every mutation", () => {
   it("is built on the hook that knows whether its caller shows the error", () => {
     const sources = import.meta.glob<string>(["/src/**/*.{ts,tsx}", "!/src/**/*.test.{ts,tsx}"], { query: "?raw", import: "default", eager: true });
+    expect(Object.keys(sources)).toContain("/src/api/issues.ts");
     const direct = Object.entries(sources)
       .filter(([path]) => path !== "/src/api/mutation.ts")
       .filter(([, source]) => /import\s*\{[^}]*\buseMutation\b[^}]*\}\s*from\s*"@tanstack\/react-query"/.test(source))

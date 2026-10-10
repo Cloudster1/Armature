@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { request } from "./client";
 import { INBOX_PAGE_SIZE, UNREAD_POLL_MS } from "@/config";
 
