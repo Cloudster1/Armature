@@ -36,169 +36,188 @@ type UpdateInput struct {
 }
 
 // Update edits an issue's fields and records every change in the changelog.
-//
-// The status is deliberately not editable here. Moving between statuses goes
-// through Transition, so the workflow's conditions, validators and
-// post-functions cannot be bypassed by editing the field directly.
+// The status is not editable here: it moves through Transition and its rules.
 func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor Actor) (*Issue, db.LSN, error) {
-	projectKey, num, err := ParseKey(key)
-	if err != nil {
+	return s.writeAndAnnounce(ctx, key, actor, func(ctx context.Context, tx db.DBTX) (*Issue, []Change, error) {
+		return s.UpdateIn(ctx, tx, key, in, actor)
+	})
+}
+
+// writeAndAnnounce runs one of the In variants in a transaction of its own and
+// announces what it changed, which is what every single-issue endpoint does.
+func (s *Service) writeAndAnnounce(ctx context.Context, key string, actor Actor, apply func(context.Context, db.DBTX) (*Issue, []Change, error)) (*Issue, db.LSN, error) {
+	if _, _, err := ParseKey(key); err != nil {
 		return nil, 0, err
 	}
-
 	var updated *Issue
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		before, err := scanIssue(tx.QueryRow(ctx,
-			selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
-		if err != nil {
-			return err
-		}
-
 		var changes []Change
-
-		if in.Summary != nil {
-			summary := strings.TrimSpace(*in.Summary)
-			if summary == "" {
-				return errors.New("an issue needs a summary")
-			}
-			if len([]rune(summary)) > MaxSummary {
-				return fmt.Errorf("the summary must be %d characters or fewer", MaxSummary)
-			}
-			if summary != before.Summary {
-				if _, err := tx.Exec(ctx, `UPDATE issue SET summary = $2 WHERE id = $1`, before.ID, summary); err != nil {
-					return err
-				}
-				changes = append(changes, Change{Field: "summary", From: before.Summary, To: summary})
-			}
-		}
-
-		if in.Description != nil {
-			body := *in.Description
-			if IsEmptyDocument(body) {
-				body = nil
-			} else if err := ValidateDocument(body, "description"); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(ctx, `UPDATE issue SET description = $2 WHERE id = $1`,
-				before.ID, nullableJSON(body)); err != nil {
-				return err
-			}
-			// The body of a rich text document is not worth reproducing in the
-			// changelog; that it changed, and when, is the useful part.
-			to := "updated"
-			if nullableJSON(body) == nil {
-				to = "cleared"
-			}
-			changes = append(changes, Change{Field: "description", To: to})
-			if body != nil {
-				if _, err := s.mentionWatchers(ctx, tx, before.ID, before.Key, body, actor); err != nil {
-					return err
-				}
-			}
-		}
-
-		if in.Priority != nil {
-			if !in.Priority.Valid() {
-				return fmt.Errorf("%q is not a priority", *in.Priority)
-			}
-			if *in.Priority != before.Priority {
-				if _, err := tx.Exec(ctx, `UPDATE issue SET priority = $2 WHERE id = $1`,
-					before.ID, string(*in.Priority)); err != nil {
-					return err
-				}
-				changes = append(changes, Change{Field: "priority", From: string(before.Priority), To: string(*in.Priority)})
-			}
-		}
-
-		if in.Assignee != nil {
-			change, err := s.applyAssignee(ctx, tx, before, *in.Assignee)
-			if err != nil {
-				return err
-			}
-			if change != nil {
-				changes = append(changes, *change)
-			}
-		}
-
-		if in.DueDate != nil {
-			if err := CheckDates(before.StartDate, *in.DueDate); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(ctx, `UPDATE issue SET due_date = $2 WHERE id = $1`, before.ID, *in.DueDate); err != nil {
-				return err
-			}
-			changes = append(changes, Change{
-				Field: "dueDate",
-				From:  formatDate(before.DueDate),
-				To:    formatDate(*in.DueDate),
-			})
-		}
-
-		if in.ReporterID != nil {
-			change, err := s.applyReporter(ctx, tx, before, *in.ReporterID)
-			if err != nil {
-				return err
-			}
-			if change != nil {
-				changes = append(changes, *change)
-			}
-		}
-
-		if in.TimeEstimate != nil {
-			change, err := applyMinutes(ctx, tx, before.ID, "time_estimate_minutes", "timeEstimate", before.TimeEstimateMinutes, *in.TimeEstimate)
-			if err != nil {
-				return err
-			}
-			if change != nil {
-				changes = append(changes, *change)
-			}
-		}
-		if in.TimeRemaining != nil {
-			change, err := applyMinutes(ctx, tx, before.ID, "time_remaining_minutes", "timeRemaining", before.TimeRemainingMinutes, *in.TimeRemaining)
-			if err != nil {
-				return err
-			}
-			if change != nil {
-				changes = append(changes, *change)
-			}
-		}
-
-		if in.TypeID != nil && *in.TypeID != before.Type.ID {
-			change, err := s.applyType(ctx, tx, before, *in.TypeID)
-			if err != nil {
-				return err
-			}
-			changes = append(changes, *change)
-		}
-
-		if len(changes) == 0 {
-			// Nothing actually moved. Recording an empty changelog entry would
-			// fill the history with noise from clients that resend unchanged
-			// forms.
-			updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
-			return err
-		}
-
-		if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
-			return err
-		}
-
-		updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
+		var err error
+		updated, changes, err = apply(ctx, tx)
 		if err != nil {
 			return err
 		}
-
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
-			"issueId": updated.ID,
-			"key":     updated.Key,
-			"changes": changes,
-			"actorId": actor.UserID,
-		})
+		return AnnounceUpdate(ctx, tx, updated.ID, updated.Key, actor, changes)
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	return updated, lsn, nil
+}
+
+// UpdateIn writes the edit inside the caller's transaction and hands back the
+// changes unrecorded, so a bulk edit can record and announce several as one.
+func (s *Service) UpdateIn(ctx context.Context, tx db.DBTX, key string, in UpdateInput, actor Actor) (*Issue, []Change, error) {
+	projectKey, num, err := ParseKey(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	before, err := scanIssue(tx.QueryRow(ctx,
+		selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var changes []Change
+
+	if in.Summary != nil {
+		summary := strings.TrimSpace(*in.Summary)
+		if summary == "" {
+			return nil, nil, errors.New("an issue needs a summary")
+		}
+		if len([]rune(summary)) > MaxSummary {
+			return nil, nil, fmt.Errorf("the summary must be %d characters or fewer", MaxSummary)
+		}
+		if summary != before.Summary {
+			if _, err := tx.Exec(ctx, `UPDATE issue SET summary = $2 WHERE id = $1`, before.ID, summary); err != nil {
+				return nil, nil, err
+			}
+			changes = append(changes, Change{Field: "summary", From: before.Summary, To: summary})
+		}
+	}
+
+	if in.Description != nil {
+		body := *in.Description
+		if IsEmptyDocument(body) {
+			body = nil
+		} else if err := ValidateDocument(body, "description"); err != nil {
+			return nil, nil, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE issue SET description = $2 WHERE id = $1`,
+			before.ID, nullableJSON(body)); err != nil {
+			return nil, nil, err
+		}
+		// The body of a rich text document is not worth reproducing in the
+		// changelog; that it changed, and when, is the useful part.
+		to := "updated"
+		if nullableJSON(body) == nil {
+			to = "cleared"
+		}
+		changes = append(changes, Change{Field: "description", To: to})
+		if body != nil {
+			if _, err := s.mentionWatchers(ctx, tx, before.ID, before.Key, body, actor); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+
+	if in.Priority != nil {
+		if !in.Priority.Valid() {
+			return nil, nil, fmt.Errorf("%q is not a priority", *in.Priority)
+		}
+		if *in.Priority != before.Priority {
+			if _, err := tx.Exec(ctx, `UPDATE issue SET priority = $2 WHERE id = $1`,
+				before.ID, string(*in.Priority)); err != nil {
+				return nil, nil, err
+			}
+			changes = append(changes, Change{Field: "priority", From: string(before.Priority), To: string(*in.Priority)})
+		}
+	}
+
+	if in.Assignee != nil {
+		change, err := s.applyAssignee(ctx, tx, before, *in.Assignee)
+		if err != nil {
+			return nil, nil, err
+		}
+		if change != nil {
+			changes = append(changes, *change)
+		}
+	}
+
+	if in.DueDate != nil {
+		if err := CheckDates(before.StartDate, *in.DueDate); err != nil {
+			return nil, nil, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE issue SET due_date = $2 WHERE id = $1`, before.ID, *in.DueDate); err != nil {
+			return nil, nil, err
+		}
+		changes = append(changes, Change{
+			Field: "dueDate",
+			From:  formatDate(before.DueDate),
+			To:    formatDate(*in.DueDate),
+		})
+	}
+
+	if in.ReporterID != nil {
+		change, err := s.applyReporter(ctx, tx, before, *in.ReporterID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if change != nil {
+			changes = append(changes, *change)
+		}
+	}
+
+	if in.TimeEstimate != nil {
+		change, err := applyMinutes(ctx, tx, before.ID, "time_estimate_minutes", "timeEstimate", before.TimeEstimateMinutes, *in.TimeEstimate)
+		if err != nil {
+			return nil, nil, err
+		}
+		if change != nil {
+			changes = append(changes, *change)
+		}
+	}
+	if in.TimeRemaining != nil {
+		change, err := applyMinutes(ctx, tx, before.ID, "time_remaining_minutes", "timeRemaining", before.TimeRemainingMinutes, *in.TimeRemaining)
+		if err != nil {
+			return nil, nil, err
+		}
+		if change != nil {
+			changes = append(changes, *change)
+		}
+	}
+
+	if in.TypeID != nil && *in.TypeID != before.Type.ID {
+		change, err := s.applyType(ctx, tx, before, *in.TypeID)
+		if err != nil {
+			return nil, nil, err
+		}
+		changes = append(changes, *change)
+	}
+
+	updated, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
+	if err != nil {
+		return nil, nil, err
+	}
+	return updated, changes, nil
+}
+
+// AnnounceUpdate writes one changelog entry and one issue.updated event for
+// the changes. Nothing moved records nothing, so resent forms leave no noise.
+func AnnounceUpdate(ctx context.Context, tx db.DBTX, issueID uuid.UUID, key string, actor Actor, changes []Change) error {
+	if len(changes) == 0 {
+		return nil
+	}
+	if err := RecordChanges(ctx, tx, issueID, actor.UserID, changes); err != nil {
+		return err
+	}
+	return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		"issueId": issueID,
+		"key":     key,
+		"changes": changes,
+		"actorId": actor.UserID,
+	})
 }
 
 // applyAssignee writes a new assignee and describes the change.
@@ -349,161 +368,6 @@ func (s *Service) checkTypeFitsTheTree(ctx context.Context, tx db.DBTX, before *
 			fmt.Sprintf("%d of this issue's children cannot sit under %s", stranded, article(name))}
 	}
 	return nil
-}
-
-// Transitions lists the moves available to this actor from the issue's current
-// status.
-func (s *Service) Transitions(ctx context.Context, key string, actor Actor) ([]workflow.Transition, error) {
-	projectKey, num, err := ParseKey(key)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []workflow.Transition
-	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		issue, err := scanIssue(tx.QueryRow(ctx,
-			selectIssue+` WHERE p.key = $1 AND i.key_num = $2`, projectKey, num))
-		if err != nil {
-			return err
-		}
-		wf, err := s.workflows.ForIssueType(ctx, tx, issue.ProjectID, issue.Type.ID)
-		if err != nil {
-			return err
-		}
-		out, err = s.engine.Available(wf, subjectOf(issue), actor.toWorkflow())
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// TransitionInput is what the user supplied along with a chosen transition.
-type TransitionInput struct {
-	TransitionID uuid.UUID
-	Comment      string
-	Assignee     *uuid.UUID
-	Resolution   string
-}
-
-// Transition moves an issue through its workflow.
-//
-// Everything happens in one transaction: the workflow decides, the status
-// changes, the post-functions' effects are applied, the changelog is written
-// and the event is emitted. A failure anywhere leaves the issue exactly as it
-// was.
-func (s *Service) Transition(ctx context.Context, key string, in TransitionInput, actor Actor) (*Issue, db.LSN, error) {
-	projectKey, num, err := ParseKey(key)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var updated *Issue
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		before, err := scanIssue(tx.QueryRow(ctx,
-			selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
-		if err != nil {
-			return err
-		}
-
-		wf, err := s.workflows.ForIssueType(ctx, tx, before.ProjectID, before.Type.ID)
-		if err != nil {
-			return err
-		}
-
-		decision, err := s.engine.Evaluate(wf, in.TransitionID, subjectOf(before), actor.toWorkflow(), workflow.Input{
-			Comment:    in.Comment,
-			Assignee:   in.Assignee,
-			Resolution: in.Resolution,
-		})
-		if err != nil {
-			return err
-		}
-
-		changes := []Change{{
-			Field: "status",
-			From:  before.Status.Name,
-			To:    decision.ToStatus.Name,
-		}}
-
-		if _, err := tx.Exec(ctx, `UPDATE issue SET status_id = $2 WHERE id = $1`,
-			before.ID, decision.ToStatus.ID); err != nil {
-			return err
-		}
-
-		if decision.Effect.ClearAssign {
-			change, err := s.applyAssignee(ctx, tx, before, nil)
-			if err != nil {
-				return err
-			}
-			if change != nil {
-				changes = append(changes, *change)
-			}
-		} else if decision.Effect.Assignee != nil {
-			change, err := s.applyAssignee(ctx, tx, before, decision.Effect.Assignee)
-			if err != nil {
-				return err
-			}
-			if change != nil {
-				changes = append(changes, *change)
-			}
-		}
-
-		if decision.Effect.Resolved != nil {
-			if *decision.Effect.Resolved {
-				if _, err := tx.Exec(ctx, `UPDATE issue SET resolved_at = now() WHERE id = $1`, before.ID); err != nil {
-					return err
-				}
-				changes = append(changes, Change{Field: "resolution", To: resolutionOr(in.Resolution, "Done")})
-			} else {
-				if _, err := tx.Exec(ctx, `UPDATE issue SET resolved_at = NULL WHERE id = $1`, before.ID); err != nil {
-					return err
-				}
-				changes = append(changes, Change{Field: "resolution", From: "Done", To: "Unresolved"})
-			}
-		}
-
-		// The user's own comment first, then anything the workflow adds, so
-		// the reading order matches what happened.
-		if strings.TrimSpace(in.Comment) != "" {
-			if err := s.insertComment(ctx, tx, before.ID, &actor.UserID, plainTextDoc(in.Comment), false); err != nil {
-				return err
-			}
-		}
-		for _, text := range decision.Effect.Comments {
-			if err := s.insertComment(ctx, tx, before.ID, nil, plainTextDoc(text), false); err != nil {
-				return err
-			}
-		}
-
-		if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
-			return err
-		}
-
-		updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
-		if err != nil {
-			return err
-		}
-		for _, o := range s.observers {
-			if err := o.IssueTransitioned(ctx, tx, before, updated, actor); err != nil {
-				return err
-			}
-		}
-
-		return events.EmitInTenant(ctx, tx, events.TopicIssueTransitioned, map[string]any{
-			"issueId":    updated.ID,
-			"key":        updated.Key,
-			"transition": decision.Transition.Name,
-			"fromStatus": before.Status.Name,
-			"toStatus":   decision.ToStatus.Name,
-			"actorId":    actor.UserID,
-		})
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	return updated, lsn, nil
 }
 
 func subjectOf(i *Issue) workflow.Subject {

@@ -797,7 +797,11 @@ would see, not what the owner would.
 
 Bulk edit is one transaction per issue, so a workflow that does not offer a
 transition refuses its own issue and names itself while the others are already
-done. A moved issue keeps its row and gets a new key, because history, comments
+done. Every step on that issue runs in its transaction, through the `In`
+variants of the single-issue methods, so a refused issue keeps nothing of the
+edit: no field, no history row, no event. Its fields are recorded and announced
+as one change, the way one edit is, and a transition after them as its own. A
+moved issue keeps its row and gets a new key, because history, comments
 and files hang off the row; the old key stays on the row so the address that was
 mailed around still finds it.
 

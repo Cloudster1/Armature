@@ -21,7 +21,7 @@ import (
 func TestBulkEditRefusalLeavesTheIssueAsItWas(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "allornot")
-	edits := bulk.NewService(ws.issues, label.NewService(h.cluster))
+	edits := bulk.NewService(h.cluster, ws.issues, label.NewService(h.cluster))
 
 	fresh := ws.newIssue(t, "Still to do, so Approve is not offered")
 	ready := ws.newIssue(t, "In review, so Approve is offered")
