@@ -104,7 +104,7 @@ func TestCompileBindsEveryValue(t *testing.T) {
 		{`reporter IN (currentUser(), "Ada L", ada@armature.test)`,
 			`((i.reporter_id = ANY($3::uuid[])) OR (i.reporter_id IN (SELECT id FROM app_user WHERE lower(email::text) = ANY($4) OR lower(name) = ANY($4))))`,
 			[]any{[]uuid.UUID{me}, []string{"ada l", "ada@armature.test"}}},
-		{`statusCategory != done`, `NOT (s.category = ANY($3::status_category[]))`, []any{[]string{"done"}}},
+		{`statusCategory != done`, `NOT COALESCE((s.category = ANY($3::status_category[])), false)`, []any{[]string{"done"}}},
 		{`labels IN (a, B)`, `EXISTS (SELECT 1 FROM issue_label il JOIN label l ON l.id = il.label_id WHERE il.issue_id = i.id AND lower(l.name) = ANY($3))`, []any{[]string{"a", "b"}}},
 		{`labels IS EMPTY`, `NOT EXISTS (SELECT 1 FROM issue_label il WHERE il.issue_id = i.id)`, nil},
 		{`resolved >= -7d`, `(i.resolved_at >= $3)`, []any{testNow.Add(-7 * 24 * time.Hour)}},
@@ -125,7 +125,7 @@ func TestCompileBindsEveryValue(t *testing.T) {
 		{`estimate > 3`, `(i.estimate > $3)`, []any{3.0}},
 		{`estimate IN (1, 2.5)`, `(i.estimate = ANY($3::numeric[]))`, []any{[]float64{1, 2.5}}},
 		{`text ~ login`, `((i.summary ILIKE '%' || $3 || '%') OR (jsonb_to_tsvector('simple', i.description, '["string"]') @@ plainto_tsquery('simple', $4)))`, []any{"login", "login"}},
-		{`summary !~ "reset email"`, `NOT (i.summary ILIKE '%' || $3 || '%')`, []any{"reset email"}},
+		{`summary !~ "reset email"`, `NOT COALESCE((i.summary ILIKE '%' || $3 || '%'), false)`, []any{"reset email"}},
 		{`summary = "Fix it"`, `(lower(i.summary) = ANY($3))`, []any{[]string{"fix it"}}},
 		{`sprint in (openSprints(), "Sprint 2")`,
 			`((i.sprint_id IN (SELECT id FROM sprint WHERE state = 'active')) OR (i.sprint_id IN (SELECT id FROM sprint WHERE lower(name) = ANY($3))))`,
@@ -146,7 +146,7 @@ func TestCompileBindsEveryValue(t *testing.T) {
 			[]any{"2026-09-01", "Ship by"}},
 		{`"Customer" IS EMPTY`, `NOT EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($3))`, []any{"Customer"}},
 		{`description IS EMPTY`, `(i.description IS NULL OR jsonb_to_tsvector('simple', i.description, '["string"]') = ''::tsvector)`, nil},
-		{`NOT (assignee IS EMPTY OR statusCategory = done)`, `NOT ((i.assignee_id IS NULL) OR (s.category = ANY($3::status_category[])))`, []any{[]string{"done"}}},
+		{`NOT (assignee IS EMPTY OR statusCategory = done)`, `NOT COALESCE(((i.assignee_id IS NULL) OR (s.category = ANY($3::status_category[]))), false)`, []any{[]string{"done"}}},
 		{`ORDER BY priority DESC, key`, ``, nil},
 	}
 	for _, c := range cases {
