@@ -767,6 +767,16 @@ numbers and the warnings with the query.
 **Reconsider if** a project outgrows the two thousand rows the plan reads at
 once, at which point the server has to select rows before it rolls them up.
 
+### A negation keeps the issues with nothing there
+
+A field an issue leaves empty matches no positive test, so `!=`, `!~`,
+`NOT IN` and `NOT` all count the issue on the "not" side: an issue with no
+description does not mention payment, and an unassigned issue is not
+yours. Jira leaves such issues out of `!=`, which is the surprise people
+ask about; here `IS NOT EMPTY` says it when that is what is meant. The
+compiler wraps each negated test in `COALESCE(..., false)`, since SQL's
+`NOT NULL` would drop the row.
+
 ### A query error points at a character
 
 A query that fails is answered with a sentence saying what to do and the 1-based
