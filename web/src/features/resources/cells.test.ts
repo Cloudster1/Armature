@@ -12,6 +12,9 @@ describe("a resource cell", () => {
     expect(describeHours(week({ loadHours: 12.5, capacityHours: 20, daysAway: 1.5, holidays: 2 }))).toBe("12.5 of 20 h; 1.5 days away; 2 holidays");
     expect(describeHours(week({ loadHours: 6 }))).toBe("6 h");
     expect(describeCell(row([]), week({ loadHours: 6, capacityHours: 8 }))).toMatch(/^Ada, week of .+: 6 of 8 h$/);
+    // A person who gives the project part of their week says so beside the hours.
+    expect(describeHours(week({ loadHours: 12, capacityHours: 20, daysAway: 1 }), 50)).toBe("12 of 20 h (50% of the week); 1 day away");
+    expect(describeCell(row([], { sharePercent: 0 }), week({ loadHours: 2, capacityHours: 0 }))).toMatch(/: 2 of 0 h \(0% of the week\)$/);
   });
 
   it("writes hours to one decimal and drops a trailing zero", () => {

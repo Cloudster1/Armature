@@ -101,7 +101,7 @@ export function WeekIssues({ row, week }: { row: ResourceRow; week: ResourceWeek
         <p className="font-medium text-ink">
           {row.name}, week of {weekLabel(week.start)}
         </p>
-        <p className="text-xs text-ink-muted">{describeHours(week)}</p>
+        <p className="text-xs text-ink-muted">{describeHours(week, row.sharePercent)}</p>
       </div>
       {week.issues.length === 0 ? (
         <p className="text-xs text-ink-subtle">Nothing is scheduled this week.</p>

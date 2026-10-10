@@ -345,3 +345,5 @@ export const RESOURCE_WEEK_MIN_PX = 84;
 export const RESOURCE_LIST_LIMIT = 25;
 /** Decimals an hour figure keeps in the resource view: six minutes is as fine as a plan reads. */
 export const RESOURCE_HOUR_DECIMALS = 1;
+/** A whole week, as a percent: what a person gives a project nobody has set a share for. */
+export const SHARE_FULL_PERCENT = 100;

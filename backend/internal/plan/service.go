@@ -31,6 +31,7 @@ type AvailabilityReader interface {
 	ProjectPeople(ctx context.Context, projectKey string, from, to time.Time) (*availability.ProjectPeople, error)
 	ForPeople(ctx context.Context, ids []uuid.UUID, from, to time.Time) (map[uuid.UUID]availability.Person, error)
 	DefaultHolidays(ctx context.Context, from, to time.Time) ([]availability.Holiday, error)
+	Shares(ctx context.Context, projectKey string) (map[uuid.UUID]int, error)
 }
 
 // Service assembles a project's plan. It owns no tables of its own: a plan is a
@@ -137,11 +138,12 @@ func (s *Service) ForProjectMatching(ctx context.Context, projectKey string, que
 		}
 		teams = found
 	}
-	work, holidays, err := s.workdays(ctx, projectKey, items, from, to)
+	loadFrom, loadTo := LoadSpan(from, to, s.now().UTC())
+	work, holidays, err := s.workdays(ctx, projectKey, items, loadFrom, loadTo)
 	if err != nil {
 		return nil, err
 	}
-	load := Loads(items, teams, from, to, work)
+	load := Loads(items, teams, loadFrom, loadTo, work)
 	TeamHours(sprints, work)
 
 	warnings := append(Check(items, blockers), CheckSprints(items, sprints)...)
@@ -181,6 +183,8 @@ func (s *Service) workdays(ctx context.Context, projectKey string, items []Item,
 	if start, due := spanOf(Flatten(items)); start != nil && due != nil {
 		reach, until = minTime(reach, midnight(*start)), maxTime(until, midnight(*due))
 	}
+	reach = maxTime(reach, first.AddDate(0, 0, -LoadBackDays))
+	until = minTime(until, last.AddDate(0, 0, LoadBackDays))
 	holidays, err := s.people.DefaultHolidays(ctx, reach, until)
 	if err != nil {
 		return Workdays{}, nil, err

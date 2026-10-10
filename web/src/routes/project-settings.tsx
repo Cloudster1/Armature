@@ -9,6 +9,7 @@ import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, Section
 import { DOCS_LABEL_MAX_LENGTH } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { FEATURES } from "@/features/projects/features";
+import { ShareSettings } from "@/features/projects/ShareSettings";
 import { PlanningSettings } from "@/features/projects/PlanningSettings";
 
 export const projectSettingsRoute = createRoute({
@@ -157,6 +158,8 @@ function ProjectSettingsPage() {
       </section>
 
       <PlanningSettings project={project} />
+
+      {project.features.includes("resources") && <ShareSettings projectKey={project.key} />}
 
       <section className="mt-8">
         <SectionTitle className="mb-2">Archive</SectionTitle>
