@@ -489,61 +489,12 @@ func (s *Service) Record(ctx context.Context, repo *Repository, d *Delivery) (*R
 		}
 
 		for _, pr := range d.PullRequests {
-			var (
-				id       uuid.UUID
-				wasState PullState
-			)
-			err := tx.QueryRow(ctx, `
-				INSERT INTO pull_request (org_id, repository_id, number, title, url, state, source_branch,
-				    target_branch, author_name, head_sha, opened_at, merged_at)
-				VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-				ON CONFLICT (repository_id, number) DO UPDATE SET
-				    title = EXCLUDED.title, url = EXCLUDED.url, state = EXCLUDED.state,
-				    source_branch = EXCLUDED.source_branch, target_branch = EXCLUDED.target_branch,
-				    head_sha = CASE WHEN EXCLUDED.head_sha = '' THEN pull_request.head_sha ELSE EXCLUDED.head_sha END,
-				    merged_at = COALESCE(EXCLUDED.merged_at, pull_request.merged_at)
-				RETURNING id, COALESCE((SELECT state::text FROM pull_request q WHERE q.repository_id = $1 AND q.number = $2 AND q.id <> pull_request.id), '')`,
-				repo.ID, pr.Number, pr.Title, pr.URL, string(pr.State), pr.SourceBranch,
-				pr.TargetBranch, pr.AuthorName, pr.HeadSHA, pr.OpenedAt, pr.MergedAt,
-			).Scan(&id, &wasState)
+			m, err := s.recordPull(ctx, tx, repo, pr, receipt)
 			if err != nil {
-				return fmt.Errorf("record pull request %d: %w", pr.Number, err)
-			}
-			receipt.PullRequests++
-			pr.ID = id
-
-			// A pull request is about the issues its title and branch name
-			// mention, and about the issue its source branch was made for.
-			keys := IssueKeys(pr.Title)
-			keys = append(keys, IssueKeys(pr.SourceBranch)...)
-			if key, err := s.branchIssueKey(ctx, tx, repo.ID, pr.SourceBranch); err != nil {
 				return err
-			} else if key != "" {
-				keys = appendUnique(keys, key)
 			}
-			for _, key := range keys {
-				linked, err := s.link(ctx, tx, "issue_pull_request", "pull_request_id", key, id)
-				if err != nil {
-					return err
-				}
-				if linked {
-					receipt.Linked = appendUnique(receipt.Linked, key)
-					if err := events.EmitInTenant(ctx, tx, events.TopicPullRequestLinked, map[string]any{
-						"issueKey": key, "repositoryId": repo.ID, "number": pr.Number,
-					}); err != nil {
-						return err
-					}
-				}
-			}
-			if pr.State == PullMerged {
-				// Merging the pull request is what merges the branch; the
-				// branch's own row says so from now on.
-				if _, err := tx.Exec(ctx, `
-					UPDATE git_branch SET merged_at = COALESCE(merged_at, $3, now())
-					WHERE repository_id = $1 AND name = $2`, repo.ID, pr.SourceBranch, pr.MergedAt); err != nil {
-					return fmt.Errorf("mark %q merged: %w", pr.SourceBranch, err)
-				}
-				merged = append(merged, mergedPull{pr: pr, keys: unique(keys)})
+			if m != nil {
+				merged = append(merged, *m)
 			}
 		}
 
