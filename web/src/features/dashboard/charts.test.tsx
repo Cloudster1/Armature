@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { hours, share } from "@/api/reports";
-import { BarList, LineChart, Progress, pathOf, stackedPaths } from "./charts";
+import { atInstantIn } from "@/test/zone";
+import { BarList, LineChart, Progress, pathOf, stackedPaths, weekLabel } from "./charts";
 
 describe("report words", () => {
   it("says hours the way a person does", () => {
@@ -83,4 +84,15 @@ describe("stackedPaths", () => {
   it("draws nothing for a single step", () => {
     expect(stackedPaths([{ name: "x", tone: "a", values: [1] }])).toEqual([]);
   });
+});
+
+describe("weekLabel", () => {
+  // A week starts at midnight UTC on its Monday, which is still Sunday evening west of UTC.
+  for (const zone of ["America/Los_Angeles", "Pacific/Kiritimati"]) {
+    it(`names the week's own Monday for a reader in ${zone}`, () => {
+      atInstantIn(zone, "2026-10-10T12:00:00Z");
+      expect(weekLabel("2026-10-05T00:00:00Z")).toBe("5/10");
+      expect(weekLabel("2026-06-01T00:00:00Z")).toBe("1/6");
+    });
+  }
 });
