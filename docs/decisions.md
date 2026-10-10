@@ -482,6 +482,13 @@ step into an in-progress status, because the question is how long work takes
 once somebody is on it, and the resolution histogram from creation, because the
 question is how long the asker waited.
 
+The release burndown counts an issue on a day only if it had been filed by
+then, so work added to a version halfway lifts the line rather than hiding in
+its first day, and a released version's line stops on the day it was released.
+An issue that joined the version after it was filed still counts from its
+filing: which version an issue fixed on a given day is in the changelog only
+by name, for the reasons above, so the join day is not read.
+
 ### Holidays are named calendars a person is given, and a week is minutes per weekday
 
 A team spread over several countries does not share its days off, so one list
