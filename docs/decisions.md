@@ -639,6 +639,21 @@ The stack runs a Gitea of its own, so the browser suite makes a real branch on a
 real host and the delivery that brings it back is the host's own. GitHub and
 GitLab could only ever be exercised against a stub.
 
+### A merged branch outlives its deletion; an unmerged one does not
+
+GitHub and GitLab both offer to delete a branch once its pull request is merged,
+and most teams say yes, so deleting the row with the branch took the merge off
+the issue the moment it happened. A merged branch the host deletes is kept and
+marked deleted, and the panel says "merged, deleted" without linking to an
+address the host no longer has. An unmerged branch that is deleted is still
+removed: it was abandoned, and its commits stay linked to the issue on their
+own. The database holds both halves: a deleted mark needs a merge, and a name is
+unique only among the branches still there, so the same name pushed again later
+is a new branch with its own count, not the old one revived.
+
+**Reconsider if** people want to see abandoned branches too, at which point an
+unmerged one is kept and marked the same way and the check goes.
+
 ### A request is an issue, and a note is a flag
 
 The service desk adds no second table for requests or for the conversation. A
