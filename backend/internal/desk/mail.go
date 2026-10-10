@@ -404,11 +404,14 @@ func (n *Notifier) tell(ctx context.Context, a *about, except uuid.UUID, msg Mes
 	return first
 }
 
-// mail addresses a message. Its id begins with the request's key so that an
-// answer to it can be placed even without the subject, and, when there is an
-// inbox, the reader is told that answering works.
+// mail addresses a message. Its ids begin with the request's key so an answer
+// is placed even without the subject; with an inbox, the reader is told so.
 func (n *Notifier) mail(a *about, to string, msg Message) Mail {
-	m := Mail{To: to, Subject: msg.Subject, Body: msg.Body, MessageID: messageID(a.key, n.from())}
+	thread := threadID(a.key, a.id, n.from())
+	m := Mail{
+		To: to, Subject: msg.Subject, Body: msg.Body, MessageID: messageID(a.key, n.from()),
+		InReplyTo: thread, References: []string{thread},
+	}
 	if n.inbox != "" {
 		m.ReplyTo = n.inbox
 		m.Body += "\nYou can answer this mail; your words are added to the request.\n"
@@ -429,6 +432,12 @@ func (n *Notifier) from() string {
 // when its subject was rewritten; the rest keeps two mails apart.
 func messageID(key, host string) string {
 	return fmt.Sprintf("<%s.%s@%s>", key, uuid.New().String(), host)
+}
+
+// threadID is the one id a request's mails all answer, <KEY-12.request@host>.
+// A key repeats across organizations; the request's own id does not.
+func threadID(key string, request uuid.UUID, host string) string {
+	return fmt.Sprintf("<%s.%s@%s>", key, request, host)
 }
 
 // plainText reads a comment's document the way the issue package renders

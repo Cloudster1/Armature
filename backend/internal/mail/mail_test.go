@@ -170,6 +170,25 @@ func TestNonASCIIHeadersAndBodyAreEncoded(t *testing.T) {
 	}
 }
 
+// A long summary in Japanese is several encoded words; a relay refuses a line
+// past 998 bytes, so they are folded onto lines of their own.
+func TestALongEncodedSubjectIsFolded(t *testing.T) {
+	subject := "[HELP-7] " + strings.Repeat("注文の確認", 60)
+	raw, m := sent(t, "Armature <no-reply@armature.test>", Mail{To: "ann@example.test", Subject: subject, Body: "x"})
+	head, _, _ := strings.Cut(raw, "\r\n\r\n")
+	for _, line := range strings.Split(head, "\r\n") {
+		if len(line) > maxLine {
+			t.Errorf("a header line is %d bytes long: %q", len(line), line)
+		}
+	}
+	if got, err := new(mime.WordDecoder).DecodeHeader(m.Header.Get("Subject")); err != nil || got != subject {
+		t.Errorf("subject decodes to %q (%v), want %q", got, err, subject)
+	}
+}
+
+// maxLine is the longest line RFC 5322 lets a relay accept, without its CRLF.
+const maxLine = 998
+
 // An encoded subject is still somebody's words; a newline in it must not
 // come out the other side as a header of their choosing.
 func TestAnEncodedSubjectStaysOnOneLine(t *testing.T) {

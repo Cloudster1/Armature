@@ -738,6 +738,13 @@ a follower or an agent, and in exactly one organization. Every consumed mail is
 recorded by message id, so a redelivery is refused by the database however many
 workers are reading, and machines are never answered, so no loop can form.
 
+What goes out is seven bit: headers that are not ASCII are RFC 2047 words and
+the body is quoted-printable, since a relay without SMTPUTF8 refuses anything
+else. Every mail about a request answers one id, `<KEY.request@host>`, that no
+mail carries, so a client files the receipt, the replies and the resolution as
+one thread whether or not the receipt was ever sent. Each mail keeps an id of
+its own beginning with the key, so a reply matches whichever one it answers.
+
 ### A customer's files are the request's, and only their own come off
 
 A file on a request is part of what was said, and the conversation is one thing
