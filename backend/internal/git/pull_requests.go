@@ -2,9 +2,11 @@ package git
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
@@ -17,12 +19,15 @@ func (s *Service) recordPull(ctx context.Context, tx db.DBTX, repo *Repository, 
 		id       uuid.UUID
 		wasState PullState
 	)
-	// The state is read before the upsert, locked, so that an edit or a
-	// redelivery of a merged pull request is not taken for the merge again.
+	// The state before this delivery is read and locked in a statement of its
+	// own: inside the upsert a locking read would skip the row being updated.
 	err := tx.QueryRow(ctx, `
-		WITH before AS (
-		    SELECT state FROM pull_request WHERE repository_id = $1 AND number = $2 FOR UPDATE
-		)
+		SELECT state::text FROM pull_request WHERE repository_id = $1 AND number = $2 FOR UPDATE`,
+		repo.ID, pr.Number).Scan(&wasState)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("read pull request %d: %w", pr.Number, err)
+	}
+	err = tx.QueryRow(ctx, `
 		INSERT INTO pull_request (org_id, repository_id, number, title, url, state, source_branch,
 		    target_branch, author_name, head_sha, opened_at, merged_at)
 		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -31,10 +36,10 @@ func (s *Service) recordPull(ctx context.Context, tx db.DBTX, repo *Repository, 
 		    source_branch = EXCLUDED.source_branch, target_branch = EXCLUDED.target_branch,
 		    head_sha = CASE WHEN EXCLUDED.head_sha = '' THEN pull_request.head_sha ELSE EXCLUDED.head_sha END,
 		    merged_at = COALESCE(EXCLUDED.merged_at, pull_request.merged_at)
-		RETURNING id, COALESCE((SELECT state::text FROM before), '')`,
+		RETURNING id`,
 		repo.ID, pr.Number, pr.Title, pr.URL, string(pr.State), pr.SourceBranch,
 		pr.TargetBranch, pr.AuthorName, pr.HeadSHA, pr.OpenedAt, pr.MergedAt,
-	).Scan(&id, &wasState)
+	).Scan(&id)
 	if err != nil {
 		return nil, fmt.Errorf("record pull request %d: %w", pr.Number, err)
 	}
