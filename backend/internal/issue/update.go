@@ -13,7 +13,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
-	"github.com/armature/armature/backend/internal/workflow"
 )
 
 // UpdateInput carries the fields an edit may change. A nil field is left alone,
@@ -163,12 +162,14 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor 
 			}
 		}
 
+		var statusMoved bool
 		if in.TypeID != nil && *in.TypeID != before.Type.ID {
-			change, err := s.applyType(ctx, tx, before, *in.TypeID)
+			typeChanges, moved, err := s.applyType(ctx, tx, before, *in.TypeID)
 			if err != nil {
 				return err
 			}
-			changes = append(changes, *change)
+			changes = append(changes, typeChanges...)
+			statusMoved = moved
 		}
 
 		if len(changes) == 0 {
@@ -186,6 +187,11 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor 
 		updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
 		if err != nil {
 			return err
+		}
+		if statusMoved {
+			if err := s.announceMove(ctx, tx, before, updated, TypeChangeTransition, actor); err != nil {
+				return err
+			}
 		}
 
 		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
@@ -281,246 +287,6 @@ func formatMinutesOrNone(minutes *int) string {
 		return ""
 	}
 	return FormatMinutes(*minutes)
-}
-
-// applyType changes an issue's type, which moves it in the hierarchy and can
-// also change which workflow it follows.
-func (s *Service) applyType(ctx context.Context, tx db.DBTX, before *Issue, typeID uuid.UUID) (*Change, error) {
-	var (
-		name  string
-		level int
-	)
-	err := tx.QueryRow(ctx, `SELECT name, hierarchy_level FROM issue_type WHERE id = $1`, typeID).Scan(&name, &level)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errors.New("that issue type does not exist")
-	}
-	if err != nil {
-		return nil, err
-	}
-	if err := s.checkTypeFitsTheTree(ctx, tx, before, name, level); err != nil {
-		return nil, err
-	}
-
-	// The new type may follow a different workflow, one that does not contain
-	// the status the issue is currently in. Move it to that workflow's starting
-	// status rather than leaving it somewhere the workflow cannot describe.
-	wf, err := s.workflows.ForIssueType(ctx, tx, before.ProjectID, typeID)
-	if err != nil {
-		return nil, err
-	}
-	if _, inWorkflow := wf.StepByStatus(before.Status.ID); !inWorkflow {
-		initial, err := wf.InitialStep()
-		if err != nil {
-			return nil, err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE issue SET status_id = $2 WHERE id = $1`, before.ID, initial.Status.ID); err != nil {
-			return nil, err
-		}
-	}
-
-	if _, err := tx.Exec(ctx, `UPDATE issue SET issue_type_id = $2 WHERE id = $1`, before.ID, typeID); err != nil {
-		return nil, err
-	}
-	return &Change{Field: "type", From: before.Type.Name, To: name}, nil
-}
-
-// checkTypeFitsTheTree refuses a type change that would strand the issue's
-// parent or its children, and says which so the user knows what to fix first.
-func (s *Service) checkTypeFitsTheTree(ctx context.Context, tx db.DBTX, before *Issue, name string, level int) error {
-	if before.Parent == nil {
-		if NeedsParent(level) {
-			return levelError{ErrNeedsParent, article(name) + " needs a parent issue"}
-		}
-	} else if !CanParent(before.Parent.Type.Level, level) {
-		return levelError{ErrParentLevel, fmt.Sprintf("%s is %s, which cannot be the parent of %s",
-			before.Parent.Key, article(before.Parent.Type.Name), article(name))}
-	}
-
-	var stranded int
-	err := tx.QueryRow(ctx, `
-		SELECT count(*) FROM issue c
-		JOIN issue_type ct ON ct.id = c.issue_type_id
-		WHERE c.parent_id = $1 AND ct.hierarchy_level <> $2`, before.ID, level-1).Scan(&stranded)
-	if err != nil {
-		return err
-	}
-	if stranded > 0 {
-		return levelError{ErrChildrenInTheWay,
-			fmt.Sprintf("%d of this issue's children cannot sit under %s", stranded, article(name))}
-	}
-	return nil
-}
-
-// Transitions lists the moves available to this actor from the issue's current
-// status.
-func (s *Service) Transitions(ctx context.Context, key string, actor Actor) ([]workflow.Transition, error) {
-	projectKey, num, err := ParseKey(key)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []workflow.Transition
-	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		issue, err := scanIssue(tx.QueryRow(ctx,
-			selectIssue+` WHERE p.key = $1 AND i.key_num = $2`, projectKey, num))
-		if err != nil {
-			return err
-		}
-		wf, err := s.workflows.ForIssueType(ctx, tx, issue.ProjectID, issue.Type.ID)
-		if err != nil {
-			return err
-		}
-		out, err = s.engine.Available(wf, subjectOf(issue), actor.toWorkflow())
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// TransitionInput is what the user supplied along with a chosen transition.
-type TransitionInput struct {
-	TransitionID uuid.UUID
-	Comment      string
-	Assignee     *uuid.UUID
-	Resolution   string
-}
-
-// Transition moves an issue through its workflow.
-//
-// Everything happens in one transaction: the workflow decides, the status
-// changes, the post-functions' effects are applied, the changelog is written
-// and the event is emitted. A failure anywhere leaves the issue exactly as it
-// was.
-func (s *Service) Transition(ctx context.Context, key string, in TransitionInput, actor Actor) (*Issue, db.LSN, error) {
-	projectKey, num, err := ParseKey(key)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var updated *Issue
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		before, err := scanIssue(tx.QueryRow(ctx,
-			selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
-		if err != nil {
-			return err
-		}
-
-		wf, err := s.workflows.ForIssueType(ctx, tx, before.ProjectID, before.Type.ID)
-		if err != nil {
-			return err
-		}
-
-		decision, err := s.engine.Evaluate(wf, in.TransitionID, subjectOf(before), actor.toWorkflow(), workflow.Input{
-			Comment:    in.Comment,
-			Assignee:   in.Assignee,
-			Resolution: in.Resolution,
-		})
-		if err != nil {
-			return err
-		}
-
-		changes := []Change{{
-			Field: "status",
-			From:  before.Status.Name,
-			To:    decision.ToStatus.Name,
-		}}
-
-		if _, err := tx.Exec(ctx, `UPDATE issue SET status_id = $2 WHERE id = $1`,
-			before.ID, decision.ToStatus.ID); err != nil {
-			return err
-		}
-
-		if decision.Effect.ClearAssign {
-			change, err := s.applyAssignee(ctx, tx, before, nil)
-			if err != nil {
-				return err
-			}
-			if change != nil {
-				changes = append(changes, *change)
-			}
-		} else if decision.Effect.Assignee != nil {
-			change, err := s.applyAssignee(ctx, tx, before, decision.Effect.Assignee)
-			if err != nil {
-				return err
-			}
-			if change != nil {
-				changes = append(changes, *change)
-			}
-		}
-
-		if decision.Effect.Resolved != nil {
-			if *decision.Effect.Resolved {
-				if _, err := tx.Exec(ctx, `UPDATE issue SET resolved_at = now() WHERE id = $1`, before.ID); err != nil {
-					return err
-				}
-				changes = append(changes, Change{Field: "resolution", To: resolutionOr(in.Resolution, "Done")})
-			} else {
-				if _, err := tx.Exec(ctx, `UPDATE issue SET resolved_at = NULL WHERE id = $1`, before.ID); err != nil {
-					return err
-				}
-				changes = append(changes, Change{Field: "resolution", From: "Done", To: "Unresolved"})
-			}
-		}
-
-		// The user's own comment first, then anything the workflow adds, so
-		// the reading order matches what happened.
-		if strings.TrimSpace(in.Comment) != "" {
-			if err := s.insertComment(ctx, tx, before.ID, &actor.UserID, plainTextDoc(in.Comment), false); err != nil {
-				return err
-			}
-		}
-		for _, text := range decision.Effect.Comments {
-			if err := s.insertComment(ctx, tx, before.ID, nil, plainTextDoc(text), false); err != nil {
-				return err
-			}
-		}
-
-		if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
-			return err
-		}
-
-		updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
-		if err != nil {
-			return err
-		}
-		for _, o := range s.observers {
-			if err := o.IssueTransitioned(ctx, tx, before, updated, actor); err != nil {
-				return err
-			}
-		}
-
-		return events.EmitInTenant(ctx, tx, events.TopicIssueTransitioned, map[string]any{
-			"issueId":    updated.ID,
-			"key":        updated.Key,
-			"transition": decision.Transition.Name,
-			"fromStatus": before.Status.Name,
-			"toStatus":   decision.ToStatus.Name,
-			"actorId":    actor.UserID,
-		})
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	return updated, lsn, nil
-}
-
-func subjectOf(i *Issue) workflow.Subject {
-	subject := workflow.Subject{
-		IssueID:     i.ID,
-		ProjectID:   i.ProjectID,
-		IssueTypeID: i.Type.ID,
-		StatusID:    i.Status.ID,
-		HasParent:   i.ParentID != nil,
-	}
-	if i.Assignee != nil {
-		subject.AssigneeID = &i.Assignee.ID
-	}
-	if i.Reporter != nil {
-		subject.ReporterID = &i.Reporter.ID
-	}
-	return subject
 }
 
 // recordHistory appends to the changelog. It is the only writer of that table.
