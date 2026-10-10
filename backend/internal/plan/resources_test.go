@@ -162,6 +162,44 @@ func TestWorkOfSomebodyWhoIsNotAmongThePeopleIsUnassigned(t *testing.T) {
 	}
 }
 
+func TestAShareOfTheWeekScalesThePersonAndTheirTeam(t *testing.T) {
+	alpha := uuid.New()
+	ada, bea, cleo := uuid.New(), uuid.New(), uuid.New()
+	people := map[uuid.UUID]availability.Person{
+		ada:  standardPerson(t, nil),
+		bea:  standardPerson(t, nil),
+		cleo: standardPerson(t, nil, availability.Absence{StartsOn: "2026-09-07", EndsOn: "2026-09-07"}),
+	}
+	in := fortnight
+	in.Grouping = project.GroupByPerson
+	in.People = map[uuid.UUID]string{ada: "Ada", bea: "Bea", cleo: "Cleo"}
+	in.Work = NewWorkdays(nil, map[uuid.UUID][]uuid.UUID{alpha: {ada, cleo}}, people)
+	// Ada gives this project half her week and Bea none of it; Cleo, with no
+	// share set, gives it all of hers.
+	in.Shares = map[uuid.UUID]int{ada: 50, bea: 0}
+	got := ReadResources(in)
+
+	a, b, c := resourceRowNamed(t, got, "Ada"), resourceRowNamed(t, got, "Bea"), resourceRowNamed(t, got, "Cleo")
+	if w := a.Weeks[0]; !hoursAre(w.CapacityHours, 20) || !hoursAre(w.NominalHours, 20) || a.SharePercent == nil || *a.SharePercent != 50 {
+		t.Errorf("Ada = %+v %+v, want 20 of 20 h at 50%%", a.SharePercent, w)
+	}
+	if w := b.Weeks[0]; !hoursAre(w.CapacityHours, 0) || !hoursAre(w.NominalHours, 0) || b.SharePercent == nil || *b.SharePercent != 0 {
+		t.Errorf("Bea = %+v %+v, want no hours at 0%%", b.SharePercent, w)
+	}
+	// The whole week is no share to speak of; the day away still counts.
+	if w := c.Weeks[0]; !hoursAre(w.CapacityHours, 32) || !hoursAre(w.NominalHours, 40) || w.DaysAway != 1 || c.SharePercent != nil {
+		t.Errorf("Cleo = %+v %+v, want 32 of 40 h and no share shown", c.SharePercent, w)
+	}
+
+	in.Grouping = project.GroupByTeam
+	in.Teams = []team.Team{{ID: alpha, Name: "Alpha"}}
+	got = ReadResources(in)
+	// Half of Ada's forty and all of Cleo's thirty-two.
+	if w := resourceRowNamed(t, got, "Alpha").Weeks[0]; !hoursAre(w.CapacityHours, 52) || !hoursAre(w.NominalHours, 60) || w.DaysAway != 1 {
+		t.Errorf("Alpha's week = %+v, want 52 of 60 h", w)
+	}
+}
+
 func TestUnscheduledAndUnestimatedWorkIsListedNotGuessed(t *testing.T) {
 	parent := work("PR-8", nil, "", "")
 	child := work("PR-9", minutesIn(4), "2026-09-07", "2026-09-07")

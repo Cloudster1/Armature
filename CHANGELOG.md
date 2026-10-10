@@ -7,6 +7,16 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: one issue dated far in the future no longer makes every plan read
+  that far: the load is read over at most ten years, and issue dates
+  outside 1900 to 2199 are refused with a sentence, also by the database (#40).
+- Share of the week: a project administrator sets how much of each person's
+  week the project has, and the Resources page counts their hours at it, per
+  person and inside their team; a person given more than a whole week across
+  projects is warned about, never refused (#43).
+- Fixed: Themes has an icon of its own, a palette, instead of the sun the
+  light mode wears, in the sidebar, the settings page and the command palette
+  (#122).
 - Fixed: somebody who has left the organization no longer shows on the
   Resources page with a full week free; work still assigned to them is counted
   as nobody's, and the project calendar no longer counts them among its people

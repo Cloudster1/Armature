@@ -2389,6 +2389,40 @@ export interface paths {
         patch: operations["updateProject"];
         trace?: never;
     };
+    "/projects/{projectKey}/allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The share of each person's week the project has. */
+        get: operations["listAllocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectKey}/allocations/{userID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the share of a person's week the project has. */
+        put: operations["setAllocation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectKey}/articles": {
         parameters: {
             query?: never;
@@ -4137,6 +4171,16 @@ export interface components {
             open: number;
             /** Format: date-time */
             start: string;
+        };
+        Allocation: {
+            elsewherePercent: number;
+            name: string;
+            percent: number;
+            /** Format: uuid */
+            userId: string;
+        };
+        AllocationRequest: {
+            percent: number | null;
         };
         Answer: {
             query?: string;
@@ -5953,6 +5997,7 @@ export interface components {
             /** @enum {string} */
             kind: "team" | "person" | "unassigned";
             name: string;
+            sharePercent?: number;
             weeks: components["schemas"]["ResourceWeek"][];
         };
         ResourceWeek: {
@@ -13428,6 +13473,77 @@ export interface operations {
                 content: {
                     "application/json": {
                         project: components["schemas"]["Project"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAllocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        allocations: components["schemas"]["Allocation"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setAllocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllocationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        allocation: components["schemas"]["Allocation"];
                     };
                 };
             };
