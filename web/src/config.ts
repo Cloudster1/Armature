@@ -186,6 +186,9 @@ export const TEMPLATE_SHAPE_MAX_KINDS = 4;
 /** Above this many columns the figures above them collide, so only the bars are drawn. */
 export const CHART_VALUE_LABEL_MAX_COLUMNS = 4;
 
+/** A line chart's lone point, such as a sprint's first day, is a dot this many pixels across. */
+export const CHART_MARKER_PX = 6;
+
 /** About this many labels fit under a chart's x axis; the rest of the ticks go unnamed. */
 export const CHART_AXIS_LABELS = 6;
 
