@@ -268,6 +268,8 @@ export const CSAT_SCORES = [1, 2, 3, 4, 5] as const;
 export const AUDIT_PAGE_SIZE = 50;
 /** Items a calendar day draws before folding the rest into "+n more". */
 export const CALENDAR_MAX_ITEMS_PER_DAY = 4;
+/** Six weeks of days a month grid draws; the server reads days off over the same span. */
+export const CALENDAR_GRID_DAYS = 42;
 
 /** How long a dependency arrow stays hot after the pointer leaves it, so the control on it can be reached. */
 export const EDGE_LINGER_MS = 250;
