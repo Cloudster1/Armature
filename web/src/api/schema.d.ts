@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Who is away between two days, both included; a month back and a year ahead when not asked. */
+        /** Who is away between two days, both included; a month back and a year ahead when not asked, and every one from a day on, up to a bound, when only from is. */
         get: operations["listAbsences"];
         put?: never;
         /** Record an absence: the caller's own, or one of somebody an administrator or a manager of their team answers for. */
@@ -6963,7 +6963,7 @@ export interface operations {
                 userId?: string;
                 /** @description The first day, YYYY-MM-DD. */
                 from?: string;
-                /** @description The last day, YYYY-MM-DD; at most two years after from. */
+                /** @description The last day, YYYY-MM-DD; at most two years after from. Left out with from given, the list has no last day. */
                 to?: string;
             };
             header?: never;
@@ -6981,7 +6981,8 @@ export interface operations {
                     "application/json": {
                         absences: components["schemas"]["Absence"][];
                         from: string;
-                        to: string;
+                        to: string | null;
+                        truncated: boolean;
                     };
                 };
             };

@@ -122,7 +122,7 @@
     "/absences": {
       "get": {
         "operationId": "listAbsences",
-        "summary": "Who is away between two days, both included; a month back and a year ahead when not asked.",
+        "summary": "Who is away between two days, both included; a month back and a year ahead when not asked, and every one from a day on, up to a bound, when only from is.",
         "tags": [
           "availability"
         ],
@@ -148,7 +148,7 @@
           {
             "name": "to",
             "in": "query",
-            "description": "The last day, YYYY-MM-DD; at most two years after from.",
+            "description": "The last day, YYYY-MM-DD; at most two years after from. Left out with from given, the list has no last day.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -173,13 +173,20 @@
                       "type": "string"
                     },
                     "to": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "truncated": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "absences",
                     "from",
-                    "to"
+                    "to",
+                    "truncated"
                   ]
                 }
               }
