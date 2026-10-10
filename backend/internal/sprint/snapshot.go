@@ -36,9 +36,8 @@ type Snapshot struct {
 	TakenAt     time.Time `json:"takenAt"`
 }
 
-// Snapshot writes the sprint's standing for a day, replacing what that day
-// already said. It is the worker's call on a timer and the lifecycle's at
-// start and completion; nothing is asked of the person running the sprint.
+// Snapshot is the worker's timed write of a running sprint's standing for a
+// day; start and completion write their own points in their own transactions.
 func (s *Service) Snapshot(ctx context.Context, id uuid.UUID, day time.Time) (*Snapshot, error) {
 	if s.counter == nil {
 		return nil, errors.New("snapshots need a counter to read the sprint's totals")
@@ -53,7 +52,16 @@ func (s *Service) Snapshot(ctx context.Context, id uuid.UUID, day time.Time) (*S
 	}
 	var out *Snapshot
 	_, err = s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		out, err = writeSnapshot(ctx, tx, found, day, totals)
+		// A sprint completed since it was counted holds only its done work, and
+		// would end its burndown at nothing remaining over completion's point.
+		locked, err := scanSprint(tx.QueryRow(ctx, selectSprint+` WHERE s.id = $1 FOR UPDATE OF s`, id))
+		if err != nil {
+			return err
+		}
+		if !locked.Running() {
+			return fmt.Errorf("%w: %s", ErrNotRunning, locked.Name)
+		}
+		out, err = writeSnapshot(ctx, tx, locked, day, totals)
 		return err
 	})
 	return out, err
