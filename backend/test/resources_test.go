@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/perm"
 )
 
@@ -181,6 +182,31 @@ func TestTheResourceViewSetsHoursAgainstTeamsOrPeople(t *testing.T) {
 		refused := want(t, owner.get("/api/v1/projects/FLOW/resources"), http.StatusConflict, "the page is off")
 		refusedWithASentence(t, refused, "resource planning")
 		want(t, owner.patch("/api/v1/projects/FLOW", map[string]any{"features": features}), http.StatusOK, "turn it back on")
+	})
+
+	t.Run("a story and its subtasks are counted once, on the level that carries the hours", func(t *testing.T) {
+		typeID := map[string]string{}
+		for _, raw := range list(t, owner.get("/api/v1/issue-types"), "issueTypes") {
+			typ := raw.(map[string]any)
+			typeID[typ["name"].(string)] = typ["id"].(string)
+		}
+		squad := idOf(t, want(t, owner.post("/api/v1/projects/SPRT/teams", map[string]any{"name": "Squad"}), http.StatusCreated, "a team"), "team")
+		filed := func(body map[string]any, minutes int) string {
+			t.Helper()
+			body["teamId"], body["startDate"], body["dueDate"] = squad, "2031-04-07", "2031-04-11"
+			key := obj(t, want(t, owner.post("/api/v1/projects/SPRT/issues", body), http.StatusCreated, "an issue"), "issue")["key"].(string)
+			want(t, owner.patch("/api/v1/issues/"+key, map[string]any{"timeRemainingMinutes": minutes}), http.StatusOK, "its hours")
+			return key
+		}
+		story := filed(map[string]any{"summary": "the story", "typeId": typeID[bootstrap.TypeStory]}, 16*60)
+		for _, summary := range []string{"one half", "the other half"} {
+			filed(map[string]any{"summary": summary, "typeId": typeID[bootstrap.TypeSubtask], "parentKey": story}, 8*60)
+		}
+		got := want(t, owner.get("/api/v1/projects/SPRT/resources?from=2031-04-07&to=2031-04-13"), http.StatusOK, "the resources")
+		week := resourceRows(t, got)["Squad"]["2031-04-07"]
+		if issues := week["issues"].([]any); week["loadHours"] != 16.0 || len(issues) != 1 || issues[0].(map[string]any)["key"] != story {
+			t.Errorf("the squad's week = %v, want the story's 16 h once", week)
+		}
 	})
 
 	t.Run("somebody who has left has no row, and their work is nobody's", func(t *testing.T) {
