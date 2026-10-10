@@ -799,7 +799,10 @@ Bulk edit is one transaction per issue, so a workflow that does not offer a
 transition refuses its own issue and names itself while the others are already
 done. A moved issue keeps its row and gets a new key, because history, comments
 and files hang off the row; the old key stays on the row so the address that was
-mailed around still finds it.
+mailed around still finds it. What the move leaves behind is only what belongs to
+the old project: answers to organization fields go along, since those fields
+apply in every project, and each answer to one of the old project's own fields
+is named in the history as it is dropped, so nothing disappears unsaid.
 
 ### A dashboard is an arrangement, and every number is computed on read
 

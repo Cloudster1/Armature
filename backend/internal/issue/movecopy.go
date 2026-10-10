@@ -150,8 +150,8 @@ var ErrMoveNeedsStatus = errors.New("the target workflow does not have this stat
 // Move puts an issue in another project. It keeps its id, its history, its
 // comments and its files; it gets the project's next key and remembers the
 // old one, so the address it had still finds it. What belongs to the old
-// project, sprint, team, milestone, versions and components, is cleared and
-// the history says so. Subtasks come along with their parent.
+// project (sprint, team, milestone, versions, components, answers to its own
+// fields) is cleared and the history says so. Subtasks come along.
 func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Actor) (*Issue, db.LSN, error) {
 	var moved *Issue
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -217,10 +217,14 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 
 		// The rows that tie the issue to its old project go first, so the
 		// same-project guards on the issue row do not fire on the update.
-		for _, table := range []string{"issue_version", "issue_component", "issue_field_value"} {
+		for _, table := range []string{"issue_version", "issue_component"} {
 			if _, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE issue_id = $1`, before.ID); err != nil {
 				return err
 			}
+		}
+		droppedValues, err := dropProjectFieldValues(ctx, tx, before.ID)
+		if err != nil {
+			return err
 		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL, moved_from = $5
@@ -251,8 +255,17 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 			if err := tx.QueryRow(ctx, `UPDATE project SET issue_seq = issue_seq + 1 WHERE id = $1 RETURNING issue_seq`, targetID).Scan(&childNum); err != nil {
 				return err
 			}
-			for _, table := range []string{"issue_version", "issue_component", "issue_field_value"} {
+			for _, table := range []string{"issue_version", "issue_component"} {
 				if _, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE issue_id = $1`, c.id); err != nil {
+					return err
+				}
+			}
+			childDropped, err := dropProjectFieldValues(ctx, tx, c.id)
+			if err != nil {
+				return err
+			}
+			if len(childDropped) > 0 {
+				if err := s.recordHistory(ctx, tx, c.id, actor.UserID, childDropped); err != nil {
 					return err
 				}
 			}
@@ -282,6 +295,7 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 				changes = append(changes, Change{Field: cleared.field, From: cleared.from, To: ""})
 			}
 		}
+		changes = append(changes, droppedValues...)
 		if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
 			return err
 		}

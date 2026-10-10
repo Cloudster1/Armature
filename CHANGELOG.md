@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: moving an issue to another project keeps its answers to organization
+  fields; only those to the old project's own fields are dropped, each named
+  in the history and listed in the move dialog before it is confirmed (#82).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
