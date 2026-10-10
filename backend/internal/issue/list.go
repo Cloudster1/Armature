@@ -93,10 +93,18 @@ var orderColumns = map[string]string{
 // listCap is the most issues one unpaged read returns, matching the tree.
 const listCap = 2000
 
+const (
+	// MaxPageLimit is the most issues one page holds; a reader wanting more
+	// pages through, so one request cannot hold the database for long.
+	MaxPageLimit = 200
+	// defaultPageLimit is the page a caller gets who asked for none, or too much.
+	defaultPageLimit = 50
+)
+
 // List returns the issues matching a filter.
 func (s *Service) List(ctx context.Context, filter Filter, page Page) (*Result, error) {
-	if page.Limit <= 0 || page.Limit > 200 {
-		page.Limit = 50
+	if page.Limit <= 0 || page.Limit > MaxPageLimit {
+		page.Limit = defaultPageLimit
 	}
 	if page.Offset < 0 {
 		page.Offset = 0
@@ -120,9 +128,9 @@ func (s *Service) List(ctx context.Context, filter Filter, page Page) (*Result, 
 			return nil
 		}
 
-		// The key is appended to the sort so that ties are broken the same way
-		// every time; without it, paging can show the same issue twice.
-		query := fmt.Sprintf("%s%s ORDER BY %s, i.key_num DESC LIMIT $%d OFFSET $%d",
+		// The key, then the id, end the sort so ties break the same way every
+		// time; key numbers repeat across projects, so the key alone does not.
+		query := fmt.Sprintf("%s%s ORDER BY %s, i.key_num DESC, i.id LIMIT $%d OFFSET $%d",
 			selectIssue, where, ordering, len(args)+1, len(args)+2)
 		args = append(args, page.Limit, page.Offset)
 

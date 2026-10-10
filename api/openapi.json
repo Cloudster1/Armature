@@ -5287,7 +5287,7 @@
     "/issues/export": {
       "get": {
         "operationId": "exportIssues",
-        "summary": "The issues a query matches, as a CSV file with the chosen columns.",
+        "summary": "The issues a query matches, as a CSV file with the chosen columns; past 5000 the file is cut, ends with a note row, and the response carries X-Export-Truncated: true.",
         "tags": [
           "issues"
         ],
