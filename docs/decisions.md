@@ -1095,6 +1095,12 @@ The language changes formatting only, and the page says so: translating the
 interface is a different undertaking, and a setting that promises it and does
 not would be worse than none.
 
+The same holds for the dates a form works out: "today" and "the end of that
+day" are the profile zone's, so a work log starts on the day the reader is in
+and a share link lasts until midnight where they are. A week that starts at
+midnight UTC is a date, not an instant, and is read in UTC so no zone moves it
+onto the Sunday before.
+
 ### A person can see and change what is theirs
 
 The profile page shows the name, the address that signs them in, the zone, the

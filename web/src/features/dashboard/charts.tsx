@@ -101,10 +101,10 @@ export function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** A week's start as a short date. */
+/** A week's start as a short date. Weeks start at midnight UTC, so they are read in UTC wherever the reader is. */
 export function weekLabel(iso: string): string {
   const d = new Date(iso);
-  return `${d.getDate()}/${d.getMonth() + 1}`;
+  return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
 }
 
 /** One line on a chart. Stepped series hold each value until the next sample. */
