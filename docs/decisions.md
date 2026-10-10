@@ -27,6 +27,11 @@ about their own change. The fallback direction matters. A read that cannot be
 served freshly by a replica goes to the primary, and is never made to wait for
 replication, so a lagging replica costs latency and never correctness.
 
+A session's position only ever rises. Requests finish out of order, so behind a
+load balancer the older of two writes can report last; the shared tracker keeps
+the greater position with a compare-and-set script in Valkey, as the
+in-process tracker always has, rather than letting the late one walk it back.
+
 **Reconsider if** replica lag is routinely under a millisecond and the pinning
 machinery is buying nothing, or if the primary is so overloaded that fallback
 reads become the problem they were meant to solve.
