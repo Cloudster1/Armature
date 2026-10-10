@@ -5786,6 +5786,12 @@ export interface components {
             title: string;
             url?: string;
         };
+        QueuePage: {
+            limit: number;
+            offset: number;
+            rows: components["schemas"]["QueueRow"][];
+            total: number;
+        };
         QueueRow: {
             csat?: number;
             issue: components["schemas"]["Issue"];
@@ -14784,6 +14790,9 @@ export interface operations {
         parameters: {
             query?: {
                 filter?: "open" | "unassigned" | "mine" | "breached" | "all";
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path: {
@@ -14799,9 +14808,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        rows: components["schemas"]["QueueRow"][];
-                    };
+                    "application/json": components["schemas"]["QueuePage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
