@@ -358,7 +358,8 @@ export function useUpdateIssue() {
   return useMutation({
     mutationFn: ({ key, ...body }: UpdateIssueInput) =>
       request<{ issue: Issue }>(`/issues/${key}`, { method: "PATCH", body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    // A new priority moves a desk's clocks, which the desk's queries hold.
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 

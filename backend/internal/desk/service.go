@@ -570,47 +570,7 @@ func (s *Service) TimersFor(ctx context.Context, issueKey string) ([]Timer, erro
 // a goal for its priority. An issue an agent files in a service project is
 // measured too: the customer it is for is waiting either way.
 func (s *Service) IssueCreated(ctx context.Context, tx db.DBTX, created *issue.Issue, actor issue.Actor) error {
-	rows, err := tx.Query(ctx, `
-		SELECT sp.id, sp.goals FROM sla_policy sp
-		JOIN project p ON p.id = sp.project_id
-		WHERE p.id = $1 AND p.kind = 'service'`, created.ProjectID)
-	if err != nil {
-		return err
-	}
-	type goal struct {
-		policyID uuid.UUID
-		minutes  int
-	}
-	var goals []goal
-	for rows.Next() {
-		var (
-			id  uuid.UUID
-			raw []byte
-		)
-		if err := rows.Scan(&id, &raw); err != nil {
-			rows.Close()
-			return err
-		}
-		byPriority := map[issue.Priority]int{}
-		if err := json.Unmarshal(raw, &byPriority); err != nil {
-			rows.Close()
-			return err
-		}
-		if minutes := byPriority[created.Priority]; minutes > 0 {
-			goals = append(goals, goal{id, minutes})
-		}
-	}
-	rows.Close()
-
-	for _, g := range goals {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO sla_timer (org_id, issue_id, policy_id, goal_minutes, started_at, running_since)
-			VALUES (current_org_id(), $1, $2, $3, now(), now())
-			ON CONFLICT (issue_id, policy_id) DO NOTHING`, created.ID, g.policyID, g.minutes); err != nil {
-			return fmt.Errorf("start timer: %w", err)
-		}
-	}
-	return nil
+	return s.follow(ctx, tx, measuredOf(created))
 }
 
 // IssueTransitioned moves the clocks with the status: a done status completes

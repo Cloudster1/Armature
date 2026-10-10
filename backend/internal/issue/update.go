@@ -187,6 +187,9 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput, actor 
 		if err != nil {
 			return err
 		}
+		if err := s.tellUpdated(ctx, tx, before, updated, actor); err != nil {
+			return err
+		}
 
 		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": updated.ID,
