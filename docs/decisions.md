@@ -833,8 +833,10 @@ A dashboard made from a template is a copy, so nothing happens to it when the
 template changes. The built-in templates are code, keyed by a word; an
 organization's own are rows, because an arrangement somebody built on a Monday
 is theirs to keep and the product cannot know it in advance. They copy widgets
-and drop what belongs to one project, team, sprint or milestone by id, while the
-filter's names travel. A template is not edited: it is removed and saved again.
+and drop what belongs to one project, team, sprint, milestone or version by id,
+while the filter's names travel. A template saved before the version was dropped
+is read without its ids too, so no row needs rewriting. A template is not
+edited: it is removed and saved again.
 
 A milestone's dashboard is the same copy pinned to a name and an id, set in one
 transaction so they cannot disagree; closing or deleting the milestone leaves
