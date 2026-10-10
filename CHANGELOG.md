@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: deleting a team that still has sprints or request types routed to
+  it is refused with a sentence saying what to do, instead of handing its
+  sprints to the project or failing; a team that has run a sprint is kept,
+  and the database refuses the delete too (#55).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

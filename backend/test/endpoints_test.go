@@ -391,7 +391,10 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 		}
 	}
 	want(t, c.delete("/api/v1/teams/"+teamID+"/members/"+myID), http.StatusOK, "leave team")
-	want(t, c.delete("/api/v1/teams/"+teamID), http.StatusNoContent, "delete team")
+	// Platform has run a sprint, which keeps it; a team that never did can go.
+	want(t, c.delete("/api/v1/teams/"+teamID), http.StatusConflict, "delete a team that has run a sprint")
+	shortLived := want(t, c.post("/api/v1/projects/EVR/teams", map[string]any{"name": "Short lived"}), http.StatusCreated, "short-lived team")
+	want(t, c.delete("/api/v1/teams/"+idOf(t, shortLived, "team")), http.StatusNoContent, "delete team")
 
 	// And the issue itself, which only an administrator may do.
 	want(t, c.delete("/api/v1/issues/"+taskKey), http.StatusNoContent, "delete issue")
