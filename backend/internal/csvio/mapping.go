@@ -84,6 +84,9 @@ func Read(data []byte) ([]string, []Row, error) {
 	if len(data) > MaxImportBytes {
 		return nil, nil, fmt.Errorf("the file is over %d MB; split it", MaxImportBytes>>20)
 	}
+	// The mark goes before parsing: Excel quotes the header after it, and a
+	// quote that does not open the field is a parse error.
+	data = bytes.TrimPrefix(data, []byte(byteOrderMark))
 	r := csv.NewReader(bytes.NewReader(data))
 	r.FieldsPerRecord = -1
 	r.TrimLeadingSpace = true
@@ -104,7 +107,7 @@ func Read(data []byte) ([]string, []Row, error) {
 		if headers == nil {
 			headers = make([]string, len(record))
 			for n, h := range record {
-				headers[n] = strings.TrimSpace(strings.TrimPrefix(h, byteOrderMark))
+				headers[n] = strings.TrimSpace(h)
 			}
 			continue
 		}
