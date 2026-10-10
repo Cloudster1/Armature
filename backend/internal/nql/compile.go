@@ -344,6 +344,11 @@ func (c *compiler) match(def fieldDef, f Field, values []Value) (string, error) 
 // contains is ~: the words appear somewhere in the text.
 func (c *compiler) contains(def fieldDef, f Field, v Value) (string, error) {
 	text, err := plainText(def, v)
+	if def.kind == fkCustom && (v.Kind == VDate || v.Kind == VDuration) {
+		// A custom field may hold any text, so a date typed after ~ is just
+		// the characters to look for.
+		text, err = v.Text, nil
+	}
 	if err != nil {
 		return "", err
 	}
@@ -425,21 +430,23 @@ func (c *compiler) ordered(def fieldDef, f Field, op string, v Value) (string, e
 // project on purpose: "Customer = Globex" across projects is what a person
 // means, even though each project defines its own field. The cast follows
 // the literal and is guarded by the field's kind, so a text field of the same
-// name in another project cannot make a numeric cast fail.
+// name in another project cannot make a numeric cast fail. The guard is a
+// CASE because Postgres may evaluate either side of an AND first.
 func (c *compiler) custom(def fieldDef, op string, v Value) (string, error) {
 	var test string
 	switch {
+	case op == "~":
+		// Numbers and dates have no ~, so it always looks for the typed text.
+		test = "v.value #>> '{}' ILIKE '%' || " + c.bind(v.Text) + " || '%'"
 	case v.Kind == VNumber:
 		n, _ := strconv.ParseFloat(v.Text, 64)
-		test = "f.kind = 'number' AND (v.value #>> '{}')::numeric " + op + " " + c.bind(n)
+		test = "CASE WHEN f.kind = 'number' THEN (v.value #>> '{}')::numeric END " + op + " " + c.bind(n)
 	case v.Kind == VDate || v.Kind == VDuration || v.Kind == VFunction:
 		at, _, err := c.instant(def, v)
 		if err != nil {
 			return "", err
 		}
-		test = "f.kind = 'date' AND (v.value #>> '{}')::date " + op + " " + c.bind(at.In(c.env.Location).Format("2006-01-02")) + "::date"
-	case op == "~":
-		test = "v.value #>> '{}' ILIKE '%' || " + c.bind(v.Text) + " || '%'"
+		test = "CASE WHEN f.kind = 'date' THEN (v.value #>> '{}')::date END " + op + " " + c.bind(at.In(c.env.Location).Format("2006-01-02")) + "::date"
 	case op == "=":
 		test = "lower(v.value #>> '{}') = lower(" + c.bind(v.Text) + ")"
 	default:
