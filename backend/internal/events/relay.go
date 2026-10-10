@@ -27,6 +27,7 @@ type Relay struct {
 	db      *db.Cluster
 	redis   *redis.Client
 	log     *slog.Logger
+	stream  string
 	batch   int
 	idle    time.Duration
 	maxLen  int64
@@ -44,11 +45,19 @@ func NewRelay(cluster *db.Cluster, rdb *redis.Client, log *slog.Logger) *Relay {
 		db:      cluster,
 		redis:   rdb,
 		log:     log,
+		stream:  StreamKey,
 		batch:   100,
 		idle:    time.Second,
 		maxLen:  StreamMaxLen,
 		metrics: observability.Current(),
 	}
+}
+
+// Onto points the relay at another stream with another cap, so a test can
+// watch it against a slow group of its own without the worker's groups.
+func (r *Relay) Onto(stream string, maxLen int64) *Relay {
+	r.stream, r.maxLen = stream, maxLen
+	return r
 }
 
 // pendingLimit caps the count of what is waiting, since a backlog past it is
@@ -57,7 +66,7 @@ const pendingLimit = 10_000
 
 // Run relays until ctx is cancelled.
 func (r *Relay) Run(ctx context.Context) error {
-	r.log.Info("outbox relay started", "stream", StreamKey, "batch", r.batch)
+	r.log.Info("outbox relay started", "stream", r.stream, "batch", r.batch)
 	for {
 		n, err := r.once(ctx)
 		switch {
@@ -154,7 +163,7 @@ func (r *Relay) once(ctx context.Context) (int, error) {
 
 func (r *Relay) publish(ctx context.Context, e Event) error {
 	return r.redis.XAdd(ctx, &redis.XAddArgs{
-		Stream: StreamKey,
+		Stream: r.stream,
 		MaxLen: r.maxLen,
 		Approx: true,
 		Values: map[string]any{
