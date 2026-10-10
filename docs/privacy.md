@@ -85,7 +85,8 @@ administrator for the tables that belong to nobody in particular.
 - **Postgres**, a primary and a streaming replica. The replica is a copy of
   the primary and follows every deletion within seconds.
 - **The bucket** (any S3 compatible store) holds attachments and pictures. A deleted
-  attachment leaves a tombstone the worker uses to remove the object.
+  attachment leaves a tombstone the worker uses to remove the object, also when
+  it goes with its issue, a parent of that issue or the whole organization.
 - **Redis** holds the event stream, capped, and the read-your-writes marks,
   which expire.
 - **Logs** go to standard output as JSON: request id, trace id, method,
