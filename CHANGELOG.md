@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a squash or merge commit no longer carries out the branch's smart
+  commands a second time: a comment is posted once and a "#close" is not
+  tried again, while a new command in the squash commit still runs (#68).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

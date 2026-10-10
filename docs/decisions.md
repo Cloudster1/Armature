@@ -617,9 +617,17 @@ holds is one it already knows how to keep.
 ### Smart commits act once, and the pull request is told by the worker
 
 A commit's commands are carried out on its first arrival, so merging a branch is
-not a second "#close". A transition the workflow refuses goes into the receipt
-with its reason and the commit is recorded regardless, because the recording is
-what the history needs.
+not a second "#close". A squash or merge commit arrives as a new commit carrying
+the branch's messages, so each command carried out is also recorded against the
+repository and the issue, by its kind and its text with the spacing evened out.
+The same command from the same repository on the same issue is then left alone,
+whichever commit repeats it, while a line the squash commit adds still runs. A
+command the workflow refused was not carried out, so it is not recorded and a
+later commit may ask again. Saying the same thing again on purpose means saying
+it from the issue, or in other words. Only a hash of the command is kept, since matching is all it is
+for. A transition the workflow refuses goes into the receipt with its reason and
+the commit is recorded regardless, because the recording is what the history
+needs.
 
 Comments back to a pull request are posted by the worker reading the event
 stream. Posting from inside the transition would make every transition wait on a
