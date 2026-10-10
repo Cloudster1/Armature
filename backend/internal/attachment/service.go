@@ -29,8 +29,7 @@ type Service struct {
 	MaxSize int64
 }
 
-// NewService makes the service and has it told when an issue is deleted, so
-// the files on it are not left behind in the bucket.
+// NewService makes the service and has it told what happens to issues.
 func NewService(cluster *db.Cluster, store Store, issues *issue.Service) *Service {
 	s := &Service{db: cluster, store: store, log: slog.Default(), MaxSize: DefaultMaxSize}
 	issues.Observe(s)
@@ -58,18 +57,9 @@ func (s *Service) CommentAdded(context.Context, db.DBTX, uuid.UUID, bool, issue.
 	return nil
 }
 
-// IssueDeleted leaves a tombstone for every object the issue's files occupy.
-// The rows cascade with the issue; the reaper removes the bytes afterwards.
-func (s *Service) IssueDeleted(ctx context.Context, tx db.DBTX, deleted *issue.Issue, _ issue.Actor) error {
-	_, err := tx.Exec(ctx, `
-		INSERT INTO attachment_tombstone (object_key, org_id)
-		SELECT object_key, org_id FROM attachment WHERE issue_id = $1
-		ON CONFLICT (object_key) DO NOTHING`, deleted.ID)
-	if err != nil {
-		return fmt.Errorf("mark attachments of %s for removal: %w", deleted.Key, err)
-	}
-	return nil
-}
+// IssueDeleted has nothing to do: the rows cascade down the whole subtree, and
+// the database leaves a tombstone for each one that goes (migration 00921).
+func (s *Service) IssueDeleted(context.Context, db.DBTX, *issue.Issue, issue.Actor) error { return nil }
 
 const selectAttachment = `
 SELECT a.id, a.issue_id, p.key || '-' || i.key_num, a.file_name, a.content_type, a.size_bytes, a.object_key, a.created_at,
@@ -257,11 +247,8 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Attachment, error) {
 	return &found.Attachment, nil
 }
 
-// Delete removes an attachment. The row goes inside the transaction and a
-// tombstone is written beside it; the object goes after the commit, because an
-// object without a row is unreachable and harmless while a row without an
-// object is a broken link. If the object cannot be removed now, the tombstone
-// stays and the reaper gets it later.
+// Delete removes the row, which leaves a tombstone, then the object after the
+// commit: an orphaned object is harmless, a row without one is a broken link.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor issue.Actor) (db.LSN, error) {
 	var found *stored
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -271,11 +258,6 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor issue.Actor) (
 			return err
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM attachment WHERE id = $1`, id); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, current_org_id())
-			ON CONFLICT (object_key) DO NOTHING`, found.objectKey); err != nil {
 			return err
 		}
 		return issue.RecordChanges(ctx, tx, found.IssueID, actor.UserID, []issue.Change{{Field: "attachment", From: found.FileName}})

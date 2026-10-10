@@ -77,7 +77,9 @@ An upload writes the row and then the object, in one transaction; a delete does
 the reverse, row inside, object after the commit. Both orders leave at worst an
 object nobody can reach, and neither ever leaves a broken link. Orphans are not
 forgotten: the transaction that removes a row writes a tombstone per object key,
-and the worker's reaper works from those. The bucket is never listed, because
+and the worker's reaper works from those. A trigger on the table writes it, not
+the service, because rows also leave by cascade, with an issue's whole subtree
+or with the organization, and no service sees each of those. The bucket is never listed, because
 the database is the one place that knows what should exist.
 
 ### A custom field is defined per project, and its value is JSON per issue
