@@ -82,6 +82,61 @@ scenario("an issue opens beside the list and the list stays in reach", async ({ 
   await page.waitForFunction(() => !document.querySelector("[data-issue-panel]"), { timeout: WAIT });
 });
 
+// Reported as one Escape closing the confirm and the issue under it: on a
+// narrow screen the issue is a drawer, and each Escape is one step back.
+scenario("Escape in the issue drawer closes only what is on top of it", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Stacked");
+  const issueKey = await createIssue(page, key, "logged then kept");
+  await goto(page, `/projects/${key}`);
+  await openIssueBeside(page, issueKey);
+  const drawer = `[data-issue-drawer="${issueKey}"]`;
+  expect.truthy(await page.$(`${drawer}[aria-modal="true"]`), "a narrow screen gets the drawer");
+
+  await page.waitForSelector(`${drawer} #worklog-duration`, { timeout: WAIT });
+  await page.type(`${drawer} #worklog-duration`, "1h");
+  await clickButton(page, "Log work");
+  await page.waitForSelector(`${drawer} [data-worklog]`, { timeout: WAIT });
+
+  // Escape in the confirm closes the confirm; the issue and its log stay.
+  const remove = `${drawer} [data-worklog] button[aria-label^="Remove work log"]`;
+  await page.focus(remove);
+  await page.keyboard.press("Enter");
+  await page.waitForSelector('[data-confirm="work log"]', { timeout: WAIT });
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector('[data-confirm="work log"]'), { timeout: WAIT });
+  expect.truthy(await page.$(drawer), "the issue stayed open under the confirm");
+  expect.truthy(await page.$(`${drawer} [data-worklog]`), "and the work log is still there");
+  expect.truthy(
+    await page.evaluate(() => (document.activeElement?.getAttribute("aria-label") ?? "").startsWith("Remove work log")),
+    "focus is back on Remove",
+  );
+
+  // Escape in the header's menu closes the menu, not the issue.
+  await page.focus(`${drawer} [data-action="issue-more"]`);
+  await page.keyboard.press("Enter");
+  await page.waitForSelector('[role="menu"]', { timeout: WAIT });
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector('[role="menu"]'), { timeout: WAIT });
+  expect.truthy(await page.$(drawer), "the issue stayed open under the menu");
+  expect.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-action")), "issue-more", "focus is back on the menu's button");
+
+  // Escape while a comment is being written keeps the drawer and the draft.
+  await page.waitForSelector(`${drawer} #new-comment`, { timeout: WAIT });
+  await page.click(`${drawer} #new-comment`);
+  await page.type(`${drawer} #new-comment`, "half a thought");
+  await page.keyboard.press("Escape");
+  await new Promise((r) => setTimeout(r, 300));
+  expect.truthy(await page.$(drawer), "the issue stayed open while a comment was written");
+  const draft = await page.$eval(`${drawer} #new-comment`, (el) => (el.tagName === "TEXTAREA" ? el.value : el.textContent));
+  expect.contains(draft, "half a thought", "and the draft is kept");
+
+  // From the drawer itself, Escape closes it.
+  await page.click(`${drawer} h2`);
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector("[data-issue-panel]"), { timeout: WAIT });
+});
+
 scenario("an issue opens beside the board and the arrow keys walk the cards", async ({ page }) => {
   await signUp(page);
   const key = await createProject(page, "Carded");
