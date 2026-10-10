@@ -138,7 +138,7 @@ func TestInvites(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := svc.RevokeInvite(orgCtx, invite.ID); err != nil {
+		if err := svc.RevokeInvite(orgCtx, invite.ID, owner.Principal.User.ID); err != nil {
 			t.Fatalf("revoke: %v", err)
 		}
 		if _, err := svc.AcceptInvite(ctx, auth.AcceptInviteInput{
