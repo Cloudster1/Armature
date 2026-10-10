@@ -3,7 +3,9 @@ package availability
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -19,14 +21,20 @@ const (
 	// byteOrderMark is what some exporters put before the first line.
 	byteOrderMark    = "\xef\xbb\xbf"
 	bytesPerKilobyte = 1 << 10
+	icsDaysPerWeek   = 7
 )
+
+// icsLength is a DURATION in whole weeks and days, such as P3D, P1W or P1W2D.
+var icsLength = regexp.MustCompile(`^\+?P(?:(\d+)W)?(?:(\d+)D)?$`)
 
 // icsEvent is what one VEVENT says about the days it covers.
 type icsEvent struct {
 	start, end string
-	summary    string
-	recurring  bool
-	cancelled  bool
+	// length is the days a DURATION gives instead of an end, zero when none does.
+	length    int
+	summary   string
+	recurring bool
+	cancelled bool
 }
 
 // ImportICS reads the all-day events of an iCalendar file as holidays, one per
@@ -69,6 +77,10 @@ func ImportICS(r io.Reader) ([]Holiday, error) {
 			if current.end, err = icsDate(params, value); err != nil {
 				return nil, err
 			}
+		case name == "DURATION":
+			if current.length, err = icsDuration(value); err != nil {
+				return nil, err
+			}
 		case name == "SUMMARY":
 			current.summary = unescapeText(value)
 		case name == "RRULE" || name == "RDATE":
@@ -103,7 +115,7 @@ func ImportICS(r io.Reader) ([]Holiday, error) {
 }
 
 // days lists the days an event covers. Its end is exclusive, as the format
-// says, and an event with no end is the one day it starts on.
+// says; an event with no end, or one that ends the day it starts, is that day.
 func (e icsEvent) days() ([]string, error) {
 	switch {
 	case e.cancelled:
@@ -115,11 +127,17 @@ func (e icsEvent) days() ([]string, error) {
 	}
 	start, _ := time.Parse(icsDateLayout, e.start)
 	end := start.AddDate(0, 0, 1)
-	if e.end != "" {
-		end, _ = time.Parse(icsDateLayout, e.end)
-		if !end.After(start) {
+	switch {
+	case e.end != "":
+		last, _ := time.Parse(icsDateLayout, e.end)
+		if last.Before(start) {
 			return nil, badFile("%q ends before it starts; fix its DTEND", e.summary)
 		}
+		if last.After(start) {
+			end = last
+		}
+	case e.length > 0:
+		end = start.AddDate(0, 0, e.length)
 	}
 	var out []string
 	for day := start; day.Before(end); day = day.AddDate(0, 0, 1) {
@@ -143,6 +161,22 @@ func icsDate(params, value string) (string, error) {
 		return "", badFile("%q is not a day written as YYYYMMDD; fix the event and import it again", value)
 	}
 	return day.Format(icsDateLayout), nil
+}
+
+// icsDuration reads a DURATION as whole days. A length with hours in it is
+// refused for the same reason a time of day is.
+func icsDuration(value string) (int, error) {
+	value = strings.ToUpper(strings.TrimSpace(value))
+	if strings.HasPrefix(strings.TrimPrefix(value, "+"), "P") && strings.Contains(value, "T") {
+		return 0, badFile("%q lasts part of a day; export holidays as all-day events", value)
+	}
+	parts := icsLength.FindStringSubmatch(value)
+	if parts == nil || (parts[1] == "" && parts[2] == "") {
+		return 0, badFile("%q is not a length in days such as P3D; fix the event's DURATION", value)
+	}
+	weeks, _ := strconv.Atoi(parts[1])
+	days, _ := strconv.Atoi(parts[2])
+	return weeks*icsDaysPerWeek + days, nil
 }
 
 // unfold joins the lines a long property was folded into: a line starting

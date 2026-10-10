@@ -561,7 +561,10 @@ Work is spread evenly over the row's working days between start and due, as the
 team load is; a person's working days are their own, so an absence moves their
 share of an issue onto the days they are there. Work with hours but without both
 dates, and work with no hours at all, is listed rather than guessed into a week.
-A week over its hours is an over-allocated warning, never a refusal.
+A week over its hours is an over-allocated warning, never a refusal. Work is
+counted once per row, at the highest open level that carries hours: a story
+sized at sixteen hours speaks for its subtasks, as an estimate does in a sprint,
+and a subtask handed to another team or person counts there on its own.
 
 A project may have only part of somebody's week. A project administrator sets
 the share in percent, and the person's available and nominal hours are counted

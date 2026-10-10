@@ -62,6 +62,28 @@ func TestAnEventOverSeveralDaysIsADayOffForEach(t *testing.T) {
 	}
 }
 
+func TestAnEventMayGiveItsLengthInsteadOfItsEnd(t *testing.T) {
+	got, err := ImportICS(strings.NewReader(calendarFile(
+		"DTSTART;VALUE=DATE:20261224\nDURATION:P3D\nSUMMARY:Christmas",
+		"DTSTART;VALUE=DATE:20270301\nDURATION:P1W\nSUMMARY:Spring break",
+		// Some exporters end a one-day event on the day it starts.
+		"DTSTART;VALUE=DATE:20270501\nDTEND;VALUE=DATE:20270501\nSUMMARY:Labour Day",
+	)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	days := []string{}
+	for _, h := range got {
+		days = append(days, h.Day)
+	}
+	want := "2026-12-24,2026-12-25,2026-12-26," +
+		"2027-03-01,2027-03-02,2027-03-03,2027-03-04,2027-03-05,2027-03-06,2027-03-07," +
+		"2027-05-01"
+	if strings.Join(days, ",") != want {
+		t.Errorf("days = %v, want %s", days, want)
+	}
+}
+
 func TestAnICSFileWithUnixLineEndingsAndAByteOrderMarkReads(t *testing.T) {
 	file := byteOrderMark + strings.ReplaceAll(calendarFile("DTSTART;VALUE=DATE:20260501\nSUMMARY:Labour Day"), "\r\n", "\n")
 	got, err := ImportICS(strings.NewReader(file))
@@ -87,8 +109,16 @@ func TestAnICSFileThatCannotBeTakenIsRefusedWithASentence(t *testing.T) {
 			"all-day events",
 		},
 		"an end before the start": {
-			calendarFile("DTSTART;VALUE=DATE:20261225\nDTEND;VALUE=DATE:20261225\nSUMMARY:Nothing"),
+			calendarFile("DTSTART;VALUE=DATE:20261225\nDTEND;VALUE=DATE:20261224\nSUMMARY:Nothing"),
 			"ends before it starts",
+		},
+		"a length in hours": {
+			calendarFile("DTSTART;VALUE=DATE:20261224\nDURATION:PT8H\nSUMMARY:Short day"),
+			"lasts part of a day",
+		},
+		"a length that is not one": {
+			calendarFile("DTSTART;VALUE=DATE:20261224\nDURATION:three days\nSUMMARY:Christmas"),
+			"DURATION",
 		},
 		"an event with no start": {
 			calendarFile("SUMMARY:Floating"),
