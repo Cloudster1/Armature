@@ -1344,7 +1344,9 @@ Erasure replaces the account with a tombstone and keeps the work attributed to
 it, because the record belongs to the team: a comment with no author is a worse
 record than one by "Former user", and an issue that loses its reporter loses the
 one person the desk was answering. What only the person could use goes with
-them. The last owner of an organization is refused, since erasing them would
+them, and so does what would keep telling them about work, watches included:
+an erased person on a watcher list is a name kept for nobody. The last owner of
+an organization is refused, since erasing them would
 orphan everybody else, and erasure is from a browser session only, so a leaked
 token cannot erase its owner. An administrator removes a membership, not a
 person. Retention windows are configuration with defaults, because what a law or
@@ -1428,8 +1430,11 @@ hear, and writes one row per person per reason, keyed by the event's id. That
 key is the whole idempotency story: the stream is at-least-once, the inbox is
 exactly-once, and a replay cannot double-mail because mail is only sent when the
 row was new. A preference is therefore a filter on delivery and never on what
-happened, and a digest is the same rows read later. The desk keeps its own
-notifier for customers, whose mails are worded for people without an account.
+happened, and a digest is the same rows read later. Watching one's own issues
+is the one preference read earlier: off, the reporter and the assignee are not
+on the issue by their role, so only a watch made on purpose, an assignment or a
+mention reaches them. The desk keeps its own notifier for customers, whose mails
+are worded for people without an account.
 
 ### A webhook is an endpoint, and a rule may aim at one
 
