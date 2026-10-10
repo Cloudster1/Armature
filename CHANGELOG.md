@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: one issue dated far in the future no longer makes every plan read
+  that far: the load is read over at most ten years, and issue dates
+  outside 1900 to 2199 are refused with a sentence, also by the database (#40).
 - Share of the week: a project administrator sets how much of each person's
   week the project has, and the Resources page counts their hours at it, per
   person and inside their team; a person given more than a whole week across

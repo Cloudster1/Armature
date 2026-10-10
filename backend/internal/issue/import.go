@@ -87,6 +87,9 @@ func (s *Service) Import(ctx context.Context, in ImportInput, actor Actor) (*Imp
 }
 
 func (s *Service) importIssue(ctx context.Context, tx db.DBTX, in ImportInput, actor Actor) (*ImportResult, error) {
+	if err := CheckDates(in.StartDate, in.DueDate); err != nil {
+		return nil, err
+	}
 	var (
 		projectID  uuid.UUID
 		projectKey string

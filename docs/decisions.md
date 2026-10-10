@@ -373,6 +373,12 @@ The load is rows under the plan rather than a band over it: a band per team
 would swallow the calendar in a project with several, and rows read where a
 manager reads them, under the work they summarise.
 
+The load is read over at most ten years of the window, from no earlier than two
+years before today, and an issue is scheduled between 1900 and 2199, in the
+service and in a CHECK. The plan read everybody's every day across the window,
+so one due date typed as 2206 for 2026 made each page view read two centuries
+of availability; work planned a few years ahead still has its load.
+
 ### Tickets are made on the plan where they will sit
 
 Filing a ticket used to mean leaving for the project page and coming back to
