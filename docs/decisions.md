@@ -25,7 +25,11 @@ write, which is the first thing to fall over. The write ahead log position is
 what keeps replicas honest: a user is never shown a stale answer to a question
 about their own change. The fallback direction matters. A read that cannot be
 served freshly by a replica goes to the primary, and is never made to wait for
-replication, so a lagging replica costs latency and never correctness.
+replication, so a lagging replica costs latency and never correctness. A
+replica leaves the rotation on the median of its last few lag readings
+(`ARMATURE_DB_REPLICA_LAG_SAMPLES`), not on one: a single slow health check is
+noise, and a replica flapping in and out on it sends reads to the primary in
+bursts. A receiver that has stopped streaming takes it out at once.
 
 **Reconsider if** replica lag is routinely under a millisecond and the pinning
 machinery is buying nothing, or if the primary is so overloaded that fallback

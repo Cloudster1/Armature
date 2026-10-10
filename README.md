@@ -299,10 +299,10 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 
 | Variable | Default | What it is |
 |---|---|---|
-| `ARMATURE_ENV` | `development` | `development`, `staging` or `production`; the last two require secure cookies |
+| `ARMATURE_ENV` | `development` | `development`, `staging` or `production`; the last two require secure cookies and refuse a localhost `ARMATURE_APP_URL` or `ARMATURE_OIDC_REDIRECT_URL` |
 | `ARMATURE_HTTP_ADDR` | `:8080` | where the api listens |
 | `ARMATURE_LOG_LEVEL` | `info` | slog level |
-| `ARMATURE_APP_URL` | `http://localhost:5173` | where links in mail point, and the origin writes must come from |
+| `ARMATURE_APP_URL` | `http://localhost:5173` | where links in mail point, and the origin writes must come from; required outside development |
 | `ARMATURE_CORS_ORIGINS` | none | extra origins allowed to call the API |
 | `ARMATURE_TRUSTED_PROXIES` | none | addresses or CIDRs whose `X-Forwarded-For` is believed |
 | `ARMATURE_OUTBOUND_ALLOW` | none | addresses, CIDRs or host names the server may call inside the network |
@@ -313,7 +313,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_DB_CONN_MAX_LIFETIME` | `1h` | how long a connection is kept |
 | `ARMATURE_DB_HEALTH_INTERVAL` | `5s` | how often a replica's lag is re-read |
 | `ARMATURE_DB_MAX_REPLICA_LAG` | `2s` | lag past which a replica is not used |
-| `ARMATURE_DB_REPLICA_LAG_SAMPLES` | `3` | samples kept per replica |
+| `ARMATURE_DB_REPLICA_LAG_SAMPLES` | `3` | lag readings kept per replica; their median is held against the maximum lag, so one slow check does not take a replica out |
 | `ARMATURE_REDIS_URL` | `redis://localhost:6379/0` | the event stream |
 | `ARMATURE_SIGNUP` | `open` | who may create an organization: `open`, `first` (only the first one) or `closed` |
 | `ARMATURE_SESSION_TTL` | `720h` | how long a session lives |
@@ -335,6 +335,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_METRICS_ADDR` | `:9090` | the metrics listener; blank serves none |
 | `ARMATURE_OTEL_ENDPOINT` | none | the collector's traces URL |
 | `ARMATURE_OTEL_SAMPLE_RATIO` | `1` | share of new traces kept |
+| `ARMATURE_OIDC_REDIRECT_URL` | `http://localhost:8080/api/v1/auth/oidc/callback` | where the identity provider sends people back to, exactly as registered there; required outside development |
 | `ARMATURE_OIDC_BACKCHANNEL` | none | `public=reachable` rewrites for a provider whose addresses differ |
 | `ARMATURE_RETAIN_SESSIONS` | `24h` | past expiry |
 | `ARMATURE_RETAIN_PORTAL_CODES` | `24h` | past expiry |

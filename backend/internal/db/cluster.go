@@ -28,12 +28,12 @@ type DBTX interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// replicaState tracks one read replica's health and replay position. All fields
-// are read from request goroutines and written by the health loop, so every one
-// of them is atomic.
+// replicaState tracks one read replica's health and replay position. The atomic
+// fields are read from request goroutines; lags is the health loop's alone.
 type replicaState struct {
 	name string
 	pool *pgxpool.Pool
+	lags *lagWindow
 
 	healthy   atomic.Bool
 	replayLSN atomic.Uint64
@@ -144,8 +144,7 @@ func Open(ctx context.Context, cfg config.DB, log *slog.Logger, opts ...Option) 
 			log.Warn("replica unavailable at startup", "replica", i, "error", err)
 			continue
 		}
-		r := &replicaState{name: name, pool: pool}
-		c.replicas = append(c.replicas, r)
+		c.replicas = append(c.replicas, newReplicaState(name, pool, cfg.ReplicaLagSamples))
 	}
 
 	loopCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
@@ -153,7 +152,7 @@ func Open(ctx context.Context, cfg config.DB, log *slog.Logger, opts ...Option) 
 	c.checkAll(loopCtx) // seed health before serving the first request
 	go c.healthLoop(loopCtx, cfg.HealthInterval)
 
-	log.Info("database cluster ready", "replicas", len(c.replicas), "max_lag", cfg.MaxReplicaLag)
+	log.Info("database cluster ready", "replicas", len(c.replicas), "max_lag", cfg.MaxReplicaLag, "lag_samples", cfg.ReplicaLagSamples)
 	return c, nil
 }
 
@@ -346,28 +345,7 @@ func (c *Cluster) check(ctx context.Context, r *replicaState) {
 		lag = 0 // clock skew between primary and standby
 	}
 	r.replayLSN.Store(uint64(lsn))
-	r.lagMillis.Store(lag.Milliseconds())
-
-	if inRecovery {
-		// A standby whose receiver has dropped will happily report zero lag
-		// forever, because it has replayed everything it received. Without this
-		// check it would keep serving increasingly stale reads and look healthy
-		// doing it. An empty status means the view is not readable by this
-		// role, in which case we fall back to trusting the lag figure.
-		if receiverStatus != "" && receiverStatus != "streaming" {
-			c.markUnhealthy(r, fmt.Sprintf("wal receiver is %q, not streaming", receiverStatus))
-			return
-		}
-		if c.maxLag > 0 && lag > c.maxLag {
-			c.markUnhealthy(r, fmt.Sprintf("replication lag %s exceeds %s", lag, c.maxLag))
-			return
-		}
-	}
-
-	if was := r.healthy.Swap(true); !was {
-		r.lastErr.Store(nil)
-		c.log.Info("replica healthy", "replica", r.name, "lag", lag)
-	}
+	c.judge(r, inRecovery, lag, receiverStatus)
 }
 
 func (c *Cluster) markUnhealthy(r *replicaState, reason string) {
