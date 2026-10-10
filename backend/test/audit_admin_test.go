@@ -90,6 +90,7 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 		"name": "From outside", "trigger": map[string]any{"kind": "incoming"},
 		"actions": []any{map[string]any{"kind": "create_issue", "text": "An alert came in"}},
 	}), http.StatusCreated, "a rule with an incoming address")
+	incomingID := idOf(t, incoming, "rule")
 	hookToken := obj(t, incoming, "rule")["trigger"].(map[string]any)["token"].(string)
 
 	// An invitation sent and withdrawn.
@@ -122,6 +123,7 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 		{"rule.created", "rule", ruleID},
 		{"rule.updated", "rule", ruleID},
 		{"rule.deleted", "rule", ruleID},
+		{"rule.created", "rule", incomingID},
 		{"invite.created", "invite", inviteID},
 		{"invite.revoked", "invite", inviteID},
 		{"role.defined", "role", ""},
@@ -130,9 +132,14 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 		{"group.deleted", "group", groupID},
 	} {
 		page := want(t, owner.get("/api/v1/audit?action="+url.QueryEscape(e.action)), http.StatusOK, "the log filtered to "+e.action)
-		entries := list(t, page, "entries")
+		var entries []any
+		for _, entry := range list(t, page, "entries") {
+			if e.targetID == "" || entry.(map[string]any)["targetId"] == e.targetID {
+				entries = append(entries, entry)
+			}
+		}
 		if len(entries) != 1 {
-			t.Errorf("%s: %d entries, want one: %s", e.action, len(entries), page.Raw)
+			t.Errorf("%s about %q: %d entries, want one: %s", e.action, e.targetID, len(entries), page.Raw)
 			continue
 		}
 		entry := entries[0].(map[string]any)
