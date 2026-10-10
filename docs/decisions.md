@@ -948,6 +948,22 @@ a hyphen, and a hyphen in prose is far more common than a strike.
 instance's bytes, or if a changelog can be imported, which would mean accepting
 dates from outside for more than the one row that says the issue arrived.
 
+### An export is cut at five thousand issues, and says so
+
+An export asked the issue list for five thousand rows, and the list, which
+keeps a page to two hundred so one request cannot hold the database, gave it
+its default fifty without a word. The export now reads the list a page of two
+hundred at a time, up to five thousand issues. A longer result is cut there
+rather than refused, since the first five thousand in key order are still
+useful, but the file ends with a row saying how many of how many it holds and
+to narrow the query, and the response carries `X-Export-Truncated: true`. The
+list breaks ties by the issue's id after its key number, because key numbers
+repeat across projects and a page boundary between two equal ones would
+otherwise show one issue twice and drop another.
+
+**Reconsider if** somebody needs a whole organization in one file, at which
+point an export becomes a job that writes to storage and mails a link.
+
 ## The interface
 
 ### The interface is a tool, not a landing page
