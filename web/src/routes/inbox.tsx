@@ -62,24 +62,34 @@ function InboxPage() {
         />
       ) : (
         <Card className="divide-y divide-border">
-          {items.map((n) => (
-            <Link
-              key={n.id}
-              to="/issues/$issueKey"
-              params={{ issueKey: n.issueKey ?? "" }}
-              onClick={() => open(n)}
-              className="flex items-start gap-3 px-4 py-3 hover:bg-surface-raised"
-              data-notification={n.kind}
-              data-notification-read={n.readAt ? "true" : "false"}
-            >
-              <span className={n.readAt ? "mt-2 size-2 shrink-0 rounded-full bg-transparent" : "mt-2 size-2 shrink-0 rounded-full bg-accent"} aria-hidden />
-              <span className="min-w-0 flex-1">
-                <span className={n.readAt ? "block text-sm text-ink-muted" : "block text-sm font-medium text-ink"}>{n.title}</span>
-                {n.body && <span className="block truncate text-sm text-ink-muted">{n.body}</span>}
-              </span>
-              <span className="shrink-0 text-xs text-ink-subtle">{format.relative(n.createdAt)}</span>
-            </Link>
-          ))}
+          {items.map((n) => {
+            const row = {
+              onClick: () => open(n),
+              className: "flex items-start gap-3 px-4 py-3 hover:bg-surface-raised",
+              "data-notification": n.kind,
+              "data-notification-read": n.readAt ? "true" : "false",
+            };
+            const content = (
+              <>
+                <span className={n.readAt ? "mt-2 size-2 shrink-0 rounded-full bg-transparent" : "mt-2 size-2 shrink-0 rounded-full bg-accent"} aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className={n.readAt ? "block text-sm text-ink-muted" : "block text-sm font-medium text-ink"}>{n.title}</span>
+                  {n.body && <span className="block truncate text-sm text-ink-muted">{n.body}</span>}
+                </span>
+                <span className="shrink-0 text-xs text-ink-subtle">{format.relative(n.createdAt)}</span>
+              </>
+            );
+            // A notice about your absences opens your profile, where they are listed.
+            return n.kind === "absence" ? (
+              <Link key={n.id} to="/settings/profile" {...row}>
+                {content}
+              </Link>
+            ) : (
+              <Link key={n.id} to="/issues/$issueKey" params={{ issueKey: n.issueKey ?? "" }} {...row}>
+                {content}
+              </Link>
+            );
+          })}
         </Card>
       )}
     </Page>

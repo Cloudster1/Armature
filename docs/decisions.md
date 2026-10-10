@@ -525,6 +525,20 @@ a team. Leading a team is not enough, since a lead is a person to ask rather
 than a permission. Two absences of one person over the same day are refused by
 an exclusion constraint, so the plan never counts somebody away twice.
 
+A manager may change or remove only the absences they recorded themselves.
+The same manager decides who is on their teams, so "manages a team the person
+is on" is a door they can open for anybody, an administrator included, in one
+request; checking how long the person has been on the team would only mean
+waiting a minute. So the reach is narrowed instead: a manager adds days, and
+the person's own entries and an administrator's are out of it. The person and
+an administrator change any of them. A refusal names the person, so the
+manager knows who to ask. Who recorded an absence is what decides, so the
+database never lets it be rewritten to somebody else; it becomes nobody only
+when that account goes. And it is made visible: whenever somebody other than
+the person records, changes or removes one of their absences, the person is
+told in the inbox, and by mail if they want it, with who did what and never
+the days, since a mail leaves the building.
+
 **Reconsider if** an organization needs leave approval inside the tracker, which
 would be a state on the absence and a person who decides, not a reason.
 
