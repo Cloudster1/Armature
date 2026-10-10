@@ -20,6 +20,10 @@ installation does.
   are on, may record one for them. Every colleague who works in the
   organization sees the days; a portal customer never does. The events and
   the audit log say that an absence was recorded, never for which days.
+  A share of the week says how much of somebody's week a project counts on,
+  so a person on two projects is not counted whole in both. A project
+  administrator sets it; the project's people read it, and the total a person
+  gives across projects is shown beside it without naming the other projects.
 - **Telling people.** Notifications and mail carry news of the work to the
   people on it; a person chooses, per reason, whether to be told.
 - **Running a service desk.** A customer's address is how a request finds
@@ -37,6 +41,7 @@ installation does.
 | Account | `app_user` | address, name, password hash, picture, time zone, language | while the account exists | erased on request: the row becomes a tombstone ("Former user", a reserved address, no password, no picture) |
 | Membership | `org_member`, `role_assignment`, `group_member`, `team_member` | who belongs where and holds what | while the membership exists | an administrator removes the member, or the person erases their account |
 | Working week | `member_schedule` | the minutes a person works on each weekday, and the holiday calendar they keep | while the membership exists | an administrator removes the member, or the person erases their account |
+| Shares of the week | `project_allocation` | the percent of a person's week a project has | while the membership and the project exist | set back to the whole week, with the membership, with the project, and by erasure |
 | Absences | `absence` | the first and last day away, whether it is half a day, who wrote it down | `ARMATURE_RETAIN_ABSENCES` (400 days) after the last day | swept; removed by the person or whoever may record it for them, with the membership, and by erasure |
 | Sessions | `user_session` | token hash, user agent, address, last seen | `ARMATURE_SESSION_TTL` (30 days) | signed out, erased, or swept `ARMATURE_RETAIN_SESSIONS` (1 day) past expiry |
 | API tokens | `api_token`, `api_token_project` | name, token hash, last used, the projects it is confined to | until revoked or expired | revoked, erased, or swept `ARMATURE_RETAIN_API_TOKENS` (30 days) past expiry |
@@ -100,8 +105,8 @@ administrator for the tables that belong to nobody in particular.
 - **Access and portability:** `GET /api/v1/auth/me/export` hands the person
   one JSON file: profile, memberships, sessions, tokens, issues reported and
   assigned, comments, worklogs, watches, notifications, saved filters, the
-  working weeks set for them, their absences and who recorded each, and the
-  audit actions they performed. On the profile page it is "Download my
+  working weeks set for them, their absences and who recorded each, the
+  shares of their week projects have, and the audit actions they performed. On the profile page it is "Download my
   data"; a customer finds it under their name in the portal.
 - **Rectification:** the profile page changes the name, the zone, the
   language and the picture, and lists the person's absences for them to
@@ -109,7 +114,7 @@ administrator for the tables that belong to nobody in particular.
   person in and does not change here.
 - **Erasure:** `DELETE /api/v1/auth/me`, from a browser session only, so a
   leaked token cannot erase its owner. Sessions, tokens, notifications,
-  filters, absences and memberships go; the account becomes a tombstone;
+  filters, absences, shares of the week and memberships go; the account becomes a tombstone;
   commits and inbound mail carrying the address are pseudonymised. What the
   person wrote stays, attributed to "Former user": the record belongs to the
   team. The last owner of an organization is refused until ownership is

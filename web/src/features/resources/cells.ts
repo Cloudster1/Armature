@@ -30,9 +30,10 @@ export function hours(value: number): string {
   return String(Math.round(value * hourScale) / hourScale);
 }
 
-/** What a week says on hover: "32 of 40 h; 1 day away; 1 holiday". */
-export function describeHours(week: ResourceWeek): string {
-  const parts = [week.capacityHours !== undefined ? `${hours(week.loadHours)} of ${hours(week.capacityHours)} h` : `${hours(week.loadHours)} h`];
+/** What a week says on hover: "32 of 40 h; 1 day away; 1 holiday", and the share of the week when it is not all of it. */
+export function describeHours(week: ResourceWeek, sharePercent?: number): string {
+  const share = sharePercent !== undefined ? ` (${sharePercent}% of the week)` : "";
+  const parts = [week.capacityHours !== undefined ? `${hours(week.loadHours)} of ${hours(week.capacityHours)} h${share}` : `${hours(week.loadHours)} h`];
   if (week.daysAway) parts.push(`${number(week.daysAway)} day${week.daysAway === 1 ? "" : "s"} away`);
   if (week.holidays) parts.push(`${week.holidays} holiday${week.holidays === 1 ? "" : "s"}`);
   return parts.join("; ");
@@ -40,7 +41,7 @@ export function describeHours(week: ResourceWeek): string {
 
 /** The cell's whole title: whose week, which week, and its hours. */
 export function describeCell(row: ResourceRow, week: ResourceWeek): string {
-  return `${row.name}, week of ${weekLabel(week.start)}: ${describeHours(week)}`;
+  return `${row.name}, week of ${weekLabel(week.start)}: ${describeHours(week, row.sharePercent)}`;
 }
 
 /** A week's column heading: its Monday, as "3 Mar". */

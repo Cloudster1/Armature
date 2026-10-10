@@ -373,6 +373,12 @@ The load is rows under the plan rather than a band over it: a band per team
 would swallow the calendar in a project with several, and rows read where a
 manager reads them, under the work they summarise.
 
+The load is read over at most ten years of the window, from no earlier than two
+years before today, and an issue is scheduled between 1900 and 2199, in the
+service and in a CHECK. The plan read everybody's every day across the window,
+so one due date typed as 2206 for 2026 made each page view read two centuries
+of availability; work planned a few years ahead still has its load.
+
 ### Tickets are made on the plan where they will sit
 
 Filing a ticket used to mean leaving for the project page and coming back to
@@ -559,6 +565,15 @@ A week over its hours is an over-allocated warning, never a refusal. Work is
 counted once per row, at the highest open level that carries hours: a story
 sized at sixteen hours speaks for its subtasks, as an estimate does in a sprint,
 and a subtask handed to another team or person counts there on its own.
+
+A project may have only part of somebody's week. A project administrator sets
+the share in percent, and the person's available and nominal hours are counted
+at it, on their own row and inside their team's; nobody set gives the project
+the whole week, which is what every project assumed before. The shares a
+person has elsewhere are added up beside it, so a week given out at 130% is
+seen and warned about, as capacity is, and never refused: the share is what
+the project was told, and the warning is the place to argue about it. The
+total names no other project, so a walled one is not found through it.
 
 ## Projects, git and the service desk
 
