@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: the Resources page opens on, and "Today" goes back to, the week of
+  the reader's own date, also just after midnight on a Monday or on a Sunday
+  evening away from UTC (#49).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
