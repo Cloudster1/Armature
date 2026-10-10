@@ -5,9 +5,12 @@ package test
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/issue"
@@ -120,6 +123,22 @@ func TestScheduling(t *testing.T) {
 		}
 		if len(after) != len(before) {
 			t.Errorf("history grew from %d to %d for a move that did not happen", len(before), len(after))
+		}
+	})
+
+	t.Run("a date centuries away is refused, by the service and by the database", func(t *testing.T) {
+		tr := h.buildTree(t, ws)
+		for _, day := range []string{"9999-12-31", "1899-12-31", "2200-01-01"} {
+			_, _, err := ws.issues.Schedule(ws.ctx, tr.story.Key, issue.ScheduleInput{Due: ptr(mustDate(t, day))}, ws.actor)
+			if !errors.Is(err, issue.ErrDateOutOfRange) || !strings.Contains(err.Error(), day) {
+				t.Errorf("%s: error = %v, want it refused as out of range, naming the day", day, err)
+			}
+		}
+		h.schedule(t, ws, tr.story.Key, "1900-01-01", "2199-12-31")
+		_, err := h.super.Exec(context.Background(), `UPDATE issue SET due_date = '9999-12-31' WHERE id = $1`, tr.story.ID)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
+			t.Errorf("a due date in 9999 written directly: %v, want a check violation", err)
 		}
 	})
 
@@ -418,6 +437,39 @@ func containsAll(haystack []string, needles ...string) bool {
 
 // The plan reads the load per team: what is scheduled into each week against
 // what the team said it could take, and the work no team carries beside it.
+func TestOneFarDateDoesNotStretchThePlansLoadAcrossCenturies(t *testing.T) {
+	h := newHarness(t)
+	ws := h.newWorkspace(t, "farout")
+	near := ws.newIssue(t, "this autumn")
+	far := ws.newIssue(t, "the very last day there is")
+	h.schedule(t, ws, near.Key, "2026-09-07", "2026-09-11")
+	h.schedule(t, ws, far.Key, "2026-09-07", "2199-12-31")
+
+	got := ws.planOf(t)
+	// The window still reaches the far day; the load under it stops ten years on.
+	if got.To.Year() < 2199 {
+		t.Errorf("the window ends %v, want it to reach the far due date", got.To)
+	}
+	if limit := plan.LoadSpanDays/7 + 2; len(got.Load.Weeks) > limit {
+		t.Errorf("the load has %d weeks, want no more than %d", len(got.Load.Weeks), limit)
+	}
+}
+
+func TestADateOutsideTheYearsAnIssueCanHaveIsRefusedWithASentence(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signup(t, h, "faroutapi")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Far", "key": "FAR", "template": "kanban"}), http.StatusCreated, "a project")
+	refused := want(t, owner.post("/api/v1/projects/FAR/issues", map[string]any{"summary": "typo", "dueDate": "9999-12-31"}), http.StatusUnprocessableEntity, "a due date in 9999")
+	refusedWithASentence(t, refused, "between 1900 and 2199")
+	key := obj(t, want(t, owner.post("/api/v1/projects/FAR/issues", map[string]any{"summary": "fine", "dueDate": "2026-10-09"}), http.StatusCreated, "an issue"), "issue")["key"].(string)
+	refused = want(t, owner.put("/api/v1/issues/"+key+"/schedule", map[string]any{"startDate": "2026-10-01", "dueDate": "2206-10-09"}), http.StatusUnprocessableEntity, "a due date in 2206")
+	refusedWithASentence(t, refused, "2206-10-09")
+	refused = want(t, owner.patch("/api/v1/issues/"+key, map[string]any{"dueDate": "1066-10-14"}), http.StatusUnprocessableEntity, "a due date in 1066")
+	refusedWithASentence(t, refused, "1066-10-14")
+}
+
 func TestThePlanReadsTheLoadPerTeam(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "loaded")

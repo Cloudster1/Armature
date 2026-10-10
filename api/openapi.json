@@ -9819,6 +9819,128 @@
         }
       }
     },
+    "/projects/{projectKey}/allocations": {
+      "get": {
+        "operationId": "listAllocations",
+        "summary": "The share of each person's week the project has.",
+        "tags": [
+          "plan"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "allocations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Allocation"
+                      }
+                    }
+                  },
+                  "required": [
+                    "allocations"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectKey}/allocations/{userID}": {
+      "put": {
+        "operationId": "setAllocation",
+        "summary": "Set the share of a person's week the project has.",
+        "tags": [
+          "plan"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          },
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllocationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "allocation": {
+                      "$ref": "#/components/schemas/Allocation"
+                    }
+                  },
+                  "required": [
+                    "allocation"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{projectKey}/articles": {
       "get": {
         "operationId": "listArticles",
@@ -17718,6 +17840,44 @@
           "averageDays"
         ]
       },
+      "Allocation": {
+        "type": "object",
+        "properties": {
+          "elsewherePercent": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "integer"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "percent",
+          "elsewherePercent"
+        ]
+      },
+      "AllocationRequest": {
+        "type": "object",
+        "properties": {
+          "percent": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "percent"
+        ]
+      },
       "Answer": {
         "type": "object",
         "properties": {
@@ -24272,6 +24432,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "sharePercent": {
+            "type": "integer"
           },
           "weeks": {
             "type": "array",

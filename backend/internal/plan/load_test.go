@@ -56,6 +56,21 @@ func TestWeeksStartOnMondayAndCoverTheWindow(t *testing.T) {
 	}
 }
 
+func TestTheLoadIsReadOverABoundedStretchOfTheWindow(t *testing.T) {
+	today := dayOf("2026-10-08")
+	from, to := LoadSpan(dayOf("1990-01-01"), dayOf("2199-12-31"), today)
+	if from != today.AddDate(0, 0, -LoadBackDays) || to != from.AddDate(0, 0, LoadSpanDays) {
+		t.Errorf("span = %v to %v, want two years back and ten years long", from, to)
+	}
+	if weeks := len(Weeks(from, to)); weeks > LoadSpanDays/7+2 {
+		t.Errorf("%d weeks, want about ten years of them", weeks)
+	}
+	// Work planned a few years ahead keeps its whole window.
+	if from, to := LoadSpan(dayOf("2026-09-01"), dayOf("2031-03-31"), today); from != dayOf("2026-09-01") || to != dayOf("2031-03-31") {
+		t.Errorf("span = %v to %v, want the window unchanged", from, to)
+	}
+}
+
 func TestLoadSpreadsAnEstimateEvenlyAcrossItsWorkingDays(t *testing.T) {
 	alpha := uuid.New()
 	// Thursday the 10th to Tuesday the 15th: four working days, two in week one.

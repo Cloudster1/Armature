@@ -2,7 +2,6 @@ package issue
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/armature/armature/backend/internal/db"
@@ -39,9 +38,8 @@ func (s *Service) Schedule(ctx context.Context, key string, in ScheduleInput, ac
 		if in.Due != nil {
 			due = *in.Due
 		}
-		if start != nil && due != nil && due.Before(*start) {
-			return fmt.Errorf("%w: %s ends before %s",
-				ErrBackwardsRange, formatDate(due), formatDate(start))
+		if err := CheckDates(start, due); err != nil {
+			return err
 		}
 
 		var changes []Change
