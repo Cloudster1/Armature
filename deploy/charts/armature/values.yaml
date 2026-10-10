@@ -66,7 +66,8 @@ worker:
   # digest twice. Making this scalable is a change to the product, not to the
   # chart.
   replicas: 1
-  # Loops exit at their next poll boundary; the longest Redis block is 5s.
+  # Loops exit at their next poll boundary; the longest Redis block is 5s, and
+  # a stream consumer gets 10s more to finish the event in hand.
   terminationGracePeriodSeconds: 20
   resources:
     requests: { cpu: 100m, memory: 256Mi }

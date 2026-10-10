@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -115,11 +114,10 @@ type Notifier struct {
 	appURL string
 	inbox  string
 	group  string
-	block  time.Duration
 }
 
 func NewNotifier(cluster *db.Cluster, rdb *redis.Client, mailer Mailer, appURL string, log *slog.Logger) *Notifier {
-	return &Notifier{db: cluster, redis: rdb, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), group: "desk-mail", block: 5 * time.Second}
+	return &Notifier{db: cluster, redis: rdb, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), group: "desk-mail"}
 }
 
 // WithInbox names the address replies go to. Every mail then carries it as
@@ -131,43 +129,7 @@ func (n *Notifier) WithInbox(address string) *Notifier {
 
 // Run consumes the stream until the context ends.
 func (n *Notifier) Run(ctx context.Context) error {
-	err := n.redis.XGroupCreateMkStream(ctx, events.StreamKey, n.group, "$").Err()
-	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
-		return fmt.Errorf("create consumer group: %w", err)
-	}
-	for {
-		if ctx.Err() != nil {
-			return nil
-		}
-		streams, err := n.redis.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group: n.group, Consumer: "worker", Streams: []string{events.StreamKey, ">"}, Count: 50, Block: n.block,
-		}).Result()
-		if errors.Is(err, redis.Nil) {
-			continue
-		}
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil
-			}
-			n.log.Warn("desk mail read failed", "error", err)
-			time.Sleep(time.Second)
-			continue
-		}
-		for _, stream := range streams {
-			for _, msg := range stream.Messages {
-				e := events.FromMessage(msg)
-				hctx, done := events.Continue(ctx, e, n.group)
-				err := n.Handle(hctx, e)
-				done(err)
-				if err != nil {
-					n.log.Warn("desk mail could not act on an event", "id", msg.ID, "error", err)
-				}
-				if err := n.redis.XAck(ctx, events.StreamKey, n.group, msg.ID).Err(); err != nil {
-					n.log.Warn("desk mail could not acknowledge", "id", msg.ID, "error", err)
-				}
-			}
-		}
-	}
+	return events.NewConsumer(n.db, n.redis, n.log, n.group, n.Handle).Run(ctx)
 }
 
 // about is what every mail about a request needs to know about it. Only an
@@ -389,17 +351,26 @@ func (n *Notifier) Handle(ctx context.Context, e events.Event) error {
 func (n *Notifier) link(a *about) string { return requestLink(n.appURL, a.slug, a.key) }
 
 // tell mails everyone on a request but the actor. Every address is tried; the
-// first failure is what comes back.
+// first failure comes back, and is final once anybody was mailed.
 func (n *Notifier) tell(ctx context.Context, a *about, except uuid.UUID, msg Message) error {
 	to, err := n.recipients(ctx, a, except)
 	if err != nil {
 		return err
 	}
 	var first error
+	sent := 0
 	for _, address := range to {
-		if err := n.mailer.Send(ctx, n.mail(a, address, msg)); err != nil && first == nil {
+		err := n.mailer.Send(ctx, n.mail(a, address, msg))
+		switch {
+		case err == nil:
+			sent++
+		case first == nil:
 			first = err
 		}
+	}
+	// Another attempt would mail twice whoever already has it.
+	if first != nil && sent > 0 {
+		return events.Permanent(first)
 	}
 	return first
 }

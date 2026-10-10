@@ -20,6 +20,9 @@ import (
 	"github.com/armature/armature/backend/internal/events"
 )
 
+// pendingScan bounds how much of a group's pending list a test reads through.
+const pendingScan = 10_000
+
 // quickly is the policy these tests run under: what the worker waits most of
 // a minute for, they wait a fraction of a second for.
 var quickly = events.Policy{
@@ -83,6 +86,8 @@ type streamRig struct {
 	h   *harness
 	rdb *redis.Client
 	log *slog.Logger
+	// entries maps each event added to its id on the stream.
+	entries map[uuid.UUID]string
 }
 
 func newStreamRig(t *testing.T) *streamRig {
@@ -91,6 +96,8 @@ func newStreamRig(t *testing.T) *streamRig {
 		h:   newHarness(t),
 		rdb: redisClient(t),
 		log: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
+
+		entries: map[uuid.UUID]string{},
 	}
 }
 
@@ -112,11 +119,13 @@ func (r *streamRig) add(t *testing.T, orgID uuid.UUID, n int) []uuid.UUID {
 	ids := make([]uuid.UUID, n)
 	for i := range n {
 		ids[i] = uuid.New()
-		if err := r.rdb.XAdd(context.Background(), &redis.XAddArgs{Stream: events.StreamKey, Values: map[string]any{
+		id, err := r.rdb.XAdd(context.Background(), &redis.XAddArgs{Stream: events.StreamKey, Values: map[string]any{
 			"id": ids[i].String(), "org_id": orgID.String(), "topic": "test.consumed", "payload": `{}`, "trace": "",
-		}}).Err(); err != nil {
+		}}).Result()
+		if err != nil {
 			t.Fatalf("add %d: %v", i, err)
 		}
+		r.entries[ids[i]] = id
 	}
 	return ids
 }
@@ -148,13 +157,27 @@ func (r *streamRig) run(t *testing.T, name string, handle events.Handler) (conte
 	return runCtx, stop
 }
 
-func (r *streamRig) pending(t *testing.T, name string) int64 {
+// pending counts which of the events are still unacknowledged in the group;
+// whatever else is on the shared stream is not the test's to count.
+func (r *streamRig) pending(t *testing.T, name string, ids []uuid.UUID) int64 {
 	t.Helper()
-	p, err := r.rdb.XPending(context.Background(), events.StreamKey, name).Result()
+	all, err := r.rdb.XPendingExt(context.Background(), &redis.XPendingExtArgs{
+		Stream: events.StreamKey, Group: name, Start: "-", End: "+", Count: pendingScan,
+	}).Result()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return p.Count
+	ours := map[string]bool{}
+	for _, id := range ids {
+		ours[r.entries[id]] = true
+	}
+	var n int64
+	for _, p := range all {
+		if ours[p.ID] {
+			n++
+		}
+	}
+	return n
 }
 
 // deadLetters reads what the organization's administrator reads on the audit
@@ -211,7 +234,7 @@ func TestAConsumerRetriesAHandlerThatFailedOnce(t *testing.T) {
 	})
 
 	eventually(t, 10*time.Second, "the second attempt", func() bool { return count.finished(ids[0]) == 1 })
-	eventually(t, 5*time.Second, "the acknowledgement", func() bool { return r.pending(t, name) == 0 })
+	eventually(t, 5*time.Second, "the acknowledgement", func() bool { return r.pending(t, name, ids) == 0 })
 	if got := count.attempts(ids[0]); got != 2 {
 		t.Errorf("the event was handed over %d times, want twice: once failing, once succeeding", got)
 	}
@@ -270,7 +293,7 @@ func TestAStoppedConsumerFinishesTheEventInHandAndLeavesTheRest(t *testing.T) {
 			t.Fatalf("the stopping worker went on to event %s after the shutdown", id)
 		}
 	}
-	if got := r.pending(t, name); got != int64(len(ids)-1) {
+	if got := r.pending(t, name, ids); got != int64(len(ids)-1) {
 		t.Errorf("%d entries left pending, want the %d the stopped worker never handled", got, len(ids)-1)
 	}
 
@@ -282,7 +305,7 @@ func TestAStoppedConsumerFinishesTheEventInHandAndLeavesTheRest(t *testing.T) {
 		return nil
 	})
 	eventually(t, 10*time.Second, "the next worker handling the rest", func() bool { return count.all(ids) })
-	eventually(t, 5*time.Second, "the acknowledgements", func() bool { return r.pending(t, name) == 0 })
+	eventually(t, 5*time.Second, "the acknowledgements", func() bool { return r.pending(t, name, ids) == 0 })
 	for _, id := range ids {
 		if got := count.finished(id); got != 1 {
 			t.Errorf("event %s was handled %d times, want once", id, got)
@@ -315,7 +338,7 @@ func TestAKilledConsumersBatchIsHandledByTheNext(t *testing.T) {
 		return nil
 	})
 	eventually(t, 10*time.Second, "the new worker handling the killed worker's batch", func() bool { return count.all(ids) })
-	eventually(t, 5*time.Second, "the acknowledgements", func() bool { return r.pending(t, name) == 0 })
+	eventually(t, 5*time.Second, "the acknowledgements", func() bool { return r.pending(t, name, ids) == 0 })
 }
 
 // An event no attempt can handle is tried a bounded number of times, then
@@ -336,7 +359,7 @@ func TestAnEventThatAlwaysFailsEndsInTheDeadLetterRecord(t *testing.T) {
 	})
 
 	eventually(t, 15*time.Second, "the dead letter", func() bool { return len(r.deadLetters(t, orgCtx)) == 1 })
-	eventually(t, 5*time.Second, "the acknowledgement", func() bool { return r.pending(t, name) == 0 })
+	eventually(t, 5*time.Second, "the acknowledgement", func() bool { return r.pending(t, name, ids) == 0 })
 	if got := count.attempts(ids[0]); got != int(quickly.MaxDeliveries) {
 		t.Errorf("the event was handed over %d times, want %d before it was set aside", got, quickly.MaxDeliveries)
 	}
@@ -383,7 +406,7 @@ func TestAPermanentFailureIsSetAsideAtOnce(t *testing.T) {
 	})
 
 	eventually(t, 10*time.Second, "the dead letter", func() bool { return len(r.deadLetters(t, orgCtx)) == 1 })
-	eventually(t, 5*time.Second, "the acknowledgement", func() bool { return r.pending(t, name) == 0 })
+	eventually(t, 5*time.Second, "the acknowledgement", func() bool { return r.pending(t, name, ids) == 0 })
 	time.Sleep(3 * quickly.ClaimEvery)
 	if got := count.attempts(ids[0]); got != 1 {
 		t.Errorf("a permanent failure was handed over %d times, want once", got)
