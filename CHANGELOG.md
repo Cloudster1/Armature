@@ -21,6 +21,9 @@ here in the branch that makes it.
   Resources page with a full week free; work still assigned to them is counted
   as nobody's, and the project calendar no longer counts them among its people
   (#42).
+- Fixed: an .ics event that gives its length with DURATION (such as P3D or
+  P1W) is imported for every day it covers, and one whose end is its start day
+  is that one day instead of refusing the file (#44).
 - Fixed: the Resources page counts work once per row, at the highest open level
   that carries hours, so a story and its subtasks are no longer booked twice
   (#41).
