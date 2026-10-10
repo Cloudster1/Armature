@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a text search for `50%` or `snake_case` finds those characters
+  rather than any 50 or any letter; a CSV file Excel saved with a byte order
+  mark and quoted headers imports; and two people tagging with the same new
+  word at once both get the label instead of one being refused (#92).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
