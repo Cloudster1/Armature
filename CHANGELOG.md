@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a reply by mail that could not be posted, say during a short
+  database outage, is posted on a later poll instead of being deleted from
+  the mailbox; one that fails ten times stays in the box and an internal note
+  on its request tells the agents why (#94).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

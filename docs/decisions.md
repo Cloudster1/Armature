@@ -738,6 +738,12 @@ a follower or an agent, and in exactly one organization. Every consumed mail is
 recorded by message id, so a redelivery is refused by the database however many
 workers are reading, and machines are never answered, so no loop can form.
 
+A mail is deleted only once it is decided. The row is written before the work,
+so an attempt that fails marks it failed with its error and the next poll takes
+it up again; a row another attempt still holds leaves the mail in the box. After
+ten failed attempts the desk gives up: the mail stays in the box, since the body
+lives nowhere else, and an internal note on its request tells the agents why.
+
 ### A customer's files are the request's, and only their own come off
 
 A file on a request is part of what was said, and the conversation is one thing
