@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import { ACTIVITY_FOLD } from "@/config";
 import { type Comment, type Doc, useAddComment, useComments, useMembers } from "@/api/issues";
 import { useAddNote, useCannedResponses, useRenderCanned } from "@/api/desk";
@@ -7,6 +7,7 @@ import { Button, Checkbox, ErrorBanner, Menu, Tag } from "@/components/ui";
 import { DocView } from "@/features/editor/DocView";
 import { Editor, type EditorHandle } from "@/features/editor/Editor";
 import { Avatar, relativeTime } from "./badges";
+import { forgetDraft, keepDraft, readDraft } from "./drafts";
 
 // The conversation sits near the top, where it is read and added to; the
 // changelog is the last section, for whoever wants to know how it got here.
@@ -78,15 +79,31 @@ function CommentForm({ issueKey }: { issueKey: string }) {
   const canned = cannedData?.responses ?? [];
   // Customers are not named in comments: they are told by the desk, on their terms.
   const people = (members?.members ?? []).filter((m) => m.role !== "customer").map((m) => ({ id: m.id, name: m.name, email: m.email }));
-  const [body, setBody] = useState<Doc | null>(null);
+  // A comment half typed on this issue earlier is still here to finish.
+  const [opened] = useState(() => readDraft("comment", issueKey)?.doc ?? null);
+  const [body, setBody] = useState<Doc | null>(opened);
   const editor = useRef<EditorHandle | null>(null);
   // An internal note stays between agents; a comment reaches the customer.
   const [internal, setInternal] = useState(false);
 
+  const change = useCallback(
+    (next: Doc | null) => {
+      if (next) keepDraft("comment", issueKey, next);
+      else forgetDraft("comment", issueKey);
+      setBody(next);
+    },
+    [issueKey],
+  );
+
+  // The promise outlives the page, so a comment that lands after a step away
+  // still forgets its draft; a refusal is shown by the mutation's error.
   function post() {
     if (!body) return;
     const send = internal ? note : add;
-    send.mutate({ key: issueKey, body }, { onSuccess: () => editor.current?.clear() });
+    send.mutateAsync({ key: issueKey, body }).then(() => {
+      forgetDraft("comment", issueKey);
+      editor.current?.clear();
+    }, () => {});
   }
 
   function onSubmit(event: FormEvent) {
@@ -96,7 +113,7 @@ function CommentForm({ issueKey }: { issueKey: string }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-2">
-      <Editor id="new-comment" value={null} onChange={setBody} people={people} rows={3} placeholder="Add a comment; @ names somebody" aria-label="Add a comment" onSubmit={post} handle={(h) => (editor.current = h)} />
+      <Editor id="new-comment" value={opened} onChange={change} people={people} rows={3} placeholder="Add a comment; @ names somebody" aria-label="Add a comment" onSubmit={post} handle={(h) => (editor.current = h)} />
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm" loading={add.isPending || note.isPending} disabled={!body}>
           {internal ? "Add note" : "Comment"}
