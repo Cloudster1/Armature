@@ -97,14 +97,27 @@ func TestHolidayCalendarsAreTheAdministratorsToKeep(t *testing.T) {
 		if imported.Body["imported"] != float64(4) {
 			t.Errorf("imported = %v, want the four days the file covers", imported.Body["imported"])
 		}
-		days := map[string]string{}
+		days, halves := map[string]string{}, map[string]bool{}
 		for _, row := range list(t, imported, "calendar", "days") {
 			d := row.(map[string]any)
-			days[d["day"].(string)] = d["name"].(string)
+			days[d["day"].(string)], halves[d["day"].(string)] = d["name"].(string), d["halfDay"] == true
 		}
 		// The file is newer than the calendar, so a day in both takes the file's name.
 		if len(days) != 4 || days["2026-12-25"] != "Christmas break" || days["2027-01-01"] != "New Year's Day" {
 			t.Errorf("days after the import = %v", days)
+		}
+		// A file has no half days, so it leaves the one the calendar has alone.
+		if days["2026-12-24"] != "Christmas break" || !halves["2026-12-24"] || halves["2026-12-25"] {
+			t.Errorf("Christmas Eve after the import = %q, half day %v; want the file's name and still a half day", days["2026-12-24"], halves["2026-12-24"])
+		}
+		replaced := obj(t, want(t, owner.put("/api/v1/holiday-calendars/"+germany+"/days", map[string]any{"days": []map[string]any{
+			{"day": "2026-12-24", "name": "Heiligabend", "halfDay": false},
+			{"day": "2026-12-25", "name": "Christmas break"},
+			{"day": "2026-12-26", "name": "Christmas break"},
+			{"day": "2027-01-01", "name": "New Year's Day"},
+		}}), http.StatusOK, "set the days again"), "calendar")
+		if eve := replaced["days"].([]any)[0].(map[string]any); eve["day"] != "2026-12-24" || eve["halfDay"] != false {
+			t.Errorf("Christmas Eve after setting the days = %v, want the whole day the editor sent", eve)
 		}
 
 		recurring := strings.Replace(holidayFile, "SUMMARY:New Year's Day", "SUMMARY:New Year's Day\r\nRRULE:FREQ=YEARLY", 1)
