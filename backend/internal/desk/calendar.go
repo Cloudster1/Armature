@@ -42,8 +42,23 @@ func DefaultCalendar() Calendar {
 	return Calendar{Timezone: "UTC", Hours: hours, Holidays: []string{}}
 }
 
-// Validate refuses hours that cannot be read.
+// Validate refuses hours that cannot be read, and a day whose spans overlap,
+// so what is saved says plainly when the desk is open.
 func (c *Calendar) Validate() error {
+	if err := c.readable(); err != nil {
+		return err
+	}
+	for _, day := range weekdays {
+		if err := noOverlaps(day, c.Hours[day]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// readable is what a saved calendar must pass to be read back; one saved with
+// overlaps before they were refused is still read, and counted merged.
+func (c *Calendar) readable() error {
 	if c.Timezone == "" {
 		c.Timezone = "UTC"
 	}
@@ -75,7 +90,7 @@ func (c *Calendar) Validate() error {
 				return err
 			}
 			if to <= from {
-				return fmt.Errorf("%s: %s to %s ends before it starts", day, s.From, s.To)
+				return fmt.Errorf("%s: %s to %s ends before it starts", dayName(day), s.From, s.To)
 			}
 		}
 	}
@@ -88,6 +103,45 @@ func (c *Calendar) Validate() error {
 		}
 	}
 	return nil
+}
+
+// noOverlaps names the first span of a day that starts before an earlier one
+// has ended. Spans that only touch are fine: the day reads as one stretch.
+func noOverlaps(day string, spans []Span) error {
+	sorted := sortedSpans(spans)
+	var held Span
+	heldTo := -1
+	for _, s := range sorted {
+		from, _ := minuteOf(s.From)
+		to, _ := minuteOf(s.To)
+		if from < heldTo {
+			return fmt.Errorf("%s: %s to %s overlaps %s to %s; join them into one span", dayName(day), s.From, s.To, held.From, held.To)
+		}
+		if to > heldTo {
+			held, heldTo = s, to
+		}
+	}
+	return nil
+}
+
+// sortedSpans is a copy in the order the day runs, leaving the saved hours as written.
+func sortedSpans(spans []Span) []Span {
+	out := append([]Span(nil), spans...)
+	sort.SliceStable(out, func(i, j int) bool {
+		a, _ := minuteOf(out[i].From)
+		b, _ := minuteOf(out[j].From)
+		return a < b
+	})
+	return out
+}
+
+func dayName(key string) string {
+	for wd, k := range weekdayKey {
+		if k == key {
+			return wd.String()
+		}
+	}
+	return key
 }
 
 func minuteOf(hhmm string) (int, error) {
@@ -119,15 +173,14 @@ func (c *Calendar) isHoliday(day time.Time) bool {
 	return false
 }
 
-// openSpans are the open stretches of one calendar day, as instants.
+// openSpans are the open stretches of one calendar day, as instants. Spans
+// that overlap are merged, so a minute saved twice is still open only once.
 func (c *Calendar) openSpans(day time.Time) []struct{ from, to time.Time } {
 	if c.isHoliday(day) {
 		return nil
 	}
 	var out []struct{ from, to time.Time }
-	spans := c.Hours[weekdayKey[day.Weekday()]]
-	sort.Slice(spans, func(i, j int) bool { return spans[i].From < spans[j].From })
-	for _, s := range spans {
+	for _, s := range sortedSpans(c.Hours[weekdayKey[day.Weekday()]]) {
 		from, err1 := minuteOf(s.From)
 		to, err2 := minuteOf(s.To)
 		if err1 != nil || err2 != nil {
@@ -135,6 +188,12 @@ func (c *Calendar) openSpans(day time.Time) []struct{ from, to time.Time } {
 		}
 		start := time.Date(day.Year(), day.Month(), day.Day(), from/60, from%60, 0, 0, c.location())
 		end := time.Date(day.Year(), day.Month(), day.Day(), to/60, to%60, 0, 0, c.location())
+		if n := len(out); n > 0 && !start.After(out[n-1].to) {
+			if end.After(out[n-1].to) {
+				out[n-1].to = end
+			}
+			continue
+		}
 		out = append(out, struct{ from, to time.Time }{start, end})
 	}
 	return out
@@ -208,7 +267,7 @@ func parseCalendar(timezone string, hours []byte, holidays []string) (*Calendar,
 	if c.Holidays == nil {
 		c.Holidays = []string{}
 	}
-	if err := c.Validate(); err != nil {
+	if err := c.readable(); err != nil {
 		return nil, err
 	}
 	return c, nil
