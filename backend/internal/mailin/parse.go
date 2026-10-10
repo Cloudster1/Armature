@@ -76,9 +76,7 @@ func Parse(raw []byte) (*Message, error) {
 			}
 		}
 	}
-	auto := strings.ToLower(strings.TrimSpace(m.Header.Get("Auto-Submitted")))
-	precedence := strings.ToLower(strings.TrimSpace(m.Header.Get("Precedence")))
-	out.AutoSubmitted = (auto != "" && auto != "no") || precedence == "bulk" || precedence == "list" || precedence == "junk"
+	out.AutoSubmitted = autoSubmitted(m.Header)
 
 	body, err := io.ReadAll(m.Body)
 	if err != nil {
@@ -91,6 +89,20 @@ func Parse(raw []byte) (*Message, error) {
 		out.Text = stripTags(rich)
 	}
 	return out, nil
+}
+
+// machinePrecedence is every Precedence a list or an out-of-office sets.
+var machinePrecedence = map[string]bool{"bulk": true, "list": true, "junk": true, "auto_reply": true}
+
+// autoSubmitted reads RFC 3834's header and the older ones auto-responders
+// still set in its place; any of them is enough, since a person sets none.
+func autoSubmitted(h mail.Header) bool {
+	for _, name := range []string{"Auto-Submitted", "X-Autoreply", "X-Autorespond"} {
+		if value := strings.ToLower(strings.TrimSpace(h.Get(name))); value != "" && value != "no" {
+			return true
+		}
+	}
+	return machinePrecedence[strings.ToLower(strings.TrimSpace(h.Get("Precedence")))]
 }
 
 // headerGetter is what both a message and a part offer.

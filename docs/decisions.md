@@ -738,6 +738,13 @@ a follower or an agent, and in exactly one organization. Every consumed mail is
 recorded by message id, so a redelivery is refused by the database however many
 workers are reading, and machines are never answered, so no loop can form.
 
+Nor is a machine's mail taken for the customer's word. An out-of-office that
+reaches a request waiting on its customer would otherwise be posted as their
+reply, move the request back and restart its clocks. A mail marked by
+`Auto-Submitted` (other than `no`), `X-Autoreply`, `X-Autorespond` or a
+`Precedence` of `auto_reply`, `bulk`, `junk` or `list` is recorded as
+`automatic`, taken out of the box and never posted.
+
 ### A customer's files are the request's, and only their own come off
 
 A file on a request is part of what was said, and the conversation is one thing
