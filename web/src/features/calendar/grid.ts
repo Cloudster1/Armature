@@ -1,5 +1,5 @@
 import type { CalendarItem } from "@/api/calendar";
-import { CALENDAR_MAX_ITEMS_PER_DAY } from "@/config";
+import { CALENDAR_GRID_DAYS, CALENDAR_MAX_ITEMS_PER_DAY } from "@/config";
 
 /**
  * The geometry of a month: which days the grid shows, and what lies on each.
@@ -45,7 +45,7 @@ export function monthGrid(year: number, month: number): Cell[] {
   const lead = (first.getDay() + 6) % 7;
   const start = new Date(year, month - 1, 1 - lead);
   const cells: Cell[] = [];
-  for (let i = 0; i < 42; i++) {
+  for (let i = 0; i < CALENDAR_GRID_DAYS; i++) {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     cells.push({ day: isoDay(d), inMonth: d.getMonth() === month - 1, weekend: d.getDay() === 0 || d.getDay() === 6 });
   }
@@ -58,9 +58,9 @@ export function shiftMonth(year: number, month: number, by: number): { year: num
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
 }
 
-/** The month's name and year, as the header says it. */
-export function monthTitle(year: number, month: number): string {
-  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+/** The month's name and year, as the header says it in the reader's language. */
+export function monthTitle(year: number, month: number, locale: string): string {
+  return new Date(year, month - 1, 1).toLocaleDateString(locale, { month: "long", year: "numeric" });
 }
 
 export interface Placed {

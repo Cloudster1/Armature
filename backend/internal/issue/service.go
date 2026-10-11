@@ -39,6 +39,9 @@ func NewService(cluster *db.Cluster, engine *workflow.Engine, workflows *workflo
 type Observer interface {
 	IssueCreated(ctx context.Context, tx db.DBTX, created *Issue, actor Actor) error
 	IssueTransitioned(ctx context.Context, tx db.DBTX, before, after *Issue, actor Actor) error
+	// IssueUpdated is told of an edit that changed something and of a move,
+	// so a goal kept by priority or by project can follow it.
+	IssueUpdated(ctx context.Context, tx db.DBTX, before, after *Issue, actor Actor) error
 	// CommentAdded is told of every comment, internal or not.
 	CommentAdded(ctx context.Context, tx db.DBTX, issueID uuid.UUID, internal bool, actor Actor) error
 	// IssueDeleted is told before the rows go, while what hangs off the issue
@@ -48,6 +51,15 @@ type Observer interface {
 
 // Observe adds an observer. It is called at wiring time, before any request.
 func (s *Service) Observe(o Observer) { s.observers = append(s.observers, o) }
+
+func (s *Service) tellUpdated(ctx context.Context, tx db.DBTX, before, after *Issue, actor Actor) error {
+	for _, o := range s.observers {
+		if err := o.IssueUpdated(ctx, tx, before, after, actor); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // Actor is whoever is making the change.
 type Actor struct {
@@ -332,20 +344,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actor Actor) (*Iss
 		// between two of these.
 		cardRank := rank.Sequential(keyNum)
 
-		// The sprint has to be this project's and still open; a closed one has
-		// its report written, and the same sentences SetSprint uses apply.
+		// The sprint has to be this project's, still open and planned for the
+		// issue's own team; the same sentences SetSprint uses apply.
 		if in.SprintID != nil {
-			var name, state string
-			err := tx.QueryRow(ctx, `SELECT name, state::text FROM sprint WHERE id = $1 AND project_id = $2`,
-				*in.SprintID, projectID).Scan(&name, &state)
-			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrSprintNotFound
-			}
-			if err != nil {
+			if _, err := commitTo(ctx, tx, projectID, *in.SprintID, in.TeamID); err != nil {
 				return err
-			}
-			if state == "closed" {
-				return fmt.Errorf("%w: %s", ErrSprintClosed, name)
 			}
 		}
 

@@ -73,11 +73,11 @@ func TestEveryIssueThatComesOrGoesIsAnnounced(t *testing.T) {
 	sink := &receiver{status: http.StatusOK}
 	server := httptest.NewServer(sink)
 	defer server.Close()
-	endpoint, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Cache", URL: server.URL, Topics: []string{events.TopicIssueCreated, events.TopicIssueDeleted}})
+	endpoint, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Cache", URL: server.URL, Topics: []string{events.TopicIssueCreated, events.TopicIssueDeleted}}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("subscribe to issue.created and issue.deleted: %v", err)
 	}
-	t.Cleanup(func() { _, _ = hooks.Delete(ws.ctx, endpoint.ID) })
+	t.Cleanup(func() { _, _ = hooks.Delete(ws.ctx, endpoint.ID, ws.actor.UserID) })
 	deliver := func(e events.Event) string {
 		t.Helper()
 		before := len(sink.got)

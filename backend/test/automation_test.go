@@ -199,22 +199,22 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 	server := httptest.NewServer(sink)
 	defer server.Close()
 
-	made, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Chat", URL: server.URL + "/in", Topics: []string{events.TopicIssueCreated}})
+	made, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Chat", URL: server.URL + "/in", Topics: []string{events.TopicIssueCreated}}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// The database outlives the run; an endpoint left behind would keep its
 	// retries due for hours, pointed at a server that is gone.
-	t.Cleanup(func() { _, _ = hooks.Delete(ws.ctx, made.ID) })
+	t.Cleanup(func() { _, _ = hooks.Delete(ws.ctx, made.ID, ws.actor.UserID) })
 	if !strings.HasPrefix(made.Secret, "armature_whs_") {
 		t.Fatalf("secret = %q", made.Secret)
 	}
-	if _, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Bad", URL: "ftp://x", Topics: nil}); err == nil {
+	if _, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Bad", URL: "ftp://x", Topics: nil}, ws.actor.UserID); err == nil {
 		t.Error("an ftp address was accepted")
 	}
 	// The automation's own topics never leave: an endpoint fed them and
 	// posting to an incoming hook would be feeding itself.
-	if _, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Loop", URL: server.URL, Topics: []string{events.TopicAutomationIncoming}}); err == nil {
+	if _, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Loop", URL: server.URL, Topics: []string{events.TopicAutomationIncoming}}, ws.actor.UserID); err == nil {
 		t.Error("a webhook on an automation topic was accepted")
 	}
 	_ = hooks.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicAutomationIncoming, Payload: json.RawMessage(`{}`)})

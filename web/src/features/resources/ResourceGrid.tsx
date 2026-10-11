@@ -4,6 +4,7 @@ import type { ResourcePlan, ResourceRow, ResourceWeek } from "@/api/resources";
 import { Choice, Popover } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { RESOURCE_BAR_HEIGHT, RESOURCE_WEEK_MIN_PX } from "@/config";
+import { useFormat } from "@/lib/format";
 import type { Utilisation } from "@/features/plan/load";
 import { cellShares, cellState, describeCell, describeHours, hours, weekLabel } from "./cells";
 
@@ -17,6 +18,7 @@ const tone: Record<Utilisation, string> = {
 /** A row per team or person and a column per week; a cell opens the issues of its week. */
 export function ResourceGrid({ plan }: { plan: ResourcePlan }) {
   const [open, setOpen] = useState<string | null>(null);
+  const { locale } = useFormat();
   const columns = `minmax(9rem, 14rem) repeat(${plan.weeks.length}, minmax(${RESOURCE_WEEK_MIN_PX}px, 1fr))`;
   return (
     <div className="overflow-x-auto rounded-control border border-border bg-surface" data-resources={plan.grouping}>
@@ -27,7 +29,7 @@ export function ResourceGrid({ plan }: { plan: ResourcePlan }) {
           </div>
           {plan.weeks.map((start) => (
             <div key={start} role="columnheader" className="border-l border-border px-2 py-2 font-medium text-ink-muted tabular-nums" data-resource-column={start.slice(0, 10)}>
-              {weekLabel(start)}
+              {weekLabel(start, locale)}
             </div>
           ))}
         </div>
@@ -50,7 +52,8 @@ export function ResourceGrid({ plan }: { plan: ResourcePlan }) {
 function Cell({ row, week, open, onToggle, onClose }: { row: ResourceRow; week: ResourceWeek; open: boolean; onToggle: () => void; onClose: () => void }) {
   const state = cellState(week);
   const shares = cellShares(row, week);
-  const title = describeCell(row, week);
+  const { locale } = useFormat();
+  const title = describeCell(row, week, locale);
   const px = (share: number) => Math.round(share * RESOURCE_BAR_HEIGHT);
   const daysOff = shares.capacity !== undefined && shares.nominal !== undefined && shares.nominal > shares.capacity;
   return (
@@ -59,7 +62,7 @@ function Cell({ row, week, open, onToggle, onClose }: { row: ResourceRow; week: 
       <Popover
         open={open}
         onClose={onClose}
-        label={`${row.name}, week of ${weekLabel(week.start)}`}
+        label={`${row.name}, week of ${weekLabel(week.start, locale)}`}
         trigger={
           <Choice
             onSelect={onToggle}
@@ -95,11 +98,12 @@ function Cell({ row, week, open, onToggle, onClose }: { row: ResourceRow; week: 
 
 /** The issues that make up a week, with their hours in it. */
 export function WeekIssues({ row, week }: { row: ResourceRow; week: ResourceWeek }) {
+  const { locale } = useFormat();
   return (
     <div className="max-w-sm space-y-2 text-sm" data-resource-panel={`${row.name}|${week.start.slice(0, 10)}`}>
       <div>
         <p className="font-medium text-ink">
-          {row.name}, week of {weekLabel(week.start)}
+          {row.name}, week of {weekLabel(week.start, locale)}
         </p>
         <p className="text-xs text-ink-muted">{describeHours(week, row.sharePercent)}</p>
       </div>

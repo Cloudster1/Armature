@@ -234,7 +234,11 @@ func (s *Service) CSV(ctx context.Context, f Filter) ([]byte, error) {
 var Copied = map[string]string{
 	"role.granted":                        "role",
 	"role.revoked":                        "role",
+	"role.defined":                        "role",
+	"role.redefined":                      "role",
+	"role.removed":                        "role",
 	"group.created":                       "group",
+	"group.deleted":                       "group",
 	"group.member_added":                  "group",
 	"group.member_removed":                "group",
 	"member.joined":                       "user",

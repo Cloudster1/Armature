@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"strconv"
+
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -393,7 +395,7 @@ var operations = []operation{
 	{method: "GET", path: "/issues/suggest", handler: "handleSuggest", tag: "issues", summary: "What the search bar could say next: words the query takes at the caret, and the issues the words so far find.",
 		query:     []param{{name: "q", description: "The text so far."}, {name: "at", description: "The caret's position in q, in characters; the end when absent."}, {name: "project", description: "A project key, to scope names and issues."}, {name: "limit", description: "Words and issues to offer, at most 20."}},
 		responses: ok(issue.Suggestions{})},
-	{method: "GET", path: "/issues/export", handler: "handleExportIssues", tag: "issues", summary: "The issues a query matches, as a CSV file with the chosen columns.", binary: true,
+	{method: "GET", path: "/issues/export", handler: "handleExportIssues", tag: "issues", summary: "The issues a query matches, as a CSV file with the chosen columns; past " + strconv.Itoa(csvio.ExportRows) + " the file is cut, ends with a note row, and the response carries X-Export-Truncated: true.", binary: true,
 		query:     []param{{name: "q", description: "An NQL query; without one, everything the caller can see."}, {name: "project", description: "A project key to stay inside."}, {name: "columns", description: "Comma-separated column names; the default is key, summary, type, status, priority, assignee, created."}},
 		responses: ok(nil)},
 	{method: "POST", path: "/issues/bulk", handler: "handleBulkEdit", tool: "bulk_edit_issues", toolHelp: "Change many issues at once: priority, assignee, sprint, milestone, team, labels, or a transition by name; each refusal is named.", tag: "issues", summary: "Change many issues at once; one refused leaves the rest done.", request: bulkRequest{}, responses: ok(bulk.Result{})},
@@ -492,7 +494,7 @@ var operations = []operation{
 	{method: "GET", path: "/projects/{projectKey}/sla-policies", handler: "handleListPolicies", tag: "service desk", summary: "The desk's goals per priority.", responses: ok(env{"policies": []desk.Policy{}})},
 	{method: "PATCH", path: "/sla-policies/{policyID}", handler: "handleUpdatePolicy", tag: "service desk", summary: "Change goals or which statuses pause the clock.", request: updatePolicyRequest{}, responses: ok(env{"policy": desk.Policy{}})},
 	{method: "GET", path: "/projects/{projectKey}/queue", handler: "handleQueue", tag: "service desk", summary: "The agents' queue, most urgent first.",
-		query: []param{{name: "filter", schema: &openapi.Schema{Type: "string", Enum: []string{"open", "unassigned", "mine", "breached", "all"}}}}, responses: ok(env{"rows": []desk.QueueRow{}})},
+		query: []param{{name: "filter", schema: &openapi.Schema{Type: "string", Enum: []string{"open", "unassigned", "mine", "breached", "all"}}}, {name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, {name: "offset", schema: intParam}}, responses: ok(desk.QueuePage{})},
 	{method: "GET", path: "/issues/{issueKey}/timers", handler: "handleIssueTimers", tag: "service desk", summary: "The clocks on a request.", responses: ok(env{"timers": []desk.Timer{}})},
 
 	// The Model Context Protocol: this API as tools for an assistant.

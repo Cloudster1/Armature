@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { BASE, request } from "./client";
 import { DASHBOARD_REFETCH_MS } from "@/config";
 import type { FilterSpec } from "@/features/dashboard/filter";

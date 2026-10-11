@@ -2,12 +2,14 @@ package notify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/mail"
@@ -22,20 +24,24 @@ const DailyDigestHour = 8
 // an hourly bundle is never skipped for a restart.
 const digestInterval = 15 * time.Minute
 
-// Digest bundles queued notifications into one mail per person, on their schedule.
+// Digest bundles queued notifications into one mail per person and
+// organization, on the schedule they chose there.
 type Digest struct {
 	db     *db.Cluster
 	mailer mail.Mailer
 	log    *slog.Logger
 	appURL string
 	now    func() time.Time
-	// lastHourly remembers which hour was sent so a person gets one bundle
-	// per hour however often the loop wakes.
-	sent map[uuid.UUID]time.Time
 }
 
 func NewDigest(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog.Logger) *Digest {
-	return &Digest{db: cluster, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), now: time.Now, sent: map[uuid.UUID]time.Time{}}
+	return &Digest{db: cluster, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), now: time.Now}
+}
+
+// WithClock sets where the digest reads the time, which a test moves by hand.
+func (d *Digest) WithClock(now func() time.Time) *Digest {
+	d.now = now
+	return d
 }
 
 // Run sends on start and then every interval until the context ends.
@@ -83,7 +89,7 @@ func (d *Digest) Once(ctx context.Context) (int, error) {
 	sent := 0
 	for _, w := range found {
 		orgCtx := db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: w.orgID}))
-		ok, err := d.send(orgCtx, w.userID, now)
+		ok, err := d.send(orgCtx, w.orgID, w.userID, now)
 		if err != nil {
 			d.log.Warn("could not send a digest", "user", w.userID, "error", err)
 			continue
@@ -95,32 +101,46 @@ func (d *Digest) Once(ctx context.Context) (int, error) {
 	return sent, nil
 }
 
-// due says whether a person's bundle goes now: hourly ones once an hour,
-// daily ones at the digest hour, and anything queued under "off" at once,
-// since the person changed their mind after the rows were queued.
-func (d *Digest) due(userID uuid.UUID, digest string, now time.Time) bool {
-	last := d.sent[userID]
+// due is given when this organization last sent the bundle. A daily one goes
+// at any pass from the digest hour on, so a missed hour does not skip a day.
+func due(digest string, last, now time.Time) bool {
 	switch digest {
 	case DigestHourly:
 		return now.Sub(last) >= time.Hour
 	case DigestDaily:
-		return now.Hour() == DailyDigestHour && now.Sub(last) >= time.Hour
+		y, m, day := now.Date()
+		today := time.Date(y, m, day, DailyDigestHour, 0, 0, 0, now.Location())
+		return !now.Before(today) && last.Before(today)
 	default:
+		// Queued before the person turned the digest off: they want it now.
 		return true
 	}
 }
 
-func (d *Digest) send(ctx context.Context, userID uuid.UUID, now time.Time) (bool, error) {
+// claimDigest moves the record of the last bundle on only if it still says
+// what this pass read, so of two workers in one pass only one mails.
+const claimDigest = `
+	INSERT INTO notification_digest_sent (org_id, user_id, last_sent_at) VALUES ($1, $2, $3)
+	ON CONFLICT (org_id, user_id) DO UPDATE SET last_sent_at = EXCLUDED.last_sent_at
+	 WHERE notification_digest_sent.last_sent_at IS NOT DISTINCT FROM $4
+	RETURNING true`
+
+func (d *Digest) send(ctx context.Context, orgID, userID uuid.UUID, now time.Time) (bool, error) {
 	var (
 		prefs Preferences
 		to    string
 		items []Notification
+		last  *time.Time
 	)
 	err := d.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if err := readPreferences(ctx, tx, userID, &prefs); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `SELECT email FROM app_user WHERE id = $1`, userID).Scan(&to); err != nil {
+			return err
+		}
+		err := tx.QueryRow(ctx, `SELECT last_sent_at FROM notification_digest_sent WHERE user_id = $1`, userID).Scan(&last)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
 		rows, err := tx.Query(ctx, selectNotifications+` AND n.id IN (SELECT notification_id FROM notification_digest WHERE user_id = $1) ORDER BY n.created_at`, userID)
@@ -140,20 +160,40 @@ func (d *Digest) send(ctx context.Context, userID uuid.UUID, now time.Time) (boo
 	if err != nil {
 		return false, err
 	}
-	if len(items) == 0 || !d.due(userID, prefs.Digest, now) {
+	var since time.Time
+	if last != nil {
+		since = *last
+	}
+	if len(items) == 0 || !due(prefs.Digest, since, now) {
 		return false, nil
 	}
-	if d.mailer != nil {
-		if err := d.mailer.Send(ctx, digestMail(to, items, d.appURL)); err != nil {
-			return false, err
-		}
+	ids := make([]uuid.UUID, len(items))
+	for i, n := range items {
+		ids[i] = n.ID
 	}
-	d.sent[userID] = now
+	// The mail goes inside the transaction: if it fails, the claim and the
+	// queue roll back and the next pass tries again.
+	claimed := false
 	_, err = d.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `DELETE FROM notification_digest WHERE user_id = $1`, userID)
-		return err
+		err := tx.QueryRow(ctx, claimDigest, orgID, userID, now, last).Scan(&claimed)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM notification_digest WHERE user_id = $1 AND notification_id = ANY($2)`, userID, ids); err != nil {
+			return err
+		}
+		if d.mailer == nil {
+			return nil
+		}
+		return d.mailer.Send(ctx, digestMail(to, items, d.appURL))
 	})
-	return true, err
+	if err != nil {
+		return false, err
+	}
+	return claimed, nil
 }
 
 // digestMail words one bundle: a line per thing, and where the inbox is.

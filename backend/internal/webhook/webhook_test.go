@@ -57,3 +57,18 @@ func TestBackoffCoversEveryRetry(t *testing.T) {
 		}
 	}
 }
+
+// An address can carry a credential in its path or query, as a chat service's
+// incoming hook does, so the audit log keeps only where it points.
+func TestAuditedAddressKeepsOnlyTheHost(t *testing.T) {
+	for in, want := range map[string]string{
+		"https://hooks.chat.example/services/T0/B0/hunter2": "https://hooks.chat.example",
+		"http://10.0.0.5:8080/in?token=hunter2":             "http://10.0.0.5:8080",
+		"https://user:hunter2@example.com/hook":             "https://example.com",
+		"not an address":                                    "",
+	} {
+		if got := auditedAddress(in); got != want {
+			t.Errorf("auditedAddress(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

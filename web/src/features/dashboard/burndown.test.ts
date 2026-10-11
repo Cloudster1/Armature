@@ -1,6 +1,9 @@
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
+import { render } from "@testing-library/react";
 import type { SprintBurndown } from "@/api/reports";
 import { axisLabels, burndownSeries, describeScope } from "./burndown";
+import { LineChart } from "./charts";
 
 function curve(points: Array<[string, number, number]>, over: Partial<SprintBurndown> = {}): SprintBurndown {
   return {
@@ -39,6 +42,37 @@ describe("burndownSeries", () => {
     const [, ideal] = burndownSeries(c);
     expect(ideal!.points[1]).toEqual({ x: 3, y: 0 });
     expect(axisLabels(c)).toEqual(["7/9", "8/9", "10/9"]);
+  });
+
+  // On a sprint's first day the report holds a single point; it must still show.
+  it("marks the only point on a sprint's first day", () => {
+    const c = curve([["2026-09-07", 8, 0]]);
+    const [, , remaining] = burndownSeries(c);
+    expect(remaining!.points).toEqual([{ x: 0, y: 8 }]);
+    render(createElement(LineChart, { series: burndownSeries(c), xLabels: axisLabels(c) }));
+    expect(document.querySelector('[data-series="remaining"] [data-marker]')).not.toBeNull();
+  });
+
+  it("starts the axis at the first point when the sprint was started two days early", () => {
+    const c = curve([["2026-09-05", 8, 0], ["2026-09-07", 8, 2], ["2026-09-08", 8, 3]]);
+    const [scope, ideal, remaining] = burndownSeries(c);
+    expect(remaining!.points.map((p) => p.x)).toEqual([0, 2, 3]);
+    expect(scope!.points[0]!.x).toBe(0);
+    // The ideal still reaches nothing on the sprint's last day, six days after the first point.
+    expect(ideal!.points).toEqual([{ x: 0, y: 8 }, { x: 6, y: 0 }]);
+    expect(axisLabels(c)).toEqual(["5/9", "8/9", "11/9"]);
+  });
+
+  it("ends the axis at the last point when the sprint ended two days late", () => {
+    const days = ["2026-09-07", "2026-09-09", "2026-09-11", "2026-09-13"];
+    const c = curve(days.map((d, i): [string, number, number] => [d, 8, i * 2]));
+    const series = burndownSeries(c);
+    const [, ideal, remaining] = series;
+    expect(remaining!.points.map((p) => p.x)).toEqual([0, 2, 4, 6]);
+    expect(ideal!.points).toEqual([{ x: 0, y: 8 }, { x: 4, y: 0 }]);
+    // The right edge is the largest x any series draws, so the label under it must name that day.
+    expect(Math.max(...series.flatMap((s) => s.points.map((p) => p.x)))).toBe(6);
+    expect(axisLabels(c)).toEqual(["7/9", "10/9", "13/9"]);
   });
 });
 

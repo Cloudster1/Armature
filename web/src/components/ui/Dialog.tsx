@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
+import { useCallback, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { DRAWER_WIDTH } from "@/config";
 import { Button, IconButton } from "./Button";
@@ -129,12 +129,13 @@ function PanelHeader({ titleId, title, actions, onClose }: { titleId: string; ti
   );
 }
 
-/** A panel from the right that keeps the page behind it in view but not in reach. */
+// A panel from the right that keeps the page behind it in view but not in
+// reach. Escape in a field it holds is left to the field, so a draft survives.
 export function Drawer({ open, onClose, title, children, width = DRAWER_WIDTH, actions, attrs }: PanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const close = useCallback(() => onClose(), [onClose]);
-  useEscape(open, close);
+  useEscape(open, close, { whileEditing: false });
   useFocusReturn(open, ref, true);
   if (!open) return null;
   return createPortal(
@@ -156,13 +157,6 @@ export function Drawer({ open, onClose, title, children, width = DRAWER_WIDTH, a
   );
 }
 
-const EDITABLE = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]';
-
-/** Whether a key pressed on this element was meant for typing, not for the page. */
-export function isEditing(target: EventTarget | null): boolean {
-  return target instanceof Element && target.closest(EDITABLE) !== null;
-}
-
 const INTERACTIVE = "a, button, input, select, label";
 
 /** Whether a click landed on something of its own, so a row around it should not also act. */
@@ -171,22 +165,13 @@ export function isInteractiveTarget(target: EventTarget | null): boolean {
 }
 
 // A column beside the page rather than a layer over it: no scrim, no focus
-// trap, and Escape closes it only when nothing is being typed and no dialog
-// is open above it, so the list stays in reach while the panel is up.
+// trap, and Escape closes it only when nothing is being typed and nothing
+// opened above it, so the list stays in reach while the panel is up.
 export function DockedPanel({ open, onClose, title, children, width = DRAWER_WIDTH, actions, attrs }: PanelProps) {
   const ref = useRef<HTMLElement>(null);
   const titleId = useId();
   const close = useCallback(() => onClose(), [onClose]);
-  useEffect(() => {
-    if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key !== "Escape" || event.defaultPrevented || isEditing(event.target)) return;
-      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
-      close();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, close]);
+  useEscape(open, close, { whileEditing: false });
   useFocusReturn(open, ref, false);
   if (!open) return null;
   return (

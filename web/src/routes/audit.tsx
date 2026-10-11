@@ -32,7 +32,7 @@ function AuditPage() {
     <Page width="content">
       <PageHeader
         title="Audit log"
-        meta="Who did what to the organization: roles, groups, projects, workflows, tokens and sign-ins. Kept for a year."
+        meta="Who did what to the organization: roles, groups, projects, workflows, webhooks, rules, invitations, tokens and sign-ins. Kept for a year."
         actions={
           <ButtonLink href={auditExportHref(filter)} download variant="secondary" size="sm" icon={<Icon.Download />} data-action="export-audit">
             Export CSV

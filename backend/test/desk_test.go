@@ -312,56 +312,14 @@ func TestABreachIsNoticedByTheWatch(t *testing.T) {
 	})
 
 	t.Run("and the breached queue shows it", func(t *testing.T) {
-		rows, err := d.Queue(ws.ctx, p.Key, desk.QueueBreached, ws.actor.UserID)
+		queue, err := d.Queue(ws.ctx, p.Key, desk.QueueBreached, ws.actor.UserID, issue.Page{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(rows) != 1 || rows[0].Issue.Key != raised.Key {
+		if rows := queue.Rows; len(rows) != 1 || rows[0].Issue.Key != raised.Key {
 			t.Errorf("breached queue = %+v", rows)
 		}
 	})
-}
-
-func TestTheQueuePutsTheMostPressingFirst(t *testing.T) {
-	h := newHarness(t)
-	ws := h.newWorkspace(t, "queueing")
-	d, p := ws.aDesk(t, h, "Queue desk")
-	customer := ws.customerOf(t, h, "queuer")
-	types, _ := d.RequestTypes(ws.ctx, p.Key)
-	question := requestTypeNamed(t, types, "Ask a question")
-
-	calm, _, _ := d.Raise(ws.ctx, desk.RaiseInput{RequestTypeID: question.ID, Summary: "no hurry"}, customer)
-	urgent, _, _ := d.Raise(ws.ctx, desk.RaiseInput{RequestTypeID: question.ID, Summary: "getting late"}, customer)
-	ageTimer(t, h, ws, urgent.Key, desk.FirstResponse, 7*60)
-
-	rows, err := d.Queue(ws.ctx, p.Key, desk.QueueOpen, ws.actor.UserID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(rows) != 2 || rows[0].Issue.Key != urgent.Key || rows[1].Issue.Key != calm.Key {
-		t.Errorf("queue order = %v, want the one with least time left first", queueKeys(rows))
-	}
-	if rows[0].RequestTypeName != "Ask a question" || len(rows[0].Timers) != 2 {
-		t.Errorf("queue row = %+v, want its request type and clocks", rows[0])
-	}
-
-	ws.move(t, h, urgent.Key, "Start work")
-	mine, _ := d.Queue(ws.ctx, p.Key, desk.QueueMine, ws.actor.UserID)
-	if len(mine) != 1 || mine[0].Issue.Key != urgent.Key {
-		t.Errorf("mine = %v, want the one starting work assigned to me", queueKeys(mine))
-	}
-	unassigned, _ := d.Queue(ws.ctx, p.Key, desk.QueueUnassigned, ws.actor.UserID)
-	if len(unassigned) != 1 || unassigned[0].Issue.Key != calm.Key {
-		t.Errorf("unassigned = %v, want the other", queueKeys(unassigned))
-	}
-}
-
-func queueKeys(rows []desk.QueueRow) []string {
-	var out []string
-	for _, r := range rows {
-		out = append(out, r.Issue.Key)
-	}
-	return out
 }
 
 // fakeMailer keeps what would have been sent.

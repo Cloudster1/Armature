@@ -308,7 +308,7 @@ func TestOrgSwitching(t *testing.T) {
 	t.Run("switches into a second organization once invited", func(t *testing.T) {
 		// Invite the switcher into the other organization and accept it.
 		otherCtx := auth.ContextForOrg(ctx, other.Principal)
-		_, token, err := svc.CreateInvite(otherCtx, member.Principal.User.Email, auth.RoleMember, other.Principal.User.ID, time.Hour)
+		_, token, _, err := svc.CreateInvite(otherCtx, member.Principal.User.Email, auth.RoleMember, other.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatalf("create invite: %v", err)
 		}
