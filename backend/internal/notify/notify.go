@@ -26,10 +26,11 @@ const (
 	KindSLABreached  = "sla_breached"
 	KindRule         = "rule"
 	KindFilter       = "filter"
+	KindAbsence      = "absence"
 )
 
 // Kinds lists every reason, in the order a preferences page shows them.
-var Kinds = []string{KindAssigned, KindMentioned, KindCommented, KindTransitioned, KindWatching, KindSLABreached, KindRule, KindFilter}
+var Kinds = []string{KindAssigned, KindMentioned, KindCommented, KindTransitioned, KindWatching, KindSLABreached, KindRule, KindFilter, KindAbsence}
 
 // Digest schedules: mail at once, or bundled into one mail an hour or a day.
 const (
