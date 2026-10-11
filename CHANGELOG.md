@@ -105,6 +105,10 @@ here in the branch that makes it.
   with no description, and every negation (`!=`, `NOT IN`, `NOT`) keeps the
   issues where the field is empty, such as `assignee != currentUser()`
   returning the unassigned ones (#87).
+- Fixed: erasing an account takes the person off every watcher list instead
+  of leaving "Former user" there, and "Watch the issues I report or am
+  assigned" on the profile now decides whether those issues tell you what
+  happens; off, only a watch, an assignment or a mention does (#107).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

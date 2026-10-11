@@ -52,7 +52,7 @@ installation does.
 | Invitations | `org_invite` | address | until accepted or expired | swept `ARMATURE_RETAIN_INVITES` (30 days) past expiry; deleted by erasure |
 | Portal codes | `portal_code` | address, code hash | 10 minutes | swept `ARMATURE_RETAIN_PORTAL_CODES` (1 day) past expiry; deleted by erasure |
 | Sign-in handshakes | `oidc_login` | state, nonce | minutes | swept `ARMATURE_RETAIN_OIDC_LOGINS` (1 day) past expiry |
-| Work | `issue`, `issue_comment`, `issue_worklog`, `issue_history`, `issue_watcher`, `attachment` | reporter, assignee, author, uploader, the text itself | while the issue exists | with the issue; after erasure the author reads "Former user" |
+| Work | `issue`, `issue_comment`, `issue_worklog`, `issue_history`, `issue_watcher`, `attachment` | reporter, assignee, author, uploader, the text itself | while the issue exists | with the issue; after erasure the author reads "Former user", and the person's watches are deleted |
 | Notifications | `notification`, `notification_preference` | recipient, a title naming the actor | `ARMATURE_RETAIN_NOTIFICATIONS` (180 days) | swept; deleted by erasure |
 | Digests sent | `notification_digest_sent` | when each organization last mailed a person their digest | while the membership exists | with the membership, and by erasure |
 | Events | `outbox_event` | actor ids, issue summaries in payloads | until published, then `ARMATURE_RETAIN_OUTBOX` (30 days) | swept; the Redis stream is capped at 10 000 entries |
@@ -120,7 +120,8 @@ administrator for the tables that belong to nobody in particular.
   person in and does not change here.
 - **Erasure:** `DELETE /api/v1/auth/me`, from a browser session only, so a
   leaked token cannot erase its owner. Sessions, tokens, notifications,
-  filters, absences, shares of the week and memberships go; the account becomes a tombstone;
+  filters, watches, absences, shares of the week and memberships go; the
+  account becomes a tombstone;
   commits and inbound mail carrying the address are pseudonymised. What the
   person wrote stays, attributed to "Former user": the record belongs to the
   team. The last owner of an organization is refused until ownership is
@@ -134,7 +135,8 @@ administrator for the tables that belong to nobody in particular.
   an organization administrator removes the membership and what hung off it
   here; the account stays the person's for their other organizations.
 - **Objection to being told:** notification preferences, per reason, in the
-  inbox and by mail.
+  inbox and by mail, and whether the issues a person reports or is assigned
+  tell them anything they do not watch on purpose.
 
 ## Known limits
 

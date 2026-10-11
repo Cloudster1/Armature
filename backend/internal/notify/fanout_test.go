@@ -100,3 +100,66 @@ func TestAPersonIsToldWhenSomebodyElseTouchesTheirAbsences(t *testing.T) {
 		t.Errorf("turning absence mail off was refused: %v", err)
 	}
 }
+
+// A person who turned watching their own issues off hears about the issues
+// they report or are assigned only when they watch, are assigned or are named.
+func TestTellsForLeavesOutWhoDoesNotWatchTheirOwn(t *testing.T) {
+	ada, bob, cy, dee := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	moved := payload{ActorID: ada, ToStatus: "Done"}
+	users := func(tells []tell) map[uuid.UUID]string {
+		out := map[uuid.UUID]string{}
+		for _, tl := range tells {
+			out[tl.user] = tl.kind
+		}
+		return out
+	}
+
+	t.Run("a reporter who does not watch their own hears nothing of a move or a comment", func(t *testing.T) {
+		s := &subject{key: "CP-3", reporter: &bob, assignee: &cy, watchers: []uuid.UUID{dee}, actor: "Ada", watchOwnOff: map[uuid.UUID]bool{bob: true}}
+		got := users(tellsFor(events.TopicIssueTransitioned, moved, s))
+		if _, told := got[bob]; told || got[cy] != KindTransitioned || got[dee] != KindTransitioned || len(got) != 2 {
+			t.Errorf("told %v, want the assignee and the watcher, not the reporter", got)
+		}
+		commented := users(tellsFor(events.TopicCommentAdded, payload{ActorID: ada}, s))
+		if _, told := commented[bob]; told {
+			t.Errorf("a comment told the reporter who does not watch their own: %v", commented)
+		}
+	})
+
+	t.Run("an assignee who does not watch their own is told of the assignment and a mention only", func(t *testing.T) {
+		s := &subject{key: "CP-4", reporter: &ada, assignee: &bob, actor: "Ada", watchOwnOff: map[uuid.UUID]bool{bob: true}}
+		assigned := tellsFor(events.TopicIssueUpdated, payload{ActorID: ada, Changes: []struct {
+			Field string `json:"field"`
+		}{{Field: "assignee"}}}, s)
+		if len(assigned) != 1 || assigned[0].user != bob || assigned[0].kind != KindAssigned {
+			t.Errorf("assignment told %+v, want bob assigned and nothing else", assigned)
+		}
+		created := tellsFor(events.TopicIssueCreated, payload{ActorID: ada}, s)
+		if len(created) != 1 || created[0].kind != KindAssigned {
+			t.Errorf("creation told %+v, want only the assignment", created)
+		}
+		if got := tellsFor(events.TopicIssueTransitioned, moved, s); len(got) != 0 {
+			t.Errorf("a move told %+v, want nobody", got)
+		}
+		mentioned := tellsFor(events.TopicCommentAdded, payload{ActorID: ada, Mentions: []uuid.UUID{bob}}, s)
+		if len(mentioned) != 1 || mentioned[0].user != bob || mentioned[0].kind != KindMentioned {
+			t.Errorf("a mention told %+v, want bob mentioned", mentioned)
+		}
+	})
+
+	t.Run("watching an own issue on purpose still tells them, once", func(t *testing.T) {
+		s := &subject{key: "CP-5", reporter: &bob, assignee: &bob, watchers: []uuid.UUID{bob}, actor: "Ada", watchOwnOff: map[uuid.UUID]bool{bob: true}}
+		got := tellsFor(events.TopicIssueTransitioned, moved, s)
+		if len(got) != 1 || got[0].user != bob || got[0].kind != KindTransitioned {
+			t.Errorf("told %+v, want bob once as a watcher", got)
+		}
+	})
+
+	t.Run("by default a reporter and an assignee watch their own", func(t *testing.T) {
+		s := &subject{key: "CP-6", reporter: &bob, assignee: &cy, actor: "Ada"}
+		got := users(tellsFor(events.TopicIssueTransitioned, moved, s))
+		if got[bob] != KindTransitioned || got[cy] != KindTransitioned || len(got) != 2 {
+			t.Errorf("told %v, want the reporter and the assignee", got)
+		}
+	})
+}

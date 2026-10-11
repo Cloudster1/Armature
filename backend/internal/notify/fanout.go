@@ -114,6 +114,9 @@ type subject struct {
 	actor     string
 	watchers  []uuid.UUID
 	comment   string
+	// watchOwnOff holds the assignee or reporter who turned watching their own
+	// issues off; they hear only as a watcher, an assignee or somebody named.
+	watchOwnOff map[uuid.UUID]bool
 }
 
 // tell is one row to write: who, why, and the words.
@@ -176,8 +179,13 @@ func tellsFor(topic string, p payload, s *subject) []tell {
 				out = append(out, *id)
 			}
 		}
-		add(s.assignee)
-		add(s.reporter)
+		own := func(id *uuid.UUID) {
+			if id != nil && !s.watchOwnOff[*id] {
+				add(id)
+			}
+		}
+		own(s.assignee)
+		own(s.reporter)
 		for i := range s.watchers {
 			add(&s.watchers[i])
 		}
@@ -306,15 +314,24 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 			if *who == nil {
 				continue
 			}
-			var ok bool
+			var ok, watchOwn bool
 			err := tx.QueryRow(ctx, `
 				SELECT EXISTS (SELECT 1 FROM org_member m JOIN app_user u ON u.id = m.user_id AND u.is_active
-				               WHERE m.user_id = $1 AND m.org_id = current_org_id() AND m.org_role <> 'customer')`, **who).Scan(&ok)
+				               WHERE m.user_id = $1 AND m.org_id = current_org_id() AND m.org_role <> 'customer'),
+				       COALESCE((SELECT watch_own FROM notification_preference
+				                 WHERE user_id = $1 AND org_id = current_org_id()), true)`, **who).Scan(&ok, &watchOwn)
 			if err != nil {
 				return err
 			}
 			if !ok {
 				*who = nil
+				continue
+			}
+			if !watchOwn {
+				if s.watchOwnOff == nil {
+					s.watchOwnOff = map[uuid.UUID]bool{}
+				}
+				s.watchOwnOff[**who] = true
 			}
 		}
 		return nil

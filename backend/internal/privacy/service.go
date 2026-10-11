@@ -395,6 +395,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM saved_filter_subscription WHERE user_id = $1`,
 			`DELETE FROM saved_filter_star WHERE user_id = $1`,
 			`DELETE FROM saved_filter WHERE owner_id = $1`,
+			`DELETE FROM issue_watcher WHERE user_id = $1`,
 			`DELETE FROM role_assignment WHERE user_id = $1`,
 			`DELETE FROM group_member WHERE user_id = $1`,
 			`DELETE FROM team_member WHERE user_id = $1`,
