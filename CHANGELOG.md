@@ -72,6 +72,9 @@ here in the branch that makes it.
 - Fixed: a description or comment started in the side panel stays with its
   own issue: stepping to another issue no longer shows it there or saves it
   there, and stepping back finds the draft where it was left (#109).
+- Fixed: the project calendar shows holidays and absences on the days of the
+  months before and after that its six weeks include, and an absence that
+  runs past the grid is drawn as continuing instead of ending there (#47).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
