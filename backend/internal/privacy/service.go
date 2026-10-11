@@ -391,6 +391,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM notification WHERE user_id = $1`,
 			`DELETE FROM notification_preference WHERE user_id = $1`,
 			`DELETE FROM notification_digest WHERE user_id = $1`,
+			`DELETE FROM notification_digest_sent WHERE user_id = $1`,
 			`DELETE FROM saved_filter_subscription WHERE user_id = $1`,
 			`DELETE FROM saved_filter_star WHERE user_id = $1`,
 			`DELETE FROM saved_filter WHERE owner_id = $1`,
@@ -482,6 +483,7 @@ func (s *Service) RemoveMember(ctx context.Context, orgID, userID, actor uuid.UU
 			`DELETE FROM absence WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM project_allocation WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM notification WHERE org_id = $1 AND user_id = $2`,
+			`DELETE FROM notification_digest_sent WHERE org_id = $1 AND user_id = $2`,
 			// What would keep telling them about work here once they are gone.
 			`DELETE FROM saved_filter_subscription WHERE org_id = $1 AND user_id = $2`,
 			`DELETE FROM issue_watcher WHERE org_id = $1 AND user_id = $2`,

@@ -17,7 +17,11 @@ installation does.
   stop counting on them for those days. It says when and never why: there is
   no reason and no note to fill in. The person records their own; an
   administrator, or a scrum master or project administrator of a team they
-  are on, may record one for them. Every colleague who works in the
+  are on, may record one for them. The person and an administrator may
+  change or remove any of them; a scrum master or project administrator
+  only the ones they recorded. Whenever somebody else records, changes or
+  removes one, the person is told in their inbox, and by mail if they want
+  it, who did it but not the days. Every colleague who works in the
   organization sees the days; a portal customer never does. The events and
   the audit log say that an absence was recorded, never for which days.
   A share of the week says how much of somebody's week a project counts on,
@@ -42,7 +46,7 @@ installation does.
 | Membership | `org_member`, `role_assignment`, `group_member`, `team_member` | who belongs where and holds what | while the membership exists | an administrator removes the member, or the person erases their account |
 | Working week | `member_schedule` | the minutes a person works on each weekday, and the holiday calendar they keep | while the membership exists | an administrator removes the member, or the person erases their account |
 | Shares of the week | `project_allocation` | the percent of a person's week a project has | while the membership and the project exist | set back to the whole week, with the membership, with the project, and by erasure |
-| Absences | `absence` | the first and last day away, whether it is half a day, who wrote it down | `ARMATURE_RETAIN_ABSENCES` (400 days) after the last day | swept; removed by the person or whoever may record it for them, with the membership, and by erasure |
+| Absences | `absence` | the first and last day away, whether it is half a day, who wrote it down | `ARMATURE_RETAIN_ABSENCES` (400 days) after the last day | swept; removed by the person, an administrator, or the manager who recorded it, with the membership, and by erasure |
 | Sessions | `user_session` | token hash, user agent, address, last seen | `ARMATURE_SESSION_TTL` (30 days) | signed out, erased, or swept `ARMATURE_RETAIN_SESSIONS` (1 day) past expiry |
 | API tokens | `api_token`, `api_token_project` | name, token hash, last used, the projects it is confined to | until revoked or expired | revoked, erased, or swept `ARMATURE_RETAIN_API_TOKENS` (30 days) past expiry |
 | Invitations | `org_invite` | address | until accepted or expired | swept `ARMATURE_RETAIN_INVITES` (30 days) past expiry; deleted by erasure |
@@ -50,10 +54,11 @@ installation does.
 | Sign-in handshakes | `oidc_login` | state, nonce | minutes | swept `ARMATURE_RETAIN_OIDC_LOGINS` (1 day) past expiry |
 | Work | `issue`, `issue_comment`, `issue_worklog`, `issue_history`, `issue_watcher`, `attachment` | reporter, assignee, author, uploader, the text itself | while the issue exists | with the issue; after erasure the author reads "Former user", and the person's watches are deleted |
 | Notifications | `notification`, `notification_preference` | recipient, a title naming the actor | `ARMATURE_RETAIN_NOTIFICATIONS` (180 days) | swept; deleted by erasure |
+| Digests sent | `notification_digest_sent` | when each organization last mailed a person their digest | while the membership exists | with the membership, and by erasure |
 | Events | `outbox_event` | actor ids, issue summaries in payloads | until published, then `ARMATURE_RETAIN_OUTBOX` (30 days) | swept; the Redis stream is capped at 10 000 entries |
 | Webhook deliveries | `webhook_delivery` | the event as posted | `ARMATURE_RETAIN_WEBHOOK_DELIVERIES` (30 days) | swept; with the endpoint |
 | Automation runs | `automation_run` | what a rule did | `ARMATURE_RETAIN_AUTOMATION_RUNS` (90 days) | swept; with the rule |
-| Inbound mail | `inbound_mail` | sender address, subject, outcome; never the body | `ARMATURE_RETAIN_INBOUND_MAIL` (90 days) | swept; sender pseudonymised by erasure |
+| Inbound mail | `inbound_mail` | sender address, subject, outcome and why it failed; never the body | `ARMATURE_RETAIN_INBOUND_MAIL` (90 days) | swept; sender pseudonymised by erasure |
 | Outbound mail | nowhere | | not stored | a counter is the only record |
 | Imports | `import_job` | file name, a report that may echo rows | `ARMATURE_RETAIN_IMPORT_JOBS` (90 days) | swept |
 | Audit log | `audit_log` | actor id, action, target, address | `ARMATURE_RETAIN_AUDIT` (365 days) | swept per organization; exportable by its administrators |
@@ -85,7 +90,8 @@ administrator for the tables that belong to nobody in particular.
 - **Postgres**, a primary and a streaming replica. The replica is a copy of
   the primary and follows every deletion within seconds.
 - **The bucket** (any S3 compatible store) holds attachments and pictures. A deleted
-  attachment leaves a tombstone the worker uses to remove the object.
+  attachment leaves a tombstone the worker uses to remove the object, also when
+  it goes with its issue, a parent of that issue or the whole organization.
 - **Redis** holds the event stream, capped, and the read-your-writes marks,
   which expire.
 - **Logs** go to standard output as JSON: request id, trace id, method,

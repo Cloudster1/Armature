@@ -20,8 +20,8 @@ import (
 	"github.com/armature/armature/backend/internal/tenant"
 )
 
-// FanOut runs in the worker: every event about an issue becomes inbox rows for
-// the people on it, and mail for those who want it.
+// FanOut runs in the worker: an event about an issue, or about somebody's days
+// away, becomes inbox rows for the people it concerns, and mail if they want it.
 type FanOut struct {
 	db     *db.Cluster
 	redis  *redis.Client
@@ -134,7 +134,13 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 		return nil
 	}
 	var p payload
-	if err := json.Unmarshal(e.Payload, &p); err != nil || p.key() == "" || p.Imported {
+	if err := json.Unmarshal(e.Payload, &p); err != nil || p.Imported {
+		return nil
+	}
+	if isAbsenceTopic(e.Topic) {
+		return f.handleAbsence(ctx, e, p)
+	}
+	if p.key() == "" {
 		return nil
 	}
 	// A deleted issue has nobody left to tell, and no row to tell them about.
@@ -149,8 +155,9 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 	if e.ID == uuid.Nil {
 		e.ID = uuid.New()
 	}
+	at := place{issueID: &s.id, link: f.appURL + "/issues/" + s.key, tag: "[" + s.key + "] ", byDesk: s.isRequest}
 	for _, t := range tellsFor(e.Topic, p, s) {
-		if err := f.deliver(ctx, e.ID, s, t); err != nil {
+		if err := f.deliver(ctx, e.ID, at, t); err != nil {
 			return err
 		}
 	}
@@ -338,9 +345,19 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 	return s, nil
 }
 
+// place is what a row points at: an issue, or a page of the app.
+type place struct {
+	issueID *uuid.UUID
+	link    string
+	// tag leads the mail's subject, such as "[CP-1] ".
+	tag string
+	// byDesk marks a request, whose people the desk mails instead.
+	byDesk bool
+}
+
 // deliver writes one row and, when it is new and wanted, mails it or queues
 // it for the digest. A request's people are mailed by the desk, not here.
-func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, s *subject, t tell) error {
+func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, at place, t tell) error {
 	var (
 		prefs    Preferences
 		inserted bool
@@ -358,7 +375,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, s *subject, t t
 			INSERT INTO notification (org_id, user_id, issue_id, kind, title, body, link, event_id)
 			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (user_id, event_id, kind) DO NOTHING
-			RETURNING id`, t.user, s.id, t.kind, t.title, t.body, f.appURL+"/issues/"+s.key, eventID).Scan(&id)
+			RETURNING id`, t.user, at.issueID, t.kind, t.title, t.body, at.link, eventID).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -366,7 +383,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, s *subject, t t
 			return err
 		}
 		inserted = true
-		if !prefs.mails(t.kind) || s.isRequest || f.mailer == nil {
+		if !prefs.mails(t.kind) || at.byDesk || f.mailer == nil {
 			return nil
 		}
 		if prefs.Digest != DigestOff {
@@ -380,7 +397,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, s *subject, t t
 	}
 	return f.mailer.Send(ctx, mail.Mail{
 		To:      to,
-		Subject: fmt.Sprintf("[%s] %s", s.key, t.title),
-		Body:    fmt.Sprintf("%s\n\n%s\n\nOpen it at %s/issues/%s\n", t.title, t.body, f.appURL, s.key),
+		Subject: at.tag + t.title,
+		Body:    fmt.Sprintf("%s\n\n%s\n\nOpen it at %s\n", t.title, t.body, at.link),
 	})
 }
