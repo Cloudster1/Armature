@@ -7,11 +7,16 @@ function dayIndex(from: Date, iso: string): number {
   return Math.round((new Date(iso.slice(0, 10)).getTime() - from.getTime()) / MS_PER_DAY);
 }
 
-/** The first and last day the chart spans: the sprint's dates when it has them, else its points. */
+/**
+ * The first and last day the chart spans: the sprint's dates widened to its
+ * points, so a sprint started early or ended late keeps every day on the chart.
+ */
 export function chartSpan(curve: SprintBurndown): { from: Date; to: Date } {
   const days = curve.points.map((p) => p.day.slice(0, 10));
-  const first = curve.sprint.startsOn?.slice(0, 10) ?? days[0] ?? new Date().toISOString().slice(0, 10);
-  const last = curve.sprint.endsOn?.slice(0, 10) ?? days[days.length - 1] ?? first;
+  const firstDays = [curve.sprint.startsOn?.slice(0, 10), days[0]].filter((d): d is string => Boolean(d)).sort();
+  const lastDays = [curve.sprint.endsOn?.slice(0, 10), days[days.length - 1]].filter((d): d is string => Boolean(d)).sort();
+  const first = firstDays[0] ?? new Date().toISOString().slice(0, 10);
+  const last = lastDays[lastDays.length - 1] ?? first;
   return { from: new Date(first), to: new Date(last < first ? first : last) };
 }
 
@@ -26,9 +31,9 @@ export function burndownSeries(curve: SprintBurndown): Series[] {
   const at = (p: BurndownPoint) => dayIndex(from, p.day);
   const remaining = curve.points.map((p) => ({ x: at(p), y: p.remaining }));
   const scope = curve.points.map((p) => ({ x: at(p), y: p.scope }));
-  const length = Math.max(1, dayIndex(from, to.toISOString()));
+  const lastDay = Math.max(1, dayIndex(from, curve.sprint.endsOn ?? to.toISOString()));
   const first = curve.points[0];
-  const ideal = first ? [{ x: at(first), y: first.scope }, { x: length, y: 0 }] : [];
+  const ideal = first ? [{ x: at(first), y: first.scope }, { x: lastDay, y: 0 }] : [];
   return [
     { name: "scope", tone: "text-ink-subtle", points: scope, step: true },
     { name: "ideal", tone: "text-ink-muted", points: ideal, dashed: true },

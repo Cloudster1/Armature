@@ -143,14 +143,14 @@ func TestBulkEditAndCSV(t *testing.T) {
 	// Export carries the chosen columns.
 	files := csvio.NewService(h.cluster, ws.issues, labels, field.NewService(h.cluster), h.authService())
 	var out bytes.Buffer
-	if err := files.Export(ws.ctx, &out, issue.Filter{ProjectKey: ws.project.Key}, []string{"key", "summary", "labels", "priority"}); err != nil {
+	if _, err := files.Export(ws.ctx, &out, issue.Filter{ProjectKey: ws.project.Key}, []string{"key", "summary", "labels", "priority"}); err != nil {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 	if len(lines) != 4 || lines[0] != "key,summary,labels,priority" || !strings.Contains(lines[3], `"Third, already going",batch,high`) {
 		t.Fatalf("export = %q", out.String())
 	}
-	if err := files.Export(ws.ctx, &out, issue.Filter{}, []string{"colour"}); err == nil {
+	if _, err := files.Export(ws.ctx, &out, issue.Filter{}, []string{"colour"}); err == nil {
 		t.Error("an unknown column was accepted")
 	}
 
