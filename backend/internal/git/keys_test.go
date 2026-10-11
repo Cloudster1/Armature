@@ -1,6 +1,7 @@
 package git
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -69,5 +70,38 @@ func TestBranchNameIsSafeAndShort(t *testing.T) {
 	}
 	if got := BranchName("CP-9", "!!!"); got != "CP-9" {
 		t.Errorf("a summary with nothing usable gives %q, want the key alone", got)
+	}
+}
+
+// A squash commit copies the branch's lines with a bullet in front and its own
+// spacing; the command it carries is still the one already carried out.
+func TestACommandIsKnownAgainByItsText(t *testing.T) {
+	branch := SmartCommands("ABC-1 #comment fixed typo\nABC-1 #close")
+	squash := SmartCommands("Fix the typo (#12)\n\n* ABC-1 #comment fixed   typo \n* ABC-1 #Close")
+	if len(branch) != 2 || len(squash) != 2 {
+		t.Fatalf("commands = %+v and %+v, want two each", branch, squash)
+	}
+	for i := range branch {
+		if branch[i].Identity() != squash[i].Identity() {
+			t.Errorf("%+v and %+v are the same command but are told apart", branch[i], squash[i])
+		}
+	}
+
+	different := map[string]Command{
+		"other text":               {Comment: "fixed the other typo"},
+		"a comment saying close":   {Comment: "close"},
+		"another transition":       {Transition: "reopen"},
+		"a comment in other case":  {Comment: "Fixed typo"},
+		"the text split elsewhere": {Comment: "fixedtypo"},
+	}
+	for name, cmd := range different {
+		if cmd.Identity() == branch[0].Identity() || cmd.Identity() == branch[1].Identity() {
+			t.Errorf("%s (%+v) is taken for a command already carried out", name, cmd)
+		}
+	}
+
+	// The database keeps the identity in a column that accepts this shape alone.
+	if id := branch[0].Identity(); !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(id) {
+		t.Errorf("identity = %q, want 64 lower case hex digits", id)
 	}
 }

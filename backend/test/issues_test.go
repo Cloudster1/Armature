@@ -401,7 +401,7 @@ func TestAnIssueCanBeFiledStraightIntoASprint(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "filed-into")
 	alpha := ws.newTeam(t, "Alpha")
-	sp := ws.planned(t, h, "Sprint F", "2026-09-07", "2026-09-18", nil)
+	sp := ws.teamSprint(t, "Sprint F", "2026-09-07", "2026-09-18", &alpha.ID)
 	three := 3.0
 
 	filed, _, err := ws.issues.Create(ws.ctx, issue.CreateInput{
