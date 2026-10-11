@@ -571,8 +571,8 @@ func (s *Service) Record(ctx context.Context, repo *Repository, d *Delivery) (*R
 		return nil, err
 	}
 
-	// Commands are carried out once, on the commit's first arrival: a push of
-	// the same commit to a second branch is not a second request to close.
+	// Commands are carried out on the commit's first arrival, and a squash
+	// commit's copy of a branch's command is not a second request either.
 	for _, c := range newCommits {
 		commands := SmartCommands(c.Message)
 		if len(commands) == 0 {
@@ -588,7 +588,7 @@ func (s *Service) Record(ctx context.Context, repo *Repository, d *Delivery) (*R
 		}
 		for _, key := range IssueKeys(c.Message) {
 			for _, cmd := range commands {
-				s.carryOut(ctx, receipt, key, cmd, actor, "commit "+c.SHA[:7])
+				s.carryOutOnce(ctx, receipt, repo, key, cmd, actor, "commit "+c.SHA[:7])
 			}
 		}
 	}
