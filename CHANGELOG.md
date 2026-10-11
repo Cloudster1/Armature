@@ -26,6 +26,9 @@ here in the branch that makes it.
 - Fixed: a squash or merge commit no longer carries out the branch's smart
   commands a second time: a comment is posted once and a "#close" is not
   tried again, while a new command in the squash commit still runs (#68).
+- Fixed: a merged branch the host deletes, as GitHub and GitLab do on
+  merging, stays on its issue and says "merged, deleted"; an unmerged one is
+  removed, and the same name pushed again is a new branch (#71).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
