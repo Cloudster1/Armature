@@ -35,6 +35,10 @@ here in the branch that makes it.
 - Fixed: an issue moved more than once is still found at every key it has
   had, in the app, over the API and by a reply to a desk mail, not only at
   the key it left last (#88).
+- Fixed: a reply by mail that could not be posted, say during a short
+  database outage, is posted on a later poll instead of being deleted from
+  the mailbox; one that fails ten times stays in the box and an internal note
+  on its request tells the agents why (#94).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

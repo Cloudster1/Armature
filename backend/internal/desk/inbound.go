@@ -4,14 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
@@ -46,6 +44,9 @@ const (
 	// Automatic is an out-of-office or other machine's mail to a request; it
 	// is nobody's answer, so the request goes on waiting.
 	Automatic Outcome = "automatic"
+	// Failed is a mail the desk gave up on after mailAttempts tries. Its error is
+	// recorded, the agents are told on its request, and it stays in the box.
+	Failed Outcome = "failed"
 )
 
 // Inbound reads the desk's mailbox and turns replies into comments. It runs in
@@ -117,15 +118,17 @@ func (n *Inbound) Once(ctx context.Context) error {
 			return seen
 		},
 		func(uid string, raw []byte) bool {
-			outcome, err := n.Handle(ctx, raw)
+			outcome, again, err := n.read(ctx, raw)
 			if err != nil {
 				// Left in the box for the next look: a database or a relay
 				// that is down should not lose a reply.
 				n.log.Warn("a mail could not be handled yet", "uid", uid, "error", err)
 				return false
 			}
-			if outcome == Skipped {
-				n.skipped[uid] = struct{}{}
+			if outcome == Skipped || outcome == Failed {
+				if !again {
+					n.skipped[uid] = struct{}{}
+				}
 				return false
 			}
 			n.log.Info("mail read", "uid", uid, "outcome", outcome)
@@ -141,18 +144,24 @@ func (n *Inbound) Once(ctx context.Context) error {
 	return err
 }
 
-// Handle decides what one mail is and acts on it. It returns an error only
-// when the decision could not be made; a decided mail, whatever the decision,
-// is consumed.
+// Handle decides what one mail is and acts on it, with an error only when no
+// decision was made. Mail it skipped or gave up on stays in the box.
 func (n *Inbound) Handle(ctx context.Context, raw []byte) (Outcome, error) {
+	outcome, _, err := n.read(ctx, raw)
+	return outcome, err
+}
+
+// read is Handle, and also says whether a mail left in the box is worth
+// another look this process: one another attempt holds may yet fail.
+func (n *Inbound) read(ctx context.Context, raw []byte) (Outcome, bool, error) {
 	m, err := mailin.Parse(raw)
 	if err != nil {
 		// Not a mail at all; there is nothing to come back to.
 		n.log.Warn("unreadable mail left aside", "error", err)
-		return Skipped, nil
+		return Skipped, false, nil
 	}
 	if !n.forTheDesk(m) {
-		return Skipped, nil
+		return Skipped, false, nil
 	}
 	messageID := m.MessageID
 	if messageID == "" {
@@ -162,14 +171,30 @@ func (n *Inbound) Handle(ctx context.Context, raw []byte) (Outcome, error) {
 
 	// The row first, so a mail delivered twice is refused by the database
 	// however many workers are looking.
-	claimed, err := n.claim(ctx, messageID, m)
+	claim, err := n.claim(ctx, messageID, m)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	if !claimed {
-		return Duplicate, nil
+	switch claim.state {
+	case claimBusy:
+		return Skipped, true, nil
+	case claimGivenUp:
+		return Failed, false, nil
+	case claimDone:
+		return Duplicate, false, nil
 	}
 
+	var p *placement
+	outcome, err := n.act(ctx, messageID, m, &p)
+	if err != nil {
+		return n.fail(ctx, messageID, claim.attempts, p, err)
+	}
+	return outcome, false, nil
+}
+
+// act places a claimed mail and writes what it says. The placement is handed
+// back through out so a failure can be told on the request it was for.
+func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, out **placement) (Outcome, error) {
 	key := mailin.IssueKeyIn(m.Subject, m.InReplyTo, m.References)
 	if key == "" {
 		return n.finish(ctx, messageID, nil, Unmatched, "no request named", m, unmatchedMessage(n.appURL))
@@ -186,6 +211,7 @@ func (n *Inbound) Handle(ctx context.Context, raw []byte) (Outcome, error) {
 		return n.finish(ctx, messageID, nil, Ambiguous, key+" is a request in more than one organization", m, unmatchedMessage(n.appURL))
 	}
 	p := where[0]
+	*out = &p
 	// A From header is a claim. When the receiving server checked it and found
 	// it false, the mail is nobody's word, least of all this sender's.
 	if m.SenderFailedChecks() {
@@ -305,28 +331,6 @@ func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...an
 	return out, err
 }
 
-// claim writes the mail's row as processing and says whether it was ours to
-// handle. A row already there is a duplicate, unless it is our own attempt
-// that died mid-way, which is taken up again after a while.
-func (n *Inbound) claim(ctx context.Context, messageID string, m *mailin.Message) (bool, error) {
-	var claimed bool
-	_, err := n.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `
-			INSERT INTO inbound_mail (message_id, from_email, subject, outcome)
-			VALUES ($1, $2, $3, 'processing')
-			ON CONFLICT (message_id) DO UPDATE
-			SET received_at = now()
-			WHERE inbound_mail.outcome = 'processing' AND inbound_mail.received_at < now() - interval '5 minutes'`,
-			messageID, m.From, m.Subject)
-		if err != nil {
-			return err
-		}
-		claimed = tag.RowsAffected() == 1
-		return nil
-	})
-	return claimed, err
-}
-
 // finish records the outcome and, when there is something to say, says it to
 // the sender. Machines are not answered, nor daemons, nor the desk itself.
 func (n *Inbound) finish(ctx context.Context, messageID string, p *placement, outcome Outcome, detail string, m *mailin.Message, bounce Message) (Outcome, error) {
@@ -393,5 +397,3 @@ func unmatchedMessage(appURL string) Message {
 	}
 }
 
-var _ = errors.Is
-var _ = pgx.ErrNoRows
