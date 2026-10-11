@@ -9,6 +9,7 @@ package freshness
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -42,13 +43,31 @@ func NewRedisTracker(client *redis.Client, ttl time.Duration) *RedisTracker {
 	return &RedisTracker{client: client, ttl: ttl, prefix: "fresh:"}
 }
 
+// minTTLMillis keeps a sub-millisecond lifetime valid, since SET refuses PX 0.
+const minTTLMillis = 1
+
+// raiseScript keeps the greater position, atomically, because requests finish
+// out of order across processes.
+var raiseScript = redis.NewScript(`
+-- Compared as decimal text, length first: Lua's doubles lose digits past 2^53.
+local cur = redis.call('GET', KEYS[1])
+local new = ARGV[1]
+if cur and (#cur > #new or (#cur == #new and cur >= new)) then
+	return 0
+end
+redis.call('SET', KEYS[1], new, 'PX', ARGV[2])
+return 1
+`)
+
 func (t *RedisTracker) Note(ctx context.Context, key string, lsn db.LSN) {
 	if key == "" || lsn == 0 {
 		return
 	}
+	ttl := max(t.ttl.Milliseconds(), minTTLMillis)
+	pos := strconv.FormatUint(uint64(lsn), 10)
 	// Best effort: a failure here costs a slightly stale read at worst, and
 	// must never fail the write that just succeeded.
-	_ = t.client.Set(ctx, t.prefix+key, uint64(lsn), t.ttl).Err()
+	_ = raiseScript.Run(ctx, t.client, []string{t.prefix + key}, pos, ttl).Err()
 }
 
 func (t *RedisTracker) Required(ctx context.Context, key string) db.LSN {

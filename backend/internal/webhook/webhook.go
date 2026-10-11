@@ -457,11 +457,11 @@ func (s *Service) Test(ctx context.Context, endpointID uuid.UUID) (*Delivery, db
 	if err != nil {
 		return nil, 0, err
 	}
-	sent, err := s.attempt(ctx, d.ID)
+	sent, outcome, err := s.attempt(ctx, d.ID)
 	if err != nil {
 		return nil, 0, err
 	}
-	return sent, lsn, nil
+	return sent, max(lsn, outcome), nil
 }
 
 // Redeliver tries a logged delivery again, now, as a fresh first attempt.
@@ -483,8 +483,8 @@ func (s *Service) Redeliver(ctx context.Context, deliveryID uuid.UUID) (*Deliver
 	if err != nil {
 		return nil, 0, err
 	}
-	sent, err := s.attempt(db.PinPrimary(ctx), made)
-	return sent, lsn, err
+	sent, outcome, err := s.attempt(db.PinPrimary(ctx), made)
+	return sent, max(lsn, outcome), err
 }
 
 // sendBatch is how many due deliveries one pass reads; passes repeat until
@@ -520,7 +520,7 @@ func (s *Service) SendDue(ctx context.Context) (int, error) {
 			return tried, err
 		}
 		for _, d := range found {
-			if _, err := s.attempt(db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID})), d.id); err != nil {
+			if _, _, err := s.attempt(db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID})), d.id); err != nil {
 				s.log.Warn("webhook attempt failed", "delivery", d.id, "error", err)
 			}
 		}
@@ -533,7 +533,7 @@ func (s *Service) SendDue(ctx context.Context) (int, error) {
 
 // attempt posts one logged delivery and records the outcome: delivered, or
 // failed with the next attempt scheduled, or given up.
-func (s *Service) attempt(ctx context.Context, deliveryID uuid.UUID) (*Delivery, error) {
+func (s *Service) attempt(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db.LSN, error) {
 	var (
 		url, secret, topic string
 		body               []byte
@@ -548,10 +548,10 @@ func (s *Service) attempt(ctx context.Context, deliveryID uuid.UUID) (*Delivery,
 			WHERE d.id = $1`, deliveryID).Scan(&url, &secret, &topic, &body, &attempt, &endpointID, &eventID)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
+		return nil, 0, ErrNotFound
 	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	status, sendErr := s.post(ctx, url, secret, topic, deliveryID, body)
@@ -573,7 +573,7 @@ func (s *Service) attempt(ctx context.Context, deliveryID uuid.UUID) (*Delivery,
 	}
 
 	var out *Delivery
-	_, err = s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if delivered {
 			_, err := tx.Exec(ctx, `UPDATE webhook_delivery SET status = $2, error = '', next_attempt_at = NULL, delivered_at = now() WHERE id = $1`, deliveryID, statusPtr)
 			if err != nil {
@@ -596,7 +596,7 @@ func (s *Service) attempt(ctx context.Context, deliveryID uuid.UUID) (*Delivery,
 		out, err = scanDelivery(tx.QueryRow(ctx, selectDeliveries+` WHERE id = $1`, deliveryID))
 		return err
 	})
-	return out, err
+	return out, lsn, err
 }
 
 // post sends one request and returns the status, or the error that stopped it.

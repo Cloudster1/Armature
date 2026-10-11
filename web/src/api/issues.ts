@@ -1,4 +1,5 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { request } from "./client";
 import { META_STALE_MS } from "@/config";
 
@@ -358,7 +359,9 @@ export function useUpdateIssue() {
   return useMutation({
     mutationFn: ({ key, ...body }: UpdateIssueInput) =>
       request<{ issue: Issue }>(`/issues/${key}`, { method: "PATCH", body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    // The board, the plan, the calendar, the resources and the sprints all show
+    // these fields, and the panel docks beside each of them.
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
@@ -400,13 +403,13 @@ export interface WorklogInput {
   note?: string;
 }
 
-/** Logging time changes what remains on the issue, so everything about it is refetched. */
+/** Logging time changes what remains on the issue, which the plan and the resources read too. */
 export function useLogWork() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ key, ...body }: WorklogInput & { key: string }) =>
       request<{ worklog: Worklog }>(`/issues/${key}/worklogs`, { method: "POST", body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
@@ -415,7 +418,7 @@ export function useUpdateWorklog() {
   return useMutation({
     mutationFn: ({ id, ...body }: WorklogInput & { id: string }) =>
       request<{ worklog: Worklog }>(`/worklogs/${id}`, { method: "PATCH", body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
@@ -423,7 +426,7 @@ export function useDeleteWorklog() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => request<void>(`/worklogs/${id}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
