@@ -139,6 +139,10 @@ here in the branch that makes it.
   offers Delete only for a sprint the server says is empty, and lists the
   whole backlog in rank order without done work; the parent picker searches
   the project instead of offering its 200 newest issues (#53).
+- Fixed: a customer's reply to a resolved request, in the portal or by mail,
+  and from the reporter or a follower, reopens it and puts it back in the
+  agents' Open queue with a fresh resolution clock; a workflow with no way out
+  of done leaves it resolved and tells the agents in their inbox (#64).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

@@ -797,6 +797,17 @@ read, and a calendar saved with overlaps before the rule must still load. The
 clock merges a day's spans before counting, so such a calendar counts each open
 minute once.
 
+### A customer's reply moves the request back, by the workflow's own way
+
+The resolution mail tells the customer that a reply brings the request back, so
+a reply to a request in a done status takes the workflow's way out of it as the
+customer: the transition called Reopen, else the first one from that status
+that ends outside done. It is a transition like any other, so the resolution
+clock starts over and the rating stays as history. A follower's reply, by mail
+or in the portal, counts the same as the reporter's. A workflow with no way out
+keeps the request where it is, since the desk's workflow is the desk's to
+design, and the agents on it, or whoever finished it, are told in the inbox.
+
 ### Customers are refused uniformly, not route by route
 
 A customer's role holds no permission, so most of the agents' API refuses them

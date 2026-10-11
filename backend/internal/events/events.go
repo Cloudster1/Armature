@@ -38,6 +38,9 @@ const (
 	TopicAttachmentAdded     = "attachment.added"
 	TopicWorkLogged          = "worklog.added"
 	TopicWatcherAdded        = "watcher.added"
+	// A customer replied to a finished request its workflow has no way out of,
+	// so somebody at the desk has to move it by hand.
+	TopicRequestStaysDone = "request.stays_done"
 	// A page elsewhere put on or taken off an issue. Not an edit of the issue,
 	// so a sync touching many pages does not read as many changes to it.
 	TopicRemoteLinkAdded   = "issue.remote_link.added"

@@ -238,10 +238,9 @@ func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, 
 		// Nothing proves a colleague's address, so their mail is filed where
 		// the desk can see it and the customer cannot; they answer in the app.
 		comment, _, err = n.issues.AddNote(orgCtx, p.key, issue.TextDocument(text), actor)
-	case !p.reporter:
-		// A follower's word is a comment like any other.
-		comment, _, err = n.issues.AddComment(orgCtx, p.key, issue.TextDocument(text), actor)
 	default:
+		// The reporter and a follower answer as they would in the portal, so a
+		// reply brings the request back to the desk whoever sends it.
 		comment, _, err = n.desk.Reply(orgCtx, p.key, text, actor)
 	}
 	if err != nil {

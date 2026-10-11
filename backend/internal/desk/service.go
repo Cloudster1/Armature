@@ -1042,57 +1042,6 @@ func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (
 	return &Request{Issue: *found, Comments: comments, RequestTypeName: found.RequestTypeName}, nil
 }
 
-// Reply adds the customer's comment to their own request. If the desk was
-// waiting on them, the reply is what it was waiting for, and the request goes
-// back to the agents through whichever transition leaves the waiting status.
-func (s *Service) Reply(ctx context.Context, key, text string, customer issue.Actor) (*issue.Comment, db.LSN, error) {
-	if _, err := s.Request(ctx, key, customer.UserID); err != nil {
-		return nil, 0, err
-	}
-	comment, lsn, err := s.issues.AddComment(ctx, key, issue.TextDocument(text), customer)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	found, err := s.issues.ByKey(ctx, key)
-	if err != nil {
-		return nil, 0, err
-	}
-	if strings.EqualFold(found.Status.Name, WaitingOnCustomer) {
-		if chosen := s.wayBack(ctx, key, customer); chosen != nil {
-			if _, moved, err := s.issues.Transition(ctx, key, issue.TransitionInput{TransitionID: chosen.ID}, customer); err == nil {
-				lsn = moved
-			}
-		}
-	}
-	return comment, lsn, nil
-}
-
-// CustomerResponded is the transition a customer's reply takes when the desk
-// was waiting on them, when the workflow has one by that name.
-const CustomerResponded = "Customer responded"
-
-// wayBack picks the transition a reply takes out of the waiting status: the
-// one named for it, else the first that is not a global "resolve from
-// anywhere", which a customer's reply must never take.
-func (s *Service) wayBack(ctx context.Context, key string, customer issue.Actor) *workflow.Transition {
-	available, err := s.issues.Transitions(ctx, key, customer)
-	if err != nil {
-		return nil
-	}
-	for i := range available {
-		if strings.EqualFold(available[i].Name, CustomerResponded) {
-			return &available[i]
-		}
-	}
-	for i := range available {
-		if !available[i].IsGlobal() {
-			return &available[i]
-		}
-	}
-	return nil
-}
-
 // IsCustomer reports whether a principal's role is the portal's.
 func IsCustomer(role auth.OrgRole) bool { return role == auth.RoleCustomer }
 
