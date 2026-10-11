@@ -201,13 +201,21 @@ func (n *Notifier) lookup(ctx context.Context, key string) (*about, error) {
 	return &a, nil
 }
 
+// recipient is one address on a request, and whether it is the reporter's,
+// since only the reporter is asked to rate.
+type recipient struct {
+	email    string
+	reporter bool
+}
+
 // recipients is who hears about a request: the reporter and the watchers, less
 // the person whose act it was, who needs no mail about what they just did.
-func (n *Notifier) recipients(ctx context.Context, a *about, except uuid.UUID) ([]string, error) {
-	var out []string
+func (n *Notifier) recipients(ctx context.Context, a *about, except uuid.UUID) ([]recipient, error) {
+	var out []recipient
 	err := n.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT DISTINCT u.email FROM app_user u
+			SELECT DISTINCT u.email, u.id IS NOT DISTINCT FROM (SELECT reporter_id FROM issue WHERE id = $1)
+			FROM app_user u
 			WHERE u.is_active AND u.id <> $2
 			  AND (u.id = (SELECT reporter_id FROM issue WHERE id = $1)
 			       OR u.id IN (SELECT user_id FROM issue_watcher WHERE issue_id = $1))
@@ -217,11 +225,11 @@ func (n *Notifier) recipients(ctx context.Context, a *about, except uuid.UUID) (
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var email string
-			if err := rows.Scan(&email); err != nil {
+			var r recipient
+			if err := rows.Scan(&r.email, &r.reporter); err != nil {
 				return err
 			}
-			out = append(out, email)
+			out = append(out, r)
 		}
 		return rows.Err()
 	})
@@ -322,10 +330,19 @@ func (n *Notifier) Handle(ctx context.Context, e events.Event) error {
 			return err
 		}
 		msg := resolvedMessage(a.key, a.summary, p.ToStatus, n.link(a))
-		if token != "" {
-			msg.Body += fmt.Sprintf("\nHow did we do? Tell us in one click: %s/rate/%s\n", n.appURL, url.PathEscape(token))
+		if token == "" {
+			return n.tell(ctx, a, p.ActorID, msg)
 		}
-		return n.tell(ctx, a, p.ActorID, msg)
+		rate := msg
+		rate.Body += fmt.Sprintf("\nHow did we do? Tell us in one click: %s/rate/%s\n", n.appURL, url.PathEscape(token))
+		// Whoever holds the link can rate, so followers and watching agents
+		// hear of the resolution without it.
+		return n.tellEach(ctx, a, p.ActorID, func(r recipient) Message {
+			if r.reporter {
+				return rate
+			}
+			return msg
+		})
 
 	case events.TopicIssueUpdated:
 		var p struct {
@@ -391,13 +408,19 @@ func (n *Notifier) link(a *about) string { return requestLink(n.appURL, a.slug, 
 // tell mails everyone on a request but the actor. Every address is tried; the
 // first failure is what comes back.
 func (n *Notifier) tell(ctx context.Context, a *about, except uuid.UUID, msg Message) error {
+	return n.tellEach(ctx, a, except, func(recipient) Message { return msg })
+}
+
+// tellEach is tell with the message worded for each recipient, for what is
+// meant for one of them alone.
+func (n *Notifier) tellEach(ctx context.Context, a *about, except uuid.UUID, msg func(recipient) Message) error {
 	to, err := n.recipients(ctx, a, except)
 	if err != nil {
 		return err
 	}
 	var first error
-	for _, address := range to {
-		if err := n.mailer.Send(ctx, n.mail(a, address, msg)); err != nil && first == nil {
+	for _, r := range to {
+		if err := n.mailer.Send(ctx, n.mail(a, r.email, msg(r))); err != nil && first == nil {
 			first = err
 		}
 	}

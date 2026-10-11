@@ -4362,6 +4362,8 @@ export interface components {
             commitCount: number;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            deletedAt?: string;
             headSha?: string;
             /** Format: uuid */
             id: string;
