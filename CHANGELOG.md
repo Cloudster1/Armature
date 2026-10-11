@@ -109,6 +109,10 @@ here in the branch that makes it.
   of leaving "Former user" there, and "Watch the issues I report or am
   assigned" on the profile now decides whether those issues tell you what
   happens; off, only a watch, an assignment or a mention does (#107).
+- Fixed: with read replicas, the invitations list shows an invitation the
+  moment it is sent and drops it the moment it is withdrawn; a webhook's
+  delivery log shows a test or redelivery with its outcome, and a project
+  given its default dashboard on first sight shows it at once (#100).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
