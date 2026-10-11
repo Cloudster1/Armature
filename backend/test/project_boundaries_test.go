@@ -103,6 +103,12 @@ func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
 			}},
 			{"edit a far team", func() response { return member.patch("/api/v1/teams/"+it.team, map[string]any{"name": "mine now"}) }},
 			{"edit a far board", func() response { return member.patch("/api/v1/boards/"+it.board, map[string]any{"name": "mine now"}) }},
+			{"add a lane to a far board", func() response {
+				return member.post("/api/v1/boards/"+it.board+"/swimlanes", map[string]any{"name": "mine now"})
+			}},
+			{"rename a far lane", func() response {
+				return member.patch("/api/v1/boards/"+it.board+"/swimlanes/"+it.swimlane, map[string]any{"name": "mine now"})
+			}},
 			{"share a far dashboard", func() response {
 				return member.post("/api/v1/dashboards/"+it.dashboard+"/shares", map[string]any{"name": "leak"})
 			}},

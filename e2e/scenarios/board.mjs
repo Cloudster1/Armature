@@ -6,10 +6,12 @@ import {
   cardsIn,
   clickButton,
   confirm,
+  createBoard,
   createIssue,
   createProject,
   dragCardTo,
   expect,
+  fill,
   goto,
   issueRows,
   openIssueBeside,
@@ -242,4 +244,90 @@ scenario("cards in states no swimlane covers are surfaced, not hidden", async ({
     { timeout: WAIT },
   );
   expect.contains(await bodyText(page), issueKey, "the orphaned card is named");
+});
+
+/** Opens one of the project's boards by name and waits until it is the one shown. */
+async function showBoard(page, name) {
+  await page.waitForSelector(`[data-board="${name}"]`, { timeout: WAIT });
+  await page.click(`[data-board="${name}"]`);
+  await page.waitForFunction(
+    (n) => document.querySelector("[data-board-showing]")?.getAttribute("data-board-showing") === n,
+    { timeout: WAIT },
+    name,
+  );
+}
+
+/** The first lane's name and limit, and the grouping, the panel shows for the board on screen. */
+async function editorState(page) {
+  await clickButton(page, "Configure swimlanes");
+  await page.waitForSelector("[data-swimlane-editor]", { timeout: WAIT });
+  const state = await page.evaluate(() => ({
+    first: document.querySelector("#field-swimlane-1-name")?.value,
+    limit: document.querySelector("[data-swimlane-editor] #field-card-limit")?.value,
+    grouped: [...document.querySelectorAll("button[aria-pressed=true]")].map((b) => b.textContent.trim()),
+  }));
+  await clickButton(page, "Done configuring");
+  return state;
+}
+
+// A limit only the team board is given, to look for on the other.
+const TEAM_LIMIT = "3";
+
+scenario("a team board's swimlanes are configured and the first board is left alone", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Lanes");
+  await createBoard(page, key, "Team flow", "kanban");
+
+  await showBoard(page, "Team flow");
+  await clickButton(page, "Configure swimlanes");
+  await page.waitForSelector('[data-swimlane-editor="To Do"]', { timeout: WAIT });
+  await fill(page, "Swimlane 1 name", "Queued");
+  await page.click('[data-swimlane-editor="To Do"] #field-card-limit', { clickCount: 3 });
+  await page.keyboard.sendCharacter(TEAM_LIMIT);
+  await page.evaluate(() => document.querySelector('[data-swimlane-editor="To Do"] button[type=submit]').click());
+  await page.waitForSelector('[data-swimlane="Queued"]', { timeout: WAIT });
+  await clickButton(page, "Assignee");
+  await page.waitForFunction(
+    () => [...document.querySelectorAll("button[aria-pressed=true]")].some((b) => b.textContent.trim() === "Assignee"),
+    { timeout: WAIT },
+  );
+  await clickButton(page, "Done configuring");
+
+  await showBoard(page, "Lanes board");
+  await page.waitForSelector('[data-swimlane="To Do"]', { timeout: WAIT });
+  expect.equal(await page.$('[data-swimlane="Queued"]'), null, "the first board kept its own first lane");
+  const first = await editorState(page);
+  expect.equal(first.first, "To Do", "the panel beside the first board shows the first board's lanes");
+  expect.equal(first.limit, "", "and none of the team board's limit");
+  expect.truthy(first.grouped.includes("No rows"), "nor its grouping");
+
+  await showBoard(page, "Team flow");
+  const team = await editorState(page);
+  expect.equal(team.first, "Queued", "the team board kept what was set on it");
+  expect.equal(team.limit, TEAM_LIMIT, "including its limit");
+  expect.truthy(team.grouped.includes("Assignee"), "and its grouping");
+});
+
+scenario("a board made by mistake is renamed, retyped and deleted", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Mistakes");
+  await createBoard(page, key, "Oops", "scrum");
+  await showBoard(page, "Oops");
+
+  await clickButton(page, "Rename");
+  await fill(page, "Board name", "Release flow");
+  await clickButton(page, "Save name");
+  await showBoard(page, "Release flow");
+
+  await clickButton(page, "Change type");
+  await page.waitForSelector('h1 [data-board-type="kanban"]', { timeout: WAIT });
+
+  await clickButton(page, "Delete");
+  await page.waitForSelector('[data-confirm="board Release flow"]', { timeout: WAIT });
+  await confirm(page);
+  await page.waitForFunction(() => !document.querySelector('[data-board="Release flow"]'), { timeout: WAIT });
+  await page.waitForFunction(
+    () => document.querySelector("[data-board-showing]")?.getAttribute("data-board-showing") === "Mistakes board",
+    { timeout: WAIT },
+  );
 });

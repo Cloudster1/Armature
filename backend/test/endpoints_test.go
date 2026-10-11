@@ -222,32 +222,30 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 
 	// Boards.
 	want(t, c.get("/api/v1/projects/EVR/board"), http.StatusOK, "opening board")
-	want(t, c.patch("/api/v1/projects/EVR/board", map[string]any{"groupBy": "assignee"}), http.StatusNoContent, "group board")
 	boards := list(t, want(t, c.get("/api/v1/projects/EVR/boards"), http.StatusOK, "boards"), "boards")
 	extra := want(t, c.post("/api/v1/projects/EVR/boards", map[string]any{"name": "Everything kanban", "type": "kanban"}), http.StatusCreated, "add board")
 	extraID := idOf(t, extra, "board")
 	want(t, c.get("/api/v1/boards/"+extraID), http.StatusOK, "get board")
-	want(t, c.patch("/api/v1/boards/"+extraID, map[string]any{"name": "Everything kanban", "description": "all cards"}), http.StatusOK, "edit board")
+	want(t, c.patch("/api/v1/boards/"+extraID, map[string]any{"name": "Everything kanban", "description": "all cards", "groupBy": "assignee"}), http.StatusOK, "edit board")
 	want(t, c.get("/api/v1/boards/"+extraID+"/backlog"), http.StatusOK, "backlog")
 	// Every status already has a swimlane on a fresh board, so the new one
 	// starts empty and is a place to drag states into later.
-	lane := want(t, c.post("/api/v1/projects/EVR/board/swimlanes", map[string]any{"name": "Parked"}), http.StatusCreated, "add swimlane")
+	lane := want(t, c.post("/api/v1/boards/"+extraID+"/swimlanes", map[string]any{"name": "Parked"}), http.StatusCreated, "add swimlane")
 	laneID := idOf(t, lane, "swimlane")
-	want(t, c.patch("/api/v1/projects/EVR/board/swimlanes/"+laneID, map[string]any{"name": "Parked for now"}), http.StatusNoContent, "edit swimlane")
-	openingLanes := list(t, c.get("/api/v1/projects/EVR/board"), "board", "swimlanes")
+	want(t, c.patch("/api/v1/boards/"+extraID+"/swimlanes/"+laneID, map[string]any{"name": "Parked for now"}), http.StatusNoContent, "edit swimlane")
 	order := []any{}
-	for _, raw := range openingLanes {
+	for _, raw := range list(t, c.get("/api/v1/boards/"+extraID), "board", "swimlanes") {
 		order = append(order, raw.(map[string]any)["id"])
 	}
-	want(t, c.put("/api/v1/projects/EVR/board/swimlanes", map[string]any{"order": order}), http.StatusNoContent, "reorder swimlanes")
+	want(t, c.put("/api/v1/boards/"+extraID+"/swimlanes", map[string]any{"order": order}), http.StatusNoContent, "reorder swimlanes")
 	var inProgress any
-	for _, raw := range openingLanes {
+	for _, raw := range list(t, c.get("/api/v1/projects/EVR/board"), "board", "swimlanes") {
 		if lane := raw.(map[string]any); strings.Contains(lane["name"].(string), "Progress") {
 			inProgress = lane["id"]
 		}
 	}
 	want(t, c.post("/api/v1/projects/EVR/board/move", map[string]any{"issueKey": storyKey, "swimlaneId": inProgress}), http.StatusOK, "move card")
-	want(t, c.delete("/api/v1/projects/EVR/board/swimlanes/"+laneID), http.StatusNoContent, "delete swimlane")
+	want(t, c.delete("/api/v1/boards/"+extraID+"/swimlanes/"+laneID), http.StatusNoContent, "delete swimlane")
 	want(t, c.delete("/api/v1/boards/"+extraID), http.StatusNoContent, "delete board")
 	_ = boards
 
