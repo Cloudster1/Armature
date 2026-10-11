@@ -67,6 +67,8 @@ type Commit struct {
 	URL         string    `json:"url,omitempty"`
 	Branch      string    `json:"branch,omitempty"`
 	CommittedAt time.Time `json:"committedAt"`
+	// CI is what every check against the commit adds up to, when there is one.
+	CI *CIChecks `json:"ci,omitempty"`
 }
 
 // Branch is a branch that is, or was made, for an issue, followed so the issue
@@ -116,8 +118,9 @@ type PullRequest struct {
 	HeadSHA      string     `json:"headSha,omitempty"`
 	OpenedAt     time.Time  `json:"openedAt"`
 	MergedAt     *time.Time `json:"mergedAt,omitempty"`
-	// CI is the latest run against the pull request's head, when there is one.
-	CI *CIRun `json:"ci,omitempty"`
+	// CI is what every check against the pull request's head adds up to, when
+	// there is one.
+	CI *CIChecks `json:"ci,omitempty"`
 }
 
 // CIStatus is how a run came out, or that it has not yet.

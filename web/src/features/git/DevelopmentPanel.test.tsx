@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
-import type { Development, Repository } from "@/api/git";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import type { CIRun, CIStatus, Development, Repository } from "@/api/git";
 
 const createBranch = vi.fn();
 const state = {
@@ -25,6 +25,13 @@ function repository(over: Partial<Repository> = {}): Repository {
     id: "r1", projectId: "p", projectKey: "CP", host: "github", name: "acme/portal",
     url: "https://github.com/acme/portal", apiBaseUrl: "https://api.github.com", defaultBranch: "main",
     hasToken: false, commitCount: 0, openPullRequestCount: 0, createdAt: "", updatedAt: "", ...over,
+  };
+}
+
+function run(name: string, status: CIStatus): CIRun {
+  return {
+    id: `run-${name}`, repository: "acme/portal", externalId: `check_run:${name}`, name, status,
+    url: `https://github.com/acme/portal/runs/${name}`, sha: "abc1234567", startedAt: "",
   };
 }
 
@@ -91,13 +98,56 @@ describe("DevelopmentPanel", () => {
       runs: [],
       pullRequests: [{
         id: "q1", repository: "acme/portal", number: 7, title: "CP-4 fix", state: "open", openedAt: "",
-        ci: { id: "c1", repository: "acme/portal", externalId: "x", name: "build", status: "failure", sha: "abc", startedAt: "" },
+        ci: { status: "failure", checks: [run("build", "failure")] },
       }],
     };
     render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
     expect(screen.getByText("CP-4 fix", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("build failed")).toHaveAttribute("data-ci", "failure");
+    expect(screen.getByRole("button", { name: "CI failed" })).toHaveAttribute("data-ci", "failure");
     expect(screen.getByText("open")).toBeInTheDocument();
+  });
+
+  // The badge adds every check up; the list says which one to go and look at.
+  it("lists the checks behind a pull request's CI", () => {
+    state.repositories = [repository()];
+    state.development = {
+      branchName: "CP-4-fix",
+      branches: [],
+      commits: [],
+      runs: [],
+      pullRequests: [{
+        id: "q1", repository: "acme/portal", number: 7, title: "CP-4 fix", state: "open", openedAt: "",
+        ci: { status: "failure", checks: [run("lint", "success"), run("test", "failure")] },
+      }],
+    };
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    const badge = screen.getByRole("button", { name: "CI failed" });
+    expect(badge).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("lint passed")).not.toBeInTheDocument();
+
+    fireEvent.click(badge);
+    expect(badge).toHaveAttribute("aria-expanded", "true");
+    const list = screen.getByTestId("ci-checks");
+    expect(within(list).getByText("lint passed")).toHaveAttribute("data-ci", "success");
+    expect(within(list).getByText("test failed")).toHaveAttribute("data-ci", "failure");
+    expect(within(list).getByText("test failed")).toHaveAttribute("href", "https://github.com/acme/portal/runs/test");
+  });
+
+  it("gives a commit the same combined answer as a pull request", () => {
+    state.repositories = [repository()];
+    state.development = {
+      branchName: "CP-4-fix",
+      branches: [],
+      pullRequests: [],
+      runs: [run("lint", "success"), run("test", "pending")],
+      commits: [{
+        id: "c1", repository: "acme/portal", sha: "abc1234567", message: "CP-4 fix", committedAt: new Date().toISOString(),
+        ci: { status: "pending", checks: [run("lint", "success"), run("test", "pending")] },
+      }],
+    };
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    expect(screen.getByRole("button", { name: "CI running" })).toHaveAttribute("data-ci", "pending");
+    expect(screen.queryByText("lint passed")).not.toBeInTheDocument();
   });
 
   it("names the branch before making it, starting from the repository's default branch", () => {

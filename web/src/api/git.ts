@@ -43,6 +43,8 @@ export interface Commit {
   url?: string;
   branch?: string;
   committedAt: string;
+  /** What every check against the commit adds up to. */
+  ci?: CIChecks;
 }
 
 /**
@@ -79,6 +81,15 @@ export interface CIRun {
   finishedAt?: string;
 }
 
+/**
+ * How CI came out on one commit, from the latest run of each check: a failure
+ * outweighs one still running, which outweighs a cancellation, then a pass.
+ */
+export interface CIChecks {
+  status: CIStatus;
+  checks: CIRun[];
+}
+
 export interface PullRequest {
   id: string;
   repository: string;
@@ -92,8 +103,8 @@ export interface PullRequest {
   headSha?: string;
   openedAt: string;
   mergedAt?: string;
-  /** The newest run against the pull request's head. */
-  ci?: CIRun;
+  /** What every check against the pull request's head adds up to. */
+  ci?: CIChecks;
 }
 
 /** Everything the repositories know about one issue. */

@@ -4431,6 +4431,10 @@ export interface components {
             active: boolean;
             sprints: components["schemas"]["SprintBurndown"][];
         };
+        CIChecks: {
+            checks: components["schemas"]["CIRun"][];
+            status: string;
+        };
         CIRun: {
             branch?: string;
             externalId: string;
@@ -4604,6 +4608,7 @@ export interface components {
             authorEmail?: string;
             authorName?: string;
             branch?: string;
+            ci?: components["schemas"]["CIChecks"];
             /** Format: date-time */
             committedAt: string;
             /** Format: uuid */
@@ -5772,7 +5777,7 @@ export interface components {
         };
         PullRequest: {
             authorName?: string;
-            ci?: components["schemas"]["CIRun"];
+            ci?: components["schemas"]["CIChecks"];
             headSha?: string;
             /** Format: uuid */
             id: string;

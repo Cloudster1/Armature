@@ -737,6 +737,16 @@ is a new branch with its own count, not the old one revived.
 **Reconsider if** people want to see abandoned branches too, at which point an
 unmerged one is kept and marked the same way and the check goes.
 
+### A commit's CI is every check on it, added up
+
+A host sends a run per job and per workflow, so the run started last says
+nothing about the others: a failed test followed by a passing lint read green.
+The answer for a commit, and so for a pull request's head, takes the latest run
+of each check name, and a failure outweighs one still running, which outweighs
+a cancellation, which outweighs a pass. A cancelled check never passed, so it
+does not read as green. The checks behind the answer travel with it, and the
+issue's panel lists them, so a red badge leads to the check that failed.
+
 ### A request is an issue, and a note is a flag
 
 The service desk adds no second table for requests or for the conversation. A

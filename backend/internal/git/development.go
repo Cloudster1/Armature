@@ -128,16 +128,13 @@ func (s *Service) ForIssue(ctx context.Context, key string) (*Development, error
 		return nil, err
 	}
 
-	// Each pull request carries the newest run against its head, which is the
-	// one answer to "is it green".
+	// Every check on a head counts toward "is it green", not only the newest.
+	checks := checksBySHA(out.Runs)
 	for i := range out.PullRequests {
-		for _, run := range out.Runs {
-			if run.SHA == out.PullRequests[i].HeadSHA {
-				r := run
-				out.PullRequests[i].CI = &r
-				break
-			}
-		}
+		out.PullRequests[i].CI = checks[out.PullRequests[i].HeadSHA]
+	}
+	for i := range out.Commits {
+		out.Commits[i].CI = checks[out.Commits[i].SHA]
 	}
 	return out, nil
 }
