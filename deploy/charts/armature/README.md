@@ -219,6 +219,10 @@ no leader election, and the Redis consumers all identify themselves as the
 literal `worker`, so a second replica's consumers are indistinguishable from the
 first's. The digest is not the reason: what it has sent is kept in the database.
 
+What the one replica does side by side is set instead. `worker.webhookConcurrency`
+(8) is how many webhook deliveries it posts at once, at most two to any one
+endpoint, so an organization whose endpoint hangs does not hold up the others.
+
 ## Verifying a change
 
 ```sh

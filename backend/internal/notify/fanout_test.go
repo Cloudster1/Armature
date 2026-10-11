@@ -163,6 +163,7 @@ func TestTellsForLeavesOutWhoDoesNotWatchTheirOwn(t *testing.T) {
 		}
 	})
 }
+
 // A customer's reply that the workflow could not take back out of done tells
 // the agents on the request, or whoever finished it when nobody is on it.
 func TestAReplyLeftInDoneIsToldToTheAgents(t *testing.T) {

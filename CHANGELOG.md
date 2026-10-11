@@ -161,6 +161,10 @@ here in the branch that makes it.
   the audit log skip issues: the event stream keeps what a consumer has not
   read, and the relay waits for the slowest one; its lag and theirs are on the
   metrics (#95).
+- Fixed: one organization's slow webhook endpoint no longer holds up everyone
+  else's webhooks; deliveries go out side by side, at most two to any one
+  endpoint, an endpoint that keeps timing out is paused for five minutes on its
+  own, and `ARMATURE_WEBHOOK_CONCURRENCY` (8) sets how many go at once (#99).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

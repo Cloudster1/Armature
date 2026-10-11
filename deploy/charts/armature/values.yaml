@@ -63,6 +63,9 @@ worker:
   # the literal "worker", so replicas are indistinguishable to the consumer
   # group. Making this scalable is a change to the product, not to the chart.
   replicas: 1
+  # How many webhook deliveries the one replica posts at once, at most two to
+  # any one endpoint, so one that hangs does not hold up the others.
+  webhookConcurrency: 8
   # Loops exit at their next poll boundary; the longest Redis block is 5s.
   terminationGracePeriodSeconds: 20
   resources:

@@ -130,3 +130,27 @@ func TestMailChecksCertificatesUnlessToldNotTo(t *testing.T) {
 		t.Error("ARMATURE_MAIL_INSECURE_TLS=true should turn the check off")
 	}
 }
+
+// Webhooks are posted side by side; how many at once is a setting with a
+// default, and a pool of none would never post anything, so it is refused.
+func TestWebhookConcurrencyHasADefaultAndIsNeverNone(t *testing.T) {
+	t.Setenv("ARMATURE_DB_PRIMARY_URL", "postgres://x")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Webhooks.Concurrency != DefaultWebhookConcurrency || DefaultWebhookConcurrency < 2 {
+		t.Errorf("concurrency = %d by default, want %d, and more than one", cfg.Webhooks.Concurrency, DefaultWebhookConcurrency)
+	}
+
+	t.Setenv("ARMATURE_WEBHOOK_CONCURRENCY", "3")
+	if cfg, err = Load(); err != nil || cfg.Webhooks.Concurrency != 3 {
+		t.Fatalf("concurrency = %d, %v, want 3", cfg.Webhooks.Concurrency, err)
+	}
+	for _, bad := range []string{"0", "-2", "lots"} {
+		t.Setenv("ARMATURE_WEBHOOK_CONCURRENCY", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ARMATURE_WEBHOOK_CONCURRENCY") {
+			t.Errorf("%q should be refused by name, got %v", bad, err)
+		}
+	}
+}

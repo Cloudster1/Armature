@@ -33,6 +33,7 @@ var discardsAllowed = map[string]string{
 	"privacy/retention.go (*Retention).prune":       "a scheduled sweep; no request waits on it",
 	"report/flow.go (*Service).WriteFlowSnapshot":   "the nightly worker; no request waits on it",
 	"sprint/snapshot.go (*Service).Snapshot":        "the nightly worker; no request waits on it",
+	"webhook/send.go (*Service).pause":              "the delivery worker; no request waits on it",
 
 	// Called by another machine, which reads nothing back through a session.
 	"automation/runner.go (*Service).Incoming":   "an incoming hook answers its caller and keeps no session",

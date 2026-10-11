@@ -5,7 +5,6 @@
 package webhook
 
 import (
-	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -13,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -24,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/netguard"
@@ -136,15 +135,27 @@ type Service struct {
 	client *http.Client
 	log    *slog.Logger
 	now    func() time.Time
+	// concurrency is how many deliveries one pass posts at once.
+	concurrency int
 }
 
 func NewService(cluster *db.Cluster, log *slog.Logger) *Service {
-	return &Service{db: cluster, client: netguard.Client(sendTimeout, netguard.FromEnv()), log: log, now: time.Now}
+	return &Service{
+		db: cluster, client: netguard.Client(sendTimeout, netguard.FromEnv()), log: log, now: time.Now,
+		concurrency: config.DefaultWebhookConcurrency,
+	}
 }
 
 // WithClient swaps the HTTP client, which a test does to point at itself.
 func (s *Service) WithClient(c *http.Client) *Service {
 	s.client = c
+	return s
+}
+
+// WithConcurrency sets how many deliveries are posted at once; the worker
+// passes ARMATURE_WEBHOOK_CONCURRENCY, which configuration keeps at one or more.
+func (s *Service) WithConcurrency(n int) *Service {
+	s.concurrency = max(n, 1)
 	return s
 }
 
@@ -355,19 +366,6 @@ type envelope struct {
 	Payload    json.RawMessage `json:"payload"`
 }
 
-// why says what went wrong in a word. The error itself names hosts and ports
-// this server can reach, which the log may say and a delivery row may not.
-func why(err error) string {
-	switch {
-	case errors.Is(err, netguard.ErrBlocked):
-		return "that address is not one this server may reach"
-	case errors.Is(err, context.DeadlineExceeded), strings.Contains(err.Error(), "timeout"):
-		return "the endpoint did not answer in time"
-	default:
-		return "the endpoint could not be reached"
-	}
-}
-
 // withoutSecrets drops what an event carries for a mail rather than for a
 // reader: an unwatch link's token is one, and an endpoint has no use for it.
 func withoutSecrets(payload json.RawMessage) json.RawMessage {
@@ -485,142 +483,6 @@ func (s *Service) Redeliver(ctx context.Context, deliveryID uuid.UUID) (*Deliver
 	}
 	sent, outcome, err := s.attempt(db.PinPrimary(ctx), made)
 	return sent, max(lsn, outcome), err
-}
-
-// sendBatch is how many due deliveries one pass reads; passes repeat until
-// the queue is empty, so a backlog is drained rather than nibbled.
-const sendBatch = 200
-
-// SendDue posts every delivery whose time has come, across organizations, and
-// returns how many were tried.
-func (s *Service) SendDue(ctx context.Context) (int, error) {
-	type due struct{ orgID, id uuid.UUID }
-	tried := 0
-	for {
-		var found []due
-		err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-			rows, err := tx.Query(ctx, `
-				SELECT org_id, id FROM webhook_delivery
-				WHERE delivered_at IS NULL AND next_attempt_at IS NOT NULL AND next_attempt_at <= now()
-				ORDER BY next_attempt_at LIMIT $1`, sendBatch)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var d due
-				if err := rows.Scan(&d.orgID, &d.id); err != nil {
-					return err
-				}
-				found = append(found, d)
-			}
-			return rows.Err()
-		})
-		if err != nil {
-			return tried, err
-		}
-		for _, d := range found {
-			if _, _, err := s.attempt(db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID})), d.id); err != nil {
-				s.log.Warn("webhook attempt failed", "delivery", d.id, "error", err)
-			}
-		}
-		tried += len(found)
-		if len(found) < sendBatch || ctx.Err() != nil {
-			return tried, nil
-		}
-	}
-}
-
-// attempt posts one logged delivery and records the outcome: delivered, or
-// failed with the next attempt scheduled, or given up.
-func (s *Service) attempt(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db.LSN, error) {
-	var (
-		url, secret, topic string
-		body               []byte
-		attempt            int
-		endpointID         uuid.UUID
-		eventID            uuid.UUID
-	)
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `
-			SELECT e.url, e.secret, d.topic, d.request_body, d.attempt, d.endpoint_id, d.event_id
-			FROM webhook_delivery d JOIN webhook_endpoint e ON e.id = d.endpoint_id
-			WHERE d.id = $1`, deliveryID).Scan(&url, &secret, &topic, &body, &attempt, &endpointID, &eventID)
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, 0, ErrNotFound
-	}
-	if err != nil {
-		return nil, 0, err
-	}
-
-	status, sendErr := s.post(ctx, url, secret, topic, deliveryID, body)
-	delivered := sendErr == nil && status >= 200 && status < 300
-	var next *time.Time
-	if !delivered && attempt < MaxAttempts {
-		at := s.now().Add(Backoff[min(attempt-1, len(Backoff)-1)])
-		next = &at
-	}
-	errText := ""
-	if sendErr != nil {
-		errText = why(sendErr)
-	} else if !delivered {
-		errText = fmt.Sprintf("the endpoint answered %d", status)
-	}
-	var statusPtr *int
-	if sendErr == nil {
-		statusPtr = &status
-	}
-
-	var out *Delivery
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if delivered {
-			_, err := tx.Exec(ctx, `UPDATE webhook_delivery SET status = $2, error = '', next_attempt_at = NULL, delivered_at = now() WHERE id = $1`, deliveryID, statusPtr)
-			if err != nil {
-				return err
-			}
-		} else {
-			if _, err := tx.Exec(ctx, `UPDATE webhook_delivery SET status = $2, error = $3, next_attempt_at = NULL WHERE id = $1`, deliveryID, statusPtr, errText); err != nil {
-				return err
-			}
-			if next != nil {
-				if _, err := tx.Exec(ctx, `
-					INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
-					VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)
-					ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`, endpointID, eventID, topic, attempt+1, body, *next); err != nil {
-					return err
-				}
-			}
-		}
-		var err error
-		out, err = scanDelivery(tx.QueryRow(ctx, selectDeliveries+` WHERE id = $1`, deliveryID))
-		return err
-	})
-	return out, lsn, err
-}
-
-// post sends one request and returns the status, or the error that stopped it.
-func (s *Service) post(ctx context.Context, url, secret, topic string, deliveryID uuid.UUID, body []byte) (int, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Armature-Webhook")
-	req.Header.Set("X-Armature-Event", topic)
-	req.Header.Set("X-Armature-Delivery", deliveryID.String())
-	// Signed as sent, so a retry or a redelivery carries its own time.
-	sent := s.now()
-	req.Header.Set(HeaderSignature, Sign(body, secret))
-	req.Header.Set(HeaderTimestamp, strconv.FormatInt(sent.Unix(), 10))
-	req.Header.Set(HeaderTimestampedSignature, SignTimestamped(body, secret, sent))
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxResponseBytes))
-	return resp.StatusCode, nil
 }
 
 func mustOrg(ctx context.Context) uuid.UUID {
