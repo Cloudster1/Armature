@@ -22,11 +22,12 @@ const ownerBackfillsRepair = "00926_backfills_reach_every_org.sql"
 // Files that read org without lifting its row security. A backfill is listed
 // with the migration that repaired it; a trigger body runs as the tenant.
 var readsOrgUnlifted = map[string]string{
-	"00005_issue_hierarchy.sql":   ownerBackfillsRepair,
-	"00007_workflow_scopes.sql":   "",
-	"00033_automation.sql":        ownerBackfillsRepair,
-	"00049_local_users.sql":       "",
-	"00909_holiday_calendars.sql": ownerBackfillsRepair,
+	"00005_issue_hierarchy.sql":              ownerBackfillsRepair,
+	"00007_workflow_scopes.sql":              "",
+	"00033_automation.sql":                   ownerBackfillsRepair,
+	"00049_local_users.sql":                  "",
+	"00909_holiday_calendars.sql":            ownerBackfillsRepair,
+	"00921_attachment_tombstone_trigger.sql": "",
 }
 
 // upSection is the migration's Up half with its comments taken out, the part

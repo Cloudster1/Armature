@@ -27,66 +27,8 @@ import (
 // before the backfills in it, and expects each to come out with what a new one
 // is made with.
 func TestMigrationsRunAsPlainOwner(t *testing.T) {
-	superURL := os.Getenv(envSuperuser)
-	if superURL == "" {
-		t.Skipf("%s is not set; run the integration suite with `make test-integration`", envSuperuser)
-	}
 	ctx := context.Background()
-
-	const (
-		dbName    = "armature_owner_migrate_test"
-		ownerRole = "armature_owner_test"
-		ownerPass = "owner-test"
-	)
-
-	super, err := pgx.Connect(ctx, superURL)
-	if err != nil {
-		t.Fatalf("connect superuser: %v", err)
-	}
-	defer super.Close(ctx)
-	mustExec := func(conn *pgx.Conn, stmts ...string) {
-		t.Helper()
-		for _, s := range stmts {
-			if _, err := conn.Exec(ctx, s); err != nil {
-				t.Fatalf("%s: %v", s, err)
-			}
-		}
-	}
-	// A previous run that died leaves its database behind; nothing else
-	// connects to it, so dropping it is safe.
-	mustExec(super,
-		"DROP DATABASE IF EXISTS "+dbName+" WITH (FORCE)",
-		"DROP ROLE IF EXISTS "+ownerRole,
-		fmt.Sprintf("CREATE ROLE %s LOGIN PASSWORD '%s' NOSUPERUSER NOBYPASSRLS", ownerRole, ownerPass),
-		"CREATE DATABASE "+dbName+" OWNER "+ownerRole,
-	)
-	defer mustExec(super, "DROP DATABASE IF EXISTS "+dbName+" WITH (FORCE)", "DROP ROLE IF EXISTS "+ownerRole)
-
-	// The runtime roles exist on the cluster, so the migrations take the
-	// branches that name them; the grants come from the default privileges
-	// the roles Job sets up.
-	superFresh, err := pgx.Connect(ctx, withDatabase(t, superURL, dbName, "", ""))
-	if err != nil {
-		t.Fatalf("connect superuser to %s: %v", dbName, err)
-	}
-	defer superFresh.Close(ctx)
-	mustExec(superFresh,
-		"GRANT CONNECT ON DATABASE "+dbName+" TO armature_app, armature_admin",
-		"GRANT USAGE ON SCHEMA public TO armature_app, armature_admin",
-		"ALTER DEFAULT PRIVILEGES FOR ROLE "+ownerRole+" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO armature_app, armature_admin",
-		"ALTER DEFAULT PRIVILEGES FOR ROLE "+ownerRole+" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO armature_app, armature_admin",
-		"ALTER DEFAULT PRIVILEGES FOR ROLE "+ownerRole+" IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO armature_app, armature_admin",
-	)
-
-	asOwner, err := sql.Open("pgx", withDatabase(t, superURL, dbName, ownerRole, ownerPass))
-	if err != nil {
-		t.Fatalf("open as owner: %v", err)
-	}
-	defer asOwner.Close()
-	provider, err := goose.NewProvider(goose.DialectPostgres, asOwner, migrations.FS)
-	if err != nil {
-		t.Fatalf("goose provider: %v", err)
-	}
+	provider, superFresh := ownerDatabase(t, "armature_owner_migrate_test", "armature_owner_test")
 
 	// One organization from before the Initiative type and the automation
 	// account, one from before roles were rows and calendars existed.
@@ -193,6 +135,70 @@ func expectBackfilled(ctx context.Context, t *testing.T, conn *pgx.Conn, slug st
 		t.Errorf("organization %s: automation account active=%v and a member %d times, want an inactive member once", slug, automationActive, members)
 	}
 	return *automation
+}
+
+// ownerDatabase makes a fresh database owned by a plain role, the way a
+// cluster has it, and hands back goose as that owner and a superuser on it.
+func ownerDatabase(t *testing.T, dbName, ownerRole string) (*goose.Provider, *pgx.Conn) {
+	t.Helper()
+	superURL := os.Getenv(envSuperuser)
+	if superURL == "" {
+		t.Skipf("%s is not set; run the integration suite with `make test-integration`", envSuperuser)
+	}
+	ctx := context.Background()
+	const ownerPass = "owner-test"
+
+	super, err := pgx.Connect(ctx, superURL)
+	if err != nil {
+		t.Fatalf("connect superuser: %v", err)
+	}
+	t.Cleanup(func() { _ = super.Close(ctx) })
+	mustExec := func(conn *pgx.Conn, stmts ...string) {
+		t.Helper()
+		for _, s := range stmts {
+			if _, err := conn.Exec(ctx, s); err != nil {
+				t.Fatalf("%s: %v", s, err)
+			}
+		}
+	}
+	// A previous run that died leaves its database behind; nothing else
+	// connects to it, so dropping it is safe.
+	mustExec(super,
+		"DROP DATABASE IF EXISTS "+dbName+" WITH (FORCE)",
+		"DROP ROLE IF EXISTS "+ownerRole,
+		fmt.Sprintf("CREATE ROLE %s LOGIN PASSWORD '%s' NOSUPERUSER NOBYPASSRLS", ownerRole, ownerPass),
+		"CREATE DATABASE "+dbName+" OWNER "+ownerRole,
+	)
+	t.Cleanup(func() {
+		mustExec(super, "DROP DATABASE IF EXISTS "+dbName+" WITH (FORCE)", "DROP ROLE IF EXISTS "+ownerRole)
+	})
+
+	// The runtime roles exist on the cluster, so the migrations take the
+	// branches that name them; the grants come from the default privileges
+	// the roles Job sets up.
+	superFresh, err := pgx.Connect(ctx, withDatabase(t, superURL, dbName, "", ""))
+	if err != nil {
+		t.Fatalf("connect superuser to %s: %v", dbName, err)
+	}
+	t.Cleanup(func() { _ = superFresh.Close(ctx) })
+	mustExec(superFresh,
+		"GRANT CONNECT ON DATABASE "+dbName+" TO armature_app, armature_admin",
+		"GRANT USAGE ON SCHEMA public TO armature_app, armature_admin",
+		"ALTER DEFAULT PRIVILEGES FOR ROLE "+ownerRole+" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO armature_app, armature_admin",
+		"ALTER DEFAULT PRIVILEGES FOR ROLE "+ownerRole+" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO armature_app, armature_admin",
+		"ALTER DEFAULT PRIVILEGES FOR ROLE "+ownerRole+" IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO armature_app, armature_admin",
+	)
+
+	asOwner, err := sql.Open("pgx", withDatabase(t, superURL, dbName, ownerRole, ownerPass))
+	if err != nil {
+		t.Fatalf("open as owner: %v", err)
+	}
+	t.Cleanup(func() { _ = asOwner.Close() })
+	provider, err := goose.NewProvider(goose.DialectPostgres, asOwner, migrations.FS)
+	if err != nil {
+		t.Fatalf("goose provider: %v", err)
+	}
+	return provider, superFresh
 }
 
 // withDatabase points a connection URL at another database, and at another
