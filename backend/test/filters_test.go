@@ -117,7 +117,7 @@ func TestBulkEditAndCSV(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "bulks")
 	labels := label.NewService(h.cluster)
-	edits := bulk.NewService(ws.issues, labels)
+	edits := bulk.NewService(h.cluster, ws.issues, labels)
 
 	a := ws.newIssue(t, "First")
 	b := ws.newIssue(t, "Second")
@@ -133,8 +133,8 @@ func TestBulkEditAndCSV(t *testing.T) {
 		t.Fatalf("bulk = %+v, want two applied and the third refused for its transition", result)
 	}
 	after, _ := ws.issues.ByKey(ws.ctx, c.Key)
-	if after.Priority != high || len(after.Labels) != 1 {
-		t.Errorf("the refused issue still took what came before the refusal: %+v", after)
+	if after.Priority == high || len(after.Labels) != 0 {
+		t.Errorf("the refused issue took what came before the refusal: priority %s, labels %+v", after.Priority, after.Labels)
 	}
 	if _, _, err := edits.Edit(ws.ctx, []string{a.Key}, bulk.Input{}, ws.actor); err == nil {
 		t.Error("an empty change was accepted")
@@ -147,7 +147,7 @@ func TestBulkEditAndCSV(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 4 || lines[0] != "key,summary,labels,priority" || !strings.Contains(lines[3], `"Third, already going",batch,high`) {
+	if len(lines) != 4 || lines[0] != "key,summary,labels,priority" || !strings.Contains(lines[3], `"Third, already going",,medium`) || !strings.Contains(out.String(), "First,batch,high") {
 		t.Fatalf("export = %q", out.String())
 	}
 	if _, err := files.Export(ws.ctx, &out, issue.Filter{}, []string{"colour"}); err == nil {

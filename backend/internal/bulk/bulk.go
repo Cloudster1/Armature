@@ -50,17 +50,17 @@ func (in Input) Empty() bool {
 }
 
 type Service struct {
+	db     *db.Cluster
 	issues *issue.Service
 	labels *label.Service
 }
 
-func NewService(issues *issue.Service, labels *label.Service) *Service {
-	return &Service{issues: issues, labels: labels}
+func NewService(cluster *db.Cluster, issues *issue.Service, labels *label.Service) *Service {
+	return &Service{db: cluster, issues: issues, labels: labels}
 }
 
-// Edit applies the input to each key in turn. Every issue is its own
-// transaction; the first thing that fails on an issue is its refusal. The
-// LSN is the latest write, so the caller's next read sees them all.
+// Edit applies the input to each key in its own transaction; the first step
+// that fails is the refusal. The LSN is the latest write, for the next read.
 func (s *Service) Edit(ctx context.Context, keys []string, in Input, actor issue.Actor) (*Result, db.LSN, error) {
 	if len(keys) == 0 {
 		return nil, 0, errors.New("choose at least one issue")
@@ -88,57 +88,66 @@ func (s *Service) Edit(ctx context.Context, keys []string, in Input, actor issue
 	return out, latest, nil
 }
 
+// one makes every change to one issue in one transaction, so a refusal at any
+// step leaves the issue, its history and its events as they were.
 func (s *Service) one(ctx context.Context, key string, in Input, actor issue.Actor) (db.LSN, error) {
-	var latest db.LSN
-	note := func(lsn db.LSN, err error) error {
-		latest = max(latest, lsn)
-		return err
-	}
-	if in.Priority != nil || in.Assignee != nil {
-		_, lsn, err := s.issues.Update(ctx, key, issue.UpdateInput{Priority: in.Priority, Assignee: in.Assignee}, actor)
-		if err := note(lsn, err); err != nil {
-			return latest, err
+	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var (
+			issueID uuid.UUID
+			changes []issue.Change
+		)
+		note := func(changed *issue.Issue, more []issue.Change, err error) error {
+			if err != nil {
+				return err
+			}
+			issueID = changed.ID
+			changes = append(changes, more...)
+			return nil
 		}
-	}
-	// The team goes before the sprint: a sprint takes only its own team's work,
-	// and a new team takes the issue out of the old team's sprint.
-	if in.TeamID != nil {
-		_, lsn, err := s.issues.SetTeam(ctx, key, *in.TeamID, actor)
-		if err := note(lsn, err); err != nil {
-			return latest, err
+		if in.Priority != nil || in.Assignee != nil {
+			if err := note(s.issues.UpdateIn(ctx, tx, key, issue.UpdateInput{Priority: in.Priority, Assignee: in.Assignee}, actor)); err != nil {
+				return err
+			}
 		}
-	}
-	if in.SprintID != nil {
-		_, lsn, err := s.issues.SetSprint(ctx, key, *in.SprintID, actor)
-		if err := note(lsn, err); err != nil {
-			return latest, err
+		// The team goes before the sprint: a sprint takes only its own team's work,
+		// and a new team takes the issue out of the old team's sprint.
+		if in.TeamID != nil {
+			if err := note(s.issues.SetTeamIn(ctx, tx, key, *in.TeamID)); err != nil {
+				return err
+			}
 		}
-	}
-	if in.MilestoneID != nil {
-		_, lsn, err := s.issues.SetMilestone(ctx, key, *in.MilestoneID, actor)
-		if err := note(lsn, err); err != nil {
-			return latest, err
+		if in.SprintID != nil {
+			if err := note(s.issues.SetSprintIn(ctx, tx, key, *in.SprintID)); err != nil {
+				return err
+			}
 		}
-	}
-	if len(in.AddLabels) > 0 {
-		current, err := s.issues.ByKey(ctx, key)
+		if in.MilestoneID != nil {
+			if err := note(s.issues.SetMilestoneIn(ctx, tx, key, *in.MilestoneID)); err != nil {
+				return err
+			}
+		}
+		if len(in.AddLabels) > 0 {
+			id, _, more, err := s.labels.AddIssueLabelsIn(ctx, tx, key, in.AddLabels)
+			if err != nil {
+				return err
+			}
+			issueID = id
+			changes = append(changes, more...)
+		}
+		if len(changes) > 0 {
+			// One entry and one event for all the fields, as one edit makes.
+			if err := issue.AnnounceUpdate(ctx, tx, issueID, canonical(key), actor, changes); err != nil {
+				return err
+			}
+		}
+
+		name := strings.TrimSpace(in.Transition)
+		if name == "" {
+			return nil
+		}
+		current, offered, err := s.issues.TransitionsIn(ctx, tx, key, actor)
 		if err != nil {
-			return latest, err
-		}
-		names := []string{}
-		for _, l := range current.Labels {
-			names = append(names, l.Name)
-		}
-		names = append(names, in.AddLabels...)
-		_, lsn, err := s.labels.SetIssueLabels(ctx, key, names, actor)
-		if err := note(lsn, err); err != nil {
-			return latest, err
-		}
-	}
-	if name := strings.TrimSpace(in.Transition); name != "" {
-		offered, err := s.issues.Transitions(ctx, key, actor)
-		if err != nil {
-			return latest, err
+			return err
 		}
 		var id uuid.UUID
 		for _, t := range offered {
@@ -147,18 +156,17 @@ func (s *Service) one(ctx context.Context, key string, in Input, actor issue.Act
 			}
 		}
 		if id == uuid.Nil {
-			current, err := s.issues.ByKey(ctx, key)
-			if err != nil {
-				return latest, err
-			}
-			return latest, fmt.Errorf("%q is not offered from %s", name, current.Status.Name)
+			return fmt.Errorf("%q is not offered from %s", name, current.Status.Name)
 		}
-		_, lsn, err := s.issues.Transition(ctx, key, issue.TransitionInput{TransitionID: id}, actor)
-		if err := note(lsn, err); err != nil {
-			return latest, err
-		}
-	}
-	return latest, nil
+		_, err = s.issues.TransitionIn(ctx, tx, key, issue.TransitionInput{TransitionID: id}, actor)
+		return err
+	})
+}
+
+// canonical spells a key the way events carry it; Edit has parsed it already.
+func canonical(key string) string {
+	projectKey, num, _ := issue.ParseKey(key)
+	return issue.FormatKey(projectKey, num)
 }
 
 func capitalize(s string) string {

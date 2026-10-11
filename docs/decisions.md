@@ -1037,6 +1037,11 @@ and files hang off the row. Every key it leaves is kept beside it, one row each
 and unique in the organization, so every address that was mailed around still
 finds it however often it moves again, and a reply by mail under one still
 lands on the request.
+done. Every step on that issue runs in its transaction, through the `In`
+variants of the single-issue methods, so a refused issue keeps nothing of the
+edit: no field, no history row, no event. Its fields are recorded and announced
+as one change, the way one edit is, and a transition after them as its own. A
+moved issue keeps its row and gets a new key, because history, comments
 and files hang off the row; the old key stays on the row so the address that was
 mailed around still finds it. Everything under it moves too, at every depth and
 parents first, in the same transaction. A descendant whose status its workflow

@@ -190,7 +190,7 @@ func run() error {
 		Filters:    filter.NewService(cluster),
 		Audit:      audit.NewService(cluster),
 		Calendar:   calendar.NewService(cluster),
-		Bulk:       bulk.NewService(issues, labels),
+		Bulk:       bulk.NewService(cluster, issues, labels),
 		CSV: csvio.NewService(cluster, issues, labels, field.NewService(cluster), accounts).
 			WithPlanning(sprints, version.NewService(cluster), component.NewService(cluster), team.NewService(cluster)),
 		Attachments:  attachments,

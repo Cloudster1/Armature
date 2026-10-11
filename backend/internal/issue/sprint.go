@@ -69,77 +69,72 @@ func commitTo(ctx context.Context, tx db.DBTX, projectID, sprintID uuid.UUID, te
 // piece of work decides which board it appears on and which backlog it sits in,
 // and it is refused for reasons an ordinary field edit never has.
 func (s *Service) SetTeam(ctx context.Context, key string, teamID *uuid.UUID, actor Actor) (*Issue, db.LSN, error) {
+	return s.writeAndAnnounce(ctx, key, actor, func(ctx context.Context, tx db.DBTX) (*Issue, []Change, error) {
+		return s.SetTeamIn(ctx, tx, key, teamID)
+	})
+}
+
+// SetTeamIn is SetTeam inside the caller's transaction, leaving the change for
+// the caller to record and announce.
+func (s *Service) SetTeamIn(ctx context.Context, tx db.DBTX, key string, teamID *uuid.UUID) (*Issue, []Change, error) {
 	projectKey, num, err := ParseKey(key)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
-
-	var updated *Issue
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		before, err := scanIssue(tx.QueryRow(ctx,
-			selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
-		if err != nil {
-			return err
-		}
-		if equalUUID(before.TeamID, teamID) {
-			updated = before
-			return nil
-		}
-
-		to := ""
-		if teamID != nil {
-			err := tx.QueryRow(ctx, `SELECT name FROM team WHERE id = $1 AND project_id = $2`,
-				*teamID, before.ProjectID).Scan(&to)
-			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrTeamNotFound
-			}
-			if err != nil {
-				return err
-			}
-		}
-
-		from := ""
-		if before.Team != nil {
-			from = before.Team.Name
-		}
-		changes := []Change{{Field: "team", From: from, To: to}}
-
-		// Another stream's open sprint is not the new team's plan, so the issue
-		// goes to its backlog. A closed sprint is history and keeps it.
-		sprintID := before.SprintID
-		if sprintID != nil {
-			row, err := sprintOf(ctx, tx, before.ProjectID, *sprintID)
-			if err != nil {
-				return err
-			}
-			if row.state != "closed" && !equalUUID(row.team, teamID) {
-				sprintID = nil
-				changes = append(changes, Change{Field: "sprint", From: row.name})
-			}
-		}
-
-		if _, err := tx.Exec(ctx, `UPDATE issue SET team_id = $2, sprint_id = $3 WHERE id = $1`,
-			before.ID, teamID, sprintID); isCheckViolation(err) {
-			return ErrTeamNotFound
-		} else if err != nil {
-			return fmt.Errorf("hand the issue to a team: %w", err)
-		}
-		if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
-			return err
-		}
-
-		updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
-		if err != nil {
-			return err
-		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
-			"issueId": updated.ID, "key": updated.Key, "changes": changes, "actorId": actor.UserID,
-		})
-	})
+	before, err := scanIssue(tx.QueryRow(ctx,
+		selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
-	return updated, lsn, nil
+	if equalUUID(before.TeamID, teamID) {
+		return before, nil, nil
+	}
+
+	to := ""
+	if teamID != nil {
+		err := tx.QueryRow(ctx, `SELECT name FROM team WHERE id = $1 AND project_id = $2`,
+			*teamID, before.ProjectID).Scan(&to)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil, ErrTeamNotFound
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	from := ""
+	if before.Team != nil {
+		from = before.Team.Name
+	}
+
+	changes := []Change{{Field: "team", From: from, To: to}}
+
+	// Another stream's open sprint is not the new team's plan, so the issue
+	// goes to its backlog. A closed sprint is history and keeps it.
+	sprintID := before.SprintID
+	if sprintID != nil {
+		row, err := sprintOf(ctx, tx, before.ProjectID, *sprintID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if row.state != "closed" && !equalUUID(row.team, teamID) {
+			sprintID = nil
+			changes = append(changes, Change{Field: "sprint", From: row.name})
+		}
+	}
+
+	if _, err := tx.Exec(ctx, `UPDATE issue SET team_id = $2, sprint_id = $3 WHERE id = $1`,
+		before.ID, teamID, sprintID); isCheckViolation(err) {
+		return nil, nil, ErrTeamNotFound
+	} else if err != nil {
+		return nil, nil, fmt.Errorf("hand the issue to a team: %w", err)
+	}
+
+	updated, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
+	if err != nil {
+		return nil, nil, err
+	}
+	return updated, changes, nil
 }
 
 // SetSprint commits an issue to a sprint, or sends it back to the backlog.
@@ -148,59 +143,51 @@ func (s *Service) SetTeam(ctx context.Context, key string, teamID *uuid.UUID, ac
 // reason scheduling is: moving work between sprints is a decision people make
 // on its own, and it is refused for reasons an ordinary field edit never has.
 func (s *Service) SetSprint(ctx context.Context, key string, sprintID *uuid.UUID, actor Actor) (*Issue, db.LSN, error) {
+	return s.writeAndAnnounce(ctx, key, actor, func(ctx context.Context, tx db.DBTX) (*Issue, []Change, error) {
+		return s.SetSprintIn(ctx, tx, key, sprintID)
+	})
+}
+
+// SetSprintIn is SetSprint inside the caller's transaction, leaving the change
+// for the caller to record and announce.
+func (s *Service) SetSprintIn(ctx context.Context, tx db.DBTX, key string, sprintID *uuid.UUID) (*Issue, []Change, error) {
 	projectKey, num, err := ParseKey(key)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
-
-	var updated *Issue
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		before, err := scanIssue(tx.QueryRow(ctx,
-			selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
-		if err != nil {
-			return err
-		}
-		if equalUUID(before.SprintID, sprintID) {
-			updated = before
-			return nil
-		}
-
-		to := ""
-		if sprintID != nil {
-			if to, err = commitTo(ctx, tx, before.ProjectID, *sprintID, before.TeamID); err != nil {
-				return err
-			}
-		}
-
-		from := ""
-		if before.Sprint != nil {
-			from = before.Sprint.Name
-		}
-
-		if _, err := tx.Exec(ctx, `UPDATE issue SET sprint_id = $2 WHERE id = $1`,
-			before.ID, sprintID); isCheckViolation(err) {
-			return ErrSprintNotFound
-		} else if err != nil {
-			return fmt.Errorf("move the issue between sprints: %w", err)
-		}
-
-		changes := []Change{{Field: "sprint", From: from, To: to}}
-		if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
-			return err
-		}
-
-		updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
-		if err != nil {
-			return err
-		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
-			"issueId": updated.ID, "key": updated.Key, "changes": changes, "actorId": actor.UserID,
-		})
-	})
+	before, err := scanIssue(tx.QueryRow(ctx,
+		selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
-	return updated, lsn, nil
+	if equalUUID(before.SprintID, sprintID) {
+		return before, nil, nil
+	}
+
+	to := ""
+	if sprintID != nil {
+		if to, err = commitTo(ctx, tx, before.ProjectID, *sprintID, before.TeamID); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	from := ""
+	if before.Sprint != nil {
+		from = before.Sprint.Name
+	}
+
+	if _, err := tx.Exec(ctx, `UPDATE issue SET sprint_id = $2 WHERE id = $1`,
+		before.ID, sprintID); isCheckViolation(err) {
+		return nil, nil, ErrSprintNotFound
+	} else if err != nil {
+		return nil, nil, fmt.Errorf("move the issue between sprints: %w", err)
+	}
+
+	updated, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
+	if err != nil {
+		return nil, nil, err
+	}
+	return updated, []Change{{Field: "sprint", From: from, To: to}}, nil
 }
 
 // SetEstimate sizes an issue, or clears the estimate. Clearing is not the same
