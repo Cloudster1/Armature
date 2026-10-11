@@ -5,6 +5,7 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -31,31 +32,49 @@ const (
 	hangTimeout = 300 * time.Millisecond
 )
 
-// hanging is an endpoint that never answers and counts how many requests it
-// holds at once.
+// hanging is an endpoint that never answers and counts how often it is tried.
 type hanging struct {
-	mu        sync.Mutex
-	now, most int
-	got       int
-	release   chan struct{}
+	mu      sync.Mutex
+	got     int
+	release chan struct{}
 }
 
 func (h *hanging) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h.mu.Lock()
 	h.got++
-	h.now++
-	h.most = max(h.most, h.now)
 	h.mu.Unlock()
-	defer func() {
-		h.mu.Lock()
-		h.now--
-		h.mu.Unlock()
-	}()
+	// The server only notices the client giving up once the body is read.
+	_, _ = io.Copy(io.Discard, req.Body)
 	select {
 	case <-h.release:
 	case <-req.Context().Done():
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// inFlight counts the requests sent to one host that have not come back yet,
+// counted where they leave so a handler slow to notice a timeout adds none.
+type inFlight struct {
+	base      http.RoundTripper
+	host      string
+	mu        sync.Mutex
+	now, most int
+}
+
+func (c *inFlight) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL.Host != c.host {
+		return c.base.RoundTrip(req)
+	}
+	c.mu.Lock()
+	c.now++
+	c.most = max(c.most, c.now)
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		c.now--
+		c.mu.Unlock()
+	}()
+	return c.base.RoundTrip(req)
 }
 
 // One organization's hanging endpoint does not hold up another's, holds only a
@@ -65,12 +84,12 @@ func TestAHangingWebhookDoesNotHoldUpAnotherOrganization(t *testing.T) {
 	slowOrg := h.newWorkspace(t, "hanghook")
 	fastOrg := h.newWorkspace(t, "fasthook")
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	hooks := webhook.NewService(h.cluster, log).WithClient(&http.Client{Timeout: hangTimeout})
-
 	stuck := &hanging{release: make(chan struct{})}
 	slowServer := httptest.NewServer(stuck)
 	t.Cleanup(slowServer.Close)
 	t.Cleanup(func() { close(stuck.release) })
+	held := &inFlight{base: http.DefaultTransport, host: slowServer.Listener.Addr().String()}
+	hooks := webhook.NewService(h.cluster, log).WithClient(&http.Client{Timeout: hangTimeout, Transport: held})
 	sink := &receiver{status: http.StatusOK}
 	fastServer := httptest.NewServer(sink)
 	t.Cleanup(fastServer.Close)
@@ -131,8 +150,11 @@ func TestAHangingWebhookDoesNotHoldUpAnotherOrganization(t *testing.T) {
 		t.Fatalf("send due: %v", err)
 	}
 	stuck.mu.Lock()
-	got, most := stuck.got, stuck.most
+	got := stuck.got
 	stuck.mu.Unlock()
+	held.mu.Lock()
+	most := held.most
+	held.mu.Unlock()
 	if most > webhook.MaxInFlightPerEndpoint {
 		t.Errorf("the hanging endpoint held %d requests at once, want at most %d", most, webhook.MaxInFlightPerEndpoint)
 	}
