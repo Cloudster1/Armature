@@ -197,8 +197,8 @@ at length, because each is a way to get it wrong:
   so. The chart takes one value per role name for that reason.
 - **The worker runs once.** `worker.replicas` may only be 1 and the chart
   refuses anything else. There is no leader election, the Redis consumers all
-  identify themselves as the literal `worker`, and the hourly digest remembers
-  what it has sent in an in-process map.
+  identify themselves as the literal `worker`. The digest alone would cope with
+  two: what it has sent is kept per organization and person in the database.
 
 `make helm-lint` lints both values files and `make helm-check` fails if the
 rendered manifests differ from the golden files committed under `tests/`, which

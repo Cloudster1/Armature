@@ -3,7 +3,6 @@
 package test
 
 import (
-	"bytes"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,51 +12,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/bootstrap"
-	"github.com/armature/armature/backend/internal/git"
 )
 
-// Every operation, once, the way a client would use it. The contract in
-// contract_test.go checks each answer against the document and counts it;
-// the coverage test at the end refuses a surface with holes. The assertions
-// here are about the shape of a working day, not the fine print, which the
-// tests per area cover.
-
-// obj digs a nested object out of a decoded body.
-func obj(t *testing.T, r response, keys ...string) map[string]any {
-	t.Helper()
-	v := principalField(t, r, keys...)
-	m, ok := v.(map[string]any)
-	if !ok {
-		t.Fatalf("expected an object at %v, got %T in %s", keys, v, r.Raw)
-	}
-	return m
-}
-
-// list digs a list out of a decoded body.
-func list(t *testing.T, r response, keys ...string) []any {
-	t.Helper()
-	v := principalField(t, r, keys...)
-	l, ok := v.([]any)
-	if !ok {
-		t.Fatalf("expected a list at %v, got %T in %s", keys, v, r.Raw)
-	}
-	return l
-}
-
-// want fails unless the response has the status, and returns it for chaining.
-func want(t *testing.T, r response, status int, what string) response {
-	t.Helper()
-	if r.Status != status {
-		t.Fatalf("%s: got %d, want %d: %s", what, r.Status, status, r.Raw)
-	}
-	return r
-}
-
-func idOf(t *testing.T, r response, keys ...string) string {
-	t.Helper()
-	return obj(t, r, keys...)["id"].(string)
-}
-
+// Every operation, once, the way a client would use it; contract_test.go
+// checks and counts each answer, and the coverage test refuses a surface with holes.
 func TestEveryEndpointOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -100,43 +58,7 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	want(t, c.post("/api/v1/projects/SPR/restore", nil), http.StatusNoContent, "restore project")
 
 	// Workflows and schemes.
-	want(t, c.get("/api/v1/workflows/rule-types"), http.StatusOK, "rule types")
-	want(t, c.post("/api/v1/statuses", map[string]any{"name": "Reviewing", "category": "in_progress"}), http.StatusCreated, "coin status")
-	want(t, c.post("/api/v1/statuses", map[string]any{"name": "reviewing", "category": "todo"}), http.StatusBadRequest, "coin status twice")
-	workflows := list(t, want(t, c.get("/api/v1/workflows"), http.StatusOK, "workflows"), "workflows")
-	workflowID := workflows[0].(map[string]any)["id"].(string)
-	got := want(t, c.get("/api/v1/workflows/"+workflowID), http.StatusOK, "get workflow")
-	graph := graphOf(t, got)
-	graph["name"] = "Copied by hand"
-	copied := want(t, c.post("/api/v1/workflows/"+workflowID+"/copy", map[string]any{"name": "Everything copy"}), http.StatusCreated, "copy workflow")
-	copyID := idOf(t, copied, "workflow")
-	want(t, c.put("/api/v1/workflows/"+copyID, graph), http.StatusOK, "save workflow")
-	graph["name"] = "Authored by hand"
-	authored := want(t, c.post("/api/v1/workflows", graph), http.StatusCreated, "author workflow")
-	authoredID := idOf(t, authored, "workflow")
-
-	schemes := list(t, want(t, c.get("/api/v1/workflow-schemes"), http.StatusOK, "schemes"), "schemes")
-	var defaultSchemeID string
-	for _, raw := range schemes {
-		if s := raw.(map[string]any); s["isDefault"] == true {
-			defaultSchemeID = s["id"].(string)
-		}
-	}
-	scheme := want(t, c.post("/api/v1/workflow-schemes", map[string]any{
-		"name": "Everything scheme", "items": []map[string]any{{"workflowId": copyID}},
-	}), http.StatusCreated, "create scheme")
-	schemeID := idOf(t, scheme, "scheme")
-	want(t, c.put("/api/v1/workflow-schemes/"+schemeID, map[string]any{
-		"name": "Everything scheme", "items": []map[string]any{{"workflowId": copyID}, {"issueTypeId": typeID[bootstrap.TypeBug], "workflowId": authoredID}},
-	}), http.StatusOK, "save scheme")
-	want(t, c.put("/api/v1/projects/EVR/workflow-scheme", map[string]any{"schemeId": schemeID}), http.StatusOK, "override scheme")
-	want(t, c.get("/api/v1/projects/EVR/workflows"), http.StatusOK, "project workflows")
-	want(t, c.put("/api/v1/projects/EVR/workflow-scheme", map[string]any{"schemeId": nil}), http.StatusOK, "hand the scheme back")
-	want(t, c.put("/api/v1/workflow-schemes/"+schemeID+"/default", nil), http.StatusNoContent, "make default")
-	want(t, c.put("/api/v1/workflow-schemes/"+defaultSchemeID+"/default", nil), http.StatusNoContent, "restore default")
-	want(t, c.delete("/api/v1/workflow-schemes/"+schemeID), http.StatusNoContent, "delete scheme")
-	want(t, c.delete("/api/v1/workflows/"+copyID), http.StatusNoContent, "delete copied workflow")
-	want(t, c.delete("/api/v1/workflows/"+authoredID), http.StatusNoContent, "delete authored workflow")
+	walkWorkflows(t, c, typeID)
 
 	// Issues and the hierarchy.
 	epic := want(t, c.post("/api/v1/projects/EVR/issues", map[string]any{"summary": "the epic", "typeId": typeID[bootstrap.TypeEpic]}), http.StatusCreated, "epic")
@@ -200,7 +122,8 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	sprintID := idOf(t, sprint, "sprint")
 	want(t, c.patch("/api/v1/sprints/"+sprintID, map[string]any{"name": "Sprint 1", "goal": "ship", "capacity": 20}), http.StatusOK, "edit sprint")
 	want(t, c.put("/api/v1/issues/"+storyKey+"/sprint", map[string]any{"sprintId": sprintID}), http.StatusOK, "commit to sprint")
-	want(t, c.post("/api/v1/projects/EVR/issues", map[string]any{"summary": "filed straight into the sprint", "sprintId": sprintID, "estimate": 2}), http.StatusCreated, "file into sprint")
+	filed := want(t, c.post("/api/v1/projects/EVR/issues", map[string]any{"summary": "filed straight into the sprint", "teamId": teamID, "sprintId": sprintID, "estimate": 2}), http.StatusCreated, "file into sprint")
+	filedKey := obj(t, filed, "issue")["key"].(string)
 	want(t, c.get("/api/v1/projects/EVR/sprints?team="+teamID), http.StatusOK, "sprints")
 	want(t, c.get("/api/v1/sprints/"+sprintID+"/board"), http.StatusOK, "sprint board")
 	want(t, c.post("/api/v1/sprints/"+sprintID+"/start", nil), http.StatusOK, "start sprint")
@@ -221,104 +144,13 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	want(t, c.delete("/api/v1/milestones/"+milestoneID), http.StatusNoContent, "delete milestone")
 
 	// Boards.
-	want(t, c.get("/api/v1/projects/EVR/board"), http.StatusOK, "opening board")
-	want(t, c.patch("/api/v1/projects/EVR/board", map[string]any{"groupBy": "assignee"}), http.StatusNoContent, "group board")
-	boards := list(t, want(t, c.get("/api/v1/projects/EVR/boards"), http.StatusOK, "boards"), "boards")
-	extra := want(t, c.post("/api/v1/projects/EVR/boards", map[string]any{"name": "Everything kanban", "type": "kanban"}), http.StatusCreated, "add board")
-	extraID := idOf(t, extra, "board")
-	want(t, c.get("/api/v1/boards/"+extraID), http.StatusOK, "get board")
-	want(t, c.patch("/api/v1/boards/"+extraID, map[string]any{"name": "Everything kanban", "description": "all cards"}), http.StatusOK, "edit board")
-	want(t, c.get("/api/v1/boards/"+extraID+"/backlog"), http.StatusOK, "backlog")
-	// Every status already has a swimlane on a fresh board, so the new one
-	// starts empty and is a place to drag states into later.
-	lane := want(t, c.post("/api/v1/projects/EVR/board/swimlanes", map[string]any{"name": "Parked"}), http.StatusCreated, "add swimlane")
-	laneID := idOf(t, lane, "swimlane")
-	want(t, c.patch("/api/v1/projects/EVR/board/swimlanes/"+laneID, map[string]any{"name": "Parked for now"}), http.StatusNoContent, "edit swimlane")
-	openingLanes := list(t, c.get("/api/v1/projects/EVR/board"), "board", "swimlanes")
-	order := []any{}
-	for _, raw := range openingLanes {
-		order = append(order, raw.(map[string]any)["id"])
-	}
-	want(t, c.put("/api/v1/projects/EVR/board/swimlanes", map[string]any{"order": order}), http.StatusNoContent, "reorder swimlanes")
-	var inProgress any
-	for _, raw := range openingLanes {
-		if lane := raw.(map[string]any); strings.Contains(lane["name"].(string), "Progress") {
-			inProgress = lane["id"]
-		}
-	}
-	want(t, c.post("/api/v1/projects/EVR/board/move", map[string]any{"issueKey": storyKey, "swimlaneId": inProgress}), http.StatusOK, "move card")
-	want(t, c.delete("/api/v1/projects/EVR/board/swimlanes/"+laneID), http.StatusNoContent, "delete swimlane")
-	want(t, c.delete("/api/v1/boards/"+extraID), http.StatusNoContent, "delete board")
-	_ = boards
+	walkBoards(t, c, storyKey)
 
 	// Dashboards.
-	want(t, c.get("/api/v1/projects/EVR/dashboards"), http.StatusOK, "dashboards")
-	dashboard := want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "Second"}), http.StatusCreated, "add dashboard")
-	dashboardID := idOf(t, dashboard, "dashboard")
-	want(t, c.get("/api/v1/dashboard-templates?project=EVR"), http.StatusOK, "dashboard templates")
-	want(t, c.get("/api/v1/dashboard-templates?project=NOPE"), http.StatusNotFound, "templates for a project that is not there")
-	template := want(t, c.post("/api/v1/dashboards/"+dashboardID+"/template", map[string]any{"name": "Mondays", "description": "What we look at."}), http.StatusCreated, "save a template")
-	templateID := idOf(t, template, "template")
-	want(t, c.post("/api/v1/dashboards/"+dashboardID+"/template", map[string]any{"name": "Mondays"}), http.StatusConflict, "the same template name again")
-	fromTemplate := want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "From a template", "template": templateID}), http.StatusCreated, "a dashboard from a template")
-	want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "From nothing", "template": "nope"}), http.StatusBadRequest, "a template nobody has")
-	aimedAt := idOf(t, want(t, c.post("/api/v1/projects/EVR/milestones", map[string]any{"name": "Release 2"}), http.StatusCreated, "a milestone to aim a dashboard at"), "milestone")
-	forMilestone := want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "Release 2 dashboard", "template": "milestone", "milestoneId": aimedAt}), http.StatusCreated, "a milestone's dashboard")
-	want(t, c.delete("/api/v1/dashboards/"+idOf(t, forMilestone, "dashboard")), http.StatusNoContent, "delete the milestone's dashboard")
-	want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "Nobody's", "template": "milestone", "milestoneId": uuid.New().String()}), http.StatusNotFound, "a milestone that is not there")
-	want(t, c.delete("/api/v1/dashboards/"+idOf(t, fromTemplate, "dashboard")), http.StatusNoContent, "delete the templated dashboard")
-	want(t, c.delete("/api/v1/dashboard-templates/"+templateID), http.StatusNoContent, "delete the template")
-	want(t, c.delete("/api/v1/dashboard-templates/"+templateID), http.StatusNotFound, "delete it again")
-	want(t, c.patch("/api/v1/dashboards/"+dashboardID, map[string]any{"name": "Second look"}), http.StatusNoContent, "rename dashboard")
-	want(t, c.get("/api/v1/projects/EVR/report-kinds"), http.StatusOK, "report kinds")
-	for _, kind := range []string{"status_breakdown", "throughput", "workload", "team_workload", "cycle_time", "epics", "sprint", "velocity", "burndown", "sprint_history", "priority_breakdown", "type_breakdown"} {
-		want(t, c.get("/api/v1/projects/EVR/reports/"+kind+"?days=30"), http.StatusOK, "report "+kind)
-	}
-	want(t, c.get("/api/v1/projects/EVR/reports/burndown?sprint="+sprintID), http.StatusOK, "one sprint's burndown")
-	want(t, c.get("/api/v1/projects/EVR/reports/chart?groupBy=type&shape=bar"), http.StatusOK, "a chart")
-	want(t, c.get("/api/v1/projects/EVR/reports/milestones"), http.StatusOK, "the milestones widget")
-	want(t, c.get("/api/v1/projects/EVR/reports/milestones?milestone="+milestoneID), http.StatusOK, "one milestone's progress")
-	want(t, c.get("/api/v1/projects/EVR/reports/milestones?milestone=nope"), http.StatusBadRequest, "a milestone id that is not one")
-	chart := want(t, c.post("/api/v1/dashboards/"+dashboardID+"/widgets", map[string]any{"kind": "chart", "config": map[string]any{"groupBy": "type", "shape": "donut"}}), http.StatusCreated, "add a chart")
-	want(t, c.delete("/api/v1/widgets/"+idOf(t, chart, "widget")), http.StatusNoContent, "remove the chart")
-	filter := want(t, c.post("/api/v1/dashboards/"+dashboardID+"/widgets", map[string]any{"kind": "filter", "config": map[string]any{"filter": map[string]any{"types": []string{"Bug"}}}}), http.StatusCreated, "add the filter tile")
-	want(t, c.delete("/api/v1/widgets/"+idOf(t, filter, "widget")), http.StatusNoContent, "remove the filter tile")
-	widget := want(t, c.post("/api/v1/dashboards/"+dashboardID+"/widgets", map[string]any{"kind": "cycle_time"}), http.StatusCreated, "add widget")
-	widgetID := idOf(t, widget, "widget")
-	want(t, c.patch("/api/v1/widgets/"+widgetID, map[string]any{"kind": "cycle_time", "width": 2, "config": map[string]any{"days": 60}}), http.StatusOK, "edit widget")
-	want(t, c.put("/api/v1/dashboards/"+dashboardID+"/widgets", map[string]any{"order": []any{widgetID}}), http.StatusNoContent, "reorder widgets")
-	want(t, c.delete("/api/v1/widgets/"+widgetID), http.StatusNoContent, "remove widget")
-	want(t, c.delete("/api/v1/dashboards/"+dashboardID), http.StatusNoContent, "delete dashboard")
+	walkDashboards(t, c, sprintID, milestoneID)
 
-	// Custom fields.
-	want(t, c.get("/api/v1/field-kinds"), http.StatusOK, "field kinds")
-	field := want(t, c.post("/api/v1/projects/EVR/fields", map[string]any{"name": "Customer", "kind": "select", "options": []string{"Acme", "Globex"}}), http.StatusCreated, "define field")
-	fieldID := idOf(t, field, "field")
-	want(t, c.get("/api/v1/projects/EVR/fields"), http.StatusOK, "fields")
-	want(t, c.patch("/api/v1/fields/"+fieldID, map[string]any{"options": []string{"Acme", "Globex", "Initech"}}), http.StatusOK, "edit field")
-	want(t, c.put("/api/v1/issues/"+taskKey+"/fields/"+fieldID, map[string]any{"value": "Globex"}), http.StatusOK, "answer field")
-	want(t, c.get("/api/v1/issues/"+taskKey+"/fields"), http.StatusOK, "issue fields")
-	want(t, c.delete("/api/v1/fields/"+fieldID), http.StatusNoContent, "delete field")
-
-	// Groups, roles, invitations and tokens.
-	group := want(t, c.post("/api/v1/groups", map[string]any{"name": "Platform people"}), http.StatusCreated, "group")
-	groupID := idOf(t, group, "group")
-	want(t, c.get("/api/v1/groups"), http.StatusOK, "groups")
-	want(t, c.post("/api/v1/groups/"+groupID+"/members", map[string]any{"userId": myID}), http.StatusOK, "join group")
-	want(t, c.get("/api/v1/groups/"+groupID), http.StatusOK, "get group")
-	grant := want(t, c.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": "EVR", "groupId": groupID}), http.StatusCreated, "grant")
-	want(t, c.get("/api/v1/role-assignments?project=EVR"), http.StatusOK, "assignments")
-	want(t, c.delete("/api/v1/role-assignments/"+idOf(t, grant, "assignment")), http.StatusNoContent, "revoke")
-	want(t, c.delete("/api/v1/groups/"+groupID+"/members/"+myID), http.StatusOK, "leave group")
-	want(t, c.delete("/api/v1/groups/"+groupID), http.StatusNoContent, "delete group")
-
-	token := want(t, c.post("/api/v1/tokens", map[string]any{"name": "script"}), http.StatusCreated, "token")
-	secret := obj(t, token, "token")["secret"].(string)
-	want(t, c.get("/api/v1/tokens"), http.StatusOK, "tokens")
-	bearer := api.client(t)
-	bearer.bearer = secret
-	want(t, bearer.get("/api/v1/auth/me"), http.StatusOK, "me by token")
-	want(t, c.delete("/api/v1/tokens/"+idOf(t, token, "token")), http.StatusNoContent, "revoke token")
+	// Custom fields, groups, roles and tokens.
+	walkFieldsGroupsAndTokens(t, api, c, taskKey, myID)
 
 	// Somebody else joins: by invitation, from an account of their own, and
 	// can then switch between the two organizations.
@@ -336,27 +168,7 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	want(t, other.post("/api/v1/auth/logout", nil), http.StatusNoContent, "logout")
 
 	// Repositories, the webhook, and the branch made on the host.
-	stub := newStubHost(t)
-	repo := want(t, c.post("/api/v1/projects/EVR/repositories", map[string]any{
-		"host": "github", "name": "acme/everything", "apiBaseUrl": stub.URL, "accessToken": "ghp_test",
-	}), http.StatusCreated, "connect repository")
-	repoID := idOf(t, repo, "repository")
-	webhookSecret := obj(t, repo, "repository")["webhookSecret"].(string)
-	want(t, c.get("/api/v1/projects/EVR/repositories"), http.StatusOK, "repositories")
-	want(t, c.patch("/api/v1/repositories/"+repoID, map[string]any{"host": "github", "name": "acme/everything", "defaultBranch": "trunk"}), http.StatusOK, "edit repository")
-	body := push("trunk", "ab100002", storyKey+" wires it up", "nobody@example.test")
-	req, _ := http.NewRequest(http.MethodPost, api.URL+"/api/v1/git/webhooks/"+repoID, bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-GitHub-Event", "push")
-	req.Header.Set("X-Hub-Signature-256", git.SignGitHub([]byte(body), webhookSecret))
-	if resp, raw := c.raw(req); resp.StatusCode != http.StatusOK {
-		t.Fatalf("webhook: %d %s", resp.StatusCode, raw)
-	}
-	want(t, c.get("/api/v1/issues/"+storyKey+"/development"), http.StatusOK, "development")
-	want(t, c.post("/api/v1/issues/"+storyKey+"/branches", map[string]any{"repositoryId": repoID}), http.StatusCreated, "branch")
-	rotated := want(t, c.post("/api/v1/repositories/"+repoID+"/rotate-secret", nil), http.StatusOK, "rotate secret")
-	_ = rotated
-	want(t, c.delete("/api/v1/repositories/"+repoID), http.StatusNoContent, "disconnect")
+	walkRepositories(t, api, c, storyKey)
 
 	// The identity provider: configured, started, and the browser sent back.
 	provider := newIDP(t)
@@ -385,13 +197,17 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	// Team clean-up: a team carrying work or a board cannot go, so first the
 	// work is taken back and the board removed.
 	want(t, c.put("/api/v1/issues/"+storyKey+"/team", map[string]any{"teamId": nil}), http.StatusOK, "take work back")
+	want(t, c.put("/api/v1/issues/"+filedKey+"/team", map[string]any{"teamId": nil}), http.StatusOK, "take the filed work back")
 	for _, raw := range list(t, c.get("/api/v1/projects/EVR/boards"), "boards") {
 		if b := raw.(map[string]any); b["teamId"] == teamID {
 			want(t, c.delete("/api/v1/boards/"+b["id"].(string)), http.StatusNoContent, "delete team board")
 		}
 	}
 	want(t, c.delete("/api/v1/teams/"+teamID+"/members/"+myID), http.StatusOK, "leave team")
-	want(t, c.delete("/api/v1/teams/"+teamID), http.StatusNoContent, "delete team")
+	// Platform has run a sprint, which keeps it; a team that never did can go.
+	want(t, c.delete("/api/v1/teams/"+teamID), http.StatusConflict, "delete a team that has run a sprint")
+	shortLived := want(t, c.post("/api/v1/projects/EVR/teams", map[string]any{"name": "Short lived"}), http.StatusCreated, "short-lived team")
+	want(t, c.delete("/api/v1/teams/"+idOf(t, shortLived, "team")), http.StatusNoContent, "delete team")
 
 	// And the issue itself, which only an administrator may do.
 	want(t, c.delete("/api/v1/issues/"+taskKey), http.StatusNoContent, "delete issue")
