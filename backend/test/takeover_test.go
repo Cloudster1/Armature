@@ -225,7 +225,7 @@ func TestASingleSignOnReachesItsProviderAndItsOwn(t *testing.T) {
 		t.Fatalf("a provider's sign-in could not come home from its own organization: %v", err)
 	}
 
-	_, token, err := accounts.CreateInvite(elsewhere.ctx, email, auth.RoleMember, elsewhere.actor.UserID, time.Hour)
+	_, token, _, err := accounts.CreateInvite(elsewhere.ctx, email, auth.RoleMember, elsewhere.actor.UserID, time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
