@@ -70,6 +70,15 @@ func (s *Server) handleListIssues(w http.ResponseWriter, r *http.Request) {
 		}
 		filter.MilestoneID = &id
 	}
+	var err error
+	if filter.SprintID, filter.NoSprint, err = idOrNone(query.Get("sprint"), "sprint"); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if filter.TeamID, filter.NoTeam, err = idOrNone(query.Get("team"), "team"); err != nil {
+		respondError(w, r, err)
+		return
+	}
 	for _, raw := range query["label"] {
 		id, err := uuid.Parse(raw)
 		if err != nil {
@@ -175,3 +184,19 @@ func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
 // suggestLimit is how many words and how many issues the bar offers: enough
 // to pick from, few enough to read at a glance.
 const suggestLimit = 6
+
+// idOrNone reads a parameter that names one sprint or team by id, or "none"
+// for the work that has none. Absent is neither, and narrows nothing.
+func idOrNone(raw, what string) (*uuid.UUID, bool, error) {
+	switch raw {
+	case "":
+		return nil, false, nil
+	case "none":
+		return nil, true, nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return nil, false, ErrBadRequest("Invalid " + what + ": " + raw + ". Give the " + what + "'s id, or none.")
+	}
+	return &id, false, nil
+}

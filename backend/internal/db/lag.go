@@ -39,7 +39,11 @@ func (w *lagWindow) add(lag time.Duration) time.Duration {
 }
 
 func newReplicaState(name string, pool *pgxpool.Pool, lagSamples int) *replicaState {
-	return &replicaState{name: name, pool: pool, lags: newLagWindow(lagSamples)}
+	r := &replicaState{name: name, lags: newLagWindow(lagSamples)}
+	if pool != nil {
+		r.pool.Store(pool)
+	}
+	return r
 }
 
 // judge decides from one health reading whether a replica takes reads. Lag is

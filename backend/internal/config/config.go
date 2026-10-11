@@ -30,9 +30,21 @@ type Config struct {
 
 	// Retention is how long each kind of personal data is kept past its use.
 	Retention Retention
+	// Webhooks is how the worker posts deliveries.
+	Webhooks Webhooks
 
 	LogLevel string
 }
+
+// Webhooks bounds the pool deliveries are posted through.
+type Webhooks struct {
+	// Concurrency is how many deliveries are posted at once, across endpoints.
+	Concurrency int
+}
+
+// DefaultWebhookConcurrency is the pool's size unless ARMATURE_WEBHOOK_CONCURRENCY
+// says otherwise: enough that a few hanging endpoints leave room for the rest.
+const DefaultWebhookConcurrency = 8
 
 // Telemetry is the metrics listener and the trace collector. Both are off when
 // their address is blank, and a blank set on purpose is honoured.
@@ -248,11 +260,17 @@ func Load() (Config, error) {
 			Signup:             env("ARMATURE_SIGNUP", "open"),
 			OIDCRedirectURL:    env("ARMATURE_OIDC_REDIRECT_URL", DevOIDCRedirectURL),
 		},
+		Webhooks: Webhooks{
+			Concurrency: envCount("ARMATURE_WEBHOOK_CONCURRENCY", DefaultWebhookConcurrency),
+		},
 	}
 
 	var problems []string
 	if c.DB.PrimaryURL == "" {
 		problems = append(problems, "ARMATURE_DB_PRIMARY_URL is required")
+	}
+	if c.Webhooks.Concurrency < 1 {
+		problems = append(problems, fmt.Sprintf("ARMATURE_WEBHOOK_CONCURRENCY must be a whole number of at least 1, such as %d", DefaultWebhookConcurrency))
 	}
 	if c.Attachments.MaxBytes <= 0 {
 		problems = append(problems, "ARMATURE_UPLOAD_LIMIT must be a size such as 50MB")
@@ -341,6 +359,20 @@ func envInt(key string, def int) int {
 		}
 	}
 	return def
+}
+
+// envCount is envInt for a setting where a typo must not pass for the default:
+// a value it cannot read comes back as 0, which validation refuses by name.
+func envCount(key string, def int) int {
+	v, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(v) == "" {
+		return def
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 // envSize reads a size such as 50MB, 2G or 1048576. A value it cannot read is

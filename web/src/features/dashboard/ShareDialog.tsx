@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useCreateShare, useRevokeShare, useShares, type Share } from "@/api/shares";
 import { Button, Dialog, ErrorBanner, Field, IconButton, Input, Table, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { useFormat } from "@/lib/format";
+import { endOfDayIn, useFormat } from "@/lib/format";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /**
@@ -25,7 +25,7 @@ export function ShareDialog({ dashboardId, dashboardName, query, open, onClose }
     event.preventDefault();
     if (!name.trim()) return;
     create.mutate(
-      { dashboardId, name: name.trim(), query, expiresAt: expiresOn ? `${expiresOn}T23:59:59Z` : undefined },
+      { dashboardId, name: name.trim(), query, expiresAt: expiresOn ? endOfDayIn(expiresOn, format.timezone) : undefined },
       {
         onSuccess: (answer) => {
           setMade(answer);

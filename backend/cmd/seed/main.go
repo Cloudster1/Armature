@@ -259,7 +259,7 @@ func seedMembers(ctx context.Context, svc *auth.Service, creds *auth.Credentials
 	// Both the invitation and its acceptance upsert, so re-running this simply
 	// confirms the memberships that are already there.
 	for _, u := range teammates {
-		_, token, err := svc.CreateInvite(orgCtx, u.email, u.role, creds.Principal.User.ID, 30*24*time.Hour)
+		_, token, _, err := svc.CreateInvite(orgCtx, u.email, u.role, creds.Principal.User.ID, 30*24*time.Hour)
 		if errors.Is(err, auth.ErrAlreadyMember) {
 			continue
 		}
