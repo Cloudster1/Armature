@@ -1508,6 +1508,13 @@ row was new. A preference is therefore a filter on delivery and never on what
 happened, and a digest is the same rows read later. The desk keeps its own
 notifier for customers, whose mails are worded for people without an account.
 
+A digest is one mail per person and organization, since each organization has
+its own schedule and its own queue. When each one last went is a row in the
+database, not memory in the worker: a restart neither resends nor forgets, and
+the row is claimed in the transaction that sends, so two workers mail it once.
+A daily digest goes at the first pass from 08:00 on that has not sent it that
+day, so a pass that misses the hour sends it late instead of skipping a day.
+
 ### A webhook is an endpoint, and a rule may aim at one
 
 An endpoint is the object: an address, a secret, the topics it subscribes to,

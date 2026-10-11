@@ -54,6 +54,7 @@ installation does.
 | Sign-in handshakes | `oidc_login` | state, nonce | minutes | swept `ARMATURE_RETAIN_OIDC_LOGINS` (1 day) past expiry |
 | Work | `issue`, `issue_comment`, `issue_worklog`, `issue_history`, `issue_watcher`, `attachment` | reporter, assignee, author, uploader, the text itself | while the issue exists | with the issue; after erasure the author reads "Former user" |
 | Notifications | `notification`, `notification_preference` | recipient, a title naming the actor | `ARMATURE_RETAIN_NOTIFICATIONS` (180 days) | swept; deleted by erasure |
+| Digests sent | `notification_digest_sent` | when each organization last mailed a person their digest | while the membership exists | with the membership, and by erasure |
 | Events | `outbox_event` | actor ids, issue summaries in payloads | until published, then `ARMATURE_RETAIN_OUTBOX` (30 days) | swept; the Redis stream is capped at 10 000 entries |
 | Webhook deliveries | `webhook_delivery` | the event as posted | `ARMATURE_RETAIN_WEBHOOK_DELIVERIES` (30 days) | swept; with the endpoint |
 | Automation runs | `automation_run` | what a rule did | `ARMATURE_RETAIN_AUTOMATION_RUNS` (90 days) | swept; with the rule |
