@@ -13,6 +13,7 @@ import (
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/project"
+	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
 	"github.com/armature/armature/backend/internal/workflow"
@@ -22,16 +23,19 @@ import (
 // plant running, on a workflow of its own.
 const MaintenanceKey = "MAINT"
 
+// nightCapacity is what the night shift takes on in a window, in points.
+const nightCapacity = 12
+
 // plantInput is what the rest of the plant builds on: the line, its issues by
-// summary, the day shift and its windows.
+// summary, the day shift, and the service that plans the night shift's windows.
 type plantInput struct {
-	line          string
-	types         map[string]uuid.UUID
-	keys          map[string]string
-	shift         uuid.UUID
-	running, next uuid.UUID
-	day           func(int) *time.Time
-	pts           func(float64) *float64
+	line    string
+	types   map[string]uuid.UUID
+	keys    map[string]string
+	shift   uuid.UUID
+	sprints *sprint.Service
+	day     func(int) *time.Time
+	pts     func(float64) *float64
 }
 
 // plant adds what a single line leaves out of a demo: a second shift with a
@@ -62,16 +66,30 @@ func plant(ctx context.Context, cluster *db.Cluster, templates *template.Service
 		}
 	}
 
+	// A sprint plans only its own team's work, so the night shift runs windows
+	// of its own beside the day shift's.
+	running, _, err := in.sprints.Create(ctx, in.line, sprint.CreateInput{Name: "Night window 40", Goal: "Handover and the station 2 camera.", StartsOn: in.day(-7), EndsOn: in.day(6), Capacity: in.pts(nightCapacity), TeamID: &shiftB.ID}, actor.UserID)
+	if err != nil {
+		return fmt.Errorf("create the night shift's running window: %w", err)
+	}
+	next, _, err := in.sprints.Create(ctx, in.line, sprint.CreateInput{Name: "Night window 42", StartsOn: in.day(7), EndsOn: in.day(20), Capacity: in.pts(nightCapacity), TeamID: &shiftB.ID}, actor.UserID)
+	if err != nil {
+		return fmt.Errorf("create the night shift's next window: %w", err)
+	}
+
 	more := []plantIssue{
-		{"Night shift handover checklist for line 3", "As a shift leader, I want a checklist at handover so that nothing found at night waits until the morning meeting.", bootstrap.TypeStory, issue.PriorityMedium, in.day(-4), in.day(3), in.pts(3), []string{"changeover"}, &shiftB.ID, &in.running, []string{"Start progress"}},
-		{"Replace the vision camera lens on station 2", "The lens is scratched and the camera rejects good housings. The spare is in the cabinet.", bootstrap.TypeTask, issue.PriorityHigh, in.day(-2), in.day(1), in.pts(2), []string{"maintenance", "quality"}, &shiftB.ID, &in.running, []string{"Start progress", "Ready for review"}},
-		{"Label printer at station 6 jams on every tenth label", "Only on the night shift, only with the new label stock.", bootstrap.TypeBug, issue.PriorityMedium, in.day(8), in.day(12), in.pts(3), []string{"downtime"}, &shiftB.ID, &in.next, nil},
-		{"Stock the line side racks for model B", "", bootstrap.TypeTask, issue.PriorityLow, in.day(9), in.day(16), in.pts(2), []string{"changeover"}, &shiftB.ID, &in.next, nil},
+		{"Night shift handover checklist for line 3", "As a shift leader, I want a checklist at handover so that nothing found at night waits until the morning meeting.", bootstrap.TypeStory, issue.PriorityMedium, in.day(-4), in.day(3), in.pts(3), []string{"changeover"}, &shiftB.ID, &running.ID, []string{"Start progress"}},
+		{"Replace the vision camera lens on station 2", "The lens is scratched and the camera rejects good housings. The spare is in the cabinet.", bootstrap.TypeTask, issue.PriorityHigh, in.day(-2), in.day(1), in.pts(2), []string{"maintenance", "quality"}, &shiftB.ID, &running.ID, []string{"Start progress", "Ready for review"}},
+		{"Label printer at station 6 jams on every tenth label", "Only on the night shift, only with the new label stock.", bootstrap.TypeBug, issue.PriorityMedium, in.day(8), in.day(12), in.pts(3), []string{"downtime"}, &shiftB.ID, &next.ID, nil},
+		{"Stock the line side racks for model B", "", bootstrap.TypeTask, issue.PriorityLow, in.day(9), in.day(16), in.pts(2), []string{"changeover"}, &shiftB.ID, &next.ID, nil},
 		{"Update the andon board thresholds", "Five minutes to yellow, ten to red, as agreed with the shift leaders.", bootstrap.TypeTask, issue.PriorityLow, in.day(-10), in.day(-9), in.pts(1), []string{"downtime"}, nil, nil, []string{"Close"}},
-		{"Torque audit on the fastening station", "Twenty joints a shift for a week, logged against the certificate.", bootstrap.TypeTask, issue.PriorityMedium, in.day(-1), in.day(6), in.pts(3), []string{"quality"}, &shiftB.ID, &in.running, nil},
+		{"Torque audit on the fastening station", "Twenty joints a shift for a week, logged against the certificate.", bootstrap.TypeTask, issue.PriorityMedium, in.day(-1), in.day(6), in.pts(3), []string{"quality"}, &shiftB.ID, &running.ID, nil},
 	}
 	if err := file(ctx, issues, labels, in.line, in.types, in.keys, actor, more); err != nil {
 		return err
+	}
+	if _, _, err := in.sprints.Start(ctx, running.ID, actor.UserID); err != nil {
+		return fmt.Errorf("start the night shift's running window: %w", err)
 	}
 
 	// Maintenance work waits for parts, which the software workflow has no
