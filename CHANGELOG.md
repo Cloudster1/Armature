@@ -7,6 +7,15 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a scrum master or project administrator can change or remove only
+  the absences they recorded themselves, never the person's own or an
+  administrator's, and the person is told in their inbox, and by mail if they
+  want it, whenever somebody else records, changes or removes their days
+  (#39).
+- Fixed: deleting a team that still has sprints or request types routed to
+  it is refused with a sentence saying what to do, instead of handing its
+  sprints to the project or failing; a team that has run a sprint is kept,
+  and the database refuses the delete too (#55).
 - Fixed: an issue handed to another team leaves the old team's open sprint
   for the new team's backlog, with a line in its history, instead of
   vanishing from the Sprints page while still counting in the sprint; another

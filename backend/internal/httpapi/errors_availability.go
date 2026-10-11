@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/armature/armature/backend/internal/availability"
@@ -13,6 +14,9 @@ import (
 // availabilityAPIError continues moreAPIError's mapping: calendars, weeks, absences
 // and what the resource view is set against.
 func availabilityAPIError(err error) *APIError {
+	if refused := (*availability.MayNotChangeError)(nil); errors.As(err, &refused) {
+		return ErrForbidden(fmt.Sprintf("Only %s or an administrator can change this absence. Ask one of them instead.", refused.Person))
+	}
 	switch {
 	case errors.Is(err, project.ErrScrumByTeam):
 		message := "A scrum project plans by team. Switch the project to kanban to plan by person."
