@@ -119,6 +119,10 @@ here in the branch that makes it.
 - Fixed: Escape closes only what is on top: a menu or a confirm closes and
   the drawer or dialog under it stays, focus goes back to what opened it, and
   the issue drawer no longer closes while a comment is being written (#111).
+- Fixed: the work log starts on today in the profile's time zone, a share
+  link set to expire on a day lasts to the end of that day there and reads
+  back as that day, and dashboard week labels name the week's own Monday
+  wherever the reader is (#115).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
