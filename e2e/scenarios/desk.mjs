@@ -296,3 +296,49 @@ scenario("a desk that trusts a domain turns other addresses away at the door", a
   await enterOpenDesk(page, slug, key, unique("walkin"));
   await page.waitForFunction((k) => document.body.innerText.includes(`Your requests at ${k}`), { timeout: WAIT }, key);
 });
+
+scenario("a customer's reply to a resolved request brings it back to the agents' open queue", async ({ page }) => {
+  const agent = await signUp(page);
+  const key = await createProject(page, "Helpdesk", "service-desk");
+  const customer = await inviteMember(page, "customer", "customer");
+  await acceptInvite(page, customer);
+  await goto(page, "/portal/new");
+  await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
+  await page.click('[data-request-type="Report a problem"]');
+  await fill(page, "Summary", "The scanner jams");
+  await clickButton(page, "Send request");
+  await page.waitForFunction(() => location.pathname.startsWith("/portal/requests/"), { timeout: WAIT });
+  const requestKey = await page.evaluate(() => location.pathname.split("/").pop());
+
+  // The agent resolves it, and it leaves the open queue.
+  await signOut(page);
+  await signIn(page, agent.email);
+  await waitForPath(page, "/");
+  await waitForApp(page);
+  await goto(page, `/issues/${requestKey}`);
+  await clickButton(page, "Resolve");
+  await page.waitForFunction(() => document.body.innerText.includes("Reopen"), { timeout: WAIT });
+  await goto(page, `/projects/${key}/queues`);
+  await page.waitForFunction(() => document.body.innerText.includes("Nothing in this queue"), { timeout: WAIT });
+
+  // The customer answers in the portal, as the resolution mail tells them to.
+  await signOut(page);
+  await signIn(page, customer.email);
+  await waitForPath(page, "/portal");
+  await goto(page, `/portal/requests/${requestKey}`);
+  await page.waitForSelector("#portal-reply", { timeout: WAIT });
+  await page.waitForFunction(() => document.body.innerText.includes("Resolved"), { timeout: WAIT });
+  await page.type("#portal-reply", "It jams again on every second page.");
+  await clickButton(page, "Reply");
+  await page.waitForFunction(() => document.body.innerText.includes("Waiting for support"), { timeout: WAIT });
+  expect.contains(await bodyText(page), "It jams again on every second page.", "the reply is on the request");
+
+  // And it is back in front of the agents.
+  await signOut(page);
+  await signIn(page, agent.email);
+  await waitForPath(page, "/");
+  await waitForApp(page);
+  await goto(page, `/projects/${key}/queues`);
+  await page.waitForSelector(`[data-queue-row="${requestKey}"]`, { timeout: WAIT });
+  expect.contains(await textOf(page, `[data-queue-row="${requestKey}"]`), "The scanner jams", "the open queue has the request again");
+});

@@ -324,3 +324,39 @@ func principalField(t *testing.T, r response, keys ...string) any {
 	}
 	return current
 }
+
+// obj digs a nested object out of a decoded body.
+func obj(t *testing.T, r response, keys ...string) map[string]any {
+	t.Helper()
+	v := principalField(t, r, keys...)
+	m, ok := v.(map[string]any)
+	if !ok {
+		t.Fatalf("expected an object at %v, got %T in %s", keys, v, r.Raw)
+	}
+	return m
+}
+
+// list digs a list out of a decoded body.
+func list(t *testing.T, r response, keys ...string) []any {
+	t.Helper()
+	v := principalField(t, r, keys...)
+	l, ok := v.([]any)
+	if !ok {
+		t.Fatalf("expected a list at %v, got %T in %s", keys, v, r.Raw)
+	}
+	return l
+}
+
+// want fails unless the response has the status, and returns it for chaining.
+func want(t *testing.T, r response, status int, what string) response {
+	t.Helper()
+	if r.Status != status {
+		t.Fatalf("%s: got %d, want %d: %s", what, r.Status, status, r.Raw)
+	}
+	return r
+}
+
+func idOf(t *testing.T, r response, keys ...string) string {
+	t.Helper()
+	return obj(t, r, keys...)["id"].(string)
+}

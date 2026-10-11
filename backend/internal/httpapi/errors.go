@@ -474,7 +474,7 @@ func moreAPIError(err error) *APIError {
 	case errors.Is(err, theme.ErrAssetTooLarge):
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: capitalize(theme.ErrAssetTooLarge.Error()) + "."}
 	default:
-		return availabilityAPIError(err)
+		return issueAPIError(err)
 	}
 }
 

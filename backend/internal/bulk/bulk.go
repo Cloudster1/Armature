@@ -109,6 +109,13 @@ func (s *Service) one(ctx context.Context, key string, in Input, actor issue.Act
 				return err
 			}
 		}
+		// The team goes before the sprint: a sprint takes only its own team's work,
+		// and a new team takes the issue out of the old team's sprint.
+		if in.TeamID != nil {
+			if err := note(s.issues.SetTeamIn(ctx, tx, key, *in.TeamID)); err != nil {
+				return err
+			}
+		}
 		if in.SprintID != nil {
 			if err := note(s.issues.SetSprintIn(ctx, tx, key, *in.SprintID)); err != nil {
 				return err
@@ -116,11 +123,6 @@ func (s *Service) one(ctx context.Context, key string, in Input, actor issue.Act
 		}
 		if in.MilestoneID != nil {
 			if err := note(s.issues.SetMilestoneIn(ctx, tx, key, *in.MilestoneID)); err != nil {
-				return err
-			}
-		}
-		if in.TeamID != nil {
-			if err := note(s.issues.SetTeamIn(ctx, tx, key, *in.TeamID)); err != nil {
 				return err
 			}
 		}

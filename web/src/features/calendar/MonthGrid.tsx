@@ -6,6 +6,7 @@ import { Button, ErrorBanner, Switch } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { draggedSchedule, isoDay, labelOf, listedItems, monthGrid, monthTitle, placeItems, shiftMonth, withHolidays, type Placed } from "./grid";
 import { useShowDaysOff } from "./settings";
+import { useFormat } from "@/lib/format";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -30,6 +31,7 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
   const { data, error } = useCalendarMonth(projectKey, year, month);
   const schedule = useSchedule();
   const [showDaysOff, setShowDaysOff] = useShowDaysOff();
+  const { locale } = useFormat();
   const items = useMemo(() => data?.month.items ?? [], [data]);
   const cells = useMemo(() => withHolidays(monthGrid(year, month), showDaysOff ? items : []), [year, month, items, showDaysOff]);
   const byDay = useMemo(() => placeItems(cells, listedItems(items, showDaysOff)), [cells, items, showDaysOff]);
@@ -76,7 +78,7 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
     <div className="space-y-3" data-calendar={`${year}-${String(month).padStart(2, "0")}`}>
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-ink" data-calendar-title>
-          {monthTitle(year, month)}
+          {monthTitle(year, month, locale)}
         </h2>
         <div className="flex items-center gap-1">
           <label className="mr-3 flex items-center gap-2 text-xs text-ink-muted">
@@ -97,7 +99,7 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {schedule.error && <ErrorBanner>{(schedule.error as Error).message}</ErrorBanner>}
       {data?.month.truncated && <p className="text-sm text-ink-muted">More is dated this month than the calendar draws; the plan has all of it.</p>}
-      <div className="grid grid-cols-7 gap-px rounded-control border border-border bg-border text-xs" role="grid" aria-label={monthTitle(year, month)}>
+      <div className="grid grid-cols-7 gap-px rounded-control border border-border bg-border text-xs" role="grid" aria-label={monthTitle(year, month, locale)}>
         {WEEKDAYS.map((d) => (
           <div key={d} className="bg-surface px-2 py-1 font-medium text-ink-muted" role="columnheader">
             {d}

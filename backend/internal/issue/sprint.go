@@ -23,7 +23,45 @@ var (
 	ErrNegativeEstimate = errors.New("an estimate cannot be negative")
 	// ErrTeamNotFound is returned for a team that is not in this project.
 	ErrTeamNotFound = errors.New("that team is not in this project")
+	// ErrSprintOtherTeam is returned when committing work to a sprint another
+	// team plans, where neither team's Sprints page would show it.
+	ErrSprintOtherTeam = errors.New("that sprint is planned for another team")
 )
+
+// sprintRow is what deciding whether a sprint can take an issue needs.
+type sprintRow struct {
+	name, state string
+	team        *uuid.UUID
+}
+
+func sprintOf(ctx context.Context, tx db.DBTX, projectID, sprintID uuid.UUID) (*sprintRow, error) {
+	var row sprintRow
+	err := tx.QueryRow(ctx, `SELECT name, state::text, team_id FROM sprint WHERE id = $1 AND project_id = $2`,
+		sprintID, projectID).Scan(&row.name, &row.state, &row.team)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrSprintNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+// commitTo checks that a sprint can take work of the given team and answers
+// with its name; the same sentences apply wherever work is committed.
+func commitTo(ctx context.Context, tx db.DBTX, projectID, sprintID uuid.UUID, teamID *uuid.UUID) (string, error) {
+	row, err := sprintOf(ctx, tx, projectID, sprintID)
+	if err != nil {
+		return "", err
+	}
+	if row.state == "closed" {
+		return "", fmt.Errorf("%w: %s", ErrSprintClosed, row.name)
+	}
+	if !equalUUID(row.team, teamID) {
+		return "", fmt.Errorf("%w: %s", ErrSprintOtherTeam, row.name)
+	}
+	return row.name, nil
+}
 
 // SetTeam hands an issue to a team, or takes it back to the project at large.
 //
@@ -69,8 +107,24 @@ func (s *Service) SetTeamIn(ctx context.Context, tx db.DBTX, key string, teamID 
 		from = before.Team.Name
 	}
 
-	if _, err := tx.Exec(ctx, `UPDATE issue SET team_id = $2 WHERE id = $1`,
-		before.ID, teamID); isCheckViolation(err) {
+	changes := []Change{{Field: "team", From: from, To: to}}
+
+	// Another stream's open sprint is not the new team's plan, so the issue
+	// goes to its backlog. A closed sprint is history and keeps it.
+	sprintID := before.SprintID
+	if sprintID != nil {
+		row, err := sprintOf(ctx, tx, before.ProjectID, *sprintID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if row.state != "closed" && !equalUUID(row.team, teamID) {
+			sprintID = nil
+			changes = append(changes, Change{Field: "sprint", From: row.name})
+		}
+	}
+
+	if _, err := tx.Exec(ctx, `UPDATE issue SET team_id = $2, sprint_id = $3 WHERE id = $1`,
+		before.ID, teamID, sprintID); isCheckViolation(err) {
 		return nil, nil, ErrTeamNotFound
 	} else if err != nil {
 		return nil, nil, fmt.Errorf("hand the issue to a team: %w", err)
@@ -80,7 +134,7 @@ func (s *Service) SetTeamIn(ctx context.Context, tx db.DBTX, key string, teamID 
 	if err != nil {
 		return nil, nil, err
 	}
-	return updated, []Change{{Field: "team", From: from, To: to}}, nil
+	return updated, changes, nil
 }
 
 // SetSprint commits an issue to a sprint, or sends it back to the backlog.
@@ -112,18 +166,8 @@ func (s *Service) SetSprintIn(ctx context.Context, tx db.DBTX, key string, sprin
 
 	to := ""
 	if sprintID != nil {
-		var state string
-		err := tx.QueryRow(ctx, `
-			SELECT name, state::text FROM sprint WHERE id = $1 AND project_id = $2`,
-			*sprintID, before.ProjectID).Scan(&to, &state)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil, ErrSprintNotFound
-		}
-		if err != nil {
+		if to, err = commitTo(ctx, tx, before.ProjectID, *sprintID, before.TeamID); err != nil {
 			return nil, nil, err
-		}
-		if state == "closed" {
-			return nil, nil, fmt.Errorf("%w: %s", ErrSprintClosed, to)
 		}
 	}
 

@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { BASE, request, upload } from "./client";
 import { issuesQueryKey, type UserRef } from "./issues";
 import { useMe } from "./auth";

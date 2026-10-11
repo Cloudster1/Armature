@@ -158,7 +158,7 @@ func run() error {
 
 	// Rules run from the stream and from the clock; webhooks are queued from
 	// the stream and posted from the queue.
-	webhooks := webhook.NewService(cluster, log)
+	webhooks := webhook.NewService(cluster, log).WithConcurrency(cfg.Webhooks.Concurrency)
 	hooks := webhook.NewConsumer(webhooks, rdb, log)
 	g.Go(func() error { return hooks.Run(ctx) })
 	g.Go(func() error { return hooks.RunSender(ctx) })

@@ -20,7 +20,8 @@ export function IssuePanel() {
       <IconButton icon={<Icon.ChevronDown />} label="Next issue" size="sm" onClick={() => step(1)} disabled={at >= keys.length - 1} data-action="panel-next" />
     </>
   );
-  const body = <IssuePage issueKey={current} inDrawer />;
+  // Keyed by issue, so nothing typed on one issue is drawn under the next.
+  const body = <IssuePage key={current} issueKey={current} inDrawer />;
   if (docked) {
     return (
       <DockedPanel open onClose={close} title={current} width={ISSUE_PANEL_WIDTH} actions={actions} attrs={{ "data-issue-panel": current }}>

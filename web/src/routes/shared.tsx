@@ -7,6 +7,7 @@ import { sharedPdfHref, useShared } from "@/api/shares";
 import { ButtonLink, ErrorBanner, IconButton, Skeleton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
+import { useFormat } from "@/lib/format";
 import { WidgetBody } from "@/features/dashboard/WidgetBody";
 import { WidgetCard } from "@/features/dashboard/WidgetCard";
 
@@ -32,6 +33,7 @@ function SharedDashboardPage() {
   const { theme: forced, print } = sharedRoute.useSearch();
   const { data, error, isLoading, dataUpdatedAt } = useShared(token);
   const [theme, setTheme] = useState<Theme>(readTheme);
+  const format = useFormat();
 
   // A renderer asks for the light theme and gets it whatever this browser remembers.
   useEffect(() => {
@@ -62,7 +64,7 @@ function SharedDashboardPage() {
   }
   const narrows = narrowingKinds(data.kinds);
   const widgets = data.dashboard.widgets.filter((w) => w.kind !== "filter");
-  const updated = new Date(dataUpdatedAt || Date.now()).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const updated = format.time(new Date(dataUpdatedAt || Date.now()).toISOString());
 
   return (
     <ReportSourceProvider value={{ share: token, readOnly: true }}>

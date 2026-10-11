@@ -33,6 +33,8 @@ type UpdateInput struct {
 	// TimeEstimate and TimeRemaining are minutes; the inner nil clears.
 	TimeEstimate  *(*int)
 	TimeRemaining *(*int)
+	// ExpectedUpdatedAt is the updatedAt the editor read; see CheckFresh.
+	ExpectedUpdatedAt *time.Time
 }
 
 // Update edits an issue's fields and records every change in the changelog.
@@ -78,6 +80,10 @@ func (s *Service) UpdateIn(ctx context.Context, tx db.DBTX, key string, in Updat
 	if err != nil {
 		return nil, nil, err
 	}
+	// Checked under the row lock, so two saves cannot both pass it.
+	if err := CheckFresh(before.UpdatedAt, in.ExpectedUpdatedAt); err != nil {
+		return nil, nil, err
+	}
 
 	var changes []Change
 
@@ -104,8 +110,11 @@ func (s *Service) UpdateIn(ctx context.Context, tx db.DBTX, key string, in Updat
 		} else if err := ValidateDocument(body, "description"); err != nil {
 			return nil, nil, err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE issue SET description = $2 WHERE id = $1`,
-			before.ID, nullableJSON(body)); err != nil {
+		// jsonb equality ignores key order and spacing, so an editor that
+		// re-serialises the same document has not changed it.
+		tag, err := tx.Exec(ctx, `UPDATE issue SET description = $2
+			WHERE id = $1 AND description IS DISTINCT FROM $2::jsonb`, before.ID, nullableJSON(body))
+		if err != nil {
 			return nil, nil, err
 		}
 		// The body of a rich text document is not worth reproducing in the
@@ -114,10 +123,12 @@ func (s *Service) UpdateIn(ctx context.Context, tx db.DBTX, key string, in Updat
 		if nullableJSON(body) == nil {
 			to = "cleared"
 		}
-		changes = append(changes, Change{Field: "description", To: to})
-		if body != nil {
-			if _, err := s.mentionWatchers(ctx, tx, before.ID, before.Key, body, actor); err != nil {
-				return nil, nil, err
+		if tag.RowsAffected() > 0 {
+			changes = append(changes, Change{Field: "description", To: to})
+			if body != nil {
+				if _, err := s.mentionWatchers(ctx, tx, before.ID, before.Key, body, actor); err != nil {
+					return nil, nil, err
+				}
 			}
 		}
 	}
@@ -145,7 +156,7 @@ func (s *Service) UpdateIn(ctx context.Context, tx db.DBTX, key string, in Updat
 		}
 	}
 
-	if in.DueDate != nil {
+	if in.DueDate != nil && formatDate(before.DueDate) != formatDate(*in.DueDate) {
 		if err := CheckDates(before.StartDate, *in.DueDate); err != nil {
 			return nil, nil, err
 		}
@@ -198,6 +209,10 @@ func (s *Service) UpdateIn(ctx context.Context, tx db.DBTX, key string, in Updat
 
 	updated, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
 	if err != nil {
+		return nil, nil, err
+	}
+	// A desk's clocks follow a new priority, a bulk edit's as much as anybody's.
+	if err := s.tellUpdated(ctx, tx, before, updated, actor); err != nil {
 		return nil, nil, err
 	}
 	return updated, changes, nil
