@@ -319,6 +319,15 @@ member: the dividing line the rest of the codebase uses is whether an action
 changes how the tool behaves for everyone or moves the work along, and a sprint
 is work moving.
 
+A sprint holds only its own stream's work. Committing an issue to another
+team's sprint, or carrying unfinished work into one, is refused by the service
+and by a trigger comparing the issue's team with the sprint's. Handing an issue
+to another team takes it out of an open sprint of its old stream and into the
+new team's backlog, and the changelog says so. Refusing the handover instead
+would make the person find and empty the sprint first, and deciding when the
+work is planned is the receiving team's job anyway. A closed sprint keeps its
+work whoever carries it later, since its report is already written.
+
 ### A team narrows access and never widens it
 
 Only somebody already in the organization can be put on a team, enforced by the

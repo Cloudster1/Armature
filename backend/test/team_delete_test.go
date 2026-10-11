@@ -19,18 +19,6 @@ import (
 	"github.com/armature/armature/backend/internal/team"
 )
 
-// teamSprint plans a sprint for one team, with the dates starting one needs.
-func (ws *workspace) teamSprint(t *testing.T, name string, teamID uuid.UUID) *sprint.Sprint {
-	t.Helper()
-	created, _, err := ws.sprints.Create(ws.ctx, ws.project.Key, sprint.CreateInput{
-		Name: name, StartsOn: on("2026-03-02"), EndsOn: on("2026-03-13"), TeamID: &teamID,
-	}, ws.actor.UserID)
-	if err != nil {
-		t.Fatalf("create sprint %q: %v", name, err)
-	}
-	return created
-}
-
 // sprintsOwnedBy counts a project's sprints in one stream; a nil team is the
 // project's own.
 func sprintsOwnedBy(t *testing.T, h *harness, projectID uuid.UUID, teamID *uuid.UUID) int {
@@ -98,7 +86,7 @@ func TestATeamsSprintsNeverBecomeTheProjects(t *testing.T) {
 	alpha := ws.newTeam(t, "Alpha")
 
 	for _, name := range []string{"Alpha 1", "Alpha 2", "Alpha 3"} {
-		s := ws.teamSprint(t, name, alpha.ID)
+		s := ws.teamSprint(t, name, "2026-03-02", "2026-03-13", &alpha.ID)
 		if _, _, err := ws.sprints.Start(ws.ctx, s.ID, ws.actor.UserID); err != nil {
 			t.Fatalf("start %s: %v", name, err)
 		}
@@ -106,7 +94,7 @@ func TestATeamsSprintsNeverBecomeTheProjects(t *testing.T) {
 			t.Fatalf("complete %s: %v", name, err)
 		}
 	}
-	running := ws.teamSprint(t, "Alpha 4", alpha.ID)
+	running := ws.teamSprint(t, "Alpha 4", "2026-03-02", "2026-03-13", &alpha.ID)
 	if _, _, err := ws.sprints.Start(ws.ctx, running.ID, ws.actor.UserID); err != nil {
 		t.Fatal(err)
 	}
@@ -137,8 +125,8 @@ func TestATeamGoesOnceItsUnstartedSprintsDo(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "unstarted")
 	alpha := ws.newTeam(t, "Alpha")
-	first := ws.teamSprint(t, "Alpha 1", alpha.ID)
-	second := ws.teamSprint(t, "Alpha 2", alpha.ID)
+	first := ws.teamSprint(t, "Alpha 1", "2026-03-02", "2026-03-13", &alpha.ID)
+	second := ws.teamSprint(t, "Alpha 2", "2026-03-02", "2026-03-13", &alpha.ID)
 
 	_, err := ws.teams.Delete(ws.ctx, alpha.ID)
 	if !errors.Is(err, team.ErrInUse) {
@@ -202,7 +190,7 @@ func TestTheDatabaseRefusesToDeleteATeamThatStillHasSprints(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "rawteam")
 	alpha := ws.newTeam(t, "Alpha")
-	ws.teamSprint(t, "Alpha 1", alpha.ID)
+	ws.teamSprint(t, "Alpha 1", "2026-03-02", "2026-03-13", &alpha.ID)
 
 	isForeignKey := func(err error) bool {
 		var pgErr *pgconn.PgError

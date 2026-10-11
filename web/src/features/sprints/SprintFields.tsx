@@ -6,7 +6,8 @@ import { Input, SelectInput, cx } from "@/components/ui";
 export function SprintField({ issue }: { issue: Issue }) {
   const { data } = useSprints(issue.projectKey);
   const setSprint = useSetIssueSprint();
-  const sprints = data?.sprints ?? [];
+  // A sprint takes only its own team's work, so only those are offered.
+  const sprints = (data?.sprints ?? []).filter((sprint) => (sprint.teamId ?? "") === (issue.teamId ?? ""));
 
   return (
     <span className="flex flex-col items-end gap-1">
