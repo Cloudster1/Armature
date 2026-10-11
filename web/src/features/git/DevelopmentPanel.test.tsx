@@ -18,7 +18,7 @@ vi.mock("@/api/git", async () => {
   };
 });
 
-const { DevelopmentPanel } = await import("./DevelopmentPanel");
+const { DevelopmentPanel, firstRepositoryToBranch } = await import("./DevelopmentPanel");
 
 function repository(over: Partial<Repository> = {}): Repository {
   return {
@@ -135,5 +135,52 @@ describe("DevelopmentPanel", () => {
     expect(screen.getByText("3 commits", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("merged")).toBeInTheDocument();
     expect(document.querySelector('[data-branch="CP-4-old"]')).toHaveAttribute("data-branch-merged", "true");
+  });
+
+  // Hosts delete a merged branch on their own; the merge is what the issue
+  // needs to remember, and a link to a branch that is gone leads nowhere.
+  it("shows a merged branch the host deleted as merged, deleted, with no link to it", () => {
+    state.repositories = [repository()];
+    state.development = {
+      branchName: "CP-4-fix",
+      commits: [],
+      runs: [],
+      pullRequests: [],
+      branches: [
+        {
+          id: "b1", repository: "acme/portal", name: "CP-4-fix", url: "https://github.com/acme/portal/tree/CP-4-fix", headSha: "abcdef1234567",
+          commitCount: 2, mergedAt: "2026-09-01T00:00:00Z", deletedAt: "2026-09-01T00:01:00Z", createdAt: "",
+        },
+        { id: "b2", repository: "acme/portal", name: "CP-4-fix", url: "https://github.com/acme/portal/tree/CP-4-fix", commitCount: 0, createdAt: "" },
+      ],
+    };
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+
+    const rows = document.querySelectorAll('[data-branch="CP-4-fix"]');
+    expect(rows).toHaveLength(2);
+    const [gone, live] = [rows[0]!, rows[1]!];
+    expect(gone).toHaveAttribute("data-branch-merged", "true");
+    expect(gone).toHaveAttribute("data-branch-deleted", "true");
+    expect(gone.textContent).toContain("merged, deleted");
+    expect(gone.querySelector("a[href]")).toBeNull();
+
+    expect(live).not.toHaveAttribute("data-branch-deleted");
+    expect(live.textContent).toContain("branch");
+    expect(live.textContent).not.toContain("deleted");
+    expect(live.querySelector("a[href]")).toHaveAttribute("href", "https://github.com/acme/portal/tree/CP-4-fix");
+  });
+});
+
+describe("firstRepositoryToBranch", () => {
+  // A repository whose only branch for the issue is merged and deleted has
+  // nothing to work on, so it is offered first again.
+  it("does not count a deleted branch as one the repository has", () => {
+    const portal = repository({ id: "r1", name: "acme/portal", hasToken: true });
+    const api = repository({ id: "r2", name: "acme/api", hasToken: true });
+    const existing = [
+      { id: "b1", repository: "acme/portal", name: "CP-4-fix", commitCount: 1, mergedAt: "2026-09-01T00:00:00Z", deletedAt: "2026-09-01T00:01:00Z", createdAt: "" },
+      { id: "b2", repository: "acme/api", name: "CP-4-fix", commitCount: 1, createdAt: "" },
+    ];
+    expect(firstRepositoryToBranch([api, portal], existing, [])?.id).toBe("r1");
   });
 });

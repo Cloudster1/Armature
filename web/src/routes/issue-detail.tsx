@@ -13,7 +13,8 @@ function IssueDetail() {
   const { issueKey } = issueDetailRoute.useParams();
   return (
     <Page width="content">
-      <IssuePage issueKey={issueKey} />
+      {/* Keyed by issue, so following a link to another issue carries no draft along. */}
+      <IssuePage key={issueKey} issueKey={issueKey} />
     </Page>
   );
 }

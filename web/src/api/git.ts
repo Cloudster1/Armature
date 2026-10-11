@@ -58,6 +58,8 @@ export interface Branch {
   commitCount: number;
   pushedAt?: string;
   mergedAt?: string;
+  /** Set when the host deleted a merged branch, which is kept to show the merge. */
+  deletedAt?: string;
   createdAt: string;
 }
 
