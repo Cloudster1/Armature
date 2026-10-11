@@ -100,6 +100,14 @@ func (s *Service) one(ctx context.Context, key string, in Input, actor issue.Act
 			return latest, err
 		}
 	}
+	// The team goes before the sprint: a sprint takes only its own team's work,
+	// and a new team takes the issue out of the old team's sprint.
+	if in.TeamID != nil {
+		_, lsn, err := s.issues.SetTeam(ctx, key, *in.TeamID, actor)
+		if err := note(lsn, err); err != nil {
+			return latest, err
+		}
+	}
 	if in.SprintID != nil {
 		_, lsn, err := s.issues.SetSprint(ctx, key, *in.SprintID, actor)
 		if err := note(lsn, err); err != nil {
@@ -108,12 +116,6 @@ func (s *Service) one(ctx context.Context, key string, in Input, actor issue.Act
 	}
 	if in.MilestoneID != nil {
 		_, lsn, err := s.issues.SetMilestone(ctx, key, *in.MilestoneID, actor)
-		if err := note(lsn, err); err != nil {
-			return latest, err
-		}
-	}
-	if in.TeamID != nil {
-		_, lsn, err := s.issues.SetTeam(ctx, key, *in.TeamID, actor)
 		if err := note(lsn, err); err != nil {
 			return latest, err
 		}

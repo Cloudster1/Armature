@@ -7,6 +7,22 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a scrum master or project administrator can change or remove only
+  the absences they recorded themselves, never the person's own or an
+  administrator's, and the person is told in their inbox, and by mail if they
+  want it, whenever somebody else records, changes or removes their days
+  (#39).
+- Fixed: deleting a team that still has sprints or request types routed to
+  it is refused with a sentence saying what to do, instead of handing its
+  sprints to the project or failing; a team that has run a sprint is kept,
+  and the database refuses the delete too (#55).
+- Fixed: an issue handed to another team leaves the old team's open sprint
+  for the new team's backlog, with a line in its history, instead of
+  vanishing from the Sprints page while still counting in the sprint; another
+  team's sprint is refused, by hand, on completion and by the database (#56).
+- Fixed: an out-of-office or other automatic reply to a request is no longer
+  posted as the customer's answer; the request stays Waiting for customer
+  with its clocks held, and the mail is logged as automatic (#65).
 - Fixed: a squash or merge commit no longer carries out the branch's smart
   commands a second time: a comment is posted once and a "#close" is not
   tried again, while a new command in the squash commit still runs (#68).

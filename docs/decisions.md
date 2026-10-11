@@ -319,6 +319,15 @@ member: the dividing line the rest of the codebase uses is whether an action
 changes how the tool behaves for everyone or moves the work along, and a sprint
 is work moving.
 
+A sprint holds only its own stream's work. Committing an issue to another
+team's sprint, or carrying unfinished work into one, is refused by the service
+and by a trigger comparing the issue's team with the sprint's. Handing an issue
+to another team takes it out of an open sprint of its old stream and into the
+new team's backlog, and the changelog says so. Refusing the handover instead
+would make the person find and empty the sprint first, and deciding when the
+work is planned is the receiving team's job anyway. A closed sprint keeps its
+work whoever carries it later, since its report is already written.
+
 ### A team narrows access and never widens it
 
 Only somebody already in the organization can be put on a team, enforced by the
@@ -327,6 +336,21 @@ which turns every team into a way around the organization's own membership.
 Deleting a team with work in it is refused rather than quietly returning the
 work to the project, because work that was somebody's and is now nobody's is
 discovered weeks later and the fix by then is archaeology.
+
+### A team that has run a sprint is kept
+
+Deleting a team is refused while it still has sprints or request types routed
+to it, by the service with a sentence and by the database, whose foreign keys
+from `sprint.team_id` and `request_type.team_id` no longer null the column.
+Nulling them made a team's running sprint the project's, or collided with the
+project's own running one, and quietly stopped requests routing. Sprints that
+have not started can be deleted and request types routed elsewhere, after which
+the team goes. A sprint that has run is the record of what the team delivered
+and cannot be deleted, so a team that has run one is renamed rather than
+deleted. Deleting its sprints with it would rewrite history, and archiving
+teams is a feature of its own that nothing yet needs. The keys are NO ACTION
+rather than RESTRICT so that an organization deleted with everything in it
+still takes its teams and their sprints along.
 
 ### A board is scoped by team, and its type is behaviour
 
@@ -524,6 +548,20 @@ whoever holds the permission to manage teams in a project where the person is on
 a team. Leading a team is not enough, since a lead is a person to ask rather
 than a permission. Two absences of one person over the same day are refused by
 an exclusion constraint, so the plan never counts somebody away twice.
+
+A manager may change or remove only the absences they recorded themselves.
+The same manager decides who is on their teams, so "manages a team the person
+is on" is a door they can open for anybody, an administrator included, in one
+request; checking how long the person has been on the team would only mean
+waiting a minute. So the reach is narrowed instead: a manager adds days, and
+the person's own entries and an administrator's are out of it. The person and
+an administrator change any of them. A refusal names the person, so the
+manager knows who to ask. Who recorded an absence is what decides, so the
+database never lets it be rewritten to somebody else; it becomes nobody only
+when that account goes. And it is made visible: whenever somebody other than
+the person records, changes or removes one of their absences, the person is
+told in the inbox, and by mail if they want it, with who did what and never
+the days, since a mail leaves the building.
 
 **Reconsider if** an organization needs leave approval inside the tracker, which
 would be a state on the absence and a person who decides, not a reason.
@@ -745,6 +783,13 @@ question: the reply is accepted only where the address belongs to the reporter,
 a follower or an agent, and in exactly one organization. Every consumed mail is
 recorded by message id, so a redelivery is refused by the database however many
 workers are reading, and machines are never answered, so no loop can form.
+
+Nor is a machine's mail taken for the customer's word. An out-of-office that
+reaches a request waiting on its customer would otherwise be posted as their
+reply, move the request back and restart its clocks. A mail marked by
+`Auto-Submitted` (other than `no`), `X-Autoreply`, `X-Autorespond` or a
+`Precedence` of `auto_reply`, `bulk`, `junk` or `list` is recorded as
+`automatic`, taken out of the box and never posted.
 
 ### A customer's files are the request's, and only their own come off
 
