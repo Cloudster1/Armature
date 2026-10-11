@@ -82,6 +82,9 @@ here in the branch that makes it.
   filed, so work added to a version later lifts the line instead of showing
   from its first day, and a released version's line stops on its release
   day (#60).
+- Fixed: a pull request moves its issue only when it is merged; an edit, a
+  label or a redelivery of an already merged pull request no longer moves a
+  reopened issue to Done again (#67).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
