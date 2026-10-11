@@ -215,9 +215,9 @@ there.
 ## The worker runs once
 
 `worker.replicas` may only be 1, and the chart refuses anything else. There is
-no leader election; the Redis consumers all identify themselves as the literal
-`worker`; and the hourly digest remembers what it has sent in an in-process
-map, so a second replica mails every digest twice.
+no leader election, and the Redis consumers all identify themselves as the
+literal `worker`, so a second replica's consumers are indistinguishable from the
+first's. The digest is not the reason: what it has sent is kept in the database.
 
 ## Verifying a change
 

@@ -47,6 +47,11 @@ const (
 	TopicAutomationScheduled = "automation.scheduled"
 	TopicAutomationIncoming  = "automation.incoming"
 	TopicAutomationManual    = "automation.manual"
+	// Somebody's days away written down, moved or taken back. Not in Topics: a
+	// webhook takes them only by subscribing to everything.
+	TopicAbsenceRecorded = "absence.recorded"
+	TopicAbsenceChanged  = "absence.changed"
+	TopicAbsenceRemoved  = "absence.removed"
 )
 
 // Topics lists every topic, in the order a subscription picker shows them.

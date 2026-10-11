@@ -1,5 +1,5 @@
 import { cx } from "@/components/ui";
-import { CHART_AXIS_LABELS, CHART_VALUE_LABEL_MAX_COLUMNS } from "@/config";
+import { CHART_AXIS_LABELS, CHART_MARKER_PX, CHART_VALUE_LABEL_MAX_COLUMNS } from "@/config";
 import { arcPath, figure, round, type Arc, type Column } from "./chart";
 
 /**
@@ -154,19 +154,25 @@ export function LineChart({
         aria-label={drawn.map((s) => s.name).join(", ")}
       >
         <line x1={0} y1={CHART_UNIT} x2={CHART_UNIT} y2={CHART_UNIT} className="stroke-border" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-        {drawn.map((s) => (
-          <g key={s.name} data-series={s.name} className={s.tone}>
-            <path
-              d={pathOf(s.points.map((p) => ({ x: px(p.x), y: py(p.y) })), Boolean(s.step))}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={s.dashed ? 1 : 2}
-              strokeDasharray={s.dashed ? "4 4" : undefined}
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          </g>
-        ))}
+        {drawn.map((s) => {
+          // A lone point is a line of no length; its round cap is the dot, and stays round when the box stretches.
+          const lone = s.points.length === 1;
+          return (
+            <g key={s.name} data-series={s.name} className={s.tone}>
+              <path
+                d={pathOf(s.points.map((p) => ({ x: px(p.x), y: py(p.y) })), Boolean(s.step))}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={lone ? CHART_MARKER_PX : s.dashed ? 1 : 2}
+                strokeDasharray={s.dashed && !lone ? "4 4" : undefined}
+                strokeLinecap={lone ? "round" : undefined}
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                data-marker={lone ? "" : undefined}
+              />
+            </g>
+          );
+        })}
       </svg>
       {xLabels.length > 0 && (
         <div className="mt-1 flex justify-between text-2xs text-ink-subtle">
@@ -187,8 +193,12 @@ export function LineChart({
   );
 }
 
-/** The path a series draws: a polyline, or steps that hold each value until the next. */
+/**
+ * The path a series draws: a polyline, or steps that hold each value until the
+ * next. A single point gets a line of no length, since a bare move draws nothing.
+ */
 export function pathOf(points: Array<{ x: number; y: number }>, step: boolean): string {
+  if (points.length === 1) return `M${round(points[0]!.x)} ${round(points[0]!.y)} h0`;
   return points
     .map((p, i) => {
       if (i === 0) return `M${round(p.x)} ${round(p.y)}`;

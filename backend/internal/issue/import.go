@@ -120,6 +120,17 @@ func (s *Service) importIssue(ctx context.Context, tx db.DBTX, in ImportInput, a
 	if err != nil {
 		return nil, err
 	}
+	// A closed sprint is history an import may restore, so only an open one
+	// has to be the issue's own team's.
+	if in.SprintID != nil {
+		row, err := sprintOf(ctx, tx, projectID, *in.SprintID)
+		if err != nil {
+			return nil, err
+		}
+		if row.state != "closed" && !equalUUID(row.team, in.TeamID) {
+			return nil, fmt.Errorf("%w: %s", ErrSprintOtherTeam, row.name)
+		}
+	}
 
 	if in.ExternalKey != "" {
 		var id uuid.UUID
