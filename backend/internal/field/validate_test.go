@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/issue"
 )
 
 func TestNormalizeByKind(t *testing.T) {
@@ -89,5 +91,31 @@ func TestDisplayShowsAChoiceNoLongerOffered(t *testing.T) {
 	}
 	if got := display(f, json.RawMessage(`"Web"`)); got != "Web" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+// A move writes the values it drops into the history without this package, so
+// what it writes has to read the same as the field showed it.
+func TestAMovedAwayValueReadsAsTheFieldShowedIt(t *testing.T) {
+	for _, tc := range []struct {
+		f  Field
+		in string
+	}{
+		{Field{Name: "Customer", Kind: Text}, `"Acme"`},
+		{Field{Name: "Cost", Kind: Number}, `120`},
+		{Field{Name: "Cost", Kind: Number}, `"2.25"`},
+		{Field{Name: "Budget", Kind: Number}, `1500000`},
+		{Field{Name: "Due", Kind: Date}, `"2026-03-01"`},
+		{Field{Name: "Platform", Kind: Select, Options: []string{"Web"}}, `"Web"`},
+		{Field{Name: "Signed", Kind: Checkbox}, `true`},
+		{Field{Name: "Spec", Kind: URL}, `"https://example.test/spec"`},
+	} {
+		stored, shown, err := normalize(tc.f, json.RawMessage(tc.in))
+		if err != nil {
+			t.Fatalf("%s %s: %v", tc.f.Name, tc.in, err)
+		}
+		if got := issue.FieldValueText(stored); got != shown {
+			t.Errorf("%s %s: the move would write %q, the field shows %q", tc.f.Name, tc.in, got, shown)
+		}
 	}
 }

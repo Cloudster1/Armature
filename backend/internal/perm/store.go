@@ -261,16 +261,19 @@ func (s *Store) CreateGroup(ctx context.Context, in GroupInput, actor uuid.UUID)
 }
 
 // DeleteGroup removes a group along with everything granted to it.
-func (s *Store) DeleteGroup(ctx context.Context, id uuid.UUID) (db.LSN, error) {
+func (s *Store) DeleteGroup(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM user_group WHERE id = $1`, id)
+		var name string
+		err := tx.QueryRow(ctx, `DELETE FROM user_group WHERE id = $1 RETURNING name`, id).Scan(&name)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
 		if err != nil {
 			return fmt.Errorf("delete group: %w", err)
 		}
-		if tag.RowsAffected() == 0 {
-			return ErrNotFound
-		}
-		return nil
+		return events.EmitInTenant(ctx, tx, "group.deleted", map[string]any{
+			"groupId": id, "name": name, "actorId": actor,
+		})
 	})
 }
 

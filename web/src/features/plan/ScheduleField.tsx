@@ -1,6 +1,6 @@
 import { useSchedule } from "@/api/plan";
 import type { Issue } from "@/api/issues";
-import { Button, Input } from "@/components/ui";
+import { Button, DateInput } from "@/components/ui";
 import { isoDay } from "./scale";
 
 /**
@@ -23,13 +23,13 @@ export function ScheduleField({ issue }: { issue: Issue }) {
       <span className="flex items-center gap-2 text-xs text-ink-subtle">
         <label htmlFor="issue-start">From</label>
         <span className="w-36">
-          <Input id="issue-start" type="date" value={start} onChange={(e) => set("startDate", e.target.value)} controlSize="sm" aria-label="Start date" />
+          <DateInput id="issue-start" value={start} onCommit={(day) => set("startDate", day)} controlSize="sm" aria-label="Start date" />
         </span>
       </span>
       <span className="flex items-center gap-2 text-xs text-ink-subtle">
         <label htmlFor="issue-due">to</label>
         <span className="w-36">
-          <Input id="issue-due" type="date" value={due} onChange={(e) => set("dueDate", e.target.value)} controlSize="sm" aria-label="Due date" />
+          <DateInput id="issue-due" value={due} onCommit={(day) => set("dueDate", day)} controlSize="sm" aria-label="Due date" />
         </span>
       </span>
       {(start || due) && (

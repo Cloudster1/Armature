@@ -61,12 +61,13 @@ worker:
   # Pinned to one, and not a mistake. The worker has no leader election and no
   # advisory lock. Its stream consumers all identify themselves to Redis as
   # the literal "worker", so replicas are indistinguishable to the consumer
-  # group, and notify.Digest remembers which hourly digests it has sent in an
-  # in-process map rather than in the database. A second replica mails every
-  # digest twice. Making this scalable is a change to the product, not to the
-  # chart.
+  # group. Making this scalable is a change to the product, not to the chart.
   replicas: 1
-  # Loops exit at their next poll boundary; the longest Redis block is 5s.
+  # How many webhook deliveries the one replica posts at once, at most two to
+  # any one endpoint, so one that hangs does not hold up the others.
+  webhookConcurrency: 8
+  # Loops exit at their next poll boundary; the longest Redis block is 5s, and
+  # a stream consumer gets 10s more to finish the event in hand.
   terminationGracePeriodSeconds: 20
   resources:
     requests: { cpu: 100m, memory: 256Mi }

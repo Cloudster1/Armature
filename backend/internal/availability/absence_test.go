@@ -52,18 +52,13 @@ func TestAListingCoversAMonthBehindAndAYearAheadUnlessAsked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if from.Format(DateLayout) != "2026-09-04" || to.Format(DateLayout) != "2027-10-05" {
-		t.Errorf("the default window = %s to %s", from.Format(DateLayout), to.Format(DateLayout))
+	if from.Format(DateLayout) != "2026-09-04" || to == nil || to.Format(DateLayout) != "2027-10-05" {
+		t.Errorf("the default window = %s to %v", from.Format(DateLayout), to)
 	}
 
 	from, to, err = AbsenceWindow("2026-12-01", "2026-12-31", today)
-	if err != nil || from.Format(DateLayout) != "2026-12-01" || to.Format(DateLayout) != "2026-12-31" {
-		t.Errorf("an asked window = %s to %s (%v)", from.Format(DateLayout), to.Format(DateLayout), err)
-	}
-
-	from, to, err = AbsenceWindow("2027-01-01", "", today)
-	if err != nil || from.Format(DateLayout) != "2027-01-01" || daysBetween(from, to) != AbsenceDaysBehind+AbsenceDaysAhead {
-		t.Errorf("a window from a day = %s to %s (%v), want as long as the default", from.Format(DateLayout), to.Format(DateLayout), err)
+	if err != nil || from.Format(DateLayout) != "2026-12-01" || to == nil || to.Format(DateLayout) != "2026-12-31" {
+		t.Errorf("an asked window = %s to %v (%v)", from.Format(DateLayout), to, err)
 	}
 
 	for name, window := range map[string][2]string{
@@ -78,5 +73,18 @@ func TestAListingCoversAMonthBehindAndAYearAheadUnlessAsked(t *testing.T) {
 	}
 	if _, _, err := AbsenceWindow("2026-01-01", "2027-12-31", today); err != nil {
 		t.Errorf("the widest window there is was refused: %v", err)
+	}
+}
+
+// An editor lists from a month back; an absence saved two years ahead must
+// still be in its list, or nobody can change or remove it.
+func TestAListingFromADayRunsOnWithNoLastDay(t *testing.T) {
+	today := date(t, "2026-10-05")
+	from, to, err := AbsenceWindow("2026-09-04", "", today)
+	if err != nil || from.Format(DateLayout) != "2026-09-04" || to != nil {
+		t.Errorf("a window from a day = %s to %v (%v), want no last day", from.Format(DateLayout), to, err)
+	}
+	if MaxOpenAbsences < 1 {
+		t.Errorf("a listing with no last day returns at most %d absences, want a bound that lists some", MaxOpenAbsences)
 	}
 }

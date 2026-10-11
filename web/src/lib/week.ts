@@ -1,4 +1,4 @@
-import { ABSENCE_MAX_DAYS, HOURS_PER_DAY, MINUTES_PER_HOUR, MS_PER_DAY, WEEKDAY_REFERENCE_MONDAY, WORKING_HOURS_DECIMALS } from "@/config";
+import { ABSENCE_MAX_DAYS, ABSENCES_LISTED_DAYS_BEHIND, HOURS_PER_DAY, MINUTES_PER_HOUR, MS_PER_DAY, WEEKDAY_REFERENCE_MONDAY, WORKING_HOURS_DECIMALS } from "@/config";
 import { WEEKDAYS, type Absence, type Weekday } from "@/api/availability";
 
 /** Minutes as the hours a person types: 480 is "8", 450 is "7.5". */
@@ -46,6 +46,13 @@ export function formatDay(day: string, locale: string): string {
 export function today(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** The first day an absence editor lists: a month back, so the one just over is still there to correct. */
+export function absencesListedFrom(now: Date = new Date()): string {
+  const first = new Date(now);
+  first.setDate(first.getDate() - ABSENCES_LISTED_DAYS_BEHIND);
+  return today(first);
 }
 
 /** What is wrong with an absence before it is sent, as a sentence; null when nothing is. */

@@ -190,7 +190,7 @@ func run() error {
 		Filters:    filter.NewService(cluster),
 		Audit:      audit.NewService(cluster),
 		Calendar:   calendar.NewService(cluster),
-		Bulk:       bulk.NewService(issues, labels),
+		Bulk:       bulk.NewService(cluster, issues, labels),
 		CSV: csvio.NewService(cluster, issues, labels, field.NewService(cluster), accounts).
 			WithPlanning(sprints, version.NewService(cluster), component.NewService(cluster), team.NewService(cluster)),
 		Attachments:  attachments,
@@ -209,8 +209,8 @@ func run() error {
 		Teams:        team.NewService(cluster),
 		Availability: availability.NewService(cluster),
 		Perms:        perm.NewStore(cluster),
-		OIDC:         oidc.NewService(cluster, oidcRedirectURL()).WithHTTPClient(oidc.Backchannel(oidc.ParseRewrites(os.Getenv("ARMATURE_OIDC_BACKCHANNEL")))),
-		AppBaseURL:   appBaseURL(),
+		OIDC:         oidc.NewService(cluster, cfg.Auth.OIDCRedirectURL).WithHTTPClient(oidc.Backchannel(oidc.ParseRewrites(os.Getenv("ARMATURE_OIDC_BACKCHANNEL")))),
+		AppBaseURL:   cfg.Mail.AppBaseURL,
 		Renderer:     renderer(cfg.Render),
 		Assistant:    asker(cfg.Assistant),
 		Workflow:     &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
@@ -373,26 +373,6 @@ func splitList(v string) []string {
 		}
 	}
 	return out
-}
-
-// appBaseURL is where a browser is sent back to after signing in somewhere
-// else. The API cannot infer it: the request it is answering comes from the
-// identity provider's redirect, not from the application.
-func appBaseURL() string {
-	if url := strings.TrimSuffix(os.Getenv("ARMATURE_APP_URL"), "/"); url != "" {
-		return url
-	}
-	return "http://localhost:5173"
-}
-
-// oidcRedirectURL is the address the provider is told to send people back to.
-// It has to match what is registered with the provider exactly, so it is
-// configuration rather than something assembled from the request.
-func oidcRedirectURL() string {
-	if url := os.Getenv("ARMATURE_OIDC_REDIRECT_URL"); url != "" {
-		return url
-	}
-	return "http://localhost:8080/api/v1/auth/oidc/callback"
 }
 
 // asker is the model provider when one is named, else the answer that there is none.

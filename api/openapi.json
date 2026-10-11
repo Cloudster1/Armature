@@ -122,7 +122,7 @@
     "/absences": {
       "get": {
         "operationId": "listAbsences",
-        "summary": "Who is away between two days, both included; a month back and a year ahead when not asked.",
+        "summary": "Who is away between two days, both included; a month back and a year ahead when not asked, and every one from a day on, up to a bound, when only from is.",
         "tags": [
           "availability"
         ],
@@ -148,7 +148,7 @@
           {
             "name": "to",
             "in": "query",
-            "description": "The last day, YYYY-MM-DD; at most two years after from.",
+            "description": "The last day, YYYY-MM-DD; at most two years after from. Left out with from given, the list has no last day.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -173,13 +173,20 @@
                       "type": "string"
                     },
                     "to": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "truncated": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "absences",
                     "from",
-                    "to"
+                    "to",
+                    "truncated"
                   ]
                 }
               }
@@ -5340,9 +5347,25 @@
             }
           },
           {
+            "name": "sprint",
+            "in": "query",
+            "description": "A sprint id for the work committed to it, or \"none\" for the backlog.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "A team id for the work it carries, or \"none\" for the project's own.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "orderBy",
             "in": "query",
-            "description": "created, updated, priority, key, summary or status.",
+            "description": "created, updated, priority, key, summary, status or rank.",
             "schema": {
               "type": "string"
             }
@@ -5486,7 +5509,7 @@
     "/issues/export": {
       "get": {
         "operationId": "exportIssues",
-        "summary": "The issues a query matches, as a CSV file with the chosen columns.",
+        "summary": "The issues a query matches, as a CSV file with the chosen columns; past 5000 the file is cut, ends with a note row, and the response carries X-Export-Truncated: true.",
         "tags": [
           "issues"
         ],
@@ -11631,9 +11654,25 @@
             }
           },
           {
+            "name": "sprint",
+            "in": "query",
+            "description": "A sprint id for the work committed to it, or \"none\" for the backlog.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "A team id for the work it carries, or \"none\" for the project's own.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "orderBy",
             "in": "query",
-            "description": "created, updated, priority, key, summary or status.",
+            "description": "created, updated, priority, key, summary, status or rank.",
             "schema": {
               "type": "string"
             }
@@ -11943,6 +11982,21 @@
                 "all"
               ]
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -11951,18 +12005,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "rows": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/QueueRow"
-                      }
-                    }
-                  },
-                  "required": [
-                    "rows"
-                  ]
+                  "$ref": "#/components/schemas/QueuePage"
                 }
               }
             }
@@ -18443,6 +18486,10 @@
             "type": "string",
             "format": "date-time"
           },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "headSha": {
             "type": "string"
           },
@@ -18692,6 +18739,24 @@
         "required": [
           "active",
           "sprints"
+        ]
+      },
+      "CIChecks": {
+        "type": "object",
+        "properties": {
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CIRun"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
         ]
       },
       "CIRun": {
@@ -19310,6 +19375,9 @@
           },
           "branch": {
             "type": "string"
+          },
+          "ci": {
+            "$ref": "#/components/schemas/CIChecks"
           },
           "committedAt": {
             "type": "string",
@@ -23498,7 +23566,7 @@
             "type": "string"
           },
           "ci": {
-            "$ref": "#/components/schemas/CIRun"
+            "$ref": "#/components/schemas/CIChecks"
           },
           "headSha": {
             "type": "string"
@@ -23544,6 +23612,32 @@
           "title",
           "state",
           "openedAt"
+        ]
+      },
+      "QueuePage": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueueRow"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rows",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "QueueRow": {
@@ -26743,6 +26837,10 @@
             ],
             "format": "date",
             "description": "A day, YYYY-MM-DD; null clears it."
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "priority": {
             "type": "string"

@@ -570,52 +570,11 @@ func (s *Service) TimersFor(ctx context.Context, issueKey string) ([]Timer, erro
 // a goal for its priority. An issue an agent files in a service project is
 // measured too: the customer it is for is waiting either way.
 func (s *Service) IssueCreated(ctx context.Context, tx db.DBTX, created *issue.Issue, actor issue.Actor) error {
-	rows, err := tx.Query(ctx, `
-		SELECT sp.id, sp.goals FROM sla_policy sp
-		JOIN project p ON p.id = sp.project_id
-		WHERE p.id = $1 AND p.kind = 'service'`, created.ProjectID)
-	if err != nil {
-		return err
-	}
-	type goal struct {
-		policyID uuid.UUID
-		minutes  int
-	}
-	var goals []goal
-	for rows.Next() {
-		var (
-			id  uuid.UUID
-			raw []byte
-		)
-		if err := rows.Scan(&id, &raw); err != nil {
-			rows.Close()
-			return err
-		}
-		byPriority := map[issue.Priority]int{}
-		if err := json.Unmarshal(raw, &byPriority); err != nil {
-			rows.Close()
-			return err
-		}
-		if minutes := byPriority[created.Priority]; minutes > 0 {
-			goals = append(goals, goal{id, minutes})
-		}
-	}
-	rows.Close()
-
-	for _, g := range goals {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO sla_timer (org_id, issue_id, policy_id, goal_minutes, started_at, running_since)
-			VALUES (current_org_id(), $1, $2, $3, now(), now())
-			ON CONFLICT (issue_id, policy_id) DO NOTHING`, created.ID, g.policyID, g.minutes); err != nil {
-			return fmt.Errorf("start timer: %w", err)
-		}
-	}
-	return nil
+	return s.follow(ctx, tx, measuredOf(created))
 }
 
-// IssueTransitioned moves the clocks with the status: a done status completes
-// the resolution clock, a pause status stops both, leaving one starts them
-// again, and reopening from done starts a fresh resolution clock.
+// IssueTransitioned moves the clocks with the status. Done completes every open
+// clock, breach kept, as nobody is left to answer; docs/decisions.md has the rule.
 func (s *Service) IssueTransitioned(ctx context.Context, tx db.DBTX, before, after *issue.Issue, actor issue.Actor) error {
 	rows, err := tx.Query(ctx, selectTimer+` WHERE t.issue_id = $1`, after.ID)
 	if err != nil {
@@ -666,7 +625,7 @@ func (s *Service) IssueTransitioned(ctx context.Context, tx db.DBTX, before, aft
 			}
 		case t.CompletedAt != nil:
 			continue
-		case t.Metric == Resolution && toDone:
+		case toDone:
 			if err := s.stop(ctx, tx, t, true); err != nil {
 				return err
 			}
@@ -723,138 +682,6 @@ func (s *Service) CommentAdded(ctx context.Context, tx db.DBTX, issueID uuid.UUI
 		}
 	}
 	return nil
-}
-
-// ---------------------------------------------------------------- queue ------
-
-// QueueFilter is which of a desk's requests an agent wants to see.
-type QueueFilter string
-
-const (
-	QueueOpen       QueueFilter = "open"
-	QueueUnassigned QueueFilter = "unassigned"
-	QueueMine       QueueFilter = "mine"
-	QueueBreached   QueueFilter = "breached"
-	QueueAll        QueueFilter = "all"
-)
-
-// Queue lists a desk's requests with their clocks, the least time left first.
-func (s *Service) Queue(ctx context.Context, projectKey string, filter QueueFilter, agent uuid.UUID) ([]QueueRow, error) {
-	f := issue.Filter{ProjectKey: project.NormalizeKey(projectKey)}
-	switch filter {
-	case QueueOpen, QueueBreached, "":
-		f.Categories = []workflow.StatusCategory{workflow.CategoryTodo, workflow.CategoryInProgress}
-	case QueueUnassigned:
-		f.Categories = []workflow.StatusCategory{workflow.CategoryTodo, workflow.CategoryInProgress}
-		f.Unassigned = true
-	case QueueMine:
-		f.Categories = []workflow.StatusCategory{workflow.CategoryTodo, workflow.CategoryInProgress}
-		f.AssigneeID = &agent
-	case QueueAll:
-	default:
-		return nil, fmt.Errorf("%q is not a queue", filter)
-	}
-	const queueSize = 200
-	page, err := s.issues.List(ctx, f, issue.Page{Limit: queueSize, OrderBy: "created", Desc: true})
-	if err != nil {
-		return nil, err
-	}
-
-	ids := make([]uuid.UUID, 0, len(page.Issues))
-	for _, i := range page.Issues {
-		ids = append(ids, i.ID)
-	}
-	byIssue := map[uuid.UUID][]Timer{}
-	rated := map[uuid.UUID]int{}
-	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectTimer+` WHERE t.issue_id = ANY($1) ORDER BY sp.metric`, ids)
-		if err != nil {
-			return err
-		}
-		timers, err := s.scanTimers(rows)
-		if err != nil {
-			return err
-		}
-		for _, t := range timers {
-			byIssue[t.IssueID] = append(byIssue[t.IssueID], t)
-		}
-		scores, err := tx.Query(ctx, `SELECT issue_id, score FROM csat_rating WHERE issue_id = ANY($1) AND score IS NOT NULL`, ids)
-		if err != nil {
-			return err
-		}
-		defer scores.Close()
-		for scores.Next() {
-			var (
-				id    uuid.UUID
-				score int
-			)
-			if err := scores.Scan(&id, &score); err != nil {
-				return err
-			}
-			rated[id] = score
-		}
-		return scores.Err()
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	out := []QueueRow{}
-	for _, i := range page.Issues {
-		timers := byIssue[i.ID]
-		if timers == nil {
-			timers = []Timer{}
-		}
-		if filter == QueueBreached && !anyBreached(timers) {
-			continue
-		}
-		row := QueueRow{Issue: i, Timers: timers, RequestTypeName: i.RequestTypeName}
-		if score, ok := rated[i.ID]; ok {
-			row.Csat = &score
-		}
-		out = append(out, row)
-	}
-	sortByUrgency(out)
-	return out, nil
-}
-
-func anyBreached(timers []Timer) bool {
-	for _, t := range timers {
-		if t.Breached && t.CompletedAt == nil {
-			return true
-		}
-	}
-	return false
-}
-
-// sortByUrgency puts the request with the least time left on any running
-// clock first; requests with no running clock go last, newest first.
-func sortByUrgency(rows []QueueRow) {
-	least := func(r QueueRow) (int64, bool) {
-		var (
-			best  int64
-			found bool
-		)
-		for _, t := range r.Timers {
-			if t.CompletedAt != nil {
-				continue
-			}
-			if !found || t.RemainingSeconds < best {
-				best, found = t.RemainingSeconds, true
-			}
-		}
-		return best, found
-	}
-	for i := 1; i < len(rows); i++ {
-		for j := i; j > 0; j-- {
-			a, aok := least(rows[j-1])
-			b, bok := least(rows[j])
-			if (aok && bok && a <= b) || (aok && !bok) || (!aok && !bok) {
-				break
-			}
-			rows[j-1], rows[j] = rows[j], rows[j-1]
-		}
-	}
 }
 
 // --------------------------------------------------------------- portal ------
@@ -1041,57 +868,6 @@ func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (
 		comments = []issue.Comment{}
 	}
 	return &Request{Issue: *found, Comments: comments, RequestTypeName: found.RequestTypeName}, nil
-}
-
-// Reply adds the customer's comment to their own request. If the desk was
-// waiting on them, the reply is what it was waiting for, and the request goes
-// back to the agents through whichever transition leaves the waiting status.
-func (s *Service) Reply(ctx context.Context, key, text string, customer issue.Actor) (*issue.Comment, db.LSN, error) {
-	if _, err := s.Request(ctx, key, customer.UserID); err != nil {
-		return nil, 0, err
-	}
-	comment, lsn, err := s.issues.AddComment(ctx, key, issue.TextDocument(text), customer)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	found, err := s.issues.ByKey(ctx, key)
-	if err != nil {
-		return nil, 0, err
-	}
-	if strings.EqualFold(found.Status.Name, WaitingOnCustomer) {
-		if chosen := s.wayBack(ctx, key, customer); chosen != nil {
-			if _, moved, err := s.issues.Transition(ctx, key, issue.TransitionInput{TransitionID: chosen.ID}, customer); err == nil {
-				lsn = moved
-			}
-		}
-	}
-	return comment, lsn, nil
-}
-
-// CustomerResponded is the transition a customer's reply takes when the desk
-// was waiting on them, when the workflow has one by that name.
-const CustomerResponded = "Customer responded"
-
-// wayBack picks the transition a reply takes out of the waiting status: the
-// one named for it, else the first that is not a global "resolve from
-// anywhere", which a customer's reply must never take.
-func (s *Service) wayBack(ctx context.Context, key string, customer issue.Actor) *workflow.Transition {
-	available, err := s.issues.Transitions(ctx, key, customer)
-	if err != nil {
-		return nil
-	}
-	for i := range available {
-		if strings.EqualFold(available[i].Name, CustomerResponded) {
-			return &available[i]
-		}
-	}
-	for i := range available {
-		if !available[i].IsGlobal() {
-			return &available[i]
-		}
-	}
-	return nil
 }
 
 // IsCustomer reports whether a principal's role is the portal's.

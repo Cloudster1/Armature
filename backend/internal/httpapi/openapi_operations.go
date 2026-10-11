@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"strconv"
+
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -178,9 +180,9 @@ var operations = []operation{
 	{method: "POST", path: "/holiday-calendars/{calendarID}/import", handler: "handleImportHolidays", tag: "availability", summary: "Add the all-day events of an .ics file, sent as a multipart part named file; a day already there takes the file's name.", multipart: true, responses: ok(env{"calendar": availability.HolidayCalendar{}, "imported": 0})},
 	{method: "GET", path: "/users/{userID}/schedule", handler: "handleGetWorkingWeek", tool: "get_working_week", toolHelp: "How many minutes a person works on each weekday and which holiday calendar they keep; anybody may read their own, an administrator anybody's.", tag: "availability", summary: "A person's working week and calendar: their own for anybody, anybody's for an administrator.", responses: ok(env{"week": availability.WorkingWeek{}})},
 	{method: "PUT", path: "/users/{userID}/schedule", handler: "handleSetWorkingWeek", tool: "set_working_week", toolHelp: "Set a person's minutes per weekday, mon to sun, and their holiday calendar, null for the organization's default.", tag: "availability", summary: "Set a person's working week and calendar.", request: workingWeekRequest{}, responses: ok(env{"week": availability.WorkingWeek{}})},
-	{method: "GET", path: "/absences", handler: "handleListAbsences", tool: "list_absences", toolHelp: "Who is away on which days, a month back and a year ahead unless from and to say otherwise; never why. Optionally for one person.", tag: "availability", summary: "Who is away between two days, both included; a month back and a year ahead when not asked.",
-		query:     []param{{name: "userId", schema: uuidParam, description: "Only this person's absences."}, {name: "from", schema: dateParam, description: "The first day, YYYY-MM-DD."}, {name: "to", schema: dateParam, description: "The last day, YYYY-MM-DD; at most two years after from."}},
-		responses: ok(env{"absences": []availability.Absence{}, "from": "", "to": ""})},
+	{method: "GET", path: "/absences", handler: "handleListAbsences", tool: "list_absences", toolHelp: "Who is away on which days, a month back and a year ahead unless from and to say otherwise; from alone lists every absence after it, up to a bound, and truncated says the list was cut. Never why. Optionally for one person.", tag: "availability", summary: "Who is away between two days, both included; a month back and a year ahead when not asked, and every one from a day on, up to a bound, when only from is.",
+		query:     []param{{name: "userId", schema: uuidParam, description: "Only this person's absences."}, {name: "from", schema: dateParam, description: "The first day, YYYY-MM-DD."}, {name: "to", schema: dateParam, description: "The last day, YYYY-MM-DD; at most two years after from. Left out with from given, the list has no last day."}},
+		responses: ok(env{"absences": []availability.Absence{}, "from": "", "to": (*string)(nil), "truncated": false})},
 	{method: "POST", path: "/absences", handler: "handleRecordAbsence", tool: "record_absence", toolHelp: "Record that a person is away from startsOn to endsOn, YYYY-MM-DD and both included, or half of one day; the caller when no userId is given.", tag: "availability", summary: "Record an absence: the caller's own, or one of somebody an administrator or a manager of their team answers for.", request: absenceRequest{}, responses: created(env{"absence": availability.Absence{}})},
 	{method: "PATCH", path: "/absences/{absenceID}", handler: "handleUpdateAbsence", tag: "availability", summary: "Move an absence's days, or make it a half day or not.", request: absenceRequest{}, responses: ok(env{"absence": availability.Absence{}})},
 	{method: "DELETE", path: "/absences/{absenceID}", handler: "handleRemoveAbsence", tag: "availability", summary: "Take an absence back.", responses: none()},
@@ -392,7 +394,7 @@ var operations = []operation{
 	{method: "GET", path: "/issues/suggest", handler: "handleSuggest", tag: "issues", summary: "What the search bar could say next: words the query takes at the caret, and the issues the words so far find.",
 		query:     []param{{name: "q", description: "The text so far."}, {name: "at", description: "The caret's position in q, in characters; the end when absent."}, {name: "project", description: "A project key, to scope names and issues."}, {name: "limit", description: "Words and issues to offer, at most 20."}},
 		responses: ok(issue.Suggestions{})},
-	{method: "GET", path: "/issues/export", handler: "handleExportIssues", tag: "issues", summary: "The issues a query matches, as a CSV file with the chosen columns.", binary: true,
+	{method: "GET", path: "/issues/export", handler: "handleExportIssues", tag: "issues", summary: "The issues a query matches, as a CSV file with the chosen columns; past " + strconv.Itoa(csvio.ExportRows) + " the file is cut, ends with a note row, and the response carries X-Export-Truncated: true.", binary: true,
 		query:     []param{{name: "q", description: "An NQL query; without one, everything the caller can see."}, {name: "project", description: "A project key to stay inside."}, {name: "columns", description: "Comma-separated column names; the default is key, summary, type, status, priority, assignee, created."}},
 		responses: ok(nil)},
 	{method: "POST", path: "/issues/bulk", handler: "handleBulkEdit", tool: "bulk_edit_issues", toolHelp: "Change many issues at once: priority, assignee, sprint, milestone, team, labels, or a transition by name; each refusal is named.", tag: "issues", summary: "Change many issues at once; one refused leaves the rest done.", request: bulkRequest{}, responses: ok(bulk.Result{})},
@@ -491,7 +493,7 @@ var operations = []operation{
 	{method: "GET", path: "/projects/{projectKey}/sla-policies", handler: "handleListPolicies", tag: "service desk", summary: "The desk's goals per priority.", responses: ok(env{"policies": []desk.Policy{}})},
 	{method: "PATCH", path: "/sla-policies/{policyID}", handler: "handleUpdatePolicy", tag: "service desk", summary: "Change goals or which statuses pause the clock.", request: updatePolicyRequest{}, responses: ok(env{"policy": desk.Policy{}})},
 	{method: "GET", path: "/projects/{projectKey}/queue", handler: "handleQueue", tag: "service desk", summary: "The agents' queue, most urgent first.",
-		query: []param{{name: "filter", schema: &openapi.Schema{Type: "string", Enum: []string{"open", "unassigned", "mine", "breached", "all"}}}}, responses: ok(env{"rows": []desk.QueueRow{}})},
+		query: []param{{name: "filter", schema: &openapi.Schema{Type: "string", Enum: []string{"open", "unassigned", "mine", "breached", "all"}}}, {name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, {name: "offset", schema: intParam}}, responses: ok(desk.QueuePage{})},
 	{method: "GET", path: "/issues/{issueKey}/timers", handler: "handleIssueTimers", tag: "service desk", summary: "The clocks on a request.", responses: ok(env{"timers": []desk.Timer{}})},
 
 	// The Model Context Protocol: this API as tools for an assistant.

@@ -7,7 +7,7 @@ import { formatSize, useUploadAttachment, useUploadLimit } from "@/api/attachmen
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { useDesks, useFollow, useMyRequests, usePortalArticle, usePortalArticles, useRaiseRequest, useReply, useRequest, useRequestWatchers, useUnfollow, type RequestType } from "@/api/desk";
 import { Button, Card, EmptyState, ErrorBanner, Field, Input, OptionCard, Page, PageHeader, SectionTitle, Select, Table, Td, Th, Textarea } from "@/components/ui";
-import { Avatar, StatusBadge, relativeTime } from "@/features/issues/badges";
+import { Avatar, StatusBadge, RelativeTime } from "@/features/issues/badges";
 import { groupByCategory, prefillDetails } from "@/features/desk/templates";
 
 /**
@@ -157,7 +157,7 @@ function MyRequests() {
                 <Td>
                   <StatusBadge name={r.status.name} category={r.status.category} />
                 </Td>
-                <Td className="text-right text-sm whitespace-nowrap text-ink-subtle">{relativeTime(r.updatedAt)}</Td>
+                <Td className="text-right text-sm whitespace-nowrap text-ink-subtle"><RelativeTime iso={r.updatedAt} /></Td>
               </tr>
             ))}
           </tbody>
@@ -430,7 +430,7 @@ function RequestPage() {
                 <Avatar name={c.author?.name} src={c.author?.avatarUrl} />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-ink-muted">
-                    <span className="font-medium text-ink">{c.author?.name ?? "The desk"}</span> · {relativeTime(c.createdAt)}
+                    <span className="font-medium text-ink">{c.author?.name ?? "The desk"}</span> · <RelativeTime iso={c.createdAt} />
                   </p>
                   <DocView doc={c.body} size="sm" className="mt-1" />
                 </div>

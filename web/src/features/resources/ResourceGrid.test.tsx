@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { asReader } from "@/test/reader";
 import type { ReactNode } from "react";
 import type { ResourcePlan } from "@/api/resources";
 
@@ -49,7 +50,7 @@ const plan: ResourcePlan = {
 
 describe("the resource grid", () => {
   it("draws a row per person and a cell per week, hatching the days off", () => {
-    render(<ResourceGrid plan={plan} />);
+    render(<ResourceGrid plan={plan} />, { wrapper: asReader("en-GB") });
     expect(screen.getAllByRole("row")).toHaveLength(3);
     const first = document.querySelector('[data-resource-row="Ada"] [data-resource-week="2031-03-03"]')!;
     expect(first.getAttribute("title")).toMatch(/16 of 24 h; 1 day away; 1 holiday$/);
@@ -60,7 +61,7 @@ describe("the resource grid", () => {
   });
 
   it("lists a week's issues with their hours when its cell is pressed", async () => {
-    render(<ResourceGrid plan={plan} />);
+    render(<ResourceGrid plan={plan} />, { wrapper: asReader("en-GB") });
     await userEvent.click(document.querySelector('[data-resource-row="Ada"] [data-resource-week="2031-03-03"]')!);
     const panel = screen.getByRole("dialog");
     expect(panel.textContent).toContain("16 of 24 h; 1 day away; 1 holiday");

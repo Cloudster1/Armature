@@ -5,6 +5,7 @@ import { meQueryKey, useMe } from "@/api/auth";
 import { request, ApiError } from "@/api/client";
 import { Button, EmptyState, Spotlight, ToastProvider, useToast } from "@/components/ui";
 import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
+import { MutationErrorToasts } from "@/features/shell/MutationErrorToasts";
 import { Sidebar, SidebarFoot, currentProjectKey } from "@/features/shell/Sidebar";
 import { ShellHeaderContext } from "@/components/ui";
 import { useLastProject } from "@/features/shell/state";
@@ -66,6 +67,7 @@ function AppShell() {
   if (data?.principal?.role === "customer") return <PortalShell />;
   return (
     <ToastProvider>
+      <MutationErrorToasts />
       <ConfirmProvider>
         <IssueDrawerProvider>
           <AgentShell />
@@ -136,6 +138,7 @@ function PortalShell() {
   // Taking a file back asks first, the same dialog the agents get.
   return (
     <ToastProvider>
+      <MutationErrorToasts />
       <ConfirmProvider>
       <div className="flex h-full flex-col">
         <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-6">

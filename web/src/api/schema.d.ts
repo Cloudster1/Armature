@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Who is away between two days, both included; a month back and a year ahead when not asked. */
+        /** Who is away between two days, both included; a month back and a year ahead when not asked, and every one from a day on, up to a bound, when only from is. */
         get: operations["listAbsences"];
         put?: never;
         /** Record an absence: the caller's own, or one of somebody an administrator or a manager of their team answers for. */
@@ -1271,7 +1271,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The issues a query matches, as a CSV file with the chosen columns. */
+        /** The issues a query matches, as a CSV file with the chosen columns; past 5000 the file is cut, ends with a note row, and the response carries X-Export-Truncated: true. */
         get: operations["exportIssues"];
         put?: never;
         post?: never;
@@ -4358,6 +4358,8 @@ export interface components {
             commitCount: number;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            deletedAt?: string;
             headSha?: string;
             /** Format: uuid */
             id: string;
@@ -4424,6 +4426,10 @@ export interface components {
         BurndownReport: {
             active: boolean;
             sprints: components["schemas"]["SprintBurndown"][];
+        };
+        CIChecks: {
+            checks: components["schemas"]["CIRun"][];
+            status: string;
         };
         CIRun: {
             branch?: string;
@@ -4598,6 +4604,7 @@ export interface components {
             authorEmail?: string;
             authorName?: string;
             branch?: string;
+            ci?: components["schemas"]["CIChecks"];
             /** Format: date-time */
             committedAt: string;
             /** Format: uuid */
@@ -5766,7 +5773,7 @@ export interface components {
         };
         PullRequest: {
             authorName?: string;
-            ci?: components["schemas"]["CIRun"];
+            ci?: components["schemas"]["CIChecks"];
             headSha?: string;
             /** Format: uuid */
             id: string;
@@ -5781,6 +5788,12 @@ export interface components {
             targetBranch?: string;
             title: string;
             url?: string;
+        };
+        QueuePage: {
+            limit: number;
+            offset: number;
+            rows: components["schemas"]["QueueRow"][];
+            total: number;
         };
         QueueRow: {
             csat?: number;
@@ -6666,6 +6679,8 @@ export interface components {
              * @description A day, YYYY-MM-DD; null clears it.
              */
             dueDate?: string | null;
+            /** Format: date-time */
+            expectedUpdatedAt?: string;
             priority?: string;
             /** Format: uuid */
             reporterId?: string;
@@ -6959,7 +6974,7 @@ export interface operations {
                 userId?: string;
                 /** @description The first day, YYYY-MM-DD. */
                 from?: string;
-                /** @description The last day, YYYY-MM-DD; at most two years after from. */
+                /** @description The last day, YYYY-MM-DD; at most two years after from. Left out with from given, the list has no last day. */
                 to?: string;
             };
             header?: never;
@@ -6977,7 +6992,8 @@ export interface operations {
                     "application/json": {
                         absences: components["schemas"]["Absence"][];
                         from: string;
-                        to: string;
+                        to: string | null;
+                        truncated: boolean;
                     };
                 };
             };
@@ -10486,7 +10502,11 @@ export interface operations {
                 label?: string[];
                 /** @description Issues counting towards this milestone. */
                 milestone?: string;
-                /** @description created, updated, priority, key, summary or status. */
+                /** @description A sprint id for the work committed to it, or "none" for the backlog. */
+                sprint?: string;
+                /** @description A team id for the work it carries, or "none" for the project's own. */
+                team?: string;
+                /** @description created, updated, priority, key, summary, status or rank. */
                 orderBy?: string;
                 /** @description asc or desc; desc unless said. */
                 order?: string;
@@ -14563,7 +14583,11 @@ export interface operations {
                 label?: string[];
                 /** @description Issues counting towards this milestone. */
                 milestone?: string;
-                /** @description created, updated, priority, key, summary or status. */
+                /** @description A sprint id for the work committed to it, or "none" for the backlog. */
+                sprint?: string;
+                /** @description A team id for the work it carries, or "none" for the project's own. */
+                team?: string;
+                /** @description created, updated, priority, key, summary, status or rank. */
                 orderBy?: string;
                 /** @description asc or desc; desc unless said. */
                 order?: string;
@@ -14747,6 +14771,9 @@ export interface operations {
         parameters: {
             query?: {
                 filter?: "open" | "unassigned" | "mine" | "breached" | "all";
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path: {
@@ -14762,9 +14789,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        rows: components["schemas"]["QueueRow"][];
-                    };
+                    "application/json": components["schemas"]["QueuePage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

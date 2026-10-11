@@ -43,6 +43,33 @@ scenario("signing out ends the session and protects the app", async ({ page }) =
   await waitForPath(page, "/login");
 });
 
+scenario("signing out in a second page sends the first to sign in on its next action", async ({ page, context }) => {
+  const who = await signUp(page);
+  await goto(page, "/settings/tokens");
+
+  const second = await context.newPage();
+  // A new page opens narrow, where the sidebar is a rail without the settings links.
+  await second.setViewport(page.viewport());
+  await goto(second, "/");
+  await waitForApp(second);
+  await second.click('[data-action="sign-out"]');
+  await waitForPath(second, "/login");
+  await second.close();
+
+  // The first page still believes in its session until it next asks for something.
+  await fill(page, "New token name", "Made after signing out");
+  await submit(page);
+  await waitForPath(page, "/login");
+  expect.equal(new URL(page.url()).searchParams.get("next"), "/settings/tokens", "the sign-in keeps where they were");
+
+  // Signing in again returns them there.
+  await fill(page, "Email", who.email);
+  await fill(page, "Password", PASSWORD);
+  await submit(page);
+  await waitForPath(page, "/settings/tokens");
+  expect.notContains(await bodyText(page), "Made after signing out", "nothing was made while signed out");
+});
+
 scenario("an existing account can sign back in", async ({ page }) => {
   const who = await signUp(page);
 

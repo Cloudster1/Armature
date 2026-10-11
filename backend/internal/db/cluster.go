@@ -28,12 +28,15 @@ type DBTX interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// replicaState tracks one read replica's health and replay position. All fields
-// are read from request goroutines and written by the health loop, so every one
-// of them is atomic.
+// replicaState tracks one read replica's health and replay position. The atomic
+// fields are read from request goroutines; lags is the health loop's alone.
 type replicaState struct {
 	name string
-	pool *pgxpool.Pool
+	// pool stays nil until the replica first answers; open is how the health
+	// loop keeps trying, so a standby that boots after the api still joins.
+	pool atomic.Pointer[pgxpool.Pool]
+	open func(context.Context) (*pgxpool.Pool, error)
+	lags *lagWindow
 
 	healthy   atomic.Bool
 	replayLSN atomic.Uint64
@@ -137,24 +140,24 @@ func Open(ctx context.Context, cfg config.DB, log *slog.Logger, opts ...Option) 
 
 	for i, url := range cfg.ReplicaURLs {
 		name := fmt.Sprintf("replica-%d", i)
-		pool, err := openPool(ctx, cfg, url, tracerFor(name))
-		if err != nil {
-			// A replica that is down at boot must not stop the process: the
-			// health loop will pick it up when it returns.
-			log.Warn("replica unavailable at startup", "replica", i, "error", err)
-			continue
-		}
-		r := &replicaState{name: name, pool: pool}
-		c.replicas = append(c.replicas, r)
+		c.addReplica(cfg, name, url, tracerFor(name))
 	}
 
 	loopCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	c.stop = cancel
-	c.checkAll(loopCtx) // seed health before serving the first request
+	c.checkAll(loopCtx) // connect and seed health before serving the first request
 	go c.healthLoop(loopCtx, cfg.HealthInterval)
 
-	log.Info("database cluster ready", "replicas", len(c.replicas), "max_lag", cfg.MaxReplicaLag)
+	log.Info("database cluster ready", "replicas", len(c.replicas), "max_lag", cfg.MaxReplicaLag, "lag_samples", cfg.ReplicaLagSamples)
 	return c, nil
+}
+
+// addReplica registers a replica out of rotation; its first health check opens
+// the pool, so one that is down at boot neither stops the process nor is lost.
+func (c *Cluster) addReplica(cfg config.DB, name, url string, tracer pgx.QueryTracer) {
+	r := newReplicaState(name, nil, cfg.ReplicaLagSamples)
+	r.open = func(ctx context.Context) (*pgxpool.Pool, error) { return openPool(ctx, cfg, url, tracer) }
+	c.replicas = append(c.replicas, r)
 }
 
 func openPool(ctx context.Context, cfg config.DB, url string, tracer pgx.QueryTracer) (*pgxpool.Pool, error) {
@@ -189,7 +192,9 @@ func (c *Cluster) Close() {
 		<-c.stopped
 	}
 	for _, r := range c.replicas {
-		r.pool.Close()
+		if pool := r.pool.Load(); pool != nil {
+			pool.Close()
+		}
 	}
 	if c.admin != c.primary {
 		c.admin.Close()
@@ -211,7 +216,7 @@ func (c *Cluster) reader(ctx context.Context) *pgxpool.Pool {
 	switch outcome {
 	case routeReplica:
 		c.readsToReplica.Add(1)
-		return r.pool
+		return r.pool.Load()
 	case routeStale:
 		c.staleFallbacks.Add(1)
 	case routeNoHealthy:
@@ -330,7 +335,19 @@ func (c *Cluster) check(ctx context.Context, r *replicaState) {
 		lagSeconds     float64
 		receiverStatus string
 	)
-	err := r.pool.QueryRow(ctx, replicaHealthSQL).Scan(&inRecovery, &lsnText, &lagSeconds, &receiverStatus)
+	pool := r.pool.Load()
+	if pool == nil {
+		var err error
+		if pool, err = r.open(ctx); err != nil {
+			if r.lastErr.Load() == nil {
+				c.log.Warn("replica unavailable, retrying on every health check", "replica", r.name, "error", err)
+			}
+			c.markUnhealthy(r, err.Error())
+			return
+		}
+		r.pool.Store(pool)
+	}
+	err := pool.QueryRow(ctx, replicaHealthSQL).Scan(&inRecovery, &lsnText, &lagSeconds, &receiverStatus)
 	if err != nil {
 		c.markUnhealthy(r, err.Error())
 		return
@@ -346,28 +363,7 @@ func (c *Cluster) check(ctx context.Context, r *replicaState) {
 		lag = 0 // clock skew between primary and standby
 	}
 	r.replayLSN.Store(uint64(lsn))
-	r.lagMillis.Store(lag.Milliseconds())
-
-	if inRecovery {
-		// A standby whose receiver has dropped will happily report zero lag
-		// forever, because it has replayed everything it received. Without this
-		// check it would keep serving increasingly stale reads and look healthy
-		// doing it. An empty status means the view is not readable by this
-		// role, in which case we fall back to trusting the lag figure.
-		if receiverStatus != "" && receiverStatus != "streaming" {
-			c.markUnhealthy(r, fmt.Sprintf("wal receiver is %q, not streaming", receiverStatus))
-			return
-		}
-		if c.maxLag > 0 && lag > c.maxLag {
-			c.markUnhealthy(r, fmt.Sprintf("replication lag %s exceeds %s", lag, c.maxLag))
-			return
-		}
-	}
-
-	if was := r.healthy.Swap(true); !was {
-		r.lastErr.Store(nil)
-		c.log.Info("replica healthy", "replica", r.name, "lag", lag)
-	}
+	c.judge(r, inRecovery, lag, receiverStatus)
 }
 
 func (c *Cluster) markUnhealthy(r *replicaState, reason string) {
@@ -415,9 +411,12 @@ func (c *Cluster) Stats() Stats {
 	}
 	for _, r := range c.replicas {
 		s.Replicas = append(s.Replicas, r.snapshot())
-		pools = append(pools, named{r.name, r.pool})
+		pools = append(pools, named{r.name, r.pool.Load()})
 	}
 	for _, p := range pools {
+		if p.pool == nil {
+			continue // a replica that has not answered yet has no connections to count
+		}
 		stat := p.pool.Stat()
 		s.Pools = append(s.Pools, PoolStats{Name: p.name, Idle: stat.IdleConns(), Acquired: stat.AcquiredConns(), Constructing: stat.ConstructingConns(), Max: stat.MaxConns()})
 	}

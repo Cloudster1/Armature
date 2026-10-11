@@ -118,3 +118,21 @@ func TestCellsAndFieldValues(t *testing.T) {
 		t.Error("a day whose order nobody can tell was accepted")
 	}
 }
+
+// Excel writes a byte order mark and then quotes every header, so the mark has
+// to be gone before the CSV reader meets the opening quote.
+func TestAByteOrderMarkBeforeAQuotedHeaderIsRead(t *testing.T) {
+	headers, rows, err := Read([]byte(byteOrderMark + "\"Summary\",\"Issue Type\"\n\"Fix it\",Bug\n"))
+	if err != nil {
+		t.Fatalf("a quoted header after a byte order mark was refused: %v", err)
+	}
+	if len(headers) != 2 || headers[0] != "Summary" || headers[1] != "Issue Type" {
+		t.Errorf("headers = %q, want Summary and Issue Type", headers)
+	}
+	if len(rows) != 1 || rows[0].Cells[0] != "Fix it" || rows[0].Line != 2 {
+		t.Errorf("rows = %v", rows)
+	}
+	if m := Guess(headers); len(m["summary"]) != 1 || m["summary"][0] != 0 || len(m["type"]) != 1 {
+		t.Errorf("the headers did not map themselves: %v", m)
+	}
+}

@@ -3,6 +3,7 @@
 export { cx } from "./cx";
 export { Button, IconButton, Spinner, controlHeight, type ButtonVariant, type ControlSize, ButtonLink } from "./Button";
 export { Input, Textarea, Checkbox, Switch, Select, SelectInput, Labelled, control, controlClass, fieldId, type InputProps } from "./controls";
+export { DateInput, isCompleteDate } from "./DateInput";
 export { Field } from "./Field";
 export { ColorField } from "./ColorField";
 export { Card } from "./Card";
@@ -26,6 +27,7 @@ export { Tooltip } from "./Tooltip";
 export { Spotlight } from "./Spotlight";
 export { MentionTextarea, mentionMatches, mentionQuery, type Mentionable } from "./MentionTextarea";
 export { Menu, type MenuItem } from "./Menu";
-export { Dialog, ConfirmDialog, Drawer, DockedPanel, isEditing, isInteractiveTarget } from "./Dialog";
+export { Dialog, ConfirmDialog, Drawer, DockedPanel, isInteractiveTarget } from "./Dialog";
+export { isEditing } from "./overlay";
 export { ToastProvider, useToast, type ToastKind, type ToastOptions } from "./Toast";
 export { Tabs, TabPanel, type Tab } from "./Tabs";

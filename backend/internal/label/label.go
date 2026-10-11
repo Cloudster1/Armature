@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/armature/armature/backend/internal/db"
-	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
 )
 
@@ -215,91 +214,111 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) (db.LSN, error) {
 }
 
 // SetIssueLabels makes an issue carry exactly these labels, by name. A name
-// the organization does not have yet becomes a label, so somebody tagging an
-// issue never has to go and define the word first. The change is recorded as
-// the words that came and went.
+// the organization lacks becomes a label, so nobody has to define it first.
 func (s *Service) SetIssueLabels(ctx context.Context, key string, names []string, actor issue.Actor) ([]issue.LabelRef, db.LSN, error) {
 	projectKey, num, err := issue.ParseKey(key)
 	if err != nil {
 		return nil, 0, err
 	}
-	wanted := map[string]string{}
-	for _, raw := range names {
-		name, err := CleanName(raw)
-		if err != nil {
-			return nil, 0, fmt.Errorf("%w: %q", ErrBadName, raw)
-		}
-		wanted[strings.ToLower(name)] = name
-	}
-
 	var out []issue.LabelRef
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var issueID uuid.UUID
-		err := tx.QueryRow(ctx, `
-			SELECT i.id FROM issue i JOIN project p ON p.id = i.project_id
-			WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num).Scan(&issueID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return issue.ErrNotFound
-		}
+		issueID, labels, changes, err := s.SetIssueLabelsIn(ctx, tx, key, names)
 		if err != nil {
 			return err
 		}
-
-		before, err := labelsOn(ctx, tx, issueID)
-		if err != nil {
-			return err
-		}
-		had := map[string]bool{}
-		for _, l := range before {
-			had[strings.ToLower(l.Name)] = true
-		}
-
-		for lower, name := range wanted {
-			if had[lower] {
-				continue
-			}
-			// Find the word or coin it, then attach it.
-			var id uuid.UUID
-			err := tx.QueryRow(ctx, `SELECT id FROM label WHERE lower(name) = $1`, lower).Scan(&id)
-			if errors.Is(err, pgx.ErrNoRows) {
-				err = tx.QueryRow(ctx, `INSERT INTO label (org_id, name, color) VALUES (current_org_id(), $1, $2) RETURNING id`,
-					name, ColorFor(name)).Scan(&id)
-			}
-			if err != nil {
-				return fmt.Errorf("label %q: %w", name, err)
-			}
-			if _, err := tx.Exec(ctx, `INSERT INTO issue_label (org_id, issue_id, label_id) VALUES (current_org_id(), $1, $2) ON CONFLICT DO NOTHING`, issueID, id); err != nil {
-				return err
-			}
-		}
-		for _, l := range before {
-			if _, keep := wanted[strings.ToLower(l.Name)]; !keep {
-				if _, err := tx.Exec(ctx, `DELETE FROM issue_label WHERE issue_id = $1 AND label_id = $2`, issueID, l.ID); err != nil {
-					return err
-				}
-			}
-		}
-
-		out, err = labelsOn(ctx, tx, issueID)
-		if err != nil {
-			return err
-		}
-		from, to := words(before), words(out)
-		if from == to {
-			return nil
-		}
-		change := issue.Change{Field: "labels", From: from, To: to}
-		if err := issue.RecordChanges(ctx, tx, issueID, actor.UserID, []issue.Change{change}); err != nil {
-			return err
-		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
-			"issueId": issueID, "key": issue.FormatKey(projectKey, num), "changes": []issue.Change{change}, "actorId": actor.UserID,
-		})
+		out = labels
+		return issue.AnnounceUpdate(ctx, tx, issueID, issue.FormatKey(projectKey, num), actor, changes)
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	return out, lsn, nil
+}
+
+// SetIssueLabelsIn is SetIssueLabels inside the caller's transaction, leaving
+// the change, the words that came and went, for the caller to announce.
+func (s *Service) SetIssueLabelsIn(ctx context.Context, tx db.DBTX, key string, names []string) (uuid.UUID, []issue.LabelRef, []issue.Change, error) {
+	return s.labelIssue(ctx, tx, key, names, false)
+}
+
+// AddIssueLabelsIn puts these labels on an issue beside the ones it carries,
+// reading those inside the caller's transaction so nothing in between is lost.
+func (s *Service) AddIssueLabelsIn(ctx context.Context, tx db.DBTX, key string, names []string) (uuid.UUID, []issue.LabelRef, []issue.Change, error) {
+	return s.labelIssue(ctx, tx, key, names, true)
+}
+
+func (s *Service) labelIssue(ctx context.Context, tx db.DBTX, key string, names []string, keep bool) (uuid.UUID, []issue.LabelRef, []issue.Change, error) {
+	projectKey, num, err := issue.ParseKey(key)
+	if err != nil {
+		return uuid.Nil, nil, nil, err
+	}
+	wanted := map[string]string{}
+	for _, raw := range names {
+		name, err := CleanName(raw)
+		if err != nil {
+			return uuid.Nil, nil, nil, fmt.Errorf("%w: %q", ErrBadName, raw)
+		}
+		wanted[strings.ToLower(name)] = name
+	}
+
+	var issueID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		SELECT i.id FROM issue i JOIN project p ON p.id = i.project_id
+		WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num).Scan(&issueID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, nil, nil, issue.ErrNotFound
+	}
+	if err != nil {
+		return uuid.Nil, nil, nil, err
+	}
+
+	before, err := labelsOn(ctx, tx, issueID)
+	if err != nil {
+		return uuid.Nil, nil, nil, err
+	}
+	had := map[string]bool{}
+	for _, l := range before {
+		had[strings.ToLower(l.Name)] = true
+		if keep {
+			wanted[strings.ToLower(l.Name)] = l.Name
+		}
+	}
+
+	for lower, name := range wanted {
+		if had[lower] {
+			continue
+		}
+		// Coin the word unless it exists, then read it. Somebody coining the
+		// same word at once makes this wait for them and use theirs.
+		if _, err := tx.Exec(ctx, `INSERT INTO label (org_id, name, color) VALUES (current_org_id(), $1, $2) ON CONFLICT (org_id, lower(name)) DO NOTHING`,
+			name, ColorFor(name)); err != nil {
+			return uuid.Nil, nil, nil, fmt.Errorf("label %q: %w", name, err)
+		}
+		var id uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT id FROM label WHERE lower(name) = $1`, lower).Scan(&id); err != nil {
+			return uuid.Nil, nil, nil, fmt.Errorf("label %q: %w", name, err)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO issue_label (org_id, issue_id, label_id) VALUES (current_org_id(), $1, $2) ON CONFLICT DO NOTHING`, issueID, id); err != nil {
+			return uuid.Nil, nil, nil, err
+		}
+	}
+	for _, l := range before {
+		if _, keep := wanted[strings.ToLower(l.Name)]; !keep {
+			if _, err := tx.Exec(ctx, `DELETE FROM issue_label WHERE issue_id = $1 AND label_id = $2`, issueID, l.ID); err != nil {
+				return uuid.Nil, nil, nil, err
+			}
+		}
+	}
+
+	out, err := labelsOn(ctx, tx, issueID)
+	if err != nil {
+		return uuid.Nil, nil, nil, err
+	}
+	from, to := words(before), words(out)
+	if from == to {
+		return issueID, out, nil, nil
+	}
+	return issueID, out, []issue.Change{{Field: "labels", From: from, To: to}}, nil
 }
 
 // labelsOn reads an issue's labels alphabetically.
