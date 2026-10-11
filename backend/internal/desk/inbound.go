@@ -396,4 +396,3 @@ func unmatchedMessage(appURL string) Message {
 		Body:    fmt.Sprintf("We could not tell which request this is about. Reply to a mail from the desk, keeping its subject, or use the portal at %s\n", appURL),
 	}
 }
-

@@ -42,6 +42,19 @@ exempt role for the few genuinely cross-tenant operations.
 **Reconsider if** we move to a database per tenant, which makes the policies
 redundant.
 
+### A backfill lifts forced row security around itself
+
+FORCE means the owner obeys the policies too, and a cluster migrates as a plain
+owner with no organization set, so a migration that reads `org` there reads
+nothing and fills nothing, without a word. The local stack migrates as a
+superuser and never notices. A backfill therefore wraps itself in
+`ALTER TABLE ... NO FORCE ROW LEVEL SECURITY` on `org` and on every table it
+fills, and forces them again at the end, as `00904` does. Three backfills
+written before the rule were rerun that way by `00926`.
+`TestBackfillsReadingOrgLiftItsRowSecurity` refuses a migration that reads
+`org` without the lift, and `TestMigrationsRunAsPlainOwner` migrates as such
+an owner and checks an older organization comes out like a new one.
+
 ### A transactional outbox rather than publishing events directly
 
 Publishing to Redis inside a request means the event can be sent for a

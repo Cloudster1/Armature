@@ -15,6 +15,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
+	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/migrations"
 )
 
@@ -22,22 +23,35 @@ import (
 // every FORCE ROW LEVEL SECURITY table hides its rows from. The local stack
 // migrates as a superuser, which sees everything, so a migration that reads
 // or fills tenant rows can pass here and quietly do nothing, or refuse, there.
-// This migrates a fresh database as such an owner, with an organization from
-// before the roles migration in it, and expects the organization to come out
-// with its roles.
+// This migrates a fresh database as such an owner, with organizations from
+// before the backfills in it, and expects each to come out with what a new one
+// is made with.
 func TestMigrationsRunAsPlainOwner(t *testing.T) {
 	ctx := context.Background()
 	provider, superFresh := ownerDatabase(t, "armature_owner_migrate_test", "armature_owner_test")
 
-	// An organization from the days before roles were rows.
-	const beforeRoles = 902
+	// One organization from before the Initiative type and the automation
+	// account, one from before roles were rows and calendars existed.
+	const (
+		beforeInitiative = 4
+		beforeRoles      = 902
+	)
+	insertOrg := func(slug string) uuid.UUID {
+		t.Helper()
+		var id uuid.UUID
+		if err := superFresh.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, slug, slug).Scan(&id); err != nil {
+			t.Fatalf("insert organization %s: %v", slug, err)
+		}
+		return id
+	}
+	if _, err := provider.UpTo(ctx, beforeInitiative); err != nil {
+		t.Fatalf("migrate to %d as the owner: %v", beforeInitiative, err)
+	}
+	earliest := insertOrg("early")
 	if _, err := provider.UpTo(ctx, beforeRoles); err != nil {
 		t.Fatalf("migrate to %d as the owner: %v", beforeRoles, err)
 	}
-	var orgID uuid.UUID
-	if err := superFresh.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ('acme', 'Acme') RETURNING id`).Scan(&orgID); err != nil {
-		t.Fatalf("insert organization: %v", err)
-	}
+	orgs := map[string]uuid.UUID{"early": earliest, "acme": insertOrg("acme")}
 
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("migrate the rest as the owner: %v", err)
@@ -51,13 +65,76 @@ func TestMigrationsRunAsPlainOwner(t *testing.T) {
 		t.Fatalf("database is at %d, the migrations go to %d", current, latest)
 	}
 
-	var roles int
-	if err := superFresh.QueryRow(ctx, `SELECT count(*) FROM org_role WHERE org_id = $1 AND builtin`, orgID).Scan(&roles); err != nil {
-		t.Fatalf("count roles: %v", err)
+	automation := map[string]uuid.UUID{}
+	for slug, orgID := range orgs {
+		automation[slug] = expectBackfilled(ctx, t, superFresh, slug, orgID)
+	}
+
+	// Run again, the repair adds nothing to an organization that has it all.
+	const backfillsRepair = 926
+	if _, err := provider.ApplyVersion(ctx, backfillsRepair, false); err != nil {
+		t.Fatalf("take back %d: %v", backfillsRepair, err)
+	}
+	if _, err := provider.ApplyVersion(ctx, backfillsRepair, true); err != nil {
+		t.Fatalf("apply %d again as the owner: %v", backfillsRepair, err)
+	}
+	for slug, orgID := range orgs {
+		if again := expectBackfilled(ctx, t, superFresh, slug, orgID); again != automation[slug] {
+			t.Errorf("organization %s: running the repair again replaced its automation account %s with %s", slug, automation[slug], again)
+		}
+	}
+
+	// The repair lifts row security only for itself.
+	for _, table := range []string{"org", "org_member", "issue_type", "holiday_calendar"} {
+		var forced bool
+		if err := superFresh.QueryRow(ctx, `SELECT relforcerowsecurity FROM pg_class WHERE oid = $1::regclass`, table).Scan(&forced); err != nil {
+			t.Fatalf("read row security of %s: %v", table, err)
+		}
+		if !forced {
+			t.Errorf("%s no longer forces row security on its owner after the migrations", table)
+		}
+	}
+}
+
+// expectBackfilled checks an organization made before the migrations ran has
+// what a new one is made with, exactly once, and returns its automation account.
+func expectBackfilled(ctx context.Context, t *testing.T, conn *pgx.Conn, slug string, orgID uuid.UUID) uuid.UUID {
+	t.Helper()
+	var roles, calendars, initiatives, members int
+	var calendarName string
+	var automation *uuid.UUID
+	var automationActive bool
+	err := conn.QueryRow(ctx, `
+		SELECT (SELECT count(*) FROM org_role WHERE org_id = o.id AND builtin),
+		       (SELECT count(*) FROM holiday_calendar WHERE org_id = o.id AND is_default),
+		       (SELECT coalesce(min(name), '') FROM holiday_calendar WHERE org_id = o.id AND is_default),
+		       (SELECT count(*) FROM issue_type WHERE org_id = o.id AND lower(name) = 'initiative' AND hierarchy_level = 2),
+		       o.automation_user_id,
+		       coalesce((SELECT is_active FROM app_user WHERE id = o.automation_user_id), false),
+		       (SELECT count(*) FROM org_member WHERE org_id = o.id AND user_id = o.automation_user_id)
+		FROM org o WHERE o.id = $1`, orgID,
+	).Scan(&roles, &calendars, &calendarName, &initiatives, &automation, &automationActive, &members)
+	if err != nil {
+		t.Fatalf("organization %s: read what it has: %v", slug, err)
 	}
 	if roles != 5 {
-		t.Fatalf("the organization from before the roles migration has %d built-in roles, want 5", roles)
+		t.Errorf("organization %s has %d built-in roles, want 5", slug, roles)
 	}
+	if calendars != 1 || calendarName != bootstrap.DefaultHolidayCalendarName {
+		t.Errorf("organization %s has %d default holiday calendars named %q, want one named %q",
+			slug, calendars, calendarName, bootstrap.DefaultHolidayCalendarName)
+	}
+	if initiatives != 1 {
+		t.Errorf("organization %s has %d Initiative types at level 2, want 1", slug, initiatives)
+	}
+	if automation == nil {
+		t.Errorf("organization %s has no automation account", slug)
+		return uuid.Nil
+	}
+	if automationActive || members != 1 {
+		t.Errorf("organization %s: automation account active=%v and a member %d times, want an inactive member once", slug, automationActive, members)
+	}
+	return *automation
 }
 
 // ownerDatabase makes a fresh database owned by a plain role, the way a

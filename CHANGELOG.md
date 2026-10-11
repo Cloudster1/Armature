@@ -42,6 +42,10 @@ here in the branch that makes it.
 - Fixed: somebody in two organizations gets each one's digest, both at 08:00
   for a daily one; a digest whose hour was missed goes at the next pass that
   day, and a restarted worker neither sends one twice nor skips it (#97).
+- Fixed: an organization made before an upgrade on a database migrated as a
+  plain owner now has its default holiday calendar, its automation account and
+  the Initiative type, like a new one; the upgrade adds them where missing
+  (#98).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
