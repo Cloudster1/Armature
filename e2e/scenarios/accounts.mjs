@@ -48,6 +48,8 @@ scenario("signing out in a second page sends the first to sign in on its next ac
   await goto(page, "/settings/tokens");
 
   const second = await context.newPage();
+  // A new page opens narrow, where the sidebar is a rail without the settings links.
+  await second.setViewport(page.viewport());
   await goto(second, "/");
   await waitForApp(second);
   await second.click('[data-action="sign-out"]');
