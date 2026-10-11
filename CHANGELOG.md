@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: an issue handed to another team leaves the old team's open sprint
+  for the new team's backlog, with a line in its history, instead of
+  vanishing from the Sprints page while still counting in the sprint; another
+  team's sprint is refused, by hand, on completion and by the database (#56).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

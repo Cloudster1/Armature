@@ -10,7 +10,7 @@ import (
 	"github.com/armature/armature/backend/internal/tenant"
 )
 
-// availabilityAPIError ends moreAPIError's mapping: calendars, weeks, absences
+// availabilityAPIError continues moreAPIError's mapping: calendars, weeks, absences
 // and what the resource view is set against.
 func availabilityAPIError(err error) *APIError {
 	switch {
@@ -51,6 +51,6 @@ func availabilityAPIError(err error) *APIError {
 			Message: "Select an organization first.",
 		}
 	default:
-		return ErrInternal(err)
+		return sprintAPIError(err)
 	}
 }
