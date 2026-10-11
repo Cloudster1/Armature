@@ -14,10 +14,13 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/notify"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // A follower is told about a request, and a mail address is enough to be one.
@@ -223,4 +226,117 @@ func TestFollowersOverTheAPI(t *testing.T) {
 	want(t, anyone.post("/api/v1/unwatch", map[string]any{"token": "not-a-token-" + uuid.NewString()}), http.StatusNotFound, "an unknown token")
 	want(t, anyone.post("/api/v1/unwatch", map[string]any{"token": token}), http.StatusNoContent, "the token stops it")
 	want(t, customer.delete("/api/v1/portal/requests/"+key+"/watchers/"+benID), http.StatusNotFound, "ben is gone already")
+}
+
+// "Watch my own issues" decides whether the issues a person reports or is
+// assigned tell them what happens. Off, only watching one on purpose does.
+func TestWatchOwnDecidesWhoHearsOfTheirOwnIssues(t *testing.T) {
+	h := newHarness(t)
+	ws := h.newWorkspace(t, "watchown")
+	inbox := notify.NewService(h.cluster)
+	member := func(prefix string) (uuid.UUID, issue.Actor) {
+		id := h.joinExisting(t, ws, h.email(t, prefix), "member")
+		return id, issue.Actor{UserID: id, OrgRole: auth.RoleMember, Perms: perm.NewSet(nil).WithEverything()}
+	}
+	bob, bobActor := member("bobquiet")
+	carol, carolActor := member("carolloud")
+	quiet := notify.DefaultPreferences()
+	quiet.WatchOwn = false
+	if _, err := inbox.SavePreferences(ws.ctx, bob, quiet); err != nil {
+		t.Fatal(err)
+	}
+	report := func(summary string, by issue.Actor) *issue.Issue {
+		t.Helper()
+		made, _, err := ws.issues.Create(ws.ctx, issue.CreateInput{ProjectKey: ws.project.Key, Summary: summary}, by)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return made
+	}
+	bobs := report("Bob's own, quietly", bobActor)
+	carols := report("Carol's own, out loud", carolActor)
+
+	fan := notify.NewFanOut(h.cluster, nil, &fakeMailer{}, "http://app.test", slog.New(slog.NewTextHandler(os.Stderr, nil)))
+	handle := func(topic string, payload map[string]any) {
+		t.Helper()
+		raw, _ := json.Marshal(payload)
+		if err := fan.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: topic, Payload: raw}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	comment := func(key string) {
+		t.Helper()
+		made, _, err := ws.issues.AddComment(ws.ctx, key, issue.TextDocument("Any news?"), ws.actor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		handle(events.TopicCommentAdded, map[string]any{"key": key, "commentId": made.ID, "actorId": ws.actor.UserID})
+	}
+	move := func(key string) {
+		handle(events.TopicIssueTransitioned, map[string]any{"key": key, "actorId": ws.actor.UserID, "toStatus": "In Progress"})
+	}
+	told := func(who uuid.UUID, key, kind string) int {
+		t.Helper()
+		items, err := inbox.Inbox(ws.ctx, who, false, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for _, it := range items {
+			if it.IssueKey == key && it.Kind == kind {
+				n++
+			}
+		}
+		return n
+	}
+
+	t.Run("reporting with watchOwn off adds no watcher and tells nothing", func(t *testing.T) {
+		watchers, err := ws.issues.Watchers(ws.ctx, bobs.Key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(watchers) != 0 {
+			t.Errorf("watchers of bob's issue = %+v, want none", watchers)
+		}
+		comment(bobs.Key)
+		move(bobs.Key)
+		if n := told(bob, bobs.Key, notify.KindCommented) + told(bob, bobs.Key, notify.KindTransitioned); n != 0 {
+			t.Errorf("bob was told %d times about his own issue with watchOwn off", n)
+		}
+	})
+
+	t.Run("with watchOwn on, the default, a reporter hears", func(t *testing.T) {
+		comment(carols.Key)
+		if n := told(carol, carols.Key, notify.KindCommented); n != 1 {
+			t.Errorf("carol was told of the comment %d times, want once", n)
+		}
+	})
+
+	t.Run("an assignee with watchOwn off is told of the assignment and nothing after", func(t *testing.T) {
+		bobPtr := &bob
+		if _, _, err := ws.issues.Update(ws.ctx, carols.Key, issue.UpdateInput{Assignee: &bobPtr}, ws.actor); err != nil {
+			t.Fatal(err)
+		}
+		handle(events.TopicIssueUpdated, map[string]any{"key": carols.Key, "actorId": ws.actor.UserID, "changes": []map[string]any{{"field": "assignee"}}})
+		move(carols.Key)
+		if n := told(bob, carols.Key, notify.KindAssigned); n != 1 {
+			t.Errorf("bob was told of the assignment %d times, want once", n)
+		}
+		if n := told(bob, carols.Key, notify.KindTransitioned); n != 0 {
+			t.Errorf("bob was told of the move %d times, want never", n)
+		}
+		if n := told(carol, carols.Key, notify.KindTransitioned); n != 1 {
+			t.Errorf("carol was told of the move %d times, want once", n)
+		}
+	})
+
+	t.Run("watching an own issue on purpose tells them again", func(t *testing.T) {
+		if _, _, _, err := ws.issues.AddWatcher(ws.ctx, bobs.Key, bob, bobActor); err != nil {
+			t.Fatal(err)
+		}
+		move(bobs.Key)
+		if n := told(bob, bobs.Key, notify.KindTransitioned); n != 1 {
+			t.Errorf("bob, watching his own issue, was told of the move %d times, want once", n)
+		}
+	})
 }

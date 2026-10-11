@@ -181,3 +181,90 @@ func TestFlowReportsOverTheAPI(t *testing.T) {
 	v := want(t, c.post("/api/v1/projects/"+key+"/versions", map[string]any{"name": "1.0"}), http.StatusCreated, "version")
 	want(t, c.get("/api/v1/projects/"+key+"/reports/release_burndown?version="+idOf(t, v, "version")), http.StatusOK, "release burndown")
 }
+
+// A release burndown counts an issue only from the day it was filed, so work
+// added to a version later lifts the line instead of hiding in its first day.
+// A released version's series stops on the day it was released.
+func TestReleaseBurndownCountsIssuesFromTheirFilingDay(t *testing.T) {
+	h := newHarness(t)
+	ws := h.newWorkspace(t, "burnscope")
+	reports := ws.reports(h)
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	const (
+		startedDaysAgo = 20
+		addedDaysAgo   = 10
+		releasedAgo    = 5
+		first, later   = 5, 10
+	)
+	start := today.AddDate(0, 0, -startedDaysAgo)
+	added := today.AddDate(0, 0, -addedDaysAgo)
+
+	versions := version.NewService(h.cluster)
+	startOn := &start
+	v, _, err := versions.Create(ws.ctx, ws.project.Key, version.Input{Name: ptr("2.0"), StartOn: &startOn}, ws.actor.UserID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := func(n int, on time.Time) {
+		for i := 0; i < n; i++ {
+			is := ws.newIssue(t, "Work for 2.0")
+			if _, _, err := ws.issues.SetVersions(ws.ctx, is.Key, []uuid.UUID{v.ID}, nil, ws.actor); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := h.super.Exec(context.Background(), `UPDATE issue SET created_at = $2 WHERE id = $1`, is.ID, on.Add(12*time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	file(first, start)
+	file(later, added)
+
+	burn := func() *report.ReleaseBurndownReport {
+		t.Helper()
+		got, err := reports.Report(ws.ctx, ws.project.Key, report.ReleaseBurndown, report.Params{VersionID: &v.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got.(*report.ReleaseBurndownReport)
+	}
+	remainingOn := func(rb *report.ReleaseBurndownReport, day time.Time) int {
+		t.Helper()
+		for _, d := range rb.Days {
+			if d.Day.UTC().Equal(day) {
+				return d.Remaining
+			}
+		}
+		t.Fatalf("the burndown has no day %s", day.Format(time.DateOnly))
+		return 0
+	}
+
+	rb := burn()
+	if rb.Total != first+later || len(rb.Days) != startedDaysAgo+1 {
+		t.Fatalf("burndown = %d in all over %d days, want %d over %d", rb.Total, len(rb.Days), first+later, startedDaysAgo+1)
+	}
+	if got := remainingOn(rb, start); got != first {
+		t.Errorf("on the first day %d remain, want the %d filed by then", got, first)
+	}
+	if got := remainingOn(rb, added.AddDate(0, 0, -1)); got != first {
+		t.Errorf("the day before more work came %d remain, want %d", got, first)
+	}
+	if got := remainingOn(rb, added); got != first+later {
+		t.Errorf("the day more work came %d remain, want the line to rise to %d", got, first+later)
+	}
+
+	// Released five days ago: the series ends that day, not today.
+	if _, _, err := versions.Release(ws.ctx, v.ID, ws.actor.UserID); err != nil {
+		t.Fatal(err)
+	}
+	releasedOn := today.AddDate(0, 0, -releasedAgo)
+	if _, err := h.super.Exec(context.Background(), `UPDATE version SET released_at = $2 WHERE id = $1`, v.ID, releasedOn.Add(15*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	rb = burn()
+	if len(rb.Days) == 0 || !rb.Days[len(rb.Days)-1].Day.UTC().Equal(releasedOn) {
+		t.Fatalf("a released version's burndown ends on %v, want its release day %s", rb.Days, releasedOn.Format(time.DateOnly))
+	}
+	if !rb.Days[0].Day.UTC().Equal(start) || len(rb.Days) != startedDaysAgo-releasedAgo+1 {
+		t.Errorf("a released version's burndown runs %d days from %s, want %d from %s", len(rb.Days), rb.Days[0].Day.Format(time.DateOnly), startedDaysAgo-releasedAgo+1, start.Format(time.DateOnly))
+	}
+}

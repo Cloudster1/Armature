@@ -33,7 +33,10 @@ type DBTX interface {
 // of them is atomic.
 type replicaState struct {
 	name string
-	pool *pgxpool.Pool
+	// pool stays nil until the replica first answers; open is how the health
+	// loop keeps trying, so a standby that boots after the api still joins.
+	pool atomic.Pointer[pgxpool.Pool]
+	open func(context.Context) (*pgxpool.Pool, error)
 
 	healthy   atomic.Bool
 	replayLSN atomic.Uint64
@@ -137,24 +140,25 @@ func Open(ctx context.Context, cfg config.DB, log *slog.Logger, opts ...Option) 
 
 	for i, url := range cfg.ReplicaURLs {
 		name := fmt.Sprintf("replica-%d", i)
-		pool, err := openPool(ctx, cfg, url, tracerFor(name))
-		if err != nil {
-			// A replica that is down at boot must not stop the process: the
-			// health loop will pick it up when it returns.
-			log.Warn("replica unavailable at startup", "replica", i, "error", err)
-			continue
-		}
-		r := &replicaState{name: name, pool: pool}
-		c.replicas = append(c.replicas, r)
+		c.addReplica(cfg, name, url, tracerFor(name))
 	}
 
 	loopCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	c.stop = cancel
-	c.checkAll(loopCtx) // seed health before serving the first request
+	c.checkAll(loopCtx) // connect and seed health before serving the first request
 	go c.healthLoop(loopCtx, cfg.HealthInterval)
 
 	log.Info("database cluster ready", "replicas", len(c.replicas), "max_lag", cfg.MaxReplicaLag)
 	return c, nil
+}
+
+// addReplica registers a replica out of rotation; its first health check opens
+// the pool, so one that is down at boot neither stops the process nor is lost.
+func (c *Cluster) addReplica(cfg config.DB, name, url string, tracer pgx.QueryTracer) {
+	c.replicas = append(c.replicas, &replicaState{
+		name: name,
+		open: func(ctx context.Context) (*pgxpool.Pool, error) { return openPool(ctx, cfg, url, tracer) },
+	})
 }
 
 func openPool(ctx context.Context, cfg config.DB, url string, tracer pgx.QueryTracer) (*pgxpool.Pool, error) {
@@ -189,7 +193,9 @@ func (c *Cluster) Close() {
 		<-c.stopped
 	}
 	for _, r := range c.replicas {
-		r.pool.Close()
+		if pool := r.pool.Load(); pool != nil {
+			pool.Close()
+		}
 	}
 	if c.admin != c.primary {
 		c.admin.Close()
@@ -211,7 +217,7 @@ func (c *Cluster) reader(ctx context.Context) *pgxpool.Pool {
 	switch outcome {
 	case routeReplica:
 		c.readsToReplica.Add(1)
-		return r.pool
+		return r.pool.Load()
 	case routeStale:
 		c.staleFallbacks.Add(1)
 	case routeNoHealthy:
@@ -330,7 +336,19 @@ func (c *Cluster) check(ctx context.Context, r *replicaState) {
 		lagSeconds     float64
 		receiverStatus string
 	)
-	err := r.pool.QueryRow(ctx, replicaHealthSQL).Scan(&inRecovery, &lsnText, &lagSeconds, &receiverStatus)
+	pool := r.pool.Load()
+	if pool == nil {
+		var err error
+		if pool, err = r.open(ctx); err != nil {
+			if r.lastErr.Load() == nil {
+				c.log.Warn("replica unavailable, retrying on every health check", "replica", r.name, "error", err)
+			}
+			c.markUnhealthy(r, err.Error())
+			return
+		}
+		r.pool.Store(pool)
+	}
+	err := pool.QueryRow(ctx, replicaHealthSQL).Scan(&inRecovery, &lsnText, &lagSeconds, &receiverStatus)
 	if err != nil {
 		c.markUnhealthy(r, err.Error())
 		return
@@ -415,9 +433,12 @@ func (c *Cluster) Stats() Stats {
 	}
 	for _, r := range c.replicas {
 		s.Replicas = append(s.Replicas, r.snapshot())
-		pools = append(pools, named{r.name, r.pool})
+		pools = append(pools, named{r.name, r.pool.Load()})
 	}
 	for _, p := range pools {
+		if p.pool == nil {
+			continue // a replica that has not answered yet has no connections to count
+		}
 		stat := p.pool.Stat()
 		s.Pools = append(s.Pools, PoolStats{Name: p.name, Idle: stat.IdleConns(), Acquired: stat.AcquiredConns(), Constructing: stat.ConstructingConns(), Max: stat.MaxConns()})
 	}

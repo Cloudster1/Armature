@@ -1,5 +1,5 @@
 {{- if gt (int .Values.worker.replicas) 1 }}
-{{- fail "worker.replicas must be 1: the worker has no leader election, its Redis consumers all identify as the literal \"worker\", and notify.Digest tracks which digests it has sent in an in-process map. A second replica sends every hourly digest twice. See the comment in values.yaml." }}
+{{- fail "worker.replicas must be 1: the worker has no leader election, its Redis consumers all identify as the literal \"worker\", so a second replica's consumers cannot be told from the first's. Set worker.replicas to 1; see the comment in values.yaml." }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment

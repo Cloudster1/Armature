@@ -77,9 +77,12 @@ func (s *Service) moveRow(ctx context.Context, tx db.DBTX, before *Issue, target
 		}
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL, moved_from = $5
-		WHERE id = $1`, before.ID, target.id, keyNum, statusID, before.Key); err != nil {
+		UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL
+		WHERE id = $1`, before.ID, target.id, keyNum, statusID); err != nil {
 		return nil, fmt.Errorf("move %s: %w", before.Key, err)
+	}
+	if err := keepOldKey(ctx, tx, before.ID, before.Key); err != nil {
+		return nil, err
 	}
 
 	changes := []Change{{Field: "project", From: before.ProjectKey, To: target.key}, {Field: "key", From: before.Key, To: FormatKey(target.key, keyNum)}}

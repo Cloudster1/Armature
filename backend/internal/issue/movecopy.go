@@ -236,6 +236,10 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 		if err != nil {
 			return err
 		}
+		// A desk's clocks belong to the project too, so they follow here.
+		if err := s.tellUpdated(ctx, tx, before, moved, actor); err != nil {
+			return err
+		}
 		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": moved.ID, "key": moved.Key, "changes": changes, "actorId": actor.UserID, "movedFrom": before.Key,
 		})
@@ -246,13 +250,30 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 	return moved, lsn, nil
 }
 
-// ByOldKey finds an issue by a key it had before a move, so an old address
+// keepOldKey adds the key an issue is leaving to those it had. A key another
+// issue left, which takes a project deleted and made again, now names this one.
+func keepOldKey(ctx context.Context, tx db.DBTX, issueID uuid.UUID, key string) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO issue_old_key (org_id, issue_id, key) VALUES (current_org_id(), $1, $2)
+		ON CONFLICT (org_id, key) DO UPDATE SET issue_id = EXCLUDED.issue_id, created_at = now()`, issueID, key)
+	if err != nil {
+		return fmt.Errorf("keep the old key %s: %w", key, err)
+	}
+	return nil
+}
+
+// ByOldKey finds an issue by any key it had before a move, so an old address
 // can send its reader on.
 func (s *Service) ByOldKey(ctx context.Context, key string) (*Issue, error) {
+	projectKey, num, err := ParseKey(key)
+	if err != nil {
+		return nil, err
+	}
 	var found *Issue
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		found, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.moved_from = $1`, strings.ToUpper(strings.TrimSpace(key))))
+		found, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = (SELECT k.issue_id FROM issue_old_key k WHERE k.key = $1)`,
+			FormatKey(projectKey, num)))
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
