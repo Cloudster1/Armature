@@ -24,14 +24,14 @@ func TestAPullRequestsCIReadsFailedWhenAnyCheckFailed(t *testing.T) {
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "", "")
 	found := ws.newIssue(t, "make the checks honest")
-	const head = "head0002"
+	const head = "bead0002"
 
 	deliver(t, svc, repo, "push", push(found.Key+"-checks", head, found.Key+" make the checks honest", ws.owner.Principal.User.Email))
 	deliver(t, svc, repo, "pull_request", pull("opened", 8, found.Key+" honest checks", found.Key+"-checks", head, false))
 	deliver(t, svc, repo, "check_run", checkRun(21, "test", "failure", head, "2026-09-02T10:00:00Z"))
 	deliver(t, svc, repo, "check_run", checkRun(22, "lint", "success", head, "2026-09-02T10:01:00Z"))
 	// A failure on some other commit says nothing about this head.
-	deliver(t, svc, repo, "check_run", checkRun(20, "lint", "failure", "older001", "2026-09-02T11:00:00Z"))
+	deliver(t, svc, repo, "check_run", checkRun(20, "lint", "failure", "01de0001", "2026-09-02T11:00:00Z"))
 
 	dev, err := svc.ForIssue(ws.ctx, found.Key)
 	if err != nil {
