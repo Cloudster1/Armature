@@ -223,9 +223,12 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 			}
 		}
 		if _, err := tx.Exec(ctx, `
-			UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL, moved_from = $5
-			WHERE id = $1`, before.ID, targetID, keyNum, statusID, before.Key); err != nil {
+			UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL
+			WHERE id = $1`, before.ID, targetID, keyNum, statusID); err != nil {
 			return fmt.Errorf("move issue: %w", err)
+		}
+		if err := keepOldKey(ctx, tx, before.ID, before.Key); err != nil {
+			return err
 		}
 		// Subtasks follow, each with its own new key.
 		children, err := tx.Query(ctx, `SELECT c.id, c.key_num FROM issue c WHERE c.parent_id = $1 ORDER BY c.key_num`, before.ID)
@@ -256,9 +259,12 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 					return err
 				}
 			}
-			if _, err := tx.Exec(ctx, `UPDATE issue SET project_id = $2, key_num = $3, sprint_id = NULL, team_id = NULL, milestone_id = NULL, moved_from = $4 WHERE id = $1`,
-				c.id, targetID, childNum, FormatKey(projectKey, c.num)); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE issue SET project_id = $2, key_num = $3, sprint_id = NULL, team_id = NULL, milestone_id = NULL WHERE id = $1`,
+				c.id, targetID, childNum); err != nil {
 				return fmt.Errorf("move subtask: %w", err)
+			}
+			if err := keepOldKey(ctx, tx, c.id, FormatKey(projectKey, c.num)); err != nil {
+				return err
 			}
 		}
 
@@ -306,13 +312,30 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 	return moved, lsn, nil
 }
 
-// ByOldKey finds an issue by a key it had before a move, so an old address
+// keepOldKey adds the key an issue is leaving to those it had. A key another
+// issue left, which takes a project deleted and made again, now names this one.
+func keepOldKey(ctx context.Context, tx db.DBTX, issueID uuid.UUID, key string) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO issue_old_key (org_id, issue_id, key) VALUES (current_org_id(), $1, $2)
+		ON CONFLICT (org_id, key) DO UPDATE SET issue_id = EXCLUDED.issue_id, created_at = now()`, issueID, key)
+	if err != nil {
+		return fmt.Errorf("keep the old key %s: %w", key, err)
+	}
+	return nil
+}
+
+// ByOldKey finds an issue by any key it had before a move, so an old address
 // can send its reader on.
 func (s *Service) ByOldKey(ctx context.Context, key string) (*Issue, error) {
+	projectKey, num, err := ParseKey(key)
+	if err != nil {
+		return nil, err
+	}
 	var found *Issue
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		found, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.moved_from = $1`, strings.ToUpper(strings.TrimSpace(key))))
+		found, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = (SELECT k.issue_id FROM issue_old_key k WHERE k.key = $1)`,
+			FormatKey(projectKey, num)))
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

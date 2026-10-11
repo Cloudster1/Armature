@@ -78,8 +78,12 @@ scenario("a mention in a comment lands in the person's inbox and makes them a wa
   await goto(page, "/settings/profile");
   await page.waitForSelector("[data-notification-settings]", { timeout: WAIT });
   await page.click('[data-pref-mail="commented"]');
+  await page.click('[data-pref-watch-own]');
   await page.click('[data-action="save-notifications"]');
   await page.waitForFunction(() => document.body.innerText.includes("Notification settings saved"), { timeout: WAIT });
+  // Watching his own issues stays off when he comes back.
+  await goto(page, "/settings/profile");
+  await page.waitForSelector("[data-pref-watch-own]:not(:checked)", { timeout: WAIT });
 });
 
 scenario("a rule labels a ticket when it is moved, and the run log says so", async ({ page }) => {

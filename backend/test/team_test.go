@@ -207,6 +207,10 @@ func TestEachBoardHasItsOwnBacklog(t *testing.T) {
 	ws.hand(t, committed.Key, &platform.ID)
 	ws.hand(t, waiting.Key, &platform.ID)
 	ws.hand(t, elsewhere.Key, &product.ID)
+	// Done work in no sprint is history, so no backlog holds it.
+	finished := ws.typed(t, h, bootstrap.TypeTask, "finished without a sprint")
+	ws.hand(t, finished.Key, &platform.ID)
+	ws.move(t, h, finished.Key, "Close")
 
 	running, _, err := ws.sprints.Create(ws.ctx, ws.project.Key, sprint.CreateInput{
 		Name: "Platform 1", StartsOn: on("2026-03-02"), EndsOn: on("2026-03-13"), TeamID: &platform.ID,

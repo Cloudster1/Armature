@@ -344,20 +344,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actor Actor) (*Iss
 		// between two of these.
 		cardRank := rank.Sequential(keyNum)
 
-		// The sprint has to be this project's and still open; a closed one has
-		// its report written, and the same sentences SetSprint uses apply.
+		// The sprint has to be this project's, still open and planned for the
+		// issue's own team; the same sentences SetSprint uses apply.
 		if in.SprintID != nil {
-			var name, state string
-			err := tx.QueryRow(ctx, `SELECT name, state::text FROM sprint WHERE id = $1 AND project_id = $2`,
-				*in.SprintID, projectID).Scan(&name, &state)
-			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrSprintNotFound
-			}
-			if err != nil {
+			if _, err := commitTo(ctx, tx, projectID, *in.SprintID, in.TeamID); err != nil {
 				return err
-			}
-			if state == "closed" {
-				return fmt.Errorf("%w: %s", ErrSprintClosed, name)
 			}
 		}
 
