@@ -26,8 +26,6 @@ const (
 	PreviewRows = 5
 	// ExportRows caps one export; a longer result is cut there, and says so.
 	ExportRows = 5000
-	// exportPage is how many issues the export asks the list for at a time.
-	exportPage = issue.MaxPageLimit
 	// dateLayout is how a day is written in both directions.
 	dateLayout = "2006-01-02"
 )
@@ -76,26 +74,23 @@ func (s *Service) Export(ctx context.Context, w io.Writer, filter issue.Filter, 
 	if err := out.Write(columns); err != nil {
 		return done, err
 	}
-	for done.Rows < ExportRows {
-		page, err := s.issues.List(ctx, filter, issue.Page{Limit: min(exportPage, ExportRows-done.Rows), Offset: done.Rows, OrderBy: "key"})
-		if err != nil {
+	// One read sorts the matching rows once; paging would sort them again for
+	// every page and keep a large export waiting.
+	result, err := s.issues.ListUpTo(ctx, filter, ExportRows, "key")
+	if err != nil {
+		return done, err
+	}
+	done.Matched = result.Total
+	for _, i := range result.Issues {
+		row := make([]string, len(columns))
+		for n, c := range columns {
+			row[n] = Cell(cell(&i, c))
+		}
+		if err := out.Write(row); err != nil {
 			return done, err
 		}
-		done.Matched = page.Total
-		for _, i := range page.Issues {
-			row := make([]string, len(columns))
-			for n, c := range columns {
-				row[n] = Cell(cell(&i, c))
-			}
-			if err := out.Write(row); err != nil {
-				return done, err
-			}
-		}
-		done.Rows += len(page.Issues)
-		if len(page.Issues) == 0 || done.Rows >= page.Total {
-			break
-		}
 	}
+	done.Rows = len(result.Issues)
 	if done.Truncated() {
 		if err := out.Write([]string{truncationNote(done.Rows, done.Matched)}); err != nil {
 			return done, err

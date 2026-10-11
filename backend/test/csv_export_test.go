@@ -108,6 +108,8 @@ func TestACSVExportOverTheCapSaysItWasCut(t *testing.T) {
 		t.Fatalf("the organization holds %d issues, want more than the %d an export holds", matched, csvio.ExportRows)
 	}
 
+	// The copies went straight to the primary, and the export reads the replica.
+	h.waitForPrimary(t)
 	resp, body := c.download("/api/v1/issues/export?columns=key,summary")
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("export answered %d: %s", resp.StatusCode, body)

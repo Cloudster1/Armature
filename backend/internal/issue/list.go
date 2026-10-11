@@ -106,6 +106,16 @@ func (s *Service) List(ctx context.Context, filter Filter, page Page) (*Result, 
 	if page.Limit <= 0 || page.Limit > MaxPageLimit {
 		page.Limit = defaultPageLimit
 	}
+	return s.list(ctx, filter, page)
+}
+
+// ListUpTo reads up to limit issues in one statement, for a server-side reader
+// like the export that would otherwise sort every matching row once per page.
+func (s *Service) ListUpTo(ctx context.Context, filter Filter, limit int, orderBy string) (*Result, error) {
+	return s.list(ctx, filter, Page{Limit: max(limit, 1), OrderBy: orderBy})
+}
+
+func (s *Service) list(ctx context.Context, filter Filter, page Page) (*Result, error) {
 	if page.Offset < 0 {
 		page.Offset = 0
 	}
