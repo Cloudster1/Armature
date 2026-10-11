@@ -137,14 +137,14 @@ export interface AbsenceInput {
 
 const absencesQueryKey = ["absences"] as const;
 
-/** Who is away; without from and to, the server's month back and year ahead. */
+/** Who is away; without from and to, the server's month back and year ahead, and with only from, every one after it up to the server's bound. */
 export function useAbsences(filter: { userId?: string; from?: string; to?: string } = {}) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filter)) if (value) params.set(key, value);
   const query = params.toString();
   return useQuery({
     queryKey: [...absencesQueryKey, filter],
-    queryFn: () => request<{ absences: Absence[]; from: string; to: string }>(`/absences${query ? `?${query}` : ""}`),
+    queryFn: () => request<{ absences: Absence[]; from: string; to: string | null; truncated: boolean }>(`/absences${query ? `?${query}` : ""}`),
     // A portal customer is refused; asking again would not let them in.
     retry: false,
   });

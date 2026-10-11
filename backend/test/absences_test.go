@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -191,6 +192,66 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 	})
 }
 
+// An editor lists from a month back. An absence saved further ahead than a
+// year has to be in that list, or nobody can see, change or remove it.
+func TestAnAbsenceListFromADayRunsOnAndSaysWhenItIsCut(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signup(t, h, "absencelist")
+	ada, adaID := api.namedMember(t, h, owner, "Ada Ahead")
+
+	today := time.Now().UTC()
+	monthBack := today.AddDate(0, 0, -availability.AbsenceDaysBehind).Format(availability.DateLayout)
+	farAhead := today.AddDate(0, 14, 0).Format(availability.DateLayout)
+	want(t, ada.post("/api/v1/absences", map[string]any{"startsOn": farAhead}), http.StatusCreated, "Ada records a day fourteen months ahead")
+	editorList := "/api/v1/absences?userId=" + adaID + "&from=" + monthBack
+	startsOf := func(listed []any) []string {
+		days := []string{}
+		for _, a := range listed {
+			days = append(days, a.(map[string]any)["startsOn"].(string))
+		}
+		return days
+	}
+
+	t.Run("a list from a month back holds a day fourteen months ahead", func(t *testing.T) {
+		seen := want(t, ada.get(editorList), http.StatusOK, "Ada lists her absences from a month back")
+		if days := startsOf(list(t, seen, "absences")); !slices.Equal(days, []string{farAhead}) {
+			t.Errorf("listed %v, want the day fourteen months ahead", days)
+		}
+		if seen.Body["from"] != monthBack || seen.Body["to"] != nil || seen.Body["truncated"] != false {
+			t.Errorf("the list says from %v to %v, truncated %v; want no last day and nothing cut", seen.Body["from"], seen.Body["to"], seen.Body["truncated"])
+		}
+		bounded := want(t, ada.get(editorList+"&to="+today.Format(availability.DateLayout)), http.StatusOK, "a list with a last day")
+		if len(list(t, bounded, "absences")) != 0 || bounded.Body["to"] != today.Format(availability.DateLayout) || bounded.Body["truncated"] != false {
+			t.Errorf("a list up to today = %v", bounded.Body)
+		}
+	})
+
+	t.Run("a list with no last day stops at its bound and says it was cut", func(t *testing.T) {
+		// One more absence than a list holds, each a single day, the far one among them.
+		if _, err := h.super.Exec(context.Background(), `
+			INSERT INTO absence (org_id, user_id, starts_on, ends_on)
+			SELECT m.org_id, m.user_id, d::date, d::date
+			FROM org_member m, generate_series(current_date + 1, current_date + $2::int + 1, interval '1 day') d
+			WHERE m.user_id = $1 AND d::date <> $3::date
+			LIMIT $2`, adaID, availability.MaxOpenAbsences, farAhead); err != nil {
+			t.Fatal(err)
+		}
+		lastDay := today.AddDate(0, 0, availability.MaxAbsenceWindowDays-availability.AbsenceDaysBehind-1).Format(availability.DateLayout)
+		full := want(t, ada.get(editorList+"&to="+lastDay), http.StatusOK, "every one of them, with a last day")
+		every := startsOf(list(t, full, "absences"))
+		if len(every) != availability.MaxOpenAbsences+1 || full.Body["truncated"] != false {
+			t.Fatalf("a list with a last day = %d absences, truncated %v; want all %d", len(every), full.Body["truncated"], availability.MaxOpenAbsences+1)
+		}
+		seen := want(t, ada.get(editorList), http.StatusOK, "Ada lists more absences than one list holds")
+		days := startsOf(list(t, seen, "absences"))
+		if !slices.Equal(days, every[:availability.MaxOpenAbsences]) || seen.Body["truncated"] != true {
+			t.Errorf("listed %d, truncated %v; want the earliest %d and the list to say it was cut", len(days), seen.Body["truncated"], availability.MaxOpenAbsences)
+		}
+	})
+}
+
 func TestAbsencesPastTheirWindowAreSwept(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "absenceretention")
@@ -282,7 +343,7 @@ func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
 		if err != nil || seen != 0 {
 			t.Errorf("another organization sees %d absences (%v)", seen, err)
 		}
-		listed, err := availability.NewService(h.cluster).Absences(away.ctx, *mustDate(t, "2026-01-01"), *mustDate(t, "2026-12-31"), nil)
+		listed, _, err := availability.NewService(h.cluster).Absences(away.ctx, *mustDate(t, "2026-01-01"), mustDate(t, "2026-12-31"), nil)
 		if err != nil || len(listed) != 0 {
 			t.Errorf("another organization lists %v (%v)", listed, err)
 		}

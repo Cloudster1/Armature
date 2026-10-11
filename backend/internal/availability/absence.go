@@ -17,6 +17,9 @@ const (
 	// AbsenceDaysBehind and AbsenceDaysAhead are what a listing covers when it names no days.
 	AbsenceDaysBehind = 31
 	AbsenceDaysAhead  = 365
+	// MaxOpenAbsences bounds a listing from a day with no last day, which
+	// otherwise has no end; the response says when it was cut.
+	MaxOpenAbsences = 500
 )
 
 // Absence is the days one person is away. It says when and never why: a
@@ -99,29 +102,31 @@ func CheckAbsence(startsOn, endsOn string, halfDay bool) (Absence, error) {
 	return Absence{StartsOn: start.Format(DateLayout), EndsOn: end.Format(DateLayout), HalfDay: halfDay}, nil
 }
 
-// AbsenceWindow is the stretch of days a listing covers: from and to as
-// asked, or a month behind and a year ahead of today when not.
-func AbsenceWindow(from, to string, today time.Time) (time.Time, time.Time, error) {
+// AbsenceWindow is the stretch a listing covers: as asked, a month behind and a year ahead
+// with neither day, and a nil end with only from, since an absence may start any day ahead.
+func AbsenceWindow(from, to string, today time.Time) (time.Time, *time.Time, error) {
+	if from == "" && to == "" {
+		end := today.AddDate(0, 0, AbsenceDaysAhead)
+		return today.AddDate(0, 0, -AbsenceDaysBehind), &end, nil
+	}
 	start := today.AddDate(0, 0, -AbsenceDaysBehind)
-	end := today.AddDate(0, 0, AbsenceDaysAhead)
 	var err error
 	if from != "" {
 		if start, err = ParseDay(from, "from"); err != nil {
-			return time.Time{}, time.Time{}, err
+			return time.Time{}, nil, err
 		}
 	}
-	if to != "" {
-		if end, err = ParseDay(to, "to"); err != nil {
-			return time.Time{}, time.Time{}, err
-		}
-	} else if from != "" {
-		end = start.AddDate(0, 0, AbsenceDaysBehind+AbsenceDaysAhead)
+	if to == "" {
+		return start, nil, nil
 	}
+	end, err := ParseDay(to, "to")
 	switch {
+	case err != nil:
+		return time.Time{}, nil, err
 	case end.Before(start):
-		return time.Time{}, time.Time{}, invalid("to is before from; swap them")
+		return time.Time{}, nil, invalid("to is before from; swap them")
 	case daysBetween(start, end) >= MaxAbsenceWindowDays:
-		return time.Time{}, time.Time{}, invalid("one listing covers at most %d days; ask for a shorter stretch", MaxAbsenceWindowDays)
+		return time.Time{}, nil, invalid("one listing covers at most %d days; ask for a shorter stretch", MaxAbsenceWindowDays)
 	}
-	return start, end, nil
+	return start, &end, nil
 }

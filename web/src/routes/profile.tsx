@@ -8,6 +8,7 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Icon } from "@/components/icons";
 import { AVATAR_MAX_BYTES } from "@/config";
 import { browserLocale, makeFormat } from "@/lib/format";
+import { absencesListedFrom } from "@/lib/week";
 import { useAbsences, useWorkingWeek } from "@/api/availability";
 import { WorkingWeekTable } from "@/features/availability/WorkingWeek";
 import { AbsenceEditor } from "@/features/availability/Absences";
@@ -193,14 +194,14 @@ function YourWeek({ userId }: { userId: string }) {
 // The person's own days away, theirs to change whoever recorded them. A portal
 // customer is refused the list, and sees nothing here.
 function YourAbsences({ userId }: { userId: string }) {
-  const { data } = useAbsences({ userId });
+  const { data } = useAbsences({ userId, from: absencesListedFrom() });
   if (!data) return null;
   return (
     <section className="mt-8">
       <SectionTitle className="mb-2">Absences</SectionTitle>
       <Card className="space-y-3 p-5">
         <p className="text-sm text-ink-muted">The days you are away, so the plan stops counting on you. Colleagues see the days and never a reason; there is nowhere to give one.</p>
-        <AbsenceEditor userId={userId} absences={data.absences} empty="You are not away in the last month or the year ahead." />
+        <AbsenceEditor userId={userId} absences={data.absences} truncated={data.truncated} empty="You are not away from a month ago on." />
       </Card>
     </section>
   );

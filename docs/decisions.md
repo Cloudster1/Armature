@@ -655,6 +655,11 @@ when that account goes. And it is made visible: whenever somebody other than
 the person records, changes or removes one of their absences, the person is
 told in the inbox, and by mail if they want it, with who did what and never
 the days, since a mail leaves the building.
+An absence may start any day ahead, so the list a person changes theirs in
+runs from a month back with no last day: one saved fourteen months out is
+listed the moment it is saved. A list from a day holds at most
+`MaxOpenAbsences` and says when it was cut; a list between two days covers two
+years at most and is never cut.
 
 **Reconsider if** an organization needs leave approval inside the tracker, which
 would be a state on the absence and a person who decides, not a reason.

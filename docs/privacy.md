@@ -115,8 +115,9 @@ administrator for the tables that belong to nobody in particular.
   shares of their week projects have, and the audit actions they performed. On the profile page it is "Download my
   data"; a customer finds it under their name in the portal.
 - **Rectification:** the profile page changes the name, the zone, the
-  language and the picture, and lists the person's absences for them to
-  change or remove, whoever recorded them. The address is what signs a
+  language and the picture, and lists the person's absences from a month
+  back on, however far ahead, for them to change or remove, whoever recorded
+  them. The address is what signs a
   person in and does not change here.
 - **Erasure:** `DELETE /api/v1/auth/me`, from a browser session only, so a
   leaked token cannot erase its owner. Sessions, tokens, notifications,

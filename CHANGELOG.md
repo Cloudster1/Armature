@@ -195,6 +195,9 @@ here in the branch that makes it.
   held when it was stopped: audit entries, inbox items, mails, webhooks and
   rules are tried again, and an event that fails five times is set aside in
   the organization's audit log as `event.dead_lettered` (#93).
+- Fixed: an absence recorded more than a year ahead stays in the list it was
+  saved from, which now runs from a month back with no last day and says when
+  it holds too many to show them all (#46).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

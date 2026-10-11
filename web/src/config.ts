@@ -350,6 +350,8 @@ export const HOLIDAY_FILE_ACCEPT = ".ics,text/calendar";
 export const HOLIDAY_NAME_MAX_LENGTH = 100;
 /** The longest one absence may run, both ends counted; the server holds the same bound. */
 export const ABSENCE_MAX_DAYS = 366;
+/** How far back an absence editor lists; it lists every one after, however far ahead. */
+export const ABSENCES_LISTED_DAYS_BEHIND = 31;
 /** Milliseconds in a day, for counting the days between two dates. */
 export const MS_PER_DAY = 86_400_000;
 /** How many weeks the resource view shows, and how far Previous and Next move it. */
