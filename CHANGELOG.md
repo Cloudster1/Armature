@@ -157,6 +157,10 @@ here in the branch that makes it.
   later save no longer erases the earlier one: it is refused with a sentence,
   the draft is kept and the newer text is shown beside it, and a save that
   changes nothing records nothing in the history (#89).
+- Fixed: a large import no longer makes notifications, webhooks, rules and
+  the audit log skip issues: the event stream keeps what a consumer has not
+  read, and the relay waits for the slowest one; its lag and theirs are on the
+  metrics (#95).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
