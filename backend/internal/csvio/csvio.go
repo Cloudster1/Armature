@@ -24,8 +24,10 @@ const (
 	MaxImportBytes = 8 << 20
 	// PreviewRows is how many values of a column a preview shows.
 	PreviewRows = 5
-	// ExportRows caps one export, a page of the search at its largest.
+	// ExportRows caps one export; a longer result is cut there, and says so.
 	ExportRows = 5000
+	// exportPage is how many issues the export asks the list for at a time.
+	exportPage = issue.MaxPageLimit
 	// dateLayout is how a day is written in both directions.
 	dateLayout = "2006-01-02"
 )
@@ -49,35 +51,64 @@ func NewService(cluster *db.Cluster, issues *issue.Service, labels *label.Servic
 	return &Service{db: cluster, issues: issues, labels: labels, fields: fields, auth: accounts}
 }
 
-// Export writes the issues a filter matches as CSV with the chosen columns.
-func (s *Service) Export(ctx context.Context, w io.Writer, filter issue.Filter, columns []string) error {
+// Exported says how much of a result an export wrote.
+type Exported struct {
+	Rows    int
+	Matched int
+}
+
+// Truncated says the result was longer than an export holds.
+func (e Exported) Truncated() bool { return e.Rows < e.Matched }
+
+// Export writes the issues a filter matches as CSV with the chosen columns,
+// up to ExportRows of them, ending a longer result with a note that says so.
+func (s *Service) Export(ctx context.Context, w io.Writer, filter issue.Filter, columns []string) (Exported, error) {
+	var done Exported
 	if len(columns) == 0 {
 		columns = DefaultColumns
 	}
 	for _, c := range columns {
 		if !contains(Columns, c) {
-			return fmt.Errorf("%q is not a column; the columns are %s", c, strings.Join(Columns, ", "))
+			return done, fmt.Errorf("%q is not a column; the columns are %s", c, strings.Join(Columns, ", "))
 		}
-	}
-	result, err := s.issues.List(ctx, filter, issue.Page{Limit: ExportRows, OrderBy: "key"})
-	if err != nil {
-		return err
 	}
 	out := csv.NewWriter(w)
 	if err := out.Write(columns); err != nil {
-		return err
+		return done, err
 	}
-	for _, i := range result.Issues {
-		row := make([]string, len(columns))
-		for n, c := range columns {
-			row[n] = Cell(cell(&i, c))
+	for done.Rows < ExportRows {
+		page, err := s.issues.List(ctx, filter, issue.Page{Limit: min(exportPage, ExportRows-done.Rows), Offset: done.Rows, OrderBy: "key"})
+		if err != nil {
+			return done, err
 		}
-		if err := out.Write(row); err != nil {
-			return err
+		done.Matched = page.Total
+		for _, i := range page.Issues {
+			row := make([]string, len(columns))
+			for n, c := range columns {
+				row[n] = Cell(cell(&i, c))
+			}
+			if err := out.Write(row); err != nil {
+				return done, err
+			}
+		}
+		done.Rows += len(page.Issues)
+		if len(page.Issues) == 0 || done.Rows >= page.Total {
+			break
+		}
+	}
+	if done.Truncated() {
+		if err := out.Write([]string{truncationNote(done.Rows, done.Matched)}); err != nil {
+			return done, err
 		}
 	}
 	out.Flush()
-	return out.Error()
+	return done, out.Error()
+}
+
+// truncationNote is the last row of a cut export, the one place a spreadsheet
+// reader learns the file is not the whole result.
+func truncationNote(rows, matched int) string {
+	return fmt.Sprintf("This file holds the first %d of the %d issues the query matches; narrow the query to export the rest.", rows, matched)
 }
 
 // Cell is a value as a spreadsheet should read it: text, never a formula. What

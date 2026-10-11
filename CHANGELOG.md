@@ -88,6 +88,9 @@ here in the branch that makes it.
 - Fixed: only the customer who raised a request finds the rating link in its
   resolution mail; followers and watching agents are told it is resolved
   without one, so nobody can rate it before the customer does (#79).
+- Fixed: a CSV export holds every issue the search matches, up to 5000,
+  instead of the first 50; past 5000 the file ends with a row saying it was
+  cut and to narrow the query (#80).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
