@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { MutationObserver } from "@tanstack/react-query";
-import { ApiError } from "./client";
-import { meQueryKey } from "./auth";
+import { ApiError } from "@/api/client";
+import { meQueryKey } from "@/api/auth";
 import { createQueryClient } from "./queryClient";
 
 // A session can end behind the page's back: signed out in another tab, or

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatDay } from "@/api/milestones";
 import { daysUntil, describeDue } from "./MilestonesBody";
 
-const on = (day: string) => formatDay(`${day}T00:00:00Z`);
+const on = (day: string) => formatDay(`${day}T00:00:00Z`, "en-GB");
 
 const today = new Date("2026-09-06T10:00:00Z");
 const row = (over: Partial<{ dueOn: string; closedAt: string }>) => ({
@@ -17,15 +17,15 @@ const row = (over: Partial<{ dueOn: string; closedAt: string }>) => ({
 describe("describeDue", () => {
   it("counts the days left, names today and tomorrow, and says how far overdue", () => {
     expect(daysUntil("2026-09-18", today)).toBe(12);
-    expect(describeDue(row({ dueOn: "2026-09-18T00:00:00Z" }), today)).toBe(`Due ${on("2026-09-18")}, 12 days left`);
-    expect(describeDue(row({ dueOn: "2026-09-07T00:00:00Z" }), today)).toBe(`Due ${on("2026-09-07")}, tomorrow`);
-    expect(describeDue(row({ dueOn: "2026-09-06T00:00:00Z" }), today)).toBe(`Due ${on("2026-09-06")}, today`);
-    expect(describeDue(row({ dueOn: "2026-09-05T00:00:00Z" }), today)).toBe(`Due ${on("2026-09-05")}, overdue by 1 day`);
-    expect(describeDue(row({ dueOn: "2026-09-01T00:00:00Z" }), today)).toBe(`Due ${on("2026-09-01")}, overdue by 5 days`);
+    expect(describeDue(row({ dueOn: "2026-09-18T00:00:00Z" }), today, "en-GB")).toBe(`Due ${on("2026-09-18")}, 12 days left`);
+    expect(describeDue(row({ dueOn: "2026-09-07T00:00:00Z" }), today, "en-GB")).toBe(`Due ${on("2026-09-07")}, tomorrow`);
+    expect(describeDue(row({ dueOn: "2026-09-06T00:00:00Z" }), today, "en-GB")).toBe(`Due ${on("2026-09-06")}, today`);
+    expect(describeDue(row({ dueOn: "2026-09-05T00:00:00Z" }), today, "en-GB")).toBe(`Due ${on("2026-09-05")}, overdue by 1 day`);
+    expect(describeDue(row({ dueOn: "2026-09-01T00:00:00Z" }), today, "en-GB")).toBe(`Due ${on("2026-09-01")}, overdue by 5 days`);
   });
 
   it("says when a milestone closed, and that an undated one has no day yet", () => {
-    expect(describeDue(row({ dueOn: "2026-09-01T00:00:00Z", closedAt: "2026-09-03T12:00:00Z" }), today)).toBe(`Closed ${on("2026-09-03")}`);
-    expect(describeDue(row({}), today)).toBe("No due day yet");
+    expect(describeDue(row({ dueOn: "2026-09-01T00:00:00Z", closedAt: "2026-09-03T12:00:00Z" }), today, "en-GB")).toBe(`Closed ${on("2026-09-03")}`);
+    expect(describeDue(row({}), today, "en-GB")).toBe("No due day yet");
   });
 });

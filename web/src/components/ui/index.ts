@@ -27,6 +27,7 @@ export { Tooltip } from "./Tooltip";
 export { Spotlight } from "./Spotlight";
 export { MentionTextarea, mentionMatches, mentionQuery, type Mentionable } from "./MentionTextarea";
 export { Menu, type MenuItem } from "./Menu";
-export { Dialog, ConfirmDialog, Drawer, DockedPanel, isEditing, isInteractiveTarget } from "./Dialog";
+export { Dialog, ConfirmDialog, Drawer, DockedPanel, isInteractiveTarget } from "./Dialog";
+export { isEditing } from "./overlay";
 export { ToastProvider, useToast, type ToastKind, type ToastOptions } from "./Toast";
 export { Tabs, TabPanel, type Tab } from "./Tabs";

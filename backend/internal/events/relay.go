@@ -27,14 +27,16 @@ type Relay struct {
 	db      *db.Cluster
 	redis   *redis.Client
 	log     *slog.Logger
+	stream  string
+	groups  []string
 	batch   int
 	idle    time.Duration
 	maxLen  int64
 	metrics *observability.Metrics
 }
 
-// StreamMaxLen caps the stream. The outbox is the record and the stream a
-// hand-off; at 100,000 a run of 256 KB hook bodies once cost Redis 8 GB.
+// StreamMaxLen caps how far the slowest group may fall behind before the relay
+// waits; at 100,000 a run of 256 KB hook bodies once cost Redis 8 GB.
 const StreamMaxLen = 10_000
 
 // NewRelay constructs the relay. batch caps how many events one pass claims and
@@ -44,6 +46,8 @@ func NewRelay(cluster *db.Cluster, rdb *redis.Client, log *slog.Logger) *Relay {
 		db:      cluster,
 		redis:   rdb,
 		log:     log,
+		stream:  StreamKey,
+		groups:  Groups,
 		batch:   100,
 		idle:    time.Second,
 		maxLen:  StreamMaxLen,
@@ -51,15 +55,55 @@ func NewRelay(cluster *db.Cluster, rdb *redis.Client, log *slog.Logger) *Relay {
 	}
 }
 
+// Onto points the relay at another stream with another cap, waiting for every
+// group on it, so a test can watch it against a slow group of its own.
+func (r *Relay) Onto(stream string, maxLen int64) *Relay {
+	r.stream, r.maxLen, r.groups = stream, maxLen, nil
+	return r
+}
+
 // pendingLimit caps the count of what is waiting, since a backlog past it is
 // a backlog whatever its exact size and counting it all would cost a scan.
 const pendingLimit = 10_000
 
+// holdBackPause is how long the relay waits for the slowest group to make
+// room before asking again; short, since reading frees room in milliseconds.
+const holdBackPause = 200 * time.Millisecond
+
 // Run relays until ctx is cancelled.
 func (r *Relay) Run(ctx context.Context) error {
-	r.log.Info("outbox relay started", "stream", StreamKey, "batch", r.batch)
+	r.log.Info("outbox relay started", "stream", r.stream, "batch", r.batch, "cap", r.maxLen)
 	for {
-		n, err := r.once(ctx)
+		limit := r.batch
+		backlog, err := r.trim(ctx)
+		switch {
+		case ctx.Err() != nil:
+			r.log.Info("outbox relay stopped")
+			return nil
+		case err != nil:
+			// Nothing was trimmed, so relaying on loses nothing; if Redis is
+			// down the publish fails too and is recorded against the event.
+			r.log.Warn("could not trim the event stream", "error", err)
+		default:
+			r.metrics.StreamBacklog.Set(float64(backlog))
+			limit = room(backlog, r.maxLen, r.batch)
+		}
+
+		// The slowest group is a full cap behind: the events wait in the
+		// outbox, which is the record, until it has read some.
+		if limit == 0 {
+			r.metrics.RelayHeld.Set(1)
+			if err := r.db.ReadAdmin(ctx, r.measure); err != nil && ctx.Err() == nil {
+				r.log.Warn("could not measure the outbox", "error", err)
+			}
+			if !pause(ctx, holdBackPause) {
+				return nil
+			}
+			continue
+		}
+		r.metrics.RelayHeld.Set(0)
+
+		n, err := r.once(ctx, limit)
 		switch {
 		case errors.Is(err, context.Canceled):
 			r.log.Info("outbox relay stopped")
@@ -70,11 +114,9 @@ func (r *Relay) Run(ctx context.Context) error {
 
 		// Only sleep when the queue was empty: a full batch means there is
 		// probably more waiting, so go straight round again.
-		if n < r.batch {
-			select {
-			case <-ctx.Done():
+		if n < limit {
+			if !pause(ctx, r.idle) {
 				return nil
-			case <-time.After(r.idle):
 			}
 		} else if ctx.Err() != nil {
 			return nil
@@ -82,11 +124,21 @@ func (r *Relay) Run(ctx context.Context) error {
 	}
 }
 
-// once claims and relays up to one batch, returning how many it handled.
+// pause waits d, and says false when ctx ended first.
+func pause(ctx context.Context, d time.Duration) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(d):
+		return true
+	}
+}
+
+// once claims and relays up to limit events, returning how many it handled.
 //
 // The claim uses FOR UPDATE SKIP LOCKED so several worker replicas can relay
 // concurrently without any of them blocking on, or duplicating, another's rows.
-func (r *Relay) once(ctx context.Context) (int, error) {
+func (r *Relay) once(ctx context.Context, limit int) (int, error) {
 	var events []Event
 	_, err := r.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
@@ -95,7 +147,7 @@ func (r *Relay) once(ctx context.Context) (int, error) {
 			WHERE published_at IS NULL
 			ORDER BY created_at
 			FOR UPDATE SKIP LOCKED
-			LIMIT $1`, r.batch)
+			LIMIT $1`, limit)
 		if err != nil {
 			return err
 		}
@@ -141,22 +193,30 @@ func (r *Relay) once(ctx context.Context) (int, error) {
 		r.metrics.OutboxSent.Add(float64(len(published)))
 		r.metrics.OutboxFailed.Add(float64(len(events) - len(published)))
 
-		var pending int
-		if err := tx.QueryRow(ctx, `
-			SELECT count(*) FROM (SELECT 1 FROM outbox_event WHERE published_at IS NULL LIMIT $1) waiting`, pendingLimit).Scan(&pending); err != nil {
-			return err
-		}
-		r.metrics.OutboxPending.Set(float64(pending))
-		return nil
+		return r.measure(ctx, tx)
 	})
 	return len(events), err
 }
 
+// measure records how much is waiting for the relay and how long the oldest
+// of it has waited, which is the relay's lag.
+func (r *Relay) measure(ctx context.Context, tx db.DBTX) error {
+	var pending int
+	var oldest float64
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*), coalesce(extract(epoch FROM now() - min(created_at)), 0)::float8
+		FROM (SELECT created_at FROM outbox_event WHERE published_at IS NULL ORDER BY created_at LIMIT $1) waiting`,
+		pendingLimit).Scan(&pending, &oldest); err != nil {
+		return err
+	}
+	r.metrics.OutboxPending.Set(float64(pending))
+	r.metrics.OutboxAge.Set(oldest)
+	return nil
+}
+
 func (r *Relay) publish(ctx context.Context, e Event) error {
 	return r.redis.XAdd(ctx, &redis.XAddArgs{
-		Stream: StreamKey,
-		MaxLen: r.maxLen,
-		Approx: true,
+		Stream: r.stream,
 		Values: map[string]any{
 			"id":      e.ID.String(),
 			"org_id":  e.OrgID.String(),
