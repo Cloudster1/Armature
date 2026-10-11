@@ -7,19 +7,50 @@ export function focusables(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
 }
 
-/** Calls onClose on Escape while open. */
-export function useEscape(open: boolean, onClose: () => void) {
+const EDITABLE = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]';
+
+/** Whether a key pressed on this element was meant for typing, not for the page. */
+export function isEditing(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(EDITABLE) !== null;
+}
+
+interface EscapeEntry {
+  onClose: () => void;
+  whileEditing: boolean;
+}
+
+// Every open overlay, in the order it opened. One listener hands Escape to the
+// newest alone, so a menu in a drawer closes and the drawer stays.
+const escapeStack: Array<RefObject<EscapeEntry>> = [];
+
+function onEscape(event: KeyboardEvent) {
+  if (event.key !== "Escape" || event.defaultPrevented) return;
+  const top = escapeStack[escapeStack.length - 1]?.current;
+  if (!top || (!top.whileEditing && isEditing(event.target))) return;
+  event.preventDefault();
+  top.onClose();
+}
+
+/**
+ * Calls onClose on Escape while open and nothing opened since is still open.
+ * Without whileEditing, Escape in a field is left to the field.
+ */
+export function useEscape(open: boolean, onClose: () => void, { whileEditing = true }: { whileEditing?: boolean } = {}) {
+  const entry = useRef<EscapeEntry>({ onClose, whileEditing });
+  useLayoutEffect(() => {
+    entry.current = { onClose, whileEditing };
+  });
+  // Keyed on open alone: a new onClose must not lift this overlay above one
+  // that opened after it.
   useEffect(() => {
     if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    escapeStack.push(entry);
+    if (escapeStack.length === 1) document.addEventListener("keydown", onEscape);
+    return () => {
+      escapeStack.splice(escapeStack.indexOf(entry), 1);
+      if (escapeStack.length === 0) document.removeEventListener("keydown", onEscape);
+    };
+  }, [open]);
 }
 
 /** Calls onClose on a pointer press outside every ref given. */

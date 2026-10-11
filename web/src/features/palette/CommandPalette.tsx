@@ -182,6 +182,8 @@ export function CommandPalette({
       event.preventDefault();
       commands[active]?.run();
     } else if (event.key === "Escape") {
+      // Handled here, so no overlay under the palette closes with it.
+      event.preventDefault();
       onClose();
     }
   }

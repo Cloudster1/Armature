@@ -149,8 +149,7 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 	if err != nil {
 		return nil, fmt.Errorf("create the running window: %w", err)
 	}
-	next, _, err := sprints.Create(orgCtx, created.Key, sprint.CreateInput{Name: "Maintenance window 42", StartsOn: day(7), EndsOn: day(20), Capacity: &capacity, TeamID: &shift.ID}, actor.UserID)
-	if err != nil {
+	if _, _, err := sprints.Create(orgCtx, created.Key, sprint.CreateInput{Name: "Maintenance window 42", StartsOn: day(7), EndsOn: day(20), Capacity: &capacity, TeamID: &shift.ID}, actor.UserID); err != nil {
 		return nil, fmt.Errorf("create the next window: %w", err)
 	}
 	if _, _, err := sprints.Start(orgCtx, closed.ID, actor.UserID); err != nil {
@@ -199,7 +198,7 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 		return nil, fmt.Errorf("add the demo comment: %w", err)
 	}
 	if err := plant(orgCtx, cluster, templates, issues, actor, plantInput{
-		line: created.Key, types: types, keys: keys, shift: shift.ID, running: running.ID, next: next.ID, day: day, pts: pts,
+		line: created.Key, types: types, keys: keys, shift: shift.ID, sprints: sprints, day: day, pts: pts,
 	}); err != nil {
 		return nil, err
 	}
