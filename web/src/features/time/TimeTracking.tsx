@@ -9,9 +9,9 @@ import {
 import { Button, cx, ErrorBanner, Field, Input, Labelled } from "@/components/ui";
 import { canAdminister, useAccess } from "@/api/access";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { todayIn, useFormat } from "@/lib/format";
 import { Avatar } from "@/features/issues/badges";
 import { formatDuration, parseDuration, timeProgress } from "./duration";
-import { useFormat } from "@/lib/format";
 import { formatDay } from "@/lib/week";
 
 
@@ -114,7 +114,8 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
   const confirm = useConfirm();
   const { locale } = useFormat();
   const [duration, setDuration] = useState("");
-  const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
+  const { timezone } = useFormat();
+  const [day, setDay] = useState(() => todayIn(timezone));
   const [note, setNote] = useState("");
   const [refused, setRefused] = useState<string | null>(null);
 

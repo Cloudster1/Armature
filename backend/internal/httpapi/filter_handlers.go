@@ -179,6 +179,10 @@ func (s *Server) handleRunFilter(w http.ResponseWriter, r *http.Request) {
 
 // Export: the search's result as a file.
 
+// exportTruncatedHeader marks an export cut at its cap, for a client that
+// reads the response rather than the note row at the end of the file.
+const exportTruncatedHeader = "X-Export-Truncated"
+
 func (s *Server) handleExportIssues(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	f := readableFilter(r, issue.Filter{ProjectKey: query.Get("project")})
@@ -199,9 +203,13 @@ func (s *Server) handleExportIssues(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var buf bytes.Buffer
-	if err := s.CSV.Export(r.Context(), &buf, f, columns); err != nil {
+	done, err := s.CSV.Export(r.Context(), &buf, f, columns)
+	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
+	}
+	if done.Truncated() {
+		w.Header().Set(exportTruncatedHeader, "true")
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="issues.csv"`)

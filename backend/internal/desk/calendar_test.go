@@ -77,3 +77,52 @@ func TestCalendarValidation(t *testing.T) {
 		t.Errorf("default calendar reads %q", s)
 	}
 }
+
+func TestCalendarRefusesOverlappingHoursOnADay(t *testing.T) {
+	const want = "Monday: 12:00 to 17:00 overlaps 09:00 to 13:00; join them into one span"
+	for name, spans := range map[string][]Span{
+		"in order":     {{From: "09:00", To: "13:00"}, {From: "12:00", To: "17:00"}},
+		"out of order": {{From: "12:00", To: "17:00"}, {From: "09:00", To: "13:00"}},
+	} {
+		c := Calendar{Timezone: "UTC", Hours: map[string][]Span{"mon": spans}}
+		err := c.Validate()
+		if err == nil || err.Error() != want {
+			t.Errorf("%s: got %v, want %q", name, err, want)
+		}
+	}
+	// A span inside a longer one is named against the one that holds it.
+	inside := Calendar{Timezone: "UTC", Hours: map[string][]Span{"tue": {{From: "08:00", To: "18:00"}, {From: "10:00", To: "11:00"}, {From: "12:00", To: "13:00"}}}}
+	if err := inside.Validate(); err == nil || err.Error() != "Tuesday: 10:00 to 11:00 overlaps 08:00 to 18:00; join them into one span" {
+		t.Errorf("a span inside another: got %v", err)
+	}
+	// A lunch break is two spans apart, and one that ends as the next starts is fine too.
+	for _, spans := range [][]Span{
+		{{From: "09:00", To: "12:00"}, {From: "13:00", To: "17:00"}},
+		{{From: "09:00", To: "13:00"}, {From: "13:00", To: "17:00"}},
+	} {
+		c := Calendar{Timezone: "UTC", Hours: map[string][]Span{"mon": spans}}
+		if err := c.Validate(); err != nil {
+			t.Errorf("%v was refused: %v", spans, err)
+		}
+	}
+}
+
+func TestASavedCalendarWithOverlapsCountsTheOverlapOnce(t *testing.T) {
+	// Saved before overlaps were refused: reading it back must still work.
+	c, err := parseCalendar("UTC", []byte(`{"mon":[{"from":"09:00","to":"13:00"},{"from":"12:00","to":"17:00"}],"tue":[{"from":"08:00","to":"18:00"},{"from":"10:00","to":"11:00"}]}`), nil)
+	if err != nil {
+		t.Fatalf("a saved calendar with overlaps could not be read: %v", err)
+	}
+	monday := time.Date(2026, 9, 7, 0, 0, 0, 0, time.UTC)
+	if got := c.WorkingDuration(monday, monday.AddDate(0, 0, 1)); got != 8*time.Hour {
+		t.Errorf("Monday 09:00 to 13:00 and 12:00 to 17:00 = %s, want 8h", got)
+	}
+	tuesday := monday.AddDate(0, 0, 1)
+	if got := c.WorkingDuration(tuesday, tuesday.AddDate(0, 0, 1)); got != 10*time.Hour {
+		t.Errorf("Tuesday 08:00 to 18:00 with 10:00 to 11:00 inside = %s, want 10h", got)
+	}
+	// The deadline a goal turns into counts the same hours.
+	if got := c.AddWorking(monday.Add(9*time.Hour), 8*time.Hour); !got.Equal(monday.Add(17 * time.Hour)) {
+		t.Errorf("eight working hours from Monday 09:00 end at %s, want Monday 17:00", got)
+	}
+}

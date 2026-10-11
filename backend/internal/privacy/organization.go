@@ -53,12 +53,7 @@ func (s *Service) DeleteOrganization(ctx context.Context, orgID, actor uuid.UUID
 			return ErrConfirmation
 		}
 
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO attachment_tombstone (object_key, org_id)
-			SELECT object_key, org_id FROM attachment WHERE org_id = $1
-			ON CONFLICT (object_key) DO NOTHING`, orgID); err != nil {
-			return fmt.Errorf("mark the organization's files for removal: %w", err)
-		}
+		// Each attachment row that cascades away leaves its own tombstone.
 		if _, err := tx.Exec(ctx, `DELETE FROM org WHERE id = $1`, orgID); err != nil {
 			return fmt.Errorf("delete the organization: %w", err)
 		}

@@ -132,6 +132,9 @@ type updateIssueRequest struct {
 	// The time fields are minutes; null clears one.
 	TimeEstimateMinutes  minutesPatch `json:"timeEstimateMinutes,omitempty"`
 	TimeRemainingMinutes minutesPatch `json:"timeRemainingMinutes,omitempty"`
+	// ExpectedUpdatedAt is the issue's updatedAt when the edit began; a newer
+	// one on the server refuses the edit with 409.
+	ExpectedUpdatedAt *time.Time `json:"expectedUpdatedAt,omitempty"`
 }
 
 // minutesPatch is a whole number of minutes, or null to clear, or absent.
@@ -277,37 +280,7 @@ func (s *Server) handleUpdateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	in := issue.UpdateInput{
-		Summary: req.Summary,
-		TypeID:  req.TypeID,
-	}
-	if req.Description.Set {
-		value := req.Description.Value
-		in.Description = &value
-	}
-	if req.Priority != nil {
-		priority := issue.Priority(*req.Priority)
-		in.Priority = &priority
-	}
-	if req.Assignee.Set {
-		value := req.Assignee.Value
-		in.Assignee = &value
-	}
-	if req.DueDate.Set {
-		value := req.DueDate.Value
-		in.DueDate = &value
-	}
-	in.ReporterID = req.ReporterID
-	if req.TimeEstimateMinutes.Set {
-		value := req.TimeEstimateMinutes.Value
-		in.TimeEstimate = &value
-	}
-	if req.TimeRemainingMinutes.Set {
-		value := req.TimeRemainingMinutes.Value
-		in.TimeRemaining = &value
-	}
-
-	updated, lsn, err := s.Issues.Update(r.Context(), r.PathValue("issueKey"), in, actorFrom(r))
+	updated, lsn, err := s.Issues.Update(r.Context(), r.PathValue("issueKey"), req.toInput(), actorFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return

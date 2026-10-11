@@ -30,7 +30,8 @@ NPM_CACHE_VOL  := $(ROOT)/.cache/npm
 # The OpenAPI document lives beside the code at api/, outside the backend
 # module, so it is mounted separately and the test that checks it is told where.
 # The files that carry the release are mounted the same way, for the test that
-# refuses them disagreeing.
+# refuses them disagreeing, and so is the README whose table of variables a
+# test holds against the code.
 DOCKER_GO = docker run --rm -t \
 	-u $(UID):$(GID) \
 	-v $(ROOT)/backend:/src \
@@ -40,7 +41,9 @@ DOCKER_GO = docker run --rm -t \
 	-v $(ROOT)/web/package.json:/release/package.json:ro \
 	-v $(ROOT)/web/package-lock.json:/release/package-lock.json:ro \
 	-v $(ROOT)/$(CHART)/Chart.yaml:/release/Chart.yaml:ro \
+	-v $(ROOT)/README.md:/docs/README.md:ro \
 	-e ARMATURE_OPENAPI_FILE=/api/openapi.json \
+	-e ARMATURE_README_FILE=/docs/README.md \
 	-e ARMATURE_THEME_FILES=/themes \
 	-e ARMATURE_RELEASE_FILES=/release \
 	-v $(GO_CACHE_VOL):/gocache \

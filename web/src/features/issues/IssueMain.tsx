@@ -29,7 +29,7 @@ export function IssueMain({ issue, editable, me, isDesk, places }: { issue: Issu
     <div className="min-w-0 space-y-6">
       {described && (
         <Section id="description" title="Description" hidden>
-          <Description issueKey={issue.key} doc={issue.description ?? null} editable={editable} />
+          <Description issueKey={issue.key} doc={issue.description ?? null} updatedAt={issue.updatedAt} editable={editable} />
         </Section>
       )}
       {alongside.length > 0 && (

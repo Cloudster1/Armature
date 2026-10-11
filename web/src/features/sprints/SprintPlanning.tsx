@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { useIssues, type Issue } from "@/api/issues";
+import type { Issue } from "@/api/issues";
+import { useBacklogIssues, useSprintIssues } from "@/api/issueReads";
 import { usePlan } from "@/api/plan";
 import {
   overBy,
@@ -19,7 +20,6 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { StatusBadge, TypeBadge } from "@/features/issues/badges";
 import { describe, teamHours } from "@/features/plan/SprintBands";
 import { useTeams } from "@/api/teams";
-import { MAX_PAGE_SIZE } from "@/config";
 import { useFormat } from "@/lib/format";
 
 /**
@@ -30,19 +30,18 @@ import { useFormat } from "@/lib/format";
 export function SprintPlanning({ projectKey }: { projectKey: string }) {
   const { data: sprintData, isLoading, error } = useSprints(projectKey, true);
   const { data: plan } = usePlan(projectKey);
-  const { data: issueData } = useIssues({ project: projectKey, limit: MAX_PAGE_SIZE });
   const { data: teamData } = useTeams(projectKey);
 
   // Empty is the project's own stream: the sprints and the work no team has
   // taken on. A project without teams only ever has this one.
   const [teamId, setTeamId] = useState("");
   const teams = teamData?.teams ?? [];
+  const { data: backlogData } = useBacklogIssues(projectKey, teamId);
 
   const all = sprintData?.sprints ?? [];
   const sprints = all.filter((sprint) => (sprint.teamId ?? "") === teamId);
-  const issues = (issueData?.issues ?? []).filter((issue) => (issue.teamId ?? "") === teamId);
   const capacity = new Map((plan?.sprints ?? []).map((row) => [row.sprint.id, row]));
-  const backlog = issues.filter((issue) => !issue.sprintId);
+  const backlog = backlogData?.issues ?? [];
   // A closed sprint is never offered as a destination: its report has been
   // written, and the API would refuse the move anyway.
   const open = sprints.filter((sprint) => sprint.state !== "closed");
@@ -74,7 +73,6 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
           key={`${sprint.id}-${states}`}
           sprint={sprint}
           plan={capacity.get(sprint.id)}
-          issues={issues.filter((issue) => issue.sprintId === sprint.id)}
           others={sprints.filter((other) => other.id !== sprint.id && other.state !== "closed")}
         />
       ))}
@@ -86,7 +84,7 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
         {backlog.length === 0 ? (
           <EmptyState
             title="Nothing in the backlog"
-            description="Every issue in this project is committed to a sprint."
+            description="Every unfinished issue here is committed to a sprint."
           />
         ) : (
           <Card className="divide-y divide-border">
@@ -103,14 +101,17 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
 function SprintCard({
   sprint,
   plan,
-  issues,
   others,
 }: {
   sprint: Sprint;
   plan?: SprintPlan;
-  issues: Issue[];
   others: Sprint[];
 }) {
+  // Read for this sprint alone: a page of the project's newest issues misses
+  // older committed work, and a card that looks empty invites a delete.
+  const { data: work } = useSprintIssues(sprint.projectKey, sprint.id);
+  const issues = work?.issues ?? [];
+  const empty = work?.total === 0;
   const start = useStartSprint();
   const complete = useCompleteSprint();
   const remove = useDeleteSprint();
@@ -154,7 +155,7 @@ function SprintCard({
                 <Button size="sm" loading={start.isPending} onClick={() => start.mutate(sprint.id)}>
                   Start sprint
                 </Button>
-                {issues.length === 0 && (
+                {empty && (
                   <Button
                     size="sm"
                     variant="ghost"

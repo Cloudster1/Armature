@@ -284,9 +284,8 @@ function YourData({ name }: { name: string }) {
   );
 }
 
-// How this person is told: each reason in the inbox, by mail, or neither, and
-// whether mail comes at once or bundled. Unset means on, so the grid reads
-// the maps the way the API does.
+// How this person is told, and whether their own issues count as watched.
+// Unset means on, so the grid reads the maps the way the API does.
 function NotificationSettings() {
   const { data } = useNotificationPreferences();
   const save = useSaveNotificationPreferences();
@@ -322,6 +321,10 @@ function NotificationSettings() {
                 <Checkbox label={<span className="sr-only">{label} by mail</span>} checked={on(prefs.mail, kind)} onChange={(e) => set("mail", kind, e.target.checked)} data-pref-mail={kind} />
               </Fragment>
             ))}
+          </div>
+          <div className="space-y-1">
+            <Checkbox label="Watch the issues I report or am assigned" checked={prefs.watchOwn} onChange={(e) => setDraft({ ...prefs, watchOwn: e.target.checked })} data-pref-watch-own />
+            <p className="text-sm text-ink-subtle">Off, you hear about them only when you watch one yourself, are assigned it or are mentioned.</p>
           </div>
           <Select label="Mail arrives" value={prefs.digest} onChange={(e) => setDraft({ ...prefs, digest: e.target.value as NotificationPreferences["digest"] })} id="field-digest" hint="Bundled mail lists everything since the last one, in one message.">
             <option value="off">As it happens</option>
