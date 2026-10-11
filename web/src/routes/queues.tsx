@@ -4,7 +4,7 @@ import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
 import { useQueue, type QueueFilter } from "@/api/desk";
 import { EmptyState, Page, PageHeader, Segmented, Table, Td, Th } from "@/components/ui";
-import { Avatar, StatusBadge, TypeBadge, relativeTime } from "@/features/issues/badges";
+import { Avatar, StatusBadge, TypeBadge, RelativeTime } from "@/features/issues/badges";
 import { SlaBadge } from "@/features/desk/SlaBadge";
 import { QueuePager, clampQueueOffset, queueCount } from "@/features/desk/QueuePager";
 import { QUEUE_PAGE_SIZE } from "@/config";
@@ -111,7 +111,7 @@ function QueuesPage() {
                   <Td className="text-sm tabular-nums text-ink-muted" data-queue-csat={row.csat ?? ""}>
                     {row.csat ? `${row.csat} / 5` : ""}
                   </Td>
-                  <Td className="text-right text-sm whitespace-nowrap text-ink-subtle">{relativeTime(row.issue.createdAt)}</Td>
+                  <Td className="text-right text-sm whitespace-nowrap text-ink-subtle"><RelativeTime iso={row.issue.createdAt} /></Td>
                 </tr>
               );
             })}

@@ -524,7 +524,9 @@ Inbox                                          [Mark all read]
 ```
 
 Rows are links to the issue (`data-notification=<kind>`,
-`data-notification-read`); a dot marks unread; opening marks read. The empty
+`data-notification-read`); a notice that somebody else recorded, changed or
+removed one of your absences opens your profile instead, and never says which
+days. A dot marks unread; opening marks read. The empty
 state names where the settings are. The bell in the sidebar's foot carries
 the count and opens this page.
 

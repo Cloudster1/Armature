@@ -3,6 +3,7 @@ import type { AverageAgeReport, CSATReport, ControlChartReport, CreatedResolvedR
 import { useReportSource } from "@/api/reports";
 import { describeProgress } from "@/api/milestones";
 import { Tag } from "@/components/ui";
+import { useFormat } from "@/lib/format";
 import { BarList, LineChart, Scatter, StackedArea, Stat, weekLabel } from "./charts";
 import { useWidgetReport, type BodyProps } from "./useWidgetReport";
 import { WidgetState } from "./WidgetState";
@@ -15,9 +16,9 @@ const categoryTone: Record<string, string> = {
   done: "text-status-done",
 };
 
-/** A day as the axis writes it: 7 Sep. */
-export function dayLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+/** A day as the axis writes it, in the reader's language: 7 Sep. */
+export function dayLabel(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 /** The first, middle and last labels of a series, so an axis says where it starts and ends. */
@@ -34,13 +35,14 @@ export function days(value: number): string {
 
 export function CumulativeFlowBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<CumulativeFlowReport>(projectKey, widget, narrow);
+  const { locale } = useFormat();
   if (!data) return <WidgetState error={error} />;
   if (data.statuses.length === 0) return <p className="text-sm text-ink-subtle">Nothing has stood in any status yet.</p>;
   const bands = data.statuses.map((s, i) => ({ name: s.name, tone: categoryTone[s.category] ?? "text-ink-muted", values: data.days.map((d) => d.counts[i] ?? 0) }));
   const today = data.days[data.days.length - 1];
   return (
     <div data-cumulative-flow>
-      <StackedArea bands={bands} xLabels={axisEnds(data.days.map((d) => dayLabel(d.day)))} />
+      <StackedArea bands={bands} xLabels={axisEnds(data.days.map((d) => dayLabel(d.day, locale)))} />
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-ink-muted" data-flow-legend>
         {data.statuses.map((s, i) => (
           <li key={s.id} className="flex items-center gap-1" data-flow-status={s.name}>
@@ -76,6 +78,7 @@ export function ControlChartBody({ projectKey, widget, narrow }: BodyProps) {
 
 export function CreatedResolvedBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<CreatedResolvedReport>(projectKey, widget, narrow);
+  const { locale } = useFormat();
   if (!data) return <WidgetState error={error} />;
   const last = data.days[data.days.length - 1];
   return (
@@ -90,7 +93,7 @@ export function CreatedResolvedBody({ projectKey, widget, narrow }: BodyProps) {
           { name: "created", tone: "text-status-todo", points: data.days.map((d, i) => ({ x: i, y: d.createdTotal })) },
           { name: "resolved", tone: "text-status-done", points: data.days.map((d, i) => ({ x: i, y: d.resolvedTotal })) },
         ]}
-        xLabels={axisEnds(data.days.map((d) => dayLabel(d.day)))}
+        xLabels={axisEnds(data.days.map((d) => dayLabel(d.day, locale)))}
       />
     </div>
   );
@@ -126,6 +129,7 @@ export function ResolutionBody({ projectKey, widget, narrow }: BodyProps) {
 
 export function ReleaseBurndownBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<ReleaseBurndownReport>(projectKey, widget, narrow);
+  const { locale } = useFormat();
   if (!widget.config?.versionId) return <p className="text-sm text-ink-subtle">Pick a version in the widget's settings.</p>;
   if (!data) return <WidgetState error={error} />;
   const last = data.days[data.days.length - 1];
@@ -137,15 +141,16 @@ export function ReleaseBurndownBody({ projectKey, widget, narrow }: BodyProps) {
       </div>
       <LineChart
         series={[{ name: `${data.versionName}, remaining`, tone: "text-accent", points: data.days.map((d, i) => ({ x: i, y: d.remaining })), step: true }]}
-        xLabels={axisEnds(data.days.map((d) => dayLabel(d.day)))}
+        xLabels={axisEnds(data.days.map((d) => dayLabel(d.day, locale)))}
       />
-      {data.releaseOn && <p className="mt-1 text-2xs text-ink-subtle">Release on {dayLabel(data.releaseOn)}.</p>}
+      {data.releaseOn && <p className="mt-1 text-2xs text-ink-subtle">Release on {dayLabel(data.releaseOn, locale)}.</p>}
     </div>
   );
 }
 
 export function VersionsBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<VersionsReport>(projectKey, widget, narrow);
+  const { locale } = useFormat();
   const { readOnly } = useReportSource();
   if (!data) return <WidgetState error={error} />;
   if (data.versions.length === 0) {
@@ -172,7 +177,7 @@ export function VersionsBody({ projectKey, widget, narrow }: BodyProps) {
             <span className="block h-1.5 rounded-full bg-status-done" style={{ width: `${v.progress.percent}%` }} />
           </span>
           <p className="mt-1 flex items-center gap-2 text-2xs text-ink-subtle">
-            {v.releasedAt ? <Tag>Released</Tag> : v.releaseOn ? `Release on ${dayLabel(v.releaseOn)}` : "No release day yet"}
+            {v.releasedAt ? <Tag>Released</Tag> : v.releaseOn ? `Release on ${dayLabel(v.releaseOn, locale)}` : "No release day yet"}
           </p>
         </li>
       ))}

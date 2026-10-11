@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"strconv"
+
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -393,7 +395,7 @@ var operations = []operation{
 	{method: "GET", path: "/issues/suggest", handler: "handleSuggest", tag: "issues", summary: "What the search bar could say next: words the query takes at the caret, and the issues the words so far find.",
 		query:     []param{{name: "q", description: "The text so far."}, {name: "at", description: "The caret's position in q, in characters; the end when absent."}, {name: "project", description: "A project key, to scope names and issues."}, {name: "limit", description: "Words and issues to offer, at most 20."}},
 		responses: ok(issue.Suggestions{})},
-	{method: "GET", path: "/issues/export", handler: "handleExportIssues", tag: "issues", summary: "The issues a query matches, as a CSV file with the chosen columns.", binary: true,
+	{method: "GET", path: "/issues/export", handler: "handleExportIssues", tag: "issues", summary: "The issues a query matches, as a CSV file with the chosen columns; past " + strconv.Itoa(csvio.ExportRows) + " the file is cut, ends with a note row, and the response carries X-Export-Truncated: true.", binary: true,
 		query:     []param{{name: "q", description: "An NQL query; without one, everything the caller can see."}, {name: "project", description: "A project key to stay inside."}, {name: "columns", description: "Comma-separated column names; the default is key, summary, type, status, priority, assignee, created."}},
 		responses: ok(nil)},
 	{method: "POST", path: "/issues/bulk", handler: "handleBulkEdit", tool: "bulk_edit_issues", toolHelp: "Change many issues at once: priority, assignee, sprint, milestone, team, labels, or a transition by name; each refusal is named.", tag: "issues", summary: "Change many issues at once; one refused leaves the rest done.", request: bulkRequest{}, responses: ok(bulk.Result{})},

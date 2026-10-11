@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { asReader } from "@/test/reader";
 
 const create = vi.fn();
 const withdraw = vi.fn();
@@ -27,7 +28,7 @@ beforeEach(() => {
 
 describe("InvitePanel", () => {
   it("invites the address as the chosen role", async () => {
-    render(<InvitePanel />);
+    render(<InvitePanel />, { wrapper: asReader("en-GB") });
     await userEvent.type(screen.getByLabelText("Invite by email"), "grace@example.com");
     await userEvent.selectOptions(screen.getByLabelText("As"), "admin");
     await userEvent.click(screen.getByRole("button", { name: "Send invitation" }));
@@ -39,7 +40,7 @@ describe("InvitePanel", () => {
     create.mockImplementation((_input, options) =>
       options.onSuccess({ invite: { id: "i1", email: "grace@example.com", role: "member" }, link: "https://app.test/invite#secret", mailed: false }),
     );
-    render(<InvitePanel />);
+    render(<InvitePanel />, { wrapper: asReader("en-GB") });
     await userEvent.type(screen.getByLabelText("Invite by email"), "grace@example.com");
     await userEvent.click(screen.getByRole("button", { name: "Send invitation" }));
 
@@ -54,7 +55,7 @@ describe("InvitePanel", () => {
     create.mockImplementation((_input, options) =>
       options.onSuccess({ invite: { id: "i1", email: "grace@example.com", role: "member" }, link: "https://app.test/invite#secret", mailed: true }),
     );
-    render(<InvitePanel />);
+    render(<InvitePanel />, { wrapper: asReader("en-GB") });
     await userEvent.type(screen.getByLabelText("Invite by email"), "grace@example.com");
     await userEvent.click(screen.getByRole("button", { name: "Send invitation" }));
     expect(screen.getByText("Invitation mailed to grace@example.com")).toBeTruthy();
@@ -62,7 +63,7 @@ describe("InvitePanel", () => {
 
   it("lists invitations waiting for an answer and withdraws one", async () => {
     pending.invites = [{ id: "i9", email: "late@example.com", role: "customer", expiresAt: "2030-01-01T00:00:00Z", createdAt: "2029-12-25T00:00:00Z" }];
-    render(<InvitePanel />);
+    render(<InvitePanel />, { wrapper: asReader("en-GB") });
     expect(screen.getByText("late@example.com")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Withdraw the invitation for late@example.com" }));
     expect(withdraw).toHaveBeenCalledWith("i9");

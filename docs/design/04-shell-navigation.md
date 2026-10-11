@@ -61,7 +61,8 @@ folds are kept in `localStorage armature.sidebar-groups`):
 - **Work & Plan** (open): Home, Search (with the palette's shortcut shown),
   Inbox, Projects.
 - **Project** (open): a switcher at the top, a menu with a filter field
-  listing every project; switching keeps the page kind (Board stays Board).
+  listing every project; switching keeps the page kind (Board stays Board)
+  and drops the ids of the old project (a sprint's board becomes Sprints).
   Below it the project's Work pages that its features include, then
   **Project Admin** (folded by default): Teams, Workflow, Fields,
   Components, Repositories, Automation, Import, Settings. With no project in

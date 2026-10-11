@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { QUEUE_PAGE_SIZE } from "@/config";
 import { request } from "./client";
 import { meQueryKey } from "./auth";

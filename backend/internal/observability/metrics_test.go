@@ -42,6 +42,8 @@ func TestMetricsRegisterOnceAndRender(t *testing.T) {
 		"armature_db_query_duration_seconds", "armature_outbox_pending", "armature_events_handled_total",
 		"armature_event_handle_duration_seconds", "armature_jobs_runs_total", "armature_job_duration_seconds",
 		"armature_mail_sent_total", "go_goroutines",
+		// The relay's own lag, and whether it is waiting for a slow group.
+		"armature_outbox_oldest_seconds", "armature_outbox_relay_held", "armature_stream_backlog",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("no %s among %s", want, joined)

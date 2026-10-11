@@ -1,5 +1,6 @@
 import { useBuild } from "@/api/build";
 import { COMMIT_SHORT_LENGTH } from "@/config";
+import { useFormat } from "@/lib/format";
 
 /**
  * Which build is running, in one quiet line under the person. The short hash
@@ -8,10 +9,11 @@ import { COMMIT_SHORT_LENGTH } from "@/config";
  */
 export function BuildStamp() {
   const { data } = useBuild();
+  const format = useFormat();
   if (!data) return null;
   const { version, commit, builtAt } = data.build;
   const label = commit ? `${version} (${commit.slice(0, COMMIT_SHORT_LENGTH)})` : version;
-  const detail = [commit && `commit ${commit}`, builtAt && `built ${new Date(builtAt).toLocaleString()}`].filter(Boolean).join(", ");
+  const detail = [commit && `commit ${commit}`, builtAt && `built ${format.dateTime(builtAt)}`].filter(Boolean).join(", ");
   return (
     <div className="truncate px-3 pb-2 text-2xs text-ink-subtle" title={detail || undefined} data-build>
       {label}

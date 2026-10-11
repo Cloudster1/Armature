@@ -3,6 +3,7 @@
 import { writeFileSync } from "node:fs";
 import { scenario } from "../runner.mjs";
 import {
+  bodyText,
   clickButton,
   commitIssue,
   confirm,
@@ -11,20 +12,28 @@ import {
   createSprint,
   createToken,
   day,
+  editorText,
   estimateIssue,
   expect,
   fill,
   goto,
+  issueRows,
   openFilters,
+  openIssueBeside,
   planSprint,
   reload,
   selectByLabel,
+  settled,
   signUp,
   startSprint,
   textOf,
   WAIT,
+  withViewport,
   writeInEditor,
 } from "../helpers.mjs";
+
+/** Wide enough for the issue panel to dock beside the list rather than cover it. */
+const DOCKED_VIEWPORT_WIDTH = 1600;
 
 scenario("the running sprint burns down on the dashboard and its history stays", async ({ page }) => {
   await signUp(page);
@@ -275,4 +284,64 @@ scenario("a page another application puts on an issue is listed under Pages", as
   // Somebody who edits the issue can take the page off, and the section goes with it.
   await page.click(`${row} button[aria-label="Remove the page Checkout spec, second draft"]`);
   await page.waitForFunction(() => !document.querySelector('[data-testid="pages-panel"]'), { timeout: WAIT });
+});
+
+scenario("a draft started in the side panel stays with its own issue", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Drafted");
+  const a = await createIssue(page, key, "the issue stepped back to", "Task");
+  const b = await createIssue(page, key, "the issue written on", "Task");
+
+  await goto(page, `/issues/${a}`);
+  await clickButton(page, "Add description");
+  await writeInEditor(page, "#issue-description", "What A is about.");
+  await clickButton(page, "Save description");
+  await page.waitForFunction(() => document.querySelector("[data-description]")?.textContent.includes("What A is about."), { timeout: WAIT });
+
+  await withViewport(page, DOCKED_VIEWPORT_WIDTH, async () => {
+    await goto(page, `/projects/${key}`);
+    const rows = await issueRows(page);
+    const towardB = rows.indexOf(b) > rows.indexOf(a) ? "next" : "prev";
+    const towardA = towardB === "next" ? "prev" : "next";
+
+    // A is seen first, so it is cached when the panel comes back to it.
+    await openIssueBeside(page, a);
+    await page.keyboard.press(towardB === "next" ? "ArrowDown" : "ArrowUp");
+    await page.waitForSelector(`[data-issue-panel="${b}"] [data-issue-page="${b}"]`, { timeout: WAIT });
+    await clickButton(page, "Add description");
+    await writeInEditor(page, "#issue-description", "What B is about.");
+    await page.type("#new-comment", "Half a thought on B");
+
+    await page.click(`[data-action="panel-${towardA}"]`);
+    await page.waitForSelector(`[data-issue-panel="${a}"] [data-issue-page="${a}"]`, { timeout: WAIT });
+    expect.equal(await page.$("#issue-description"), null, "A opens without B's editor");
+    expect.contains(await textOf(page, "[data-description]"), "What A is about.", "A shows its own description");
+    expect.equal((await editorText(page, "#new-comment")).trim(), "", "A's comment box is empty");
+    // Ctrl+Enter in A's empty box has nothing to send.
+    await page.focus("#new-comment");
+    await page.keyboard.down("Control");
+    await page.keyboard.press("Enter");
+    await page.keyboard.up("Control");
+    await settled(page);
+
+    // Back on B, both drafts are where they were left, and they go to B.
+    await page.click(`[data-action="panel-${towardB}"]`);
+    await page.waitForSelector(`[data-issue-panel="${b}"] [data-issue-page="${b}"] #issue-description`, { timeout: WAIT });
+    expect.contains(await editorText(page, "#issue-description"), "What B is about.", "B's description draft waited for it");
+    expect.contains(await editorText(page, "#new-comment"), "Half a thought on B", "and so did B's comment");
+    await clickButton(page, "Save description");
+    await page.waitForFunction(() => document.querySelector("[data-description]")?.textContent.includes("What B is about."), { timeout: WAIT });
+    await clickButton(page, "Comment");
+    await page.waitForFunction(() => document.querySelector('[data-activity="comments"]')?.textContent.includes("Half a thought on B"), { timeout: WAIT });
+  });
+
+  await goto(page, `/issues/${a}`);
+  await page.waitForSelector("[data-description]", { timeout: WAIT });
+  expect.contains(await textOf(page, "[data-description]"), "What A is about.", "A's description is unchanged");
+  expect.truthy(!(await bodyText(page)).includes("What B is about."), "B's description never reached A");
+  expect.truthy(!(await bodyText(page)).includes("Half a thought on B"), "and neither did B's comment");
+
+  await goto(page, `/issues/${b}`);
+  await page.waitForFunction(() => document.querySelector('[data-activity="comments"]')?.textContent.includes("Half a thought on B"), { timeout: WAIT });
+  expect.contains(await textOf(page, "[data-description]"), "What B is about.", "B kept what was written on it");
 });

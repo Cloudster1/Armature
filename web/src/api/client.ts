@@ -15,6 +15,11 @@ export interface ApiErrorBody {
   requestId?: string;
 }
 
+const HTTP_UNAUTHORIZED = 401;
+
+/** The code the API answers with when a request carries no live session. */
+export const SESSION_MISSING_CODE = "unauthorized";
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -34,7 +39,12 @@ export class ApiError extends Error {
 
   /** True when the caller is not signed in, which the router treats specially. */
   get isUnauthenticated(): boolean {
-    return this.status === 401;
+    return this.status === HTTP_UNAUTHORIZED;
+  }
+
+  /** True when no session stands behind the request, unlike a 401 for a wrong password or code. */
+  get isSessionMissing(): boolean {
+    return this.status === HTTP_UNAUTHORIZED && this.code === SESSION_MISSING_CODE;
   }
 }
 

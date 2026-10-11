@@ -16,6 +16,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { useFormat } from "@/lib/format";
 
 const roleChoices: Array<{
   value: InvitableRole;
@@ -171,6 +172,7 @@ function PendingInvites() {
   const { data } = useInvites();
   const withdraw = useWithdrawInvite();
   const confirm = useConfirm();
+  const format = useFormat();
   const invites = data?.invites ?? [];
   if (invites.length === 0) return null;
 
@@ -188,7 +190,7 @@ function PendingInvites() {
               <span className="block truncate text-ink">{invite.email}</span>
               <span className="block text-xs text-ink-muted">
                 {roleChoices.find((choice) => choice.value === invite.role)?.label ?? invite.role}, until{" "}
-                {new Date(invite.expiresAt).toLocaleDateString()}
+                {format.date(invite.expiresAt)}
               </span>
             </span>
             <Button

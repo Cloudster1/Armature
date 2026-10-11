@@ -19,6 +19,9 @@ type Metrics struct {
 	OutboxPending prometheus.Gauge
 	OutboxSent    prometheus.Counter
 	OutboxFailed  prometheus.Counter
+	OutboxAge     prometheus.Gauge
+	RelayHeld     prometheus.Gauge
+	StreamBacklog prometheus.Gauge
 	EventsHandled *prometheus.CounterVec
 	EventDuration *prometheus.HistogramVec
 	JobRuns       *prometheus.CounterVec
@@ -44,6 +47,9 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		OutboxPending: prometheus.NewGauge(prometheus.GaugeOpts{Name: "armature_outbox_pending", Help: "Events written but not yet on the stream, capped at the relay's count limit."}),
 		OutboxSent:    prometheus.NewCounter(prometheus.CounterOpts{Name: "armature_outbox_published_total", Help: "Events the relay put on the stream."}),
 		OutboxFailed:  prometheus.NewCounter(prometheus.CounterOpts{Name: "armature_outbox_failures_total", Help: "Events the relay could not put on the stream this time."}),
+		OutboxAge:     prometheus.NewGauge(prometheus.GaugeOpts{Name: "armature_outbox_oldest_seconds", Help: "How long the oldest event not yet on the stream has waited: the relay's lag."}),
+		RelayHeld:     prometheus.NewGauge(prometheus.GaugeOpts{Name: "armature_outbox_relay_held", Help: "1 while the relay waits for the slowest consumer group to read what is on the stream, else 0."}),
+		StreamBacklog: prometheus.NewGauge(prometheus.GaugeOpts{Name: "armature_stream_backlog", Help: "Entries kept on the stream because some consumer group has not acknowledged them; the relay waits at the cap."}),
 		EventsHandled: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "armature_events_handled_total", Help: "Events a consumer group finished, by group, topic and outcome."}, []string{"group", "topic", "outcome"}),
 		EventDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "armature_event_handle_duration_seconds", Help: "How long a consumer group spent on one event.", Buckets: jobBuckets}, []string{"group"}),
 		JobRuns:       prometheus.NewCounterVec(prometheus.CounterOpts{Name: "armature_jobs_runs_total", Help: "Passes of a worker's periodic job, by job and outcome."}, []string{"job", "outcome"}),
@@ -52,7 +58,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	}
 	reg.MustRegister(
 		m.HTTPRequests, m.HTTPDuration, m.HTTPInFlight, m.DBQuery,
-		m.OutboxPending, m.OutboxSent, m.OutboxFailed,
+		m.OutboxPending, m.OutboxSent, m.OutboxFailed, m.OutboxAge, m.RelayHeld, m.StreamBacklog,
 		m.EventsHandled, m.EventDuration,
 		m.JobRuns, m.JobDuration, m.MailSent,
 		collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
