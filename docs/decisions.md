@@ -885,6 +885,12 @@ so an attempt that fails marks it failed with its error and the next poll takes
 it up again; a row another attempt still holds leaves the mail in the box. After
 ten failed attempts the desk gives up: the mail stays in the box, since the body
 lives nowhere else, and an internal note on its request tells the agents why.
+What goes out is seven bit: headers that are not ASCII are RFC 2047 words and
+the body is quoted-printable, since a relay without SMTPUTF8 refuses anything
+else. Every mail about a request answers one id, `<KEY.request@host>`, that no
+mail carries, so a client files the receipt, the replies and the resolution as
+one thread whether or not the receipt was ever sent. Each mail keeps an id of
+its own beginning with the key, so a reply matches whichever one it answers.
 
 ### A customer's files are the request's, and only their own come off
 

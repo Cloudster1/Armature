@@ -132,6 +132,9 @@ here in the branch that makes it.
 - Fixed: a pull request's CI badge adds up every check on its head, so one
   failed check reads failed even when another passed after it, and the badge
   opens the list of checks behind it; a commit's badge reads the same (#70).
+- Fixed: mail with umlauts or Japanese in its subject, sender name or text
+  arrives as written, encoded so that every relay takes it, and the mails
+  about one request share a thread in the customer's mailbox (#74).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
