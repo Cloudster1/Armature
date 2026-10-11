@@ -104,7 +104,7 @@ func TestCompileBindsEveryValue(t *testing.T) {
 		{`reporter IN (currentUser(), "Ada L", ada@armature.test)`,
 			`((i.reporter_id = ANY($3::uuid[])) OR (i.reporter_id IN (SELECT id FROM app_user WHERE lower(email::text) = ANY($4) OR lower(name) = ANY($4))))`,
 			[]any{[]uuid.UUID{me}, []string{"ada l", "ada@armature.test"}}},
-		{`statusCategory != done`, `NOT (s.category = ANY($3::status_category[]))`, []any{[]string{"done"}}},
+		{`statusCategory != done`, `NOT COALESCE((s.category = ANY($3::status_category[])), false)`, []any{[]string{"done"}}},
 		{`labels IN (a, B)`, `EXISTS (SELECT 1 FROM issue_label il JOIN label l ON l.id = il.label_id WHERE il.issue_id = i.id AND lower(l.name) = ANY($3))`, []any{[]string{"a", "b"}}},
 		{`labels IS EMPTY`, `NOT EXISTS (SELECT 1 FROM issue_label il WHERE il.issue_id = i.id)`, nil},
 		{`resolved >= -7d`, `(i.resolved_at >= $3)`, []any{testNow.Add(-7 * 24 * time.Hour)}},
@@ -125,7 +125,7 @@ func TestCompileBindsEveryValue(t *testing.T) {
 		{`estimate > 3`, `(i.estimate > $3)`, []any{3.0}},
 		{`estimate IN (1, 2.5)`, `(i.estimate = ANY($3::numeric[]))`, []any{[]float64{1, 2.5}}},
 		{`text ~ login`, `((i.summary ILIKE '%' || $3 || '%') OR (jsonb_to_tsvector('simple', i.description, '["string"]') @@ plainto_tsquery('simple', $4)))`, []any{"login", "login"}},
-		{`summary !~ "reset email"`, `NOT (i.summary ILIKE '%' || $3 || '%')`, []any{"reset email"}},
+		{`summary !~ "reset email"`, `NOT COALESCE((i.summary ILIKE '%' || $3 || '%'), false)`, []any{"reset email"}},
 		{`summary = "Fix it"`, `(lower(i.summary) = ANY($3))`, []any{[]string{"fix it"}}},
 		{`sprint in (openSprints(), "Sprint 2")`,
 			`((i.sprint_id IN (SELECT id FROM sprint WHERE state = 'active')) OR (i.sprint_id IN (SELECT id FROM sprint WHERE lower(name) = ANY($3))))`,
@@ -139,14 +139,35 @@ func TestCompileBindsEveryValue(t *testing.T) {
 			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND lower(v.value #>> '{}') = lower($3))`,
 			[]any{"Globex", "Customer"}},
 		{`"Cost" > 100`,
-			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND f.kind = 'number' AND (v.value #>> '{}')::numeric > $3)`,
+			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND CASE WHEN f.kind = 'number' THEN (v.value #>> '{}')::numeric END > $3)`,
 			[]any{100.0, "Cost"}},
+		{`"Cost" != 100`,
+			`NOT COALESCE(EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND CASE WHEN f.kind = 'number' THEN (v.value #>> '{}')::numeric END = $3), false)`,
+			[]any{100.0, "Cost"}},
+		{`"Order ID" ~ 4711`,
+			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND v.value #>> '{}' ILIKE '%' || $3 || '%')`,
+			[]any{"4711", "Order ID"}},
+		{`"Order ID" !~ 4711`,
+			`NOT COALESCE(EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND v.value #>> '{}' ILIKE '%' || $3 || '%'), false)`,
+			[]any{"4711", "Order ID"}},
+		{`"Ship by" ~ 2026-09-04`,
+			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND v.value #>> '{}' ILIKE '%' || $3 || '%')`,
+			[]any{"2026-09-04", "Ship by"}},
+		{`"Ship by" !~ -7d`,
+			`NOT COALESCE(EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND v.value #>> '{}' ILIKE '%' || $3 || '%'), false)`,
+			[]any{"-7d", "Ship by"}},
+		{`"Cost" IN (1, 2.5)`,
+			`(EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND CASE WHEN f.kind = 'number' THEN (v.value #>> '{}')::numeric END = $3) OR EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($6) AND CASE WHEN f.kind = 'number' THEN (v.value #>> '{}')::numeric END = $5))`,
+			[]any{1.0, "Cost", 2.5, "Cost"}},
+		{`"Ship by" = 2026-09-04`,
+			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND CASE WHEN f.kind = 'date' THEN (v.value #>> '{}')::date END = $3::date)`,
+			[]any{"2026-09-04", "Ship by"}},
 		{`"Ship by" < startOfMonth()`,
-			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND f.kind = 'date' AND (v.value #>> '{}')::date < $3::date)`,
+			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND CASE WHEN f.kind = 'date' THEN (v.value #>> '{}')::date END < $3::date)`,
 			[]any{"2026-09-01", "Ship by"}},
 		{`"Customer" IS EMPTY`, `NOT EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($3))`, []any{"Customer"}},
 		{`description IS EMPTY`, `(i.description IS NULL OR jsonb_to_tsvector('simple', i.description, '["string"]') = ''::tsvector)`, nil},
-		{`NOT (assignee IS EMPTY OR statusCategory = done)`, `NOT ((i.assignee_id IS NULL) OR (s.category = ANY($3::status_category[])))`, []any{[]string{"done"}}},
+		{`NOT (assignee IS EMPTY OR statusCategory = done)`, `NOT COALESCE(((i.assignee_id IS NULL) OR (s.category = ANY($3::status_category[]))), false)`, []any{[]string{"done"}}},
 		{`ORDER BY priority DESC, key`, ``, nil},
 	}
 	for _, c := range cases {
@@ -285,5 +306,34 @@ func TestDistance(t *testing.T) {
 	}
 	if nearest("Statuss") != "status" {
 		t.Errorf("got %q", nearest("Statuss"))
+	}
+}
+
+// A text search looks for what was typed: % and _ are characters a summary can
+// hold, so they reach ILIKE escaped and never as wildcards that match anything.
+func TestTextSearchTakesWildcardsLiterally(t *testing.T) {
+	cases := []struct {
+		in   string
+		args []any
+	}{
+		{`summary ~ "50%"`, []any{`50\%`}},
+		{`summary ~ snake_case`, []any{`snake\_case`}},
+		{`summary ~ "C:\\temp"`, []any{`C:\\temp`}},
+		{`summary !~ "100%_done\\"`, []any{`100\%\_done\\`}},
+		// The description is matched by words, not by a pattern, so it stays as typed.
+		{`text ~ "50%"`, []any{`50\%`, `50%`}},
+		{`"Customer" ~ "a_b%"`, []any{`a\_b\%`, "Customer"}},
+	}
+	for _, c := range cases {
+		_, args := compile(t, c.in).SQL(1)
+		if len(args) != len(c.args) {
+			t.Errorf("%q: got %d args %v, want %v", c.in, len(args), args, c.args)
+			continue
+		}
+		for i := range args {
+			if got, want := sprint(args[i]), sprint(c.args[i]); got != want {
+				t.Errorf("%q: arg %d got %s want %s", c.in, i, got, want)
+			}
+		}
 	}
 }

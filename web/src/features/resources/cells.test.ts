@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ResourceRow, ResourceWeek } from "@/api/resources";
 import { cellShares, cellState, describeCell, describeHours, hasPlannedRows, hours, mondayOf, shiftWeeks, windowFrom } from "./cells";
 
@@ -48,11 +48,37 @@ describe("a resource cell", () => {
 
 describe("the resource window", () => {
   it("starts on the Monday of a week and runs whole weeks", () => {
-    expect(mondayOf(new Date("2031-03-06T15:00:00Z"))).toBe("2031-03-03");
-    expect(mondayOf(new Date("2031-03-09T10:00:00Z"))).toBe("2031-03-03");
-    expect(mondayOf(new Date("2031-03-03T00:00:00Z"))).toBe("2031-03-03");
+    // Local times: the week is the one on the reader's calendar, wherever the run is.
+    expect(mondayOf(new Date(2031, 2, 6, 15))).toBe("2031-03-03");
+    expect(mondayOf(new Date(2031, 2, 9, 23, 59))).toBe("2031-03-03");
+    expect(mondayOf(new Date(2031, 2, 3, 0, 0))).toBe("2031-03-03");
     expect(windowFrom("2031-03-03", 8)).toEqual({ from: "2031-03-03", to: "2031-04-27" });
     expect(shiftWeeks("2031-03-03", -4)).toBe("2031-02-03");
+  });
+
+  describe("opens on the reader's own week", () => {
+    const zone = process.env.TZ;
+    // Node reads TZ again whenever it changes, so a test can stand in any zone.
+    const standIn = (tz: string, utc: string) => {
+      process.env.TZ = tz;
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(utc));
+    };
+    afterEach(() => {
+      vi.useRealTimers();
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    });
+
+    it("in Berlin at half past midnight on a Monday, which is still Sunday in UTC", () => {
+      standIn("Europe/Berlin", "2031-06-01T22:30:00Z");
+      expect(mondayOf(new Date())).toBe("2031-06-02");
+    });
+
+    it("in New York on a Sunday evening, which is already Monday in UTC", () => {
+      standIn("America/New_York", "2031-06-02T00:00:00Z");
+      expect(mondayOf(new Date())).toBe("2031-05-26");
+    });
   });
 
   it("has somebody to plan against only beside the unassigned row", () => {

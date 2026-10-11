@@ -151,7 +151,7 @@ var ErrMoveNeedsStatus = errors.New("the target workflow does not have this stat
 // comments and its files; it gets the project's next key and remembers the
 // old one, so the address it had still finds it. What belongs to the old
 // project (sprint, team, milestone, versions, components, answers to its own
-// fields) is cleared and the history says so. Subtasks come along.
+// fields) is cleared and the history says so. Everything under it comes along.
 func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Actor) (*Issue, db.LSN, error) {
 	var moved *Issue
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -209,101 +209,35 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 			return ErrMoveNeedsStatus
 		}
 
-		var keyNum int64
-		if err := tx.QueryRow(ctx, `UPDATE project SET issue_seq = issue_seq + 1 WHERE id = $1 RETURNING issue_seq`, targetID).Scan(&keyNum); err != nil {
-			return fmt.Errorf("allocate issue key: %w", err)
-		}
-		newKey := FormatKey(targetKey, keyNum)
-
-		// The rows that tie the issue to its old project go first, so the
-		// same-project guards on the issue row do not fire on the update.
-		for _, table := range []string{"issue_version", "issue_component"} {
-			if _, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE issue_id = $1`, before.ID); err != nil {
-				return err
-			}
-		}
-		droppedValues, err := dropProjectFieldValues(ctx, tx, before.ID)
+		// Everything under it comes along, so all of it is judged before any
+		// row is written: a refusal leaves both projects as they were.
+		target := moveTarget{id: targetID, key: targetKey}
+		subtree, err := subtreeOf(ctx, tx, before.ID)
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `
-			UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL, moved_from = $5
-			WHERE id = $1`, before.ID, targetID, keyNum, statusID, before.Key); err != nil {
-			return fmt.Errorf("move issue: %w", err)
+		if err := s.checkDescendants(ctx, tx, before, subtree, target); err != nil {
+			return err
 		}
-		// Subtasks follow, each with its own new key.
-		children, err := tx.Query(ctx, `SELECT c.id, c.key_num FROM issue c WHERE c.parent_id = $1 ORDER BY c.key_num`, before.ID)
+		changes, err := s.moveRow(ctx, tx, before, target, statusID, statusName, actor)
 		if err != nil {
 			return err
 		}
-		type child struct {
-			id  uuid.UUID
-			num int64
-		}
-		var kids []child
-		for children.Next() {
-			var c child
-			if err := children.Scan(&c.id, &c.num); err != nil {
-				children.Close()
+		for i := range subtree {
+			d := &subtree[i]
+			if _, err := s.moveRow(ctx, tx, d, target, d.Status.ID, d.Status.Name, actor); err != nil {
 				return err
 			}
-			kids = append(kids, c)
-		}
-		children.Close()
-		for _, c := range kids {
-			var childNum int64
-			if err := tx.QueryRow(ctx, `UPDATE project SET issue_seq = issue_seq + 1 WHERE id = $1 RETURNING issue_seq`, targetID).Scan(&childNum); err != nil {
-				return err
-			}
-			for _, table := range []string{"issue_version", "issue_component"} {
-				if _, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE issue_id = $1`, c.id); err != nil {
-					return err
-				}
-			}
-			childDropped, err := dropProjectFieldValues(ctx, tx, c.id)
-			if err != nil {
-				return err
-			}
-			if len(childDropped) > 0 {
-				if err := s.recordHistory(ctx, tx, c.id, actor.UserID, childDropped); err != nil {
-					return err
-				}
-			}
-			if _, err := tx.Exec(ctx, `UPDATE issue SET project_id = $2, key_num = $3, sprint_id = NULL, team_id = NULL, milestone_id = NULL, moved_from = $4 WHERE id = $1`,
-				c.id, targetID, childNum, FormatKey(projectKey, c.num)); err != nil {
-				return fmt.Errorf("move subtask: %w", err)
-			}
-		}
-
-		changes := []Change{{Field: "project", From: projectKey, To: targetKey}, {Field: "key", From: before.Key, To: newKey}}
-		if statusID != before.Status.ID {
-			changes = append(changes, Change{Field: "status", From: before.Status.Name, To: statusName})
-		}
-		for _, cleared := range []struct {
-			field string
-			had   bool
-			from  string
-		}{
-			{"sprint", before.Sprint != nil, nameOf(before.Sprint)},
-			{"team", before.Team != nil, nameOfTeam(before.Team)},
-			{"milestone", before.Milestone != nil, nameOfMilestone(before.Milestone)},
-			{"fixVersion", len(before.FixVersions) > 0, versionNames(before.FixVersions)},
-			{"affectsVersion", len(before.AffectsVersions) > 0, versionNames(before.AffectsVersions)},
-			{"component", len(before.Components) > 0, componentNames(before.Components)},
-		} {
-			if cleared.had {
-				changes = append(changes, Change{Field: cleared.field, From: cleared.from, To: ""})
-			}
-		}
-		changes = append(changes, droppedValues...)
-		if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
-			return err
 		}
 		if err := s.insertComment(ctx, tx, before.ID, nil, TextDocument(fmt.Sprintf("Moved from %s.", before.Key)), false); err != nil {
 			return err
 		}
 		moved, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
 		if err != nil {
+			return err
+		}
+		// A desk's clocks belong to the project too, so they follow here.
+		if err := s.tellUpdated(ctx, tx, before, moved, actor); err != nil {
 			return err
 		}
 		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
@@ -316,13 +250,30 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 	return moved, lsn, nil
 }
 
-// ByOldKey finds an issue by a key it had before a move, so an old address
+// keepOldKey adds the key an issue is leaving to those it had. A key another
+// issue left, which takes a project deleted and made again, now names this one.
+func keepOldKey(ctx context.Context, tx db.DBTX, issueID uuid.UUID, key string) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO issue_old_key (org_id, issue_id, key) VALUES (current_org_id(), $1, $2)
+		ON CONFLICT (org_id, key) DO UPDATE SET issue_id = EXCLUDED.issue_id, created_at = now()`, issueID, key)
+	if err != nil {
+		return fmt.Errorf("keep the old key %s: %w", key, err)
+	}
+	return nil
+}
+
+// ByOldKey finds an issue by any key it had before a move, so an old address
 // can send its reader on.
 func (s *Service) ByOldKey(ctx context.Context, key string) (*Issue, error) {
+	projectKey, num, err := ParseKey(key)
+	if err != nil {
+		return nil, err
+	}
 	var found *Issue
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		found, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.moved_from = $1`, strings.ToUpper(strings.TrimSpace(key))))
+		found, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = (SELECT k.issue_id FROM issue_old_key k WHERE k.key = $1)`,
+			FormatKey(projectKey, num)))
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
