@@ -21,22 +21,22 @@ import (
 
 // CreateInvite records an invitation and returns it together with the secret to
 // put in the invitation link. The secret is not recoverable afterwards.
-func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, invitedBy uuid.UUID, ttl time.Duration) (*Invite, string, error) {
+func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, invitedBy uuid.UUID, ttl time.Duration) (*Invite, string, db.LSN, error) {
 	email = NormalizeEmail(email)
 	if email == "" {
-		return nil, "", errors.New("email is required")
+		return nil, "", 0, errors.New("email is required")
 	}
 	if !role.Valid() || role == RoleOwner {
-		return nil, "", fmt.Errorf("%q is not a role that can be invited", role)
+		return nil, "", 0, fmt.Errorf("%q is not a role that can be invited", role)
 	}
 
 	secret, digest, err := GenerateToken()
 	if err != nil {
-		return nil, "", err
+		return nil, "", 0, err
 	}
 	inv := Invite{Email: email, Role: role, ExpiresAt: s.now().Add(ttl)}
 
-	_, err = s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		// An invitation only ever adds somebody, or lifts a customer onto the
 		// team; it never rewrites the standing of somebody who is already here.
 		var standing OrgRole
@@ -67,9 +67,9 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 		return recordInvite(ctx, tx, "invite.created", inv.ID, email, role, invitedBy)
 	})
 	if err != nil {
-		return nil, "", fmt.Errorf("create invite: %w", err)
+		return nil, "", 0, fmt.Errorf("create invite: %w", err)
 	}
-	return &inv, secret, nil
+	return &inv, secret, lsn, nil
 }
 
 // ListInvites returns the organization's pending invitations.
@@ -128,8 +128,8 @@ func (s *Service) PreviewInvite(ctx context.Context, secret string) (*InvitePrev
 }
 
 // RevokeInvite withdraws a pending invitation.
-func (s *Service) RevokeInvite(ctx context.Context, id uuid.UUID, actor uuid.UUID) error {
-	_, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+func (s *Service) RevokeInvite(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.LSN, error) {
+	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var (
 			email string
 			role  OrgRole
@@ -143,7 +143,6 @@ func (s *Service) RevokeInvite(ctx context.Context, id uuid.UUID, actor uuid.UUI
 		}
 		return recordInvite(ctx, tx, "invite.revoked", id, email, role, actor)
 	})
-	return err
 }
 
 // recordInvite writes who invited whom as what; the link's secret stays out.

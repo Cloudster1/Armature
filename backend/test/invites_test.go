@@ -23,7 +23,7 @@ func TestInvites(t *testing.T) {
 
 	t.Run("a new account can join through an invitation", func(t *testing.T) {
 		invitee := h.email(t, "joiner")
-		invite, token, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		invite, token, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatalf("create invite: %v", err)
 		}
@@ -56,7 +56,7 @@ func TestInvites(t *testing.T) {
 
 	t.Run("an invitation cannot be used twice", func(t *testing.T) {
 		invitee := h.email(t, "reuse")
-		_, token, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		_, token, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +76,7 @@ func TestInvites(t *testing.T) {
 
 	t.Run("an expired invitation is refused", func(t *testing.T) {
 		invitee := h.email(t, "stale")
-		invite, token, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		invite, token, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -104,11 +104,11 @@ func TestInvites(t *testing.T) {
 
 	t.Run("re-inviting the same address replaces the pending invitation", func(t *testing.T) {
 		invitee := h.email(t, "reinvite")
-		_, firstToken, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		_, firstToken, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, secondToken, err := svc.CreateInvite(orgCtx, invitee, auth.RoleAdmin, owner.Principal.User.ID, time.Hour)
+		_, secondToken, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleAdmin, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatalf("second invite: %v", err)
 		}
@@ -134,11 +134,11 @@ func TestInvites(t *testing.T) {
 
 	t.Run("revoking an invitation stops it working", func(t *testing.T) {
 		invitee := h.email(t, "revokeinv")
-		invite, token, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		invite, token, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := svc.RevokeInvite(orgCtx, invite.ID, owner.Principal.User.ID); err != nil {
+		if _, err := svc.RevokeInvite(orgCtx, invite.ID, owner.Principal.User.ID); err != nil {
 			t.Fatalf("revoke: %v", err)
 		}
 		if _, err := svc.AcceptInvite(ctx, auth.AcceptInviteInput{
@@ -150,7 +150,7 @@ func TestInvites(t *testing.T) {
 
 	t.Run("an existing account joins with the account it already has", func(t *testing.T) {
 		existing := h.signup(t, svc, "existing")
-		_, token, err := svc.CreateInvite(orgCtx, existing.Principal.User.Email, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		_, token, _, err := svc.CreateInvite(orgCtx, existing.Principal.User.Email, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +177,7 @@ func TestInvites(t *testing.T) {
 	})
 
 	t.Run("nobody can be invited as an owner", func(t *testing.T) {
-		if _, _, err := svc.CreateInvite(orgCtx, h.email(t, "usurper"), auth.RoleOwner, owner.Principal.User.ID, time.Hour); err == nil {
+		if _, _, _, err := svc.CreateInvite(orgCtx, h.email(t, "usurper"), auth.RoleOwner, owner.Principal.User.ID, time.Hour); err == nil {
 			t.Error("an owner invitation was accepted, which would let anyone hand over the organization by email")
 		}
 	})
@@ -191,11 +191,11 @@ func TestInvites(t *testing.T) {
 		listCtx := db.PinPrimary(auth.ContextForOrg(ctx, lister.Principal))
 
 		pending := h.email(t, "pending")
-		if _, _, err := svc.CreateInvite(listCtx, pending, auth.RoleMember, lister.Principal.User.ID, time.Hour); err != nil {
+		if _, _, _, err := svc.CreateInvite(listCtx, pending, auth.RoleMember, lister.Principal.User.ID, time.Hour); err != nil {
 			t.Fatal(err)
 		}
 		accepted := h.email(t, "accepted")
-		_, token, err := svc.CreateInvite(listCtx, accepted, auth.RoleMember, lister.Principal.User.ID, time.Hour)
+		_, token, _, err := svc.CreateInvite(listCtx, accepted, auth.RoleMember, lister.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}

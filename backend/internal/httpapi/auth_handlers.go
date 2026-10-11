@@ -268,11 +268,12 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	p := PrincipalFrom(r.Context())
 
-	invite, secret, err := s.Auth.CreateInvite(r.Context(), req.Email, auth.OrgRole(req.Role), p.User.ID, 7*24*time.Hour)
+	invite, secret, lsn, err := s.Auth.CreateInvite(r.Context(), req.Email, auth.OrgRole(req.Role), p.User.ID, 7*24*time.Hour)
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
 	}
+	NoteWrite(r.Context(), lsn)
 	// The secret is returned once, and mailed when mail is set up. Returning it
 	// either way lets an administrator pass the link on themselves, which is
 	// the only way when there is no mail, and keeps the flow testable.
@@ -343,10 +344,12 @@ func (s *Server) handleRevokeInvite(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("Invalid invitation id."))
 		return
 	}
-	if err := s.Auth.RevokeInvite(r.Context(), id, userFrom(r)); err != nil {
+	lsn, err := s.Auth.RevokeInvite(r.Context(), id, userFrom(r))
+	if err != nil {
 		respondError(w, r, err)
 		return
 	}
+	NoteWrite(r.Context(), lsn)
 	respondNoContent(w)
 }
 
