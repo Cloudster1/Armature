@@ -43,6 +43,9 @@ const (
 	Skipped Outcome = "skipped"
 	// Duplicate is a mail the desk had already read.
 	Duplicate Outcome = "duplicate"
+	// Automatic is an out-of-office or other machine's mail to a request; it
+	// is nobody's answer, so the request goes on waiting.
+	Automatic Outcome = "automatic"
 )
 
 // Inbound reads the desk's mailbox and turns replies into comments. It runs in
@@ -191,6 +194,10 @@ func (n *Inbound) Handle(ctx context.Context, raw []byte) (Outcome, error) {
 	// The list is about customers; an agent's own domain is often not on it.
 	if !p.role.IsAgent() && !project.Trusts(p.trustedDomains, m.From) {
 		return n.finish(ctx, messageID, &p, Refused, "sender's domain not trusted by "+key, m, notTrustedMessage(key, p.trustedDomains, m.From, n.appURL))
+	}
+	// Posting it would take the request out of waiting and restart its clocks.
+	if m.AutoSubmitted {
+		return n.finish(ctx, messageID, &p, Automatic, "sent by a machine, such as an out-of-office, so not posted", m, Message{})
 	}
 	text := mailin.StripQuotes(m.Text)
 	if text == "" {

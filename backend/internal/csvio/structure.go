@@ -96,14 +96,16 @@ type belonging struct {
 func (s *Service) placesFor(ctx context.Context, projectKey string, row Row, req ImportRequest,
 	n *named, actor uuid.UUID, report *ImportReport) belonging {
 	var out belonging
-	if name := row.value(req.Mapping, "sprint"); name != "" && s.plan.sprints != nil {
-		if id := s.sprintNamed(ctx, projectKey, name, req.DryRun, n, actor, report); id != uuid.Nil {
-			out.sprint = &id
-		}
-	}
+	// The team comes first: a sprint the file makes is planned for the team of
+	// the row that names it, since a sprint only takes its own team's work.
 	if name := row.value(req.Mapping, "team"); name != "" && s.plan.teams != nil {
 		if id := s.teamNamed(ctx, projectKey, name, req.DryRun, n, actor, report); id != uuid.Nil {
 			out.team = &id
+		}
+	}
+	if name := row.value(req.Mapping, "sprint"); name != "" && s.plan.sprints != nil {
+		if id := s.sprintNamed(ctx, projectKey, name, out.team, req.DryRun, n, actor, report); id != uuid.Nil {
+			out.sprint = &id
 		}
 	}
 	for target, into := range map[string]*[]uuid.UUID{"fixVersions": &out.fix, "affectsVersions": &out.affects} {
@@ -127,7 +129,7 @@ func (s *Service) placesFor(ctx context.Context, projectKey string, row Row, req
 
 // The four are the same shape: look the name up, make it if the project has no
 // such thing, and say in the report that it was made.
-func (s *Service) sprintNamed(ctx context.Context, projectKey, name string, dry bool, n *named, actor uuid.UUID, report *ImportReport) uuid.UUID {
+func (s *Service) sprintNamed(ctx context.Context, projectKey, name string, teamID *uuid.UUID, dry bool, n *named, actor uuid.UUID, report *ImportReport) uuid.UUID {
 	if id, ok := n.sprints[strings.ToLower(name)]; ok {
 		return id
 	}
@@ -135,7 +137,7 @@ func (s *Service) sprintNamed(ctx context.Context, projectKey, name string, dry 
 		note(report, fmt.Sprintf("A sprint called %s would be added to this project.", name))
 		return uuid.Nil
 	}
-	made, _, err := s.plan.sprints.Create(ctx, projectKey, sprint.CreateInput{Name: name}, actor)
+	made, _, err := s.plan.sprints.Create(ctx, projectKey, sprint.CreateInput{Name: name, TeamID: teamID}, actor)
 	if err != nil {
 		note(report, fmt.Sprintf("The sprint %s could not be added: %v", name, err))
 		return uuid.Nil
