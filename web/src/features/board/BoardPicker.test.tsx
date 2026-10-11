@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { BoardSummary } from "@/api/boards";
 import type { Team } from "@/api/teams";
@@ -14,7 +14,7 @@ vi.mock("@/api/boards", () => ({
   useBoards: () => ({ data: { boards: state.boards } }),
   useCreateBoard: () => ({ mutate: createBoard, isPending: false, error: null }),
   useUpdateBoard: () => ({ mutate: updateBoard, isPending: false, error: null }),
-  useDeleteBoard: () => ({ mutate: deleteBoard, isPending: false, error: null }),
+  useDeleteBoard: () => ({ mutateAsync: deleteBoard, isPending: false, error: null }),
 }));
 
 vi.mock("@/features/shell/ConfirmProvider", () => ({ useConfirm: () => confirm }));
@@ -152,7 +152,7 @@ describe("BoardPicker", () => {
       state.boards = two();
       state.teams = [team()];
       deleteBoard.mockReset();
-      deleteBoard.mockImplementation((_id: string, options?: { onSuccess?: () => void }) => options?.onSuccess?.());
+      deleteBoard.mockImplementation(async () => {});
       confirm.mockClear();
       const onPick = vi.fn();
       render(<BoardPicker projectKey="CP" boardId="b2" onPick={onPick} canManage />);
@@ -160,8 +160,27 @@ describe("BoardPicker", () => {
       await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
       expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ noun: "board Team flow" }));
-      expect(deleteBoard).toHaveBeenCalledWith("b2", expect.anything());
-      expect(onPick).toHaveBeenCalledWith(null);
+      expect(deleteBoard).toHaveBeenCalledWith("b2");
+      await waitFor(() => expect(onPick).toHaveBeenCalledWith(null));
+    });
+
+    // The board list refetches before the delete settles, and with one board
+    // left the picker is gone; the page must still hear about it.
+    it("goes back to the opening board even when the picker goes with the deleted board", async () => {
+      state.boards = two();
+      state.teams = [];
+      const onPick = vi.fn();
+      const { rerender } = render(<BoardPicker projectKey="CP" boardId="b2" onPick={onPick} canManage />);
+      deleteBoard.mockReset();
+      deleteBoard.mockImplementation(async () => {
+        state.boards = [board()];
+        rerender(<BoardPicker projectKey="CP" boardId="b2" onPick={onPick} canManage />);
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => expect(onPick).toHaveBeenCalledWith(null));
+      expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
     });
 
     it("keeps nothing when the question is declined", async () => {

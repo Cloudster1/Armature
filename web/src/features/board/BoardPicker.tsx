@@ -112,7 +112,9 @@ function ManageBoard({
       noun: `board ${board.name}`,
       body: `${board.name} and its swimlanes go. The issues it showed stay in the project.`,
     });
-    if (sure) remove.mutate(board.id, { onSuccess: onDeleted });
+    // Not mutate's onSuccess: the refetched list can hide the picker first, and
+    // an unmounted observer drops it, leaving the page on a board that is gone.
+    if (sure) remove.mutateAsync(board.id).then(onDeleted, () => {});
   }
 
   return (
