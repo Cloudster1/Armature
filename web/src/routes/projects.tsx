@@ -6,7 +6,7 @@ import { canAdminister, useAccess } from "@/api/access";
 import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, Menu, Page, PageHeader, Skeleton, Switch, Table, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TemplateChooser } from "@/features/projects/TemplateChooser";
-import { relativeTime } from "@/features/issues/badges";
+import { RelativeTime } from "@/features/issues/badges";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { HealthTag } from "@/features/projects/StatusStrip";
 
@@ -101,7 +101,7 @@ function ProjectRow({ project, canAdminister: admin }: { project: Project; canAd
         <span className="text-ink">{project.openIssueCount} open</span>
         <span className="text-ink-subtle"> · {project.issueCount} total</span>
       </Td>
-      <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums">{relativeTime(project.updatedAt)}</Td>
+      <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums"><RelativeTime iso={project.updatedAt} /></Td>
       <Td className="text-right">
         {admin && !archived && (
           <Menu

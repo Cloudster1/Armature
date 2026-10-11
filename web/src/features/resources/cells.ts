@@ -3,6 +3,7 @@ import { RESOURCE_HOUR_DECIMALS } from "@/config";
 import { utilisation, type Utilisation } from "@/features/plan/load";
 import { number } from "@/features/plan/SprintBands";
 import { DAYS_PER_WEEK, addDays, day, isoDay } from "@/features/plan/scale";
+import { today } from "@/lib/week";
 
 /** How a week stands against the hours there are, in the plan's four words. */
 export function cellState(week: ResourceWeek): Utilisation {
@@ -40,18 +41,21 @@ export function describeHours(week: ResourceWeek, sharePercent?: number): string
 }
 
 /** The cell's whole title: whose week, which week, and its hours. */
-export function describeCell(row: ResourceRow, week: ResourceWeek): string {
-  return `${row.name}, week of ${weekLabel(week.start)}: ${describeHours(week, row.sharePercent)}`;
+export function describeCell(row: ResourceRow, week: ResourceWeek, locale: string): string {
+  return `${row.name}, week of ${weekLabel(week.start, locale)}: ${describeHours(week, row.sharePercent)}`;
 }
 
-/** A week's column heading: its Monday, as "3 Mar". */
-export function weekLabel(start: string): string {
-  return day(start).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
+/** A week's column heading: its Monday, as "3 Mar" in the reader's language. */
+export function weekLabel(start: string, locale: string): string {
+  return day(start).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
-/** The Monday of the week a day falls in, as the API writes days. */
+/**
+ * The Monday of the reader's week, as the API writes days. It is taken from
+ * their local date, because their Monday starts at their midnight, not UTC's.
+ */
 export function mondayOf(date: Date): string {
-  const d = day(date);
+  const d = day(today(date));
   const back = (d.getUTCDay() + DAYS_PER_WEEK - 1) % DAYS_PER_WEEK;
   return isoDay(addDays(d, -back));
 }

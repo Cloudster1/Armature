@@ -3,7 +3,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
-const state = { mode: "open" as "open" | "rail" };
+const state = {
+  mode: "open" as "open" | "rail",
+  pathname: "/",
+  params: {} as { projectKey?: string },
+  projects: [] as Array<{ key: string; name: string }>,
+};
+const navigate = vi.fn();
 const toggleMode = vi.fn(() => {
   state.mode = state.mode === "open" ? "rail" : "open";
 });
@@ -14,9 +20,9 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
-  useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: "/" }),
-  useParams: () => ({}),
+  useNavigate: () => navigate,
+  useLocation: () => ({ pathname: state.pathname }),
+  useParams: () => state.params,
 }));
 vi.mock("@/api/auth", () => ({
   useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada Lovelace" }, org: { name: "Acme" }, role: "owner" }, organizations: [] } }),
@@ -25,12 +31,12 @@ vi.mock("@/api/auth", () => ({
   useEraseMe: () => ({ mutate: vi.fn(), isPending: false }),
   MY_DATA_HREF: "/api/v1/auth/me/export",
 }));
-vi.mock("@/api/projects", () => ({ useProject: () => ({ data: undefined }), useProjects: () => ({ data: { projects: [] } }) }));
+vi.mock("@/api/projects", () => ({ useProject: () => ({ data: undefined }), useProjects: () => ({ data: { projects: state.projects } }) }));
 vi.mock("@/api/notifications", () => ({ useUnreadCount: () => ({ data: { unread: 3 } }) }));
 vi.mock("@/api/build", () => ({ useBuild: () => ({ data: { build: { version: "0.1.0", commit: "0123456789abcdef", builtAt: "2026-09-28T10:00:00Z" } } }) }));
 vi.mock("./state", async () => {
   const actual = await vi.importActual<typeof import("./state")>("./state");
-  return { ...actual, useSidebarMode: () => [state.mode, toggleMode], useLastProject: () => undefined };
+  return { ...actual, useSidebarMode: () => [state.mode, toggleMode], useLastProject: (key: string | undefined) => key };
 });
 vi.mock("./ConfirmProvider", () => ({ useConfirm: () => async () => true }));
 
@@ -39,6 +45,10 @@ const { Sidebar } = await import("./Sidebar");
 beforeEach(() => {
   localStorage.clear();
   state.mode = "open";
+  state.pathname = "/";
+  state.params = {};
+  state.projects = [];
+  navigate.mockReset();
 });
 
 describe("the shell's chrome", () => {
@@ -84,5 +94,32 @@ describe("the foot of the map", () => {
     const stamp = document.querySelector("[data-build]")!;
     expect(stamp.textContent).toBe("0.1.0 (0123456)");
     expect(stamp.getAttribute("title")).toContain("commit 0123456789abcdef");
+  });
+});
+
+describe("the project switcher", () => {
+  // A sprint's id belongs to the project it was opened in; carried across, it
+  // drew one project's sprint under the other project's name.
+  it("keeps the kind of page and drops the ids that belong to the old project", async () => {
+    state.params = { projectKey: "AAA" };
+    state.projects = [
+      { key: "AAA", name: "Apollo" },
+      { key: "BBB", name: "Borealis" },
+    ];
+    const pages: Array<[string, string]> = [
+      ["/projects/AAA/sprints/0b0e5a1c-9f6e-4a49-a3c1-6d1c0f2b7e11/board", "/projects/BBB/sprints"],
+      ["/projects/AAA/board", "/projects/BBB/board"],
+      ["/projects/AAA/plan", "/projects/BBB/plan"],
+      ["/projects/AAA", "/projects/BBB"],
+    ];
+    for (const [from, to] of pages) {
+      state.pathname = from;
+      navigate.mockReset();
+      const { unmount } = render(<Sidebar onNewIssue={() => {}} />);
+      await userEvent.click(document.querySelector<HTMLElement>("[data-project-switcher]")!);
+      await userEvent.click(document.querySelector<HTMLElement>('[data-project-option="BBB"]')!);
+      expect(navigate, from).toHaveBeenCalledWith({ to });
+      unmount();
+    }
   });
 });

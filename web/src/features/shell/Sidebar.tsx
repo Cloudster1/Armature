@@ -212,6 +212,15 @@ function ProjectPages({ projectKey, adminOpen, onToggleAdmin }: { projectKey: st
   );
 }
 
+/** The page's kind under the project, such as "/board"; anything deeper names
+ * something of this project, like a sprint, and has no meaning in another. */
+function pageKind(pathname: string, projectKey: string): string {
+  const prefix = `/projects/${projectKey}`;
+  if (!pathname.startsWith(`${prefix}/`)) return "";
+  const kind = pathname.slice(prefix.length + 1).split("/")[0];
+  return kind ? `/${kind}` : "";
+}
+
 // Switching keeps the page kind: Board stays Board in the other project, so
 // comparing two projects is two clicks and not a search through the sidebar.
 function ProjectSwitcher({ projectKey }: { projectKey: string | undefined }) {
@@ -221,7 +230,7 @@ function ProjectSwitcher({ projectKey }: { projectKey: string | undefined }) {
   const { pathname } = useLocation();
   const [filter, setFilter] = useState("");
   const projects = (data?.projects ?? []).filter((p) => !filter || `${p.name} ${p.key}`.toLowerCase().includes(filter.toLowerCase()));
-  const suffix = projectKey && pathname.startsWith(`/projects/${projectKey}`) ? pathname.slice(`/projects/${projectKey}`.length) : "";
+  const suffix = projectKey ? pageKind(pathname, projectKey) : "";
   const name = current?.project?.name ?? projectKey ?? "Choose a project";
   return (
     <Menu

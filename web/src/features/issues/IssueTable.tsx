@@ -4,7 +4,7 @@ import type { Issue } from "@/api/issues";
 import { Checkbox, IconButton, Table, Td, Th, cx, isInteractiveTarget } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useIssueDrawer, useIssueList } from "./IssueDrawer";
-import { Avatar, PriorityBadge, StatusBadge, TypeBadge, relativeTime } from "./badges";
+import { Avatar, PriorityBadge, StatusBadge, TypeBadge, RelativeTime } from "./badges";
 import { LabelChips } from "@/features/labels/LabelChip";
 
 /**
@@ -109,7 +109,7 @@ export function IssueTable({
             <Td>
               <Avatar name={issue.assignee?.name} src={issue.assignee?.avatarUrl} size="sm" />
             </Td>
-            <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums">{relativeTime(issue.updatedAt)}</Td>
+            <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums"><RelativeTime iso={issue.updatedAt} /></Td>
             <Td className="text-right">
               <IconButton icon={<Icon.ChevronRight />} label={`Open ${issue.key} beside the list`} size="sm" onClick={() => drawer.open(issue.key)} data-open-drawer={issue.key} />
             </Td>

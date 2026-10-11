@@ -35,6 +35,10 @@ func (w *statusWatcher) CommentAdded(context.Context, db.DBTX, uuid.UUID, bool, 
 	return nil
 }
 
+func (w *statusWatcher) IssueUpdated(context.Context, db.DBTX, *issue.Issue, *issue.Issue, issue.Actor) error {
+	return nil
+}
+
 func (w *statusWatcher) IssueDeleted(context.Context, db.DBTX, *issue.Issue, issue.Actor) error {
 	return nil
 }

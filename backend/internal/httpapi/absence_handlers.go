@@ -28,13 +28,18 @@ func (s *Server) handleListAbsences(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	found, err := s.Availability.Absences(r.Context(), from, to, userID)
+	found, truncated, err := s.Availability.Absences(r.Context(), from, to, userID)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
+	// A listing from a day with no last day answers a null to.
+	var last *string
+	if to != nil {
+		last = new(to.Format(availability.DateLayout))
+	}
 	respondJSON(w, r, http.StatusOK, map[string]any{
-		"absences": found, "from": from.Format(availability.DateLayout), "to": to.Format(availability.DateLayout),
+		"absences": found, "from": from.Format(availability.DateLayout), "to": last, "truncated": truncated,
 	})
 }
 

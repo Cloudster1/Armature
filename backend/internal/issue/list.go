@@ -44,6 +44,13 @@ type Filter struct {
 	LabelIDs []uuid.UUID
 	// MilestoneID keeps the issues counting towards one milestone.
 	MilestoneID *uuid.UUID
+	// SprintID keeps one sprint's work; NoSprint, which wins, keeps the
+	// backlog. Separate for the same reason as Unassigned.
+	SprintID *uuid.UUID
+	NoSprint bool
+	// TeamID keeps one team's work; NoTeam, which wins, the project's own.
+	TeamID *uuid.UUID
+	NoTeam bool
 	// Text matches the summary.
 	Text string
 	// Priorities filters by priority.
@@ -88,16 +95,35 @@ var orderColumns = map[string]string{
 	// Priority is an enum, and Postgres orders enums by their declaration
 	// order, which runs lowest to highest.
 	"priority": "i.priority",
+	"rank":     "i.rank",
 }
 
 // listCap is the most issues one unpaged read returns, matching the tree.
 const listCap = 2000
 
+const (
+	// MaxPageLimit is the most issues one page holds; a reader wanting more
+	// pages through, so one request cannot hold the database for long.
+	MaxPageLimit = 200
+	// defaultPageLimit is the page a caller gets who asked for none, or too much.
+	defaultPageLimit = 50
+)
+
 // List returns the issues matching a filter.
 func (s *Service) List(ctx context.Context, filter Filter, page Page) (*Result, error) {
-	if page.Limit <= 0 || page.Limit > 200 {
-		page.Limit = 50
+	if page.Limit <= 0 || page.Limit > MaxPageLimit {
+		page.Limit = defaultPageLimit
 	}
+	return s.list(ctx, filter, page)
+}
+
+// ListUpTo reads up to limit issues in one statement, for a server-side reader
+// like the export that would otherwise sort every matching row once per page.
+func (s *Service) ListUpTo(ctx context.Context, filter Filter, limit int, orderBy string) (*Result, error) {
+	return s.list(ctx, filter, Page{Limit: max(limit, 1), OrderBy: orderBy})
+}
+
+func (s *Service) list(ctx context.Context, filter Filter, page Page) (*Result, error) {
 	if page.Offset < 0 {
 		page.Offset = 0
 	}
@@ -120,9 +146,9 @@ func (s *Service) List(ctx context.Context, filter Filter, page Page) (*Result, 
 			return nil
 		}
 
-		// The key is appended to the sort so that ties are broken the same way
-		// every time; without it, paging can show the same issue twice.
-		query := fmt.Sprintf("%s%s ORDER BY %s, i.key_num DESC LIMIT $%d OFFSET $%d",
+		// The key, then the id, end the sort so ties break the same way every
+		// time; key numbers repeat across projects, so the key alone does not.
+		query := fmt.Sprintf("%s%s ORDER BY %s, i.key_num DESC, i.id LIMIT $%d OFFSET $%d",
 			selectIssue, where, ordering, len(args)+1, len(args)+2)
 		args = append(args, page.Limit, page.Offset)
 
@@ -260,6 +286,16 @@ func (f Filter) build() (string, []any) {
 	}
 	if f.MilestoneID != nil {
 		add("i.milestone_id = $%d", *f.MilestoneID)
+	}
+	if f.NoSprint {
+		clauses = append(clauses, "i.sprint_id IS NULL")
+	} else if f.SprintID != nil {
+		add("i.sprint_id = $%d", *f.SprintID)
+	}
+	if f.NoTeam {
+		clauses = append(clauses, "i.team_id IS NULL")
+	} else if f.TeamID != nil {
+		add("i.team_id = $%d", *f.TeamID)
 	}
 	if len(f.LabelIDs) > 0 {
 		add("EXISTS (SELECT 1 FROM issue_label il WHERE il.issue_id = i.id AND il.label_id = ANY($%d))", f.LabelIDs)

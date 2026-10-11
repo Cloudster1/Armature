@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -115,11 +114,10 @@ type Notifier struct {
 	appURL string
 	inbox  string
 	group  string
-	block  time.Duration
 }
 
 func NewNotifier(cluster *db.Cluster, rdb *redis.Client, mailer Mailer, appURL string, log *slog.Logger) *Notifier {
-	return &Notifier{db: cluster, redis: rdb, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), group: "desk-mail", block: 5 * time.Second}
+	return &Notifier{db: cluster, redis: rdb, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), group: "desk-mail"}
 }
 
 // WithInbox names the address replies go to. Every mail then carries it as
@@ -131,43 +129,7 @@ func (n *Notifier) WithInbox(address string) *Notifier {
 
 // Run consumes the stream until the context ends.
 func (n *Notifier) Run(ctx context.Context) error {
-	err := n.redis.XGroupCreateMkStream(ctx, events.StreamKey, n.group, "$").Err()
-	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
-		return fmt.Errorf("create consumer group: %w", err)
-	}
-	for {
-		if ctx.Err() != nil {
-			return nil
-		}
-		streams, err := n.redis.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group: n.group, Consumer: "worker", Streams: []string{events.StreamKey, ">"}, Count: 50, Block: n.block,
-		}).Result()
-		if errors.Is(err, redis.Nil) {
-			continue
-		}
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil
-			}
-			n.log.Warn("desk mail read failed", "error", err)
-			time.Sleep(time.Second)
-			continue
-		}
-		for _, stream := range streams {
-			for _, msg := range stream.Messages {
-				e := events.FromMessage(msg)
-				hctx, done := events.Continue(ctx, e, n.group)
-				err := n.Handle(hctx, e)
-				done(err)
-				if err != nil {
-					n.log.Warn("desk mail could not act on an event", "id", msg.ID, "error", err)
-				}
-				if err := n.redis.XAck(ctx, events.StreamKey, n.group, msg.ID).Err(); err != nil {
-					n.log.Warn("desk mail could not acknowledge", "id", msg.ID, "error", err)
-				}
-			}
-		}
-	}
+	return events.NewConsumer(n.db, n.redis, n.log, n.group, n.Handle).Run(ctx)
 }
 
 // about is what every mail about a request needs to know about it. Only an
@@ -201,13 +163,21 @@ func (n *Notifier) lookup(ctx context.Context, key string) (*about, error) {
 	return &a, nil
 }
 
+// recipient is one address on a request, and whether it is the reporter's,
+// since only the reporter is asked to rate.
+type recipient struct {
+	email    string
+	reporter bool
+}
+
 // recipients is who hears about a request: the reporter and the watchers, less
 // the person whose act it was, who needs no mail about what they just did.
-func (n *Notifier) recipients(ctx context.Context, a *about, except uuid.UUID) ([]string, error) {
-	var out []string
+func (n *Notifier) recipients(ctx context.Context, a *about, except uuid.UUID) ([]recipient, error) {
+	var out []recipient
 	err := n.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT DISTINCT u.email FROM app_user u
+			SELECT DISTINCT u.email, u.id IS NOT DISTINCT FROM (SELECT reporter_id FROM issue WHERE id = $1)
+			FROM app_user u
 			WHERE u.is_active AND u.id <> $2
 			  AND (u.id = (SELECT reporter_id FROM issue WHERE id = $1)
 			       OR u.id IN (SELECT user_id FROM issue_watcher WHERE issue_id = $1))
@@ -217,11 +187,11 @@ func (n *Notifier) recipients(ctx context.Context, a *about, except uuid.UUID) (
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var email string
-			if err := rows.Scan(&email); err != nil {
+			var r recipient
+			if err := rows.Scan(&r.email, &r.reporter); err != nil {
 				return err
 			}
-			out = append(out, email)
+			out = append(out, r)
 		}
 		return rows.Err()
 	})
@@ -322,10 +292,19 @@ func (n *Notifier) Handle(ctx context.Context, e events.Event) error {
 			return err
 		}
 		msg := resolvedMessage(a.key, a.summary, p.ToStatus, n.link(a))
-		if token != "" {
-			msg.Body += fmt.Sprintf("\nHow did we do? Tell us in one click: %s/rate/%s\n", n.appURL, url.PathEscape(token))
+		if token == "" {
+			return n.tell(ctx, a, p.ActorID, msg)
 		}
-		return n.tell(ctx, a, p.ActorID, msg)
+		rate := msg
+		rate.Body += fmt.Sprintf("\nHow did we do? Tell us in one click: %s/rate/%s\n", n.appURL, url.PathEscape(token))
+		// Whoever holds the link can rate, so followers and watching agents
+		// hear of the resolution without it.
+		return n.tellEach(ctx, a, p.ActorID, func(r recipient) Message {
+			if r.reporter {
+				return rate
+			}
+			return msg
+		})
 
 	case events.TopicIssueUpdated:
 		var p struct {
@@ -389,26 +368,44 @@ func (n *Notifier) Handle(ctx context.Context, e events.Event) error {
 func (n *Notifier) link(a *about) string { return requestLink(n.appURL, a.slug, a.key) }
 
 // tell mails everyone on a request but the actor. Every address is tried; the
-// first failure is what comes back.
+// first failure comes back, and is final once anybody was mailed.
 func (n *Notifier) tell(ctx context.Context, a *about, except uuid.UUID, msg Message) error {
+	return n.tellEach(ctx, a, except, func(recipient) Message { return msg })
+}
+
+// tellEach is tell with the message worded for each recipient, for what is
+// meant for one of them alone.
+func (n *Notifier) tellEach(ctx context.Context, a *about, except uuid.UUID, msg func(recipient) Message) error {
 	to, err := n.recipients(ctx, a, except)
 	if err != nil {
 		return err
 	}
 	var first error
-	for _, address := range to {
-		if err := n.mailer.Send(ctx, n.mail(a, address, msg)); err != nil && first == nil {
+	sent := 0
+	for _, r := range to {
+		err := n.mailer.Send(ctx, n.mail(a, r.email, msg(r)))
+		switch {
+		case err == nil:
+			sent++
+		case first == nil:
 			first = err
 		}
+	}
+	// Another attempt would mail twice whoever already has it.
+	if first != nil && sent > 0 {
+		return events.Permanent(first)
 	}
 	return first
 }
 
-// mail addresses a message. Its id begins with the request's key so that an
-// answer to it can be placed even without the subject, and, when there is an
-// inbox, the reader is told that answering works.
+// mail addresses a message. Its ids begin with the request's key so an answer
+// is placed even without the subject; with an inbox, the reader is told so.
 func (n *Notifier) mail(a *about, to string, msg Message) Mail {
-	m := Mail{To: to, Subject: msg.Subject, Body: msg.Body, MessageID: messageID(a.key, n.from())}
+	thread := threadID(a.key, a.id, n.from())
+	m := Mail{
+		To: to, Subject: msg.Subject, Body: msg.Body, MessageID: messageID(a.key, n.from()),
+		InReplyTo: thread, References: []string{thread},
+	}
 	if n.inbox != "" {
 		m.ReplyTo = n.inbox
 		m.Body += "\nYou can answer this mail; your words are added to the request.\n"
@@ -429,6 +426,12 @@ func (n *Notifier) from() string {
 // when its subject was rewritten; the rest keeps two mails apart.
 func messageID(key, host string) string {
 	return fmt.Sprintf("<%s.%s@%s>", key, uuid.New().String(), host)
+}
+
+// threadID is the one id a request's mails all answer, <KEY-12.request@host>.
+// A key repeats across organizations; the request's own id does not.
+func threadID(key string, request uuid.UUID, host string) string {
+	return fmt.Sprintf("<%s.%s@%s>", key, request, host)
 }
 
 // plainText reads a comment's document the way the issue package renders

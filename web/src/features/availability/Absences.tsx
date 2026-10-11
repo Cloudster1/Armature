@@ -3,13 +3,13 @@ import { useAbsences, useRecordAbsence, useRemoveAbsence, useUpdateAbsence, type
 import { Button, Checkbox, Dialog, ErrorBanner, Field, Tag, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useFormat } from "@/lib/format";
-import { absenceProblem, formatAbsence, today } from "@/lib/week";
+import { absenceProblem, absencesListedFrom, formatAbsence, today } from "@/lib/week";
 
 /**
  * Somebody's absences with a form to add one, and each to change or take back.
  * There is nowhere to say why: colleagues see the days and nothing else.
  */
-export function AbsenceEditor({ userId, absences, empty }: { userId: string; absences: Absence[]; empty: string }) {
+export function AbsenceEditor({ userId, absences, empty, truncated = false }: { userId: string; absences: Absence[]; empty: string; truncated?: boolean }) {
   const remove = useRemoveAbsence();
   const confirm = useConfirm();
   const toast = useToast();
@@ -48,6 +48,11 @@ export function AbsenceEditor({ userId, absences, empty }: { userId: string; abs
             </li>
           ))}
         </ul>
+      )}
+      {truncated && (
+        <p className="text-sm text-ink-muted" data-absences-truncated>
+          More absences follow the last one listed. They appear here as the earlier ones pass.
+        </p>
       )}
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
     </div>
@@ -107,11 +112,11 @@ function AbsenceForm({ userId, editing, onDone }: { userId: string; editing: Abs
 
 /** Somebody who plans with a person records the days they are away, from the teams page. */
 export function AbsenceDialog({ userId, name, onClose }: { userId: string; name: string; onClose: () => void }) {
-  const { data, error } = useAbsences({ userId });
+  const { data, error } = useAbsences({ userId, from: absencesListedFrom() });
   return (
     <Dialog open onClose={onClose} title={`${name} is away`} description="The days only. There is nowhere to say why, and colleagues see nothing more." attrs={{ "data-absence-dialog": userId }}>
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
-      {data && <AbsenceEditor userId={userId} absences={data.absences} empty={`${name} is not away in the last month or the year ahead.`} />}
+      {data && <AbsenceEditor userId={userId} absences={data.absences} truncated={data.truncated} empty={`${name} is not away from a month ago on.`} />}
     </Dialog>
   );
 }

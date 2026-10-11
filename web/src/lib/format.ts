@@ -56,10 +56,44 @@ export function makeFormat(locale: string, timezone: string): Format {
   };
 }
 
+/** The browser's language, for whoever has not chosen one in their profile. */
+export function browserLocale(): string {
+  return navigator.language;
+}
+
+const WALL_CLOCK: Intl.DateTimeFormatOptions = { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" };
+
+// The clock on the wall in a zone at an instant, written as if it were UTC.
+// A zone the browser does not know reads the browser's own, as makeFormat does.
+function wallClock(instant: number, timezone: string): number {
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat("en-US", { ...WALL_CLOCK, timeZone: timezone }).formatToParts(instant);
+  } catch {
+    parts = new Intl.DateTimeFormat("en-US", WALL_CLOCK).formatToParts(instant);
+  }
+  const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === type)?.value);
+  return Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"));
+}
+
+/** Today as YYYY-MM-DD in the profile's zone, which is the day the reader means by today. */
+export function todayIn(timezone: string, now: number = Date.now()): string {
+  return new Date(wallClock(now, timezone)).toISOString().slice(0, 10);
+}
+
+/** The last second of a YYYY-MM-DD in the profile's zone, as the instant the API keeps. */
+export function endOfDayIn(day: string, timezone: string): string {
+  const wall = Date.parse(`${day}T23:59:59Z`);
+  // Asked twice: on a day the clocks change, the offset at the first guess is not the evening's.
+  const guess = wall - (wallClock(wall, timezone) - wall);
+  const instant = wall - (wallClock(guess, timezone) - guess);
+  return new Date(instant).toISOString().replace(".000Z", "Z");
+}
+
 /** The reader's formatting, from their profile; before it loads, the browser's. */
 export function useFormat(): Format {
   const { data } = useMe();
-  const locale = data?.principal?.user.locale || navigator.language;
+  const locale = data?.principal?.user.locale || browserLocale();
   const timezone = data?.principal?.user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   return useMemo(() => makeFormat(locale, timezone), [locale, timezone]);
 }

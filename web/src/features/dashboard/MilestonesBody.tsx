@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { describeProgress, formatDay, isOverdue } from "@/api/milestones";
 import { useReportSource, type MilestoneRow, type MilestonesReport } from "@/api/reports";
 import { Tag } from "@/components/ui";
+import { useFormat } from "@/lib/format";
 import { ProgressBar } from "@/features/milestones/ProgressBar";
 import { MS_PER_DAY } from "@/features/plan/scale";
 import { figure } from "./chart";
@@ -17,11 +18,11 @@ export function daysUntil(dueOn: string, today: Date): number {
 }
 
 /** "Due 24 Sep 2026, 12 days left", "Due 24 Sep 2026, overdue by 3 days", or the close. */
-export function describeDue(row: MilestoneRow, today: Date): string {
-  if (row.closedAt) return `Closed ${formatDay(row.closedAt)}`;
+export function describeDue(row: MilestoneRow, today: Date, locale: string): string {
+  if (row.closedAt) return `Closed ${formatDay(row.closedAt, locale)}`;
   if (!row.dueOn) return "No due day yet";
   const left = daysUntil(row.dueOn, today);
-  const when = formatDay(row.dueOn);
+  const when = formatDay(row.dueOn, locale);
   if (left > 1) return `Due ${when}, ${left} days left`;
   if (left === 1) return `Due ${when}, tomorrow`;
   if (left === 0) return `Due ${when}, today`;
@@ -36,6 +37,7 @@ export function describeDue(row: MilestoneRow, today: Date): string {
 export function MilestonesBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<MilestonesReport>(projectKey, widget, narrow);
   const { readOnly } = useReportSource();
+  const { locale } = useFormat();
   if (error) return <WidgetState error={error} />;
   if (!data) return <Loading />;
   const today = new Date();
@@ -67,7 +69,7 @@ export function MilestonesBody({ projectKey, widget, narrow }: BodyProps) {
           </div>
           <ProgressBar progress={row.progress} />
           <p className="mt-1 flex items-center gap-2 text-2xs text-ink-subtle">
-            {describeDue(row, today)}
+            {describeDue(row, today, locale)}
             {isOverdue(row, today) && <Tag className="bg-danger-subtle text-danger">Overdue</Tag>}
           </p>
         </li>
@@ -78,13 +80,14 @@ export function MilestonesBody({ projectKey, widget, narrow }: BodyProps) {
 
 function OneMilestone({ row, today }: { row: MilestoneRow; today: Date }) {
   const overdue = isOverdue(row, today);
+  const { locale } = useFormat();
   return (
     <div data-milestone-widget={row.name} data-milestone-single="">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-ink">{row.name}</p>
           <p className="mt-0.5 flex items-center gap-2 text-xs text-ink-muted">
-            {describeDue(row, today)}
+            {describeDue(row, today, locale)}
             {overdue && <Tag className="bg-danger-subtle text-danger">Overdue</Tag>}
             {row.closedAt && <Tag>Closed</Tag>}
           </p>

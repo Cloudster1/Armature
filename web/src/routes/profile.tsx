@@ -7,7 +7,8 @@ import { Avatar, Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Page, P
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Icon } from "@/components/icons";
 import { AVATAR_MAX_BYTES } from "@/config";
-import { makeFormat } from "@/lib/format";
+import { browserLocale, makeFormat } from "@/lib/format";
+import { absencesListedFrom } from "@/lib/week";
 import { useAbsences, useWorkingWeek } from "@/api/availability";
 import { WorkingWeekTable } from "@/features/availability/WorkingWeek";
 import { AbsenceEditor } from "@/features/availability/Absences";
@@ -133,7 +134,7 @@ function ProfilePage() {
           </Select>
           <Select label="Language" value={locale} onChange={(e) => setLocale(e.target.value)} hint="Changes how dates, times and numbers are written; the interface itself stays in English.">
             {/* Empty is what a new account has: the browser decides, and the select says so. */}
-            <option value="">Same as the browser ({navigator.language})</option>
+            <option value="">Same as the browser ({browserLocale()})</option>
             {LOCALES.map((l) => (
               <option key={l.code} value={l.code}>
                 {l.label}
@@ -193,14 +194,14 @@ function YourWeek({ userId }: { userId: string }) {
 // The person's own days away, theirs to change whoever recorded them. A portal
 // customer is refused the list, and sees nothing here.
 function YourAbsences({ userId }: { userId: string }) {
-  const { data } = useAbsences({ userId });
+  const { data } = useAbsences({ userId, from: absencesListedFrom() });
   if (!data) return null;
   return (
     <section className="mt-8">
       <SectionTitle className="mb-2">Absences</SectionTitle>
       <Card className="space-y-3 p-5">
         <p className="text-sm text-ink-muted">The days you are away, so the plan stops counting on you. Colleagues see the days and never a reason; there is nowhere to give one.</p>
-        <AbsenceEditor userId={userId} absences={data.absences} empty="You are not away in the last month or the year ahead." />
+        <AbsenceEditor userId={userId} absences={data.absences} truncated={data.truncated} empty="You are not away from a month ago on." />
       </Card>
     </section>
   );
@@ -284,9 +285,8 @@ function YourData({ name }: { name: string }) {
   );
 }
 
-// How this person is told: each reason in the inbox, by mail, or neither, and
-// whether mail comes at once or bundled. Unset means on, so the grid reads
-// the maps the way the API does.
+// How this person is told, and whether their own issues count as watched.
+// Unset means on, so the grid reads the maps the way the API does.
 function NotificationSettings() {
   const { data } = useNotificationPreferences();
   const save = useSaveNotificationPreferences();
@@ -322,6 +322,10 @@ function NotificationSettings() {
                 <Checkbox label={<span className="sr-only">{label} by mail</span>} checked={on(prefs.mail, kind)} onChange={(e) => set("mail", kind, e.target.checked)} data-pref-mail={kind} />
               </Fragment>
             ))}
+          </div>
+          <div className="space-y-1">
+            <Checkbox label="Watch the issues I report or am assigned" checked={prefs.watchOwn} onChange={(e) => setDraft({ ...prefs, watchOwn: e.target.checked })} data-pref-watch-own />
+            <p className="text-sm text-ink-subtle">Off, you hear about them only when you watch one yourself, are assigned it or are mentioned.</p>
           </div>
           <Select label="Mail arrives" value={prefs.digest} onChange={(e) => setDraft({ ...prefs, digest: e.target.value as NotificationPreferences["digest"] })} id="field-digest" hint="Bundled mail lists everything since the last one, in one message.">
             <option value="off">As it happens</option>

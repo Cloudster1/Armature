@@ -1,5 +1,6 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { request } from "./client";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
+import { ApiError, request } from "./client";
 import { META_STALE_MS } from "@/config";
 
 export type StatusCategory = "todo" | "in_progress" | "done";
@@ -351,6 +352,13 @@ export interface UpdateIssueInput {
   /** Minutes; null clears. */
   timeEstimateMinutes?: number | null;
   timeRemainingMinutes?: number | null;
+  /** The issue's updatedAt when the edit began; a newer one is refused with 409. */
+  expectedUpdatedAt?: string;
+}
+
+/** True when the server refused an edit because somebody saved first. */
+export function isStaleEdit(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409 && error.code === "stale_edit";
 }
 
 export function useUpdateIssue() {
@@ -358,7 +366,13 @@ export function useUpdateIssue() {
   return useMutation({
     mutationFn: ({ key, ...body }: UpdateIssueInput) =>
       request<{ issue: Issue }>(`/issues/${key}`, { method: "PATCH", body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    // The board, the plan, the calendar, the resources and the sprints all show
+    // these fields, and a new priority moves a desk's clocks.
+    onSuccess: () => queryClient.invalidateQueries(),
+    // A refused edit means this copy is old: fetch the newer one to show beside the draft.
+    onError: (error) => {
+      if (isStaleEdit(error)) void queryClient.invalidateQueries({ queryKey: issuesQueryKey });
+    },
   });
 }
 
@@ -400,13 +414,13 @@ export interface WorklogInput {
   note?: string;
 }
 
-/** Logging time changes what remains on the issue, so everything about it is refetched. */
+/** Logging time changes what remains on the issue, which the plan and the resources read too. */
 export function useLogWork() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ key, ...body }: WorklogInput & { key: string }) =>
       request<{ worklog: Worklog }>(`/issues/${key}/worklogs`, { method: "POST", body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
@@ -415,7 +429,7 @@ export function useUpdateWorklog() {
   return useMutation({
     mutationFn: ({ id, ...body }: WorklogInput & { id: string }) =>
       request<{ worklog: Worklog }>(`/worklogs/${id}`, { method: "PATCH", body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
@@ -423,7 +437,7 @@ export function useDeleteWorklog() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => request<void>(`/worklogs/${id}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 

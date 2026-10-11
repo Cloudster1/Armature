@@ -3,24 +3,32 @@
 package mail
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
-	"github.com/armature/armature/backend/internal/observability"
+	"mime"
+	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
 	"strings"
 	"time"
+
+	"github.com/armature/armature/backend/internal/observability"
 )
 
-// Mail is one message to one address. MessageID and ReplyTo are set by the
-// sender so that an answer can find its way back; most mails have neither.
+// Mail is one message to one address. The ids and ReplyTo are set by the
+// sender so that an answer can find its way back; most mails have none.
 type Mail struct {
 	To        string
 	Subject   string
 	Body      string
 	MessageID string
 	ReplyTo   string
+	// InReplyTo and References name the thread a mail belongs to, so a
+	// reader's client files mails about one thing together.
+	InReplyTo  string
+	References []string
 }
 
 // headerValue keeps one header on one line. A name or a subject is somebody
@@ -32,6 +40,41 @@ func headerValue(s string) string {
 		}
 		return r
 	}, s)
+}
+
+// encodedText is a header of free text that any relay takes: RFC 2047 words
+// when it is not ASCII, one to a line, so a long Japanese subject stays short.
+func encodedText(s string) string {
+	plain := headerValue(s)
+	encoded := mime.QEncoding.Encode("utf-8", plain)
+	if encoded == plain {
+		return plain
+	}
+	// An encoded value is nothing but encoded words, so this space is always
+	// one the encoder put between two of them.
+	return strings.ReplaceAll(encoded, "?= =?", "?=\r\n =?")
+}
+
+// address writes a mailbox with its display name encoded when it needs to be;
+// what does not parse goes out as it was, on one line.
+func address(s string) string {
+	parsed, err := mail.ParseAddress(s)
+	if err != nil {
+		return headerValue(s)
+	}
+	if parsed.Name == "" {
+		return parsed.Address
+	}
+	return parsed.String()
+}
+
+// quotedPrintable keeps the body seven bit, which every relay passes.
+func quotedPrintable(s string) []byte {
+	var b bytes.Buffer
+	w := quotedprintable.NewWriter(&b)
+	_, _ = w.Write([]byte(s))
+	_ = w.Close()
+	return b.Bytes()
 }
 
 // Mailer sends one message. The SMTP mailer is the real one; tests keep what
@@ -58,23 +101,34 @@ func (m SMTPMailer) Send(ctx context.Context, msg Mail) error {
 		sender = parsed.Address
 	}
 	headers := []string{
-		"From: " + headerValue(m.From),
-		"To: " + headerValue(msg.To),
-		"Subject: " + headerValue(msg.Subject),
+		"From: " + address(m.From),
+		"To: " + address(msg.To),
+		"Subject: " + encodedText(msg.Subject),
 		"Date: " + time.Now().UTC().Format(time.RFC1123Z),
 		"MIME-Version: 1.0",
 		"Content-Type: text/plain; charset=UTF-8",
+		"Content-Transfer-Encoding: quoted-printable",
 		// Says this is a machine's mail, so auto-responders leave it alone.
 		"Auto-Submitted: auto-generated",
 	}
 	if msg.MessageID != "" {
 		headers = append(headers, "Message-ID: "+headerValue(msg.MessageID))
 	}
-	if msg.ReplyTo != "" {
-		headers = append(headers, "Reply-To: "+headerValue(msg.ReplyTo))
+	if msg.InReplyTo != "" {
+		headers = append(headers, "In-Reply-To: "+headerValue(msg.InReplyTo))
 	}
-	text := strings.Join(append(headers, "", msg.Body), "\r\n")
-	err := m.deliver(sender, msg.To, []byte(text))
+	if len(msg.References) > 0 {
+		refs := make([]string, len(msg.References))
+		for i, r := range msg.References {
+			refs[i] = headerValue(r)
+		}
+		headers = append(headers, "References: "+strings.Join(refs, "\r\n "))
+	}
+	if msg.ReplyTo != "" {
+		headers = append(headers, "Reply-To: "+address(msg.ReplyTo))
+	}
+	text := append([]byte(strings.Join(append(headers, "", ""), "\r\n")), quotedPrintable(msg.Body)...)
+	err := m.deliver(sender, msg.To, text)
 	observability.Current().Mailed(err)
 	return err
 }

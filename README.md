@@ -197,8 +197,8 @@ at length, because each is a way to get it wrong:
   so. The chart takes one value per role name for that reason.
 - **The worker runs once.** `worker.replicas` may only be 1 and the chart
   refuses anything else. There is no leader election, the Redis consumers all
-  identify themselves as the literal `worker`, and the hourly digest remembers
-  what it has sent in an in-process map.
+  identify themselves as the literal `worker`. The digest alone would cope with
+  two: what it has sent is kept per organization and person in the database.
 
 `make helm-lint` lints both values files and `make helm-check` fails if the
 rendered manifests differ from the golden files committed under `tests/`, which
@@ -255,10 +255,27 @@ exposition format on `ARMATURE_METRICS_ADDR`. It is a listener of its own, never
 a route in the API, and neither the compose file nor the chart's ingress
 publishes it. The series are all named `armature_*` and written down once in
 `internal/observability/metrics.go`: requests by method, route pattern and
-status, request and statement durations, the outbox's backlog and throughput,
-every consumer group's handled events and unacknowledged count, every periodic
-job's passes, mails handed to SMTP, the cluster's routing counters and pool
-sizes, and the Go runtime.
+status, request and statement durations, the outbox's backlog, throughput and
+lag, every consumer group's handled events, unacknowledged count and lag,
+every periodic job's passes, mails handed to SMTP, the cluster's routing
+counters and pool sizes, and the Go runtime.
+
+**The event stream waits for its slowest reader.** The relay trims from the
+Redis stream only what every consumer group the worker runs has acknowledged,
+and stops adding once the slowest group is 10,000 entries behind
+(`StreamMaxLen`). Until it catches up the events wait in the outbox, so a large
+import is slower to reach the notifications and the webhooks, never skipped.
+Alert at these thresholds, each held for five minutes:
+
+| Series | Threshold | Means |
+|---|---|---|
+| `armature_outbox_relay_held` | `== 1` | a group is a full cap behind and the relay waits |
+| `armature_stream_backlog` | `> 8000` | the slowest group is near the cap |
+| `armature_outbox_oldest_seconds` | `> 300` | events wait that long to reach the stream |
+
+`armature_stream_lag` and `armature_stream_pending`, by group, say which group
+is slow. A group nobody reads any more is not waited for once its name is gone
+from `events.Groups`; `XGROUP DESTROY` removes it from Redis.
 
 **Traces.** With `ARMATURE_OTEL_ENDPOINT` set to a collector's traces URL, each
 binary sends OpenTelemetry spans over HTTP: one per request, one per statement
@@ -299,10 +316,10 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 
 | Variable | Default | What it is |
 |---|---|---|
-| `ARMATURE_ENV` | `development` | `development`, `staging` or `production`; the last two require secure cookies |
+| `ARMATURE_ENV` | `development` | `development`, `staging` or `production`; the last two require secure cookies and refuse a localhost `ARMATURE_APP_URL` or `ARMATURE_OIDC_REDIRECT_URL` |
 | `ARMATURE_HTTP_ADDR` | `:8080` | where the api listens |
 | `ARMATURE_LOG_LEVEL` | `info` | slog level |
-| `ARMATURE_APP_URL` | `http://localhost:5173` | where links in mail point, and the origin writes must come from |
+| `ARMATURE_APP_URL` | `http://localhost:5173` | where links in mail point, and the origin writes must come from; required outside development |
 | `ARMATURE_CORS_ORIGINS` | none | extra origins allowed to call the API |
 | `ARMATURE_TRUSTED_PROXIES` | none | addresses or CIDRs whose `X-Forwarded-For` is believed |
 | `ARMATURE_OUTBOUND_ALLOW` | none | addresses, CIDRs or host names the server may call inside the network |
@@ -311,9 +328,9 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_DB_ADMIN_URL` | the primary | the role exempt from row level security |
 | `ARMATURE_DB_MAX_CONNS` / `_MIN_CONNS` | `20` / `2` | pool bounds per process |
 | `ARMATURE_DB_CONN_MAX_LIFETIME` | `1h` | how long a connection is kept |
-| `ARMATURE_DB_HEALTH_INTERVAL` | `5s` | how often a replica's lag is re-read |
+| `ARMATURE_DB_HEALTH_INTERVAL` | `5s` | how often a replica's lag is re-read, and one that is down is tried again |
 | `ARMATURE_DB_MAX_REPLICA_LAG` | `2s` | lag past which a replica is not used |
-| `ARMATURE_DB_REPLICA_LAG_SAMPLES` | `3` | samples kept per replica |
+| `ARMATURE_DB_REPLICA_LAG_SAMPLES` | `3` | lag readings kept per replica; their median is held against the maximum lag, so one slow check does not take a replica out |
 | `ARMATURE_REDIS_URL` | `redis://localhost:6379/0` | the event stream |
 | `ARMATURE_SIGNUP` | `open` | who may create an organization: `open`, `first` (only the first one) or `closed` |
 | `ARMATURE_SESSION_TTL` | `720h` | how long a session lives |
@@ -330,11 +347,13 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_S3_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY` / `_SECRET_KEY` / `_REGION` / `_USE_SSL` | none, `armature-attachments`, none, none, `us-east-1`, `false` | the bucket attachments and pictures live in |
 | `ARMATURE_UPLOAD_LIMIT` | `50MB` | the largest file an issue or the portal takes; `B`, `KB`, `MB` and `GB` are understood |
 | `ARMATURE_ATTACHMENT_DIR` | none | a directory on a volume for them instead, when there is no bucket; the bucket wins when both are set, and `migrate attachments` copies the directory into it. Neither set turns uploads off |
+| `ARMATURE_WEBHOOK_CONCURRENCY` | `8` | how many webhook deliveries the worker posts at once, at most two to any one endpoint |
 | `ARMATURE_RENDER_URL` / `_TIMEOUT` | none / `20s` | the browser that prints dashboards to PDF |
 | `ARMATURE_ASSISTANT_URL` / `_KEY` / `_MODEL` / `_TIMEOUT` | none, none, `claude-sonnet-5`, `25s` | the model behind Ask; no URL turns it off |
 | `ARMATURE_METRICS_ADDR` | `:9090` | the metrics listener; blank serves none |
 | `ARMATURE_OTEL_ENDPOINT` | none | the collector's traces URL |
 | `ARMATURE_OTEL_SAMPLE_RATIO` | `1` | share of new traces kept |
+| `ARMATURE_OIDC_REDIRECT_URL` | `http://localhost:8080/api/v1/auth/oidc/callback` | where the identity provider sends people back to, exactly as registered there; required outside development |
 | `ARMATURE_OIDC_BACKCHANNEL` | none | `public=reachable` rewrites for a provider whose addresses differ |
 | `ARMATURE_RETAIN_SESSIONS` | `24h` | past expiry |
 | `ARMATURE_RETAIN_PORTAL_CODES` | `24h` | past expiry |
