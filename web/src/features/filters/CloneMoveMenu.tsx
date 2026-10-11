@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCloneIssue, useMoveIssue } from "@/api/filters";
+import { useIssueFields, type FieldValue } from "@/api/fields";
 import { useStatuses, type Issue } from "@/api/issues";
 import { useProjects } from "@/api/projects";
 import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Menu, Select, useToast } from "@/components/ui";
@@ -79,12 +80,19 @@ function CloneDialog({ issue, onClose }: { issue: Issue; onClose: () => void }) 
   );
 }
 
-function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => void }) {
+/** The answers a move leaves behind: those to the old project's own fields. */
+export function droppedOnMove(values: FieldValue[]): FieldValue[] {
+  return values.filter((v) => !v.field.org && v.value !== undefined && v.value !== null);
+}
+
+export function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => void }) {
   const move = useMoveIssue();
   const navigate = useNavigate();
   const toast = useToast();
   const { data: projects } = useProjects();
   const { data: statuses } = useStatuses();
+  const { data: fields } = useIssueFields(issue.key);
+  const dropped = droppedOnMove(fields?.values ?? []);
   const [projectKey, setProjectKey] = useState("");
   const [statusId, setStatusId] = useState("");
   const targets = (projects?.projects ?? []).filter((p) => p.key !== issue.projectKey);
@@ -94,7 +102,7 @@ function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => void }) {
       open
       onClose={onClose}
       title={`Move ${issue.key}`}
-      description="The issue keeps its history, comments and files, gets the other project's next key, and its old address still finds it. Sprint, team, milestone, versions and components stay behind."
+      description="The issue keeps its history, comments and files, gets the other project's next key, and its old address still finds it. Sprint, team, milestone, versions, components and answers to this project's own fields stay behind."
       attrs={{ "data-move-dialog": "" }}
       footer={
         <>
@@ -133,6 +141,18 @@ function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => void }) {
             </option>
           ))}
         </Select>
+        {dropped.length > 0 && (
+          <div className="space-y-1 text-sm" data-move-dropped="">
+            <p className="text-ink-muted">These answers belong to fields of {issue.projectKey} alone and are dropped by the move; its history keeps them.</p>
+            <ul className="list-disc pl-5">
+              {dropped.map((v) => (
+                <li key={v.field.id}>
+                  {v.field.name}: {v.display ?? String(v.value)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {(needsStatus || statusId) && (
           <Select label="Status there" id="field-move-status" value={statusId} onChange={(e) => setStatusId(e.target.value)} hint="The other project's workflow does not have this issue's status; choose one it has.">
             <option value="">Choose a status</option>

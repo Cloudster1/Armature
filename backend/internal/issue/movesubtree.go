@@ -71,10 +71,14 @@ func (s *Service) moveRow(ctx context.Context, tx db.DBTX, before *Issue, target
 
 	// The rows that tie the issue to its old project go first, so the
 	// same-project guards on the issue row do not fire on the update.
-	for _, table := range []string{"issue_version", "issue_component", "issue_field_value"} {
+	for _, table := range []string{"issue_version", "issue_component"} {
 		if _, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE issue_id = $1`, before.ID); err != nil {
 			return nil, err
 		}
+	}
+	droppedValues, err := dropProjectFieldValues(ctx, tx, before.ID)
+	if err != nil {
+		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL
@@ -105,6 +109,7 @@ func (s *Service) moveRow(ctx context.Context, tx db.DBTX, before *Issue, target
 			changes = append(changes, Change{Field: cleared.field, From: cleared.from, To: ""})
 		}
 	}
+	changes = append(changes, droppedValues...)
 	if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
 		return nil, err
 	}

@@ -1003,6 +1003,10 @@ mailed around still finds it. Everything under it moves too, at every depth and
 parents first, in the same transaction. A descendant whose status its workflow
 in the target does not have refuses the whole move and is named, rather than
 landing in a status nobody chose or staying behind under a parent elsewhere.
+mailed around still finds it. What the move leaves behind is only what belongs to
+the old project: answers to organization fields go along, since those fields
+apply in every project, and each answer to one of the old project's own fields
+is named in the history as it is dropped, so nothing disappears unsaid.
 
 ### A dashboard is an arrangement, and every number is computed on read
 

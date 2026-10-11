@@ -150,8 +150,8 @@ var ErrMoveNeedsStatus = errors.New("the target workflow does not have this stat
 // Move puts an issue in another project. It keeps its id, its history, its
 // comments and its files; it gets the project's next key and remembers the
 // old one, so the address it had still finds it. What belongs to the old
-// project, sprint, team, milestone, versions and components, is cleared and
-// the history says so. Everything under it comes along, at every depth.
+// project (sprint, team, milestone, versions, components, answers to its own
+// fields) is cleared and the history says so. Everything under it comes along.
 func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Actor) (*Issue, db.LSN, error) {
 	var moved *Issue
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
