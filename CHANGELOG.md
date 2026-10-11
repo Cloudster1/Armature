@@ -52,6 +52,10 @@ here in the branch that makes it.
 - Fixed: importing an .ics file while a calendar's table holds unsaved days
   asks first ("Import and discard 3 unsaved days?") and keeps the typed days
   until the answer is yes and the import has arrived (#50).
+- Fixed: a dashboard saved as a template no longer keeps the version a
+  Releases or Release burndown widget was pinned to, so in another project
+  they show its unreleased versions or ask for one; templates saved before
+  read the same way (#57).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
