@@ -225,31 +225,6 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 	return out, lsn, nil
 }
 
-// Delete removes a team that is not carrying anything.
-//
-// The foreign keys would null the columns on their own, which is exactly the
-// problem: the work would quietly become nobody's. Refusing while a team still
-// has issues or boards makes somebody decide where they go.
-func (s *Service) Delete(ctx context.Context, id uuid.UUID) (db.LSN, error) {
-	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		found, err := scanTeam(tx.QueryRow(ctx, selectTeam+` WHERE t.id = $1 FOR UPDATE OF t`, id))
-		if err != nil {
-			return err
-		}
-		switch {
-		case found.Issues > 0:
-			return fmt.Errorf("%w: %d issues are still assigned to %s", ErrInUse, found.Issues, found.Name)
-		case found.Boards > 0:
-			return fmt.Errorf("%w: %d boards still belong to %s", ErrInUse, found.Boards, found.Name)
-		}
-
-		if _, err := tx.Exec(ctx, `DELETE FROM team WHERE id = $1`, id); err != nil {
-			return fmt.Errorf("delete team: %w", err)
-		}
-		return nil
-	})
-}
-
 // AddMember puts somebody on a team. Adding a person who is already on it sets
 // whether they lead it, so the call is safe to repeat.
 func (s *Service) AddMember(ctx context.Context, teamID, userID uuid.UUID, lead bool, actor uuid.UUID) (*Team, db.LSN, error) {
