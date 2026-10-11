@@ -81,6 +81,46 @@ func TestParseKnowsAMachineWhenItSeesOne(t *testing.T) {
 	}
 }
 
+// Every header an out-of-office or a list is known to wear marks the mail a
+// machine's, and a person's mail that names none of them, or says no, is not.
+func TestParseKnowsEveryWayAMachineSaysSo(t *testing.T) {
+	cases := []struct {
+		header string
+		auto   bool
+	}{
+		{"", false},
+		{"Auto-Submitted: no", false},
+		{"Auto-Submitted: No", false},
+		{"Auto-Submitted: auto-replied", true},
+		{"Auto-Submitted: auto-generated", true},
+		{"Auto-Submitted: auto-notified; owner-email=\"x@example.com\"", true},
+		{"X-Autoreply: yes", true},
+		{"X-Autoreply: no", false},
+		{"X-Autorespond: Out of office", true},
+		{"X-AutoRespond: yes", true},
+		{"Precedence: auto_reply", true},
+		{"Precedence: Auto_Reply", true},
+		{"Precedence: bulk", true},
+		{"Precedence: junk", true},
+		{"Precedence: list", true},
+		{"Precedence: first-class", false},
+	}
+	for _, c := range cases {
+		raw := "From: ada@example.com\r\nTo: support@armature.test\r\nSubject: Re: [HELP-1] away\r\n"
+		if c.header != "" {
+			raw += c.header + "\r\n"
+		}
+		raw += "Content-Type: text/plain\r\n\r\nI am away until Monday."
+		m, err := Parse([]byte(raw))
+		if err != nil {
+			t.Fatalf("%q: %v", c.header, err)
+		}
+		if m.AutoSubmitted != c.auto {
+			t.Errorf("%q: auto submitted = %v, want %v", c.header, m.AutoSubmitted, c.auto)
+		}
+	}
+}
+
 func TestParseRefusesWhatIsNotAMail(t *testing.T) {
 	if _, err := Parse([]byte("")); err == nil {
 		t.Error("an empty body was taken for a mail")
