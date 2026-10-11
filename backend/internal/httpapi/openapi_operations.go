@@ -494,7 +494,7 @@ var operations = []operation{
 	{method: "GET", path: "/projects/{projectKey}/sla-policies", handler: "handleListPolicies", tag: "service desk", summary: "The desk's goals per priority.", responses: ok(env{"policies": []desk.Policy{}})},
 	{method: "PATCH", path: "/sla-policies/{policyID}", handler: "handleUpdatePolicy", tag: "service desk", summary: "Change goals or which statuses pause the clock.", request: updatePolicyRequest{}, responses: ok(env{"policy": desk.Policy{}})},
 	{method: "GET", path: "/projects/{projectKey}/queue", handler: "handleQueue", tag: "service desk", summary: "The agents' queue, most urgent first.",
-		query: []param{{name: "filter", schema: &openapi.Schema{Type: "string", Enum: []string{"open", "unassigned", "mine", "breached", "all"}}}}, responses: ok(env{"rows": []desk.QueueRow{}})},
+		query: []param{{name: "filter", schema: &openapi.Schema{Type: "string", Enum: []string{"open", "unassigned", "mine", "breached", "all"}}}, {name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, {name: "offset", schema: intParam}}, responses: ok(desk.QueuePage{})},
 	{method: "GET", path: "/issues/{issueKey}/timers", handler: "handleIssueTimers", tag: "service desk", summary: "The clocks on a request.", responses: ok(env{"timers": []desk.Timer{}})},
 
 	// The Model Context Protocol: this API as tools for an assistant.

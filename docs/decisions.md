@@ -863,6 +863,20 @@ or in the portal, counts the same as the reporter's. A workflow with no way out
 keeps the request where it is, since the desk's workflow is the desk's to
 design, and the agents on it, or whoever finished it, are told in the inbox.
 
+### A queue is ranked by the database, by the wall clock
+
+A queue is ordered and paged in SQL: breached first, then the least time left,
+then requests with no clock running, newest first, with the total beside the
+page. Reading a fixed number of the newest requests and sorting them afterwards
+lost the oldest ones on a busy desk, and those are the ones most likely to be
+overdue. The time left is the goal less the banked seconds less the wall time
+since the clock last started, which is exact for a goal in plain hours. For a
+goal in business hours the wall clock counts the closed hours too, so such a
+request can rank above where its own clock would put it but never below, and
+it counts as breached once the watch has recorded the breach, within its
+thirty seconds. Storing a due time instead would be exact, at the price of
+keeping it right on every pause, resume, goal and calendar change.
+
 ### Customers are refused uniformly, not route by route
 
 A customer's role holds no permission, so most of the agents' API refuses them

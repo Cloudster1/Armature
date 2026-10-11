@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
@@ -6,6 +6,8 @@ import { useQueue, type QueueFilter } from "@/api/desk";
 import { EmptyState, Page, PageHeader, Segmented, Table, Td, Th } from "@/components/ui";
 import { Avatar, StatusBadge, TypeBadge, RelativeTime } from "@/features/issues/badges";
 import { SlaBadge } from "@/features/desk/SlaBadge";
+import { QueuePager, clampQueueOffset, queueCount } from "@/features/desk/QueuePager";
+import { QUEUE_PAGE_SIZE } from "@/config";
 
 export const queuesRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -26,8 +28,20 @@ function QueuesPage() {
   const { projectKey } = queuesRoute.useParams();
   const { data: projectData } = useProject(projectKey);
   const [filter, setFilter] = useState<QueueFilter>("open");
-  const { data, isLoading } = useQueue(projectKey, filter);
+  const [offset, setOffset] = useState(0);
+  const { data, isLoading } = useQueue(projectKey, filter, offset);
   const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+
+  // Requests leave a queue while it is open; a page past the end steps back.
+  useEffect(() => {
+    if (data) setOffset((current) => clampQueueOffset(current, data.total, QUEUE_PAGE_SIZE));
+  }, [data]);
+
+  function choose(next: QueueFilter) {
+    setFilter(next);
+    setOffset(0);
+  }
 
   return (
     <Page width="content">
@@ -38,10 +52,10 @@ function QueuesPage() {
           </Link>
         }
         title="Queues"
-        meta={data ? `${rows.length} request${rows.length === 1 ? "" : "s"}` : undefined}
+        meta={data ? queueCount(total) : undefined}
       />
       <div className="mb-3">
-        <Segmented label="Queue" value={filter} onChange={setFilter} options={filters} />
+        <Segmented label="Queue" value={filter} onChange={choose} options={filters} />
       </div>
 
       {isLoading ? null : rows.length === 0 ? (
@@ -104,6 +118,7 @@ function QueuesPage() {
           </tbody>
         </Table>
       )}
+      <QueuePager total={total} offset={offset} pageSize={QUEUE_PAGE_SIZE} onChange={setOffset} />
     </Page>
   );
 }

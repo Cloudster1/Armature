@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
+import { QUEUE_PAGE_SIZE } from "@/config";
 import { request } from "./client";
 import { meQueryKey } from "./auth";
 import { issuesQueryKey, type Comment, type Doc, type Issue, type Priority } from "./issues";
@@ -73,6 +74,14 @@ export interface QueueRow {
 
 export type QueueFilter = "open" | "unassigned" | "mine" | "breached" | "all";
 
+/** One page of a queue, and how many requests the whole queue holds. */
+export interface QueuePage {
+  rows: QueueRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface Desk {
   projectId: string;
   projectKey: string;
@@ -107,10 +116,11 @@ export function usePolicies(projectKey: string) {
   });
 }
 
-export function useQueue(projectKey: string, filter: QueueFilter) {
+export function useQueue(projectKey: string, filter: QueueFilter, offset = 0) {
   return useQuery({
-    queryKey: [...deskQueryKey, "queue", projectKey, filter],
-    queryFn: () => request<{ rows: QueueRow[] }>(`/projects/${projectKey}/queue?filter=${filter}`),
+    queryKey: [...deskQueryKey, "queue", projectKey, filter, offset],
+    queryFn: () =>
+      request<QueuePage>(`/projects/${projectKey}/queue?filter=${filter}&limit=${QUEUE_PAGE_SIZE}&offset=${offset}`),
     enabled: Boolean(projectKey),
     // A queue is a page people leave open; the clocks on it should move.
     refetchInterval: 30_000,

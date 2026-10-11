@@ -187,6 +187,10 @@ here in the branch that makes it.
 - Fixed: an issue bulk edit lists as refused is left exactly as it was, with
   no new priority, label or history row from the steps before the refusal,
   and an applied issue announces its field changes once (#84).
+- Fixed: a desk's queues reach every request, not only the 200 newest:
+  Breached lists every overdue request, Open starts with the most overdue
+  however old it is, and a queue longer than a page is paged and says how many
+  requests it holds (#69).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

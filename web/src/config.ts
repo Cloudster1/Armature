@@ -276,6 +276,9 @@ export const EXPORT_DEFAULT_COLUMNS = ["key", "summary", "type", "status", "prio
 // The one-click rating a resolution mail asks for.
 export const CSAT_SCORES = [1, 2, 3, 4, 5] as const;
 
+/** Requests a desk's queue shows per page, the most pressing first. */
+export const QUEUE_PAGE_SIZE = 50;
+
 /** Rows the audit log shows per page; the export has the rest. */
 export const AUDIT_PAGE_SIZE = 50;
 /** Items a calendar day draws before folding the rest into "+n more". */

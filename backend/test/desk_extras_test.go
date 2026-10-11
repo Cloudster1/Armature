@@ -118,9 +118,12 @@ func TestARequestIsRatedOnce(t *testing.T) {
 		t.Error("a second resolution mail carried a new rating link")
 	}
 
-	rows, _ := d.Queue(ws.ctx, p.Key, desk.QueueAll, ws.actor.UserID)
+	queue, err := d.Queue(ws.ctx, p.Key, desk.QueueAll, ws.actor.UserID, issue.Page{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	var scored *int
-	for _, r := range rows {
+	for _, r := range queue.Rows {
 		if r.Issue.Key == raised.Key {
 			scored = r.Csat
 		}

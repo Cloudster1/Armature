@@ -12018,6 +12018,21 @@
                 "all"
               ]
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -12026,18 +12041,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "rows": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/QueueRow"
-                      }
-                    }
-                  },
-                  "required": [
-                    "rows"
-                  ]
+                  "$ref": "#/components/schemas/QueuePage"
                 }
               }
             }
@@ -23655,6 +23659,32 @@
           "title",
           "state",
           "openedAt"
+        ]
+      },
+      "QueuePage": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueueRow"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rows",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "QueueRow": {
