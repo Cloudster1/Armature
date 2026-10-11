@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
@@ -173,13 +174,24 @@ func (s *Service) Create(ctx context.Context, projectKey string, in Input, actor
 			return err
 		}
 		out, err = scanRule(tx.QueryRow(ctx, selectRules+` WHERE r.id = $1`, id))
-		return err
+		if err != nil {
+			return err
+		}
+		return recordRule(ctx, tx, "rule.created", out, actor)
 	})
 	return out, lsn, err
 }
 
+// recordRule writes what an administrator did to a rule. The trigger is named
+// by its kind alone, since an incoming hook's token is as good as a password.
+func recordRule(ctx context.Context, tx db.DBTX, action string, r *Rule, actor uuid.UUID) error {
+	return audit.Record(ctx, tx, audit.Entry{Action: action, TargetType: "rule", TargetID: &r.ID, Actor: actor, Data: map[string]any{
+		"name": r.Name, "project": r.ProjectKey, "trigger": r.Trigger.Kind, "enabled": r.Enabled,
+	}})
+}
+
 // Update rewrites a rule.
-func (s *Service) Update(ctx context.Context, id uuid.UUID, in Input) (*Rule, db.LSN, error) {
+func (s *Service) Update(ctx context.Context, id uuid.UUID, in Input, actor uuid.UUID) (*Rule, db.LSN, error) {
 	if err := in.Validate(); err != nil {
 		return nil, 0, err
 	}
@@ -225,22 +237,28 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in Input) (*Rule, db
 			return err
 		}
 		out, err = scanRule(tx.QueryRow(ctx, selectRules+` WHERE r.id = $1`, id))
-		return err
+		if err != nil {
+			return err
+		}
+		return recordRule(ctx, tx, "rule.updated", out, actor)
 	})
 	return out, lsn, err
 }
 
 // Delete removes a rule and its log.
-func (s *Service) Delete(ctx context.Context, id uuid.UUID) (db.LSN, error) {
+func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM automation_rule WHERE id = $1`, id)
+		gone, err := scanRule(tx.QueryRow(ctx, selectRules+` WHERE r.id = $1`, id))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
 		if err != nil {
 			return err
 		}
-		if tag.RowsAffected() == 0 {
-			return ErrNotFound
+		if _, err := tx.Exec(ctx, `DELETE FROM automation_rule WHERE id = $1`, id); err != nil {
+			return err
 		}
-		return nil
+		return recordRule(ctx, tx, "rule.deleted", gone, actor)
 	})
 }
 

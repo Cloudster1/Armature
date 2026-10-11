@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -21,7 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
@@ -78,14 +76,6 @@ type Delivery struct {
 	NextAttemptAt *time.Time `json:"nextAttemptAt,omitempty"`
 	DeliveredAt   *time.Time `json:"deliveredAt,omitempty"`
 	CreatedAt     time.Time  `json:"createdAt"`
-}
-
-// Input is what makes or changes an endpoint.
-type Input struct {
-	Name    string   `json:"name"`
-	URL     string   `json:"url"`
-	Topics  []string `json:"topics"`
-	Enabled *bool    `json:"enabled,omitempty"`
 }
 
 // Sign computes the header value for a body: sha256= and the hex HMAC, the
@@ -157,161 +147,6 @@ func (s *Service) WithClient(c *http.Client) *Service {
 func (s *Service) WithConcurrency(n int) *Service {
 	s.concurrency = max(n, 1)
 	return s
-}
-
-const selectEndpoints = `SELECT id, name, url, topics, enabled, created_at, updated_at FROM webhook_endpoint`
-
-func scanEndpoint(row pgx.Row) (*Endpoint, error) {
-	var e Endpoint
-	if err := row.Scan(&e.ID, &e.Name, &e.URL, &e.Topics, &e.Enabled, &e.CreatedAt, &e.UpdatedAt); err != nil {
-		return nil, err
-	}
-	if e.Topics == nil {
-		e.Topics = []string{}
-	}
-	return &e, nil
-}
-
-// List is the organization's endpoints, by name.
-func (s *Service) List(ctx context.Context) ([]Endpoint, error) {
-	out := []Endpoint{}
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectEndpoints+` ORDER BY lower(name)`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			e, err := scanEndpoint(rows)
-			if err != nil {
-				return err
-			}
-			out = append(out, *e)
-		}
-		return rows.Err()
-	})
-	return out, err
-}
-
-func validate(in Input) error {
-	if strings.TrimSpace(in.Name) == "" {
-		return errors.New("a webhook needs a name")
-	}
-	if !strings.HasPrefix(in.URL, "http://") && !strings.HasPrefix(in.URL, "https://") {
-		return errors.New("the address has to start with http:// or https://")
-	}
-	for _, t := range in.Topics {
-		if t != TopicAny && (!events.Known(t) || strings.HasPrefix(t, "automation.")) {
-			return fmt.Errorf("%q is not an event a webhook can take", t)
-		}
-	}
-	return nil
-}
-
-// Create makes an endpoint and returns it with the secret, this once.
-func (s *Service) Create(ctx context.Context, in Input) (*Endpoint, db.LSN, error) {
-	if err := validate(in); err != nil {
-		return nil, 0, err
-	}
-	secret, _, err := auth.GenerateToken()
-	if err != nil {
-		return nil, 0, err
-	}
-	secret = secretPrefix + secret
-	if in.Topics == nil {
-		in.Topics = []string{}
-	}
-	var out *Endpoint
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		e, err := scanEndpoint(tx.QueryRow(ctx, `
-			INSERT INTO webhook_endpoint (org_id, name, url, secret, topics, enabled)
-			VALUES (current_org_id(), $1, $2, $3, $4, true)
-			RETURNING id, name, url, topics, enabled, created_at, updated_at`, strings.TrimSpace(in.Name), in.URL, secret, in.Topics))
-		if isUnique(err) {
-			return errors.New("a webhook with that name is already here")
-		}
-		if err != nil {
-			return err
-		}
-		out = e
-		return nil
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	out.Secret = secret
-	return out, lsn, nil
-}
-
-// Update changes name, address, topics or whether it is on.
-func (s *Service) Update(ctx context.Context, id uuid.UUID, in Input) (*Endpoint, db.LSN, error) {
-	if err := validate(in); err != nil {
-		return nil, 0, err
-	}
-	if in.Topics == nil {
-		in.Topics = []string{}
-	}
-	var out *Endpoint
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		e, err := scanEndpoint(tx.QueryRow(ctx, `
-			UPDATE webhook_endpoint SET name = $2, url = $3, topics = $4, enabled = COALESCE($5, enabled)
-			WHERE id = $1
-			RETURNING id, name, url, topics, enabled, created_at, updated_at`, id, strings.TrimSpace(in.Name), in.URL, in.Topics, in.Enabled))
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
-		if isUnique(err) {
-			return errors.New("a webhook with that name is already here")
-		}
-		if err != nil {
-			return err
-		}
-		out = e
-		return nil
-	})
-	return out, lsn, err
-}
-
-// RotateSecret issues a new secret; the old one stops working at once.
-func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID) (*Endpoint, db.LSN, error) {
-	secret, _, err := auth.GenerateToken()
-	if err != nil {
-		return nil, 0, err
-	}
-	secret = secretPrefix + secret
-	var out *Endpoint
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		e, err := scanEndpoint(tx.QueryRow(ctx, `
-			UPDATE webhook_endpoint SET secret = $2 WHERE id = $1
-			RETURNING id, name, url, topics, enabled, created_at, updated_at`, id, secret))
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
-		if err != nil {
-			return err
-		}
-		out = e
-		return nil
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	out.Secret = secret
-	return out, lsn, nil
-}
-
-// Delete removes the endpoint and its log.
-func (s *Service) Delete(ctx context.Context, id uuid.UUID) (db.LSN, error) {
-	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM webhook_endpoint WHERE id = $1`, id)
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() == 0 {
-			return ErrNotFound
-		}
-		return nil
-	})
 }
 
 const selectDeliveries = `
@@ -488,8 +323,4 @@ func (s *Service) Redeliver(ctx context.Context, deliveryID uuid.UUID) (*Deliver
 func mustOrg(ctx context.Context) uuid.UUID {
 	org, _ := tenant.FromContext(ctx)
 	return org.ID
-}
-
-func isUnique(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "webhook_endpoint_name_idx")
 }

@@ -170,6 +170,11 @@ here in the branch that makes it.
   staging and production refuse to start while `ARMATURE_APP_URL` or
   `ARMATURE_OIDC_REDIRECT_URL` points at localhost, and the README lists
   every variable the server reads (#102).
+- Fixed: the audit log records who made, changed or removed a webhook or a
+  rule, rotated a webhook's secret, sent or withdrew an invitation, defined,
+  redefined or removed a role, or removed a group, and every sign-in with a
+  password; the secrets these hand out are never in it, and the audit page
+  filters by each (#103).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

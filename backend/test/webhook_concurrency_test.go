@@ -94,16 +94,16 @@ func TestAHangingWebhookDoesNotHoldUpAnotherOrganization(t *testing.T) {
 	fastServer := httptest.NewServer(sink)
 	t.Cleanup(fastServer.Close)
 
-	slow, _, err := hooks.Create(slowOrg.ctx, webhook.Input{Name: "Hangs", URL: slowServer.URL, Topics: []string{events.TopicIssueCreated}})
+	slow, _, err := hooks.Create(slowOrg.ctx, webhook.Input{Name: "Hangs", URL: slowServer.URL, Topics: []string{events.TopicIssueCreated}}, slowOrg.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = hooks.Delete(slowOrg.ctx, slow.ID) })
-	fast, _, err := hooks.Create(fastOrg.ctx, webhook.Input{Name: "Answers", URL: fastServer.URL, Topics: []string{events.TopicIssueCreated}})
+	t.Cleanup(func() { _, _ = hooks.Delete(slowOrg.ctx, slow.ID, slowOrg.actor.UserID) })
+	fast, _, err := hooks.Create(fastOrg.ctx, webhook.Input{Name: "Answers", URL: fastServer.URL, Topics: []string{events.TopicIssueCreated}}, fastOrg.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = hooks.Delete(fastOrg.ctx, fast.ID) })
+	t.Cleanup(func() { _, _ = hooks.Delete(fastOrg.ctx, fast.ID, fastOrg.actor.UserID) })
 
 	// The hanging endpoint's deliveries are queued first, so they are first
 	// in line as well.

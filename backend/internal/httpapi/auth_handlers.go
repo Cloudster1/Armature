@@ -344,7 +344,7 @@ func (s *Server) handleRevokeInvite(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("Invalid invitation id."))
 		return
 	}
-	lsn, err := s.Auth.RevokeInvite(r.Context(), id)
+	lsn, err := s.Auth.RevokeInvite(r.Context(), id, userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

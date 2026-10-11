@@ -1772,7 +1772,12 @@ administrator. The worker copies the administrative topics off the stream, each
 once by its event id, so the log, the webhooks and the rules all say the same
 thing. Issue traffic is left out on purpose: each issue's history already holds
 it, and a log that repeats every transition is one nobody reads. The acts that
-happen before or beside a tenant are written by the act itself.
+happen before or beside a tenant are written by the act itself, and so are a
+sign-in with a password and the changes to webhooks, rules and invitations,
+which no consumer needs as events. Those entries never hold what the act hands
+out: a rotated secret is recorded as rotated, a rule's incoming address by its
+kind, an invitation without its link, and a webhook's address as its scheme and
+host, because a chat service puts its credential in the path.
 
 ### Tracing is OTLP over HTTP, metrics are Prometheus on a private port
 

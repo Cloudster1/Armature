@@ -51,7 +51,7 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 		}
 		// Re-inviting someone who already has a pending invitation replaces it,
 		// rather than failing on the partial unique index.
-		return tx.QueryRow(ctx, `
+		if err := tx.QueryRow(ctx, `
 			INSERT INTO org_invite (org_id, email, org_role, token_hash, invited_by, expires_at)
 			VALUES (current_org_id(), $1, $2, $3, $4, $5)
 			ON CONFLICT (org_id, email) WHERE accepted_at IS NULL
@@ -61,7 +61,10 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 			              expires_at = EXCLUDED.expires_at
 			RETURNING id, org_id, created_at`,
 			email, string(role), digest, invitedBy, inv.ExpiresAt,
-		).Scan(&inv.ID, &inv.OrgID, &inv.CreatedAt)
+		).Scan(&inv.ID, &inv.OrgID, &inv.CreatedAt); err != nil {
+			return err
+		}
+		return recordInvite(ctx, tx, "invite.created", inv.ID, email, role, invitedBy)
 	})
 	if err != nil {
 		return nil, "", 0, fmt.Errorf("create invite: %w", err)
@@ -125,17 +128,26 @@ func (s *Service) PreviewInvite(ctx context.Context, secret string) (*InvitePrev
 }
 
 // RevokeInvite withdraws a pending invitation.
-func (s *Service) RevokeInvite(ctx context.Context, id uuid.UUID) (db.LSN, error) {
+func (s *Service) RevokeInvite(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM org_invite WHERE id = $1 AND accepted_at IS NULL`, id)
+		var (
+			email string
+			role  OrgRole
+		)
+		err := tx.QueryRow(ctx, `DELETE FROM org_invite WHERE id = $1 AND accepted_at IS NULL RETURNING email, org_role`, id).Scan(&email, &role)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInviteInvalid
+		}
 		if err != nil {
 			return err
 		}
-		if tag.RowsAffected() == 0 {
-			return ErrInviteInvalid
-		}
-		return nil
+		return recordInvite(ctx, tx, "invite.revoked", id, email, role, actor)
 	})
+}
+
+// recordInvite writes who invited whom as what; the link's secret stays out.
+func recordInvite(ctx context.Context, tx db.DBTX, action string, id uuid.UUID, email string, role OrgRole, actor uuid.UUID) error {
+	return audit.Record(ctx, tx, audit.Entry{Action: action, TargetType: "invite", TargetID: &id, Actor: actor, Data: map[string]any{"email": email, "role": role}})
 }
 
 // AcceptInviteInput carries either an existing user's identity or the details

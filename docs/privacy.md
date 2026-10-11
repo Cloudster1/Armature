@@ -61,7 +61,7 @@ installation does.
 | Inbound mail | `inbound_mail` | sender address, subject, outcome and why it failed; never the body | `ARMATURE_RETAIN_INBOUND_MAIL` (90 days) | swept; sender pseudonymised by erasure |
 | Outbound mail | nowhere | | not stored | a counter is the only record |
 | Imports | `import_job` | file name, a report that may echo rows | `ARMATURE_RETAIN_IMPORT_JOBS` (90 days) | swept |
-| Audit log | `audit_log` | actor id, action, target, address | `ARMATURE_RETAIN_AUDIT` (365 days) | swept per organization; exportable by its administrators |
+| Audit log | `audit_log` | actor id, action, target, address; an invitation's email address | `ARMATURE_RETAIN_AUDIT` (365 days) | swept per organization; exportable by its administrators |
 | Commits and pull requests | `git_commit`, `pull_request` | author name and address as the repository gave them | while the repository is connected | disconnected; pseudonymised when the address belongs to an erased account |
 | Pictures | the bucket, `user/<id>/avatar` | the picture | while chosen | removed on request or by erasure |
 | Themes | `theme`, `theme_asset`, `user_theme`, the bucket under `theme/<theme>/<file>` | the maker, the files they uploaded, who chose what | while the theme exists | deleted by the maker or an administrator, and by the maker's erasure, files included |
