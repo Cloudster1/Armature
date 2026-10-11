@@ -7,6 +7,84 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a scrum master or project administrator can change or remove only
+  the absences they recorded themselves, never the person's own or an
+  administrator's, and the person is told in their inbox, and by mail if they
+  want it, whenever somebody else records, changes or removes their days
+  (#39).
+- Fixed: deleting a team that still has sprints or request types routed to
+  it is refused with a sentence saying what to do, instead of handing its
+  sprints to the project or failing; a team that has run a sprint is kept,
+  and the database refuses the delete too (#55).
+- Fixed: an issue handed to another team leaves the old team's open sprint
+  for the new team's backlog, with a line in its history, instead of
+  vanishing from the Sprints page while still counting in the sprint; another
+  team's sprint is refused, by hand, on completion and by the database (#56).
+- Fixed: an out-of-office or other automatic reply to a request is no longer
+  posted as the customer's answer; the request stays Waiting for customer
+  with its clocks held, and the mail is logged as automatic (#65).
+- Fixed: a squash or merge commit no longer carries out the branch's smart
+  commands a second time: a comment is posted once and a "#close" is not
+  tried again, while a new command in the squash commit still runs (#68).
+- Fixed: a merged branch the host deletes, as GitHub and GitLab do on
+  merging, stays on its issue and says "merged, deleted"; an unmerged one is
+  removed, and the same name pushed again is a new branch (#71).
+- Fixed: deleting an epic or any parent issue now also removes the files of
+  the stories and subtasks under it from storage, instead of leaving them in
+  the bucket with nothing pointing at them (#86).
+- Fixed: an issue moved more than once is still found at every key it has
+  had, in the app, over the API and by a reply to a desk mail, not only at
+  the key it left last (#88).
+- Fixed: a reply by mail that could not be posted, say during a short
+  database outage, is posted on a later poll instead of being deleted from
+  the mailbox; one that fails ten times stays in the box and an internal note
+  on its request tells the agents why (#94).
+- Fixed: somebody in two organizations gets each one's digest, both at 08:00
+  for a daily one; a digest whose hour was missed goes at the next pass that
+  day, and a restarted worker neither sends one twice nor skips it (#97).
+- Fixed: an organization made before an upgrade on a database migrated as a
+  plain owner now has its default holiday calendar, its automation account and
+  the Initiative type, like a new one; the upgrade adds them where missing
+  (#98).
+- Fixed: the Resources page opens on, and "Today" goes back to, the week of
+  the reader's own date, also just after midnight on a Monday or on a Sunday
+  evening away from UTC (#49).
+- Fixed: importing an .ics file while a calendar's table holds unsaved days
+  asks first ("Import and discard 3 unsaved days?") and keeps the typed days
+  until the answer is yes and the import has arrived (#50).
+- Fixed: a dashboard saved as a template no longer keeps the version a
+  Releases or Release burndown widget was pinned to, so in another project
+  they show its unreleased versions or ask for one; templates saved before
+  read the same way (#57).
+- Fixed: a request resolved without a public reply no longer misses its first
+  response goal hours later; resolving completes every running clock, a
+  breach that already happened is kept, and reopening restarts only the
+  resolution clock (#66).
+- Fixed: behind a load balancer, a person always sees their own latest change:
+  an older write finishing last no longer lets a lagging replica answer their
+  next read (#59).
+- Fixed: a desk's business hours no longer take two spans of one day that
+  overlap, and say which two to join; hours saved that way before count the
+  overlap once, so goals no longer run out early (#76).
+- Fixed: on a shared dashboard the Sprint history widget no longer offers a
+  Curve button that only led to an error; the link shows the sprints and
+  nothing a visitor cannot open (#58).
+- Fixed: a description or comment started in the side panel stays with its
+  own issue: stepping to another issue no longer shows it there or saves it
+  there, and stepping back finds the draft where it was left (#109).
+- Fixed: the project calendar shows holidays and absences on the days of the
+  months before and after that its six weeks include, and an absence that
+  runs past the grid is drawn as continuing instead of ending there (#47).
+- Fixed: a burndown shows a dot on a sprint's first day, and a sprint started
+  early or ended late keeps every day on the chart, with the first and last
+  of them named under it (#61).
+- Fixed: the release burndown counts an issue only from the day it was
+  filed, so work added to a version later lifts the line instead of showing
+  from its first day, and a released version's line stops on its release
+  day (#60).
+- Fixed: a pull request moves its issue only when it is merged; an edit, a
+  label or a redelivery of an already merged pull request no longer moves a
+  reopened issue to Done again (#67).
 - Fixed: only the customer who raised a request finds the rating link in its
   resolution mail; followers and watching agents are told it is resolved
   without one, so nobody can rate it before the customer does (#79).
