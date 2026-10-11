@@ -1193,6 +1193,23 @@ Both now end where the next thing happens. The projects page became a table with
 the facts a person scans for, because a page of projects is a page of projects
 and not a form.
 
+### A refused change says why, once
+
+An assignee, a priority or a saved search the server refused flipped back and
+said nothing, because each control called `mutate` and nobody looked at the
+error. Most controls do show their own failure beside themselves, so a toast
+for every failure would say most of them twice. The query client's
+`MutationCache.onError` toasts the server's sentence unless the caller shows
+the failure itself, and every mutation is built on `api/mutation.ts`, which
+knows: a caller that reads `error`, `isError` or `mutateAsync`, or passes
+`mutate` an `onError`, has taken the failure on. `meta: { handlesError: true }`
+says so outright for a caller that reports it some other way. A unit test
+refuses a mutation built straight on TanStack's hook.
+
+The alternative was marking each of the hundred-odd mutations that show their
+error by hand. That is a mark one new control forgets, and a hook shared by a
+silent field and a talkative one cannot carry both answers.
+
 ### An issue is one page in two columns, and the same page opens beside the list
 
 The issue page had grown to ten panels down the left and seventeen facts down
