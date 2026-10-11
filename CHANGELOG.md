@@ -29,6 +29,9 @@ here in the branch that makes it.
 - Fixed: a merged branch the host deletes, as GitHub and GitLab do on
   merging, stays on its issue and says "merged, deleted"; an unmerged one is
   removed, and the same name pushed again is a new branch (#71).
+- Fixed: deleting an epic or any parent issue now also removes the files of
+  the stories and subtasks under it from storage, instead of leaving them in
+  the bucket with nothing pointing at them (#86).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
