@@ -21,7 +21,8 @@ var discardsAllowed = map[string]string{
 	// Nobody waits to read these: they run from a timer, the outbox or a mailbox.
 	"audit/audit.go (*Consumer).Handle":             "an event consumer; no request waits on it",
 	"automation/runner.go (*Service).run":           "a rule run from an event; no request waits on it",
-	"desk/inbound.go (*Inbound).claim":              "mail fetched from a mailbox; no request waits on it",
+	"desk/inbound_retry.go (*Inbound).claim":        "mail fetched from a mailbox; no request waits on it",
+	"desk/inbound_retry.go (*Inbound).fail":         "mail fetched from a mailbox; no request waits on it",
 	"desk/inbound.go (*Inbound).finish":             "mail fetched from a mailbox; no request waits on it",
 	"desk/mail.go (*Notifier).Handle":               "an event consumer; no request waits on it",
 	"desk/watch.go (*Watch).Once":                   "the breach watch; no request waits on it",
@@ -34,9 +35,11 @@ var discardsAllowed = map[string]string{
 	"sprint/snapshot.go (*Service).Snapshot":        "the nightly worker; no request waits on it",
 
 	// Called by another machine, which reads nothing back through a session.
-	"automation/runner.go (*Service).Incoming": "an incoming hook answers its caller and keeps no session",
-	"git/service.go (*Service).Record":         "a forge's push answers the forge, which keeps no session",
-	"desk/extras.go (*Service).InviteRating":   "no handler calls it; the tests that do read on the primary",
+	"automation/runner.go (*Service).Incoming":   "an incoming hook answers its caller and keeps no session",
+	"git/receive.go (*Service).Record":           "a forge's push answers the forge, which keeps no session",
+	"git/smart_once.go (*Service).forgetCommand": "part of a forge's push, which keeps no session",
+	"git/smart_once.go (*Service).recordCommand": "part of a forge's push, which keeps no session",
+	"desk/extras.go (*Service).InviteRating":     "no handler calls it; the tests that do read on the primary",
 
 	// Read back only on the primary, through ReadAdmin or WriteAdmin.
 	"auth/service.go (*Service).Logout":                "sessions are read through Authenticate, on the primary",
