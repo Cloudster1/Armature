@@ -199,12 +199,14 @@ func (s *Service) UpdateIn(ctx context.Context, tx db.DBTX, key string, in Updat
 		}
 	}
 
+	var statusMoved bool
 	if in.TypeID != nil && *in.TypeID != before.Type.ID {
-		change, err := s.applyType(ctx, tx, before, *in.TypeID)
+		typeChanges, moved, err := s.applyType(ctx, tx, before, *in.TypeID)
 		if err != nil {
 			return nil, nil, err
 		}
-		changes = append(changes, *change)
+		changes = append(changes, typeChanges...)
+		statusMoved = moved
 	}
 
 	updated, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
@@ -214,6 +216,11 @@ func (s *Service) UpdateIn(ctx context.Context, tx db.DBTX, key string, in Updat
 	// A desk's clocks follow a new priority, a bulk edit's as much as anybody's.
 	if err := s.tellUpdated(ctx, tx, before, updated, actor); err != nil {
 		return nil, nil, err
+	}
+	if statusMoved {
+		if err := s.announceMove(ctx, tx, before, updated, TypeChangeTransition, actor); err != nil {
+			return nil, nil, err
+		}
 	}
 	return updated, changes, nil
 }
@@ -315,74 +322,6 @@ func formatMinutesOrNone(minutes *int) string {
 		return ""
 	}
 	return FormatMinutes(*minutes)
-}
-
-// applyType changes an issue's type, which moves it in the hierarchy and can
-// also change which workflow it follows.
-func (s *Service) applyType(ctx context.Context, tx db.DBTX, before *Issue, typeID uuid.UUID) (*Change, error) {
-	var (
-		name  string
-		level int
-	)
-	err := tx.QueryRow(ctx, `SELECT name, hierarchy_level FROM issue_type WHERE id = $1`, typeID).Scan(&name, &level)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errors.New("that issue type does not exist")
-	}
-	if err != nil {
-		return nil, err
-	}
-	if err := s.checkTypeFitsTheTree(ctx, tx, before, name, level); err != nil {
-		return nil, err
-	}
-
-	// The new type may follow a different workflow, one that does not contain
-	// the status the issue is currently in. Move it to that workflow's starting
-	// status rather than leaving it somewhere the workflow cannot describe.
-	wf, err := s.workflows.ForIssueType(ctx, tx, before.ProjectID, typeID)
-	if err != nil {
-		return nil, err
-	}
-	if _, inWorkflow := wf.StepByStatus(before.Status.ID); !inWorkflow {
-		initial, err := wf.InitialStep()
-		if err != nil {
-			return nil, err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE issue SET status_id = $2 WHERE id = $1`, before.ID, initial.Status.ID); err != nil {
-			return nil, err
-		}
-	}
-
-	if _, err := tx.Exec(ctx, `UPDATE issue SET issue_type_id = $2 WHERE id = $1`, before.ID, typeID); err != nil {
-		return nil, err
-	}
-	return &Change{Field: "type", From: before.Type.Name, To: name}, nil
-}
-
-// checkTypeFitsTheTree refuses a type change that would strand the issue's
-// parent or its children, and says which so the user knows what to fix first.
-func (s *Service) checkTypeFitsTheTree(ctx context.Context, tx db.DBTX, before *Issue, name string, level int) error {
-	if before.Parent == nil {
-		if NeedsParent(level) {
-			return levelError{ErrNeedsParent, article(name) + " needs a parent issue"}
-		}
-	} else if !CanParent(before.Parent.Type.Level, level) {
-		return levelError{ErrParentLevel, fmt.Sprintf("%s is %s, which cannot be the parent of %s",
-			before.Parent.Key, article(before.Parent.Type.Name), article(name))}
-	}
-
-	var stranded int
-	err := tx.QueryRow(ctx, `
-		SELECT count(*) FROM issue c
-		JOIN issue_type ct ON ct.id = c.issue_type_id
-		WHERE c.parent_id = $1 AND ct.hierarchy_level <> $2`, before.ID, level-1).Scan(&stranded)
-	if err != nil {
-		return err
-	}
-	if stranded > 0 {
-		return levelError{ErrChildrenInTheWay,
-			fmt.Sprintf("%d of this issue's children cannot sit under %s", stranded, article(name))}
-	}
-	return nil
 }
 
 func subjectOf(i *Issue) workflow.Subject {

@@ -198,6 +198,10 @@ here in the branch that makes it.
 - Fixed: an absence recorded more than a year ahead stays in the list it was
   saved from, which now runs from a month back with no last day and says when
   it holds too many to show them all (#46).
+- Fixed: changing an issue to a type whose workflow lacks its status records
+  the move to that workflow's first status in the history, announces it to
+  automation, mail and the SLA clocks, and clears or sets the resolution, so
+  a reopened bug is no longer counted as resolved (#85).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

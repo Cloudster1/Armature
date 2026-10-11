@@ -166,21 +166,26 @@ func (s *Service) TransitionIn(ctx context.Context, tx db.DBTX, key string, in T
 	if err != nil {
 		return nil, err
 	}
-	for _, o := range s.observers {
-		if err := o.IssueTransitioned(ctx, tx, before, updated, actor); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := events.EmitInTenant(ctx, tx, events.TopicIssueTransitioned, map[string]any{
-		"issueId":    updated.ID,
-		"key":        updated.Key,
-		"transition": decision.Transition.Name,
-		"fromStatus": before.Status.Name,
-		"toStatus":   decision.ToStatus.Name,
-		"actorId":    actor.UserID,
-	}); err != nil {
+	if err := s.announceMove(ctx, tx, before, updated, decision.Transition.Name, actor); err != nil {
 		return nil, err
 	}
 	return updated, nil
+}
+
+// announceMove tells the observers and the outbox that the status changed, so
+// clocks, automation and mail hear of every move, not only a transition's.
+func (s *Service) announceMove(ctx context.Context, tx db.DBTX, before, after *Issue, transition string, actor Actor) error {
+	for _, o := range s.observers {
+		if err := o.IssueTransitioned(ctx, tx, before, after, actor); err != nil {
+			return err
+		}
+	}
+	return events.EmitInTenant(ctx, tx, events.TopicIssueTransitioned, map[string]any{
+		"issueId":    after.ID,
+		"key":        after.Key,
+		"transition": transition,
+		"fromStatus": before.Status.Name,
+		"toStatus":   after.Status.Name,
+		"actorId":    actor.UserID,
+	})
 }

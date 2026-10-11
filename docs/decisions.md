@@ -221,6 +221,17 @@ nearest equivalent would need a mapping nobody supplied; refusing the change
 while any issue is in a status the new workflow lacks would make configuration
 impossible in exactly the projects that most want it.
 
+### A type change that moves the status is recorded as a move
+
+An issue given a type whose workflow lacks its status starts over in that
+workflow's first status, and that is a status change like a transition's: it is
+in the history, announced as `issue.transitioned` (named "Type change"), told to
+the observers so the desk's clocks follow it, and `resolved_at` is set or
+cleared by whether the new status is done. Asking for the target status, as a
+move to another project does, would put a question in front of every type change
+for the rare one that leaves the workflow; a silent move left a reopened issue
+counted as done by NQL `resolved` and the reports.
+
 ### A status is coined where it is needed, and a board follows its workflow
 
 Statuses are the organization's and shared by every workflow, which is what lets
