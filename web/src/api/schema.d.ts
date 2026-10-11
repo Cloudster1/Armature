@@ -1235,7 +1235,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The issues a query matches, as a CSV file with the chosen columns. */
+        /** The issues a query matches, as a CSV file with the chosen columns; past 5000 the file is cut, ends with a note row, and the response carries X-Export-Truncated: true. */
         get: operations["exportIssues"];
         put?: never;
         post?: never;
@@ -4362,6 +4362,8 @@ export interface components {
             commitCount: number;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            deletedAt?: string;
             headSha?: string;
             /** Format: uuid */
             id: string;

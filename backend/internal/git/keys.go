@@ -1,6 +1,8 @@
 package git
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"regexp"
 	"strings"
 	"unicode"
@@ -63,6 +65,17 @@ func SmartCommands(message string) []Command {
 		}
 	}
 	return out
+}
+
+// Identity is what makes two commands the same one: their kind and their text
+// with its spacing evened out. It is hashed so a long comment fits an index.
+func (c Command) Identity() string {
+	text := "transition:" + c.Transition
+	if c.Comment != "" {
+		text = "comment:" + strings.Join(strings.Fields(c.Comment), " ")
+	}
+	sum := sha256.Sum256([]byte(text))
+	return hex.EncodeToString(sum[:])
 }
 
 // isCommandWord keeps "#start-progress" and drops "#123", which on every host

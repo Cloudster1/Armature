@@ -1,6 +1,8 @@
 package notify
 
 import (
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -64,5 +66,37 @@ func TestPreferencesDefaultToOn(t *testing.T) {
 	}
 	if err := (Preferences{Digest: DigestOff, Mail: map[string]bool{"shouting": true}}).Validate(); err == nil {
 		t.Fatal("an unknown kind was accepted")
+	}
+}
+
+func TestAPersonIsToldWhenSomebodyElseTouchesTheirAbsences(t *testing.T) {
+	ada, maxID := uuid.New(), uuid.New()
+	for topic, title := range map[string]string{
+		events.TopicAbsenceRecorded: "Max Master recorded an absence for you",
+		events.TopicAbsenceChanged:  "Max Master changed one of your absences",
+		events.TopicAbsenceRemoved:  "Max Master removed one of your absences",
+	} {
+		got, ok := absenceTell(topic, payload{UserID: ada, ActorID: maxID}, "Max Master")
+		if !ok || got.user != ada || got.kind != KindAbsence || got.title != title {
+			t.Errorf("%s tells %+v, want Ada told %q", topic, got, title)
+		}
+		if strings.ContainsAny(got.title+got.body, "0123456789") {
+			t.Errorf("%s tells %+v, which reads like a day; the notice never carries the days", topic, got)
+		}
+		if _, ok := absenceTell(topic, payload{UserID: ada, ActorID: ada}, "Ada Away"); ok {
+			t.Errorf("%s by the person herself told her", topic)
+		}
+	}
+	if _, ok := absenceTell(events.TopicIssueCreated, payload{UserID: ada, ActorID: maxID}, "Max Master"); ok {
+		t.Error("an issue event was told as an absence")
+	}
+	if _, ok := absenceTell(events.TopicAbsenceRecorded, payload{ActorID: maxID}, "Max Master"); ok {
+		t.Error("an absence for nobody was told")
+	}
+	if !slices.Contains(Kinds, KindAbsence) {
+		t.Errorf("Kinds = %v, want absences among them so the preferences page can turn them off", Kinds)
+	}
+	if err := (Preferences{Digest: DigestOff, Mail: map[string]bool{KindAbsence: false}}).Validate(); err != nil {
+		t.Errorf("turning absence mail off was refused: %v", err)
 	}
 }
