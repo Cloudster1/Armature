@@ -6677,6 +6677,8 @@ export interface components {
              * @description A day, YYYY-MM-DD; null clears it.
              */
             dueDate?: string | null;
+            /** Format: date-time */
+            expectedUpdatedAt?: string;
             priority?: string;
             /** Format: uuid */
             reporterId?: string;

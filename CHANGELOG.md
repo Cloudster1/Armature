@@ -153,6 +153,10 @@ here in the branch that makes it.
 - Fixed: moving an issue to another project keeps its answers to organization
   fields; only those to the old project's own fields are dropped, each named
   in the history and listed in the move dialog before it is confirmed (#82).
+- Fixed: when two people edit an issue's description or summary at once, the
+  later save no longer erases the earlier one: it is refused with a sentence,
+  the draft is kept and the newer text is shown beside it, and a save that
+  changes nothing records nothing in the history (#89).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

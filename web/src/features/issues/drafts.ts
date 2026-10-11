@@ -6,6 +6,8 @@ export type DraftKind = "description" | "comment";
 /** A draft that was kept; its doc is null when everything was deleted. */
 export interface KeptDraft {
   doc: Doc | null;
+  /** The issue's updatedAt when the edit began, so a save can tell it was overtaken. */
+  startedFrom?: string;
 }
 
 // Held for the tab, not the browser: a draft is words not yet sent, and the
@@ -20,8 +22,8 @@ export function readDraft(kind: DraftKind, issueKey: string): KeptDraft | undefi
   return kept.get(slot(kind, issueKey));
 }
 
-export function keepDraft(kind: DraftKind, issueKey: string, doc: Doc | null) {
-  kept.set(slot(kind, issueKey), { doc });
+export function keepDraft(kind: DraftKind, issueKey: string, doc: Doc | null, startedFrom?: string) {
+  kept.set(slot(kind, issueKey), { doc, startedFrom });
 }
 
 export function forgetDraft(kind: DraftKind, issueKey: string) {

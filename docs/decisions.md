@@ -280,6 +280,24 @@ nothing typed is ever parsed.
 **Reconsider if** customers ask for formatting, at which point the portal sends
 a document as comments do, or if a node markdown has no spelling for is wanted.
 
+### An edit names the copy it began from, and the later of two saves is refused
+
+An edit of an issue may carry `expectedUpdatedAt`, the `updatedAt` of the copy
+the editor opened. The service compares it under the row lock and answers 409
+when the issue has moved on, so two tabs on one description cannot erase each
+other's words without anybody noticing. The issue's own `updatedAt` is the
+version, not a counter of its own, because the column and its trigger already
+exist and every write moves it. The browser takes the stamp when editing
+begins, not at save, and on a refusal keeps the draft and shows the newer text
+beside it; saving again after that replaces what was shown. A client that sends
+no stamp is let through as before, since scripts and imports set fields they
+did not read. A save that changes nothing, a description equal as jsonb or the
+same due date, writes no row, no changelog entry and no event.
+
+**Reconsider if** people edit different fields of one issue at once often
+enough that a refusal for an unrelated field gets in their way; then the stamp
+becomes per field.
+
 ## Planning, sprints and teams
 
 ### The plan warns and never refuses
