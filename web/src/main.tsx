@@ -1,9 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 
 import { buildRouter } from "./routes";
+import { createQueryClient } from "./lib/queryClient";
 import { applyCustomTheme, applyTheme, readCachedTheme, readTheme } from "./lib/theme";
 import "./styles/index.css";
 
@@ -14,17 +15,7 @@ applyTheme(readTheme());
 const cached = readCachedTheme();
 if (cached) applyCustomTheme(cached.css);
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // A failed request is usually a real answer (401, 404, validation), not
-      // a blip worth retrying three times while the user waits.
-      retry: false,
-      refetchOnWindowFocus: false,
-      staleTime: 10_000,
-    },
-  },
-});
+const queryClient = createQueryClient();
 
 const router = buildRouter(queryClient);
 

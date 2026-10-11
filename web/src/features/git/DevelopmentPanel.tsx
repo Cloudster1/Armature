@@ -178,22 +178,35 @@ function WithChecks({ ci, children }: { ci?: CIChecks; children: (badge: ReactNo
   );
 }
 
+/** What the tag on a branch says: a deleted branch is only kept when it was merged. */
+function branchLabel(branch: Branch): string {
+  if (branch.deletedAt) return "merged, deleted";
+  return branch.mergedAt ? "merged" : "branch";
+}
+
 /**
  * One branch and how far it has come: its head, how many commits pushes have
  * brought, when the last one was, and whether it has been merged.
  */
 function BranchRow({ branch }: { branch: Branch }) {
+  const deleted = Boolean(branch.deletedAt);
   return (
     <div
       className="flex items-center gap-3 px-3 py-2 text-sm"
       data-branch={branch.name}
       data-branch-repository={branch.repository}
       data-branch-merged={branch.mergedAt ? "true" : undefined}
+      data-branch-deleted={deleted ? "true" : undefined}
     >
-      <Tag className={cx(branch.mergedAt && "bg-transparent text-epic border-epic/40")}>{branch.mergedAt ? "merged" : "branch"}</Tag>
-      <a href={branch.url || undefined} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-mono text-ink hover:text-accent">
-        {branch.name}
-      </a>
+      <Tag className={cx(branch.mergedAt && "bg-transparent text-epic border-epic/40")}>{branchLabel(branch)}</Tag>
+      {/* The host has nothing at a deleted branch's address, so it is not linked. */}
+      {deleted ? (
+        <span className="min-w-0 flex-1 truncate font-mono text-ink-muted">{branch.name}</span>
+      ) : (
+        <a href={branch.url || undefined} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-mono text-ink hover:text-accent">
+          {branch.name}
+        </a>
+      )}
       {branch.headSha && (
         <span className="shrink-0 font-mono text-ink-muted" title="The commit the branch points at" data-branch-head={branch.headSha}>
           {branch.headSha.slice(0, GIT_SHORT_SHA_LENGTH)}
@@ -210,7 +223,7 @@ function BranchRow({ branch }: { branch: Branch }) {
 
 /** Which repository to offer first: one the tracker can write to that has no branch for the issue yet. */
 export function firstRepositoryToBranch(repositories: Repository[], existing: Branch[], made: Branch[]): Repository | undefined {
-  const has = (r: Repository) => [...existing, ...made].some((b) => b.repository === r.name);
+  const has = (r: Repository) => [...existing, ...made].some((b) => b.repository === r.name && !b.deletedAt);
   return (
     repositories.find((r) => r.hasToken && !has(r)) ??
     repositories.find((r) => r.hasToken) ??
@@ -244,7 +257,7 @@ function CreateBranch({
   const [from, setFrom] = useState(() => firstRepositoryToBranch(repositories, existing, [])?.defaultBranch ?? "main");
 
   const repository = repositories.find((r) => r.id === repositoryId) ?? repositories[0]!;
-  const branchIn = (r: Repository) => [...existing, ...made].find((b) => b.repository === r.name);
+  const branchIn = (r: Repository) => [...existing, ...made].find((b) => b.repository === r.name && !b.deletedAt);
 
   function choose(id: string) {
     setRepositoryId(id);

@@ -71,9 +71,8 @@ type Commit struct {
 	CI *CIChecks `json:"ci,omitempty"`
 }
 
-// Branch is a branch that is, or was made, for an issue. It is followed from
-// then on: every push moves its head, and merging the pull request from it
-// marks it merged, so the issue shows how far its branch has come.
+// Branch is a branch that is, or was made, for an issue, followed so the issue
+// shows how far it has come: a merged one outlives its deletion on the host.
 type Branch struct {
 	ID         uuid.UUID `json:"id"`
 	Repository string    `json:"repository"`
@@ -85,7 +84,10 @@ type Branch struct {
 	CommitCount int        `json:"commitCount"`
 	PushedAt    *time.Time `json:"pushedAt,omitempty"`
 	MergedAt    *time.Time `json:"mergedAt,omitempty"`
-	CreatedAt   time.Time  `json:"createdAt"`
+	// DeletedAt is when the host deleted a merged branch, which is kept so the
+	// issue still shows the merge.
+	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
 
 	// created is set on a branch a push has just made, which is worth a row
 	// of its own even when its name says nothing about an issue.
