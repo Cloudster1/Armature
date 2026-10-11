@@ -101,6 +101,8 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 		bearer := api.client(t)
 		bearer.bearer = obj(t, token, "token")["secret"].(string)
 		want(t, bearer.delete("/api/v1/auth/me"), http.StatusForbidden, "a token cannot erase its owner")
+		want(t, other.post("/api/v1/issues/"+key+"/watchers", map[string]any{}), http.StatusCreated, "they watch their issue")
+		want(t, owner.post("/api/v1/issues/"+key+"/watchers", map[string]any{}), http.StatusCreated, "and so does the owner")
 
 		want(t, other.delete("/api/v1/auth/me"), http.StatusNoContent, "erase")
 		want(t, other.get("/api/v1/auth/me"), http.StatusUnauthorized, "the session is gone")
@@ -127,6 +129,18 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 			t.Fatalf("comments after erasure = %v", comments)
 		}
 		want(t, owner.get("/api/v1/issues/"+key), http.StatusOK, "the issue stays")
+		// An erased person is on no watcher list, not even as "Former user".
+		var watching int
+		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM issue_watcher WHERE user_id = $1`, otherID).Scan(&watching); err != nil {
+			t.Fatal(err)
+		}
+		if watching != 0 {
+			t.Fatalf("watcher rows left for the erased person = %d", watching)
+		}
+		watchers := list(t, want(t, owner.get("/api/v1/issues/"+key+"/watchers"), http.StatusOK, "the watchers"), "watchers")
+		if len(watchers) != 1 || watchers[0].(map[string]any)["userId"] != ownerID {
+			t.Fatalf("watchers after erasure = %v, want the owner alone", watchers)
+		}
 		var audited int
 		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'user.erased' AND target_id = $2`, orgID, otherID).Scan(&audited); err != nil {
 			t.Fatal(err)

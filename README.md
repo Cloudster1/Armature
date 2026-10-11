@@ -197,8 +197,8 @@ at length, because each is a way to get it wrong:
   so. The chart takes one value per role name for that reason.
 - **The worker runs once.** `worker.replicas` may only be 1 and the chart
   refuses anything else. There is no leader election, the Redis consumers all
-  identify themselves as the literal `worker`, and the hourly digest remembers
-  what it has sent in an in-process map.
+  identify themselves as the literal `worker`. The digest alone would cope with
+  two: what it has sent is kept per organization and person in the database.
 
 `make helm-lint` lints both values files and `make helm-check` fails if the
 rendered manifests differ from the golden files committed under `tests/`, which
@@ -328,7 +328,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_DB_ADMIN_URL` | the primary | the role exempt from row level security |
 | `ARMATURE_DB_MAX_CONNS` / `_MIN_CONNS` | `20` / `2` | pool bounds per process |
 | `ARMATURE_DB_CONN_MAX_LIFETIME` | `1h` | how long a connection is kept |
-| `ARMATURE_DB_HEALTH_INTERVAL` | `5s` | how often a replica's lag is re-read |
+| `ARMATURE_DB_HEALTH_INTERVAL` | `5s` | how often a replica's lag is re-read, and one that is down is tried again |
 | `ARMATURE_DB_MAX_REPLICA_LAG` | `2s` | lag past which a replica is not used |
 | `ARMATURE_DB_REPLICA_LAG_SAMPLES` | `3` | samples kept per replica |
 | `ARMATURE_REDIS_URL` | `redis://localhost:6379/0` | the event stream |

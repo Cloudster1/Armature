@@ -20,8 +20,8 @@ import (
 	"github.com/armature/armature/backend/internal/tenant"
 )
 
-// FanOut runs in the worker: every event about an issue becomes inbox rows for
-// the people on it, and mail for those who want it.
+// FanOut runs in the worker: an event about an issue, or about somebody's days
+// away, becomes inbox rows for the people it concerns, and mail if they want it.
 type FanOut struct {
 	db     *db.Cluster
 	redis  *redis.Client
@@ -88,6 +88,7 @@ type payload struct {
 	Internal  bool        `json:"internal"`
 	Mentions  []uuid.UUID `json:"mentions"`
 	ToStatus  string      `json:"toStatus"`
+	Status    string      `json:"status"`
 	Metric    string      `json:"metric"`
 	// Imported marks an issue brought in from a file, which nobody is told of.
 	Imported bool `json:"imported"`
@@ -114,6 +115,12 @@ type subject struct {
 	actor     string
 	watchers  []uuid.UUID
 	comment   string
+	// watchOwnOff holds the assignee or reporter who turned watching their own
+	// issues off; they hear only as a watcher, an assignee or somebody named.
+	watchOwnOff map[uuid.UUID]bool
+	// resolver is whoever last moved the issue, read only for a reply left in
+	// done, which has to reach somebody even when nobody is on the request.
+	resolver *uuid.UUID
 }
 
 // tell is one row to write: who, why, and the words.
@@ -131,7 +138,13 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 		return nil
 	}
 	var p payload
-	if err := json.Unmarshal(e.Payload, &p); err != nil || p.key() == "" || p.Imported {
+	if err := json.Unmarshal(e.Payload, &p); err != nil || p.Imported {
+		return nil
+	}
+	if isAbsenceTopic(e.Topic) {
+		return f.handleAbsence(ctx, e, p)
+	}
+	if p.key() == "" {
 		return nil
 	}
 	// A deleted issue has nobody left to tell, and no row to tell them about.
@@ -146,8 +159,9 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 	if e.ID == uuid.Nil {
 		e.ID = uuid.New()
 	}
+	at := place{issueID: &s.id, link: f.appURL + "/issues/" + s.key, tag: "[" + s.key + "] ", byDesk: s.isRequest}
 	for _, t := range tellsFor(e.Topic, p, s) {
-		if err := f.deliver(ctx, e.ID, s, t); err != nil {
+		if err := f.deliver(ctx, e.ID, at, t); err != nil {
 			return err
 		}
 	}
@@ -169,8 +183,13 @@ func tellsFor(topic string, p payload, s *subject) []tell {
 				out = append(out, *id)
 			}
 		}
-		add(s.assignee)
-		add(s.reporter)
+		own := func(id *uuid.UUID) {
+			if id != nil && !s.watchOwnOff[*id] {
+				add(id)
+			}
+		}
+		own(s.assignee)
+		own(s.reporter)
 		for i := range s.watchers {
 			add(&s.watchers[i])
 		}
@@ -228,6 +247,16 @@ func tellsFor(topic string, p payload, s *subject) []tell {
 		}
 		for _, id := range participants(p.Mentions...) {
 			out = append(out, tell{id, KindCommented, title, s.comment})
+		}
+	case events.TopicRequestStaysDone:
+		title := fmt.Sprintf("%s replied to %s, which stays %s", s.actor, link, p.Status)
+		body := strings.TrimSpace(fmt.Sprintf("%s\n\nIts workflow has no way back out of %s. Move it by hand if it needs more work.", s.comment, p.Status))
+		told := participants()
+		if len(told) == 0 && s.resolver != nil && *s.resolver != p.ActorID {
+			told = []uuid.UUID{*s.resolver}
+		}
+		for _, id := range told {
+			out = append(out, tell{id, KindCommented, title, body})
 		}
 	case events.TopicWatcherAdded:
 		if p.UserID != uuid.Nil && p.UserID != p.ActorID {
@@ -287,27 +316,45 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 		if err := rows.Err(); err != nil {
 			return err
 		}
-		if topic == events.TopicCommentAdded && p.CommentID != uuid.Nil {
+		if (topic == events.TopicCommentAdded || topic == events.TopicRequestStaysDone) && p.CommentID != uuid.Nil {
 			var body []byte
 			if err := tx.QueryRow(ctx, `SELECT body FROM issue_comment WHERE id = $1`, p.CommentID).Scan(&body); err == nil {
 				s.comment = issue.PlainText(body)
 			}
 		}
-		// The assignee and the reporter count only when they are members who
-		// are not customers; a customer reporter is the desk's to tell.
-		for _, who := range []**uuid.UUID{&s.assignee, &s.reporter} {
+		if topic == events.TopicRequestStaysDone {
+			err := tx.QueryRow(ctx, `
+				SELECT h.actor_id FROM issue_history h
+				WHERE h.issue_id = $1 AND h.actor_id IS NOT NULL AND h.changes @> '[{"field": "status"}]'
+				ORDER BY h.created_at DESC, h.id DESC LIMIT 1`, s.id).Scan(&s.resolver)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return err
+			}
+		}
+		// Only members who are not customers count here; a customer is the
+		// desk's to tell.
+		for _, who := range []**uuid.UUID{&s.assignee, &s.reporter, &s.resolver} {
 			if *who == nil {
 				continue
 			}
-			var ok bool
+			var ok, watchOwn bool
 			err := tx.QueryRow(ctx, `
 				SELECT EXISTS (SELECT 1 FROM org_member m JOIN app_user u ON u.id = m.user_id AND u.is_active
-				               WHERE m.user_id = $1 AND m.org_id = current_org_id() AND m.org_role <> 'customer')`, **who).Scan(&ok)
+				               WHERE m.user_id = $1 AND m.org_id = current_org_id() AND m.org_role <> 'customer'),
+				       COALESCE((SELECT watch_own FROM notification_preference
+				                 WHERE user_id = $1 AND org_id = current_org_id()), true)`, **who).Scan(&ok, &watchOwn)
 			if err != nil {
 				return err
 			}
 			if !ok {
 				*who = nil
+				continue
+			}
+			if !watchOwn {
+				if s.watchOwnOff == nil {
+					s.watchOwnOff = map[uuid.UUID]bool{}
+				}
+				s.watchOwnOff[**who] = true
 			}
 		}
 		return nil
@@ -321,9 +368,19 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 	return s, nil
 }
 
+// place is what a row points at: an issue, or a page of the app.
+type place struct {
+	issueID *uuid.UUID
+	link    string
+	// tag leads the mail's subject, such as "[CP-1] ".
+	tag string
+	// byDesk marks a request, whose people the desk mails instead.
+	byDesk bool
+}
+
 // deliver writes one row and, when it is new and wanted, mails it or queues
 // it for the digest. A request's people are mailed by the desk, not here.
-func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, s *subject, t tell) error {
+func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, at place, t tell) error {
 	var (
 		prefs    Preferences
 		inserted bool
@@ -341,7 +398,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, s *subject, t t
 			INSERT INTO notification (org_id, user_id, issue_id, kind, title, body, link, event_id)
 			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (user_id, event_id, kind) DO NOTHING
-			RETURNING id`, t.user, s.id, t.kind, t.title, t.body, f.appURL+"/issues/"+s.key, eventID).Scan(&id)
+			RETURNING id`, t.user, at.issueID, t.kind, t.title, t.body, at.link, eventID).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -349,7 +406,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, s *subject, t t
 			return err
 		}
 		inserted = true
-		if !prefs.mails(t.kind) || s.isRequest || f.mailer == nil {
+		if !prefs.mails(t.kind) || at.byDesk || f.mailer == nil {
 			return nil
 		}
 		if prefs.Digest != DigestOff {
@@ -363,7 +420,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, s *subject, t t
 	}
 	return f.mailer.Send(ctx, mail.Mail{
 		To:      to,
-		Subject: fmt.Sprintf("[%s] %s", s.key, t.title),
-		Body:    fmt.Sprintf("%s\n\n%s\n\nOpen it at %s/issues/%s\n", t.title, t.body, f.appURL, s.key),
+		Subject: at.tag + t.title,
+		Body:    fmt.Sprintf("%s\n\n%s\n\nOpen it at %s\n", t.title, t.body, at.link),
 	})
 }
