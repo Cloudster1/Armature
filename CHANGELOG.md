@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a scrum master or project administrator can change or remove only
+  the absences they recorded themselves, never the person's own or an
+  administrator's, and the person is told in their inbox, and by mail if they
+  want it, whenever somebody else records, changes or removes their days
+  (#39).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
