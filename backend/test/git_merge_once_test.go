@@ -9,11 +9,6 @@ import (
 	"github.com/armature/armature/backend/internal/git"
 )
 
-// deleteBranch is GitHub's push for a branch removed on the host.
-func deleteBranch(branch, before string) string {
-	return `{"ref":"refs/heads/` + branch + `","before":"` + before + `","after":"0000000000000000000000000000000000000000","created":false,"deleted":true,"commits":[]}`
-}
-
 func TestAMergeMovesTheIssueOnce(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "mergeonce")
@@ -78,14 +73,22 @@ func TestAMergeMovesTheIssueOnce(t *testing.T) {
 	})
 
 	t.Run("a branch made again under the merged name is not marked merged by the old pull request", func(t *testing.T) {
-		deliver(t, svc, repo, "push", deleteBranch(branch, "e0000001"))
+		deliver(t, svc, repo, "push", pushDeleting(branch, "e0000001"))
 		deliver(t, svc, repo, "push", pushTo(branch, "0000000000000000000000000000000000000000", "e0000002", "start over"))
 		deliver(t, svc, repo, "pull_request", pull("edited", 21, title, branch, "e0000001", true))
 		dev, err := svc.ForIssue(ws.ctx, found.Key)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(dev.Branches) != 1 || dev.Branches[0].HeadSHA != "e0000002" || dev.Branches[0].MergedAt != nil {
+		// The merged branch the host deleted is kept beside the new one, marked
+		// both; the new one under its name is the only branch still there.
+		var live []git.Branch
+		for _, b := range dev.Branches {
+			if b.DeletedAt == nil {
+				live = append(live, b)
+			}
+		}
+		if len(live) != 1 || live[0].HeadSHA != "e0000002" || live[0].MergedAt != nil {
 			t.Errorf("branches = %+v, want the new branch unmerged", dev.Branches)
 		}
 	})

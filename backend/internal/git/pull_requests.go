@@ -76,7 +76,7 @@ func (s *Service) recordPull(ctx context.Context, tx db.DBTX, repo *Repository, 
 	// row says so from now on.
 	if _, err := tx.Exec(ctx, `
 		UPDATE git_branch SET merged_at = COALESCE(merged_at, $3, now())
-		WHERE repository_id = $1 AND name = $2`, repo.ID, pr.SourceBranch, pr.MergedAt); err != nil {
+		WHERE repository_id = $1 AND name = $2 AND deleted_at IS NULL`, repo.ID, pr.SourceBranch, pr.MergedAt); err != nil {
 		return nil, fmt.Errorf("mark %q merged: %w", pr.SourceBranch, err)
 	}
 	return &mergedPull{pr: pr, keys: unique(keys)}, nil
