@@ -4,13 +4,54 @@ package test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
+	"github.com/armature/armature/backend/internal/board"
+	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/perm"
 )
+
+// openingBoard is the id of the board the workspace's project opens on, which
+// is the one its lanes are configured through in the service level tests.
+func (ws *workspace) openingBoard(t *testing.T) uuid.UUID {
+	t.Helper()
+	b, err := ws.boards.ForProject(ws.ctx, ws.project.Key)
+	if err != nil {
+		t.Fatalf("load board: %v", err)
+	}
+	return b.ID
+}
+
+// grouped is a board edit that changes nothing but the grouping.
+func grouped(g board.Grouping) board.UpdateBoardInput {
+	return board.UpdateBoardInput{GroupBy: &g}
+}
+
+// Another organization's board is not there, whichever lane is named with it.
+func TestAnotherOrganizationsBoardCannotBeConfigured(t *testing.T) {
+	h := newHarness(t)
+	alpha := h.newWorkspace(t, "lanesalpha")
+	beta := h.newWorkspace(t, "lanesbeta")
+	betaBoard := beta.openingBoard(t)
+	betaLane := beta.swimlane(t, bootstrap.StatusToDo)
+
+	if _, _, err := alpha.boards.AddSwimlane(alpha.ctx, betaBoard, board.AddSwimlaneInput{Name: "Planted"}); !errors.Is(err, board.ErrNotFound) {
+		t.Errorf("adding a lane to beta's board: error = %v, want ErrNotFound", err)
+	}
+	if _, err := alpha.boards.DeleteSwimlane(alpha.ctx, betaBoard, betaLane.ID); !errors.Is(err, board.ErrNotFound) {
+		t.Errorf("deleting beta's lane: error = %v, want ErrNotFound", err)
+	}
+	if lanes := laneRows(t, h, betaBoard.String()); slices.ContainsFunc(lanes, func(l string) bool { return strings.HasPrefix(l, "Planted/") }) || len(lanes) == 0 {
+		t.Errorf("beta's board was changed by alpha: %v", lanes)
+	}
+}
 
 // laneRows reads a board's swimlanes straight from the database, as
 // "name/position/limit" in order, so no service read path can hide a stray write.

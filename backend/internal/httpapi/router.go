@@ -423,11 +423,6 @@ func (s *Server) boardRoutes(r chi.Router) {
 
 		// Connecting a repository is configuring the project.
 		r.With(s.requireFeature(project.FeatureRepositories)).Post("/projects/{projectKey}/repositories", s.handleConnectRepository)
-		r.Patch("/projects/{projectKey}/board", s.handleUpdateBoard)
-		r.Post("/projects/{projectKey}/board/swimlanes", s.handleAddSwimlane)
-		r.Put("/projects/{projectKey}/board/swimlanes", s.handleReorderSwimlanes)
-		r.Patch("/projects/{projectKey}/board/swimlanes/{swimlaneID}", s.handleUpdateSwimlane)
-		r.Delete("/projects/{projectKey}/board/swimlanes/{swimlaneID}", s.handleDeleteSwimlane)
 	})
 
 	// A board addressed by id carries no project key in the path,
@@ -437,6 +432,12 @@ func (s *Server) boardRoutes(r chi.Router) {
 		r.Use(requireObjectPerm(perm.BoardConfigure))
 		r.Patch("/boards/{boardID}", s.handleUpdateBoardByID)
 		r.Delete("/boards/{boardID}", s.handleDeleteBoard)
+		// A project has several boards, so its lanes are addressed by
+		// the board they are on, never by the project.
+		r.Post("/boards/{boardID}/swimlanes", s.handleAddSwimlane)
+		r.Put("/boards/{boardID}/swimlanes", s.handleReorderSwimlanes)
+		r.Patch("/boards/{boardID}/swimlanes/{swimlaneID}", s.handleUpdateSwimlane)
+		r.Delete("/boards/{boardID}/swimlanes/{swimlaneID}", s.handleDeleteSwimlane)
 	})
 
 	// Repositories and what flows in from them.

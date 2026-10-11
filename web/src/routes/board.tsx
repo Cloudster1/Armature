@@ -56,6 +56,7 @@ function BoardPage() {
             projectKey={projectKey}
             boardId={board?.id}
             onPick={(picked) => setBoard(picked ? { id: picked.id, name: picked.name } : null)}
+            canManage={canConfigure}
           />
         }
         actions={
@@ -92,12 +93,12 @@ function BoardPage() {
         <div className="min-w-0">
           <BoardView projectKey={projectKey} boardId={board?.id} />
         </div>
-        {configuring && (
+        {configuring && showing && (
           <aside className="min-w-0">
             <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">
               Swimlanes
             </h2>
-            <SwimlaneEditor projectKey={projectKey} />
+            <SwimlaneEditor boardId={showing.id} />
           </aside>
         )}
       </div>

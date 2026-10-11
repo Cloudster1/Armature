@@ -184,18 +184,21 @@ export function useMoveCard() {
   });
 }
 
+// A project can have several boards, so lanes are always reached through the
+// board they are on.
+
 export function useAddSwimlane() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      projectKey,
+      boardId,
       ...body
     }: {
-      projectKey: string;
+      boardId: string;
       name: string;
       statusIds?: string[];
       wipLimit?: number;
-    }) => request<{ swimlane: Swimlane }>(`/projects/${projectKey}/board/swimlanes`, { method: "POST", body }),
+    }) => request<{ swimlane: Swimlane }>(`/boards/${boardId}/swimlanes`, { method: "POST", body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKey }),
   });
 }
@@ -204,17 +207,17 @@ export function useUpdateSwimlane() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      projectKey,
+      boardId,
       swimlaneId,
       ...body
     }: {
-      projectKey: string;
+      boardId: string;
       swimlaneId: string;
       name?: string;
       wipLimit?: number;
       statusIds?: string[];
     }) =>
-      request<void>(`/projects/${projectKey}/board/swimlanes/${swimlaneId}`, {
+      request<void>(`/boards/${boardId}/swimlanes/${swimlaneId}`, {
         method: "PATCH",
         body,
       }),
@@ -225,8 +228,8 @@ export function useUpdateSwimlane() {
 export function useDeleteSwimlane() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectKey, swimlaneId }: { projectKey: string; swimlaneId: string }) =>
-      request<void>(`/projects/${projectKey}/board/swimlanes/${swimlaneId}`, { method: "DELETE" }),
+    mutationFn: ({ boardId, swimlaneId }: { boardId: string; swimlaneId: string }) =>
+      request<void>(`/boards/${boardId}/swimlanes/${swimlaneId}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKey }),
   });
 }
@@ -234,17 +237,8 @@ export function useDeleteSwimlane() {
 export function useReorderSwimlanes() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectKey, order }: { projectKey: string; order: string[] }) =>
-      request<void>(`/projects/${projectKey}/board/swimlanes`, { method: "PUT", body: { order } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKey }),
-  });
-}
-
-export function useSetGrouping() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ projectKey, groupBy }: { projectKey: string; groupBy: Grouping }) =>
-      request<void>(`/projects/${projectKey}/board`, { method: "PATCH", body: { groupBy } }),
+    mutationFn: ({ boardId, order }: { boardId: string; order: string[] }) =>
+      request<void>(`/boards/${boardId}/swimlanes`, { method: "PUT", body: { order } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKey }),
   });
 }

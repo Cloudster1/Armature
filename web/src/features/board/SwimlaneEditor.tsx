@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
 import {
   useAddSwimlane,
-  useBoard,
+  useBoardById,
   useDeleteSwimlane,
   useReorderSwimlanes,
-  useSetGrouping,
+  useUpdateBoard,
   useUpdateSwimlane,
   type Grouping,
   type Swimlane,
@@ -20,17 +20,12 @@ const groupings: Array<{ value: Grouping; label: string }> = [
   { value: "type", label: "Issue type" },
 ];
 
-/**
- * Configures a board's swimlanes.
- *
- * A swimlane is nothing but a set of ticket states, so this screen is really a
- * mapping editor: which states belong to which lane, in what order the lanes
- * appear, and how many cards each should hold at once.
- */
-export function SwimlaneEditor({ projectKey }: { projectKey: string }) {
-  const { data, isLoading } = useBoard(projectKey);
+/** Maps ticket states onto the lanes of the board it is handed, the one on
+ * screen; a project can have several, so it never looks the board up itself. */
+export function SwimlaneEditor({ boardId }: { boardId: string }) {
+  const { data, isLoading } = useBoardById(boardId);
   const { data: statusData } = useStatuses();
-  const setGrouping = useSetGrouping();
+  const updateBoard = useUpdateBoard();
   const reorder = useReorderSwimlanes();
   const [adding, setAdding] = useState(false);
 
@@ -55,12 +50,13 @@ export function SwimlaneEditor({ projectKey }: { projectKey: string }) {
     const swapWith = index + direction;
     if (swapWith < 0 || swapWith >= next.length) return;
     [next[index], next[swapWith]] = [next[swapWith]!, next[index]!];
-    reorder.mutate({ projectKey, order: next.map((l) => l.id) });
+    reorder.mutate({ boardId, order: next.map((l) => l.id) });
   }
 
   return (
     <div className="space-y-4">
       {reorder.error && <ErrorBanner>{(reorder.error as Error).message}</ErrorBanner>}
+      {updateBoard.error && <ErrorBanner>{(updateBoard.error as Error).message}</ErrorBanner>}
 
       <Card className="p-4">
         <h3 className="text-sm font-medium text-ink">Rows within each swimlane</h3>
@@ -69,7 +65,7 @@ export function SwimlaneEditor({ projectKey }: { projectKey: string }) {
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {groupings.map((option) => (
-            <Chip key={option.value} pressed={board.groupBy === option.value} onClick={() => setGrouping.mutate({ projectKey, groupBy: option.value })}>
+            <Chip key={option.value} pressed={board.groupBy === option.value} onClick={() => updateBoard.mutate({ id: boardId, groupBy: option.value })}>
               {option.label}
             </Chip>
           ))}
@@ -92,7 +88,7 @@ export function SwimlaneEditor({ projectKey }: { projectKey: string }) {
         {swimlanes.map((swimlane, index) => (
           <li key={swimlane.id}>
             <SwimlaneRow
-              projectKey={projectKey}
+              boardId={boardId}
               swimlane={swimlane}
               statuses={statuses}
               claimedBy={claimedBy}
@@ -107,7 +103,7 @@ export function SwimlaneEditor({ projectKey }: { projectKey: string }) {
 
       {adding ? (
         <AddSwimlaneForm
-          projectKey={projectKey}
+          boardId={boardId}
           available={unclaimed}
           onDone={() => setAdding(false)}
         />
@@ -121,7 +117,7 @@ export function SwimlaneEditor({ projectKey }: { projectKey: string }) {
 }
 
 function SwimlaneRow({
-  projectKey,
+  boardId,
   swimlane,
   statuses,
   claimedBy,
@@ -130,7 +126,7 @@ function SwimlaneRow({
   isLast,
   onMove,
 }: {
-  projectKey: string;
+  boardId: string;
   swimlane: Swimlane;
   statuses: Status[];
   claimedBy: Map<string, string>;
@@ -151,13 +147,13 @@ function SwimlaneRow({
     const next = new Set(selected);
     if (next.has(statusId)) next.delete(statusId);
     else next.add(statusId);
-    update.mutate({ projectKey, swimlaneId: swimlane.id, statusIds: [...next] });
+    update.mutate({ boardId, swimlaneId: swimlane.id, statusIds: [...next] });
   }
 
   function saveDetails(event: FormEvent) {
     event.preventDefault();
     update.mutate({
-      projectKey,
+      boardId,
       swimlaneId: swimlane.id,
       name,
       wipLimit: Number(wipLimit) || 0,
@@ -220,7 +216,7 @@ function SwimlaneRow({
             variant="ghost"
             disabled={!canDelete}
             loading={remove.isPending}
-            onClick={async () => (await confirm({ noun: "swimlane", body: `${swimlane.name} goes from the board; the statuses it showed move to the next one.` })) && remove.mutate({ projectKey, swimlaneId: swimlane.id })}
+            onClick={async () => (await confirm({ noun: "swimlane", body: `${swimlane.name} goes from the board; the statuses it showed move to the next one.` })) && remove.mutate({ boardId, swimlaneId: swimlane.id })}
             title={canDelete ? "Delete this swimlane" : "A board needs at least one swimlane"}
           >
             Delete
@@ -254,11 +250,11 @@ function SwimlaneRow({
 }
 
 function AddSwimlaneForm({
-  projectKey,
+  boardId,
   available,
   onDone,
 }: {
-  projectKey: string;
+  boardId: string;
   available: Status[];
   onDone: () => void;
 }) {
@@ -268,7 +264,7 @@ function AddSwimlaneForm({
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    add.mutate({ projectKey, name, statusIds: chosen }, { onSuccess: onDone });
+    add.mutate({ boardId, name, statusIds: chosen }, { onSuccess: onDone });
   }
 
   return (

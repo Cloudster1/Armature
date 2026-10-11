@@ -31,7 +31,7 @@ type AddSwimlaneInput struct {
 }
 
 // AddSwimlane appends a swimlane to a board.
-func (s *Service) AddSwimlane(ctx context.Context, projectKey string, in AddSwimlaneInput) (*Swimlane, db.LSN, error) {
+func (s *Service) AddSwimlane(ctx context.Context, boardID uuid.UUID, in AddSwimlaneInput) (*Swimlane, db.LSN, error) {
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return nil, 0, errors.New("a swimlane needs a name")
@@ -42,8 +42,7 @@ func (s *Service) AddSwimlane(ctx context.Context, projectKey string, in AddSwim
 
 	var lane Swimlane
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		boardID, err := boardIDFor(ctx, tx, projectKey)
-		if err != nil {
+		if err := ensureBoard(ctx, tx, boardID); err != nil {
 			return err
 		}
 
@@ -104,10 +103,9 @@ type UpdateSwimlaneInput struct {
 
 // UpdateSwimlane renames a swimlane, changes its limit, or reassigns which
 // states belong to it.
-func (s *Service) UpdateSwimlane(ctx context.Context, projectKey string, swimlaneID uuid.UUID, in UpdateSwimlaneInput) (db.LSN, error) {
+func (s *Service) UpdateSwimlane(ctx context.Context, boardID uuid.UUID, swimlaneID uuid.UUID, in UpdateSwimlaneInput) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		boardID, err := boardIDFor(ctx, tx, projectKey)
-		if err != nil {
+		if err := ensureBoard(ctx, tx, boardID); err != nil {
 			return err
 		}
 		if err := ensureOnBoard(ctx, tx, boardID, swimlaneID); err != nil {
@@ -154,10 +152,9 @@ func (s *Service) UpdateSwimlane(ctx context.Context, projectKey string, swimlan
 // The whole order is given at once. Sending one lane's new index would need the
 // server to guess what happened to the others, and two people reordering at the
 // same time would interleave into something neither asked for.
-func (s *Service) ReorderSwimlanes(ctx context.Context, projectKey string, order []uuid.UUID) (db.LSN, error) {
+func (s *Service) ReorderSwimlanes(ctx context.Context, boardID uuid.UUID, order []uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		boardID, err := boardIDFor(ctx, tx, projectKey)
-		if err != nil {
+		if err := ensureBoard(ctx, tx, boardID); err != nil {
 			return err
 		}
 
@@ -186,10 +183,9 @@ func (s *Service) ReorderSwimlanes(ctx context.Context, projectKey string, order
 
 // DeleteSwimlane removes a swimlane. Its states become unmapped, so the cards
 // in them move to the board's unmapped area rather than disappearing.
-func (s *Service) DeleteSwimlane(ctx context.Context, projectKey string, swimlaneID uuid.UUID) (db.LSN, error) {
+func (s *Service) DeleteSwimlane(ctx context.Context, boardID uuid.UUID, swimlaneID uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		boardID, err := boardIDFor(ctx, tx, projectKey)
-		if err != nil {
+		if err := ensureBoard(ctx, tx, boardID); err != nil {
 			return err
 		}
 
@@ -257,17 +253,17 @@ func assignStatuses(ctx context.Context, tx db.DBTX, boardID, swimlaneID uuid.UU
 	return nil
 }
 
-func boardIDFor(ctx context.Context, tx db.DBTX, projectKey string) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := tx.QueryRow(ctx, `
-		SELECT b.id FROM board b
-		JOIN project p ON p.id = b.project_id
-		WHERE p.key = $1
-		ORDER BY b.created_at LIMIT 1`, project.NormalizeKey(projectKey)).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, ErrNotFound
+// ensureBoard answers a board the caller cannot see, another tenant's
+// included, the way it answers one that does not exist.
+func ensureBoard(ctx context.Context, tx db.DBTX, boardID uuid.UUID) error {
+	var exists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM board WHERE id = $1)`, boardID).Scan(&exists); err != nil {
+		return err
 	}
-	return id, err
+	if !exists {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func ensureOnBoard(ctx context.Context, tx db.DBTX, boardID, swimlaneID uuid.UUID) error {

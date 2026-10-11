@@ -344,6 +344,13 @@ with no board at all falls back to kanban, the type that shows work without a
 sprint. A backlog is derived, not stored: storing it would allow an issue to be
 in a backlog and a sprint, or in two backlogs, or in neither.
 
+Swimlanes, their limits and the grouping belong to one board, so they are
+written through routes that name it (`/boards/{boardID}/swimlanes`, `PATCH
+/boards/{boardID}`). The project-addressed routes they replaced could only mean
+one board, which was always the first, and the grouping one regrouped every
+board in the project; they are gone rather than kept as a second address for
+the first board.
+
 ### Team capacity is points per week, spread over the days a ticket is scheduled
 
 Capacity lived only on the sprint, which says nothing about a project that plans
