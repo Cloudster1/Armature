@@ -69,6 +69,9 @@ here in the branch that makes it.
 - Fixed: on a shared dashboard the Sprint history widget no longer offers a
   Curve button that only led to an error; the link shows the sprints and
   nothing a visitor cannot open (#58).
+- Fixed: a description or comment started in the side panel stays with its
+  own issue: stepping to another issue no longer shows it there or saves it
+  there, and stepping back finds the draft where it was left (#109).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
