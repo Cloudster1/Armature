@@ -34,6 +34,11 @@ A session's position only ever rises. Requests finish out of order, so behind a
 load balancer the older of two writes can report last; the shared tracker keeps
 the greater position with a compare-and-set script in Valkey, as the
 in-process tracker always has, rather than letting the late one walk it back.
+replication, so a lagging replica costs latency and never correctness. A
+replica leaves the rotation on the median of its last few lag readings
+(`ARMATURE_DB_REPLICA_LAG_SAMPLES`), not on one: a single slow health check is
+noise, and a replica flapping in and out on it sends reads to the primary in
+bursts. A receiver that has stopped streaming takes it out at once.
 
 **Reconsider if** replica lag is routinely under a millisecond and the pinning
 machinery is buying nothing, or if the primary is so overloaded that fallback

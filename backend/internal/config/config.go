@@ -151,6 +151,9 @@ type Auth struct {
 	PortalCodeCooldown time.Duration
 	// Signup is open, first or closed: who may create an organization.
 	Signup string
+	// OIDCRedirectURL is what the identity provider sends people back to; it
+	// must match what is registered there exactly.
+	OIDCRedirectURL string
 }
 
 // Render names the render service, when there is one.
@@ -207,7 +210,7 @@ func Load() (Config, error) {
 		Mail: Mail{
 			SMTPAddr:    env("ARMATURE_SMTP_ADDR", ""),
 			From:        env("ARMATURE_MAIL_FROM", "Armature <no-reply@armature.test>"),
-			AppBaseURL:  env("ARMATURE_APP_URL", "http://localhost:5173"),
+			AppBaseURL:  strings.TrimSuffix(env("ARMATURE_APP_URL", DevAppURL), "/"),
 			Inbox:       env("ARMATURE_MAIL_INBOX", ""),
 			InsecureTLS: envBool("ARMATURE_MAIL_INSECURE_TLS", false),
 			POP3: POP3{
@@ -255,6 +258,7 @@ func Load() (Config, error) {
 			ReadYourWritesTTL:  envDur("ARMATURE_READ_YOUR_WRITES_TTL", 30*time.Second),
 			PortalCodeCooldown: envDur("ARMATURE_PORTAL_CODE_COOLDOWN", time.Minute),
 			Signup:             env("ARMATURE_SIGNUP", "open"),
+			OIDCRedirectURL:    env("ARMATURE_OIDC_REDIRECT_URL", DevOIDCRedirectURL),
 		},
 		Webhooks: Webhooks{
 			Concurrency: envCount("ARMATURE_WEBHOOK_CONCURRENCY", DefaultWebhookConcurrency),
@@ -276,6 +280,9 @@ func Load() (Config, error) {
 	default:
 		problems = append(problems, fmt.Sprintf("ARMATURE_ENV %q must be development, staging or production", c.Env))
 	}
+	if c.DB.ReplicaLagSamples < 1 {
+		problems = append(problems, "ARMATURE_DB_REPLICA_LAG_SAMPLES must be at least 1; set it to how many lag readings decide a replica's health")
+	}
 	if c.DB.MinConns > c.DB.MaxConns {
 		problems = append(problems, "ARMATURE_DB_MIN_CONNS must not exceed ARMATURE_DB_MAX_CONNS")
 	}
@@ -283,6 +290,10 @@ func Load() (Config, error) {
 	// what production is held to; development is the one that runs locally.
 	if c.Env != "development" && !c.Auth.SecureCookies {
 		problems = append(problems, "ARMATURE_SECURE_COOKIES must be true outside development")
+	}
+	if c.Env != "development" {
+		problems = append(problems, refuseLoopback("ARMATURE_APP_URL", c.Mail.AppBaseURL, "the address people open Armature at")...)
+		problems = append(problems, refuseLoopback("ARMATURE_OIDC_REDIRECT_URL", c.Auth.OIDCRedirectURL, "the callback registered with the identity provider")...)
 	}
 	switch c.Auth.Signup {
 	case "open", "first", "closed":

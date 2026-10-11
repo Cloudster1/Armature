@@ -165,6 +165,11 @@ here in the branch that makes it.
   else's webhooks; deliveries go out side by side, at most two to any one
   endpoint, an endpoint that keeps timing out is paused for five minutes on its
   own, and `ARMATURE_WEBHOOK_CONCURRENCY` (8) sets how many go at once (#99).
+- Fixed: a replica leaves the rotation on the median of its last
+  `ARMATURE_DB_REPLICA_LAG_SAMPLES` lag readings instead of one slow check;
+  staging and production refuse to start while `ARMATURE_APP_URL` or
+  `ARMATURE_OIDC_REDIRECT_URL` points at localhost, and the README lists
+  every variable the server reads (#102).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
