@@ -95,7 +95,8 @@ func (s *Service) Dashboards(ctx context.Context, projectKey string) ([]Dashboar
 	if err != nil {
 		return nil, err
 	}
-	return s.dashboards(ctx, projectKey)
+	// What was just made is on the primary; a replica may not have it yet.
+	return s.dashboards(db.PinPrimary(ctx), projectKey)
 }
 
 func (s *Service) dashboards(ctx context.Context, projectKey string) ([]Dashboard, error) {
