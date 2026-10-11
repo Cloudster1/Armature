@@ -1260,8 +1260,9 @@ anything. Two columns say two things: the rail is what is always there, the
 sidebar is the map, and folding the map leaves the rail whole. The groups fold
 and remember it; Project Admin folds by default since setup is visited less than
 work. A project's pages are in the sidebar with a switcher that keeps the page
-kind, so Board stays Board in the other project, and the command palette is the
-keyboard's sidebar. Below 1024px the sidebar becomes a rail of icons.
+kind, so Board stays Board in the other project (a sprint's board becomes the
+other project's Sprints, since the sprint is not theirs), and the command
+palette is the keyboard's sidebar. Below 1024px the sidebar becomes a rail of icons.
 
 The page's head draws into a strip over the content rather than moving out of
 the thirty-five pages that call it, and floats on glass so the title and the

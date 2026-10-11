@@ -30,6 +30,9 @@ export const PLAN_HEADER_ROW_HEIGHT = 23;
 /** How long an answer from the server stays fresh before a refetch, unless a query says otherwise. */
 export const QUERY_STALE_MS = 10_000;
 
+/** A typed date's year below this is one still being typed, such as 0002 on the way to 2026. */
+export const MIN_DATE_YEAR = 1000;
+
 /** How long the rarely-changing metadata lists stay fresh before a refetch. */
 export const META_STALE_MS = 5 * 60_000;
 

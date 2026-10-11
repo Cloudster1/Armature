@@ -95,15 +95,25 @@ function CommentForm({ issueKey }: { issueKey: string }) {
     [issueKey],
   );
 
+  // A ref, not isPending: a second Ctrl+Enter can land before the render that
+  // would show the first one pending.
+  const posting = useRef(false);
+
   // The promise outlives the page, so a comment that lands after a step away
   // still forgets its draft; a refusal is shown by the mutation's error.
   function post() {
-    if (!body) return;
+    if (!body || posting.current) return;
+    posting.current = true;
     const send = internal ? note : add;
-    send.mutateAsync({ key: issueKey, body }).then(() => {
-      forgetDraft("comment", issueKey);
-      editor.current?.clear();
-    }, () => {});
+    send
+      .mutateAsync({ key: issueKey, body })
+      .then(() => {
+        forgetDraft("comment", issueKey);
+        editor.current?.clear();
+      }, () => {})
+      .finally(() => {
+        posting.current = false;
+      });
   }
 
   function onSubmit(event: FormEvent) {

@@ -1,5 +1,6 @@
-import { MutationCache, QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
+import { meQueryKey } from "@/api/auth";
 import { QUERY_STALE_MS } from "@/config";
 
 /** Said when a change failed without the server giving a sentence of its own. */
@@ -9,15 +10,26 @@ type Listener = (message: string) => void;
 
 const listeners = new WeakMap<QueryClient, Set<Listener>>();
 
-/**
- * The application's one query client. A change that fails, and whose caller
- * does not show the failure itself, is passed to whoever listens for it.
- */
-export function createQueryClient(): QueryClient {
+/** The one query client: a 401 means the session ended and goes to onSessionEnded;
+ * another failed change its caller does not show goes to the listeners. */
+export function createQueryClient(onSessionEnded: () => void = () => {}): QueryClient {
+  // Only a session the page believed in can end; a refused sign-in has none,
+  // and once it is dropped the other requests still in flight change nothing.
+  function refused(error: unknown): boolean {
+    if (!(error instanceof ApiError) || !error.isSessionMissing) return false;
+    if (queryClient.getQueryData(meQueryKey) !== undefined) {
+      queryClient.removeQueries({ queryKey: meQueryKey, exact: true });
+      onSessionEnded();
+    }
+    return true;
+  }
+
   const queryClient: QueryClient = new QueryClient({
+    queryCache: new QueryCache({ onError: (error) => void refused(error) }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
-        if (mutation.meta?.handlesError) return;
+        // Sign in says what happened to the session; a toast would only repeat it.
+        if (refused(error) || mutation.meta?.handlesError) return;
         const message = error instanceof ApiError ? error.message : UNSAVED_MESSAGE;
         listeners.get(queryClient)?.forEach((listener) => listener(message));
       },

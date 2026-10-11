@@ -15,7 +15,7 @@ import {
   type Sprint,
   type SprintPlan,
 } from "@/api/sprints";
-import { Button, Card, EmptyState, ErrorBanner, Field, Input, Segmented, SelectInput, cx } from "@/components/ui";
+import { Button, Card, DateInput, EmptyState, ErrorBanner, Field, Input, Segmented, SelectInput, cx } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { StatusBadge, TypeBadge } from "@/features/issues/badges";
 import { describe, teamHours } from "@/features/plan/SprintBands";
@@ -255,11 +255,11 @@ function SprintSettings({ sprint, hours }: { sprint: Sprint; hours: string | nul
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
       <label htmlFor={`from-${sprint.id}`}>From</label>
       <div className="w-36">
-        <Input id={`from-${sprint.id}`} type="date" controlSize="sm" value={sprint.startsOn ? sprint.startsOn.slice(0, 10) : ""} onChange={(event) => set("startsOn", event.target.value)} />
+        <DateInput id={`from-${sprint.id}`} controlSize="sm" value={sprint.startsOn ? sprint.startsOn.slice(0, 10) : ""} onCommit={(day) => set("startsOn", day)} />
       </div>
       <label htmlFor={`to-${sprint.id}`}>to</label>
       <div className="w-36">
-        <Input id={`to-${sprint.id}`} type="date" controlSize="sm" value={sprint.endsOn ? sprint.endsOn.slice(0, 10) : ""} onChange={(event) => set("endsOn", event.target.value)} />
+        <DateInput id={`to-${sprint.id}`} controlSize="sm" value={sprint.endsOn ? sprint.endsOn.slice(0, 10) : ""} onCommit={(day) => set("endsOn", day)} />
       </div>
       <label htmlFor={`capacity-${sprint.id}`} className="ml-2">
         Capacity

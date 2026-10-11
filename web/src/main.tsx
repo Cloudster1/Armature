@@ -15,7 +15,10 @@ applyTheme(readTheme());
 const cached = readCachedTheme();
 if (cached) applyCustomTheme(cached.css);
 
-const queryClient = createQueryClient();
+// An ended session goes to sign in, which brings the person back to this page.
+const queryClient = createQueryClient(() => {
+  void router.navigate({ to: "/login", search: { next: router.state.location.href } });
+});
 
 const router = buildRouter(queryClient);
 
