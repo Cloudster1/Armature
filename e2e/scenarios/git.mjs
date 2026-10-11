@@ -180,6 +180,14 @@ scenario("a branch made from a ticket is a real branch, and what happens to it c
     await eventually(page, `[data-branch="${suggested}"][data-branch-merged="true"]`);
     detail = await bodyText(page);
     expect.contains(detail, "merged", "and the merge is on the ticket");
+
+    // Deleting the merged branch, as hosts do once it is in, keeps it on the
+    // ticket: the merge is what the ticket needs to remember.
+    await gitea("DELETE", `/repos/${repo.fullName}/branches/${suggested}`);
+    const gone = `[data-branch="${suggested}"][data-branch-repository="${repo.fullName}"]`;
+    await eventually(page, `${gone}[data-branch-deleted="true"]`);
+    expect.contains(await textOf(page, gone), "merged, deleted", "the branch says it was merged, then deleted");
+    expect.truthy(!(await page.$(`${gone} a[href]`)), "and no longer links to a branch that is gone");
   } finally {
     await repo.remove();
     await second.remove();
