@@ -75,6 +75,18 @@ transaction that then rolls back, or lost for one that committed. Writing the
 event to a table in the same transaction removes the disagreement entirely, at
 the cost of a relay and at-least-once delivery.
 
+The worker keeps the promise to the end. A consumer acknowledges an event only
+once it was handled, or once its handler says no attempt can help; anything
+else stays pending, and every group claims what sat unacknowledged for a
+minute, on start and every half minute, so a failover or a restart costs a
+delay rather than the event. A shutdown finishes the event in hand on a context
+of its own and leaves the rest of the batch to the next worker. After five
+attempts the event is set aside: acknowledged, and written into the
+organization's audit log as `event.dead_lettered`. The audit log is the
+dead-letter record rather than a table of its own because its administrators
+already read it, it is kept and exported on its own schedule, and the event
+itself stays in the outbox.
+
 **Reconsider if** we adopt a broker with transactional guarantees against
 Postgres itself.
 
@@ -750,8 +762,9 @@ needs.
 
 Comments back to a pull request are posted by the worker reading the event
 stream. Posting from inside the transition would make every transition wait on a
-host, and fail when the host does. A host that refuses is logged and
-acknowledged, not retried forever.
+host, and fail when the host does. A host that refuses is tried again like any
+failed event, but not once another pull request was told, since a retry would
+tell that one twice; the event is then set aside, not retried forever.
 
 ### A branch made from a ticket is the ticket's, whatever it is called
 

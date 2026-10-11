@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -29,53 +28,16 @@ type FanOut struct {
 	log    *slog.Logger
 	appURL string
 	group  string
-	block  time.Duration
 }
 
 // NewFanOut builds the consumer. A nil mailer means the inbox alone is written.
 func NewFanOut(cluster *db.Cluster, rdb *redis.Client, mailer mail.Mailer, appURL string, log *slog.Logger) *FanOut {
-	return &FanOut{db: cluster, redis: rdb, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), group: "notify", block: 5 * time.Second}
+	return &FanOut{db: cluster, redis: rdb, mailer: mailer, log: log, appURL: strings.TrimRight(appURL, "/"), group: "notify"}
 }
 
 // Run consumes the stream until the context ends.
 func (f *FanOut) Run(ctx context.Context) error {
-	err := f.redis.XGroupCreateMkStream(ctx, events.StreamKey, f.group, "$").Err()
-	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
-		return fmt.Errorf("create consumer group: %w", err)
-	}
-	for {
-		if ctx.Err() != nil {
-			return nil
-		}
-		streams, err := f.redis.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group: f.group, Consumer: "worker", Streams: []string{events.StreamKey, ">"}, Count: 50, Block: f.block,
-		}).Result()
-		if errors.Is(err, redis.Nil) {
-			continue
-		}
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil
-			}
-			f.log.Warn("notify read failed", "error", err)
-			time.Sleep(time.Second)
-			continue
-		}
-		for _, stream := range streams {
-			for _, msg := range stream.Messages {
-				e := events.FromMessage(msg)
-				hctx, done := events.Continue(ctx, e, f.group)
-				err := f.Handle(hctx, e)
-				done(err)
-				if err != nil {
-					f.log.Warn("notify could not act on an event", "id", msg.ID, "error", err)
-				}
-				if err := f.redis.XAck(ctx, events.StreamKey, f.group, msg.ID).Err(); err != nil {
-					f.log.Warn("notify could not acknowledge", "id", msg.ID, "error", err)
-				}
-			}
-		}
-	}
+	return events.NewConsumer(f.db, f.redis, f.log, f.group, f.Handle).Run(ctx)
 }
 
 // payload is every field any topic carries; a topic reads the ones it has.

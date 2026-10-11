@@ -26,6 +26,7 @@ var discardsAllowed = map[string]string{
 	"desk/inbound.go (*Inbound).finish":             "mail fetched from a mailbox; no request waits on it",
 	"desk/mail.go (*Notifier).Handle":               "an event consumer; no request waits on it",
 	"desk/watch.go (*Watch).Once":                   "the breach watch; no request waits on it",
+	"events/consumer.go (*Consumer).deadLetter":     "an event consumer; no request waits on it",
 	"events/relay.go (*Relay).once":                 "the outbox relay; no request waits on it",
 	"filter/subscriptions.go (*Subscriptions).send": "a scheduled mail; no request waits on it",
 	"notify/digest.go (*Digest).send":               "a scheduled mail; no request waits on it",

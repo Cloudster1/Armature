@@ -274,52 +274,15 @@ type Consumer struct {
 	redis *redis.Client
 	log   *slog.Logger
 	group string
-	block time.Duration
 }
 
 func NewConsumer(cluster *db.Cluster, rdb *redis.Client, log *slog.Logger) *Consumer {
-	return &Consumer{db: cluster, redis: rdb, log: log, group: "audit", block: 5 * time.Second}
+	return &Consumer{db: cluster, redis: rdb, log: log, group: "audit"}
 }
 
 // Run consumes the stream until the context ends.
 func (c *Consumer) Run(ctx context.Context) error {
-	err := c.redis.XGroupCreateMkStream(ctx, events.StreamKey, c.group, "$").Err()
-	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
-		return fmt.Errorf("create consumer group: %w", err)
-	}
-	for {
-		if ctx.Err() != nil {
-			return nil
-		}
-		streams, err := c.redis.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group: c.group, Consumer: "worker", Streams: []string{events.StreamKey, ">"}, Count: 50, Block: c.block,
-		}).Result()
-		if errors.Is(err, redis.Nil) {
-			continue
-		}
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil
-			}
-			c.log.Warn("audit read failed", "error", err)
-			time.Sleep(time.Second)
-			continue
-		}
-		for _, stream := range streams {
-			for _, msg := range stream.Messages {
-				e := events.FromMessage(msg)
-				hctx, done := events.Continue(ctx, e, c.group)
-				err := c.Handle(hctx, e)
-				done(err)
-				if err != nil {
-					c.log.Warn("audit could not record an event", "id", msg.ID, "error", err)
-				}
-				if err := c.redis.XAck(ctx, events.StreamKey, c.group, msg.ID).Err(); err != nil {
-					c.log.Warn("audit could not acknowledge", "id", msg.ID, "error", err)
-				}
-			}
-		}
-	}
+	return events.NewConsumer(c.db, c.redis, c.log, c.group, c.Handle).Run(ctx)
 }
 
 // Handle records one event when its topic is copied. Twice is once: the
