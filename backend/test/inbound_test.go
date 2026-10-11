@@ -259,6 +259,96 @@ func TestAReplyByMailBecomesAComment(t *testing.T) {
 	})
 }
 
+// An out-of-office is not the customer's answer: it is recorded as a machine's
+// and taken out of the box, and the request keeps waiting with its clocks held.
+func TestAnAutoReplyLeavesAWaitingRequestAlone(t *testing.T) {
+	h := newHarness(t)
+	ws := h.newWorkspace(t, "autoreply")
+	d, p := ws.aDesk(t, h, "Away desk")
+	customer := ws.customerOf(t, h, "traveller")
+	var customerEmail string
+	if err := h.super.QueryRow(context.Background(), `SELECT email FROM app_user WHERE id = $1`, customer.UserID).Scan(&customerEmail); err != nil {
+		t.Fatal(err)
+	}
+	types, _ := d.RequestTypes(ws.ctx, p.Key)
+	raised, _, err := d.Raise(ws.ctx, desk.RaiseInput{RequestTypeID: requestTypeNamed(t, types, "Ask a question").ID, Summary: "Where is the invoice?"}, customer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ws.move(t, h, raised.Key, "Start work")
+	ws.move(t, h, raised.Key, "Wait for customer")
+	held := mustTimers(t, d, ws, raised.Key)
+	if resolution := timerFor(t, held, desk.Resolution); !resolution.Paused {
+		t.Fatalf("resolution clock while waiting = %+v, want paused", resolution)
+	}
+
+	run := uuid.NewString()[:8]
+	mailer := &fakeMailer{}
+	inbox := &fakeInbox{mail: map[string]string{}}
+	reader := desk.NewInbound(h.cluster, d, ws.issues, mailer, inbox,
+		desk.InboundConfig{Address: inboxAddress, From: "Armature <no-reply@armature.test>", AppURL: "http://app.test"},
+		slog.New(slog.NewTextHandler(os.Stderr, nil)))
+
+	for i, header := range []string{"Auto-Submitted: auto-replied", "X-Autoreply: yes", "X-Autorespond: yes", "Precedence: auto_reply"} {
+		t.Run(header, func(t *testing.T) {
+			uid := fmt.Sprintf("away-%d", i)
+			id := fmt.Sprintf("away-%d-%s@example.com", i, run)
+			inbox.mail = map[string]string{uid: rawMail(customerEmail, inboxAddress, "Automatic reply: ["+raised.Key+"] replied", id,
+				"I am out of the office until Monday.", header, "In-Reply-To: <"+raised.Key+".0190@armature.test>")}
+			mailer.sent = nil
+			if err := reader.Once(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+
+			comments, err := ws.issues.Comments(ws.ctx, raised.Key, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(comments) != 0 {
+				t.Errorf("comments = %+v, want the out-of-office never posted", comments)
+			}
+			after, _ := ws.issues.ByKey(ws.ctx, raised.Key)
+			if !strings.EqualFold(after.Status.Name, desk.WaitingOnCustomer) {
+				t.Errorf("the request is %s, want it still waiting on the customer", after.Status.Name)
+			}
+			now := mustTimers(t, d, ws, raised.Key)
+			for _, before := range held {
+				got := timerFor(t, now, before.Metric)
+				if got.Paused != before.Paused || (got.RunningSince == nil) != (before.RunningSince == nil) || (got.CompletedAt == nil) != (before.CompletedAt == nil) {
+					t.Errorf("%s clock = %+v, want it as it was: %+v", before.Metric, got, before)
+				}
+			}
+
+			var outcome, detail string
+			var issueID *uuid.UUID
+			if err := h.super.QueryRow(context.Background(), `SELECT outcome, detail, issue_id FROM inbound_mail WHERE message_id = $1`, id).Scan(&outcome, &detail, &issueID); err != nil {
+				t.Fatalf("no row for %s: %v", id, err)
+			}
+			if outcome != "automatic" || detail == "" || issueID == nil || *issueID != raised.ID {
+				t.Errorf("recorded as %q, %q, on %v; want automatic, a reason, on the request", outcome, detail, issueID)
+			}
+			if len(inbox.deleted) != i+1 || inbox.deleted[i] != uid {
+				t.Errorf("deleted %v, want the out-of-office taken out of the box", inbox.deleted)
+			}
+			if len(mailer.sent) != 0 {
+				t.Errorf("a machine was answered: %+v", mailer.sent)
+			}
+		})
+	}
+
+	t.Run("the outcome is one the table knows, through SQL", func(t *testing.T) {
+		if _, err := h.super.Exec(context.Background(), `INSERT INTO inbound_mail (message_id, from_email, outcome) VALUES ($1, $2, 'automatic')`,
+			"sql-automatic-"+run+"@example.com", customerEmail); err != nil {
+			t.Errorf("an automatic outcome was refused: %v", err)
+		}
+		_, err := h.super.Exec(context.Background(), `INSERT INTO inbound_mail (message_id, from_email, outcome) VALUES ($1, $2, 'whatever')`,
+			"sql-whatever-"+run+"@example.com", customerEmail)
+		if err == nil || !strings.Contains(err.Error(), "inbound_mail_outcome_check") {
+			t.Errorf("an unknown outcome was allowed: %v", err)
+		}
+	})
+}
+
 // The real client against the development mailbox: a mail sent to Mailpit is
 // fetched over POP3 and consumed, and nothing else in the box is touched.
 func TestTheMailboxIsReadOverPOP3(t *testing.T) {

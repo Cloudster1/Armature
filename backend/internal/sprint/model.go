@@ -98,4 +98,7 @@ var (
 	ErrClosed = errors.New("that sprint is over")
 	// ErrTeamNotFound is returned for a team that is not in this project.
 	ErrTeamNotFound = errors.New("that team is not in this project")
+	// ErrOtherTeam is returned when carrying unfinished work into a sprint
+	// another team plans, where neither team's Sprints page would show it.
+	ErrOtherTeam = errors.New("unfinished work stays with its own team's sprints")
 )
