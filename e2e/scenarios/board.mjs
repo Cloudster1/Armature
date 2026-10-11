@@ -13,6 +13,7 @@ import {
   goto,
   issueRows,
   openIssueBeside,
+  selectByLabel,
   signUp,
   textOf,
   WAIT,
@@ -108,6 +109,32 @@ scenario("an issue opens beside the board and the arrow keys walk the cards", as
     );
     expect.truthy(await page.$(`[data-issue-panel="${cards[1]}"]`), "the panel outlived the drag");
     expect.truthy([first, second].includes(cards[1]), "the walked card is one of ours");
+  });
+});
+
+scenario("an edit made beside the board shows on its card without a reload", async ({ page }) => {
+  const who = await signUp(page);
+  const key = await createProject(page, "Edited");
+  const issueKey = await createIssue(page, key, "edit me in the panel");
+  const card = `[data-card="${issueKey}"]`;
+
+  await withViewport(page, 1600, async () => {
+    await goto(page, `/projects/${key}/board`);
+    await page.waitForSelector(card, { timeout: WAIT });
+    expect.truthy(await page.$(`${card} [title="Unassigned"]`), "the card starts with nobody on it");
+
+    await page.click(`[data-open-drawer="${issueKey}"]`);
+    await page.waitForSelector(`[data-issue-panel="${issueKey}"]`, { timeout: WAIT });
+
+    // The assignee and a label, both changed in the panel, reach the card it sits beside.
+    await selectByLabel(page, '[data-issue-panel] select[aria-label="Assignee"]', who.name);
+    await page.waitForSelector(`${card} [title="${who.name}"]`, { timeout: WAIT });
+
+    await page.type('[data-issue-panel] input[aria-label="Add a label"]', "backend");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(`${card} [data-label="backend"]`, { timeout: WAIT });
+
+    expect.truthy(await page.$(`[data-issue-panel="${issueKey}"]`), "the panel stayed open while the card caught up");
   });
 });
 

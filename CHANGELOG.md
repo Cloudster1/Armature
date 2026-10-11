@@ -113,6 +113,9 @@ here in the branch that makes it.
   moment it is sent and drops it the moment it is withdrawn; a webhook's
   delivery log shows a test or redelivery with its outcome, and a project
   given its default dashboard on first sight shows it at once (#100).
+- Fixed: an assignee, priority, summary, label or time changed in the issue
+  panel shows at once on the board, the plan, the calendar, the resources and
+  sprint planning beside it, instead of after the page is opened again (#110).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
