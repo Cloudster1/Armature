@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { type Issue, useIssueHierarchy, useTransitionIssue, useTransitions, useUpdateIssue } from "@/api/issues";
+import { type Issue, isStaleEdit, useIssueHierarchy, useTransitionIssue, useTransitions, useUpdateIssue } from "@/api/issues";
 import { Icon } from "@/components/icons";
 import { Button, ErrorBanner, IconButton, Input, cx } from "@/components/ui";
 import { StatusBadge, TypeBadge } from "./badges";
@@ -32,7 +32,7 @@ export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; edita
         )}
       </div>
       <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-        <SummaryEditor issueKey={issue.key} summary={issue.summary} editable={editable} />
+        <SummaryEditor issueKey={issue.key} summary={issue.summary} updatedAt={issue.updatedAt} editable={editable} />
         <TransitionBar issueKey={issue.key} />
       </div>
     </header>
@@ -46,13 +46,18 @@ function IssueAncestry({ issueKey }: { issueKey: string }) {
 
 // The summary is the most edited line on a tracker, so it edits in place:
 // click or press the pencil, Enter saves, Escape leaves it as it was.
-function SummaryEditor({ issueKey, summary, editable }: { issueKey: string; summary: string; editable: boolean }) {
+function SummaryEditor({ issueKey, summary, updatedAt, editable }: { issueKey: string; summary: string; updatedAt: string; editable: boolean }) {
   const update = useUpdateIssue();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(summary);
+  // Like the description: the edit names the copy it began from.
+  const [startedFrom, setStartedFrom] = useState(updatedAt);
+  const [overtaken, setOvertaken] = useState(false);
 
   function start() {
     setDraft(summary);
+    setStartedFrom(updatedAt);
+    setOvertaken(false);
     setEditing(true);
   }
   function save() {
@@ -61,7 +66,18 @@ function SummaryEditor({ issueKey, summary, editable }: { issueKey: string; summ
       setEditing(false);
       return;
     }
-    update.mutate({ key: issueKey, summary: next }, { onSuccess: () => setEditing(false) });
+    update.mutate(
+      { key: issueKey, summary: next, expectedUpdatedAt: overtaken ? updatedAt : startedFrom },
+      {
+        onSuccess: () => {
+          setOvertaken(false);
+          setEditing(false);
+        },
+        onError: (error) => {
+          if (isStaleEdit(error)) setOvertaken(true);
+        },
+      },
+    );
   }
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
@@ -81,12 +97,18 @@ function SummaryEditor({ issueKey, summary, editable }: { issueKey: string; summ
           autoFocus
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
-          onBlur={save}
+          // After a refusal, leaving the field must not quietly replace the newer summary.
+          onBlur={overtaken ? undefined : save}
           controlSize="lg"
           className="border-accent text-lg font-semibold tracking-tight"
           data-summary-editor
         />
         {update.error && <p className="mt-1 text-sm text-danger">{(update.error as Error).message}</p>}
+        {overtaken && (
+          <p className="mt-1 text-sm text-ink-muted" data-newer-summary>
+            It now reads: <span className="font-medium text-ink">{summary}</span>. Press Enter to save yours over it.
+          </p>
+        )}
       </div>
     );
   }

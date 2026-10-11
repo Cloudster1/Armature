@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { request } from "./client";
 import { INBOX_PAGE_SIZE, UNREAD_POLL_MS } from "@/config";
 
@@ -31,6 +32,7 @@ export const NOTIFICATION_KINDS: Array<{ kind: string; label: string }> = [
   { kind: "sla_breached", label: "A request misses its goal" },
   { kind: "rule", label: "An automation rule writes to me" },
   { kind: "filter", label: "A saved search reports" },
+  { kind: "absence", label: "Somebody else changes my absences" },
 ];
 
 const inboxKey = ["notifications"];

@@ -69,7 +69,7 @@ func (s *Service) SendDue(ctx context.Context) (int, error) {
 		}
 		var mu sync.Mutex
 		spread(ctx, found, s.concurrency, func(ctx context.Context, d due) bool {
-			_, timedOut, err := s.send(inOrg(ctx, d), d.id)
+			_, _, timedOut, err := s.send(inOrg(ctx, d), d.id)
 			if err != nil {
 				s.log.Warn("webhook attempt failed", "delivery", d.id, "error", err)
 			}
@@ -201,14 +201,14 @@ func why(err error) string {
 
 // attempt posts one logged delivery and records the outcome: delivered, or
 // failed with the next attempt scheduled, or given up.
-func (s *Service) attempt(ctx context.Context, deliveryID uuid.UUID) (*Delivery, error) {
-	out, _, err := s.send(ctx, deliveryID)
-	return out, err
+func (s *Service) attempt(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db.LSN, error) {
+	out, lsn, _, err := s.send(ctx, deliveryID)
+	return out, lsn, err
 }
 
 // send is attempt that also says whether the endpoint timed out, which is
 // what pauses it.
-func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, bool, error) {
+func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db.LSN, bool, error) {
 	var (
 		url, secret, topic string
 		body               []byte
@@ -223,10 +223,10 @@ func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, bo
 			WHERE d.id = $1`, deliveryID).Scan(&url, &secret, &topic, &body, &attempt, &endpointID, &eventID)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, false, ErrNotFound
+		return nil, 0, false, ErrNotFound
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, 0, false, err
 	}
 
 	status, sendErr := s.post(ctx, url, secret, topic, deliveryID, body)
@@ -248,7 +248,7 @@ func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, bo
 	}
 
 	var out *Delivery
-	_, err = s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if delivered {
 			_, err := tx.Exec(ctx, `UPDATE webhook_delivery SET status = $2, error = '', next_attempt_at = NULL, delivered_at = now() WHERE id = $1`, deliveryID, statusPtr)
 			if err != nil {
@@ -271,7 +271,7 @@ func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, bo
 		out, err = scanDelivery(tx.QueryRow(ctx, selectDeliveries+` WHERE id = $1`, deliveryID))
 		return err
 	})
-	return out, errText == notInTime, err
+	return out, lsn, errText == notInTime, err
 }
 
 // post sends one request and returns the status, or the error that stopped it.

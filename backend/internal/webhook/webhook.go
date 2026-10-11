@@ -455,11 +455,11 @@ func (s *Service) Test(ctx context.Context, endpointID uuid.UUID) (*Delivery, db
 	if err != nil {
 		return nil, 0, err
 	}
-	sent, err := s.attempt(ctx, d.ID)
+	sent, outcome, err := s.attempt(ctx, d.ID)
 	if err != nil {
 		return nil, 0, err
 	}
-	return sent, lsn, nil
+	return sent, max(lsn, outcome), nil
 }
 
 // Redeliver tries a logged delivery again, now, as a fresh first attempt.
@@ -481,8 +481,8 @@ func (s *Service) Redeliver(ctx context.Context, deliveryID uuid.UUID) (*Deliver
 	if err != nil {
 		return nil, 0, err
 	}
-	sent, err := s.attempt(db.PinPrimary(ctx), made)
-	return sent, lsn, err
+	sent, outcome, err := s.attempt(db.PinPrimary(ctx), made)
+	return sent, max(lsn, outcome), err
 }
 
 func mustOrg(ctx context.Context) uuid.UUID {

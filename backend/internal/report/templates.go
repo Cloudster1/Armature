@@ -113,6 +113,26 @@ type substitution struct {
 	milestoneName string
 }
 
+// templated is a widget's parameters without the ids of one project's team,
+// sprint, milestone or version, which mean nothing in the next project.
+func (p Params) templated() Params {
+	p.TeamID, p.SprintID, p.MilestoneID, p.VersionID = nil, nil, nil, nil
+	return p
+}
+
+// templateWidgets reads a saved template's widgets, dropping any project's ids
+// that a template saved before they were all left out still carries.
+func templateWidgets(raw []byte) ([]TemplateWidget, error) {
+	var widgets []TemplateWidget
+	if err := json.Unmarshal(raw, &widgets); err != nil {
+		return nil, err
+	}
+	for i := range widgets {
+		widgets[i].Config = widgets[i].Config.templated()
+	}
+	return widgets, nil
+}
+
 // applyTemplate lays a template's widgets on a dashboard, leaving out kinds a
 // project of this kind cannot show rather than refusing the whole template.
 func applyTemplate(ctx context.Context, tx db.DBTX, dashboardID uuid.UUID, t Template, kind project.Kind, sub substitution) error {
@@ -171,7 +191,7 @@ func (s *Service) Templates(ctx context.Context, kind project.Kind) ([]Template,
 			if err := rows.Scan(&id, &t.Name, &t.Description, &raw); err != nil {
 				return err
 			}
-			if err := json.Unmarshal(raw, &t.Widgets); err != nil {
+			if t.Widgets, err = templateWidgets(raw); err != nil {
 				return fmt.Errorf("read template %s: %w", id, err)
 			}
 			t.ID, t.Key = &id, id.String()
@@ -201,7 +221,7 @@ func resolveTemplate(ctx context.Context, tx db.DBTX, key string) (Template, err
 	if err != nil {
 		return Template{}, err
 	}
-	if err := json.Unmarshal(raw, &t.Widgets); err != nil {
+	if t.Widgets, err = templateWidgets(raw); err != nil {
 		return Template{}, fmt.Errorf("read template %s: %w", id, err)
 	}
 	t.ID, t.Key = &id, id.String()
@@ -225,10 +245,7 @@ func (s *Service) SaveTemplate(ctx context.Context, dashboardID uuid.UUID, name,
 			return err
 		}
 		for _, w := range widgets {
-			config := ParamsFrom(w.Config)
-			// A team, a sprint or a milestone means nothing in the next project.
-			config.TeamID, config.SprintID, config.MilestoneID = nil, nil, nil
-			out.Widgets = append(out.Widgets, TemplateWidget{Kind: w.Kind, Title: w.Title, Width: w.Width, Config: config})
+			out.Widgets = append(out.Widgets, TemplateWidget{Kind: w.Kind, Title: w.Title, Width: w.Width, Config: ParamsFrom(w.Config).templated()})
 		}
 		raw, err := json.Marshal(out.Widgets)
 		if err != nil {
