@@ -78,6 +78,10 @@ here in the branch that makes it.
 - Fixed: a burndown shows a dot on a sprint's first day, and a sprint started
   early or ended late keeps every day on the chart, with the first and last
   of them named under it (#61).
+- Fixed: the release burndown counts an issue only from the day it was
+  filed, so work added to a version later lifts the line instead of showing
+  from its first day, and a released version's line stops on its release
+  day (#60).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
