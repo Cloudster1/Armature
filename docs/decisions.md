@@ -998,6 +998,11 @@ and files hang off the row. Every key it leaves is kept beside it, one row each
 and unique in the organization, so every address that was mailed around still
 finds it however often it moves again, and a reply by mail under one still
 lands on the request.
+and files hang off the row; the old key stays on the row so the address that was
+mailed around still finds it. Everything under it moves too, at every depth and
+parents first, in the same transaction. A descendant whose status its workflow
+in the target does not have refuses the whole move and is named, rather than
+landing in a status nobody chose or staying behind under a parent elsewhere.
 
 ### A dashboard is an arrangement, and every number is computed on read
 

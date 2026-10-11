@@ -146,6 +146,10 @@ here in the branch that makes it.
 - Fixed: changing a request's priority moves its open SLA clocks to the new
   goal and keeps the time already run; moving an issue out of a service desk
   stops its clocks, and moving one in starts the desk's (#75).
+- Fixed: moving an epic to another project takes everything under it, its
+  stories' subtasks too, each with a new key, its status and a history entry,
+  and their old keys still find them; a descendant whose status the target
+  does not have stops the move and is named (#81).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
