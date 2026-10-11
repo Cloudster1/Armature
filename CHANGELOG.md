@@ -75,6 +75,9 @@ here in the branch that makes it.
 - Fixed: the project calendar shows holidays and absences on the days of the
   months before and after that its six weeks include, and an absence that
   runs past the grid is drawn as continuing instead of ending there (#47).
+- Fixed: a burndown shows a dot on a sprint's first day, and a sprint started
+  early or ended late keeps every day on the chart, with the first and last
+  of them named under it (#61).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
