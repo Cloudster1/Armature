@@ -94,6 +94,9 @@ here in the branch that makes it.
 - Fixed: searching a number or date custom field with ~ or !~ looks for the
   typed text instead of failing, and every operator on those fields answers
   even beside fields that hold words (#83).
+- Fixed: a sprint completed while the hourly snapshot was running keeps the
+  burndown's last point that completing it wrote, instead of ending at nothing
+  remaining with its scope equal to the work done (#62).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
