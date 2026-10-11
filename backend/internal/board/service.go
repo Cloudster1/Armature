@@ -533,23 +533,3 @@ func createBoard(ctx context.Context, tx db.DBTX, projectID uuid.UUID, in Create
 
 	return boardID, nil
 }
-
-// SetGrouping changes the secondary axis every board in a project is read along.
-func (s *Service) SetGrouping(ctx context.Context, projectKey string, grouping Grouping) (db.LSN, error) {
-	if !grouping.Valid() {
-		return 0, fmt.Errorf("%q is not a grouping", grouping)
-	}
-	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `
-			UPDATE board SET group_by = $2
-			WHERE project_id = (SELECT id FROM project WHERE key = $1)`,
-			project.NormalizeKey(projectKey), string(grouping))
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() == 0 {
-			return ErrNotFound
-		}
-		return nil
-	})
-}

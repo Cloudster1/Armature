@@ -458,6 +458,13 @@ of them, rather than filtering the project's newest issues: a page of those
 lost older committed work, and a sprint that looked empty was offered for
 deletion.
 
+Swimlanes, their limits and the grouping belong to one board, so they are
+written through routes that name it (`/boards/{boardID}/swimlanes`, `PATCH
+/boards/{boardID}`). The project-addressed routes they replaced could only mean
+one board, which was always the first, and the grouping one regrouped every
+board in the project; they are gone rather than kept as a second address for
+the first board.
+
 ### Team capacity is points per week, spread over the days a ticket is scheduled
 
 Capacity lived only on the sprint, which says nothing about a project that plans

@@ -1,16 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { BoardSummary } from "@/api/boards";
 import type { Team } from "@/api/teams";
 
 const createBoard = vi.fn();
+const updateBoard = vi.fn();
+const deleteBoard = vi.fn();
+const confirm = vi.fn(async () => true);
 const state = { boards: [] as BoardSummary[], teams: [] as Team[] };
 
 vi.mock("@/api/boards", () => ({
   useBoards: () => ({ data: { boards: state.boards } }),
   useCreateBoard: () => ({ mutate: createBoard, isPending: false, error: null }),
+  useUpdateBoard: () => ({ mutate: updateBoard, isPending: false, error: null }),
+  useDeleteBoard: () => ({ mutateAsync: deleteBoard, isPending: false, error: null }),
 }));
+
+vi.mock("@/features/shell/ConfirmProvider", () => ({ useConfirm: () => confirm }));
 
 vi.mock("@/api/teams", () => ({
   useTeams: () => ({ data: { teams: state.teams } }),
@@ -103,5 +110,96 @@ describe("BoardPicker", () => {
     await userEvent.click(screen.getByRole("button", { name: "Give Platform a board" }));
 
     expect(createBoard).toHaveBeenCalledWith({ name: "Platform board", teamId: "t1" });
+  });
+
+  // A board made by mistake has to be put right from where it is seen.
+  describe("managing the board on screen", () => {
+    const two = () => [board(), board({ id: "b2", name: "Team flow", teamId: "t1" })];
+
+    it("is not offered to somebody who cannot configure boards", () => {
+      state.boards = two();
+      state.teams = [team()];
+      render(<BoardPicker projectKey="CP" boardId="b2" onPick={() => {}} />);
+      expect(screen.queryByRole("button", { name: "Rename" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+    });
+
+    it("renames it", async () => {
+      state.boards = two();
+      state.teams = [team()];
+      updateBoard.mockClear();
+      render(<BoardPicker projectKey="CP" boardId="b2" onPick={() => {}} canManage />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Rename" }));
+      await userEvent.clear(screen.getByLabelText("Board name"));
+      await userEvent.type(screen.getByLabelText("Board name"), "Team lanes");
+      await userEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+      expect(updateBoard).toHaveBeenCalledWith({ id: "b2", name: "Team lanes" }, expect.anything());
+    });
+
+    it("changes its type", async () => {
+      state.boards = two();
+      state.teams = [team()];
+      updateBoard.mockClear();
+      render(<BoardPicker projectKey="CP" boardId="b2" onPick={() => {}} canManage />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Change type" }));
+      expect(updateBoard).toHaveBeenCalledWith({ id: "b2", type: "scrum" });
+    });
+
+    it("deletes it once asked by its name, and goes back to the opening board", async () => {
+      state.boards = two();
+      state.teams = [team()];
+      deleteBoard.mockReset();
+      deleteBoard.mockImplementation(async () => {});
+      confirm.mockClear();
+      const onPick = vi.fn();
+      render(<BoardPicker projectKey="CP" boardId="b2" onPick={onPick} canManage />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+      expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ noun: "board Team flow" }));
+      expect(deleteBoard).toHaveBeenCalledWith("b2");
+      await waitFor(() => expect(onPick).toHaveBeenCalledWith(null));
+    });
+
+    // The board list refetches before the delete settles, and with one board
+    // left the picker is gone; the page must still hear about it.
+    it("goes back to the opening board even when the picker goes with the deleted board", async () => {
+      state.boards = two();
+      state.teams = [];
+      const onPick = vi.fn();
+      const { rerender } = render(<BoardPicker projectKey="CP" boardId="b2" onPick={onPick} canManage />);
+      deleteBoard.mockReset();
+      deleteBoard.mockImplementation(async () => {
+        state.boards = [board()];
+        rerender(<BoardPicker projectKey="CP" boardId="b2" onPick={onPick} canManage />);
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => expect(onPick).toHaveBeenCalledWith(null));
+      expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+    });
+
+    it("keeps nothing when the question is declined", async () => {
+      state.boards = two();
+      state.teams = [team()];
+      deleteBoard.mockReset();
+      confirm.mockImplementationOnce(async () => false);
+      render(<BoardPicker projectKey="CP" boardId="b2" onPick={() => {}} canManage />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+      expect(deleteBoard).not.toHaveBeenCalled();
+    });
+
+    // A project keeps at least one board, which the server refuses too.
+    it("does not offer deleting the last board", () => {
+      state.boards = [board()];
+      state.teams = [team({ boardCount: 0 })];
+      render(<BoardPicker projectKey="CP" boardId={undefined} onPick={() => {}} canManage />);
+      expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    });
   });
 });

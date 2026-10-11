@@ -2154,6 +2154,205 @@
         }
       }
     },
+    "/boards/{boardID}/swimlanes": {
+      "post": {
+        "operationId": "addSwimlane",
+        "summary": "Add a swimlane to this board.",
+        "tags": [
+          "boards"
+        ],
+        "parameters": [
+          {
+            "name": "boardID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwimlaneRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "swimlane": {
+                      "$ref": "#/components/schemas/Swimlane"
+                    }
+                  },
+                  "required": [
+                    "swimlane"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "reorderSwimlanes",
+        "summary": "Set the left to right order of this board's swimlanes.",
+        "tags": [
+          "boards"
+        ],
+        "parameters": [
+          {
+            "name": "boardID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderSwimlanesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/boards/{boardID}/swimlanes/{swimlaneID}": {
+      "delete": {
+        "operationId": "deleteSwimlane",
+        "summary": "Remove a swimlane from this board.",
+        "tags": [
+          "boards"
+        ],
+        "parameters": [
+          {
+            "name": "boardID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "swimlaneID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSwimlane",
+        "summary": "Change a swimlane's name, states or limit.",
+        "tags": [
+          "boards"
+        ],
+        "parameters": [
+          {
+            "name": "boardID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "swimlaneID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSwimlaneRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/build": {
       "get": {
         "operationId": "build",
@@ -10234,49 +10433,6 @@
             }
           }
         }
-      },
-      "patch": {
-        "operationId": "updateBoard",
-        "summary": "Change how the opening board groups its cards.",
-        "tags": [
-          "boards"
-        ],
-        "parameters": [
-          {
-            "name": "projectKey",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "An issue key such as CP-12, or a project key such as CP."
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BoardSettingsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/projects/{projectKey}/board/move": {
@@ -10317,205 +10473,6 @@
                 }
               }
             }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/projects/{projectKey}/board/swimlanes": {
-      "post": {
-        "operationId": "addSwimlane",
-        "summary": "Add a swimlane.",
-        "tags": [
-          "boards"
-        ],
-        "parameters": [
-          {
-            "name": "projectKey",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "An issue key such as CP-12, or a project key such as CP."
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SwimlaneRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "swimlane": {
-                      "$ref": "#/components/schemas/Swimlane"
-                    }
-                  },
-                  "required": [
-                    "swimlane"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "reorderSwimlanes",
-        "summary": "Set the left to right order.",
-        "tags": [
-          "boards"
-        ],
-        "parameters": [
-          {
-            "name": "projectKey",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "An issue key such as CP-12, or a project key such as CP."
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReorderSwimlanesRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/projects/{projectKey}/board/swimlanes/{swimlaneID}": {
-      "delete": {
-        "operationId": "deleteSwimlane",
-        "summary": "Remove a swimlane.",
-        "tags": [
-          "boards"
-        ],
-        "parameters": [
-          {
-            "name": "projectKey",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "An issue key such as CP-12, or a project key such as CP."
-            }
-          },
-          {
-            "name": "swimlaneID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "operationId": "updateSwimlane",
-        "summary": "Change a swimlane's name, states or limit.",
-        "tags": [
-          "boards"
-        ],
-        "parameters": [
-          {
-            "name": "projectKey",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "An issue key such as CP-12, or a project key such as CP."
-            }
-          },
-          {
-            "name": "swimlaneID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSwimlaneRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -18455,17 +18412,6 @@
           "name",
           "description",
           "type",
-          "groupBy"
-        ]
-      },
-      "BoardSettingsRequest": {
-        "type": "object",
-        "properties": {
-          "groupBy": {
-            "type": "string"
-          }
-        },
-        "required": [
           "groupBy"
         ]
       },

@@ -323,18 +323,17 @@ var operations = []operation{
 
 	// Boards.
 	{method: "GET", path: "/projects/{projectKey}/board", handler: "handleGetBoard", tag: "boards", summary: "The board the project opens on.", responses: ok(env{"board": board.Board{}})},
-	{method: "PATCH", path: "/projects/{projectKey}/board", handler: "handleUpdateBoard", tag: "boards", summary: "Change how the opening board groups its cards.", request: boardSettingsRequest{}, responses: none()},
 	{method: "POST", path: "/projects/{projectKey}/board/move", handler: "handleMoveCard", tag: "boards", summary: "Drop a card on a swimlane, which takes the workflow transition.", request: moveCardRequest{}, responses: ok(board.MoveResult{})},
-	{method: "POST", path: "/projects/{projectKey}/board/swimlanes", handler: "handleAddSwimlane", tag: "boards", summary: "Add a swimlane.", request: swimlaneRequest{}, responses: created(env{"swimlane": board.Swimlane{}})},
-	{method: "PUT", path: "/projects/{projectKey}/board/swimlanes", handler: "handleReorderSwimlanes", tag: "boards", summary: "Set the left to right order.", request: reorderSwimlanesRequest{}, responses: none()},
-	{method: "PATCH", path: "/projects/{projectKey}/board/swimlanes/{swimlaneID}", handler: "handleUpdateSwimlane", tag: "boards", summary: "Change a swimlane's name, states or limit.", request: updateSwimlaneRequest{}, responses: none()},
-	{method: "DELETE", path: "/projects/{projectKey}/board/swimlanes/{swimlaneID}", handler: "handleDeleteSwimlane", tag: "boards", summary: "Remove a swimlane.", responses: none()},
 	{method: "GET", path: "/projects/{projectKey}/boards", handler: "handleListBoards", tool: "list_boards", toolHelp: "A project's boards.", tag: "boards", summary: "A project's boards.", responses: ok(env{"boards": []board.Summary{}})},
 	{method: "POST", path: "/projects/{projectKey}/boards", handler: "handleCreateBoard", tag: "boards", summary: "Add a board, scrum or kanban, for the project or a team.", request: boardRequest{}, responses: created(env{"board": board.Board{}})},
 	{method: "GET", path: "/boards/{boardID}", handler: "handleGetBoardByID", tool: "get_board", toolHelp: "One board with its columns and cards.", tag: "boards", summary: "One board.", responses: ok(env{"board": board.Board{}})},
 	{method: "GET", path: "/sprints/{sprintID}/board", handler: "handleGetSprintBoard", tool: "get_sprint_board", toolHelp: "A sprint's board, showing only what is committed to it.", tag: "boards", summary: "The sprint's board: its stream's board showing only what is committed to it.", responses: ok(env{"board": board.Board{}})},
 	{method: "PATCH", path: "/boards/{boardID}", handler: "handleUpdateBoardByID", tag: "boards", summary: "Edit a board.", request: boardRequest{}, responses: ok(env{"board": board.Board{}})},
 	{method: "DELETE", path: "/boards/{boardID}", handler: "handleDeleteBoard", tag: "boards", summary: "Delete a board that is not the project's last.", responses: none()},
+	{method: "POST", path: "/boards/{boardID}/swimlanes", handler: "handleAddSwimlane", tag: "boards", summary: "Add a swimlane to this board.", request: swimlaneRequest{}, responses: created(env{"swimlane": board.Swimlane{}})},
+	{method: "PUT", path: "/boards/{boardID}/swimlanes", handler: "handleReorderSwimlanes", tag: "boards", summary: "Set the left to right order of this board's swimlanes.", request: reorderSwimlanesRequest{}, responses: none()},
+	{method: "PATCH", path: "/boards/{boardID}/swimlanes/{swimlaneID}", handler: "handleUpdateSwimlane", tag: "boards", summary: "Change a swimlane's name, states or limit.", request: updateSwimlaneRequest{}, responses: none()},
+	{method: "DELETE", path: "/boards/{boardID}/swimlanes/{swimlaneID}", handler: "handleDeleteSwimlane", tag: "boards", summary: "Remove a swimlane from this board.", responses: none()},
 	{method: "GET", path: "/boards/{boardID}/backlog", handler: "handleGetBacklog", tag: "boards", summary: "The work the board's stream has not committed to a sprint.", responses: ok(env{"cards": []board.Card{}})},
 
 	// Milestones.

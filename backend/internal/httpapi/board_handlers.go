@@ -60,13 +60,17 @@ type swimlaneRequest struct {
 }
 
 func (s *Server) handleAddSwimlane(w http.ResponseWriter, r *http.Request) {
+	boardID, ok := boardIDParam(w, r)
+	if !ok {
+		return
+	}
 	var req swimlaneRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		respondError(w, r, err)
 		return
 	}
 
-	lane, lsn, err := s.Boards.AddSwimlane(r.Context(), r.PathValue("projectKey"), board.AddSwimlaneInput{
+	lane, lsn, err := s.Boards.AddSwimlane(r.Context(), boardID, board.AddSwimlaneInput{
 		Name:      req.Name,
 		StatusIDs: req.StatusIDs,
 		WIPLimit:  req.WIPLimit,
@@ -86,6 +90,10 @@ type updateSwimlaneRequest struct {
 }
 
 func (s *Server) handleUpdateSwimlane(w http.ResponseWriter, r *http.Request) {
+	boardID, ok := boardIDParam(w, r)
+	if !ok {
+		return
+	}
 	id, err := uuid.Parse(r.PathValue("swimlaneID"))
 	if err != nil {
 		respondError(w, r, ErrBadRequest("Invalid swimlane id."))
@@ -98,7 +106,7 @@ func (s *Server) handleUpdateSwimlane(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lsn, err := s.Boards.UpdateSwimlane(r.Context(), r.PathValue("projectKey"), id, board.UpdateSwimlaneInput{
+	lsn, err := s.Boards.UpdateSwimlane(r.Context(), boardID, id, board.UpdateSwimlaneInput{
 		Name:      req.Name,
 		WIPLimit:  req.WIPLimit,
 		StatusIDs: req.StatusIDs,
@@ -112,12 +120,16 @@ func (s *Server) handleUpdateSwimlane(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDeleteSwimlane(w http.ResponseWriter, r *http.Request) {
+	boardID, ok := boardIDParam(w, r)
+	if !ok {
+		return
+	}
 	id, err := uuid.Parse(r.PathValue("swimlaneID"))
 	if err != nil {
 		respondError(w, r, ErrBadRequest("Invalid swimlane id."))
 		return
 	}
-	lsn, err := s.Boards.DeleteSwimlane(r.Context(), r.PathValue("projectKey"), id)
+	lsn, err := s.Boards.DeleteSwimlane(r.Context(), boardID, id)
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -133,31 +145,16 @@ type reorderSwimlanesRequest struct {
 }
 
 func (s *Server) handleReorderSwimlanes(w http.ResponseWriter, r *http.Request) {
+	boardID, ok := boardIDParam(w, r)
+	if !ok {
+		return
+	}
 	var req reorderSwimlanesRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		respondError(w, r, err)
 		return
 	}
-	lsn, err := s.Boards.ReorderSwimlanes(r.Context(), r.PathValue("projectKey"), req.Order)
-	if err != nil {
-		respondError(w, r, asValidationError(err))
-		return
-	}
-	NoteWrite(r.Context(), lsn)
-	respondNoContent(w)
-}
-
-type boardSettingsRequest struct {
-	GroupBy string `json:"groupBy"`
-}
-
-func (s *Server) handleUpdateBoard(w http.ResponseWriter, r *http.Request) {
-	var req boardSettingsRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		respondError(w, r, err)
-		return
-	}
-	lsn, err := s.Boards.SetGrouping(r.Context(), r.PathValue("projectKey"), board.Grouping(req.GroupBy))
+	lsn, err := s.Boards.ReorderSwimlanes(r.Context(), boardID, req.Order)
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -180,4 +177,14 @@ func (s *Server) handleGetSprintBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"board": found})
+}
+
+// boardIDParam reads the board a route names, answering a malformed one itself.
+func boardIDParam(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	id, err := uuid.Parse(r.PathValue("boardID"))
+	if err != nil {
+		respondError(w, r, ErrBadRequest("Invalid board id."))
+		return uuid.Nil, false
+	}
+	return id, true
 }

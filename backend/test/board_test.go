@@ -313,10 +313,10 @@ func TestSwimlaneConfiguration(t *testing.T) {
 		inProgress := ws.swimlane(t, bootstrap.StatusInProgress)
 		inReview := ws.swimlane(t, bootstrap.StatusInReview)
 
-		if _, err := ws.boards.DeleteSwimlane(ws.ctx, ws.project.Key, inReview.ID); err != nil {
+		if _, err := ws.boards.DeleteSwimlane(ws.ctx, ws.openingBoard(t), inReview.ID); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ws.boards.UpdateSwimlane(ws.ctx, ws.project.Key, inProgress.ID, board.UpdateSwimlaneInput{
+		if _, err := ws.boards.UpdateSwimlane(ws.ctx, ws.openingBoard(t), inProgress.ID, board.UpdateSwimlaneInput{
 			Name: strPtr("Doing"),
 			StatusIDs: &[]uuid.UUID{
 				h.statusID(t, ws, bootstrap.StatusInProgress),
@@ -352,7 +352,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 		fresh := h.newWorkspace(t, "exclusive")
 		todoStatus := h.statusID(t, fresh, bootstrap.StatusToDo)
 
-		_, _, err := fresh.boards.AddSwimlane(fresh.ctx, fresh.project.Key, board.AddSwimlaneInput{
+		_, _, err := fresh.boards.AddSwimlane(fresh.ctx, fresh.openingBoard(t), board.AddSwimlaneInput{
 			Name:      "Also To Do",
 			StatusIDs: []uuid.UUID{todoStatus},
 		})
@@ -372,7 +372,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 		fresh.move(t, h, card.Key, "Start progress")
 
 		inProgress := fresh.swimlane(t, bootstrap.StatusInProgress)
-		if _, err := fresh.boards.DeleteSwimlane(fresh.ctx, fresh.project.Key, inProgress.ID); err != nil {
+		if _, err := fresh.boards.DeleteSwimlane(fresh.ctx, fresh.openingBoard(t), inProgress.ID); err != nil {
 			t.Fatal(err)
 		}
 
@@ -388,7 +388,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	t.Run("a new swimlane can be added and reordered", func(t *testing.T) {
 		fresh := h.newWorkspace(t, "reordering")
 
-		lane, _, err := fresh.boards.AddSwimlane(fresh.ctx, fresh.project.Key, board.AddSwimlaneInput{
+		lane, _, err := fresh.boards.AddSwimlane(fresh.ctx, fresh.openingBoard(t), board.AddSwimlaneInput{
 			Name:     "Blocked",
 			WIPLimit: 3,
 		})
@@ -411,7 +411,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 				order = append(order, l.ID)
 			}
 		}
-		if _, err := fresh.boards.ReorderSwimlanes(fresh.ctx, fresh.project.Key, order); err != nil {
+		if _, err := fresh.boards.ReorderSwimlanes(fresh.ctx, fresh.openingBoard(t), order); err != nil {
 			t.Fatal(err)
 		}
 
@@ -432,7 +432,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 		}
 		// Sending only some of the lanes would leave the rest at positions the
 		// server would have to guess at.
-		if _, err := fresh.boards.ReorderSwimlanes(fresh.ctx, fresh.project.Key,
+		if _, err := fresh.boards.ReorderSwimlanes(fresh.ctx, fresh.openingBoard(t),
 			[]uuid.UUID{b.Swimlanes[0].ID}); err == nil {
 			t.Error("a reorder listing one of four swimlanes was accepted")
 		}
@@ -445,7 +445,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 			t.Fatal(err)
 		}
 		for i, lane := range b.Swimlanes {
-			_, err := fresh.boards.DeleteSwimlane(fresh.ctx, fresh.project.Key, lane.ID)
+			_, err := fresh.boards.DeleteSwimlane(fresh.ctx, fresh.openingBoard(t), lane.ID)
 			if i < len(b.Swimlanes)-1 {
 				if err != nil {
 					t.Fatalf("deleting swimlane %d: %v", i, err)
@@ -461,7 +461,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	t.Run("a work in progress limit is reported but not enforced", func(t *testing.T) {
 		fresh := h.newWorkspace(t, "wiplimit")
 		todo := fresh.swimlane(t, bootstrap.StatusToDo)
-		if _, err := fresh.boards.UpdateSwimlane(fresh.ctx, fresh.project.Key, todo.ID,
+		if _, err := fresh.boards.UpdateSwimlane(fresh.ctx, fresh.openingBoard(t), todo.ID,
 			board.UpdateSwimlaneInput{WIPLimit: intPtr(2)}); err != nil {
 			t.Fatal(err)
 		}
@@ -487,7 +487,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 		card := fresh.newIssue(t, "grouped card")
 		fresh.move(t, h, card.Key, "Start progress")
 
-		if _, err := fresh.boards.SetGrouping(fresh.ctx, fresh.project.Key, board.GroupAssignee); err != nil {
+		if _, _, err := fresh.boards.UpdateBoard(fresh.ctx, fresh.openingBoard(t), grouped(board.GroupAssignee), fresh.actor.UserID); err != nil {
 			t.Fatal(err)
 		}
 		b, err := fresh.boards.ForProject(fresh.ctx, fresh.project.Key)
@@ -505,7 +505,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 			}
 		}
 
-		if _, err := fresh.boards.SetGrouping(fresh.ctx, fresh.project.Key, "nonsense"); err == nil {
+		if _, _, err := fresh.boards.UpdateBoard(fresh.ctx, fresh.openingBoard(t), grouped("nonsense"), fresh.actor.UserID); err == nil {
 			t.Error("an unknown grouping was accepted")
 		}
 	})
@@ -521,7 +521,7 @@ func TestBoardTenantIsolation(t *testing.T) {
 	}
 
 	betaLane := beta.swimlane(t, bootstrap.StatusToDo)
-	if _, err := alpha.boards.DeleteSwimlane(alpha.ctx, alpha.project.Key, betaLane.ID); !errors.Is(err, board.ErrSwimlaneNotFound) {
+	if _, err := alpha.boards.DeleteSwimlane(alpha.ctx, alpha.openingBoard(t), betaLane.ID); !errors.Is(err, board.ErrSwimlaneNotFound) {
 		t.Errorf("error = %v, want ErrSwimlaneNotFound", err)
 	}
 

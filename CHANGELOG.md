@@ -202,6 +202,12 @@ here in the branch that makes it.
   the move to that workflow's first status in the history, announces it to
   automation, mail and the SLA clocks, and clears or sets the resolution, so
   a reopened bug is no longer counted as resolved (#85).
+- Fixed: Configure swimlanes edits the board on screen, not the project's
+  first one, and its grouping changes only that board; the board picker can
+  rename a board, change its type and delete it after asking by name. Lanes
+  are written through `/boards/{boardID}/swimlanes` now, and the routes under
+  `/projects/{projectKey}/board/swimlanes` and `PATCH
+  /projects/{projectKey}/board` are gone (#52).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).

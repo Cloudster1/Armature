@@ -510,6 +510,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/boards/{boardID}/swimlanes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the left to right order of this board's swimlanes. */
+        put: operations["reorderSwimlanes"];
+        /** Add a swimlane to this board. */
+        post: operations["addSwimlane"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/boards/{boardID}/swimlanes/{swimlaneID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a swimlane from this board. */
+        delete: operations["deleteSwimlane"];
+        options?: never;
+        head?: never;
+        /** Change a swimlane's name, states or limit. */
+        patch: operations["updateSwimlane"];
+        trace?: never;
+    };
     "/build": {
         parameters: {
             query?: never;
@@ -2473,8 +2509,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change how the opening board groups its cards. */
-        patch: operations["updateBoard"];
+        patch?: never;
         trace?: never;
     };
     "/projects/{projectKey}/board/move": {
@@ -2492,42 +2527,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/projects/{projectKey}/board/swimlanes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Set the left to right order. */
-        put: operations["reorderSwimlanes"];
-        /** Add a swimlane. */
-        post: operations["addSwimlane"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{projectKey}/board/swimlanes/{swimlaneID}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Remove a swimlane. */
-        delete: operations["deleteSwimlane"];
-        options?: never;
-        head?: never;
-        /** Change a swimlane's name, states or limit. */
-        patch: operations["updateSwimlane"];
         trace?: never;
     };
     "/projects/{projectKey}/boards": {
@@ -4334,9 +4333,6 @@ export interface components {
             teamId?: string | null;
             /** @enum {string|null} */
             type: "scrum" | "kanban" | null;
-        };
-        BoardSettingsRequest: {
-            groupBy: string;
         };
         BoardSprintRef: {
             /** Format: date-time */
@@ -8369,6 +8365,140 @@ export interface operations {
                         cards: components["schemas"]["Card"][];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reorderSwimlanes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderSwimlanesRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    addSwimlane: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwimlaneRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        swimlane: components["schemas"]["Swimlane"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteSwimlane: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardID: string;
+                swimlaneID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateSwimlane: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardID: string;
+                swimlaneID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSwimlaneRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -13751,39 +13881,6 @@ export interface operations {
             };
         };
     };
-    updateBoard: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectKey: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BoardSettingsRequest"];
-            };
-        };
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
     moveCard: {
         parameters: {
             query?: never;
@@ -13807,140 +13904,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MoveResult"];
                 };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    reorderSwimlanes: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectKey: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReorderSwimlanesRequest"];
-            };
-        };
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    addSwimlane: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectKey: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SwimlaneRequest"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        swimlane: components["schemas"]["Swimlane"];
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    deleteSwimlane: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectKey: string;
-                swimlaneID: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    updateSwimlane: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectKey: string;
-                swimlaneID: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateSwimlaneRequest"];
-            };
-        };
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
