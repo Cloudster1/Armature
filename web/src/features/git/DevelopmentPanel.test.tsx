@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
-import type { Development, Repository } from "@/api/git";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { asReader } from "@/test/reader";
+import type { CIRun, CIStatus, Development, Repository } from "@/api/git";
 
 const createBranch = vi.fn();
 const state = {
@@ -18,7 +19,7 @@ vi.mock("@/api/git", async () => {
   };
 });
 
-const { DevelopmentPanel } = await import("./DevelopmentPanel");
+const { DevelopmentPanel, firstRepositoryToBranch } = await import("./DevelopmentPanel");
 
 function repository(over: Partial<Repository> = {}): Repository {
   return {
@@ -28,18 +29,25 @@ function repository(over: Partial<Repository> = {}): Repository {
   };
 }
 
+function run(name: string, status: CIStatus): CIRun {
+  return {
+    id: `run-${name}`, repository: "acme/portal", externalId: `check_run:${name}`, name, status,
+    url: `https://github.com/acme/portal/runs/${name}`, sha: "abc1234567", startedAt: "",
+  };
+}
+
 describe("DevelopmentPanel", () => {
   // A project with nothing connected has nothing to say, and says nothing
   // rather than showing an empty panel on every issue.
   it("is absent when the project has no repositories", () => {
     state.repositories = [];
-    const { container } = render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    const { container } = render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     expect(container).toBeEmptyDOMElement();
   });
 
   it("lists every repository, and says why a read only one cannot be chosen", () => {
     state.repositories = [repository(), repository({ id: "r2", name: "acme/api", hasToken: true })];
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     fireEvent.click(screen.getByRole("button", { name: "Create branch" }));
 
     const select = screen.getByLabelText("Repository") as HTMLSelectElement;
@@ -52,7 +60,7 @@ describe("DevelopmentPanel", () => {
   // With nowhere to write, the form says what to do rather than failing.
   it("says how to make writing possible when no repository has a token", () => {
     state.repositories = [repository()];
-    render(<DevelopmentPanel issueKey="CP-5" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-5" projectKey="CP" />, { wrapper: asReader("en-GB") });
     fireEvent.click(screen.getByRole("button", { name: "Create branch" }));
     expect(screen.getByTestId("no-token")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
@@ -67,7 +75,7 @@ describe("DevelopmentPanel", () => {
       const repo = state.repositories.find((r) => r.id === input.repositoryId)!;
       opts.onSuccess({ branch: { id: `b-${repo.id}`, repository: repo.name, name: input.name, commitCount: 0, createdAt: "" } });
     });
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     fireEvent.click(screen.getByRole("button", { name: "Create branch" }));
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
 
@@ -91,19 +99,62 @@ describe("DevelopmentPanel", () => {
       runs: [],
       pullRequests: [{
         id: "q1", repository: "acme/portal", number: 7, title: "CP-4 fix", state: "open", openedAt: "",
-        ci: { id: "c1", repository: "acme/portal", externalId: "x", name: "build", status: "failure", sha: "abc", startedAt: "" },
+        ci: { status: "failure", checks: [run("build", "failure")] },
+      }],
+    };
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
+    expect(screen.getByText("CP-4 fix", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "CI failed" })).toHaveAttribute("data-ci", "failure");
+    expect(screen.getByText("open")).toBeInTheDocument();
+  });
+
+  // The badge adds every check up; the list says which one to go and look at.
+  it("lists the checks behind a pull request's CI", () => {
+    state.repositories = [repository()];
+    state.development = {
+      branchName: "CP-4-fix",
+      branches: [],
+      commits: [],
+      runs: [],
+      pullRequests: [{
+        id: "q1", repository: "acme/portal", number: 7, title: "CP-4 fix", state: "open", openedAt: "",
+        ci: { status: "failure", checks: [run("lint", "success"), run("test", "failure")] },
       }],
     };
     render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
-    expect(screen.getByText("CP-4 fix", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("build failed")).toHaveAttribute("data-ci", "failure");
-    expect(screen.getByText("open")).toBeInTheDocument();
+    const badge = screen.getByRole("button", { name: "CI failed" });
+    expect(badge).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("lint passed")).not.toBeInTheDocument();
+
+    fireEvent.click(badge);
+    expect(badge).toHaveAttribute("aria-expanded", "true");
+    const list = screen.getByTestId("ci-checks");
+    expect(within(list).getByText("lint passed")).toHaveAttribute("data-ci", "success");
+    expect(within(list).getByText("test failed")).toHaveAttribute("data-ci", "failure");
+    expect(within(list).getByText("test failed")).toHaveAttribute("href", "https://github.com/acme/portal/runs/test");
+  });
+
+  it("gives a commit the same combined answer as a pull request", () => {
+    state.repositories = [repository()];
+    state.development = {
+      branchName: "CP-4-fix",
+      branches: [],
+      pullRequests: [],
+      runs: [run("lint", "success"), run("test", "pending")],
+      commits: [{
+        id: "c1", repository: "acme/portal", sha: "abc1234567", message: "CP-4 fix", committedAt: new Date().toISOString(),
+        ci: { status: "pending", checks: [run("lint", "success"), run("test", "pending")] },
+      }],
+    };
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
+    expect(screen.getByRole("button", { name: "CI running" })).toHaveAttribute("data-ci", "pending");
+    expect(screen.queryByText("lint passed")).not.toBeInTheDocument();
   });
 
   it("names the branch before making it, starting from the repository's default branch", () => {
     state.repositories = [repository({ hasToken: true, defaultBranch: "develop" })];
     state.development = { branchName: "CP-4-fix-the-thing", branches: [], commits: [], runs: [], pullRequests: [] };
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     fireEvent.click(screen.getByRole("button", { name: "Create branch" }));
 
     const name = screen.getByLabelText("Branch name") as HTMLInputElement;
@@ -130,10 +181,57 @@ describe("DevelopmentPanel", () => {
         { id: "b2", repository: "acme/portal", name: "CP-4-old", commitCount: 0, mergedAt: "2026-09-01T00:00:00Z", createdAt: "" },
       ],
     };
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     expect(screen.getByText("abcdef1")).toHaveAttribute("data-branch-head", "abcdef1234567");
     expect(screen.getByText("3 commits", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("merged")).toBeInTheDocument();
     expect(document.querySelector('[data-branch="CP-4-old"]')).toHaveAttribute("data-branch-merged", "true");
+  });
+
+  // Hosts delete a merged branch on their own; the merge is what the issue
+  // needs to remember, and a link to a branch that is gone leads nowhere.
+  it("shows a merged branch the host deleted as merged, deleted, with no link to it", () => {
+    state.repositories = [repository()];
+    state.development = {
+      branchName: "CP-4-fix",
+      commits: [],
+      runs: [],
+      pullRequests: [],
+      branches: [
+        {
+          id: "b1", repository: "acme/portal", name: "CP-4-fix", url: "https://github.com/acme/portal/tree/CP-4-fix", headSha: "abcdef1234567",
+          commitCount: 2, mergedAt: "2026-09-01T00:00:00Z", deletedAt: "2026-09-01T00:01:00Z", createdAt: "",
+        },
+        { id: "b2", repository: "acme/portal", name: "CP-4-fix", url: "https://github.com/acme/portal/tree/CP-4-fix", commitCount: 0, createdAt: "" },
+      ],
+    };
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+
+    const rows = document.querySelectorAll('[data-branch="CP-4-fix"]');
+    expect(rows).toHaveLength(2);
+    const [gone, live] = [rows[0]!, rows[1]!];
+    expect(gone).toHaveAttribute("data-branch-merged", "true");
+    expect(gone).toHaveAttribute("data-branch-deleted", "true");
+    expect(gone.textContent).toContain("merged, deleted");
+    expect(gone.querySelector("a[href]")).toBeNull();
+
+    expect(live).not.toHaveAttribute("data-branch-deleted");
+    expect(live.textContent).toContain("branch");
+    expect(live.textContent).not.toContain("deleted");
+    expect(live.querySelector("a[href]")).toHaveAttribute("href", "https://github.com/acme/portal/tree/CP-4-fix");
+  });
+});
+
+describe("firstRepositoryToBranch", () => {
+  // A repository whose only branch for the issue is merged and deleted has
+  // nothing to work on, so it is offered first again.
+  it("does not count a deleted branch as one the repository has", () => {
+    const portal = repository({ id: "r1", name: "acme/portal", hasToken: true });
+    const api = repository({ id: "r2", name: "acme/api", hasToken: true });
+    const existing = [
+      { id: "b1", repository: "acme/portal", name: "CP-4-fix", commitCount: 1, mergedAt: "2026-09-01T00:00:00Z", deletedAt: "2026-09-01T00:01:00Z", createdAt: "" },
+      { id: "b2", repository: "acme/api", name: "CP-4-fix", commitCount: 1, createdAt: "" },
+    ];
+    expect(firstRepositoryToBranch([api, portal], existing, [])?.id).toBe("r1");
   });
 });

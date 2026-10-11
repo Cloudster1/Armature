@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { CalendarItem } from "@/api/calendar";
-import { daysBetween, draggedSchedule, labelOf, listedItems, monthGrid, placeItems, shiftDay, shiftMonth, withHolidays } from "./grid";
+import { daysBetween, draggedSchedule, labelOf, listedItems, monthGrid, monthTitle, placeItems, shiftDay, shiftMonth, withHolidays } from "./grid";
 
 function item(over: Partial<CalendarItem>): CalendarItem {
   return { kind: "issue", id: over.id ?? over.key ?? "x", title: over.title ?? "t", from: "2026-09-10", to: "2026-09-10", ...over };
 }
 
 describe("the month grid", () => {
+  it("is titled in the reader's language", () => {
+    expect(monthTitle(2026, 3, "en-GB")).toBe("March 2026");
+    expect(monthTitle(2026, 3, "de-DE")).toBe("März 2026");
+  });
+
   it("starts on the Monday before the first and shows six weeks", () => {
     // September 2026 begins on a Tuesday.
     const cells = monthGrid(2026, 9);
@@ -74,6 +79,25 @@ describe("holidays and absences", () => {
     expect(placed.get("2026-09-15")!.shown[0]).toMatchObject({ starts: false, ends: true });
     expect(labelOf({ ...away, halfDay: true })).toBe("Ada Lovelace away half the day");
     expect(labelOf(issue)).toBe("CP-1 work");
+  });
+
+  it("draws an absence that runs past the grid as continuing, on the neighbouring months' days too", () => {
+    // September 2026's grid runs from Monday 31 August to Sunday 11 October.
+    const cells = monthGrid(2026, 9);
+    const bob = item({ kind: "absence", id: "a2", title: "Bob", from: "2026-09-28", to: "2026-10-20" });
+    const ada = item({ kind: "absence", id: "a3", title: "Ada", from: "2026-08-17", to: "2026-09-02" });
+    const placed = placeItems(cells, [bob, ada]);
+    expect(placed.get("2026-09-28")!.shown[0]).toMatchObject({ starts: true, ends: false });
+    expect(placed.get("2026-10-01")!.shown.map((p) => p.item.id)).toEqual(["a2"]);
+    expect(placed.get("2026-10-11")!.shown[0]).toMatchObject({ starts: false, ends: false });
+    expect(placed.get("2026-08-31")!.shown[0]).toMatchObject({ starts: false, ends: false });
+    expect(placed.get("2026-09-02")!.shown[0]).toMatchObject({ starts: false, ends: true });
+  });
+
+  it("names a neighbouring month's holiday on its padding day", () => {
+    const harvest = item({ kind: "holiday", id: "h4", title: "Harvest Day", from: "2026-10-02", to: "2026-10-02" });
+    const cells = withHolidays(monthGrid(2026, 9), [harvest]);
+    expect(cells.find((c) => c.day === "2026-10-02")).toMatchObject({ inMonth: false, holiday: "Harvest Day" });
   });
 
   it("hides them all when the reader says so, the rest staying", () => {

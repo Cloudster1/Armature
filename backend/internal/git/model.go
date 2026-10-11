@@ -67,11 +67,12 @@ type Commit struct {
 	URL         string    `json:"url,omitempty"`
 	Branch      string    `json:"branch,omitempty"`
 	CommittedAt time.Time `json:"committedAt"`
+	// CI is what every check against the commit adds up to, when there is one.
+	CI *CIChecks `json:"ci,omitempty"`
 }
 
-// Branch is a branch that is, or was made, for an issue. It is followed from
-// then on: every push moves its head, and merging the pull request from it
-// marks it merged, so the issue shows how far its branch has come.
+// Branch is a branch that is, or was made, for an issue, followed so the issue
+// shows how far it has come: a merged one outlives its deletion on the host.
 type Branch struct {
 	ID         uuid.UUID `json:"id"`
 	Repository string    `json:"repository"`
@@ -83,7 +84,10 @@ type Branch struct {
 	CommitCount int        `json:"commitCount"`
 	PushedAt    *time.Time `json:"pushedAt,omitempty"`
 	MergedAt    *time.Time `json:"mergedAt,omitempty"`
-	CreatedAt   time.Time  `json:"createdAt"`
+	// DeletedAt is when the host deleted a merged branch, which is kept so the
+	// issue still shows the merge.
+	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
 
 	// created is set on a branch a push has just made, which is worth a row
 	// of its own even when its name says nothing about an issue.
@@ -114,8 +118,9 @@ type PullRequest struct {
 	HeadSHA      string     `json:"headSha,omitempty"`
 	OpenedAt     time.Time  `json:"openedAt"`
 	MergedAt     *time.Time `json:"mergedAt,omitempty"`
-	// CI is the latest run against the pull request's head, when there is one.
-	CI *CIRun `json:"ci,omitempty"`
+	// CI is what every check against the pull request's head adds up to, when
+	// there is one.
+	CI *CIChecks `json:"ci,omitempty"`
 }
 
 // CIStatus is how a run came out, or that it has not yet.

@@ -106,7 +106,7 @@ func (s *Server) handleUpdateRule(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	updated, lsn, err := s.Automation.Update(r.Context(), rule.ID, req)
+	updated, lsn, err := s.Automation.Update(r.Context(), rule.ID, req, userFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -120,7 +120,7 @@ func (s *Server) handleDeleteRule(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	lsn, err := s.Automation.Delete(r.Context(), rule.ID)
+	lsn, err := s.Automation.Delete(r.Context(), rule.ID, userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -223,7 +223,7 @@ func (s *Server) handleCreateWebhook(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	made, lsn, err := s.Webhooks.Create(r.Context(), req)
+	made, lsn, err := s.Webhooks.Create(r.Context(), req, userFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -243,7 +243,7 @@ func (s *Server) handleUpdateWebhook(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	updated, lsn, err := s.Webhooks.Update(r.Context(), id, req)
+	updated, lsn, err := s.Webhooks.Update(r.Context(), id, req, userFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -258,7 +258,7 @@ func (s *Server) handleDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, apiErr)
 		return
 	}
-	lsn, err := s.Webhooks.Delete(r.Context(), id)
+	lsn, err := s.Webhooks.Delete(r.Context(), id, userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -273,7 +273,7 @@ func (s *Server) handleRotateWebhookEndpointSecret(w http.ResponseWriter, r *htt
 		respondError(w, r, apiErr)
 		return
 	}
-	rotated, lsn, err := s.Webhooks.RotateSecret(r.Context(), id)
+	rotated, lsn, err := s.Webhooks.RotateSecret(r.Context(), id, userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

@@ -218,6 +218,9 @@ func (s *Service) resolveDestination(ctx context.Context, tx db.DBTX, from *Spri
 	if destination.State == StateClosed {
 		return nil, fmt.Errorf("%w: %s", ErrClosed, destination.Name)
 	}
+	if !sameTeam(destination.TeamID, from.TeamID) {
+		return nil, fmt.Errorf("%w: %s", ErrOtherTeam, destination.Name)
+	}
 	return destination, nil
 }
 
@@ -296,6 +299,14 @@ func whose(s *Sprint) string {
 		return "this project"
 	}
 	return s.TeamName
+}
+
+// sameTeam compares two streams; nil is the project's own.
+func sameTeam(a, b *uuid.UUID) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 func isUniqueViolation(err error) bool {

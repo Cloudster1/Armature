@@ -26,6 +26,19 @@ what keeps replicas honest: a user is never shown a stale answer to a question
 about their own change. The fallback direction matters. A read that cannot be
 served freshly by a replica goes to the primary, and is never made to wait for
 replication, so a lagging replica costs latency and never correctness.
+The pin only works if every write hands its position to its handler, so a
+unit test refuses a service that throws one away, unless it is listed with
+why no read of the caller's depends on it.
+
+A session's position only ever rises. Requests finish out of order, so behind a
+load balancer the older of two writes can report last; the shared tracker keeps
+the greater position with a compare-and-set script in Valkey, as the
+in-process tracker always has, rather than letting the late one walk it back.
+replication, so a lagging replica costs latency and never correctness. A
+replica leaves the rotation on the median of its last few lag readings
+(`ARMATURE_DB_REPLICA_LAG_SAMPLES`), not on one: a single slow health check is
+noise, and a replica flapping in and out on it sends reads to the primary in
+bursts. A receiver that has stopped streaming takes it out at once.
 
 **Reconsider if** replica lag is routinely under a millisecond and the pinning
 machinery is buying nothing, or if the primary is so overloaded that fallback
@@ -42,6 +55,19 @@ exempt role for the few genuinely cross-tenant operations.
 **Reconsider if** we move to a database per tenant, which makes the policies
 redundant.
 
+### A backfill lifts forced row security around itself
+
+FORCE means the owner obeys the policies too, and a cluster migrates as a plain
+owner with no organization set, so a migration that reads `org` there reads
+nothing and fills nothing, without a word. The local stack migrates as a
+superuser and never notices. A backfill therefore wraps itself in
+`ALTER TABLE ... NO FORCE ROW LEVEL SECURITY` on `org` and on every table it
+fills, and forces them again at the end, as `00904` does. Three backfills
+written before the rule were rerun that way by `00926`.
+`TestBackfillsReadingOrgLiftItsRowSecurity` refuses a migration that reads
+`org` without the lift, and `TestMigrationsRunAsPlainOwner` migrates as such
+an owner and checks an older organization comes out like a new one.
+
 ### A transactional outbox rather than publishing events directly
 
 Publishing to Redis inside a request means the event can be sent for a
@@ -49,8 +75,36 @@ transaction that then rolls back, or lost for one that committed. Writing the
 event to a table in the same transaction removes the disagreement entirely, at
 the cost of a relay and at-least-once delivery.
 
+The worker keeps the promise to the end. A consumer acknowledges an event only
+once it was handled, or once its handler says no attempt can help; anything
+else stays pending, and every group claims what sat unacknowledged for a
+minute, on start and every half minute, so a failover or a restart costs a
+delay rather than the event. A shutdown finishes the event in hand on a context
+of its own and leaves the rest of the batch to the next worker. After five
+attempts the event is set aside: acknowledged, and written into the
+organization's audit log as `event.dead_lettered`. The audit log is the
+dead-letter record rather than a table of its own because its administrators
+already read it, it is kept and exported on its own schedule, and the event
+itself stays in the outbox.
+
 **Reconsider if** we adopt a broker with transactional guarantees against
 Postgres itself.
+
+### The stream is trimmed by what was acknowledged, and the relay waits at the cap
+
+The stream used to be capped by length, which trimmed whatever was oldest
+whether every consumer group had read it or not: a 15,000 row import outran
+the groups that write once per event, and their reads skipped the trimmed
+issues without a word. Now the relay trims below the oldest entry one of the
+worker's groups has not acknowledged, and adds nothing while the slowest group
+is the cap behind. The cap still bounds what Redis holds; the outbox, which is
+the record anyway, holds the rest until there is room. Holding back alone would
+not have been enough, since a trim by length can still take an entry a group
+was handed and has not acknowledged. A group no longer in `events.Groups` is
+not waited for, or a feature removed would stop every event behind it.
+
+**Reconsider if** a consumer needs to replay the stream from further back than
+its group's position, at which point the stream wants a retention of its own.
 
 ### Hand written SQL and sqlc rather than an ORM
 
@@ -77,7 +131,9 @@ An upload writes the row and then the object, in one transaction; a delete does
 the reverse, row inside, object after the commit. Both orders leave at worst an
 object nobody can reach, and neither ever leaves a broken link. Orphans are not
 forgotten: the transaction that removes a row writes a tombstone per object key,
-and the worker's reaper works from those. The bucket is never listed, because
+and the worker's reaper works from those. A trigger on the table writes it, not
+the service, because rows also leave by cascade, with an issue's whole subtree
+or with the organization, and no service sees each of those. The bucket is never listed, because
 the database is the one place that knows what should exist.
 
 ### A custom field is defined per project, and its value is JSON per issue
@@ -257,6 +313,24 @@ nothing typed is ever parsed.
 **Reconsider if** customers ask for formatting, at which point the portal sends
 a document as comments do, or if a node markdown has no spelling for is wanted.
 
+### An edit names the copy it began from, and the later of two saves is refused
+
+An edit of an issue may carry `expectedUpdatedAt`, the `updatedAt` of the copy
+the editor opened. The service compares it under the row lock and answers 409
+when the issue has moved on, so two tabs on one description cannot erase each
+other's words without anybody noticing. The issue's own `updatedAt` is the
+version, not a counter of its own, because the column and its trigger already
+exist and every write moves it. The browser takes the stamp when editing
+begins, not at save, and on a refusal keeps the draft and shows the newer text
+beside it; saving again after that replaces what was shown. A client that sends
+no stamp is let through as before, since scripts and imports set fields they
+did not read. A save that changes nothing, a description equal as jsonb or the
+same due date, writes no row, no changelog entry and no event.
+
+**Reconsider if** people edit different fields of one issue at once often
+enough that a refusal for an unrelated field gets in their way; then the stamp
+becomes per field.
+
 ## Planning, sprints and teams
 
 ### The plan warns and never refuses
@@ -319,6 +393,15 @@ member: the dividing line the rest of the codebase uses is whether an action
 changes how the tool behaves for everyone or moves the work along, and a sprint
 is work moving.
 
+A sprint holds only its own stream's work. Committing an issue to another
+team's sprint, or carrying unfinished work into one, is refused by the service
+and by a trigger comparing the issue's team with the sprint's. Handing an issue
+to another team takes it out of an open sprint of its old stream and into the
+new team's backlog, and the changelog says so. Refusing the handover instead
+would make the person find and empty the sprint first, and deciding when the
+work is planned is the receiving team's job anyway. A closed sprint keeps its
+work whoever carries it later, since its report is already written.
+
 ### A team narrows access and never widens it
 
 Only somebody already in the organization can be put on a team, enforced by the
@@ -327,6 +410,21 @@ which turns every team into a way around the organization's own membership.
 Deleting a team with work in it is refused rather than quietly returning the
 work to the project, because work that was somebody's and is now nobody's is
 discovered weeks later and the fix by then is archaeology.
+
+### A team that has run a sprint is kept
+
+Deleting a team is refused while it still has sprints or request types routed
+to it, by the service with a sentence and by the database, whose foreign keys
+from `sprint.team_id` and `request_type.team_id` no longer null the column.
+Nulling them made a team's running sprint the project's, or collided with the
+project's own running one, and quietly stopped requests routing. Sprints that
+have not started can be deleted and request types routed elsewhere, after which
+the team goes. A sprint that has run is the record of what the team delivered
+and cannot be deleted, so a team that has run one is renamed rather than
+deleted. Deleting its sprints with it would rewrite history, and archiving
+teams is a feature of its own that nothing yet needs. The keys are NO ACTION
+rather than RESTRICT so that an organization deleted with everything in it
+still takes its teams and their sprints along.
 
 ### A board is scoped by team, and its type is behaviour
 
@@ -342,7 +440,12 @@ scrum board between sprints is deliberately empty. A board with no type takes
 after the project's first board, which is the one the template chose; a project
 with no board at all falls back to kanban, the type that shows work without a
 sprint. A backlog is derived, not stored: storing it would allow an issue to be
-in a backlog and a sprint, or in two backlogs, or in neither.
+in a backlog and a sprint, or in two backlogs, or in neither. It is the
+unfinished work in no sprint, in rank order; done work in no sprint is history.
+The Sprints page reads the backlog and each sprint from the server, every page
+of them, rather than filtering the project's newest issues: a page of those
+lost older committed work, and a sprint that looked empty was offered for
+deletion.
 
 ### Team capacity is points per week, spread over the days a ticket is scheduled
 
@@ -473,6 +576,10 @@ than ids: a renamed status or sprint would quietly bend a chart drawn months
 later, and walking a project's whole history on every read is the wrong price
 for a widget. The worker writes the day's counts, the day's last write stands,
 and a day with no row is rebuilt from the changelog once and marked as rebuilt.
+A sprint's last word is the one completion wrote, before its unfinished work
+moved on: the worker writes a sprint's day only while holding the sprint's lock
+and finding it still running, so a sprint completed after the worker listed it
+keeps its point.
 
 Today is read live and every earlier day from its snapshot, so the chart agrees
 with the widget to the second and the browser suite is deterministic without a
@@ -481,6 +588,13 @@ reports over them need no snapshot; the control chart measures from the first
 step into an in-progress status, because the question is how long work takes
 once somebody is on it, and the resolution histogram from creation, because the
 question is how long the asker waited.
+
+The release burndown counts an issue on a day only if it had been filed by
+then, so work added to a version halfway lifts the line rather than hiding in
+its first day, and a released version's line stops on the day it was released.
+An issue that joined the version after it was filed still counts from its
+filing: which version an issue fixed on a given day is in the changelog only
+by name, for the reasons above, so the join day is not read.
 
 ### Holidays are named calendars a person is given, and a week is minutes per weekday
 
@@ -501,6 +615,9 @@ An .ics import takes all-day events and refuses a recurring one rather than
 expanding the rule: RRULE is a language of its own, and a wrong guess about a
 moving feast is a day off in the wrong week that nobody notices. Calendar
 applications export the days written out, and the refusal says to do that.
+An import lands on the server, not in the table being edited, so while that
+table holds unsaved days the import asks before it discards them rather than
+merging the file into a draft the server has not seen.
 
 This is not the service desk's business calendar, which says when a desk is
 open for its clocks and answers a different question. A desk could later point
@@ -525,6 +642,19 @@ a team. Leading a team is not enough, since a lead is a person to ask rather
 than a permission. Two absences of one person over the same day are refused by
 an exclusion constraint, so the plan never counts somebody away twice.
 
+A manager may change or remove only the absences they recorded themselves.
+The same manager decides who is on their teams, so "manages a team the person
+is on" is a door they can open for anybody, an administrator included, in one
+request; checking how long the person has been on the team would only mean
+waiting a minute. So the reach is narrowed instead: a manager adds days, and
+the person's own entries and an administrator's are out of it. The person and
+an administrator change any of them. A refusal names the person, so the
+manager knows who to ask. Who recorded an absence is what decides, so the
+database never lets it be rewritten to somebody else; it becomes nobody only
+when that account goes. And it is made visible: whenever somebody other than
+the person records, changes or removes one of their absences, the person is
+told in the inbox, and by mail if they want it, with who did what and never
+the days, since a mail leaves the building.
 An absence may start any day ahead, so the list a person changes theirs in
 runs from a month back with no last day: one saved fourteen months out is
 listed the moment it is saved. A list from a day holds at most
@@ -623,14 +753,23 @@ holds is one it already knows how to keep.
 ### Smart commits act once, and the pull request is told by the worker
 
 A commit's commands are carried out on its first arrival, so merging a branch is
-not a second "#close". A transition the workflow refuses goes into the receipt
-with its reason and the commit is recorded regardless, because the recording is
-what the history needs.
+not a second "#close". A squash or merge commit arrives as a new commit carrying
+the branch's messages, so each command carried out is also recorded against the
+repository and the issue, by its kind and its text with the spacing evened out.
+The same command from the same repository on the same issue is then left alone,
+whichever commit repeats it, while a line the squash commit adds still runs. A
+command the workflow refused was not carried out, so it is not recorded and a
+later commit may ask again. Saying the same thing again on purpose means saying
+it from the issue, or in other words. Only a hash of the command is kept, since matching is all it is
+for. A transition the workflow refuses goes into the receipt with its reason and
+the commit is recorded regardless, because the recording is what the history
+needs.
 
 Comments back to a pull request are posted by the worker reading the event
 stream. Posting from inside the transition would make every transition wait on a
-host, and fail when the host does. A host that refuses is logged and
-acknowledged, not retried forever.
+host, and fail when the host does. A host that refuses is tried again like any
+failed event, but not once another pull request was told, since a retry would
+tell that one twice; the event is then set aside, not retried forever.
 
 ### A branch made from a ticket is the ticket's, whatever it is called
 
@@ -644,6 +783,31 @@ issue leaves no trace beyond the keys its commits carry.
 The stack runs a Gitea of its own, so the browser suite makes a real branch on a
 real host and the delivery that brings it back is the host's own. GitHub and
 GitLab could only ever be exercised against a stub.
+
+### A merged branch outlives its deletion; an unmerged one does not
+
+GitHub and GitLab both offer to delete a branch once its pull request is merged,
+and most teams say yes, so deleting the row with the branch took the merge off
+the issue the moment it happened. A merged branch the host deletes is kept and
+marked deleted, and the panel says "merged, deleted" without linking to an
+address the host no longer has. An unmerged branch that is deleted is still
+removed: it was abandoned, and its commits stay linked to the issue on their
+own. The database holds both halves: a deleted mark needs a merge, and a name is
+unique only among the branches still there, so the same name pushed again later
+is a new branch with its own count, not the old one revived.
+
+**Reconsider if** people want to see abandoned branches too, at which point an
+unmerged one is kept and marked the same way and the check goes.
+
+### A commit's CI is every check on it, added up
+
+A host sends a run per job and per workflow, so the run started last says
+nothing about the others: a failed test followed by a passing lint read green.
+The answer for a commit, and so for a pull request's head, takes the latest run
+of each check name, and a failure outweighs one still running, which outweighs
+a cancellation, which outweighs a pass. A cancelled check never passed, so it
+does not read as green. The checks behind the answer travel with it, and the
+issue's panel lists them, so a red badge leads to the check that failed.
 
 ### A request is an issue, and a note is a flag
 
@@ -669,11 +833,67 @@ that can disagree for a while, or forever if the worker is down. The one thing
 that cannot happen inside a transaction is noticing that time has passed, so
 breaches are the worker's, on a thirty second look, recorded once each.
 
+Moving to the done category completes every clock still open, first response
+as well as resolution, because a closed request has nobody waiting for an
+answer and a clock left running would only ever end in a breach. A breach that
+had already happened stays recorded, and one the worker had not seen yet is
+recorded as the clock completes, so closing a request never hides a missed
+goal. Reopening starts a fresh resolution clock; first response stays answered
+once it has been, by a reply or by resolving.
+The clocks follow the request, not only its status. A new priority or request
+type looks the policy up again and moves each open clock to the goal it now
+has, keeping the time already run: the customer has been waiting that long
+whatever the label says. A goal the clock has already used up is a breach at
+once, a breach already recorded stays, a finished clock keeps the goal it
+finished against, and a priority the policy does not measure takes its open
+clock off. Editing a policy is different: that rewrites the desk's promise to
+everybody, so clocks already running keep the goal they started with.
+
+Moving an issue out of a desk takes its clocks off with the sprint, the versions
+and everything else that belonged to the old project, so nothing is left for
+the watch to breach. Moving it into a desk starts that desk's clocks from
+nothing, paused when it lands in a pause status and not at all when it lands
+done. Refusing the move instead would make a misfiled request impossible to
+put right, and carrying the old clocks over would hold one desk to another's
+goals. Subtasks that come along are treated the same way.
+
 A goal measured in business hours is arithmetic over a zone, a set of daily
 spans and a list of holidays, which in SQL means either a table of every working
 minute or a function taught about daylight saving. So the database finds the
 suspects with a wall-clock comparison, which contains every calendar breach and
 some false ones, and the Go clock decides.
+
+Two spans of one day that overlap are refused when the hours are saved, naming
+both, because the person who typed them meant one stretch and should say so.
+The database does not refuse them: the hours are a JSON document it does not
+read, and a calendar saved with overlaps before the rule must still load. The
+clock merges a day's spans before counting, so such a calendar counts each open
+minute once.
+
+### A customer's reply moves the request back, by the workflow's own way
+
+The resolution mail tells the customer that a reply brings the request back, so
+a reply to a request in a done status takes the workflow's way out of it as the
+customer: the transition called Reopen, else the first one from that status
+that ends outside done. It is a transition like any other, so the resolution
+clock starts over and the rating stays as history. A follower's reply, by mail
+or in the portal, counts the same as the reporter's. A workflow with no way out
+keeps the request where it is, since the desk's workflow is the desk's to
+design, and the agents on it, or whoever finished it, are told in the inbox.
+
+### A queue is ranked by the database, by the wall clock
+
+A queue is ordered and paged in SQL: breached first, then the least time left,
+then requests with no clock running, newest first, with the total beside the
+page. Reading a fixed number of the newest requests and sorting them afterwards
+lost the oldest ones on a busy desk, and those are the ones most likely to be
+overdue. The time left is the goal less the banked seconds less the wall time
+since the clock last started, which is exact for a goal in plain hours. For a
+goal in business hours the wall clock counts the closed hours too, so such a
+request can rank above where its own clock would put it but never below, and
+it counts as breached once the watch has recorded the breach, within its
+thirty seconds. Storing a due time instead would be exact, at the price of
+keeping it right on every pause, resume, goal and calendar change.
 
 ### Customers are refused uniformly, not route by route
 
@@ -728,6 +948,19 @@ carries a link that ends the following with one press and no sign-in, keyed on a
 token the row keeps only as a digest. It is a button on the page, not an action
 on arrival: a link must not change anything just by being opened.
 
+### A rating is asked of the reporter alone
+
+A resolved request invites one rating, through a link minted once and good for
+one answer, so whoever holds it can rate. The reporter's copy of the resolution
+mail carries it; followers and watching agents are told the request is resolved
+without it, because the score is the customer's verdict on the desk and an
+agent or a colleague who rated first would leave the customer's click with
+nothing to do. The page behind the link asks for no sign-in, which is what
+makes one click enough and why the link goes to one person.
+
+**Reconsider if** a desk wants followers' opinions too, at which point each
+recipient gets a token of their own and the report counts people, not requests.
+
 ### Replies come in by POP3, and are accepted from whoever could have typed them
 
 An IMAP library is a large tree of code for six commands, on a host whose
@@ -743,6 +976,24 @@ question: the reply is accepted only where the address belongs to the reporter,
 a follower or an agent, and in exactly one organization. Every consumed mail is
 recorded by message id, so a redelivery is refused by the database however many
 workers are reading, and machines are never answered, so no loop can form.
+
+Nor is a machine's mail taken for the customer's word. An out-of-office that
+reaches a request waiting on its customer would otherwise be posted as their
+reply, move the request back and restart its clocks. A mail marked by
+`Auto-Submitted` (other than `no`), `X-Autoreply`, `X-Autorespond` or a
+`Precedence` of `auto_reply`, `bulk`, `junk` or `list` is recorded as
+`automatic`, taken out of the box and never posted.
+A mail is deleted only once it is decided. The row is written before the work,
+so an attempt that fails marks it failed with its error and the next poll takes
+it up again; a row another attempt still holds leaves the mail in the box. After
+ten failed attempts the desk gives up: the mail stays in the box, since the body
+lives nowhere else, and an internal note on its request tells the agents why.
+What goes out is seven bit: headers that are not ASCII are RFC 2047 words and
+the body is quoted-printable, since a relay without SMTPUTF8 refuses anything
+else. Every mail about a request answers one id, `<KEY.request@host>`, that no
+mail carries, so a client files the receipt, the replies and the resolution as
+one thread whether or not the receipt was ever sent. Each mail keeps an id of
+its own beginning with the key, so a reply matches whichever one it answers.
 
 ### A customer's files are the request's, and only their own come off
 
@@ -772,6 +1023,16 @@ numbers and the warnings with the query.
 
 **Reconsider if** a project outgrows the two thousand rows the plan reads at
 once, at which point the server has to select rows before it rolls them up.
+
+### A negation keeps the issues with nothing there
+
+A field an issue leaves empty matches no positive test, so `!=`, `!~`,
+`NOT IN` and `NOT` all count the issue on the "not" side: an issue with no
+description does not mention payment, and an unassigned issue is not
+yours. Jira leaves such issues out of `!=`, which is the surprise people
+ask about; here `IS NOT EMPTY` says it when that is what is meant. The
+compiler wraps each negated test in `COALESCE(..., false)`, since SQL's
+`NOT NULL` would drop the row.
 
 ### A query error points at a character
 
@@ -804,8 +1065,24 @@ would see, not what the owner would.
 Bulk edit is one transaction per issue, so a workflow that does not offer a
 transition refuses its own issue and names itself while the others are already
 done. A moved issue keeps its row and gets a new key, because history, comments
+and files hang off the row. Every key it leaves is kept beside it, one row each
+and unique in the organization, so every address that was mailed around still
+finds it however often it moves again, and a reply by mail under one still
+lands on the request.
+done. Every step on that issue runs in its transaction, through the `In`
+variants of the single-issue methods, so a refused issue keeps nothing of the
+edit: no field, no history row, no event. Its fields are recorded and announced
+as one change, the way one edit is, and a transition after them as its own. A
+moved issue keeps its row and gets a new key, because history, comments
 and files hang off the row; the old key stays on the row so the address that was
-mailed around still finds it.
+mailed around still finds it. Everything under it moves too, at every depth and
+parents first, in the same transaction. A descendant whose status its workflow
+in the target does not have refuses the whole move and is named, rather than
+landing in a status nobody chose or staying behind under a parent elsewhere.
+mailed around still finds it. What the move leaves behind is only what belongs to
+the old project: answers to organization fields go along, since those fields
+apply in every project, and each answer to one of the old project's own fields
+is named in the history as it is dropped, so nothing disappears unsaid.
 
 ### A dashboard is an arrangement, and every number is computed on read
 
@@ -839,8 +1116,10 @@ A dashboard made from a template is a copy, so nothing happens to it when the
 template changes. The built-in templates are code, keyed by a word; an
 organization's own are rows, because an arrangement somebody built on a Monday
 is theirs to keep and the product cannot know it in advance. They copy widgets
-and drop what belongs to one project, team, sprint or milestone by id, while the
-filter's names travel. A template is not edited: it is removed and saved again.
+and drop what belongs to one project, team, sprint, milestone or version by id,
+while the filter's names travel. A template saved before the version was dropped
+is read without its ids too, so no row needs rewriting. A template is not
+edited: it is removed and saved again.
 
 A milestone's dashboard is the same copy pinned to a name and an id, set in one
 transaction so they cannot disagree; closing or deleting the milestone leaves
@@ -853,7 +1132,8 @@ the first anonymous read: a random token whose digest finds the organization and
 the dashboard, after which the ordinary report code runs inside that
 organization. What a visitor can ask is each widget of that one dashboard, by
 id, with the widget's own stored settings; there is no route that takes a kind
-and parameters. The filter is frozen when the link is made and compiled as the
+and parameters, so a widget that opens more on a click, like a past sprint's
+curve in Sprint history, offers nothing to click on a shared page. The filter is frozen when the link is made and compiled as the
 sharer, so a visitor cannot widen the view. The address is shown once, like an
 API token, and the access log writes the path with the token blanked.
 
@@ -954,6 +1234,22 @@ a hyphen, and a hyphen in prose is far more common than a strike.
 instance's bytes, or if a changelog can be imported, which would mean accepting
 dates from outside for more than the one row that says the issue arrived.
 
+### An export is cut at five thousand issues, and says so
+
+An export asked the issue list for five thousand rows, and the list, which
+keeps a page to two hundred so one request cannot hold the database, gave it
+its default fifty without a word. The export now reads the list a page of two
+hundred at a time, up to five thousand issues. A longer result is cut there
+rather than refused, since the first five thousand in key order are still
+useful, but the file ends with a row saying how many of how many it holds and
+to narrow the query, and the response carries `X-Export-Truncated: true`. The
+list breaks ties by the issue's id after its key number, because key numbers
+repeat across projects and a page boundary between two equal ones would
+otherwise show one issue twice and drop another.
+
+**Reconsider if** somebody needs a whole organization in one file, at which
+point an export becomes a job that writes to storage and mails a link.
+
 ## The interface
 
 ### The interface is a tool, not a landing page
@@ -1001,8 +1297,9 @@ anything. Two columns say two things: the rail is what is always there, the
 sidebar is the map, and folding the map leaves the rail whole. The groups fold
 and remember it; Project Admin folds by default since setup is visited less than
 work. A project's pages are in the sidebar with a switcher that keeps the page
-kind, so Board stays Board in the other project, and the command palette is the
-keyboard's sidebar. Below 1024px the sidebar becomes a rail of icons.
+kind, so Board stays Board in the other project (a sprint's board becomes the
+other project's Sprints, since the sprint is not theirs), and the command
+palette is the keyboard's sidebar. Below 1024px the sidebar becomes a rail of icons.
 
 The page's head draws into a strip over the content rather than moving out of
 the thirty-five pages that call it, and floats on glass so the title and the
@@ -1029,6 +1326,23 @@ find; an issue made from the project page blanked the form and said nothing.
 Both now end where the next thing happens. The projects page became a table with
 the facts a person scans for, because a page of projects is a page of projects
 and not a form.
+
+### A refused change says why, once
+
+An assignee, a priority or a saved search the server refused flipped back and
+said nothing, because each control called `mutate` and nobody looked at the
+error. Most controls do show their own failure beside themselves, so a toast
+for every failure would say most of them twice. The query client's
+`MutationCache.onError` toasts the server's sentence unless the caller shows
+the failure itself, and every mutation is built on `api/mutation.ts`, which
+knows: a caller that reads `error`, `isError` or `mutateAsync`, or passes
+`mutate` an `onError`, has taken the failure on. `meta: { handlesError: true }`
+says so outright for a caller that reports it some other way. A unit test
+refuses a mutation built straight on TanStack's hook.
+
+The alternative was marking each of the hundred-odd mutations that show their
+error by hand. That is a mark one new control forgets, and a hook shared by a
+silent field and a talkative one cannot carry both answers.
 
 ### An issue is one page in two columns, and the same page opens beside the list
 
@@ -1100,6 +1414,16 @@ short relative forms stay, because a list column reads "2h ago" in any language.
 The language changes formatting only, and the page says so: translating the
 interface is a different undertaking, and a setting that promises it and does
 not would be worse than none.
+
+The same holds for the dates a form works out: "today" and "the end of that
+day" are the profile zone's, so a work log starts on the day the reader is in
+and a share link lasts until midnight where they are. A week that starts at
+midnight UTC is a date, not an instant, and is read in UTC so no zone moves it
+onto the Sunday before.
+Pages kept slipping back to en-GB or the browser's language one helper at a
+time, so a unit test now reads the source: outside `lib/format.ts`, no date
+or number is written with `undefined`, no locale at all, a literal locale or
+`navigator.language`. Helpers take `format.locale` instead.
 
 ### A person can see and change what is theirs
 
@@ -1350,7 +1674,9 @@ Erasure replaces the account with a tombstone and keeps the work attributed to
 it, because the record belongs to the team: a comment with no author is a worse
 record than one by "Former user", and an issue that loses its reporter loses the
 one person the desk was answering. What only the person could use goes with
-them. The last owner of an organization is refused, since erasing them would
+them, and so does what would keep telling them about work, watches included:
+an erased person on a watcher list is a name kept for nobody. The last owner of
+an organization is refused, since erasing them would
 orphan everybody else, and erasure is from a browser session only, so a leaked
 token cannot erase its owner. An administrator removes a membership, not a
 person. Retention windows are configuration with defaults, because what a law or
@@ -1434,8 +1760,18 @@ hear, and writes one row per person per reason, keyed by the event's id. That
 key is the whole idempotency story: the stream is at-least-once, the inbox is
 exactly-once, and a replay cannot double-mail because mail is only sent when the
 row was new. A preference is therefore a filter on delivery and never on what
-happened, and a digest is the same rows read later. The desk keeps its own
-notifier for customers, whose mails are worded for people without an account.
+happened, and a digest is the same rows read later. Watching one's own issues
+is the one preference read earlier: off, the reporter and the assignee are not
+on the issue by their role, so only a watch made on purpose, an assignment or a
+mention reaches them. The desk keeps its own notifier for customers, whose mails
+are worded for people without an account.
+
+A digest is one mail per person and organization, since each organization has
+its own schedule and its own queue. When each one last went is a row in the
+database, not memory in the worker: a restart neither resends nor forgets, and
+the row is claimed in the transaction that sends, so two workers mail it once.
+A daily digest goes at the first pass from 08:00 on that has not sent it that
+day, so a pass that misses the hour sends it late instead of skipping a day.
 
 ### A webhook is an endpoint, and a rule may aim at one
 
@@ -1447,6 +1783,15 @@ tries and redelivery therefore exist once, and the log an administrator reads is
 complete whatever asked for the send. The secret is stored as it is, because
 signing needs it; the git integration's inbound secrets stay digests, because
 verifying does not.
+
+Deliveries are posted side by side, never one after another: a pool of
+`ARMATURE_WEBHOOK_CONCURRENCY` places, at most two of them to any one endpoint,
+so an organization whose endpoint hangs holds two places and not the queue.
+Three timeouts in a row pause an endpoint: everything it has waiting is put off
+five minutes, without counting as an attempt, and the pass goes on without it.
+The pause is written on the deliveries rather than kept in memory, so a restart
+does not forget it and no migration was needed; a test or a redelivery by hand
+still goes at once.
 
 ### A rule runs as an account of its own, once per event
 
@@ -1469,7 +1814,12 @@ administrator. The worker copies the administrative topics off the stream, each
 once by its event id, so the log, the webhooks and the rules all say the same
 thing. Issue traffic is left out on purpose: each issue's history already holds
 it, and a log that repeats every transition is one nobody reads. The acts that
-happen before or beside a tenant are written by the act itself.
+happen before or beside a tenant are written by the act itself, and so are a
+sign-in with a password and the changes to webhooks, rules and invitations,
+which no consumer needs as events. Those entries never hold what the act hands
+out: a rotated secret is recorded as rotated, a rule's incoming address by its
+kind, an invitation without its link, and a webhook's address as its scheme and
+host, because a chat service puts its credential in the path.
 
 ### Tracing is OTLP over HTTP, metrics are Prometheus on a private port
 

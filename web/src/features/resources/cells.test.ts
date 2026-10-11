@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ResourceRow, ResourceWeek } from "@/api/resources";
-import { cellShares, cellState, describeCell, describeHours, hasPlannedRows, hours, mondayOf, shiftWeeks, windowFrom } from "./cells";
+import { cellShares, cellState, describeCell, describeHours, hasPlannedRows, hours, mondayOf, shiftWeeks, weekLabel, windowFrom } from "./cells";
 
 const week = (over: Partial<ResourceWeek> = {}): ResourceWeek => ({ start: "2031-03-03T00:00:00Z", loadHours: 0, issues: [], ...over });
 const row = (weeks: ResourceWeek[], over: Partial<ResourceRow> = {}): ResourceRow => ({ kind: "person", id: "p1", name: "Ada", weeks, ...over });
@@ -11,10 +11,16 @@ describe("a resource cell", () => {
     expect(describeHours(week({ loadHours: 32, capacityHours: 24, nominalHours: 40, daysAway: 1, holidays: 1 }))).toBe("32 of 24 h; 1 day away; 1 holiday");
     expect(describeHours(week({ loadHours: 12.5, capacityHours: 20, daysAway: 1.5, holidays: 2 }))).toBe("12.5 of 20 h; 1.5 days away; 2 holidays");
     expect(describeHours(week({ loadHours: 6 }))).toBe("6 h");
-    expect(describeCell(row([]), week({ loadHours: 6, capacityHours: 8 }))).toMatch(/^Ada, week of .+: 6 of 8 h$/);
+    expect(describeCell(row([]), week({ loadHours: 6, capacityHours: 8 }), "en-GB")).toBe("Ada, week of 3 Mar: 6 of 8 h");
     // A person who gives the project part of their week says so beside the hours.
     expect(describeHours(week({ loadHours: 12, capacityHours: 20, daysAway: 1 }), 50)).toBe("12 of 20 h (50% of the week); 1 day away");
-    expect(describeCell(row([], { sharePercent: 0 }), week({ loadHours: 2, capacityHours: 0 }))).toMatch(/: 2 of 0 h \(0% of the week\)$/);
+    expect(describeCell(row([], { sharePercent: 0 }), week({ loadHours: 2, capacityHours: 0 }), "en-GB")).toMatch(/: 2 of 0 h \(0% of the week\)$/);
+  });
+
+  it("heads a week with its Monday in the reader's language", () => {
+    expect(weekLabel("2031-03-03T00:00:00Z", "en-GB")).toBe("3 Mar");
+    expect(weekLabel("2031-03-03T00:00:00Z", "en-US")).toBe("Mar 3");
+    expect(weekLabel("2031-03-03T00:00:00Z", "de-DE")).toBe("3. März");
   });
 
   it("writes hours to one decimal and drops a trailing zero", () => {
@@ -48,11 +54,37 @@ describe("a resource cell", () => {
 
 describe("the resource window", () => {
   it("starts on the Monday of a week and runs whole weeks", () => {
-    expect(mondayOf(new Date("2031-03-06T15:00:00Z"))).toBe("2031-03-03");
-    expect(mondayOf(new Date("2031-03-09T10:00:00Z"))).toBe("2031-03-03");
-    expect(mondayOf(new Date("2031-03-03T00:00:00Z"))).toBe("2031-03-03");
+    // Local times: the week is the one on the reader's calendar, wherever the run is.
+    expect(mondayOf(new Date(2031, 2, 6, 15))).toBe("2031-03-03");
+    expect(mondayOf(new Date(2031, 2, 9, 23, 59))).toBe("2031-03-03");
+    expect(mondayOf(new Date(2031, 2, 3, 0, 0))).toBe("2031-03-03");
     expect(windowFrom("2031-03-03", 8)).toEqual({ from: "2031-03-03", to: "2031-04-27" });
     expect(shiftWeeks("2031-03-03", -4)).toBe("2031-02-03");
+  });
+
+  describe("opens on the reader's own week", () => {
+    const zone = process.env.TZ;
+    // Node reads TZ again whenever it changes, so a test can stand in any zone.
+    const standIn = (tz: string, utc: string) => {
+      process.env.TZ = tz;
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(utc));
+    };
+    afterEach(() => {
+      vi.useRealTimers();
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    });
+
+    it("in Berlin at half past midnight on a Monday, which is still Sunday in UTC", () => {
+      standIn("Europe/Berlin", "2031-06-01T22:30:00Z");
+      expect(mondayOf(new Date())).toBe("2031-06-02");
+    });
+
+    it("in New York on a Sunday evening, which is already Monday in UTC", () => {
+      standIn("America/New_York", "2031-06-02T00:00:00Z");
+      expect(mondayOf(new Date())).toBe("2031-05-26");
+    });
   });
 
   it("has somebody to plan against only beside the unassigned row", () => {

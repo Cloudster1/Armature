@@ -142,13 +142,17 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"policy": updated})
 }
 
+// maxQueueOffset bounds how far into a queue a page may start, as for issues.
+const maxQueueOffset = 1 << 20
+
 func (s *Server) handleQueue(w http.ResponseWriter, r *http.Request) {
-	rows, err := s.Desk.Queue(r.Context(), r.PathValue("projectKey"), desk.QueueFilter(r.URL.Query().Get("filter")), userFrom(r))
+	page := issue.Page{Limit: queryInt(r, "limit", desk.QueuePageSize, 1, desk.MaxQueuePage), Offset: queryInt(r, "offset", 0, 0, maxQueueOffset)}
+	queue, err := s.Desk.Queue(r.Context(), r.PathValue("projectKey"), desk.QueueFilter(r.URL.Query().Get("filter")), userFrom(r), page)
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"rows": rows})
+	respondJSON(w, r, http.StatusOK, queue)
 }
 
 func (s *Server) handleIssueTimers(w http.ResponseWriter, r *http.Request) {

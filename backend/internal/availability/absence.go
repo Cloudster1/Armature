@@ -2,6 +2,7 @@ package availability
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -50,7 +51,21 @@ var (
 	// ErrMayNotRecord is returned to somebody who neither is the person nor
 	// administers them nor manages one of their teams.
 	ErrMayNotRecord = errors.New("only the person, an administrator or a manager of one of their teams records their absences")
+	// ErrMayNotChange is returned to a manager, or anybody else, who reaches
+	// for an absence they did not record and that is not their own.
+	ErrMayNotChange = errors.New("only the person or an administrator changes this absence")
 )
+
+// MayNotChangeError names whose absence it is, so the refusal says who to ask.
+type MayNotChangeError struct {
+	Person string
+}
+
+func (e *MayNotChangeError) Error() string {
+	return fmt.Sprintf("only %s or an administrator changes this absence", e.Person)
+}
+
+func (e *MayNotChangeError) Is(target error) bool { return target == ErrMayNotChange }
 
 // ParseDay reads a YYYY-MM-DD day; what names it goes into the refusal.
 func ParseDay(text, what string) (time.Time, error) {

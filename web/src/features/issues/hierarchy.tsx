@@ -4,14 +4,14 @@ import { Link } from "@tanstack/react-router";
 import {
   useCreateIssue,
   useIssueHierarchy,
-  useIssues,
+  useIssueTypes,
   useSetParent,
   type Issue,
   type Progress,
   type TreeNode,
 } from "@/api/issues";
+import { useParentCandidates } from "@/api/issueReads";
 import { Button, ErrorBanner, Input, ProgressBar as Bar, SelectInput, Textarea, cx } from "@/components/ui";
-import { MAX_PAGE_SIZE } from "@/config";
 import { Avatar, StatusBadge, TypeBadge } from "./badges";
 
 /**
@@ -211,19 +211,39 @@ function AddChildForm({
  */
 export function ParentPicker({ issue }: { issue: Issue }) {
   const setParent = useSetParent();
-  const { data } = useIssues({ project: issue.projectKey, limit: MAX_PAGE_SIZE });
+  const [words, setWords] = useState("");
+  const { data: typeData } = useIssueTypes();
+  // The server is asked for the level above by type, so a parent older than
+  // any one page is still found by typing its name.
+  const levelAbove = (typeData?.issueTypes ?? [])
+    .filter((type) => type.level === issue.type.level + 1)
+    .map((type) => type.id);
+  const { data } = useParentCandidates(issue.projectKey, levelAbove, words.trim());
 
-  const candidates = (data?.issues ?? []).filter(
-    (candidate) => candidate.type.level === issue.type.level + 1,
-  );
+  const found = data?.issues ?? [];
+  // The current parent stays selectable even when the search has moved past it.
+  const current = issue.parent && !found.some((candidate) => candidate.key === issue.parent?.key) ? [issue.parent] : [];
+  const candidates = [...current, ...found];
   const detachable = issue.type.level >= 0;
 
-  if (candidates.length === 0 && !issue.parent) {
+  if (!words && candidates.length === 0) {
     return <span className="text-xs text-ink-subtle">Nothing to sit under</span>;
   }
 
   return (
     <span className="flex flex-col items-end gap-1">
+      <label htmlFor="issue-parent-search" className="sr-only">
+        Find a parent
+      </label>
+      <Input
+        id="issue-parent-search"
+        type="search"
+        controlSize="sm"
+        value={words}
+        onChange={(e) => setWords(e.target.value)}
+        placeholder="Find a parent"
+        className="max-w-44 text-xs"
+      />
       <label htmlFor="issue-parent" className="sr-only">
         Parent
       </label>

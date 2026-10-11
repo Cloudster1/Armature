@@ -106,6 +106,7 @@ data:
   ARMATURE_PORTAL_CODE_COOLDOWN: "1m"
   
   ARMATURE_UPLOAD_LIMIT: "50MB"
+  ARMATURE_WEBHOOK_CONCURRENCY: "8"
   ARMATURE_S3_ENDPOINT: "armature-seaweedfs-s3:8333"
   ARMATURE_S3_BUCKET: "armature-attachments"
   ARMATURE_S3_REGION: "us-east-1"
@@ -633,7 +634,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 2c071c95c480c17d048524741dde285a701cec27e282e81a08851f8ef934aab8
+        checksum/env: 7d1b8e13d997f39259ab613b1563c3720ab7523d0651a652a96cf86ed7afd49a
     spec:
       serviceAccountName: armature
       securityContext:
@@ -840,7 +841,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 2c071c95c480c17d048524741dde285a701cec27e282e81a08851f8ef934aab8
+        checksum/env: 7d1b8e13d997f39259ab613b1563c3720ab7523d0651a652a96cf86ed7afd49a
     spec:
       serviceAccountName: armature
       securityContext:

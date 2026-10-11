@@ -117,6 +117,37 @@ func mayRecord(ctx context.Context, tx db.DBTX, by Recorder, userID uuid.UUID) e
 	return ErrMayNotRecord
 }
 
+// mayChange keeps a manager to the absences they recorded: a manager decides
+// who is on their team, so may record may not reach what others wrote down.
+func mayChange(by Recorder, a *Absence, recordedBy *uuid.UUID, managesThem func() error) error {
+	if by.ID == a.UserID || by.Perms.CanInOrg(perm.OrgAdminister) {
+		return nil
+	}
+	if recordedBy != nil && *recordedBy == by.ID {
+		if err := managesThem(); !errors.Is(err, ErrMayNotRecord) {
+			return err
+		}
+	}
+	return &MayNotChangeError{Person: a.UserName}
+}
+
+// lockAbsence reads an absence for a change, with who recorded it.
+func lockAbsence(ctx context.Context, tx db.DBTX, by Recorder, id uuid.UUID) (*Absence, error) {
+	found, err := scanAbsence(tx.QueryRow(ctx, selectAbsence+` WHERE a.id = $1 FOR UPDATE OF a`, id))
+	if err != nil {
+		return nil, err
+	}
+	var recordedBy *uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT created_by FROM absence WHERE id = $1`, id).Scan(&recordedBy); err != nil {
+		return nil, fmt.Errorf("read who recorded the absence: %w", err)
+	}
+	err = mayChange(by, found, recordedBy, func() error { return mayRecord(ctx, tx, by, found.UserID) })
+	if err != nil {
+		return nil, err
+	}
+	return found, nil
+}
+
 // RecordAbsence writes down that somebody is away.
 func (s *Service) RecordAbsence(ctx context.Context, by Recorder, userID uuid.UUID, in AbsenceInput) (*Absence, db.LSN, error) {
 	if in.StartsOn == nil {
@@ -152,7 +183,7 @@ func (s *Service) RecordAbsence(ctx context.Context, by Recorder, userID uuid.UU
 		if out, err = scanAbsence(tx.QueryRow(ctx, selectAbsence+` WHERE a.id = $1`, id)); err != nil {
 			return err
 		}
-		return emitAbsence(ctx, tx, "absence.recorded", out, by)
+		return emitAbsence(ctx, tx, events.TopicAbsenceRecorded, out, by)
 	})
 	if err != nil {
 		return nil, 0, err
@@ -164,11 +195,8 @@ func (s *Service) RecordAbsence(ctx context.Context, by Recorder, userID uuid.UU
 func (s *Service) UpdateAbsence(ctx context.Context, by Recorder, id uuid.UUID, in AbsenceInput) (*Absence, db.LSN, error) {
 	var out *Absence
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		before, err := scanAbsence(tx.QueryRow(ctx, selectAbsence+` WHERE a.id = $1 FOR UPDATE OF a`, id))
+		before, err := lockAbsence(ctx, tx, by, id)
 		if err != nil {
-			return err
-		}
-		if err := mayRecord(ctx, tx, by, before.UserID); err != nil {
 			return err
 		}
 		startsOn, endsOn, halfDay := before.StartsOn, before.EndsOn, before.HalfDay
@@ -193,7 +221,7 @@ func (s *Service) UpdateAbsence(ctx context.Context, by Recorder, id uuid.UUID, 
 		if out, err = scanAbsence(tx.QueryRow(ctx, selectAbsence+` WHERE a.id = $1`, id)); err != nil {
 			return err
 		}
-		return emitAbsence(ctx, tx, "absence.changed", out, by)
+		return emitAbsence(ctx, tx, events.TopicAbsenceChanged, out, by)
 	})
 	if err != nil {
 		return nil, 0, err
@@ -204,17 +232,14 @@ func (s *Service) UpdateAbsence(ctx context.Context, by Recorder, id uuid.UUID, 
 // RemoveAbsence takes an absence back: the person is not away after all.
 func (s *Service) RemoveAbsence(ctx context.Context, by Recorder, id uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		found, err := scanAbsence(tx.QueryRow(ctx, selectAbsence+` WHERE a.id = $1 FOR UPDATE OF a`, id))
+		found, err := lockAbsence(ctx, tx, by, id)
 		if err != nil {
-			return err
-		}
-		if err := mayRecord(ctx, tx, by, found.UserID); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM absence WHERE id = $1`, id); err != nil {
 			return fmt.Errorf("remove an absence: %w", err)
 		}
-		return emitAbsence(ctx, tx, "absence.removed", found, by)
+		return emitAbsence(ctx, tx, events.TopicAbsenceRemoved, found, by)
 	})
 }
 

@@ -23,9 +23,11 @@ describe("days", () => {
     expect(dayOf("2026-09-24")).toBe("2026-09-24");
   });
 
-  it("writes it the way the plan does, whichever form it arrived in", () => {
-    expect(formatDay("2026-09-24T00:00:00Z")).toBe(formatDay("2026-09-24"));
-    expect(formatDay("2026-09-24")).toMatch(/^24 Sep\w* 2026$/);
+  it("writes it in the reader's language, whichever form it arrived in", () => {
+    expect(formatDay("2026-09-24T00:00:00Z", "en-GB")).toBe(formatDay("2026-09-24", "en-GB"));
+    expect(formatDay("2026-09-24", "en-GB")).toMatch(/^24 Sep\w* 2026$/);
+    expect(formatDay("2026-09-24", "en-US")).toBe("Sep 24, 2026");
+    expect(formatDay("2026-09-24T00:00:00Z", "de-DE")).toBe("24.09.2026");
   });
 });
 

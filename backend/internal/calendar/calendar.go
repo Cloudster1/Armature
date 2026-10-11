@@ -20,6 +20,10 @@ import (
 // month is asked to narrow, not shown a wall.
 const MaxItems = 500
 
+// GridDays is the six weeks the page draws for a month, padded from its
+// neighbours; CALENDAR_GRID_DAYS in web/src/config.ts is the same number.
+const GridDays = 42
+
 // Kind says what an item is, which decides how it is drawn.
 type Kind string
 
@@ -85,8 +89,16 @@ func ParseMonth(s string) (int, int, error) {
 
 const dateLayout = "2006-01-02"
 
-// Month reads everything dated inside the month, including ranges that cross
-// into it from either side, so a bar that started last month is still drawn.
+// gridSpan is the first and last day the month's grid draws, Monday first.
+func gridSpan(year, month int) (time.Time, time.Time) {
+	first := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	lead := (int(first.Weekday()) + 6) % 7
+	start := first.AddDate(0, 0, -lead)
+	return start, start.AddDate(0, 0, GridDays-1)
+}
+
+// Month reads everything dated inside the month, ranges crossing in from either
+// side included, and the days off over all six weeks the grid draws.
 func (s *Service) Month(ctx context.Context, projectKey string, year, month int) (*Month, error) {
 	if month < 1 || month > 12 || year < 1970 || year > 9999 {
 		return nil, ErrBadMonth
@@ -165,7 +177,8 @@ func (s *Service) Month(ctx context.Context, projectKey string, year, month int)
 		return more.Err()
 	})
 	if err == nil {
-		err = s.daysOff(ctx, key, first, next.AddDate(0, 0, -1), out)
+		gridFirst, gridLast := gridSpan(year, month)
+		err = s.daysOff(ctx, key, gridFirst, gridLast, out)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read calendar month: %w", err)
@@ -173,8 +186,8 @@ func (s *Service) Month(ctx context.Context, projectKey string, year, month int)
 	return out, nil
 }
 
-// daysOff adds the holidays and the absences of the project's people. An
-// absence says who and when, and nothing else, as it does everywhere.
+// daysOff adds the holidays and the absences of the project's people over the
+// grid. An absence keeps its own days, so one running past the grid draws open.
 func (s *Service) daysOff(ctx context.Context, key string, first, last time.Time, out *Month) error {
 	people, err := s.people.ProjectPeople(ctx, key, first, last)
 	if err != nil {
@@ -200,11 +213,10 @@ func (s *Service) daysOff(ctx context.Context, key string, first, last time.Time
 	if len(away) > MaxItems {
 		away, out.Truncated = away[:MaxItems], true
 	}
-	from, to := first.Format(dateLayout), last.Format(dateLayout)
 	for _, a := range away {
 		out.Items = append(out.Items, Item{
 			Kind: KindAbsence, ID: a.ID, Title: a.UserName,
-			From: max(a.StartsOn, from), To: min(a.EndsOn, to), HalfDay: a.HalfDay,
+			From: a.StartsOn, To: a.EndsOn, HalfDay: a.HalfDay,
 		})
 	}
 	return nil

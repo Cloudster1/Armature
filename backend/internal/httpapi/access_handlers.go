@@ -178,7 +178,7 @@ func (s *Server) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("Invalid group id."))
 		return
 	}
-	lsn, err := s.Perms.DeleteGroup(r.Context(), id)
+	lsn, err := s.Perms.DeleteGroup(r.Context(), id, userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return
