@@ -62,6 +62,11 @@ describe("LineChart", () => {
     expect(pathOf([{ x: 0, y: 10 }, { x: 50, y: 40 }], false)).toBe("M0 10 L50 40");
   });
 
+  it("marks a series of one point, which a path alone would not draw", () => {
+    render(<LineChart series={[{ name: "remaining", tone: "", points: [{ x: 0, y: 8 }] }]} />);
+    expect(document.querySelector('[data-series="remaining"] [data-marker]')).not.toBeNull();
+  });
+
   it("says what is empty", () => {
     render(<LineChart series={[{ name: "remaining", tone: "", points: [] }]} empty="No day yet" />);
     expect(screen.getByText("No day yet")).toBeInTheDocument();
