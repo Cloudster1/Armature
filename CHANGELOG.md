@@ -20,6 +20,9 @@ here in the branch that makes it.
   for the new team's backlog, with a line in its history, instead of
   vanishing from the Sprints page while still counting in the sprint; another
   team's sprint is refused, by hand, on completion and by the database (#56).
+- Fixed: an out-of-office or other automatic reply to a request is no longer
+  posted as the customer's answer; the request stays Waiting for customer
+  with its clocks held, and the mail is logged as automatic (#65).
 - Fixed: one issue dated far in the future no longer makes every plan read
   that far: the load is read over at most ten years, and issue dates
   outside 1900 to 2199 are refused with a sentence, also by the database (#40).
