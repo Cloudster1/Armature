@@ -52,6 +52,11 @@ func (s *Service) IssueTransitioned(context.Context, db.DBTX, *issue.Issue, *iss
 	return nil
 }
 
+// IssueUpdated has nothing to do: files stay with the issue wherever it goes.
+func (s *Service) IssueUpdated(context.Context, db.DBTX, *issue.Issue, *issue.Issue, issue.Actor) error {
+	return nil
+}
+
 // CommentAdded has nothing to do.
 func (s *Service) CommentAdded(context.Context, db.DBTX, uuid.UUID, bool, issue.Actor) error {
 	return nil

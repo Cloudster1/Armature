@@ -360,7 +360,7 @@ export function useUpdateIssue() {
     mutationFn: ({ key, ...body }: UpdateIssueInput) =>
       request<{ issue: Issue }>(`/issues/${key}`, { method: "PATCH", body }),
     // The board, the plan, the calendar, the resources and the sprints all show
-    // these fields, and the panel docks beside each of them.
+    // these fields, and a new priority moves a desk's clocks.
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }

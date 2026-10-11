@@ -39,6 +39,9 @@ func NewService(cluster *db.Cluster, engine *workflow.Engine, workflows *workflo
 type Observer interface {
 	IssueCreated(ctx context.Context, tx db.DBTX, created *Issue, actor Actor) error
 	IssueTransitioned(ctx context.Context, tx db.DBTX, before, after *Issue, actor Actor) error
+	// IssueUpdated is told of an edit that changed something and of a move,
+	// so a goal kept by priority or by project can follow it.
+	IssueUpdated(ctx context.Context, tx db.DBTX, before, after *Issue, actor Actor) error
 	// CommentAdded is told of every comment, internal or not.
 	CommentAdded(ctx context.Context, tx db.DBTX, issueID uuid.UUID, internal bool, actor Actor) error
 	// IssueDeleted is told before the rows go, while what hangs off the issue
@@ -48,6 +51,15 @@ type Observer interface {
 
 // Observe adds an observer. It is called at wiring time, before any request.
 func (s *Service) Observe(o Observer) { s.observers = append(s.observers, o) }
+
+func (s *Service) tellUpdated(ctx context.Context, tx db.DBTX, before, after *Issue, actor Actor) error {
+	for _, o := range s.observers {
+		if err := o.IssueUpdated(ctx, tx, before, after, actor); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // Actor is whoever is making the change.
 type Actor struct {

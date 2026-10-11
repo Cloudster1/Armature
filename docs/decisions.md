@@ -783,6 +783,22 @@ had already happened stays recorded, and one the worker had not seen yet is
 recorded as the clock completes, so closing a request never hides a missed
 goal. Reopening starts a fresh resolution clock; first response stays answered
 once it has been, by a reply or by resolving.
+The clocks follow the request, not only its status. A new priority or request
+type looks the policy up again and moves each open clock to the goal it now
+has, keeping the time already run: the customer has been waiting that long
+whatever the label says. A goal the clock has already used up is a breach at
+once, a breach already recorded stays, a finished clock keeps the goal it
+finished against, and a priority the policy does not measure takes its open
+clock off. Editing a policy is different: that rewrites the desk's promise to
+everybody, so clocks already running keep the goal they started with.
+
+Moving an issue out of a desk takes its clocks off with the sprint, the versions
+and everything else that belonged to the old project, so nothing is left for
+the watch to breach. Moving it into a desk starts that desk's clocks from
+nothing, paused when it lands in a pause status and not at all when it lands
+done. Refusing the move instead would make a misfiled request impossible to
+put right, and carrying the old clocks over would hold one desk to another's
+goals. Subtasks that come along are treated the same way.
 
 A goal measured in business hours is arithmetic over a zone, a set of daily
 spans and a list of holidays, which in SQL means either a table of every working

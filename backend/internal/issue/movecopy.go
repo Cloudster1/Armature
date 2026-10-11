@@ -298,6 +298,10 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 		if err != nil {
 			return err
 		}
+		// A desk's clocks belong to the project too, so they follow here.
+		if err := s.tellUpdated(ctx, tx, before, moved, actor); err != nil {
+			return err
+		}
 		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": moved.ID, "key": moved.Key, "changes": changes, "actorId": actor.UserID, "movedFrom": before.Key,
 		})
