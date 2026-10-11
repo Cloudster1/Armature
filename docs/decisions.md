@@ -389,7 +389,12 @@ scrum board between sprints is deliberately empty. A board with no type takes
 after the project's first board, which is the one the template chose; a project
 with no board at all falls back to kanban, the type that shows work without a
 sprint. A backlog is derived, not stored: storing it would allow an issue to be
-in a backlog and a sprint, or in two backlogs, or in neither.
+in a backlog and a sprint, or in two backlogs, or in neither. It is the
+unfinished work in no sprint, in rank order; done work in no sprint is history.
+The Sprints page reads the backlog and each sprint from the server, every page
+of them, rather than filtering the project's newest issues: a page of those
+lost older committed work, and a sprint that looked empty was offered for
+deletion.
 
 ### Team capacity is points per week, spread over the days a ticket is scheduled
 

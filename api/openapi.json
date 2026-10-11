@@ -5141,9 +5141,25 @@
             }
           },
           {
+            "name": "sprint",
+            "in": "query",
+            "description": "A sprint id for the work committed to it, or \"none\" for the backlog.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "A team id for the work it carries, or \"none\" for the project's own.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "orderBy",
             "in": "query",
-            "description": "created, updated, priority, key, summary or status.",
+            "description": "created, updated, priority, key, summary, status or rank.",
             "schema": {
               "type": "string"
             }
@@ -11674,9 +11690,25 @@
             }
           },
           {
+            "name": "sprint",
+            "in": "query",
+            "description": "A sprint id for the work committed to it, or \"none\" for the backlog.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "A team id for the work it carries, or \"none\" for the project's own.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "orderBy",
             "in": "query",
-            "description": "created, updated, priority, key, summary or status.",
+            "description": "created, updated, priority, key, summary, status or rank.",
             "schema": {
               "type": "string"
             }

@@ -20,6 +20,7 @@ import {
   planSprint,
   selectByLabel,
   signUp,
+  waitForButtonToGo,
   WAIT,
 } from "../helpers.mjs";
 
@@ -259,4 +260,57 @@ scenario("a team carrying work cannot just be deleted", async ({ page }) => {
     () => document.body.innerText.includes("Platform still has 1 issue."),
     { timeout: WAIT },
   );
+});
+
+// More than the largest page the API serves, so the old work is off the newest one.
+const PAST_A_PAGE = 205;
+
+scenario("an old committed issue stays in its sprint past the newest 200", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Long history");
+  const old = await createIssue(page, key, "committed long ago", "Task");
+  const finished = await createIssue(page, key, "finished long ago", "Task");
+  await goto(page, `/issues/${finished}`);
+  await clickButton(page, "Close");
+  await waitForButtonToGo(page, "Close");
+
+  await createSprint(page, key, "Sprint 3");
+  await commitIssue(page, old, "Sprint 3");
+
+  // Filed through the API: two hundred trips through the dialog would test the dialog.
+  const filed = await page.evaluate(async (projectKey, count) => {
+    let made = 0;
+    for (let i = 0; i < count; i += 1) {
+      const response = await fetch(`/api/v1/projects/${projectKey}/issues`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summary: `newer work ${i}` }),
+      });
+      if (response.ok) made += 1;
+    }
+    return made;
+  }, key, PAST_A_PAGE);
+  expect.equal(filed, PAST_A_PAGE, "the newer work was filed");
+
+  await goto(page, `/projects/${key}/sprints`);
+  await page.waitForFunction(
+    (k) => document.querySelector(`[data-sprint="Sprint 3"] [data-issue="${k}"]`) !== null,
+    { timeout: WAIT },
+    old,
+  );
+
+  // The card is not empty, so it is not offered for deletion.
+  const buttons = await page.$$eval('[data-sprint="Sprint 3"] button', (els) => els.map((b) => b.textContent.trim()));
+  expect.notContains(buttons.join(","), "Delete", "a sprint holding work is offered for deletion");
+
+  // The backlog is every newer issue, and nothing that is done or committed.
+  await page.waitForFunction(
+    (n) => document.querySelector('[data-testid="backlog"] h2')?.innerText.includes(`(${n})`),
+    { timeout: WAIT },
+    PAST_A_PAGE,
+  );
+  const backlog = await page.$$eval('[data-testid="backlog"] [data-issue]', (els) => els.map((e) => e.getAttribute("data-issue")));
+  expect.truthy(!backlog.includes(finished), "the finished work is not in the backlog");
+  expect.truthy(!backlog.includes(old), "nor is the committed work");
 });

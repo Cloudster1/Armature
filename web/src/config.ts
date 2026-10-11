@@ -6,6 +6,9 @@ export const DOCS_LABEL_MAX_LENGTH = 60;
 /** The largest page the API will serve; asking for more is clamped anyway. */
 export const MAX_PAGE_SIZE = 200;
 
+/** How many matches the parent picker offers at once; typing narrows the rest. */
+export const PARENT_PICKER_RESULTS = 20;
+
 /** How deep the hierarchy tree indents before it stops. */
 export const MAX_TREE_DEPTH = 4;
 
