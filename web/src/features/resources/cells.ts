@@ -41,13 +41,13 @@ export function describeHours(week: ResourceWeek, sharePercent?: number): string
 }
 
 /** The cell's whole title: whose week, which week, and its hours. */
-export function describeCell(row: ResourceRow, week: ResourceWeek): string {
-  return `${row.name}, week of ${weekLabel(week.start)}: ${describeHours(week, row.sharePercent)}`;
+export function describeCell(row: ResourceRow, week: ResourceWeek, locale: string): string {
+  return `${row.name}, week of ${weekLabel(week.start, locale)}: ${describeHours(week, row.sharePercent)}`;
 }
 
-/** A week's column heading: its Monday, as "3 Mar". */
-export function weekLabel(start: string): string {
-  return day(start).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
+/** A week's column heading: its Monday, as "3 Mar" in the reader's language. */
+export function weekLabel(start: string, locale: string): string {
+  return day(start).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 /**

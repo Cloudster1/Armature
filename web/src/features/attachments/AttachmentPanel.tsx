@@ -12,7 +12,7 @@ import {
 import { useMe } from "@/api/auth";
 import { Button, ErrorBanner } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
-import { relativeTime } from "@/features/issues/badges";
+import { RelativeTime } from "@/features/issues/badges";
 
 /**
  * The files on an issue. Uploading goes through the API to the bucket; the
@@ -103,7 +103,7 @@ export function AttachmentPanel({
               </a>
               <span className="text-sm text-ink-subtle tabular-nums">{formatSize(a.size)}</span>
               <span className="hidden text-sm text-ink-subtle sm:inline">
-                {a.uploader?.name ?? "Armature"} · {relativeTime(a.createdAt)}
+                {a.uploader?.name ?? "Armature"} · <RelativeTime iso={a.createdAt} />
               </span>
               {mayRemove(a.uploader?.id) && (
                 <Button size="sm" variant="ghost" aria-label={`Remove ${a.fileName}`} onClick={async () => (await confirm({ noun: "attachment", verb: "Remove", body: `${a.fileName} goes from the ${source === "portal" ? "request" : "issue"} and from storage.` })) && remove.mutate(a.id)}>

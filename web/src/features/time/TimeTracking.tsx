@@ -12,6 +12,7 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { todayIn, useFormat } from "@/lib/format";
 import { Avatar } from "@/features/issues/badges";
 import { formatDuration, parseDuration, timeProgress } from "./duration";
+import { formatDay } from "@/lib/week";
 
 
 /**
@@ -111,6 +112,7 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
   const log = useLogWork();
   const remove = useDeleteWorklog();
   const confirm = useConfirm();
+  const { locale } = useFormat();
   const [duration, setDuration] = useState("");
   const { timezone } = useFormat();
   const [day, setDay] = useState(() => todayIn(timezone));
@@ -154,7 +156,7 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
               <span className="w-16 shrink-0 font-medium text-ink tabular-nums">{formatDuration(w.minutes)}</span>
               <span className="min-w-0 flex-1 truncate text-ink-muted">{w.note || <span className="text-ink-subtle">No note</span>}</span>
               <span className="shrink-0 text-sm text-ink-subtle">
-                {w.author?.name ?? "Armature"} · {w.startedOn.slice(0, 10)}
+                {w.author?.name ?? "Armature"} · {formatDay(w.startedOn.slice(0, 10), locale)}
               </span>
               {mayRemove(w.author?.id) && (
                 <Button size="sm" variant="ghost" aria-label={`Remove work log ${formatDuration(w.minutes)}`} onClick={async () => (await confirm({ noun: "work log", verb: "Remove", body: `${formatDuration(w.minutes)} comes off the time spent.` })) && remove.mutate(w.id)}>

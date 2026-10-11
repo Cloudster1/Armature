@@ -56,6 +56,11 @@ export function makeFormat(locale: string, timezone: string): Format {
   };
 }
 
+/** The browser's language, for whoever has not chosen one in their profile. */
+export function browserLocale(): string {
+  return navigator.language;
+}
+
 const WALL_CLOCK: Intl.DateTimeFormatOptions = { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" };
 
 // The clock on the wall in a zone at an instant, written as if it were UTC.
@@ -88,7 +93,7 @@ export function endOfDayIn(day: string, timezone: string): string {
 /** The reader's formatting, from their profile; before it loads, the browser's. */
 export function useFormat(): Format {
   const { data } = useMe();
-  const locale = data?.principal?.user.locale || navigator.language;
+  const locale = data?.principal?.user.locale || browserLocale();
   const timezone = data?.principal?.user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   return useMemo(() => makeFormat(locale, timezone), [locale, timezone]);
 }

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
 import type { Issue } from "./issues";
+import { formatDay as formatCalendarDay } from "@/lib/week";
 
 /**
  * How far a milestone has got, counted by the status category of the issues
@@ -54,14 +55,9 @@ export function isOverdue(milestone: Pick<Milestone, "dueOn" | "closedAt" | "pro
   return due < Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
 }
 
-/** A day the way the plan writes one: 24 Sep 2026. */
-export function formatDay(iso: string): string {
-  return new Date(`${dayOf(iso)}T00:00:00Z`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+/** The day a milestone is due or closed, in the reader's language. */
+export function formatDay(iso: string, locale: string): string {
+  return formatCalendarDay(dayOf(iso), locale);
 }
 
 /** The one line a person reads off a milestone: how much of it is done. */

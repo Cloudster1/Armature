@@ -13,7 +13,7 @@ import {
 } from "@/api/git";
 import { Button, ErrorBanner, Field, SectionTitle, Select, Tag, cx } from "@/components/ui";
 import { GIT_SHORT_SHA_LENGTH } from "@/config";
-import { relativeTime } from "@/features/issues/badges";
+import { RelativeTime } from "@/features/issues/badges";
 
 /**
  * What the repositories know about this issue: branches, pull requests with
@@ -89,7 +89,7 @@ export function DevelopmentPanel({ issueKey, projectKey }: { issueKey: string; p
                   {badge}
                   <span className="shrink-0 text-ink-subtle">
                     {commit.authorName ? `${commit.authorName} · ` : ""}
-                    {relativeTime(commit.committedAt)}
+                    <RelativeTime iso={commit.committedAt} />
                   </span>
                 </div>
               )}
@@ -214,7 +214,12 @@ function BranchRow({ branch }: { branch: Branch }) {
       )}
       <span className="shrink-0 text-ink-subtle">
         {branch.commitCount} commit{branch.commitCount === 1 ? "" : "s"}
-        {branch.pushedAt ? ` · pushed ${relativeTime(branch.pushedAt)}` : ""}
+        {branch.pushedAt && (
+          <>
+            {" · pushed "}
+            <RelativeTime iso={branch.pushedAt} />
+          </>
+        )}
       </span>
       <span className="shrink-0 text-ink-subtle">{branch.repository}</span>
     </div>

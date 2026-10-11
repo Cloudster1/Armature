@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { asReader } from "@/test/reader";
 import type { CIRun, CIStatus, Development, Repository } from "@/api/git";
 
 const createBranch = vi.fn();
@@ -40,13 +41,13 @@ describe("DevelopmentPanel", () => {
   // rather than showing an empty panel on every issue.
   it("is absent when the project has no repositories", () => {
     state.repositories = [];
-    const { container } = render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    const { container } = render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     expect(container).toBeEmptyDOMElement();
   });
 
   it("lists every repository, and says why a read only one cannot be chosen", () => {
     state.repositories = [repository(), repository({ id: "r2", name: "acme/api", hasToken: true })];
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     fireEvent.click(screen.getByRole("button", { name: "Create branch" }));
 
     const select = screen.getByLabelText("Repository") as HTMLSelectElement;
@@ -59,7 +60,7 @@ describe("DevelopmentPanel", () => {
   // With nowhere to write, the form says what to do rather than failing.
   it("says how to make writing possible when no repository has a token", () => {
     state.repositories = [repository()];
-    render(<DevelopmentPanel issueKey="CP-5" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-5" projectKey="CP" />, { wrapper: asReader("en-GB") });
     fireEvent.click(screen.getByRole("button", { name: "Create branch" }));
     expect(screen.getByTestId("no-token")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
@@ -74,7 +75,7 @@ describe("DevelopmentPanel", () => {
       const repo = state.repositories.find((r) => r.id === input.repositoryId)!;
       opts.onSuccess({ branch: { id: `b-${repo.id}`, repository: repo.name, name: input.name, commitCount: 0, createdAt: "" } });
     });
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     fireEvent.click(screen.getByRole("button", { name: "Create branch" }));
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
 
@@ -101,7 +102,7 @@ describe("DevelopmentPanel", () => {
         ci: { status: "failure", checks: [run("build", "failure")] },
       }],
     };
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     expect(screen.getByText("CP-4 fix", { exact: false })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "CI failed" })).toHaveAttribute("data-ci", "failure");
     expect(screen.getByText("open")).toBeInTheDocument();
@@ -145,7 +146,7 @@ describe("DevelopmentPanel", () => {
         ci: { status: "pending", checks: [run("lint", "success"), run("test", "pending")] },
       }],
     };
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     expect(screen.getByRole("button", { name: "CI running" })).toHaveAttribute("data-ci", "pending");
     expect(screen.queryByText("lint passed")).not.toBeInTheDocument();
   });
@@ -153,7 +154,7 @@ describe("DevelopmentPanel", () => {
   it("names the branch before making it, starting from the repository's default branch", () => {
     state.repositories = [repository({ hasToken: true, defaultBranch: "develop" })];
     state.development = { branchName: "CP-4-fix-the-thing", branches: [], commits: [], runs: [], pullRequests: [] };
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     fireEvent.click(screen.getByRole("button", { name: "Create branch" }));
 
     const name = screen.getByLabelText("Branch name") as HTMLInputElement;
@@ -180,7 +181,7 @@ describe("DevelopmentPanel", () => {
         { id: "b2", repository: "acme/portal", name: "CP-4-old", commitCount: 0, mergedAt: "2026-09-01T00:00:00Z", createdAt: "" },
       ],
     };
-    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
+    render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     expect(screen.getByText("abcdef1")).toHaveAttribute("data-branch-head", "abcdef1234567");
     expect(screen.getByText("3 commits", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("merged")).toBeInTheDocument();

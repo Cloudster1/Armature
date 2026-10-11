@@ -1382,6 +1382,10 @@ day" are the profile zone's, so a work log starts on the day the reader is in
 and a share link lasts until midnight where they are. A week that starts at
 midnight UTC is a date, not an instant, and is read in UTC so no zone moves it
 onto the Sunday before.
+Pages kept slipping back to en-GB or the browser's language one helper at a
+time, so a unit test now reads the source: outside `lib/format.ts`, no date
+or number is written with `undefined`, no locale at all, a literal locale or
+`navigator.language`. Helpers take `format.locale` instead.
 
 ### A person can see and change what is theirs
 

@@ -1,7 +1,7 @@
 import type { Priority, StatusCategory } from "@/api/issues";
 import { cx } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
-import { relativeIn } from "@/lib/format";
+import { useFormat } from "@/lib/format";
 
 /**
  * Status colour carries meaning here, so it is keyed on the category rather
@@ -122,7 +122,8 @@ export function TypeBadge({ icon, name }: { icon: string; name: string }) {
 // their import until the sweep moves them.
 export { Avatar } from "@/components/ui";
 
-/** A short relative phrase in the browser's terms; useFormat gives the reader's. */
-export function relativeTime(iso: string): string {
-  return relativeIn(iso, navigator.language, Intl.DateTimeFormat().resolvedOptions().timeZone);
+/** How long ago, as a short phrase; past a month, a date in the reader's language. */
+export function RelativeTime({ iso }: { iso: string }) {
+  const format = useFormat();
+  return <>{format.relative(iso)}</>;
 }

@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { CalendarItem } from "@/api/calendar";
-import { daysBetween, draggedSchedule, labelOf, listedItems, monthGrid, placeItems, shiftDay, shiftMonth, withHolidays } from "./grid";
+import { daysBetween, draggedSchedule, labelOf, listedItems, monthGrid, monthTitle, placeItems, shiftDay, shiftMonth, withHolidays } from "./grid";
 
 function item(over: Partial<CalendarItem>): CalendarItem {
   return { kind: "issue", id: over.id ?? over.key ?? "x", title: over.title ?? "t", from: "2026-09-10", to: "2026-09-10", ...over };
 }
 
 describe("the month grid", () => {
+  it("is titled in the reader's language", () => {
+    expect(monthTitle(2026, 3, "en-GB")).toBe("March 2026");
+    expect(monthTitle(2026, 3, "de-DE")).toBe("März 2026");
+  });
+
   it("starts on the Monday before the first and shows six weeks", () => {
     // September 2026 begins on a Tuesday.
     const cells = monthGrid(2026, 9);

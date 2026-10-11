@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { asReader } from "@/test/reader";
 
-import { Avatar, PriorityBadge, StatusBadge, TypeBadge, relativeTime } from "./badges";
+import { Avatar, PriorityBadge, RelativeTime, StatusBadge, TypeBadge } from "./badges";
 import { docToText, type Doc } from "@/api/issues";
 
 describe("StatusBadge", () => {
@@ -56,23 +57,26 @@ describe("Avatar", () => {
   });
 });
 
-describe("relativeTime", () => {
+describe("RelativeTime", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("describes recent times in relative terms", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-02T12:00:00Z"));
+  /** The phrase a British reader in London sees for the moment. */
+  function ago(iso: string): string {
+    const { container } = render(<RelativeTime iso={iso} />, { wrapper: asReader("en-GB", "Europe/London") });
+    return container.textContent ?? "";
+  }
 
-    expect(relativeTime("2026-09-02T11:59:30Z")).toBe("just now");
-    expect(relativeTime("2026-09-02T11:45:00Z")).toBe("15m ago");
-    expect(relativeTime("2026-09-02T09:00:00Z")).toBe("3h ago");
-    expect(relativeTime("2026-08-30T12:00:00Z")).toBe("3d ago");
+  it("describes recent times in relative terms", () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-02T12:00:00Z") });
+    expect(ago("2026-09-02T11:59:30Z")).toBe("just now");
+    expect(ago("2026-09-02T11:45:00Z")).toBe("15m ago");
+    expect(ago("2026-09-02T09:00:00Z")).toBe("3h ago");
+    expect(ago("2026-08-30T12:00:00Z")).toBe("3d ago");
   });
 
-  it("falls back to a date once it is far enough in the past", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-02T12:00:00Z"));
-    expect(relativeTime("2026-01-01T12:00:00Z")).toContain("2026");
+  it("falls back to a date in the reader's language once it is far enough in the past", () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-02T12:00:00Z") });
+    expect(ago("2026-01-01T12:00:00Z")).toBe("1 Jan 2026");
   });
 });
 
