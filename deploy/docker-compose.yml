@@ -312,6 +312,9 @@ services:
       ARMATURE_SMTP_ADDR: mailpit:1025
       ARMATURE_MAIL_FROM: Armature <no-reply@armature.test>
       ARMATURE_PORTAL_CODE_COOLDOWN: 5s
+      # Every browser in a test run reaches the api from one address, so the
+      # brakes on codes and guesses forget it after a minute, not ten.
+      ARMATURE_DOOR_WINDOW: 1m
       # Set so the portal can say that answering the desk's mails works; the
       # worker is what reads the box.
       ARMATURE_POP3_ADDR: mailpit:1110
