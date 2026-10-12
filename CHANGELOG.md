@@ -32,6 +32,9 @@ here in the branch that makes it.
   so a page load is a few files rather than every module, and a scenario
   fails if the CSP refuses anything on its pages; `E2E_WEB=dev` keeps
   the dev server for following a scenario through hot reload (#187).
+- Faster tests: the browser suite waits for what it checks instead of
+  sleeping, so the swimlane, drawer and mailed reply scenarios go on the
+  moment the save, the key or the reply has landed (#187).
 - Fixed: a scrum master or project administrator can change or remove only
   the absences they recorded themselves, never the person's own or an
   administrator's, and the person is told in their inbox, and by mail if they

@@ -129,8 +129,18 @@ scenario("Escape in the issue drawer closes only what is on top of it", async ({
   await page.waitForSelector(`${drawer} #new-comment`, { timeout: WAIT });
   await page.click(`${drawer} #new-comment`);
   await page.type(`${drawer} #new-comment`, "half a thought");
+  // A listener added after the app's sees the key once the app has handled it;
+  // two frames on, whatever that Escape would have closed is gone.
+  await page.evaluate(() => {
+    window.escapeHandled = false;
+    document.addEventListener("keydown", function seen(event) {
+      if (event.key !== "Escape") return;
+      document.removeEventListener("keydown", seen);
+      requestAnimationFrame(() => requestAnimationFrame(() => (window.escapeHandled = true)));
+    });
+  });
   await page.keyboard.press("Escape");
-  await new Promise((r) => setTimeout(r, 300));
+  await page.waitForFunction(() => window.escapeHandled, { timeout: WAIT });
   expect.truthy(await page.$(drawer), "the issue stayed open while a comment was written");
   const draft = await page.$eval(`${drawer} #new-comment`, (el) => (el.tagName === "TEXTAREA" ? el.value : el.textContent));
   expect.contains(draft, "half a thought", "and the draft is kept");
@@ -263,25 +273,34 @@ scenario("swimlanes can be reconfigured to cover several states", async ({ page 
       ?.click();
   });
   await confirm(page);
-  await page.waitForFunction(
-    () => !document.body.innerText.includes("states in this swimlane".toUpperCase()) || true,
-    { timeout: 5_000 },
+  // The In Progress lane can take In Review once the board, refetched after
+  // the delete, no longer has it claimed.
+  const reviewBox = await page.waitForFunction(
+    () => {
+      if (document.querySelector('[data-swimlane-editor="In Review"]')) return null;
+      const box = [...(document.querySelector('[data-swimlane-editor="In Progress"]')?.querySelectorAll("label") ?? [])]
+        .find((l) => l.textContent.trim() === "In Review")
+        ?.querySelector("input");
+      return box && !box.disabled ? box : null;
+    },
+    { timeout: WAIT },
   );
-  await new Promise((r) => setTimeout(r, 1200));
 
-  await page.evaluate(() => {
-    const card = [...document.querySelectorAll("input")]
-      .find((i) => i.value === "In Progress")
-      ?.closest("[data-swimlane-editor]");
-    const label = [...(card?.querySelectorAll("label") ?? [])].find(
-      (l) => l.textContent.trim() === "In Review",
-    );
-    label?.querySelector("input")?.click();
-  });
-  await new Promise((r) => setTimeout(r, 1500));
+  // The box is checked only from the saved board, never ahead of it.
+  await reviewBox.evaluate((box) => box.click());
+  await page.waitForFunction(
+    () =>
+      [...(document.querySelector('[data-swimlane-editor="In Progress"]')?.querySelectorAll("label") ?? [])]
+        .find((l) => l.textContent.trim() === "In Review")
+        ?.querySelector("input")?.checked === true,
+    { timeout: WAIT },
+  );
 
   await clickButton(page, "Done configuring");
-  await new Promise((r) => setTimeout(r, 800));
+  await page.waitForFunction(
+    () => !document.querySelector("[data-swimlane-editor]") && document.body.innerText.includes("In Progress · In Review"),
+    { timeout: WAIT },
+  );
 
   const board = await bodyText(page);
   expect.notContains(board, "IN REVIEW", "the deleted swimlane is gone");
