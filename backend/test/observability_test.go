@@ -14,6 +14,7 @@ import (
 // came along, with its statements underneath; and it is one count on a series
 // named the same way, scraped off a handler that is not part of the API.
 func TestARequestIsCountedAndTraced(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	h.ownMetrics(t)
 	api := newAPIServer(t, h)

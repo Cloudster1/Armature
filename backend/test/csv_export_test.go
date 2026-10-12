@@ -37,6 +37,7 @@ func exportProject(t *testing.T, c *client, name, prefix string) (string, string
 
 // An export holds every issue the query matches, not one page of the search.
 func TestACSVExportHoldsEveryIssueItMatches(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
@@ -72,6 +73,7 @@ func TestACSVExportHoldsEveryIssueItMatches(t *testing.T) {
 // More than an export holds is cut at the cap, and the file and the response
 // both say so, so nobody mistakes the first five thousand for all of them.
 func TestACSVExportOverTheCapSaysItWasCut(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)

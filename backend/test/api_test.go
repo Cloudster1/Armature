@@ -9,6 +9,7 @@ import (
 )
 
 func TestAPIAuthFlow(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
@@ -137,6 +138,7 @@ func TestAPIAuthFlow(t *testing.T) {
 }
 
 func TestAPIAuthorization(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
@@ -229,6 +231,7 @@ func TestAPIAuthorization(t *testing.T) {
 }
 
 func TestAPIRequestHandling(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 

@@ -62,6 +62,7 @@ func (s *apiServer) asRole(t *testing.T, h *harness, owner *client, projectKey s
 // One table, so that adding a permission means deciding what every role does
 // with it rather than forgetting four of them.
 func TestWhatEachRoleMayDo(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 

@@ -34,6 +34,7 @@ func (ws *workspace) anotherProject(t *testing.T, name string) *project.Project 
 // Every key an issue has had finds it: two moves leave two old keys, and both,
 // like each key its subtask had, still open what the issue is now.
 func TestEveryKeyAnIssueHadStillFindsIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "rekeyed")
 	second := ws.anotherProject(t, "Second")
@@ -90,6 +91,7 @@ func TestEveryKeyAnIssueHadStillFindsIt(t *testing.T) {
 
 // The same over the API, which is what the pages and a mailed link open.
 func TestEveryKeyAnIssueHadOpensItOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
@@ -116,6 +118,7 @@ func TestEveryKeyAnIssueHadOpensItOverTheAPI(t *testing.T) {
 // A reply naming a key the request had before it moved still lands on it, so
 // the subject of the first mail the customer got keeps working.
 func TestAReplyToAKeyARequestHadBeforeItMovedReachesIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "mailmove")
 	d, first := ws.aDesk(t, h, "First desk")
@@ -181,6 +184,7 @@ func TestAReplyToAKeyARequestHadBeforeItMovedReachesIt(t *testing.T) {
 // The same reads and writes as the service, straight through SQL: a key names
 // one issue in an organization, and none in another.
 func TestAnOldKeyStaysInItsOrganizationEvenThroughSQL(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	home := h.newWorkspace(t, "oldhome")
 	away := h.newWorkspace(t, "oldaway")

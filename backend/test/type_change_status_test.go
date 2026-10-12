@@ -147,6 +147,7 @@ func matching(t *testing.T, ws *workspace, query, key string) bool {
 // A type change that moves the status is a status change like any other:
 // recorded, announced, observed, and the resolution follows the new status.
 func TestATypeChangeThatMovesTheStatusRecordsTheMove(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "retype")
 	watcher := &statusWatcher{}

@@ -25,6 +25,7 @@ import (
 // Articles are offered before a request is raised, published ones only, and
 // only on a service desk; canned responses fill their placeholders.
 func TestArticlesAndCannedResponses(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "knowledge")
 	d, p := ws.aDesk(t, h, "Know desk")
@@ -73,6 +74,7 @@ func TestArticlesAndCannedResponses(t *testing.T) {
 // A resolved request invites one rating through the mail; a second answer is
 // refused, and the queue and the report show the score.
 func TestARequestIsRatedOnce(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "ratings")
 	d, p := ws.aDesk(t, h, "Rate desk")

@@ -229,6 +229,16 @@ start their own relays and assert on exactly which events were published; a
 background worker draining the same outbox would race them. It is restarted
 afterwards, including on failure.
 
+The integration suite opens one cluster, the superuser pools and the attachment
+bucket in `TestMain`, and `newHarness` hands them to every test. A new test
+works in organizations of its own and calls `t.Parallel()` first thing. A test
+that shares something another test would disturb (pausing the replica, a worker
+pass over every organization, the mailpit box, Redis, the per-address brakes, a
+row read across organizations) stays sequential and is listed in
+`backend/test/parallel_test.go` with what it shares. Go runs the sequential ones
+first, before any parallel test starts, and `make test` refuses a test that is
+neither.
+
 The browser suite runs its scenarios four abreast: every scenario signs up an
 organization of its own, so none waits for another, and each worker keeps one
 Chromium for the whole run with a fresh incognito context per scenario.

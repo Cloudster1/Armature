@@ -75,6 +75,7 @@ func policyOf(t *testing.T, d *desk.Service, ws *workspace, projectKey string, m
 }
 
 func TestAPriorityChangeMovesTheGoalAndKeepsTheTimeRun(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "reprioritised")
 	d, p := ws.aDesk(t, h, "Priority desk")
@@ -186,6 +187,7 @@ func TestAPriorityChangeMovesTheGoalAndKeepsTheTimeRun(t *testing.T) {
 }
 
 func TestMovingARequestOutOfTheDeskStopsItsClocks(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "moved-out")
 	d, p := ws.aDesk(t, h, "Leaving desk")
@@ -223,6 +225,7 @@ func TestMovingARequestOutOfTheDeskStopsItsClocks(t *testing.T) {
 }
 
 func TestMovingAnIssueIntoTheDeskStartsItsClocks(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "moved-in")
 	d, p := ws.aDesk(t, h, "Arrival desk")

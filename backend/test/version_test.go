@@ -20,6 +20,7 @@ import (
 // the ones it affects, is released, and only then archived; its notes are the
 // finished work by type.
 func TestAVersionCollectsWhatFixesItAndShips(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "versions")
 	versions := version.NewService(h.cluster)
@@ -103,6 +104,7 @@ func TestAVersionCollectsWhatFixesItAndShips(t *testing.T) {
 // A component owns new work when it says so: an issue filed in it with no
 // assignee goes to its default assignee, and only then.
 func TestAComponentTakesNewWork(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "components")
 	bob := h.joinExisting(t, ws, h.email(t, "bobcomp"), "member")
@@ -158,6 +160,7 @@ func TestAComponentTakesNewWork(t *testing.T) {
 
 // Every operation over the API, the way the pages use them.
 func TestVersionsAndComponentsOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)

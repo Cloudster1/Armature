@@ -18,6 +18,7 @@ import (
 // A milestone's progress is a reading of the issues assigned to it, taken every
 // time, so moving an issue moves the milestone.
 func TestAMilestoneTracksTheIssuesAssignedToIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "milestone")
 	milestones := milestone.NewService(h.cluster)
@@ -173,6 +174,7 @@ func TestAMilestoneTracksTheIssuesAssignedToIt(t *testing.T) {
 
 // The plan draws the milestones and says which work is due after them.
 func TestThePlanCarriesMilestonesAndWarnsAboutLateWork(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

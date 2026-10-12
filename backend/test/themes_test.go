@@ -15,6 +15,7 @@ import (
 // A theme is its maker's, shared when they say so, chosen per person, and
 // walled by the tenant like everything else.
 func TestThemesOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 

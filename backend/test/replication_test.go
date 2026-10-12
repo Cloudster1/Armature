@@ -53,6 +53,7 @@ func TestReadsReachTheReplica(t *testing.T) {
 // A position read inside the transaction sits before the commit record, and a
 // replica there has not replayed the change: seen as an empty read under load.
 func TestWriteReportsThePositionPastItsCommit(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	orgID, ctx := h.makeOrg(t, "commitlsn")
 
@@ -359,6 +360,7 @@ func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 // the answer is read after the write, in the same request.
 func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -379,6 +381,7 @@ func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
 // caller has written nothing with it yet, so nothing pins its reads.
 func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}

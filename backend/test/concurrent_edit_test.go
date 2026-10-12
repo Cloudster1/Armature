@@ -20,6 +20,7 @@ func paragraphDoc(text string) map[string]any {
 // Two tabs open the same description. The one that saves second started from
 // an older copy, so its save is refused instead of erasing the first one's words.
 func TestAStaleEditOfAnIssueIsRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -70,6 +71,7 @@ func TestAStaleEditOfAnIssueIsRefused(t *testing.T) {
 // Saving the description the issue already has, or the due date it already
 // has, is not a change: no changelog entry, no event and no new updatedAt.
 func TestASaveThatChangesNothingRecordsNothing(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

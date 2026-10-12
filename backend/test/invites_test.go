@@ -14,6 +14,7 @@ import (
 )
 
 func TestInvites(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	svc := h.authService()
 	ctx := context.Background()
@@ -217,6 +218,7 @@ func TestInvites(t *testing.T) {
 }
 
 func TestAPITokens(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	svc := h.authService()
 	ctx := context.Background()

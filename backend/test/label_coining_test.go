@@ -21,6 +21,7 @@ const coiningWait = 10 * time.Second
 // Two people tagging with the same new word at the same moment both get the
 // word: whoever comes second waits for the first and then uses that label.
 func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "coining")
 	labels := label.NewService(h.cluster)

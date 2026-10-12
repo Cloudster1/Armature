@@ -15,6 +15,7 @@ import (
 // Overlapping hours on one day are refused over the API, and a calendar saved
 // with them before that rule still counts each open minute once.
 func TestADeskCalendarRefusesOverlappingHours(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
@@ -48,6 +49,7 @@ func TestADeskCalendarRefusesOverlappingHours(t *testing.T) {
 // The clock of a goal on a desk whose saved hours overlap counts the overlap
 // once: eight open hours on Monday, not nine.
 func TestAGoalOnOverlappingSavedHoursCountsThemOnce(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "overlap")
 	d, p := ws.aDesk(t, h, "Overlap desk")

@@ -12,6 +12,7 @@ import (
 // MCP is the same table, dispatched in process: a tool call answers what the
 // HTTP call answers, under the same credential and the same refusals.
 func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -27,6 +28,8 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 	token := owner.post("/api/v1/tokens", map[string]any{"name": "assistant"})
 	agent := api.client(t)
 	agent.bearer = principalField(t, token, "token", "secret").(string)
+	// A new key is not pinned to its owner's writes; let the replica catch up.
+	h.waitForPrimary(t)
 
 	rpc := func(c *client, id int, method string, params any) response {
 		body := map[string]any{"jsonrpc": "2.0", "id": id, "method": method}
@@ -120,6 +123,9 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 		if got := call(t, agent, "get_issue", map[string]any{"issueKey": key}); got["isError"] == true {
 			t.Fatalf("the new issue is not read back: %s", text(got))
 		}
+		// The owner has not written since, so their read may come from the
+		// replica: let it see the tool's write first.
+		h.waitForPrimary(t)
 		if listed := owner.get("/api/v1/projects/MCP/issues"); listed.Body["total"].(float64) != 2 {
 			t.Errorf("the project has %v issues after the tool wrote one", listed.Body["total"])
 		}
@@ -136,6 +142,8 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 		made := owner.post("/api/v1/tokens", map[string]any{"name": "reader", "scopes": []string{"read"}})
 		reader := api.client(t)
 		reader.bearer = principalField(t, made, "token", "secret").(string)
+		// A new key is not pinned to its owner's writes; let the replica catch up.
+		h.waitForPrimary(t)
 		if res := call(t, reader, "get_issue", map[string]any{"issueKey": firstKey}); res["isError"] == true {
 			t.Fatalf("a read token cannot read: %s", text(res))
 		}

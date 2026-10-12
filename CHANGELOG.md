@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: integration tests run in parallel; the ones that share the
+  replica, Redis, the mailpit box, the per-address brakes or a pass over
+  every organization run one at a time first, each listed with its reason,
+  and `make test` refuses a test that is neither (#187).
 - Fixed: saving notification preferences answers with what was saved, not
   the preferences from before, while a replica lags behind.
 - Fixed: an API key used the moment it was made is no longer refused at

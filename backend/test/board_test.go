@@ -51,6 +51,7 @@ func (h *harness) statusID(t *testing.T, ws *workspace, name string) uuid.UUID {
 }
 
 func TestBoardCreatedWithProject(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "boarded")
 
@@ -84,6 +85,7 @@ func TestBoardCreatedWithProject(t *testing.T) {
 }
 
 func TestBoardPlacesCardsByStatus(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "placing")
 
@@ -116,6 +118,7 @@ func TestBoardPlacesCardsByStatus(t *testing.T) {
 // TestBoardMoveTakesAWorkflowTransition is the property that makes a board a
 // view of the workflow rather than a second opinion about it.
 func TestBoardMoveTakesAWorkflowTransition(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "dragging")
 
@@ -231,6 +234,7 @@ func TestBoardMoveTakesAWorkflowTransition(t *testing.T) {
 }
 
 func TestBoardReordering(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "ordering")
 
@@ -304,6 +308,7 @@ func TestBoardReordering(t *testing.T) {
 }
 
 func TestSwimlaneConfiguration(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "configuring")
 
@@ -512,6 +517,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 }
 
 func TestBoardTenantIsolation(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	alpha := h.newWorkspace(t, "boardalpha")
 	beta := h.newWorkspace(t, "boardbeta")
@@ -534,6 +540,7 @@ func TestBoardTenantIsolation(t *testing.T) {
 // A board grows a lane when its workflow gains a status, so a card moved
 // there is never outside every lane.
 func TestABoardGainsASwimlaneWhenItsWorkflowGainsAStatus(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "lanes-follow")
 	own := h.straightThrough(t, ws, "Own flow", bootstrap.StatusToDo, bootstrap.StatusDone)
