@@ -236,6 +236,13 @@ order of things matters. A page load is waited for by the page's own word,
 `data-settled` on the body, which the app writes from its in-flight queries and
 the router's state.
 
+The suite drives the production build: `make test-e2e` and `make screenshots`
+first build and start `web-e2e`, the production web image with its nginx and
+CSP, and the browsers load the app from there. A scenario fails if the CSP
+refuses anything on its pages. With `web/` unchanged the build is cached and
+costs a few seconds. `E2E_WEB=dev` runs against the Vite dev server instead,
+with no build, for following a scenario through hot reload.
+
 The API is described by `api/openapi.json`, derived from the handler tables and
 types. After changing a route or a request or response type, run `make openapi`
 and commit the regenerated document and `web/src/api/schema.d.ts`; a unit test
