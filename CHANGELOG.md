@@ -7,6 +7,16 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: swimlanes reordered under Configure swimlanes stay where they were
+  put. A project whose oldest board had gone to a team opened on that board
+  while the panel edited the project-wide one, and a second arrow press
+  before the first had landed sent the order from before it; the board a
+  project opens on is now always the first it lists, and the arrows wait
+  for a move to land (#119).
+- Added: search and a project's issue list page through every issue they
+  match, a hundred at a time, with the page kept in the address; the
+  project's list says how many of the total it shows, and a bulk selection
+  says it covers the page on screen (#90).
 - Added: "Forgot your password?" on the sign-in page mails a link that sets
   a new password once, within an hour, and ends every session and API token
   the account holds; every address gets the same answer, an account the

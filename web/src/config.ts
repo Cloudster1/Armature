@@ -148,6 +148,9 @@ export const GRAPH_MIN_GRID_COLUMNS = 2;
 /** How many results the search page shows of what a query matched. */
 export const SEARCH_PAGE_SIZE = 100;
 
+/** How many issues a project's list shows at once. */
+export const ISSUE_PAGE_SIZE = 100;
+
 /** Control heights: sm for dense rows, md everywhere, lg for the search field and the palette. */
 export const CONTROL_HEIGHT_SM = 28;
 export const CONTROL_HEIGHT_MD = 32;

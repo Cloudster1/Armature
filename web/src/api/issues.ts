@@ -240,7 +240,14 @@ export function useIssues(query: IssueQuery) {
   return useQuery({
     queryKey: [...issuesQueryKey, query],
     queryFn: () => request<IssuePage>(path),
+    // Another page of the same list keeps this one on screen until it arrives.
+    placeholderData: (previous, previousQuery) => (previous && samePages(previousQuery?.queryKey[1], query) ? previous : undefined),
   });
+}
+
+/** Whether two queries ask for the same list, whichever page of it. */
+function samePages(a: unknown, b: IssueQuery): boolean {
+  return a !== undefined && JSON.stringify({ ...(a as IssueQuery), offset: 0 }) === JSON.stringify({ ...b, offset: 0 });
 }
 
 /** Where the caret is in a query and what could go there, as the server reads it. */
