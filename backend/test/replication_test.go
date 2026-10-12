@@ -20,6 +20,7 @@ import (
 // at all.
 func TestReadsReachTheReplica(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -79,6 +80,7 @@ func TestWriteReportsThePositionPastItsCommit(t *testing.T) {
 
 func TestReadYourWritesUnderLag(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -167,6 +169,7 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 // skipped by callers who happen to be pinned.
 func TestLaggingReplicaLeavesTheRotation(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -218,6 +221,7 @@ func TestLaggingReplicaLeavesTheRotation(t *testing.T) {
 // rather than however long ago the last transaction happened to be.
 func TestIdleReplicaStaysHealthy(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -294,6 +298,7 @@ func listsInvite(t *testing.T, c *client, inviteID string) bool {
 // left it, however far a replica lags (issue #100).
 func TestTheInvitationsListShowsWhatWasJustSentOrWithdrawn(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -327,6 +332,7 @@ func TestTheInvitationsListShowsWhatWasJustSentOrWithdrawn(t *testing.T) {
 // same answer must show it, not a replica that has not seen it made.
 func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
