@@ -230,3 +230,95 @@ func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
 		}
 	})
 }
+
+// The client edits the first board the list names, beside the board the
+// project opens on. Once the oldest board went to a team the two were apart,
+// so lanes reordered in the panel never moved on screen.
+func TestAProjectOpensOnTheBoardItListsFirst(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signup(t, h, "opening")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Opening", "key": "OPEN"}), http.StatusCreated, "the project")
+
+	originalID := obj(t, want(t, owner.get("/api/v1/projects/OPEN/board"), http.StatusOK, "the original board"), "board")["id"].(string)
+	crew := idOf(t, want(t, owner.post("/api/v1/projects/OPEN/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
+	want(t, owner.patch("/api/v1/boards/"+originalID, map[string]any{"teamId": crew}), http.StatusOK, "hand the original board to the team")
+	wideID := idOf(t, want(t, owner.post("/api/v1/projects/OPEN/boards", map[string]any{"name": "Everyone", "type": "kanban"}), http.StatusCreated, "a project-wide board"), "board")
+
+	boards := list(t, want(t, owner.get("/api/v1/projects/OPEN/boards"), http.StatusOK, "the boards"), "boards")
+	listed := boards[0].(map[string]any)["id"].(string)
+	if listed != wideID {
+		t.Errorf("the list leads with %s, want the project-wide board %s ahead of the team's", listed, wideID)
+	}
+	opening := func() map[string]any {
+		return obj(t, want(t, owner.get("/api/v1/projects/OPEN/board"), http.StatusOK, "the board the project opens on"), "board")
+	}
+	if got := opening()["id"]; got != listed {
+		t.Fatalf("the project opens on %v but lists %s first", got, listed)
+	}
+
+	// What the panel does: reorder the listed board, then look at the screen.
+	order := laneIDs(t, opening())
+	slices.Reverse(order)
+	want(t, owner.put("/api/v1/boards/"+listed+"/swimlanes", map[string]any{"order": order}), http.StatusNoContent, "reorder the listed board")
+	if got := laneIDs(t, opening()); !slices.Equal(got, order) {
+		t.Errorf("the board on screen shows lanes %v, want them reordered to %v", got, order)
+	}
+}
+
+// The reporter's path: a status added to the workflow gets its lane at the end
+// of the board, and a lane moved from there stays where it was put.
+func TestALaneForAStatusAddedToTheWorkflowCanBeMovedOffTheEnd(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signup(t, h, "onhold")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Held", "key": "HELD"}), http.StatusCreated, "the project")
+
+	onHold := idOf(t, want(t, owner.post("/api/v1/statuses", map[string]any{"name": "On Hold", "category": "in_progress"}), http.StatusCreated, "coin On Hold"), "status")
+	var workflowID string
+	for _, raw := range list(t, want(t, owner.get("/api/v1/workflows"), http.StatusOK, "the workflows"), "workflows") {
+		if w := raw.(map[string]any); w["name"] == bootstrap.DefaultWorkflowName {
+			workflowID = w["id"].(string)
+		}
+	}
+	if workflowID == "" {
+		t.Fatalf("no workflow is called %q", bootstrap.DefaultWorkflowName)
+	}
+	got := want(t, owner.get("/api/v1/workflows/"+workflowID), http.StatusOK, "the default workflow")
+	var inProgress string
+	for _, raw := range obj(t, got, "workflow")["steps"].([]any) {
+		if status := raw.(map[string]any)["status"].(map[string]any); status["name"] == bootstrap.StatusInProgress {
+			inProgress = status["id"].(string)
+		}
+	}
+	graph := graphOf(t, got)
+	graph["steps"] = append(graph["steps"].([]map[string]any), map[string]any{"statusId": onHold, "isInitial": false})
+	graph["transitions"] = append(graph["transitions"].([]map[string]any),
+		map[string]any{"name": "Hold", "fromStatusId": inProgress, "toStatusId": onHold},
+		map[string]any{"name": "Resume", "fromStatusId": onHold, "toStatusId": inProgress})
+	want(t, owner.put("/api/v1/workflows/"+workflowID, graph), http.StatusOK, "add On Hold to the workflow")
+
+	opening := func() map[string]any {
+		return obj(t, want(t, owner.get("/api/v1/projects/HELD/board"), http.StatusOK, "the board"), "board")
+	}
+	board := opening()
+	boardID := board["id"].(string)
+	names := shownLaneNames(board)
+	if names[len(names)-1] != "On Hold" {
+		t.Fatalf("lanes are %v, want On Hold added last", names)
+	}
+
+	order := laneIDs(t, board)
+	order = append([]string{order[len(order)-1]}, order[:len(order)-1]...)
+	want(t, owner.put("/api/v1/boards/"+boardID+"/swimlanes", map[string]any{"order": order}), http.StatusNoContent, "move On Hold first")
+	if names := shownLaneNames(opening()); names[0] != "On Hold" {
+		t.Errorf("lanes read back as %v, want On Hold first", names)
+	}
+	if rows := laneRows(t, h, boardID); !strings.HasPrefix(rows[0], "On Hold/0/") {
+		t.Errorf("the database holds the lanes as %v, want On Hold at position 0", rows)
+	}
+}
