@@ -375,3 +375,24 @@ func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {
 	bearer.bearer = principalField(t, made, "token", "secret").(string)
 	want(t, bearer.get("/api/v1/auth/me"), http.StatusOK, "the key used at once")
 }
+
+// Saving preferences answers with what was saved, however far a replica lags:
+// the answer is read after the write, in the same request.
+func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
+	h := newHarness(t)
+	h.ownCluster(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+	c := api.client(t)
+	c.signup(t, h, "prefsback")
+
+	h.holdTheReplicaHere(t)
+
+	saved := want(t, c.put("/api/v1/notification-preferences", map[string]any{"digest": "daily", "watchOwn": false, "mail": map[string]bool{}, "inapp": map[string]bool{}}), http.StatusOK, "saving")
+	p := saved.Body["preferences"].(map[string]any)
+	if p["digest"] != "daily" || p["watchOwn"] != false {
+		t.Errorf("the answer to saving is %v, not what was saved", p)
+	}
+}

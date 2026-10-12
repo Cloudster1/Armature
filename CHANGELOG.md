@@ -7,6 +7,8 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: saving notification preferences answers with what was saved, not
+  the preferences from before, while a replica lags behind.
 - Changed: integration tests run in parallel; the ones that share the
   replica, Redis, the mailpit box, the per-address brakes or a pass over
   every organization run one at a time first, each listed with its reason,

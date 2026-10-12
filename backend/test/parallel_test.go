@@ -25,6 +25,7 @@ var sequentialTests = map[string]string{
 	"TestTheInvitationsListShowsWhatWasJustSentOrWithdrawn":      "holds the shared replica",
 	"TestADashboardMadeOnFirstSightIsShownAtOnce":                "holds the shared replica",
 	"TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags":               "holds the shared replica",
+	"TestSavedPreferencesAreTheAnswerWhileTheReplicaLags":        "holds the shared replica",
 	"TestAWebhookTestReadsTheDeliveryItJustWrote":                "pauses replay on the shared replica",
 	"TestReplicaDownAtStartJoinsWhenItReturns":                   "watches a replica join within a deadline",
 	"TestCredentialRevocationTakesEffectImmediately":             "deletes every session in the database",
