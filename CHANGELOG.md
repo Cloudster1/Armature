@@ -7,6 +7,8 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: saving notification preferences answers with what was saved, not
+  the preferences from before, while a replica lags behind.
 - Fixed: a scrum master or project administrator can change or remove only
   the absences they recorded themselves, never the person's own or an
   administrator's, and the person is told in their inbox, and by mail if they
