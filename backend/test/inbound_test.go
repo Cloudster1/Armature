@@ -51,6 +51,7 @@ const inboxAddress = "support@armature.test"
 // typed it in the portal; anyone else is told to use the portal, and a mail
 // delivered twice is one comment.
 func TestAReplyByMailBecomesAComment(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "mailin")
 	d, p := ws.aDesk(t, h, "Mail desk")
@@ -262,6 +263,7 @@ func TestAReplyByMailBecomesAComment(t *testing.T) {
 // An out-of-office is not the customer's answer: it is recorded as a machine's
 // and taken out of the box, and the request keeps waiting with its clocks held.
 func TestAnAutoReplyLeavesAWaitingRequestAlone(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "autoreply")
 	d, p := ws.aDesk(t, h, "Away desk")

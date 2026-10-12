@@ -72,8 +72,8 @@ scenario("an administrator sets somebody's working week and they read it on thei
 scenario("the default calendar's holidays shade the timeline and the project calendar", async ({ page }) => {
   await signUp(page);
   await importHolidays(page);
-  const key = await createProject(page, "Festive");
-  const issue = await createIssue(page, key, "over the holidays");
+  const key = await createProject(page, "Festive", { visit: false });
+  const issue = await createIssue(page, key, "over the holidays", { visit: false });
   await scheduleIssue(page, issue, "2026-12-21", "2026-12-31");
 
   await goto(page, `/projects/${key}/plan`);

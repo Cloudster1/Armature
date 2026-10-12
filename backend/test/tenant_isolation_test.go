@@ -17,6 +17,7 @@ import (
 // the query deliberately omits a tenant filter, because that is precisely the
 // mistake row level security exists to survive.
 func TestTenantIsolation(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 
 	orgA, ctxA := h.makeOrg(t, "alpha")
@@ -145,6 +146,7 @@ func TestTenantIsolation(t *testing.T) {
 // issued with no organization at all must be rejected before it reaches the
 // database, rather than quietly running with no tenant filter.
 func TestUnscopedAccessIsRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 
 	err := h.cluster.Read(context.Background(), func(ctx context.Context, tx db.DBTX) error {
@@ -170,6 +172,7 @@ func TestUnscopedAccessIsRefused(t *testing.T) {
 // TestSystemContextStillNeedsAnExplicitOptIn confirms the escape hatch works
 // but has to be asked for.
 func TestSystemContextStillNeedsAnExplicitOptIn(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 
 	err := h.cluster.Read(db.WithSystem(context.Background()), func(ctx context.Context, tx db.DBTX) error {

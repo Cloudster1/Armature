@@ -31,3 +31,4 @@ export { Dialog, ConfirmDialog, Drawer, DockedPanel, isInteractiveTarget } from 
 export { isEditing } from "./overlay";
 export { ToastProvider, useToast, type ToastKind, type ToastOptions } from "./Toast";
 export { Tabs, TabPanel, type Tab } from "./Tabs";
+export { Wordmark } from "./Wordmark";

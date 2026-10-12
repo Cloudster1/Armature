@@ -1,7 +1,8 @@
 # The product, in pictures
 
 Taken from the seeded demo organization by `make screenshots`, which drives the
-browser suite's own image against the running stack and copies the files here.
+browser suite's own image against the running stack's production build, as the
+suite does, and copies the files here.
 They are regenerated, not edited: if one of these is wrong, the page changed.
 
 Each picture waits for the thing its name promises before it is taken, and a

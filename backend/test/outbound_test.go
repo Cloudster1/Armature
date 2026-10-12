@@ -12,6 +12,7 @@ import (
 // An address somebody typed is followed by the server itself, so what it must
 // not reach is whatever else answers inside this network.
 func TestAnAddressSomebodyTypedIsCheckedBeforeItIsCalled(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

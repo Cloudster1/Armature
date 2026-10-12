@@ -12,6 +12,7 @@ import (
 )
 
 func TestSignupPolicy(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	ctx := context.Background()

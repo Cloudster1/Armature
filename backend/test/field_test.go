@@ -27,6 +27,7 @@ func valueOf(values []field.Value, name string) *field.Value {
 }
 
 func TestCustomFieldsAreDefinedPerProjectAndAnsweredPerIssue(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "fielded")
 	f := ws.fields(h)
@@ -135,6 +136,7 @@ func TestCustomFieldsAreDefinedPerProjectAndAnsweredPerIssue(t *testing.T) {
 }
 
 func TestAFieldBelongsToOneProjectAndTheDatabaseKnowsIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "twoproj")
 	f := ws.fields(h)
@@ -164,6 +166,7 @@ func TestAFieldBelongsToOneProjectAndTheDatabaseKnowsIt(t *testing.T) {
 }
 
 func TestFieldsAreTenantIsolated(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	a := h.newWorkspace(t, "fielda")
 	b := h.newWorkspace(t, "fieldb")
@@ -191,6 +194,7 @@ func TestFieldsAreTenantIsolated(t *testing.T) {
 }
 
 func TestFieldsOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

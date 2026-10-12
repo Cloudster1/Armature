@@ -3,7 +3,7 @@
 import puppeteer from "puppeteer";
 import { mkdirSync } from "node:fs";
 
-const BASE = process.env.E2E_BASE_URL ?? "http://web:5173";
+const BASE = process.env.E2E_BASE_URL ?? "http://web-e2e";
 const OUT = `${process.env.E2E_ARTIFACTS ?? "/tmp"}/shots`;
 const EMAIL = process.env.DEMO_EMAIL ?? "ada@armature.test";
 const PASSWORD = process.env.DEMO_PASSWORD ?? "demo password please";

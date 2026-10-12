@@ -10,6 +10,7 @@ import (
 )
 
 func TestAMergeMovesTheIssueOnce(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "mergeonce")
 	stub := newStubHost(t)

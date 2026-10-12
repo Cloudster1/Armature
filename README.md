@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/armature-logo.jpg" alt="Armature" width="240"></p>
+
 # Armature
 
 **Project and service management in the Jira and Jira Service Management
@@ -227,6 +229,16 @@ start their own relays and assert on exactly which events were published; a
 background worker draining the same outbox would race them. It is restarted
 afterwards, including on failure.
 
+The integration suite opens one cluster, the superuser pools and the attachment
+bucket in `TestMain`, and `newHarness` hands them to every test. A new test
+works in organizations of its own and calls `t.Parallel()` first thing. A test
+that shares something another test would disturb (pausing the replica, a worker
+pass over every organization, the mailpit box, Redis, the per-address brakes, a
+row read across organizations) stays sequential and is listed in
+`backend/test/parallel_test.go` with what it shares. Go runs the sequential ones
+first, before any parallel test starts, and `make test` refuses a test that is
+neither.
+
 The browser suite runs its scenarios four abreast: every scenario signs up an
 organization of its own, so none waits for another, and each worker keeps one
 Chromium for the whole run with a fresh incognito context per scenario.
@@ -235,6 +247,21 @@ the scenarios whose names contain them; `WORKERS=1` is the reference when the
 order of things matters. A page load is waited for by the page's own word,
 `data-settled` on the body, which the app writes from its in-flight queries and
 the router's state.
+
+What a scenario only needs as a precondition, such as the organization, its
+projects and issues, or signing in as somebody else, is made through the API
+from the runner's side, and the session cookie is handed to the browser.
+`signUp`, `signIn`, `signOut`, `createProject`, `createIssue` and
+`acceptInvite` take `{ visit: false }` when the next step loads a page anyway.
+The forms themselves are driven by `signUpThroughForm`, `signInThroughForm`,
+`createProjectThroughForm`, `createIssueThroughForm` and `joinThroughLink`, in
+the scenarios whose subject they are.
+The suite drives the production build: `make test-e2e` and `make screenshots`
+first build and start `web-e2e`, the production web image with its nginx and
+CSP, and the browsers load the app from there. A scenario fails if the CSP
+refuses anything on its pages. With `web/` unchanged the build is cached and
+costs a few seconds. `E2E_WEB=dev` runs against the Vite dev server instead,
+with no build, for following a scenario through hot reload.
 
 The API is described by `api/openapi.json`, derived from the handler tables and
 types. After changing a route or a request or response type, run `make openapi`
@@ -339,6 +366,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_ARGON_MEMORY_KIB` / `_ITERATIONS` / `_THREADS` | `65536` / `3` / `4` | password hashing cost |
 | `ARMATURE_READ_YOUR_WRITES_TTL` | `30s` | how long a writer is pinned past their write |
 | `ARMATURE_PORTAL_CODE_COOLDOWN` | `1m` | how long an address waits between portal codes |
+| `ARMATURE_DOOR_WINDOW` | `10m` | how long the brakes on portal codes, portal entries and password or invitation guesses remember an address |
 | `ARMATURE_SMTP_ADDR` | none | the relay; empty turns mail off |
 | `ARMATURE_MAIL_FROM` | `Armature <no-reply@armature.test>` | the sender |
 | `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off |
@@ -493,3 +521,8 @@ itself is plain Go.
 ## License
 
 [Apache 2.0](LICENSE).
+
+The logo, the favicon and the emblem cut from it show the Go gopher, which
+was designed by [Renée French](https://reneefrench.blogspot.com/) and is
+licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
+The Armature logo is an adaptation of it. See [NOTICE](NOTICE).

@@ -20,6 +20,7 @@ import (
 // replaced on a second write, and the days nobody wrote are rebuilt once from
 // the changelog and say so.
 func TestFlowIsSnapshottedAndRebuiltOnce(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "flows")
 	reports := ws.reports(h)
@@ -92,6 +93,7 @@ func TestFlowIsSnapshottedAndRebuiltOnce(t *testing.T) {
 // The control chart excludes the unresolved, the histogram sorts what took how
 // long, the age counts the open, and the release burndown drops as work is done.
 func TestTheOtherFlowReports(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "flowreports")
 	reports := ws.reports(h)
@@ -167,6 +169,7 @@ func TestTheOtherFlowReports(t *testing.T) {
 
 // Every flow report over the API, both ways.
 func TestFlowReportsOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
@@ -186,6 +189,7 @@ func TestFlowReportsOverTheAPI(t *testing.T) {
 // added to a version later lifts the line instead of hiding in its first day.
 // A released version's series stops on the day it was released.
 func TestReleaseBurndownCountsIssuesFromTheirFilingDay(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "burnscope")
 	reports := ws.reports(h)

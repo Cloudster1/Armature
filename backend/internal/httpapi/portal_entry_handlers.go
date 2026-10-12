@@ -61,6 +61,19 @@ func (t *throttle) reset() {
 	t.seen = map[string][]time.Time{}
 }
 
+// SetDoorWindow sets how long the door's brakes remember an address. A
+// development stack shortens it so test runs in a row are not refused.
+func SetDoorWindow(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries} {
+		t.mu.Lock()
+		t.window = d
+		t.mu.Unlock()
+	}
+}
+
 // ResetThrottles forgets the door's brakes, for a test suite whose every
 // caller is one address in one process.
 func ResetThrottles() {

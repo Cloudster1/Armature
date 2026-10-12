@@ -19,6 +19,7 @@ import (
 // so they must read it where it was written, however far a replica lags.
 func TestAWebhookTestReadsTheDeliveryItJustWrote(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
 	orgID := uuid.MustParse(principalField(t, c.signup(t, h, "hooktest"), "principal", "org", "id").(string))

@@ -13,14 +13,15 @@ import {
   selectByLabel,
   settled,
   signUp,
+  unique,
   WAIT,
 } from "../helpers.mjs";
 
 scenario("a project arranges an issue type and the page and the form follow", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Arranged");
-  const task = await createIssue(page, key, "the arranged task", "Task");
-  const story = await createIssue(page, key, "the untouched story", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Arranged", { visit: false });
+  const task = await createIssue(page, key, "the arranged task", { type: "Task", visit: false });
+  const story = await createIssue(page, key, "the untouched story", { type: "Story", visit: false });
 
   // A new project draws an issue the way this tracker does, with no row of its
   // own in the database: Sprint under Planning, Priority under Tracking.

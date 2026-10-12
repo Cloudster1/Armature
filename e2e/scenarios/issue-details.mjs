@@ -27,6 +27,7 @@ import {
   signUp,
   startSprint,
   textOf,
+  unique,
   WAIT,
   withViewport,
   writeInEditor,
@@ -36,10 +37,10 @@ import {
 const DOCKED_VIEWPORT_WIDTH = 1600;
 
 scenario("the running sprint burns down on the dashboard and its history stays", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Burning");
-  const big = await createIssue(page, key, "the five point piece", "Task");
-  const small = await createIssue(page, key, "the three point piece", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Burning", { visit: false });
+  const big = await createIssue(page, key, "the five point piece", { type: "Task", visit: false });
+  const small = await createIssue(page, key, "the three point piece", { type: "Task", visit: false });
   await createSprint(page, key, "Sprint A");
   await planSprint(page, "Sprint A", { from: "2026-09-07", to: "2026-09-18", capacity: 10 });
   await estimateIssue(page, big, 5);
@@ -96,8 +97,8 @@ scenario("the running sprint burns down on the dashboard and its history stays",
 });
 
 scenario("an issue takes a description, the project's own fields and a file", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Recorded");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Recorded", { visit: false });
 
   // The project defines what it wants to record.
   await goto(page, `/projects/${key}/fields`);
@@ -183,9 +184,9 @@ scenario("an issue takes a description, the project's own fields and a file", as
 });
 
 scenario("an issue is assigned, labelled, estimated in time and worked on", async ({ page }) => {
-  const who = await signUp(page);
-  const key = await createProject(page, "Timed");
-  const issueKey = await createIssue(page, key, "needs hours and words");
+  const who = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Timed", { visit: false });
+  const issueKey = await createIssue(page, key, "needs hours and words", { visit: false });
   await goto(page, `/issues/${issueKey}`);
 
   // Assign it to the only person there is, and hand the report to them too.
@@ -244,9 +245,9 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
 });
 
 scenario("a page another application puts on an issue is listed under Pages", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Specced");
-  const issueKey = await createIssue(page, key, "the checkout flow", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Specced", { visit: false });
+  const issueKey = await createIssue(page, key, "the checkout flow", { type: "Story", visit: false });
   const secret = await createToken(page, "Page sync");
   const spec = "https://wiki.example.com/pages/checkout";
 
@@ -287,10 +288,10 @@ scenario("a page another application puts on an issue is listed under Pages", as
 });
 
 scenario("a draft started in the side panel stays with its own issue", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Drafted");
-  const a = await createIssue(page, key, "the issue stepped back to", "Task");
-  const b = await createIssue(page, key, "the issue written on", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Drafted", { visit: false });
+  const a = await createIssue(page, key, "the issue stepped back to", { type: "Task", visit: false });
+  const b = await createIssue(page, key, "the issue written on", { type: "Task", visit: false });
 
   await goto(page, `/issues/${a}`);
   await clickButton(page, "Add description");

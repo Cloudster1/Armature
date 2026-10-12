@@ -18,6 +18,7 @@ import (
 // An issue with no description does not mention payment, and an unassigned one
 // is not yours, so every negation over an empty column must keep the issue.
 func TestNegationKeepsIssuesWithNothingThere(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "negating")
 

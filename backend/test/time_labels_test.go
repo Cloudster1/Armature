@@ -14,6 +14,7 @@ import (
 // Time on an issue: an estimate, what remains, and the work logged against
 // them, over the API as the issue page uses it.
 func TestTimeIsEstimatedLoggedAndAccounted(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -113,6 +114,7 @@ func TestTimeIsEstimatedLoggedAndAccounted(t *testing.T) {
 // Labels: coined by tagging, shared by the organization, filtered on, renamed
 // everywhere, and gone everywhere when removed.
 func TestLabelsAreWordsTheOrganizationShares(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

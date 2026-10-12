@@ -366,3 +366,6 @@ export const RESOURCE_LIST_LIMIT = 25;
 export const RESOURCE_HOUR_DECIMALS = 1;
 /** A whole week, as a percent: what a person gives a project nobody has set a share for. */
 export const SHARE_FULL_PERCENT = 100;
+
+/** Edge of the emblem beside the wordmark, in pixels: large on the door pages, small in a header bar. */
+export const WORDMARK_EMBLEM_SIZE = { sm: 24, md: 40 } as const;

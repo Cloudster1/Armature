@@ -18,6 +18,7 @@ import (
 // An import reproduces a record: the key, the day, the person and the status
 // are the file's. Every other writer still stamps those for itself.
 func TestAnImportKeepsItsHistory(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "import")
 	story := h.issueTypeID(t, ws, "Story")

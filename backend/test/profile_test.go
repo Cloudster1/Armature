@@ -40,6 +40,7 @@ func gifOf(t *testing.T) []byte {
 // their account; the face is seen by anyone in an organization with them and
 // by nobody else.
 func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	me := api.client(t)

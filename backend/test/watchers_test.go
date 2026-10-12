@@ -27,6 +27,7 @@ import (
 // The reporter names them, the mail carries a way out, and whoever follows
 // sees the request in their own portal.
 func TestAFollowerIsToldAndCanStop(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "following")
 	d, p := ws.aDesk(t, h, "Follow desk")
@@ -231,6 +232,7 @@ func TestFollowersOverTheAPI(t *testing.T) {
 // "Watch my own issues" decides whether the issues a person reports or is
 // assigned tell them what happens. Off, only watching one on purpose does.
 func TestWatchOwnDecidesWhoHearsOfTheirOwnIssues(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "watchown")
 	inbox := notify.NewService(h.cluster)

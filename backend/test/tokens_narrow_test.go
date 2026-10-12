@@ -13,6 +13,7 @@ import (
 // A key holds what the person who made it holds, and never more: not the
 // administration, and not a project it was not given.
 func TestAKeyIsNarrowerThanTheOwnerWhoMadeIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -31,6 +32,8 @@ func TestAKeyIsNarrowerThanTheOwnerWhoMadeIt(t *testing.T) {
 	}
 	confined := api.client(t)
 	confined.bearer = principalField(t, created, "token", "secret").(string)
+	// A new key is not pinned to its owner's writes; let the replica catch up.
+	h.waitForPrimary(t)
 
 	t.Run("it works in the project it names", func(t *testing.T) {
 		if resp := confined.get("/api/v1/projects/NEAR/issues"); resp.Status != http.StatusOK {
@@ -88,6 +91,7 @@ func TestAKeyIsNarrowerThanTheOwnerWhoMadeIt(t *testing.T) {
 // The owner here is the organization's owner, which is as much standing as
 // anybody has. Their key still does not administer.
 func TestAKeyNeverAdministersHoweverMuchItsOwnerCan(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -100,6 +104,8 @@ func TestAKeyNeverAdministersHoweverMuchItsOwnerCan(t *testing.T) {
 	created := owner.post("/api/v1/tokens", map[string]any{"name": "everything"})
 	key := api.client(t)
 	key.bearer = principalField(t, created, "token", "secret").(string)
+	// A new key is not pinned to its owner's writes; let the replica catch up.
+	h.waitForPrimary(t)
 
 	t.Run("it cannot grant a role, though its owner can", func(t *testing.T) {
 		body := map[string]any{"role": "project_administrator", "projectKey": "WRK", "userId": ownerID}

@@ -18,14 +18,15 @@ import {
   selectByLabel,
   signUp,
   textOf,
+  unique,
   WAIT,
   withViewport,
 } from "../helpers.mjs";
 
 scenario("every project gets a board with a swimlane per state", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Boarded");
-  await createIssue(page, key, "a card to show");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Boarded", { visit: false });
+  await createIssue(page, key, "a card to show", { visit: false });
 
   await goto(page, `/projects/${key}/board`);
   const board = await bodyText(page);
@@ -36,10 +37,10 @@ scenario("every project gets a board with a swimlane per state", async ({ page }
 });
 
 scenario("an issue opens beside the list and the list stays in reach", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Beside");
-  await createIssue(page, key, "first of three", "Task");
-  await createIssue(page, key, "second of three", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Beside", { visit: false });
+  await createIssue(page, key, "first of three", { type: "Task", visit: false });
+  await createIssue(page, key, "second of three", { type: "Task", visit: false });
   await createIssue(page, key, "third of three", "Bug");
 
   // Wide enough to dock: the list narrows and stays clickable beside the issue.
@@ -88,9 +89,9 @@ scenario("an issue opens beside the list and the list stays in reach", async ({ 
 // Reported as one Escape closing the confirm and the issue under it: on a
 // narrow screen the issue is a drawer, and each Escape is one step back.
 scenario("Escape in the issue drawer closes only what is on top of it", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Stacked");
-  const issueKey = await createIssue(page, key, "logged then kept");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Stacked", { visit: false });
+  const issueKey = await createIssue(page, key, "logged then kept", { visit: false });
   await goto(page, `/projects/${key}`);
   await openIssueBeside(page, issueKey);
   const drawer = `[data-issue-drawer="${issueKey}"]`;
@@ -151,9 +152,9 @@ scenario("Escape in the issue drawer closes only what is on top of it", async ({
 });
 
 scenario("an issue opens beside the board and the arrow keys walk the cards", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Carded");
-  const first = await createIssue(page, key, "top card");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Carded", { visit: false });
+  const first = await createIssue(page, key, "top card", { visit: false });
   const second = await createIssue(page, key, "card below");
 
   await withViewport(page, 1600, async () => {
@@ -180,8 +181,8 @@ scenario("an issue opens beside the board and the arrow keys walk the cards", as
 });
 
 scenario("an edit made beside the board shows on its card without a reload", async ({ page }) => {
-  const who = await signUp(page);
-  const key = await createProject(page, "Edited");
+  const who = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Edited", { visit: false });
   const issueKey = await createIssue(page, key, "edit me in the panel");
   const card = `[data-card="${issueKey}"]`;
 
@@ -206,9 +207,9 @@ scenario("an edit made beside the board shows on its card without a reload", asy
 });
 
 scenario("dragging a card between swimlanes takes the workflow transition", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Dragging");
-  const issueKey = await createIssue(page, key, "drag me along");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Dragging", { visit: false });
+  const issueKey = await createIssue(page, key, "drag me along", { visit: false });
 
   await goto(page, `/projects/${key}/board`);
   expect.equal((await cardsIn(page, "To Do")).join(","), issueKey, "starts in To Do");
@@ -234,9 +235,9 @@ scenario("dragging a card between swimlanes takes the workflow transition", asyn
 });
 
 scenario("a drag the workflow forbids is refused and the card stays put", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Forbidden");
-  const issueKey = await createIssue(page, key, "no shortcuts here");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Forbidden", { visit: false });
+  const issueKey = await createIssue(page, key, "no shortcuts here", { visit: false });
 
   await goto(page, `/projects/${key}/board`);
   // To Do to In Review has no transition behind it.
@@ -252,9 +253,9 @@ scenario("a drag the workflow forbids is refused and the card stays put", async 
 });
 
 scenario("swimlanes can be reconfigured to cover several states", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Merging");
-  const issueKey = await createIssue(page, key, "lands in the merged lane");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Merging", { visit: false });
+  const issueKey = await createIssue(page, key, "lands in the merged lane", { visit: false });
 
   await goto(page, `/projects/${key}/board`);
   await clickButton(page, "Configure swimlanes");
@@ -317,9 +318,9 @@ scenario("swimlanes can be reconfigured to cover several states", async ({ page 
 });
 
 scenario("cards in states no swimlane covers are surfaced, not hidden", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Orphans");
-  const issueKey = await createIssue(page, key, "about to be orphaned");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Orphans", { visit: false });
+  const issueKey = await createIssue(page, key, "about to be orphaned", { visit: false });
 
   await goto(page, `/issues/${issueKey}`);
   await clickButton(page, "Start progress");
@@ -375,8 +376,8 @@ async function editorState(page) {
 const TEAM_LIMIT = "3";
 
 scenario("a team board's swimlanes are configured and the first board is left alone", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Lanes");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Lanes", { visit: false });
   await createBoard(page, key, "Team flow", "kanban");
 
   await showBoard(page, "Team flow");
@@ -410,8 +411,8 @@ scenario("a team board's swimlanes are configured and the first board is left al
 });
 
 scenario("a board made by mistake is renamed, retyped and deleted", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Mistakes");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Mistakes", { visit: false });
   await createBoard(page, key, "Oops", "scrum");
   await showBoard(page, "Oops");
 

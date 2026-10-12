@@ -13,6 +13,7 @@ import (
 // The worker lists the running sprints before it snapshots each, so one can be
 // completed in between; a late snapshot leaves what completion wrote alone.
 func TestASnapshotLeavesASprintCompletedInBetweenAlone(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "snapshot-late")
 	done := ws.newIssue(t, "three points done")
@@ -86,6 +87,7 @@ func TestASnapshotLeavesASprintCompletedInBetweenAlone(t *testing.T) {
 // A sprint that has not begun has no burndown yet: its first point is the one
 // starting it writes.
 func TestASnapshotWaitsForTheSprintToStart(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "snapshot-early")
 	sp := ws.planned(t, h, "Sprint E", "2026-09-07", "2026-09-18", nil)
