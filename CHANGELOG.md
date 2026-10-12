@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the browser suite signs up, signs in, and makes the projects and
+  issues a scenario needs through the API instead of filling in forms, which
+  saves most of its page loads; the scenarios about those forms still drive
+  them (#187).
 - Fixed: a scrum master or project administrator can change or remove only
   the absences they recorded themselves, never the person's own or an
   administrator's, and the person is told in their inbox, and by mail if they

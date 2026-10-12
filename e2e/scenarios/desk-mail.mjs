@@ -33,7 +33,7 @@ import {
 } from "../helpers.mjs";
 
 scenario("a request is followed by somebody who was only named", async ({ page }) => {
-  const agent = await signUp(page);
+  const agent = await signUp(page, unique("user"), { visit: false });
   await createProject(page, "Helpdesk", "service-desk");
   const slug = await orgSlug(page);
   await signOut(page);
@@ -76,7 +76,7 @@ scenario("a request is followed by somebody who was only named", async ({ page }
 });
 
 scenario("a reply by mail lands on the request", async ({ page }) => {
-  const agent = await signUp(page);
+  const agent = await signUp(page, unique("user"), { visit: false });
   await createProject(page, "Helpdesk", "service-desk");
   const slug = await orgSlug(page);
   await signOut(page);
@@ -94,7 +94,7 @@ scenario("a reply by mail lands on the request", async ({ page }) => {
   expect.contains(await bodyText(page), "answer the mail", "the portal says a mail reply works too");
 
   // The agent replies; the mail carries a thread id to answer.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, agent.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -127,7 +127,7 @@ scenario("a reply by mail lands on the request", async ({ page }) => {
 });
 
 scenario("a person changes their name and time zone and puts a face to it", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/profile");
   await page.waitForSelector("#field-name", { timeout: WAIT });
   await fill(page, "Name", "Ada Lovelace");
@@ -167,8 +167,8 @@ scenario("a person changes their name and time zone and puts a face to it", asyn
 });
 
 scenario("a customer finds an article before raising a request", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Helpdesk", "service-desk");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Helpdesk", { template: "service-desk", visit: false });
 
   // The desk writes two articles and publishes one; the draft stays its own.
   await writeArticle(page, key, "Resetting your password", "Open the sign-in page, choose Forgot password and follow the mail. The link works for an hour.");
@@ -176,7 +176,7 @@ scenario("a customer finds an article before raising a request", async ({ page }
 
   // A customer at the door is offered what was published, and only that.
   const customer = await inviteMember(page, "customer", "customer");
-  await acceptInvite(page, customer);
+  await acceptInvite(page, customer, { visit: false });
   await goto(page, "/portal/new");
   await page.waitForSelector("[data-article-search] [data-article]", { timeout: WAIT });
   const offered = await page.$$eval("[data-article-search] [data-article]", (els) => els.map((el) => el.getAttribute("data-article")));
@@ -192,12 +192,12 @@ scenario("a customer finds an article before raising a request", async ({ page }
 });
 
 scenario("a resolved request is rated from the mail and the queue shows the score", async ({ page }) => {
-  const agent = await signUp(page);
-  const key = await createProject(page, "Helpdesk", "service-desk");
+  const agent = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Helpdesk", { template: "service-desk", visit: false });
   await writeCannedResponse(page, key, "Wrap up", "Hello {{customer.name}}, {{issue.key}} is sorted. Thanks for telling us.");
 
   const customer = await inviteMember(page, "customer", "customer");
-  await acceptInvite(page, customer);
+  await acceptInvite(page, customer, { visit: false });
   await goto(page, "/portal/new");
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
@@ -207,7 +207,7 @@ scenario("a resolved request is rated from the mail and the queue shows the scor
   const requestKey = await page.evaluate(() => location.pathname.split("/").pop());
 
   // The agent answers with a canned response, filled in for this customer, and resolves.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, agent.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -226,7 +226,7 @@ scenario("a resolved request is rated from the mail and the queue shows the scor
 
   // The resolution mail carries a one-click rating, which needs no sign-in.
   const path = await ratingLinkFor(customer.email, requestKey, { since: before });
-  await signOut(page);
+  await signOut(page, { visit: false });
   await rateRequest(page, path, 5, "Quick and kind.");
   expect.contains(await bodyText(page), "Thank you", "the requester is thanked");
 

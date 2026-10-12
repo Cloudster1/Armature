@@ -1,7 +1,7 @@
 // The resource view: work per team or person per week, against the hours left.
 
 import { scenario } from "../runner.mjs";
-import { createProject, createTeam, expect, goto, joinTeam, signUp, WAIT } from "../helpers.mjs";
+import { createProject, createTeam, expect, goto, joinTeam, signUp, unique, WAIT } from "../helpers.mjs";
 
 const DAY_MS = 86_400_000;
 const DAYS_PER_WEEK = 7;
@@ -28,8 +28,8 @@ async function weekOf(page, person, start) {
 }
 
 scenario("a kanban project switches to people and sees a person's week shortened by their absence", async ({ page }) => {
-  const who = await signUp(page);
-  const key = await createProject(page, "Resourced", "kanban");
+  const who = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Resourced", { template: "kanban", visit: false });
   await createTeam(page, key, "Crew");
   await joinTeam(page, key, "Crew", who.name);
 
@@ -63,8 +63,8 @@ scenario("a kanban project switches to people and sees a person's week shortened
 });
 
 scenario("somebody who gives the project half their week has half its hours", async ({ page }) => {
-  const who = await signUp(page);
-  const key = await createProject(page, "Halved", "kanban");
+  const who = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Halved", { template: "kanban", visit: false });
   await createTeam(page, key, "Crew");
   await joinTeam(page, key, "Crew", who.name);
 
@@ -91,8 +91,8 @@ scenario("somebody who gives the project half their week has half its hours", as
 });
 
 scenario("a scrum project offers only teams", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Sprinted", "scrum");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Sprinted", { template: "scrum", visit: false });
   await goto(page, `/projects/${key}/resources`);
   await page.waitForSelector('[data-resource-grouping="team"]', { timeout: WAIT });
   expect.equal(await page.$('[data-action="group-by-person"]'), null, "no switch to people");
