@@ -348,3 +348,23 @@ func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 		t.Error("the dashboard made on first sight is missing from the answer that made it")
 	}
 }
+
+// Saving preferences answers with what was saved, however far a replica lags:
+// the answer is read after the write, in the same request.
+func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
+	h := newHarness(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+	c := api.client(t)
+	c.signup(t, h, "prefsback")
+
+	h.holdTheReplicaHere(t)
+
+	saved := want(t, c.put("/api/v1/notification-preferences", map[string]any{"digest": "daily", "watchOwn": false, "mail": map[string]bool{}, "inapp": map[string]bool{}}), http.StatusOK, "saving")
+	p := saved.Body["preferences"].(map[string]any)
+	if p["digest"] != "daily" || p["watchOwn"] != false {
+		t.Errorf("the answer to saving is %v, not what was saved", p)
+	}
+}
