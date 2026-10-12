@@ -248,6 +248,15 @@ order of things matters. A page load is waited for by the page's own word,
 `data-settled` on the body, which the app writes from its in-flight queries and
 the router's state.
 
+What a scenario only needs as a precondition, such as the organization, its
+projects and issues, or signing in as somebody else, is made through the API
+from the runner's side, and the session cookie is handed to the browser.
+`signUp`, `signIn`, `signOut`, `createProject`, `createIssue` and
+`acceptInvite` take `{ visit: false }` when the next step loads a page anyway.
+The forms themselves are driven by `signUpThroughForm`, `signInThroughForm`,
+`createProjectThroughForm`, `createIssueThroughForm` and `joinThroughLink`, in
+the scenarios whose subject they are.
+
 The API is described by `api/openapi.json`, derived from the handler tables and
 types. After changing a route or a request or response type, run `make openapi`
 and commit the regenerated document and `web/src/api/schema.d.ts`; a unit test

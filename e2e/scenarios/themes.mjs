@@ -13,6 +13,7 @@ import {
   signIn,
   signUp,
   textOf,
+  unique,
   WAIT,
   waitForApp,
 } from "../helpers.mjs";
@@ -53,7 +54,7 @@ scenario("a theme changes the accent for whoever uses it, and survives a reload"
   await page.waitForFunction((n) => document.querySelector(`[data-theme-row="${n}"]`)?.innerText.includes("Shared"), { timeout: WAIT }, name);
 
   const who = await inviteMember(page, "themed");
-  await acceptInvite(page, who);
+  await acceptInvite(page, who, { visit: false });
   await goto(page, "/");
   await waitForApp(page);
   expect.equal(await accentOf(page), stock, "somebody else starts with the built-in theme");
@@ -98,7 +99,7 @@ scenario("the editor previews a draft on the page and takes it off again", async
 // The product ships a theme to start from; picking it fills the draft, the
 // preview paints the page in its colours, and saving keeps it as one's own.
 scenario("a new theme starts from the shipped Deep-Tech example", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/themes/new");
   await page.waitForSelector('[data-theme-example="deep-tech"]', { timeout: WAIT });
   await page.click('[data-theme-example="deep-tech"]');
@@ -164,7 +165,7 @@ scenario("an organization's default theme reaches everybody until they choose", 
   await page.waitForFunction((n) => document.querySelector(`[data-theme-row="${n}"]`)?.getAttribute("data-theme-default") === "true", { timeout: WAIT }, name);
 
   const who = await inviteMember(page, "housed");
-  await acceptInvite(page, who);
+  await acceptInvite(page, who, { visit: false });
   await goto(page, "/");
   await waitForApp(page);
   await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() === "#22aa66", { timeout: WAIT });
@@ -182,7 +183,7 @@ scenario("an organization's default theme reaches everybody until they choose", 
 // A theme goes out as one file and comes back as one's own: the Minecraft
 // theme kept under e2e/fixtures is imported, used, and its square corners show.
 scenario("a theme is imported from a file and exported back", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/themes");
   await page.waitForSelector("[data-theme-file]", { timeout: WAIT });
   const input = await page.$("[data-theme-file]");

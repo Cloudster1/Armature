@@ -13,13 +13,14 @@ import {
   scheduleIssue,
   setDate,
   signUp,
+  unique,
   WAIT,
 } from "../helpers.mjs";
 
 scenario("an issue can be scheduled and appears on the plan", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Scheduling");
-  const story = await createIssue(page, key, "Add password reset by email", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Scheduling", { visit: false });
+  const story = await createIssue(page, key, "Add password reset by email", { type: "Story", visit: false });
 
   await scheduleIssue(page, story, "2026-03-10", "2026-03-20");
 
@@ -30,9 +31,9 @@ scenario("an issue can be scheduled and appears on the plan", async ({ page }) =
 });
 
 scenario("dragging a bar moves the work and keeps its length", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Dragging dates");
-  const story = await createIssue(page, key, "Cache the account page", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Dragging dates", { visit: false });
+  const story = await createIssue(page, key, "Cache the account page", { type: "Story", visit: false });
   await scheduleIssue(page, story, "2026-03-10", "2026-03-20");
 
   await goto(page, `/projects/${key}/plan`);
@@ -49,9 +50,9 @@ scenario("dragging a bar moves the work and keeps its length", async ({ page }) 
 });
 
 scenario("dragging a bar's edge changes how long the work takes", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Resizing");
-  const story = await createIssue(page, key, "Compress the bundle", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Resizing", { visit: false });
+  const story = await createIssue(page, key, "Compress the bundle", { type: "Story", visit: false });
   await scheduleIssue(page, story, "2026-03-10", "2026-03-20");
 
   await goto(page, `/projects/${key}/plan`);
@@ -68,9 +69,9 @@ scenario("dragging a bar's edge changes how long the work takes", async ({ page 
 });
 
 scenario("an epic with no dates of its own spans its children", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Spanning");
-  const epic = await createIssue(page, key, "Password and recovery", "Epic");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Spanning", { visit: false });
+  const epic = await createIssue(page, key, "Password and recovery", { type: "Epic", visit: false });
   const first = await addChild(page, epic, "Design the reset email", "Story");
   const second = await addChild(page, epic, "Expire reset tokens", "Story");
 
@@ -84,10 +85,10 @@ scenario("an epic with no dates of its own spans its children", async ({ page })
 });
 
 scenario("a dependency scheduled too early is reported, not refused", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Blocking");
-  const blocker = await createIssue(page, key, "Build the token store", "Story");
-  const blocked = await createIssue(page, key, "Send the reset email", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Blocking", { visit: false });
+  const blocker = await createIssue(page, key, "Build the token store", { type: "Story", visit: false });
+  const blocked = await createIssue(page, key, "Send the reset email", { type: "Story", visit: false });
 
   await scheduleIssue(page, blocker, "2026-03-10", "2026-03-20");
   await scheduleIssue(page, blocked, "2026-03-15", "2026-03-25");
@@ -127,11 +128,11 @@ scenario("a dependency scheduled too early is reported, not refused", async ({ p
 });
 
 scenario("a row on the plan says what is wrong with it, in two tones", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Troubled");
-  const epic = await createIssue(page, key, "The whole thing", "Epic");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Troubled", { visit: false });
+  const epic = await createIssue(page, key, "The whole thing", { type: "Epic", visit: false });
   const child = await addChild(page, epic, "a piece of it", "Story");
-  const loose = await createIssue(page, key, "half planned", "Story");
+  const loose = await createIssue(page, key, "half planned", { type: "Story", visit: false });
 
   // A child outside its parent's dates contradicts the parent: red.
   await scheduleIssue(page, epic, "2026-04-01", "2026-04-10");
@@ -151,9 +152,9 @@ scenario("a row on the plan says what is wrong with it, in two tones", async ({ 
 });
 
 scenario("unscheduled work keeps its row on the plan", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Unplanned");
-  const story = await createIssue(page, key, "Nobody has planned this", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Unplanned", { visit: false });
+  const story = await createIssue(page, key, "Nobody has planned this", { type: "Story", visit: false });
 
   await goto(page, `/projects/${key}/plan`);
   await page.waitForSelector(`[data-plan-schedule="${story}"]`, { timeout: WAIT });

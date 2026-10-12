@@ -27,19 +27,20 @@ import {
   setTeamCapacity,
   signUp,
   textOf,
+  unique,
   WAIT,
   zoomPlan,
 } from "../helpers.mjs";
 
 scenario("the plan's two panes line up at every zoom, bands and flags included", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Lined up");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Lined up", { visit: false });
 
   // Enough on the calendar to draw every band: scheduled work, a dated
   // sprint, and a milestone due well after the last issue.
-  const first = await createIssue(page, key, "first stretch");
-  const second = await createIssue(page, key, "second stretch");
-  await createIssue(page, key, "not scheduled");
+  const first = await createIssue(page, key, "first stretch", { visit: false });
+  const second = await createIssue(page, key, "second stretch", { visit: false });
+  await createIssue(page, key, "not scheduled", { visit: false });
   await scheduleIssue(page, first, day(1), day(8));
   await scheduleIssue(page, second, day(5), day(20));
   const sprint = await createSprint(page, key, "Sprint A");
@@ -93,15 +94,15 @@ function nextMonday() {
 }
 
 scenario("a team's weeks are measured against what it said it can take", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Loaded");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Loaded", { visit: false });
   await createTeam(page, key, "Alpha");
   await setTeamCapacity(page, key, "Alpha", 10);
 
   // Two issues for Alpha in one week add up to more than the week; a third is
   // nobody's, and counts beside the teams rather than against any of them.
-  const big = await createIssue(page, key, "eight points for Alpha", "Task");
-  const small = await createIssue(page, key, "six points for Alpha", "Task");
+  const big = await createIssue(page, key, "eight points for Alpha", { type: "Task", visit: false });
+  const small = await createIssue(page, key, "six points for Alpha", { type: "Task", visit: false });
   const loose = await createIssue(page, key, "three points for nobody", "Task");
   const monday = nextMonday();
   for (const [issueKey, points, team] of [[big, 8, "Alpha"], [small, 6, "Alpha"], [loose, 3, null]]) {
@@ -157,9 +158,9 @@ scenario("a team's weeks are measured against what it said it can take", async (
 });
 
 scenario("an issue is added to a sprint from the plan's own row", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Filed");
-  const existing = await createIssue(page, key, "already here", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Filed", { visit: false });
+  const existing = await createIssue(page, key, "already here", { type: "Task", visit: false });
   await createSprint(page, key, "Sprint A");
   await planSprint(page, "Sprint A", { from: "2026-09-07", to: "2026-09-18", capacity: 10 });
   await commitIssue(page, existing, "Sprint A");
@@ -197,9 +198,9 @@ scenario("an issue is added to a sprint from the plan's own row", async ({ page 
 });
 
 scenario("dragging across empty calendar makes a ticket with those dates", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Drawn");
-  const unscheduled = await createIssue(page, key, "waiting for dates", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Drawn", { visit: false });
+  const unscheduled = await createIssue(page, key, "waiting for dates", { type: "Task", visit: false });
 
   await goto(page, `/projects/${key}/plan`);
   await page.waitForSelector('[data-plan-add-row="plan"]', { timeout: WAIT });
@@ -236,10 +237,10 @@ scenario("dragging across empty calendar makes a ticket with those dates", async
 });
 
 scenario("every sprint has a board of its own, running or not", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Tracked");
-  const committed = await createIssue(page, key, "committed to the next sprint");
-  await createIssue(page, key, "still in the backlog");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Tracked", { visit: false });
+  const committed = await createIssue(page, key, "committed to the next sprint", { visit: false });
+  await createIssue(page, key, "still in the backlog", { visit: false });
   const sprint = await createSprint(page, key, "Sprint N");
   await commitIssue(page, committed, "Sprint N");
 

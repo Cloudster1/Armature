@@ -17,13 +17,14 @@ import {
   selectByLabel,
   signUp,
   textOf,
+  unique,
   WAIT,
 } from "../helpers.mjs";
 
 scenario("a commit that names an issue appears on it and moves it", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Wired");
-  const issueKey = await createIssue(page, key, "wire the webhook", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Wired", { visit: false });
+  const issueKey = await createIssue(page, key, "wire the webhook", { type: "Task", visit: false });
 
   // Connecting hands out the address and the secret exactly once.
   await goto(page, `/projects/${key}/repositories`);
@@ -83,8 +84,8 @@ scenario("a commit that names an issue appears on it and moves it", async ({ pag
 });
 
 scenario("a branch made from a ticket is a real branch, and what happens to it comes back to the ticket", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Branchy");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Branchy", { visit: false });
   const issueKey = await createIssue(page, key, "wire the portal", "Task");
   const repo = await giteaRepository("e2e");
   const second = await giteaRepository("e2e-api");

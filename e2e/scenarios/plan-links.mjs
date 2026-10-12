@@ -27,14 +27,15 @@ import {
   setClosedForDays,
   signUp,
   textOf,
+  unique,
   WAIT,
 } from "../helpers.mjs";
 
 scenario("a ticket is moved under another on the plan", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Moving");
-  const epic = await createIssue(page, key, "The epic", "Epic");
-  const story = await createIssue(page, key, "A loose story", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Moving", { visit: false });
+  const epic = await createIssue(page, key, "The epic", { type: "Epic", visit: false });
+  const story = await createIssue(page, key, "A loose story", { type: "Story", visit: false });
 
   await goto(page, `/projects/${key}/plan`);
   const rows = await planRows(page);
@@ -66,10 +67,10 @@ scenario("a ticket is moved under another on the plan", async ({ page }) => {
 });
 
 scenario("a dependency is drawn on the plan by dragging from one bar to another", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Depending");
-  const first = await createIssue(page, key, "Build the token store", "Story");
-  const second = await createIssue(page, key, "Send the reset email", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Depending", { visit: false });
+  const first = await createIssue(page, key, "Build the token store", { type: "Story", visit: false });
+  const second = await createIssue(page, key, "Send the reset email", { type: "Story", visit: false });
   await scheduleIssue(page, first, "2026-03-02", "2026-03-06");
   await scheduleIssue(page, second, "2026-03-09", "2026-03-13");
 
@@ -100,10 +101,10 @@ scenario("a dependency is drawn on the plan by dragging from one bar to another"
 });
 
 scenario("the dependency graph shows every ticket and grows an edge by dragging", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Graphing");
-  const first = await createIssue(page, key, "Build the token store", "Story");
-  const second = await createIssue(page, key, "Send the reset email", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Graphing", { visit: false });
+  const first = await createIssue(page, key, "Build the token store", { type: "Story", visit: false });
+  const second = await createIssue(page, key, "Send the reset email", { type: "Story", visit: false });
   const third = await createIssue(page, key, "Write the release notes", "Bug");
   await page.evaluate(
     async (from, to) => {
@@ -147,10 +148,10 @@ scenario("the dependency graph shows every ticket and grows an edge by dragging"
 });
 
 scenario("tickets closed long ago leave the plan after the days the reader set", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Tidy");
-  const open = await createIssue(page, key, "Still open", "Story");
-  const finished = await createIssue(page, key, "Finished today", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Tidy", { visit: false });
+  const open = await createIssue(page, key, "Still open", { type: "Story", visit: false });
+  const finished = await createIssue(page, key, "Finished today", { type: "Story", visit: false });
   await goto(page, `/issues/${finished}`);
   await clickButton(page, "Close");
   await page.waitForFunction(() => document.body.innerText.includes("Done"), { timeout: WAIT });
@@ -181,12 +182,12 @@ scenario("tickets closed long ago leave the plan after the days the reader set",
 });
 
 scenario("the plan is read two ways: by hierarchy with the numbers, and by sprint", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Two readings");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Two readings", { visit: false });
 
-  const story = await createIssue(page, key, "a story to plan");
-  const bug = await createIssue(page, key, "a bug to squash", "Bug");
-  const task = await createIssue(page, key, "a task on the side");
+  const story = await createIssue(page, key, "a story to plan", { visit: false });
+  const bug = await createIssue(page, key, "a bug to squash", { type: "Bug", visit: false });
+  const task = await createIssue(page, key, "a task on the side", { visit: false });
   await scheduleIssue(page, story, day(1), day(8));
   const sprint = await createSprint(page, key, "Sprint A");
   await planSprint(page, sprint, { from: day(0), to: day(13), capacity: 10 });
@@ -235,9 +236,9 @@ scenario("the plan is read two ways: by hierarchy with the numbers, and by sprin
 });
 
 scenario("a milestone tracks the issues assigned to it and stands on the plan", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Reaching");
-  const first = await createIssue(page, key, "half of the release");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Reaching", { visit: false });
+  const first = await createIssue(page, key, "half of the release", { visit: false });
   const second = await createIssue(page, key, "the other half");
 
   const due = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
@@ -264,7 +265,7 @@ scenario("a milestone tracks the issues assigned to it and stands on the plan", 
   await goto(page, `/projects/${key}/milestones`);
   await clickButton(page, "Close milestone");
   await page.waitForFunction(() => document.body.innerText.includes("Closed"), { timeout: WAIT });
-  const third = await createIssue(page, key, "too late for the release");
+  const third = await createIssue(page, key, "too late for the release", { visit: false });
   await goto(page, `/issues/${third}`);
   await page.waitForSelector("#issue-milestone", { timeout: WAIT });
   const offered = await page.$$eval("#issue-milestone option", (os) => os.map((o) => o.textContent.trim()));

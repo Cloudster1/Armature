@@ -10,6 +10,7 @@ import {
   inviteFromMembersPage,
   joinThroughLink,
   signIn,
+  signInThroughForm,
   signOut,
   signUp,
   unique,
@@ -58,9 +59,9 @@ scenario("an administrator who does not own the organization is not offered dele
 });
 
 scenario("deleting one of two organizations leaves the other to choose", async ({ page }) => {
-  const first = await signUp(page);
-  await signOut(page);
-  const second = await signUp(page, unique("survivor"));
+  const first = await signUp(page, unique("user"), { visit: false });
+  await signOut(page, { visit: false });
+  const second = await signUp(page, unique("survivor"), { visit: false });
   await signIn(page, first.email);
   await waitForApp(page);
   const { token } = await inviteFromMembersPage(page, second.email);
@@ -71,7 +72,7 @@ scenario("deleting one of two organizations leaves the other to choose", async (
   await goto(page, `/invite#${token}`);
   await clickButton(page, `Join ${first.org}`);
   await waitForPath(page, "/");
-  await signIn(page, second.email);
+  await signInThroughForm(page, second.email);
   await page.waitForSelector("[data-org-choice-list]", { timeout: WAIT });
   await page.evaluate((name) => [...document.querySelectorAll("[data-org-choice]")].find((b) => b.textContent.includes(name))?.click(), second.org);
   await waitForApp(page);
