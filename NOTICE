@@ -1,0 +1,14 @@
+Armature
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The Go gopher
+
+The Armature logo (docs/armature-logo.jpg) and the images derived from it
+(web/public/favicon.ico, web/public/apple-touch-icon.png,
+web/public/emblem.webp) show the Go gopher, an adaptation of the original
+design by Renée French.
+
+The Go gopher was designed by Renée French and is licensed under the
+Creative Commons Attribution 4.0 International License:
+https://creativecommons.org/licenses/by/4.0/
+Source: https://go.dev/blog/gopher
