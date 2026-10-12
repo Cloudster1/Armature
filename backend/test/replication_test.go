@@ -354,3 +354,22 @@ func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 		t.Error("the dashboard made on first sight is missing from the answer that made it")
 	}
 }
+
+// A key used the moment it was made is known, however far a replica lags: the
+// caller has written nothing with it yet, so nothing pins its reads.
+func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {
+	h := newHarness(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signup(t, h, "keyatonce")
+
+	h.holdTheReplicaHere(t)
+
+	made := want(t, owner.post("/api/v1/tokens", map[string]any{"name": "ci"}), http.StatusCreated, "a key")
+	bearer := api.client(t)
+	bearer.bearer = principalField(t, made, "token", "secret").(string)
+	want(t, bearer.get("/api/v1/auth/me"), http.StatusOK, "the key used at once")
+}
