@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: saving notification preferences answers with what was saved, not
+  the preferences from before, while a replica lags behind.
+- Fixed: an API key used the moment it was made is no longer refused at
+  `/auth/me` as an expired session while a replica lags behind.
 - Changed: the integration suite opens its database cluster, superuser
   pools, telemetry and attachment bucket once, in `TestMain`, instead of in
   every test, and `TestMain` now refuses a run that left an operation

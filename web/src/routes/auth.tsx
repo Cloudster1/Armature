@@ -1,7 +1,7 @@
 import { Link, createRoute, redirect } from "@tanstack/react-router";
 import { rootRoute } from "./root";
 import { LoginForm, SignupForm } from "@/features/auth/AuthForms";
-import { Card } from "@/components/ui";
+import { Card, Wordmark } from "@/components/ui";
 import { meQueryKey, useSignupOpen } from "@/api/auth";
 import { request } from "@/api/client";
 import { useEffect, type ReactNode } from "react";
@@ -39,7 +39,7 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
     <div className="flex min-h-full items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6">
-          <p className="font-mono text-sm font-medium tracking-wide text-ink-muted">armature</p>
+          <Wordmark />
           <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
         </div>
