@@ -20,6 +20,7 @@ import (
 // A Jira export is the file this has to read: columns repeated under one name,
 // its own words for types and statuses, and usernames where addresses go.
 func TestAnImportMapsWhatItFinds(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "jiraimport")
 	files := csvio.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster), h.authService())

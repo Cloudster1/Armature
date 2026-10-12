@@ -17,6 +17,7 @@ import (
 // Every operation, once, the way a client would use it; contract_test.go
 // checks and counts each answer, and the coverage test refuses a surface with holes.
 func TestEveryEndpointOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
@@ -240,6 +241,7 @@ func graphOf(t *testing.T, got response) map[string]any {
 
 // The service desk, end to end: the agent's side and the customer's.
 func TestTheDeskOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	agent := api.client(t)
@@ -290,6 +292,7 @@ func TestTheDeskOverTheAPI(t *testing.T) {
 // Nothing behind the session is reachable without one: every authenticated
 // operation, called anonymously with placeholder parameters, answers 401.
 func TestEveryEndpointRefusesAnAnonymousCaller(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	anonymous := api.client(t)

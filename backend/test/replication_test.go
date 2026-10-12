@@ -20,6 +20,7 @@ import (
 // at all.
 func TestReadsReachTheReplica(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -52,6 +53,7 @@ func TestReadsReachTheReplica(t *testing.T) {
 // A position read inside the transaction sits before the commit record, and a
 // replica there has not replayed the change: seen as an empty read under load.
 func TestWriteReportsThePositionPastItsCommit(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	orgID, ctx := h.makeOrg(t, "commitlsn")
 
@@ -79,6 +81,7 @@ func TestWriteReportsThePositionPastItsCommit(t *testing.T) {
 
 func TestReadYourWritesUnderLag(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -167,6 +170,7 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 // skipped by callers who happen to be pinned.
 func TestLaggingReplicaLeavesTheRotation(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -218,6 +222,7 @@ func TestLaggingReplicaLeavesTheRotation(t *testing.T) {
 // rather than however long ago the last transaction happened to be.
 func TestIdleReplicaStaysHealthy(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -294,6 +299,7 @@ func listsInvite(t *testing.T, c *client, inviteID string) bool {
 // left it, however far a replica lags (issue #100).
 func TestTheInvitationsListShowsWhatWasJustSentOrWithdrawn(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -327,6 +333,7 @@ func TestTheInvitationsListShowsWhatWasJustSentOrWithdrawn(t *testing.T) {
 // same answer must show it, not a replica that has not seen it made.
 func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 	h := newHarness(t)
+	h.ownCluster(t)
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
@@ -347,4 +354,45 @@ func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 	if len(boards) == 0 {
 		t.Error("the dashboard made on first sight is missing from the answer that made it")
 	}
+}
+
+// Saving preferences answers with what was saved, however far a replica lags:
+// the answer is read after the write, in the same request.
+func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
+	h := newHarness(t)
+	h.ownCluster(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+	c := api.client(t)
+	c.signup(t, h, "prefsback")
+
+	h.holdTheReplicaHere(t)
+
+	saved := want(t, c.put("/api/v1/notification-preferences", map[string]any{"digest": "daily", "watchOwn": false, "mail": map[string]bool{}, "inapp": map[string]bool{}}), http.StatusOK, "saving")
+	p := saved.Body["preferences"].(map[string]any)
+	if p["digest"] != "daily" || p["watchOwn"] != false {
+		t.Errorf("the answer to saving is %v, not what was saved", p)
+	}
+}
+
+// A key used the moment it was made is known, however far a replica lags: the
+// caller has written nothing with it yet, so nothing pins its reads.
+func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {
+	h := newHarness(t)
+	h.ownCluster(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signup(t, h, "keyatonce")
+
+	h.holdTheReplicaHere(t)
+
+	made := want(t, owner.post("/api/v1/tokens", map[string]any{"name": "ci"}), http.StatusCreated, "a key")
+	bearer := api.client(t)
+	bearer.bearer = principalField(t, made, "token", "secret").(string)
+	want(t, bearer.get("/api/v1/auth/me"), http.StatusOK, "the key used at once")
 }

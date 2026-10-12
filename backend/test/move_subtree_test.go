@@ -68,6 +68,7 @@ func (h *harness) crossProjectParents(t *testing.T, ids ...uuid.UUID) int {
 // Moving an epic carries every level under it; each issue gets a key, a status
 // and a history entry there, and its old key still finds it.
 func TestMovingAnIssueCarriesItsWholeSubtree(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "subtree")
 	br := h.buildBranch(t, ws)
@@ -158,6 +159,7 @@ func TestMovingAnIssueCarriesItsWholeSubtree(t *testing.T) {
 // A descendant that cannot land in the target stops the whole move before
 // anything is written, and the refusal names it.
 func TestAMoveIsRefusedWhenPartOfTheSubtreeCannotCome(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "stranded")
 	br := h.buildBranch(t, ws)

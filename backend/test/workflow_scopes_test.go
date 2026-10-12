@@ -90,6 +90,7 @@ func (ws *workspace) typed(t *testing.T, h *harness, typeName, summary string) *
 }
 
 func TestAProjectInheritsTheOrganizationsWorkflow(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "inherit")
 
@@ -112,6 +113,7 @@ func TestAProjectInheritsTheOrganizationsWorkflow(t *testing.T) {
 }
 
 func TestAProjectOverridesOneIssueType(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "override")
 
@@ -155,6 +157,7 @@ func TestAProjectOverridesOneIssueType(t *testing.T) {
 // organization that has an opinion about one type: the narrower scope is asked
 // first, and only what it leaves out falls through.
 func TestAProjectsFallbackOutranksATenantMappingForTheType(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "narrow")
 
@@ -186,6 +189,7 @@ func TestAProjectsFallbackOutranksATenantMappingForTheType(t *testing.T) {
 }
 
 func TestClearingTheOverrideHandsTheDecisionBack(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "handback")
 
@@ -212,6 +216,7 @@ func TestClearingTheOverrideHandsTheDecisionBack(t *testing.T) {
 // Issues that were already open keep their status when the workflow changes
 // underneath them; nothing rewrites history to match the new configuration.
 func TestChangingTheSchemeLeavesOpenIssuesWhereTheyAre(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "midflight")
 
@@ -246,6 +251,7 @@ func TestChangingTheSchemeLeavesOpenIssuesWhereTheyAre(t *testing.T) {
 }
 
 func TestPromotingASchemeMovesEveryInheritingProject(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "promote")
 
@@ -273,6 +279,7 @@ func TestPromotingASchemeMovesEveryInheritingProject(t *testing.T) {
 }
 
 func TestTheOrganizationAlwaysKeepsAnAnswer(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "backstop")
 	schemeID := h.defaultSchemeID(t, ws)
@@ -323,6 +330,7 @@ func TestTheOrganizationAlwaysKeepsAnAnswer(t *testing.T) {
 // An archived project can be restored, so the scheme it names is still spoken
 // for; deleting it would leave the project pointing at nothing.
 func TestASchemeAnArchivedProjectNamesIsStillInUse(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "archived")
 
@@ -359,6 +367,7 @@ func TestASchemeAnArchivedProjectNamesIsStillInUse(t *testing.T) {
 }
 
 func TestASchemeCannotBeBorrowedFromAnotherOrganization(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	mine := h.newWorkspace(t, "mine")
 	theirs := h.newWorkspace(t, "theirs")
@@ -410,6 +419,7 @@ func TestASchemeCannotBeBorrowedFromAnotherOrganization(t *testing.T) {
 }
 
 func TestDeletingAWorkflowSomethingUsesIsRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "inuse")
 
@@ -427,6 +437,7 @@ func TestDeletingAWorkflowSomethingUsesIsRefused(t *testing.T) {
 // Rules are attached to transitions, so an edit that kept a transition has to
 // keep its rules; a delete and re-insert would throw them away silently.
 func TestSavingAWorkflowKeepsTheRulesOnTransitionsItKept(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "rules")
 
@@ -469,6 +480,7 @@ func TestSavingAWorkflowKeepsTheRulesOnTransitionsItKept(t *testing.T) {
 }
 
 func TestCopyingAWorkflowTakesItsRulesAlong(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "copying")
 
@@ -505,6 +517,7 @@ func TestCopyingAWorkflowTakesItsRulesAlong(t *testing.T) {
 }
 
 func TestAWorkflowThatCouldNotWorkIsRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "refused")
 	todo := h.statusID(t, ws, bootstrap.StatusToDo)
@@ -578,6 +591,7 @@ func (h *harness) projectSchemeID(t *testing.T, ws *workspace, key string) *uuid
 }
 
 func TestAProjectAdministratorMapsOneTypeWithoutASchemeOfItsOwn(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "rowwise")
 
@@ -625,6 +639,7 @@ func TestAProjectAdministratorMapsOneTypeWithoutASchemeOfItsOwn(t *testing.T) {
 }
 
 func TestMappingOnASharedSchemeCopiesItFirst(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "shared")
 
@@ -671,6 +686,7 @@ func TestMappingOnASharedSchemeCopiesItFirst(t *testing.T) {
 }
 
 func TestUnmappingTheLastTypeHandsTheDecisionBack(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "lastrow")
 
@@ -704,6 +720,7 @@ func TestUnmappingTheLastTypeHandsTheDecisionBack(t *testing.T) {
 }
 
 func TestAnotherOrganizationsWorkflowCannotBeMappedRowwise(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	mine := h.newWorkspace(t, "minerow")
 	theirs := h.newWorkspace(t, "theirrow")

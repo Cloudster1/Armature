@@ -29,6 +29,7 @@ func find(t *testing.T, list any, field, value string) map[string]any {
 }
 
 func TestAPIWorkflowScopes(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
@@ -162,6 +163,7 @@ func TestAPIWorkflowScopes(t *testing.T) {
 }
 
 func TestAPIWorkflowAdministrationIsGuarded(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
@@ -201,6 +203,7 @@ func TestAPIWorkflowAdministrationIsGuarded(t *testing.T) {
 
 // The designer sends the picture and the rules together and reads both back.
 func TestAPIWorkflowDesigner(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
@@ -313,6 +316,7 @@ func TestAPIWorkflowDesigner(t *testing.T) {
 // A project administrator is not an organization administrator: they may
 // decide one row on their own project and nothing wider.
 func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 

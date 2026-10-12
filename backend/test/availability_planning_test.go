@@ -10,6 +10,7 @@ import (
 // The project calendar and the plan read holidays and absences: of the default
 // calendar and of the project's people, and nobody else's.
 func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

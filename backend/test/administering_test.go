@@ -13,6 +13,7 @@ import (
 // follow the project's administration in the matrix, not the standing on the
 // Users page. A person's own comment and time stay their own to remove.
 func TestAdministeringTheProjectDecidesWhatMayBeRemoved(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

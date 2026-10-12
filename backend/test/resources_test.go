@@ -34,6 +34,7 @@ func resourceRows(t *testing.T, got response) map[string]map[string]map[string]a
 // A kanban project sets its work against its teams or its people, a scrum
 // project against its teams only, and the database holds the second rule too.
 func TestTheResourceViewSetsHoursAgainstTeamsOrPeople(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

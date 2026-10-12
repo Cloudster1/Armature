@@ -64,6 +64,7 @@ func (ws *workspace) leftSprint(t *testing.T, key, from string) bool {
 // Handing work to another team takes it out of the sprint the old team planned
 // it into: otherwise it shows in neither team's sprint and still counts in one.
 func TestHandingWorkToAnotherTeamTakesItOutOfItsSprint(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "handover")
 
@@ -163,6 +164,7 @@ func TestHandingWorkToAnotherTeamTakesItOutOfItsSprint(t *testing.T) {
 // A sprint plans its own team's work. Committing another team's work to it, by
 // hand or by carrying it over, is refused by the service and by the database.
 func TestASprintOnlyTakesItsOwnTeamsWork(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "streams")
 
@@ -254,6 +256,7 @@ func TestASprintOnlyTakesItsOwnTeamsWork(t *testing.T) {
 // Unfinished work stays with its team when a sprint completes: carrying it into
 // another team's sprint would hide it from both of them.
 func TestUnfinishedWorkIsOnlyCarriedIntoItsOwnTeamsSprint(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "carrying")
 
@@ -313,6 +316,7 @@ func TestUnfinishedWorkIsOnlyCarriedIntoItsOwnTeamsSprint(t *testing.T) {
 // An import that names a team and a sprint makes the sprint in that team's
 // stream, so the rows land in it rather than being refused.
 func TestAnImportedSprintBelongsToTheTeamOfItsRows(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "importstream")
 	alpha := ws.newTeam(t, "Alpha")

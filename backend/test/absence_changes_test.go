@@ -65,6 +65,7 @@ func daysOf(t *testing.T, h *harness, id string) string {
 // A manager may add days for somebody on their team but never rewrite what the
 // person or an administrator wrote down, even after putting them on the team.
 func TestAManagerChangesOnlyTheAbsencesTheyRecorded(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	c := newAbsenceCrew(t, h, "absencereach")
 
@@ -151,6 +152,7 @@ func fanOutAbsences(t *testing.T, h *harness, fan *notify.FanOut, orgID uuid.UUI
 // The person hears, in the inbox and by mail, each time somebody else touches
 // their days; never which days, and never about what they did themselves.
 func TestThePersonIsToldWhenSomebodyElseTouchesTheirAbsences(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	c := newAbsenceCrew(t, h, "absencenotice")
 	mailer := &fakeMailer{}
@@ -223,6 +225,7 @@ func TestThePersonIsToldWhenSomebodyElseTouchesTheirAbsences(t *testing.T) {
 // The rule rests on who recorded an absence, so the database keeps that
 // honest whatever the service does: it is never rewritten to somebody else.
 func TestWhoRecordedAnAbsenceHoldsThroughSQL(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "absencerecorder")
 	ctx := context.Background()

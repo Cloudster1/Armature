@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/armature-logo.jpg" alt="Armature" width="240"></p>
+
 # Armature
 
 **Project and service management in the Jira and Jira Service Management
@@ -226,6 +228,16 @@ The integration target stops the worker while it runs, because the relay tests
 start their own relays and assert on exactly which events were published; a
 background worker draining the same outbox would race them. It is restarted
 afterwards, including on failure.
+
+The integration suite opens one cluster, the superuser pools and the attachment
+bucket in `TestMain`, and `newHarness` hands them to every test. A new test
+works in organizations of its own and calls `t.Parallel()` first thing. A test
+that shares something another test would disturb (pausing the replica, a worker
+pass over every organization, the mailpit box, Redis, the per-address brakes, a
+row read across organizations) stays sequential and is listed in
+`backend/test/parallel_test.go` with what it shares. Go runs the sequential ones
+first, before any parallel test starts, and `make test` refuses a test that is
+neither.
 
 The browser suite runs its scenarios four abreast: every scenario signs up an
 organization of its own, so none waits for another, and each worker keeps one
@@ -494,3 +506,8 @@ itself is plain Go.
 ## License
 
 [Apache 2.0](LICENSE).
+
+The logo, the favicon and the emblem cut from it show the Go gopher, which
+was designed by [Renée French](https://reneefrench.blogspot.com/) and is
+licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
+The Armature logo is an adaptation of it. See [NOTICE](NOTICE).

@@ -12,6 +12,7 @@ import (
 // An administrator makes the organization's own accounts, resets them and
 // switches them off; the tenant wall holds for accounts that belong elsewhere.
 func TestAdministratorsManageLocalUsers(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
@@ -216,6 +217,7 @@ func TestAdministratorsManageLocalUsers(t *testing.T) {
 // A person changes their own password by proving the one they have, and every
 // other session of theirs ends.
 func TestAPersonChangesTheirOwnPassword(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 

@@ -114,6 +114,7 @@ func TestASavedFilterIsAQueryWithAName(t *testing.T) {
 // Many issues at once: one refused leaves the rest applied and says why.
 // A file in makes an issue per row after a dry run; a query out is a file.
 func TestBulkEditAndCSV(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "bulks")
 	labels := label.NewService(h.cluster)
@@ -196,6 +197,7 @@ func TestBulkEditAndCSV(t *testing.T) {
 // move keeps the history, gets the target's next key, keeps the old address
 // working, and clears what belonged to the old project.
 func TestCloneAndMove(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "movers")
 	labels := label.NewService(h.cluster)
@@ -257,6 +259,7 @@ func TestCloneAndMove(t *testing.T) {
 
 // Every operation over the API, the way the pages use them.
 func TestFiltersBulkAndFilesOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)

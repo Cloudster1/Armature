@@ -26,6 +26,7 @@ func allocationsOf(t *testing.T, c *client, projectKey string) map[string]map[st
 }
 
 func TestAShareOfThePersonsWeekIsSetPerProject(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
