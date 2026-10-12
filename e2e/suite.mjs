@@ -1,39 +1,47 @@
 import puppeteer from "puppeteer";
-import { AssertionError, DEFAULT_WORKERS, run } from "./runner.mjs";
+import { AssertionError, DEFAULT_WORKERS, registeringFrom, run } from "./runner.mjs";
 import {
   BASE_URL,
   WAIT,
 } from "./helpers.mjs";
 
-// Each module registers its scenarios as it loads, in the order below.
-import "./scenarios/accounts.mjs";
-import "./scenarios/work.mjs";
-import "./scenarios/shell.mjs";
-import "./scenarios/projects.mjs";
-import "./scenarios/templates.mjs";
-import "./scenarios/git.mjs";
-import "./scenarios/desk.mjs";
-import "./scenarios/desk-mail.mjs";
-import "./scenarios/dashboards.mjs";
-import "./scenarios/issue-details.mjs";
-import "./scenarios/organization.mjs";
-import "./scenarios/board.mjs";
-import "./scenarios/hierarchy.mjs";
-import "./scenarios/plan.mjs";
-import "./scenarios/workflows.mjs";
-import "./scenarios/plan-calendar.mjs";
-import "./scenarios/search.mjs";
-import "./scenarios/plan-links.mjs";
-import "./scenarios/sprints.mjs";
-import "./scenarios/access.mjs";
-import "./scenarios/invitations.mjs";
-import "./scenarios/organization-delete.mjs";
-import "./scenarios/users.mjs";
-import "./scenarios/holidays.mjs";
-import "./scenarios/absences.mjs";
-import "./scenarios/resources.mjs";
-import "./scenarios/themes.mjs";
-import "./scenarios/arrange.mjs";
+// Each module registers its scenarios as it loads, in the order below, which is
+// the order they are queued in.
+const SCENARIO_FILES = [
+  "accounts",
+  "work",
+  "shell",
+  "projects",
+  "templates",
+  "git",
+  "desk",
+  "desk-mail",
+  "dashboards",
+  "issue-details",
+  "organization",
+  "board",
+  "hierarchy",
+  "plan",
+  "workflows",
+  "plan-calendar",
+  "search",
+  "plan-links",
+  "sprints",
+  "access",
+  "invitations",
+  "organization-delete",
+  "users",
+  "holidays",
+  "absences",
+  "resources",
+  "themes",
+  "arrange",
+];
+
+for (const name of SCENARIO_FILES) {
+  registeringFrom(`${name}.mjs`);
+  await import(`./scenarios/${name}.mjs`);
+}
 
 // ----------------------------------------------------------------- driver ---
 
@@ -57,7 +65,22 @@ const CSP_MARK = "e2e: refused by the CSP:";
 
 async function open(browser) {
   const context = await browser.createBrowserContext();
+  // Every full load in the context counts, on a page the scenario opens too. A
+  // route change inside the app has no DOMContentLoaded; a goto never misses one.
+  let loads = 0;
+  const counted = new WeakSet();
+  const count = (page) => {
+    if (!page || counted.has(page)) return;
+    counted.add(page);
+    page.on("domcontentloaded", () => {
+      loads += 1;
+    });
+  };
+  context.on("targetcreated", async (target) => {
+    if (target.type() === "page") count(await target.page().catch(() => null));
+  });
   const page = await context.newPage();
+  count(page);
   await page.setViewport({ width: 1280, height: 860 });
   page.setDefaultTimeout(WAIT);
   // The production nginx sends a CSP, and what it refuses is a bug in what
@@ -74,10 +97,10 @@ async function open(browser) {
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0))).catch(() => {});
     if (refused.length) throw new AssertionError(`the Content Security Policy refused ${refused.join("; ")}`);
   };
-  return { context, page, check };
+  return { context, page, loads: () => loads, check };
 }
 
 const workers = Number(process.env.E2E_WORKERS) || DEFAULT_WORKERS;
 process.stdout.write(`\nBrowser end-to-end suite against ${BASE_URL}\n\n`);
-const ok = await run({ launch, open, workers, screenshotDir: process.env.E2E_ARTIFACTS ?? null });
+const ok = await run({ launch, open, workers, artifacts: process.env.E2E_ARTIFACTS ?? null });
 process.exit(ok ? 0 : 1);

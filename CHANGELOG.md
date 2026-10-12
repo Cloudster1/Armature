@@ -35,6 +35,10 @@ here in the branch that makes it.
 - Faster tests: the browser suite waits for what it checks instead of
   sleeping, so the swimlane, drawer and mailed reply scenarios go on the
   moment the save, the key or the reply has landed (#187).
+- Browser suite timings: a run ends with its ten slowest scenarios and its
+  number of full page loads, and leaves each scenario's time and page loads in
+  `.cache/e2e/timings.json`; `ONLY` also takes a scenario file's name, as
+  `ONLY=board` (#187).
 - Fixed: a scrum master or project administrator can change or remove only
   the absences they recorded themselves, never the person's own or an
   administrator's, and the person is told in their inbox, and by mail if they

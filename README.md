@@ -243,8 +243,9 @@ The browser suite runs its scenarios four abreast: every scenario signs up an
 organization of its own, so none waits for another, and each worker keeps one
 Chromium for the whole run with a fresh incognito context per scenario.
 `WORKERS=<n>` sets the number of browsers and `ONLY=<words>` narrows the run to
-the scenarios whose names contain them; `WORKERS=1` is the reference when the
-order of things matters. A page load is waited for by the page's own word,
+the scenarios whose names contain them, or to one file's, as `ONLY=board` runs
+every scenario in `e2e/scenarios/board.mjs`; `WORKERS=1` is the reference when
+the order of things matters. A page load is waited for by the page's own word,
 `data-settled` on the body, which the app writes from its in-flight queries and
 the router's state.
 
@@ -256,12 +257,19 @@ from the runner's side, and the session cookie is handed to the browser.
 The forms themselves are driven by `signUpThroughForm`, `signInThroughForm`,
 `createProjectThroughForm`, `createIssueThroughForm` and `joinThroughLink`, in
 the scenarios whose subject they are.
+
 The suite drives the production build: `make test-e2e` and `make screenshots`
 first build and start `web-e2e`, the production web image with its nginx and
 CSP, and the browsers load the app from there. A scenario fails if the CSP
 refuses anything on its pages. With `web/` unchanged the build is cached and
 costs a few seconds. `E2E_WEB=dev` runs against the Vite dev server instead,
 with no build, for following a scenario through hot reload.
+
+A run ends with its ten slowest scenarios and how many full page loads the run
+made, and writes `.cache/e2e/timings.json`: each scenario's file, outcome,
+milliseconds and page loads, sorted by name, with the run's seconds and
+browsers. A route change inside the app is not a page load; a `goto`, a reload
+or anything else that fetches the document anew is.
 
 The API is described by `api/openapi.json`, derived from the handler tables and
 types. After changing a route or a request or response type, run `make openapi`
