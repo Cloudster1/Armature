@@ -10,6 +10,7 @@ const deleteSwimlane = vi.fn();
 const reorderSwimlanes = vi.fn();
 const updateBoard = vi.fn();
 const useBoardById = vi.fn();
+let reorderPending = false;
 
 function mutation(mutate: ReturnType<typeof vi.fn>) {
   return { mutate, isPending: false, error: null };
@@ -20,7 +21,7 @@ vi.mock("@/api/boards", () => ({
   useAddSwimlane: () => mutation(addSwimlane),
   useUpdateSwimlane: () => mutation(updateSwimlane),
   useDeleteSwimlane: () => mutation(deleteSwimlane),
-  useReorderSwimlanes: () => mutation(reorderSwimlanes),
+  useReorderSwimlanes: () => ({ ...mutation(reorderSwimlanes), isPending: reorderPending }),
   useUpdateBoard: () => mutation(updateBoard),
 }));
 
@@ -55,6 +56,7 @@ const teamBoard: Board = {
 beforeEach(() => {
   for (const fn of [addSwimlane, updateSwimlane, deleteSwimlane, reorderSwimlanes, updateBoard, useBoardById]) fn.mockReset();
   useBoardById.mockReturnValue({ data: { board: teamBoard }, isLoading: false });
+  reorderPending = false;
 });
 
 describe("SwimlaneEditor", () => {
@@ -99,5 +101,19 @@ describe("SwimlaneEditor", () => {
 
     await userEvent.click(queued.getByRole("button", { name: "Delete" }));
     expect(deleteSwimlane).toHaveBeenCalledWith({ boardId: "b2", swimlaneId: "l1" });
+  });
+
+  // A move is built from the order on screen, so a second click before the
+  // first landed sent that same stale order again and undid nothing it meant to.
+  it("holds the arrows while a move is on its way", async () => {
+    reorderPending = true;
+    const { container } = render(<SwimlaneEditor boardId="b2" />);
+    const queued = within(container.querySelector('[data-swimlane-editor="Queued"]') as HTMLElement);
+    const doing = within(container.querySelector('[data-swimlane-editor="Doing"]') as HTMLElement);
+
+    expect(queued.getByRole("button", { name: "Move Queued right" })).toBeDisabled();
+    expect(doing.getByRole("button", { name: "Move Doing left" })).toBeDisabled();
+    await userEvent.click(doing.getByRole("button", { name: "Move Doing left" }));
+    expect(reorderSwimlanes).not.toHaveBeenCalled();
   });
 });

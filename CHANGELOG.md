@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: swimlanes reordered under Configure swimlanes stay where they were
+  put. A project whose oldest board had gone to a team opened on that board
+  while the panel edited the project-wide one, and a second arrow press
+  before the first had landed sent the order from before it; the board a
+  project opens on is now always the first it lists, and the arrows wait
+  for a move to land (#119).
 - Changed: integration tests run in parallel; the ones that share the
   replica, Redis, the mailpit box, the per-address brakes or a pass over
   every organization run one at a time first, each listed with its reason,

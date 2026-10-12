@@ -25,13 +25,13 @@ func NewService(cluster *db.Cluster, issues *issue.Service) *Service {
 	return &Service{db: cluster, issues: issues}
 }
 
-// ForProject returns the board a project opens on: its first, which for most
-// projects is its only one.
+// ForProject returns the board a project opens on: the first List names, which
+// for most projects is its only one.
 func (s *Service) ForProject(ctx context.Context, projectKey string) (*Board, error) {
 	var b *Board
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		b, err = s.load(ctx, tx, selectBoard+` WHERE p.key = $1 ORDER BY b.created_at LIMIT 1`,
+		b, err = s.load(ctx, tx, selectBoard+` WHERE p.key = $1 ORDER BY `+boardOrder+` LIMIT 1`,
 			project.NormalizeKey(projectKey))
 		return err
 	})
@@ -65,7 +65,7 @@ func (s *Service) List(ctx context.Context, projectKey string) ([]Summary, error
 			JOIN project p ON p.id = b.project_id
 			LEFT JOIN team t ON t.id = b.team_id
 			WHERE p.key = $1
-			ORDER BY (b.team_id IS NOT NULL), b.created_at, b.name`, project.NormalizeKey(projectKey))
+			ORDER BY `+boardOrder, project.NormalizeKey(projectKey))
 		if err != nil {
 			return fmt.Errorf("list boards: %w", err)
 		}
@@ -82,6 +82,10 @@ func (s *Service) List(ctx context.Context, projectKey string) ([]Summary, error
 	})
 	return out, err
 }
+
+// boardOrder is how List orders a project's boards and so which ForProject opens
+// on; one clause for both, or the panel edits a board that is not on screen.
+const boardOrder = `(b.team_id IS NOT NULL), b.created_at, b.name`
 
 // selectBoard is the shared projection for reading one board.
 const selectBoard = `

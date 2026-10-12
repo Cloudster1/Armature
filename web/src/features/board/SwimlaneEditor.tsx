@@ -95,6 +95,7 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
               canDelete={swimlanes.length > 1}
               isFirst={index === 0}
               isLast={index === swimlanes.length - 1}
+              moving={reorder.isPending}
               onMove={(direction) => moveLane(index, direction)}
             />
           </li>
@@ -124,6 +125,7 @@ function SwimlaneRow({
   canDelete,
   isFirst,
   isLast,
+  moving,
   onMove,
 }: {
   boardId: string;
@@ -133,6 +135,8 @@ function SwimlaneRow({
   canDelete: boolean;
   isFirst: boolean;
   isLast: boolean;
+  /** A move builds on the order on screen, so a second one waits for the first to land. */
+  moving: boolean;
   onMove: (direction: -1 | 1) => void;
 }) {
   const update = useUpdateSwimlane();
@@ -196,7 +200,7 @@ function SwimlaneRow({
           <Button
             size="sm"
             variant="ghost"
-            disabled={isFirst}
+            disabled={isFirst || moving}
             onClick={() => onMove(-1)}
             aria-label={`Move ${swimlane.name} left`}
           >
@@ -205,7 +209,7 @@ function SwimlaneRow({
           <Button
             size="sm"
             variant="ghost"
-            disabled={isLast}
+            disabled={isLast || moving}
             onClick={() => onMove(1)}
             aria-label={`Move ${swimlane.name} right`}
           >
