@@ -17,6 +17,7 @@ import (
 // A squash or merge commit copies the branch's messages into a commit with a
 // new SHA. What the branch already asked for is not asked again.
 func TestASquashCommitDoesNotRepeatTheBranchsCommands(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "squashing")
 	stub := newStubHost(t)

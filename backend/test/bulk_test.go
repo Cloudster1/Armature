@@ -19,6 +19,7 @@ import (
 // A refusal is the whole issue's: what bulk edit did to it before the refused
 // step is undone, so the dialog's "left as it was" is true of the database.
 func TestBulkEditRefusalLeavesTheIssueAsItWas(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "allornot")
 	edits := bulk.NewService(h.cluster, ws.issues, label.NewService(h.cluster))

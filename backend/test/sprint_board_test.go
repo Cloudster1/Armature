@@ -21,6 +21,7 @@ func intPtr(n int) *int       { return &n }
 // A scrum board follows the running sprint; every sprint, running or not, can
 // also be opened as a board of its own, showing only what is committed to it.
 func TestEverySprintHasABoardOfItsOwn(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "sprintboard")
 	task := h.issueTypeID(t, ws, bootstrap.TypeTask)

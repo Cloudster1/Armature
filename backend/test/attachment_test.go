@@ -74,6 +74,7 @@ func (c *client) download(path string) (*http.Response, []byte) {
 }
 
 func TestAnAttachmentRoundTripsThroughTheBucket(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

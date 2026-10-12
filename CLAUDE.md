@@ -36,6 +36,10 @@ types. After changing a route, a request type or a response type, run
 a unit test refuses a stale copy, and the integration suite validates every
 response against it and refuses a run that left an operation unexercised.
 
+An integration test calls `t.Parallel()` first thing, or is listed in
+`backend/test/parallel_test.go` with what it shares that a parallel test would
+disturb; `make test` refuses one that is neither.
+
 Nothing is mocked below the layer under test. A guard is not proven by the
 service refusing: try the same thing straight through SQL and watch the database
 refuse it too.

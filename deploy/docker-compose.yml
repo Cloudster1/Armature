@@ -312,6 +312,9 @@ services:
       ARMATURE_SMTP_ADDR: mailpit:1025
       ARMATURE_MAIL_FROM: Armature <no-reply@armature.test>
       ARMATURE_PORTAL_CODE_COOLDOWN: 5s
+      # Every browser in a test run reaches the api from one address, so the
+      # brakes on codes and guesses forget it after a minute, not ten.
+      ARMATURE_DOOR_WINDOW: 1m
       # Set so the portal can say that answering the desk's mails works; the
       # worker is what reads the box.
       ARMATURE_POP3_ADDR: mailpit:1110
@@ -379,6 +382,7 @@ services:
       # Source is bind mounted for hot reload; node_modules stays the image's.
       - ../web/src:/app/src:ro
       - ../web/index.html:/app/index.html:ro
+      - ../web/public:/app/public:ro
 
   # Prints pages of the product as PDF. The same Chromium and puppeteer image
   # the browser suite runs in, so nothing is installed for it; the script is

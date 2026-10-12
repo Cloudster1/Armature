@@ -45,6 +45,7 @@ func (ws *workspace) move(t *testing.T, h *harness, key, transition string, in .
 }
 
 func TestTransitions(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "flowing")
 
@@ -239,6 +240,7 @@ func TestTransitions(t *testing.T) {
 // TestTransitionAtomicity checks that a transition which fails partway leaves
 // nothing behind: no status change, no comment, no changelog entry.
 func TestTransitionAtomicity(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "atomic")
 	created := ws.newIssue(t, "all or nothing")
@@ -300,6 +302,7 @@ func TestTransitionAtomicity(t *testing.T) {
 // TestConditionHidesTransition attaches a role condition to a live workflow and
 // checks that it takes effect for a real user.
 func TestConditionHidesTransition(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "gated")
 	created := ws.newIssue(t, "restricted")

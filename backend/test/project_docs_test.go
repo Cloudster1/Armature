@@ -15,6 +15,7 @@ import (
 // A project can point at its documentation elsewhere, so the docs are one click
 // from the board; the address has to be a web page, here and in the database.
 func TestAProjectLinksToItsDocumentation(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

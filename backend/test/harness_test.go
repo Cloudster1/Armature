@@ -11,7 +11,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -19,13 +18,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/armature/armature/backend/internal/attachment"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/board"
-	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/observability"
@@ -59,65 +56,25 @@ type harness struct {
 	// tel is the telemetry the api under test reports through, and spans is
 	// where its traces land instead of a collector.
 	tel   *observability.Telemetry
-	spans *tracetest.InMemoryExporter
+	spans *spanSink
+	store attachment.Store
 }
 
+// newHarness hands out what TestMain opened for the whole run. Each test gets
+// its own copy of the struct, so a test that swaps a part changes only its own.
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 
-	primary := os.Getenv(envPrimary)
-	if primary == "" {
+	if os.Getenv(envPrimary) == "" {
 		t.Skipf("%s is not set; run the integration suite with `make test-integration`", envPrimary)
 	}
-
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("load config: %v", err)
+	if shared.cluster == nil {
+		t.Fatal("the shared harness is not open; TestMain opens it")
 	}
-	// Health checks run tightly so tests do not wait seconds for a replica to
-	// be re-evaluated after replay is paused or resumed.
-	cfg.DB.HealthInterval = 200 * time.Millisecond
-
-	ctx := context.Background()
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-
-	spans := tracetest.NewInMemoryExporter()
-	tel, err := observability.Setup(ctx, observability.Config{Service: "armature-test", Env: "development", SampleRatio: 1}, log, observability.WithSpanExporter(spans))
-	if err != nil {
-		t.Fatalf("telemetry: %v", err)
+	return &harness{
+		cluster: shared.cluster, super: shared.super, replica: shared.replica,
+		tel: shared.tel, spans: shared.spans, store: shared.store,
 	}
-	t.Cleanup(func() { _ = tel.Shutdown(context.Background()) })
-
-	cluster, err := db.Open(ctx, cfg.DB, log, db.WithQueryTracer(tel.QueryTracer))
-	if err != nil {
-		t.Fatalf("open cluster: %v", err)
-	}
-	if err := tel.Register(observability.NewClusterCollector(cluster)); err != nil {
-		t.Fatalf("cluster collector: %v", err)
-	}
-
-	super, err := pgxpool.New(ctx, os.Getenv(envSuperuser))
-	if err != nil {
-		cluster.Close()
-		t.Fatalf("connect superuser: %v", err)
-	}
-
-	h := &harness{cluster: cluster, super: super, tel: tel, spans: spans}
-	if url := os.Getenv(envReplicaSuper); url != "" {
-		h.replica, err = pgxpool.New(ctx, url)
-		if err != nil {
-			t.Fatalf("connect replica directly: %v", err)
-		}
-	}
-
-	t.Cleanup(func() {
-		if h.replica != nil {
-			h.replica.Close()
-		}
-		super.Close()
-		cluster.Close()
-	})
-	return h
 }
 
 // makeOrg creates an organization directly, bypassing the API, and returns a
@@ -228,24 +185,7 @@ func (h *harness) orgSlug(t *testing.T, prefix string) string {
 // below the layer under test: an upload in these tests lands in the stack's object store.
 func (h *harness) attachmentStore(t *testing.T) attachment.Store {
 	t.Helper()
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("load config: %v", err)
-	}
-	if cfg.S3.Endpoint == "" {
-		t.Fatalf("ARMATURE_S3_ENDPOINT is not set; run the integration suite with `make test-integration`")
-	}
-	store, err := attachment.NewS3(attachment.S3Config{
-		Endpoint: cfg.S3.Endpoint, Bucket: cfg.S3.Bucket, AccessKey: cfg.S3.AccessKey,
-		SecretKey: cfg.S3.SecretKey, Region: cfg.S3.Region, UseSSL: cfg.S3.UseSSL,
-	})
-	if err != nil {
-		t.Fatalf("s3 store: %v", err)
-	}
-	if err := store.EnsureBucket(context.Background()); err != nil {
-		t.Fatalf("attachment bucket: %v", err)
-	}
-	return store
+	return h.store
 }
 
 // authService builds the identity service with argon2 parameters cheap enough

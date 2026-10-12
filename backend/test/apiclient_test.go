@@ -69,8 +69,8 @@ const testCookieName = "armature_session_test"
 
 func newAPIServer(t *testing.T, h *harness) *apiServer {
 	t.Helper()
-	// Every test's requests come from one address; the door's brakes are per
-	// address and would otherwise count the whole suite as one caller.
+	// Every test calls from one address, so the brakes are reset per server; a
+	// test that leans on one is sequential (parallel_test.go) and overlaps none.
 	httpapi.ResetThrottles()
 
 	engine := workflow.NewEngine(workflow.NewDefaultRegistry())

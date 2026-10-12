@@ -87,6 +87,7 @@ func laneNames(b *board.Board) string {
 }
 
 func TestEachTemplateShapesTheProject(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "shaping")
 
@@ -147,6 +148,7 @@ func TestEachTemplateShapesTheProject(t *testing.T) {
 // Two projects from the same template share the workflow the first one brought,
 // rather than the second failing on the name or quietly making a copy.
 func TestATemplateBringsItsWorkflowOnce(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "reusing")
 
@@ -173,6 +175,7 @@ func TestATemplateBringsItsWorkflowOnce(t *testing.T) {
 }
 
 func TestAnUnknownTemplateIsRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "unknown")
 
@@ -203,6 +206,7 @@ func TestAnUnknownTemplateIsRefused(t *testing.T) {
 // TestAScrumBoardShowsTheRunningSprint is what makes the type behaviour rather
 // than a label: the same issues, two boards, two different answers.
 func TestAScrumBoardShowsTheRunningSprint(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "sprinting")
 	p := ws.fromTemplate(t, h, "scrum", "Sprinting")
@@ -290,6 +294,7 @@ func TestAScrumBoardShowsTheRunningSprint(t *testing.T) {
 // A project with teams has a sprint stream per team and one of its own. A
 // team's scrum board follows its team's sprint, not whichever is running.
 func TestATeamsScrumBoardFollowsTheTeamsSprint(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "streams")
 	p := ws.fromTemplate(t, h, "scrum", "Streams")
@@ -342,6 +347,7 @@ func TestATeamsScrumBoardFollowsTheTeamsSprint(t *testing.T) {
 }
 
 func TestABoardIsEitherScrumOrKanban(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "typed")
 

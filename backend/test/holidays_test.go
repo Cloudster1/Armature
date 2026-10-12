@@ -37,6 +37,7 @@ func (s *apiServer) localMember(t *testing.T, h *harness, owner *client, role st
 }
 
 func TestHolidayCalendarsAreTheAdministratorsToKeep(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -161,6 +162,7 @@ func TestHolidayCalendarsAreTheAdministratorsToKeep(t *testing.T) {
 }
 
 func TestAWorkingWeekIsAPersonsOwnToReadAndAnAdministratorsToSet(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -255,6 +257,7 @@ func TestAWorkingWeekIsAPersonsOwnToReadAndAnAdministratorsToSet(t *testing.T) {
 // The service holding calendars and weeks to their organization is not the
 // proof; the same things are tried straight through SQL.
 func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	home := h.newWorkspace(t, "calhome")
 	away := h.newWorkspace(t, "calaway")

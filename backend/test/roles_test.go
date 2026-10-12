@@ -15,6 +15,7 @@ import (
 // changed, one of its own can be added and removed, and every guard that the
 // service applies holds in SQL as well.
 func TestAnOrganizationEditsItsOwnRoles(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

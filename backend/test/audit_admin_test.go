@@ -47,6 +47,7 @@ func (h *harness) copyToAudit(t *testing.T, orgID string) {
 // Every change to who may do what or where the events go is audited with
 // actor, object and time, a password sign-in too, and no secret goes with it.
 func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

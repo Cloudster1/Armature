@@ -25,6 +25,7 @@ import (
 // the real database, and checks each answer against the same question asked in
 // plain SQL, so that the catalog's templates are proven and not just believed.
 func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "searching")
 	other := h.newWorkspace(t, "elsewhere")
@@ -286,6 +287,7 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 // number and date fields whose issues also hold text, and a project where the
 // same names are text fields: a cast that meets "high" fails the whole query.
 func TestCustomNumberAndDateFieldsAnswerEveryOperator(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "measured")
 	fields := field.NewService(h.cluster)

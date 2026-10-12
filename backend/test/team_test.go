@@ -63,6 +63,7 @@ func cardKeys(b *board.Board) []string {
 }
 
 func TestATeamIsMadeOfPeopleWhoAreAlreadyHere(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "forming")
 
@@ -116,6 +117,7 @@ func TestATeamIsMadeOfPeopleWhoAreAlreadyHere(t *testing.T) {
 // Removing somebody from a team leaves their work with the team: the work does
 // not follow a person off it.
 func TestWorkStaysWithTheTeamWhenSomebodyLeaves(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "leaving")
 
@@ -140,6 +142,7 @@ func TestWorkStaysWithTheTeamWhenSomebodyLeaves(t *testing.T) {
 }
 
 func TestABoardDrawsOnlyItsTeamsWork(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "drawing")
 
@@ -195,6 +198,7 @@ func TestABoardDrawsOnlyItsTeamsWork(t *testing.T) {
 }
 
 func TestEachBoardHasItsOwnBacklog(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "backlogs")
 
@@ -243,6 +247,7 @@ func TestEachBoardHasItsOwnBacklog(t *testing.T) {
 // Two teams in one project run their own sprints. That is the whole point of
 // giving them their own backlogs.
 func TestTwoTeamsRunSprintsAtTheSameTime(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "parallel")
 
@@ -300,6 +305,7 @@ func TestTwoTeamsRunSprintsAtTheSameTime(t *testing.T) {
 }
 
 func TestATeamCannotBeBorrowedFromAnotherProject(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	mine := h.newWorkspace(t, "mine")
 	theirs := h.newWorkspace(t, "theirs")
@@ -332,6 +338,7 @@ func TestATeamCannotBeBorrowedFromAnotherProject(t *testing.T) {
 
 // Deleting a team would leave its work as nobody's. Somebody has to decide.
 func TestATeamCarryingWorkCannotJustBeDeleted(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "deleting")
 
@@ -354,6 +361,7 @@ func TestATeamCarryingWorkCannotJustBeDeleted(t *testing.T) {
 }
 
 func TestAProjectKeepsAtLeastOneBoard(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "lastboard")
 
@@ -391,6 +399,7 @@ func keysOf(cards []board.Card) []string {
 // A team says how much it can take on in a week, in the unit issues are
 // estimated in; nothing means "has not said", which is not zero.
 func TestATeamSaysHowMuchItCanTakeOnInAWeek(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "capacity")
 	alpha := ws.newTeam(t, "Alpha")

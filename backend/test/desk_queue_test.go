@@ -16,6 +16,7 @@ import (
 )
 
 func TestTheQueuePutsTheMostPressingFirst(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "queueing")
 	d, p := ws.aDesk(t, h, "Queue desk")
@@ -73,6 +74,7 @@ const (
 // The queue is ordered and cut by the database, most overdue first, so a
 // request is never lost for being old, and a long queue says how long it is.
 func TestTheQueueReadsEveryRequestMostOverdueFirst(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

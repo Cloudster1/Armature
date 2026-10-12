@@ -36,6 +36,7 @@ func (m *refusingMailer) Send(ctx context.Context, mail desk.Mail) error {
 // A failed event comes round again, so a customer mail is retried only while
 // nobody has had it: once one went out, a retry would mail that person twice.
 func TestADeskMailIsRetriedOnlyWhileNobodyHasHadIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "deskretry")
 	d, p := ws.aDesk(t, h, "Retry desk")

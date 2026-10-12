@@ -36,6 +36,7 @@ func grouped(g board.Grouping) board.UpdateBoardInput {
 
 // Another organization's board is not there, whichever lane is named with it.
 func TestAnotherOrganizationsBoardCannotBeConfigured(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	alpha := h.newWorkspace(t, "lanesalpha")
 	beta := h.newWorkspace(t, "lanesbeta")
@@ -102,6 +103,7 @@ func shownLaneNames(board map[string]any) []string {
 // A project with a team board has two sets of swimlanes. Configuring the one on
 // screen used to configure the project's first board instead.
 func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

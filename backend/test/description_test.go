@@ -15,6 +15,7 @@ import (
 // is the case that matters: a JSON null has to reach the service as "clear",
 // not vanish into "not mentioned".
 func TestADescriptionCanBeWrittenAndCleared(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

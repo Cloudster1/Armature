@@ -71,6 +71,7 @@ func emailOf(t *testing.T, h *harness, id uuid.UUID) string {
 // The resolution mail promises that a reply brings the request back, from the
 // reporter or a follower, in the portal or by mail, and a rating stays history.
 func TestACustomersReplyReopensAResolvedRequest(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "reopening")
 	d, p := ws.aDesk(t, h, "Reopen desk")
@@ -160,6 +161,7 @@ func TestACustomersReplyReopensAResolvedRequest(t *testing.T) {
 // With no way out of done the reply is kept and the request stays put, so the
 // agents hear of it in the inbox: the assignee, else whoever finished it.
 func TestAReplyNoWayOutOfDoneCanTakeIsToldToTheAgents(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "noway")
 	d, p := ws.aDesk(t, h, "Dead end desk")

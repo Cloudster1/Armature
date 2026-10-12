@@ -34,6 +34,7 @@ func holds(keys []string, key string) bool {
 // The sprints page reads each sprint and the backlog for themselves. Reading
 // the project's newest page and filtering it lost every older committed issue.
 func TestTheSprintsPageReadsEachSprintAndTheBacklogWhole(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

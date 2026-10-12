@@ -43,6 +43,7 @@ func refusedWithASentence(t *testing.T, got response, about string) {
 }
 
 func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -195,6 +196,7 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 // An editor lists from a month back. An absence saved further ahead than a
 // year has to be in that list, or nobody can see, change or remove it.
 func TestAnAbsenceListFromADayRunsOnAndSaysWhenItIsCut(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -283,6 +285,7 @@ func TestAbsencesPastTheirWindowAreSwept(t *testing.T) {
 
 // The service refusing is not the proof; the same things are tried straight through SQL.
 func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	home := h.newWorkspace(t, "absencehome")
 	away := h.newWorkspace(t, "absenceaway")
