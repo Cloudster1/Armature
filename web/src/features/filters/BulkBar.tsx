@@ -40,7 +40,7 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
         label="Change the selected issues"
         start={
           <div className="flex flex-wrap items-end gap-3" data-bulk-bar={keys.length}>
-            <span className="pb-2 text-sm font-medium text-ink">{keys.length} selected</span>
+            <span className="pb-2 text-sm font-medium text-ink">{keys.length} selected on this page</span>
             <Select label="Priority" id="field-bulk-priority" controlSize="sm" value={change.priority ?? ""} onChange={(e) => setChange({ ...change, priority: e.target.value || undefined })}>
               <option value="">Leave</option>
               {["lowest", "low", "medium", "high", "highest"].map((p) => (

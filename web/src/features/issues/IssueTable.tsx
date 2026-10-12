@@ -46,7 +46,7 @@ export function IssueTable({
         <tr>
           {selecting && (
             <Th className="w-8">
-              <Checkbox label={<span className="sr-only">Select every issue shown</span>} checked={allTicked} onChange={(e) => onSelect(e.target.checked ? new Set(issues.map((i) => i.key)) : new Set())} data-select-all />
+              <Checkbox label={<span className="sr-only">Select every issue on this page</span>} checked={allTicked} onChange={(e) => onSelect(e.target.checked ? new Set(issues.map((i) => i.key)) : new Set())} data-select-all />
             </Th>
           )}
           <Th className="w-8" aria-label="Type" />

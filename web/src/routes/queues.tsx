@@ -3,10 +3,9 @@ import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
 import { useQueue, type QueueFilter } from "@/api/desk";
-import { EmptyState, Page, PageHeader, Segmented, Table, Td, Th } from "@/components/ui";
+import { EmptyState, Page, PageHeader, Pager, Segmented, Table, Td, Th, clampOffset, countOf } from "@/components/ui";
 import { Avatar, StatusBadge, TypeBadge, RelativeTime } from "@/features/issues/badges";
 import { SlaBadge } from "@/features/desk/SlaBadge";
-import { QueuePager, clampQueueOffset, queueCount } from "@/features/desk/QueuePager";
 import { QUEUE_PAGE_SIZE } from "@/config";
 
 export const queuesRoute = createRoute({
@@ -35,7 +34,7 @@ function QueuesPage() {
 
   // Requests leave a queue while it is open; a page past the end steps back.
   useEffect(() => {
-    if (data) setOffset((current) => clampQueueOffset(current, data.total, QUEUE_PAGE_SIZE));
+    if (data) setOffset((current) => clampOffset(current, data.total, QUEUE_PAGE_SIZE));
   }, [data]);
 
   function choose(next: QueueFilter) {
@@ -52,7 +51,7 @@ function QueuesPage() {
           </Link>
         }
         title="Queues"
-        meta={data ? queueCount(total) : undefined}
+        meta={data ? countOf(total, "request") : undefined}
       />
       <div className="mb-3">
         <Segmented label="Queue" value={filter} onChange={choose} options={filters} />
@@ -118,7 +117,7 @@ function QueuesPage() {
           </tbody>
         </Table>
       )}
-      <QueuePager total={total} offset={offset} pageSize={QUEUE_PAGE_SIZE} onChange={setOffset} />
+      <Pager label="Queue pages" total={total} offset={offset} pageSize={QUEUE_PAGE_SIZE} onChange={setOffset} />
     </Page>
   );
 }

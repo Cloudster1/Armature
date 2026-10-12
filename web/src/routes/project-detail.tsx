@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
@@ -9,13 +9,16 @@ import { useMilestones } from "@/api/milestones";
 import { IssueTable } from "@/features/issues/IssueTable";
 import { QueryInput } from "@/features/search/QueryInput";
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
-import { Button, EmptyState, ErrorBanner, Input, Page, PageHeader, Popover, Segmented, Select, Skeleton, Tag, Toolbar } from "@/components/ui";
+import { Button, EmptyState, ErrorBanner, Input, Page, PageHeader, Pager, Popover, Segmented, Select, Skeleton, Tag, Toolbar, clampOffset, isPageOffset, shownOf } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { StatusStrip } from "@/features/projects/StatusStrip";
+import { ISSUE_PAGE_SIZE } from "@/config";
 
 export const projectDetailRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/",
+  // The page is in the address, so a reload or a link lands on it.
+  validateSearch: (search: Record<string, unknown>): { offset?: number } => (isPageOffset(search.offset) ? { offset: search.offset } : {}),
   component: ProjectDetail,
 });
 
@@ -30,11 +33,10 @@ const scopeFilters: Record<Scope, { category?: StatusCategory[]; assignee?: stri
   mine: { assignee: "me" },
 };
 
-/** How many issues the list shows at once. */
-const ISSUE_PAGE_SIZE = 100;
-
 function ProjectDetail() {
   const { projectKey } = projectDetailRoute.useParams();
+  const { offset = 0 } = projectDetailRoute.useSearch();
+  const navigate = useNavigate();
   const { data: projectData, error } = useProject(projectKey);
   const { data: access } = useAccess();
   const [scope, setScope] = useState<Scope>("open");
@@ -57,7 +59,23 @@ function ProjectDetail() {
     milestone: milestoneId || undefined,
     orderBy: "created",
     limit: ISSUE_PAGE_SIZE,
+    offset: offset || undefined,
   });
+
+  const turn = (next: number, replace = false) => navigate({ to: "/projects/$projectKey", params: { projectKey }, search: next ? { offset: next } : {}, replace });
+  // A narrower list starts again at its first page.
+  function narrowing<T>(set: (value: T) => void) {
+    return (value: T) => {
+      set(value);
+      if (offset) turn(0, true);
+    };
+  }
+  // Issues leave the list while it is open; a page past the end steps back.
+  useEffect(() => {
+    if (issueData && offset > 0 && offset >= issueData.total) {
+      navigate({ to: "/projects/$projectKey", params: { projectKey }, search: { offset: clampOffset(offset, issueData.total, ISSUE_PAGE_SIZE) || undefined }, replace: true });
+    }
+  }, [issueData, offset, projectKey, navigate]);
 
   if (error) {
     return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
@@ -100,7 +118,7 @@ function ProjectDetail() {
             <Segmented
               label="Filter issues"
               value={scope}
-              onChange={setScope}
+              onChange={narrowing(setScope)}
               options={(["open", "all", "mine"] as Scope[]).map((option) => ({
                 value: option,
                 // Drawn capitalised but lower case in the DOM, which is how the
@@ -110,15 +128,15 @@ function ProjectDetail() {
             />
             <div className="flex min-w-56 max-w-md flex-1 items-center gap-1">
               {mode === "words" ? (
-                <Input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Search summaries" aria-label="Search issues" />
+                <Input type="search" value={text} onChange={(e) => narrowing(setText)(e.target.value)} placeholder="Search summaries" aria-label="Search issues" />
               ) : (
-                <QueryInput value={query} onSubmit={setQuery} error={issueError} compact label="Search issues with a query" project={projectKey} />
+                <QueryInput value={query} onSubmit={narrowing(setQuery)} error={issueError} compact label="Search issues with a query" project={projectKey} />
               )}
               <Segmented<SearchMode>
                 label="Search mode"
                 size="sm"
                 value={mode}
-                onChange={setMode}
+                onChange={narrowing(setMode)}
                 options={[
                   { value: "words", label: "Words" },
                   { value: "query", label: "Query" },
@@ -138,7 +156,7 @@ function ProjectDetail() {
               >
                 <div className="w-64 space-y-3">
                   {labels.length > 0 && (
-                    <Select label="Label" aria-label="Filter by label" id="filter-label" value={labelId} onChange={(e) => setLabelId(e.target.value)}>
+                    <Select label="Label" aria-label="Filter by label" id="filter-label" value={labelId} onChange={(e) => narrowing(setLabelId)(e.target.value)}>
                       <option value="">Any label</option>
                       {labels.map((label) => (
                         <option key={label.id} value={label.id}>
@@ -148,7 +166,7 @@ function ProjectDetail() {
                     </Select>
                   )}
                   {milestones.length > 0 && (
-                    <Select label="Milestone" aria-label="Filter by milestone" id="filter-milestone" value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
+                    <Select label="Milestone" aria-label="Filter by milestone" id="filter-milestone" value={milestoneId} onChange={(e) => narrowing(setMilestoneId)(e.target.value)}>
                       <option value="">Any milestone</option>
                       {milestones.map((milestone) => (
                         <option key={milestone.id} value={milestone.id}>
@@ -161,10 +179,10 @@ function ProjectDetail() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
+                      onClick={narrowing(() => {
                         setLabelId("");
                         setMilestoneId("");
-                      }}
+                      })}
                     >
                       Clear filters
                     </Button>
@@ -176,7 +194,7 @@ function ProjectDetail() {
         }
         end={
           <>
-            <span className="text-sm text-ink-subtle tabular-nums">{issueData ? `${issueData.total} issue${issueData.total === 1 ? "" : "s"}` : ""}</span>
+            <span className="text-sm text-ink-subtle tabular-nums">{issueData ? shownOf(issueData.total, issueData.offset, issues.length, "issue") : ""}</span>
             {mode === "query" && (
               <Link to="/search" search={{ q: asQuery }} className="text-sm text-accent hover:underline">
                 Open in search
@@ -198,6 +216,7 @@ function ProjectDetail() {
       ) : (
         <IssueTable issues={issues} />
       )}
+      {issueData && <Pager label="Issue pages" total={issueData.total} offset={issueData.offset} pageSize={ISSUE_PAGE_SIZE} onChange={turn} />}
     </Page>
   );
 }
