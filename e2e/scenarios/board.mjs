@@ -5,21 +5,27 @@ import {
   bodyText,
   cardsIn,
   clickButton,
+  coinStatus,
   confirm,
   createBoard,
   createIssue,
   createProject,
   dragCardTo,
+  dragConnect,
   expect,
   fill,
   goto,
   issueRows,
   openIssueBeside,
+  openWorkflowDesign,
+  reload,
+  replaceValue,
   selectByLabel,
   signUp,
   textOf,
   unique,
   WAIT,
+  waitForButtonToGo,
   withViewport,
 } from "../helpers.mjs";
 
@@ -346,6 +352,48 @@ scenario("cards in states no swimlane covers are surfaced, not hidden", async ({
     { timeout: WAIT },
   );
   expect.contains(await bodyText(page), issueKey, "the orphaned card is named");
+});
+
+/** The board's lanes, left to right, as the page draws them. */
+function laneOrder(page) {
+  return page.$$eval("[data-swimlane]", (els) => els.map((el) => el.getAttribute("data-swimlane")).join(", "));
+}
+
+scenario("a lane for a status added to the workflow is moved off the end and stays there", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "On hold", { visit: false });
+
+  // The workflow from the report: On Hold, in and out of In Progress.
+  await openWorkflowDesign(page, "Default software workflow");
+  await coinStatus(page, { name: "On Hold", category: "In progress" });
+  await dragConnect(page, "In Progress", "On Hold");
+  await replaceValue(page, "#field-transition-name", "Hold");
+  await dragConnect(page, "On Hold", "In Progress");
+  await replaceValue(page, "#field-transition-name", "Resume");
+  await clickButton(page, "Save workflow");
+  await waitForButtonToGo(page, "Save workflow");
+
+  await goto(page, `/projects/${key}/board`);
+  await page.waitForSelector('[data-swimlane="On Hold"]', { timeout: WAIT });
+  expect.equal(await laneOrder(page), "To Do, In Progress, In Review, Done, On Hold", "the new lane starts last");
+
+  // Twice to the left, each press once the one before has landed.
+  await clickButton(page, "Configure swimlanes");
+  const left = 'button[aria-label="Move On Hold left"]:not([disabled])';
+  for (const want of ["To Do, In Progress, In Review, On Hold, Done", "To Do, In Progress, On Hold, In Review, Done"]) {
+    await page.waitForSelector(left, { timeout: WAIT });
+    await page.click(left);
+    await page.waitForFunction(
+      (order) => [...document.querySelectorAll("[data-swimlane]")].map((el) => el.getAttribute("data-swimlane")).join(", ") === order,
+      { timeout: WAIT },
+      want,
+    );
+  }
+  await clickButton(page, "Done configuring");
+
+  await reload(page);
+  await page.waitForSelector('[data-swimlane="On Hold"]', { timeout: WAIT });
+  expect.equal(await laneOrder(page), "To Do, In Progress, On Hold, In Review, Done", "the board kept the order after a reload");
 });
 
 /** Opens one of the project's boards by name and waits until it is the one shown. */
