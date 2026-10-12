@@ -11,6 +11,10 @@ here in the branch that makes it.
   the preferences from before, while a replica lags behind.
 - Fixed: an API key used the moment it was made is no longer refused at
   `/auth/me` as an expired session while a replica lags behind.
+- Changed: the integration suite opens its database cluster, superuser
+  pools, telemetry and attachment bucket once, in `TestMain`, instead of in
+  every test, and `TestMain` now refuses a run that left an operation
+  unexercised; the suite runs in about 55s instead of 140s (#187).
 - Fixed: a scrum master or project administrator can change or remove only
   the absences they recorded themselves, never the person's own or an
   administrator's, and the person is told in their inbox, and by mail if they
