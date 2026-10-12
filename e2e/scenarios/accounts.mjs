@@ -12,10 +12,12 @@ import {
   expect,
   fill,
   goto,
+  mailFor,
   openPalette,
   PASSWORD,
   reload,
   signInThroughForm,
+  signOut,
   signUp,
   signUpThroughForm,
   submit,
@@ -117,6 +119,40 @@ scenario("a wrong password is refused without saying whether the account exists"
   await signInThroughForm(page, `nobody-${Date.now()}@armature.test`, PASSWORD);
   await page.waitForSelector("[role=alert]", { timeout: 10_000 });
   expect.equal(await textOf(page, "[role=alert]"), message, "unknown address gives the same answer");
+});
+
+scenario("somebody who forgot their password sets a new one from a mailed link", async ({ page }) => {
+  const who = await signUp(page, unique("forgot"), { visit: false });
+  await signOut(page);
+  await page.click('a[href="/forgot-password"]');
+  await waitForPath(page, "/forgot-password");
+
+  const since = Date.now() - 1000;
+  await fill(page, "Email", who.email);
+  await clickButton(page, "Send me a link");
+  await page.waitForSelector("[data-reset-sent]", { timeout: WAIT });
+  expect.contains(await bodyText(page), "If an account uses that address", "the page gives its one answer");
+
+  // The link names the stack's own address; the secret after the # is what opens the page here.
+  const mail = await mailFor(who.email, "Set a new password", { since });
+  const secret = mail.text.match(/\/reset-password#(\S+)/)?.[1];
+  expect.truthy(secret, "the mail carries a link to the reset page");
+  await goto(page, `/reset-password#${secret}`);
+  expect.equal(new URL(page.url()).hash, "", "the secret is taken off the address bar");
+
+  const chosen = "a password chosen after forgetting";
+  await fill(page, "Password", chosen);
+  await fill(page, "Repeat password", chosen);
+  await clickButton(page, "Set new password");
+  await waitForPath(page, "/login");
+  await page.waitForSelector("[data-password-changed]", { timeout: WAIT });
+
+  await signInThroughForm(page, who.email, PASSWORD);
+  await page.waitForSelector("[role=alert]", { timeout: WAIT });
+  expect.contains((await textOf(page, "[role=alert]")).toLowerCase(), "invalid email or password", "the old password is refused");
+  await signInThroughForm(page, who.email, chosen);
+  await waitForPath(page, "/");
+  await waitForApp(page);
 });
 
 scenario("the session survives a full page reload", async ({ page }) => {

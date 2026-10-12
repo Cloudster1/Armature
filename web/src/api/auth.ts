@@ -106,6 +106,24 @@ export function useLogin() {
   });
 }
 
+/** Asks for a link to set a new password; the answer is the same for every address. */
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      request<{ expiresInSeconds: number }>("/auth/password-reset", { method: "POST", body: { email } }),
+  });
+}
+
+/** Sets a new password with a mailed link, which ends every session, this tab's included. */
+export function useResetPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { token: string; password: string }) =>
+      request<void>("/auth/password-reset/confirm", { method: "POST", body: input }),
+    onSuccess: () => queryClient.removeQueries({ queryKey: meQueryKey }),
+  });
+}
+
 /** The address of everything held about the caller, as one JSON file. */
 export const MY_DATA_HREF = "/api/v1/auth/me/export";
 

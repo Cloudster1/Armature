@@ -5,6 +5,7 @@ import { loginRoute, signupRoute } from "./auth";
 import { deskEntryRoute } from "./desk-entry";
 import { unwatchRoute } from "./unwatch";
 import { inviteRoute } from "./invite";
+import { forgotPasswordRoute, resetPasswordRoute } from "./password-reset";
 import { rateRoute } from "./rate";
 import { sharedRoute } from "./shared";
 import { appRoute } from "./app";
@@ -60,6 +61,8 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   signupRoute,
   inviteRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   deskEntryRoute,
   unwatchRoute,
   rateRoute,

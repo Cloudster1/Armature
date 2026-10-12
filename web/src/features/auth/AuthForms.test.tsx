@@ -11,6 +11,11 @@ import { ApiError } from "@/api/client";
 // tests are about.
 const navigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to, className }: { children: ReactNode; to: string; className?: string }) => (
+    <a href={to} className={className}>
+      {children}
+    </a>
+  ),
   useNavigate: () => navigate,
 }));
 
@@ -63,6 +68,12 @@ describe("LoginForm", () => {
     expect(safeNext("//evil.example")).toBeUndefined();
     expect(safeNext("https://evil.example")).toBeUndefined();
     expect(safeNext("/projects")).toBe("/projects");
+  });
+
+  it("offers a way back in for somebody who forgot their password", () => {
+    mockLogin();
+    wrap(<LoginForm />);
+    expect(screen.getByRole("link", { name: "Forgot your password?" }).getAttribute("href")).toBe("/forgot-password");
   });
 
   // The provider knew them and the tracker did not: the page says who can

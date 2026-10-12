@@ -1,15 +1,15 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError, BASE, request } from "@/api/client";
 import { useLogin, useSignup, useSwitchOrg, type Membership, type Principal } from "@/api/auth";
 import { Button, ErrorBanner, Field } from "@/components/ui";
 
 /** Pulls per-field messages out of the API's validation envelope. */
-function fieldErrors(error: unknown): Record<string, string> {
+export function fieldErrors(error: unknown): Record<string, string> {
   return error instanceof ApiError ? error.fields : {};
 }
 
-function formError(error: unknown): string | null {
+export function formError(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof ApiError) {
     // Field-level problems are shown against their fields instead.
@@ -79,6 +79,9 @@ export function LoginForm({ next }: { next?: string } = {}) {
         onChange={(e) => setPassword(e.target.value)}
         error={fieldErrors(login.error).password}
       />
+      <Link to="/forgot-password" className="block text-sm font-medium text-accent hover:underline">
+        Forgot your password?
+      </Link>
       <Button type="submit" loading={login.isPending} className="w-full">
         Sign in
       </Button>
