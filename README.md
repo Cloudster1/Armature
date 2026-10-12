@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/armature-logo.jpg" alt="Armature" width="240"></p>
+
 # Armature
 
 **Project and service management in the Jira and Jira Service Management
