@@ -133,7 +133,8 @@ test-integration: ## Run the integration suite against the running stack
 # either. The suite is mounted inside the image's own app directory because ES
 # module resolution walks up from the importing file and ignores NODE_PATH.
 # WORKERS=<n> sets how many browsers run scenarios side by side; ONLY=<words>
-# narrows the run to the scenarios whose names contain them.
+# narrows the run to the scenarios whose names contain them, or to one file's
+# (ONLY=board). Each run writes .cache/e2e/timings.json and lists its slowest.
 E2E_IMAGE ?= zenika/alpine-chrome:with-puppeteer
 
 .PHONY: test-e2e
