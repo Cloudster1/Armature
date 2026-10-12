@@ -14,6 +14,7 @@ import (
 // proves the API actually sits behind it, with real credentials from two
 // separate organizations.
 func TestCrossTenantAccessAtTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
@@ -193,6 +194,7 @@ func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
 // TestCredentialsAreNotLeakedInResponses guards against the class of bug where
 // a hash, a digest or somebody else's address ends up in a payload.
 func TestCredentialsAreNotLeakedInResponses(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
@@ -223,6 +225,7 @@ func TestCredentialsAreNotLeakedInResponses(t *testing.T) {
 // TestInternalErrorsDoNotLeakDetail checks the error envelope keeps server side
 // detail server side.
 func TestInternalErrorsDoNotLeakDetail(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 

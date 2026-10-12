@@ -34,12 +34,12 @@ import {
 } from "../helpers.mjs";
 
 scenario("a customer raises a request and sees only what the desk says to them", async ({ page }) => {
-  const agent = await signUp(page);
-  const key = await createProject(page, "Helpdesk", "service-desk");
+  const agent = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Helpdesk", { template: "service-desk", visit: false });
 
   // A customer is invited as one, and lands in the portal rather than the app.
   const customer = await inviteMember(page, "customer", "customer");
-  await acceptInvite(page, customer);
+  await acceptInvite(page, customer, { visit: false });
   await goto(page, "/");
   await waitForPath(page, "/portal");
   await page.waitForFunction(() => document.body.innerText.includes("Your requests"), { timeout: WAIT });
@@ -58,7 +58,7 @@ scenario("a customer raises a request and sees only what the desk says to them",
 
   // The agent finds it in the queue, with its clocks, and answers it with a
   // note for colleagues and a reply for the customer.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, agent.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -84,7 +84,7 @@ scenario("a customer raises a request and sees only what the desk says to them",
   );
 
   // The customer sees the reply, not the note.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, customer.email);
   await waitForPath(page, "/portal");
   await goto(page, `/portal/requests/${requestKey}`);
@@ -95,8 +95,8 @@ scenario("a customer raises a request and sees only what the desk says to them",
 });
 
 scenario("a customer attaches files to a request, sees the desk's, and takes back only their own", async ({ page }) => {
-  const agent = await signUp(page);
-  const key = await createProject(page, "Filedesk", "service-desk");
+  const agent = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Filedesk", { template: "service-desk", visit: false });
   const customer = await inviteMember(page, "filer", "customer");
   await acceptInvite(page, customer);
 
@@ -118,7 +118,7 @@ scenario("a customer attaches files to a request, sees the desk's, and takes bac
   await attachFile(page, "/tmp/e2e-portal-b.txt");
 
   // The desk sees both, is told the customer sees what it attaches, and answers with a file.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, agent.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -128,7 +128,7 @@ scenario("a customer attaches files to a request, sees the desk's, and takes bac
   await attachFile(page, "/tmp/e2e-agent.txt");
 
   // The customer reads the desk's file and takes back only their own.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, customer.email);
   await waitForPath(page, "/portal");
   await goto(page, `/portal/requests/${requestKey}`);
@@ -149,8 +149,8 @@ scenario("a customer attaches files to a request, sees the desk's, and takes bac
 });
 
 scenario("a request raised through a template lands with its team", async ({ page }) => {
-  const agent = await signUp(page);
-  const key = await createProject(page, "Helpdesk", "service-desk");
+  const agent = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Helpdesk", { template: "service-desk", visit: false });
   await createTeam(page, key, "Field support");
 
   // The administrator offers a template under a category, routed to a team.
@@ -166,7 +166,7 @@ scenario("a request raised through a template lands with its team", async ({ pag
 
   // A customer finds it under the heading and starts from the template.
   const customer = await inviteMember(page, "customer", "customer");
-  await acceptInvite(page, customer);
+  await acceptInvite(page, customer, { visit: false });
   await goto(page, "/portal/new");
   await page.waitForSelector('[data-request-category="Hardware"] [data-request-type="Laptop replacement"]', { timeout: WAIT });
   await page.click('[data-request-type="Laptop replacement"]');
@@ -180,7 +180,7 @@ scenario("a request raised through a template lands with its team", async ({ pag
   expect.contains(await bodyText(page), "Not picked up yet", "the customer sees nobody has it yet");
 
   // The agent's queue shows where it landed.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, agent.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -190,7 +190,7 @@ scenario("a request raised through a template lands with its team", async ({ pag
 });
 
 scenario("somebody with only a mail address raises a request and is mailed about it", async ({ page }) => {
-  const agent = await signUp(page);
+  const agent = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Helpdesk", "service-desk");
   const slug = await orgSlug(page);
   await signOut(page);
@@ -222,7 +222,7 @@ scenario("somebody with only a mail address raises a request and is mailed about
   await page.waitForFunction(() => document.body.innerText.includes("The badge reader is dead"), { timeout: WAIT });
 
   // An agent's reply is mailed too.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, agent.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -235,8 +235,8 @@ scenario("somebody with only a mail address raises a request and is mailed about
 });
 
 scenario("a desk that trusts its callers lets one in without a code, and only into itself", async ({ page }) => {
-  const owner = await signUp(page);
-  const trusting = await createProject(page, "IT desk", "service-desk");
+  const owner = await signUp(page, unique("user"), { visit: false });
+  const trusting = await createProject(page, "IT desk", { template: "service-desk", visit: false });
   const careful = await createProject(page, "HR desk", "service-desk");
   const slug = await orgSlug(page);
 
@@ -261,7 +261,7 @@ scenario("a desk that trusts its callers lets one in without a code, and only in
   expect.truthy(!requestKey.startsWith(careful + "-"), "and not the careful one's");
 
   // The careful desk's door still asks for a code.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await goto(page, `/desk/${slug}?desk=${careful}`);
   await page.waitForFunction(() => document.body.innerText.includes("Send me a code"), { timeout: WAIT });
 
@@ -270,19 +270,19 @@ scenario("a desk that trusts its callers lets one in without a code, and only in
   await waitForPath(page, "/");
   await waitForApp(page);
   await toggleDoor(page, trusting);
-  await signOut(page);
+  await signOut(page, { visit: false });
   await goto(page, `/desk/${slug}?desk=${trusting}`);
   await page.waitForFunction(() => document.body.innerText.includes("Send me a code"), { timeout: WAIT });
 });
 
 scenario("a desk that trusts a domain turns other addresses away at the door", async ({ page }) => {
-  const owner = await signUp(page);
+  const owner = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "IT desk", "service-desk");
   const slug = await orgSlug(page);
   await toggleDoor(page, key);
   await trustDomain(page, key, "armature.test");
   expect.contains(await bodyText(page), "Empty means any address", "the card says what the list does");
-  await signOut(page);
+  await signOut(page, { visit: false });
 
   // Somebody who works here is sent to the code, however open the door.
   const agentRefusal = await turnedAwayAtOpenDesk(page, slug, key, { name: owner.name, email: owner.email });
@@ -298,10 +298,10 @@ scenario("a desk that trusts a domain turns other addresses away at the door", a
 });
 
 scenario("a customer's reply to a resolved request brings it back to the agents' open queue", async ({ page }) => {
-  const agent = await signUp(page);
-  const key = await createProject(page, "Helpdesk", "service-desk");
+  const agent = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Helpdesk", { template: "service-desk", visit: false });
   const customer = await inviteMember(page, "customer", "customer");
-  await acceptInvite(page, customer);
+  await acceptInvite(page, customer, { visit: false });
   await goto(page, "/portal/new");
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
@@ -311,7 +311,7 @@ scenario("a customer's reply to a resolved request brings it back to the agents'
   const requestKey = await page.evaluate(() => location.pathname.split("/").pop());
 
   // The agent resolves it, and it leaves the open queue.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, agent.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -322,7 +322,7 @@ scenario("a customer's reply to a resolved request brings it back to the agents'
   await page.waitForFunction(() => document.body.innerText.includes("Nothing in this queue"), { timeout: WAIT });
 
   // The customer answers in the portal, as the resolution mail tells them to.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, customer.email);
   await waitForPath(page, "/portal");
   await goto(page, `/portal/requests/${requestKey}`);
@@ -334,7 +334,7 @@ scenario("a customer's reply to a resolved request brings it back to the agents'
   expect.contains(await bodyText(page), "It jams again on every second page.", "the reply is on the request");
 
   // And it is back in front of the agents.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await signIn(page, agent.email);
   await waitForPath(page, "/");
   await waitForApp(page);

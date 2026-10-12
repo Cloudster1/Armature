@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useLogout, useMe, useSwitchOrg } from "@/api/auth";
-import { Button, Card, ErrorBanner } from "@/components/ui";
+import { Button, Card, ErrorBanner, Wordmark } from "@/components/ui";
 
 /**
  * Somebody signed in whose session points at no organization: they were let go
@@ -20,9 +20,7 @@ export function NoOrganization() {
       data-no-organization
     >
       <div className="w-full max-w-sm">
-        <p className="font-mono text-sm font-medium tracking-wide text-ink-muted">
-          armature
-        </p>
+        <Wordmark />
         <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">
           {organizations.length > 0
             ? "Choose an organization"

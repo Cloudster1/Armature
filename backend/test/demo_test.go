@@ -10,6 +10,7 @@ import (
 // One press makes an organization of the caller's own with a production line
 // in it, and the session is there when the response arrives.
 func TestADemoFactoryIsOnePressAway(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

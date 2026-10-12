@@ -13,14 +13,15 @@ import {
   planRows,
   runQuery,
   signUp,
+  unique,
   WAIT,
   waitForPath,
 } from "../helpers.mjs";
 
 scenario("the search bar suggests what to type and what it finds", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Suggesting");
-  const issueKey = await createIssue(page, key, "The printer is on fire", "Bug");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Suggesting", { visit: false });
+  const issueKey = await createIssue(page, key, "The printer is on fire", { type: "Bug", visit: false });
 
   // A field, its operator, then a value, each picked from the list under the bar.
   await goto(page, "/search");
@@ -46,11 +47,11 @@ scenario("the search bar suggests what to type and what it finds", async ({ page
 });
 
 scenario("a query finds the tickets it describes and says where it went wrong", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Querying");
-  const firstBug = await createIssue(page, key, "Login fails with a valid password", "Bug");
-  const secondBug = await createIssue(page, key, "Crash on save", "Bug");
-  const story = await createIssue(page, key, "Write the docs", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Querying", { visit: false });
+  const firstBug = await createIssue(page, key, "Login fails with a valid password", { type: "Bug", visit: false });
+  const secondBug = await createIssue(page, key, "Crash on save", { type: "Bug", visit: false });
+  const story = await createIssue(page, key, "Write the docs", { type: "Story", visit: false });
 
   // The search page lists what the query says, in the order it asks for.
   await goto(page, `/search?q=${encodeURIComponent(`project = ${key} AND type = Bug ORDER BY key DESC`)}`);

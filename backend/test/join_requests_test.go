@@ -18,6 +18,7 @@ import (
 // Somebody the provider vouches for is still refused, but the refusal is kept
 // where an administrator can turn it into a membership with one click.
 func TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	ws := h.newWorkspace(t, "letin")
@@ -97,6 +98,7 @@ func TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage(t *testing.T) {
 // administrators never see, nor decide, who is waiting at another's door.
 // Tried straight through SQL, as the application role.
 func TestJoinRequestsStayWithinTheirTenant(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	orgA, ctxA := h.makeOrg(t, "door-a")
 	orgB, ctxB := h.makeOrg(t, "door-b")

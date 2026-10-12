@@ -18,6 +18,7 @@ import (
 // refuses it with the way round named, and the database refuses the same row
 // written straight through SQL. Symmetric links may still form a triangle.
 func TestABlockCannotComeBackAround(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "circling")
 	a := h.buildTree(t, ws).story

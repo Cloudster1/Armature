@@ -34,15 +34,16 @@ import {
   signOut,
   signUp,
   textOf,
+  unique,
   WAIT,
   waitForApp,
   waitForButtonToGo,
 } from "../helpers.mjs";
 
 scenario("a status coined in the designer is drawn at once and the board grows a lane for it", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Reviewed");
-  const issueKey = await createIssue(page, key, "something to review", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Reviewed", { visit: false });
+  const issueKey = await createIssue(page, key, "something to review", { type: "Task", visit: false });
 
   // The organization's own workflow gains a status that did not exist a
   // moment ago, from the same panel that adds existing ones.
@@ -77,10 +78,10 @@ scenario("a status coined in the designer is drawn at once and the board grows a
 });
 
 scenario("a project's dashboard counts its work and can be rearranged", async ({ page }) => {
-  const who = await signUp(page);
-  const key = await createProject(page, "Measured");
-  const started = await createIssue(page, key, "the one under way", "Task");
-  await createIssue(page, key, "the one still waiting", "Task");
+  const who = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Measured", { visit: false });
+  const started = await createIssue(page, key, "the one under way", { type: "Task", visit: false });
+  await createIssue(page, key, "the one still waiting", { type: "Task", visit: false });
 
   await goto(page, `/issues/${started}`);
   await clickButton(page, "Start progress");
@@ -183,11 +184,11 @@ scenario("a chart widget groups the project's issues by type and draws them", as
 });
 
 scenario("a milestones widget says what the milestone card says", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Tracked");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Tracked", { visit: false });
   await createMilestone(page, key, "Release 1", day(30));
-  const first = await createIssue(page, key, "the first step", "Task");
-  const second = await createIssue(page, key, "the bug on the way", "Bug");
+  const first = await createIssue(page, key, "the first step", { type: "Task", visit: false });
+  const second = await createIssue(page, key, "the bug on the way", { type: "Bug", visit: false });
   await assignMilestone(page, first, "Release 1");
   await assignMilestone(page, second, "Release 1");
   await goto(page, `/issues/${first}`);
@@ -216,8 +217,8 @@ scenario("a milestones widget says what the milestone card says", async ({ page 
 });
 
 scenario("a dashboard is saved as a template and another project starts from it", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Origin");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Origin", { visit: false });
   await goto(page, `/projects/${key}/dashboard`);
   await page.waitForSelector('[data-widget="status_breakdown"]', { timeout: WAIT });
   await addWidget(page, "chart");
@@ -226,7 +227,7 @@ scenario("a dashboard is saved as a template and another project starts from it"
   await saveTemplate(page, "Mondays");
 
   // Another project starts from it and gets the same widgets.
-  const other = await createProject(page, "Elsewhere");
+  const other = await createProject(page, "Elsewhere", { visit: false });
   await createDashboard(page, other, "From Mondays", "Mondays");
   await page.waitForSelector('[data-widget="chart"]', { timeout: WAIT });
   expect.equal((await page.$$('[data-widget="status_breakdown"]')).length, 1, "the status widget came along");
@@ -245,11 +246,11 @@ scenario("a dashboard is saved as a template and another project starts from it"
 });
 
 scenario("a milestone gets a dashboard of its own", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Aimed");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Aimed", { visit: false });
   await createMilestone(page, key, "Release 1", day(20));
-  const counted = await createIssue(page, key, "counts towards the release", "Task");
-  await createIssue(page, key, "counts towards nothing", "Task");
+  const counted = await createIssue(page, key, "counts towards the release", { type: "Task", visit: false });
+  await createIssue(page, key, "counts towards nothing", { type: "Task", visit: false });
   await assignMilestone(page, counted, "Release 1");
 
   await milestoneDashboard(page, key, "Release 1");
@@ -274,7 +275,7 @@ scenario("a dashboard is shared by a link that needs no sign-in, until it is rev
   expect.contains(path, "/shared/", "the link opens the shared page");
 
   // Signed out, the link still opens the dashboard, narrowed as it was shared.
-  await signOut(page);
+  await signOut(page, { visit: false });
   await goto(page, path);
   await page.waitForSelector('[data-shared-dashboard="Overview"] [data-widget="status_breakdown"]', { timeout: WAIT });
   await expectCounted(page, 1);
@@ -288,15 +289,15 @@ scenario("a dashboard is shared by a link that needs no sign-in, until it is rev
   await waitForApp(page);
   await goto(page, `/projects/${key}/dashboard`);
   await revokeShare(page, "Lobby screen");
-  await signOut(page);
+  await signOut(page, { visit: false });
   await goto(page, path);
   await page.waitForSelector("[data-share-gone]", { timeout: WAIT });
 });
 
 scenario("a dashboard is exported as a PDF, signed in and from a shared link", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Printed");
-  await createIssue(page, key, "something to count", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Printed", { visit: false });
+  await createIssue(page, key, "something to count", { type: "Task", visit: false });
   await goto(page, `/projects/${key}/dashboard`);
   await page.waitForSelector('[data-action="export-pdf"]', { timeout: WAIT });
 
@@ -321,7 +322,7 @@ scenario("a dashboard is exported as a PDF, signed in and from a shared link", a
 
   // A shared link prints too, for whoever holds it.
   const url = await shareDashboard(page, "Wall");
-  await signOut(page);
+  await signOut(page, { visit: false });
   await goto(page, new URL(url).pathname);
   await page.waitForSelector('[data-action="download-pdf"]', { timeout: WAIT });
   const shared = await page.evaluate(async () => {

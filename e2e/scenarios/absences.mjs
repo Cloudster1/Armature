@@ -61,7 +61,7 @@ async function grantScrumMaster(page, projectKey, email) {
 }
 
 scenario("a person records an absence on their profile and sees it listed", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/profile");
   await page.waitForSelector("[data-absence-form]", { timeout: WAIT });
   await recordAbsence(page, "[data-absences]", day(AWAY_FIRST_DAY), day(AWAY_LAST_DAY));
@@ -70,7 +70,7 @@ scenario("a person records an absence on their profile and sees it listed", asyn
 });
 
 scenario("a person records an absence fourteen months ahead and it stays listed", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/profile");
   await page.waitForSelector("[data-absence-form]", { timeout: WAIT });
   const far = day(FAR_AHEAD_DAY);
@@ -80,7 +80,7 @@ scenario("a person records an absence fourteen months ahead and it stays listed"
 });
 
 scenario("a scrum master records an absence for somebody on their team", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Away crew", "scrum");
   const master = unique("master");
   const member = unique("member");
@@ -105,7 +105,7 @@ scenario("a scrum master records an absence for somebody on their team", async (
 });
 
 scenario("a person is told in their inbox when a scrum master records an absence for them, and keeps their own out of reach", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Told crew", "scrum");
   const master = unique("master");
   const member = unique("member");
@@ -158,8 +158,8 @@ scenario("a person is told in their inbox when a scrum master records an absence
 });
 
 scenario("a person records an absence and the project calendar shows them away", async ({ page }) => {
-  const who = await signUp(page);
-  const key = await createProject(page, "Away on the calendar");
+  const who = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Away on the calendar", { visit: false });
   await createTeam(page, key, "Crew");
   await joinTeam(page, key, "Crew", who.name);
   await goto(page, "/settings/profile");

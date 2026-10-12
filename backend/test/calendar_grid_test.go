@@ -10,6 +10,7 @@ import (
 // The page draws six weeks, padded from the neighbouring months, so their days
 // off come along and an absence is not cut where the month ends.
 func TestTheCalendarMonthCarriesTheDaysOffOfTheSixWeeksItDraws(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

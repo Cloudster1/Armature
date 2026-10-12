@@ -37,6 +37,7 @@ func wantCode(t *testing.T, r response, code string) {
 }
 
 func TestAnInvitationCannotHandOverAnAccount(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	victimClient, address, _ := victim(t, h, api)
@@ -157,6 +158,7 @@ func TestAPortalCodeCannotBeGuessedByAskingAgain(t *testing.T) {
 // A provider's sign-in vouches for the person wherever that provider is
 // trusted, and in an organization of their own; nowhere else.
 func TestASingleSignOnReachesItsProviderAndItsOwn(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	home := h.newWorkspace(t, "ssohome")
 	away := h.newWorkspace(t, "ssoaway")

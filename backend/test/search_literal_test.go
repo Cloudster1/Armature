@@ -17,6 +17,7 @@ import (
 // A search for "50%" or "snake_case" finds those characters, not whatever the
 // database would read into them as a pattern.
 func TestATextSearchFindsPercentAndUnderscoreAsTyped(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "literal")
 	fields := field.NewService(h.cluster)

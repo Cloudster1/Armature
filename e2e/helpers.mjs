@@ -169,8 +169,74 @@ export async function bodyText(page) {
   return page.evaluate(() => document.body.innerText);
 }
 
-/** Registers a new organization through the UI and lands in the app. */
-export async function signUp(page, who = unique("user")) {
+// ------------------------------------------------------------------ setup ---
+// What a scenario needs before its subject is made through the API from the
+// runner's side; the forms themselves are driven by the ...ThroughForm helpers.
+
+/** The cookies this browser holds for the app, as a Cookie header. */
+async function cookiesOf(page) {
+  const cookies = await page.cookies(BASE_URL);
+  return cookies.map(({ name, value }) => `${name}=${value}`).join("; ");
+}
+
+/** Keeps what the API set or cleared, the way the browser would have on its own request. */
+async function keepCookies(page, response) {
+  for (const header of response.headers.getSetCookie()) {
+    const [pair] = header.split(";");
+    const at = pair.indexOf("=");
+    const name = pair.slice(0, at).trim();
+    const value = pair.slice(at + 1).trim();
+    if (value) await page.setCookie({ name, value, url: BASE_URL, httpOnly: true, sameSite: "Lax" });
+    else await page.deleteCookie({ name, url: BASE_URL });
+  }
+}
+
+/**
+ * Sends one JSON request as the browser's session, or as nobody, and returns
+ * the answer; a refusal throws with the API's own sentence.
+ */
+async function callAPI(page, method, path, body, { asNobody = false } = {}) {
+  const headers = { Accept: "application/json" };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const cookies = asNobody ? "" : await cookiesOf(page);
+  if (cookies) headers.Cookie = cookies;
+  const response = await fetch(`${BASE_URL}/api/v1${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  await keepCookies(page, response);
+  const text = await response.text();
+  let answer = {};
+  try {
+    answer = text ? JSON.parse(text) : {};
+  } catch {
+    // A proxy's error page is not JSON; the status says enough.
+  }
+  if (!response.ok) {
+    throw new Error(`${method} ${path} was refused with ${response.status}: ${answer.error?.message ?? text.slice(0, 200)}`);
+  }
+  return answer;
+}
+
+/** Registers a new organization and, with visit, lands in the app. */
+export async function signUp(page, who = unique("user"), { visit = true } = {}) {
+  await callAPI(
+    page,
+    "POST",
+    "/auth/signup",
+    { name: who.name, email: who.email, password: PASSWORD, orgName: who.org },
+    { asNobody: true },
+  );
+  if (visit) {
+    await goto(page, "/");
+    await waitForApp(page);
+  }
+  return who;
+}
+
+/** Registers a new organization through the sign-up form and lands in the app. */
+export async function signUpThroughForm(page, who = unique("user")) {
   await goto(page, "/signup");
   await fill(page, "Your name", who.name);
   await fill(page, "Work email", who.email);
@@ -184,10 +250,24 @@ export async function signUp(page, who = unique("user")) {
 }
 
 /**
- * Creates a project through the UI and returns its key. With no template named
- * the form's default stands, which is whatever the server offers first.
+ * Creates a project and returns its key; with visit, on the project's page.
+ * A string in place of the options names the template.
  */
-export async function createProject(page, name, template) {
+export async function createProject(page, name, options = {}) {
+  const { template, visit = true } = typeof options === "string" ? { template: options } : options;
+  const { project } = await callAPI(page, "POST", "/projects", { name, template });
+  if (visit) {
+    await goto(page, `/projects/${project.key}`);
+    await page.waitForFunction((n) => document.body.innerText.includes(n), { timeout: WAIT }, name);
+  }
+  return project.key;
+}
+
+/**
+ * Creates a project through the form and returns its key. With no template
+ * named the form's default stands, which is whatever the server offers first.
+ */
+export async function createProjectThroughForm(page, name, template) {
   await goto(page, "/projects");
   await page.waitForSelector("button", { timeout: WAIT });
   await clickButton(page, "New project");
@@ -210,8 +290,29 @@ export async function createProject(page, name, template) {
   return key;
 }
 
-/** Creates an issue in a project through the UI and returns its key. */
-export async function createIssue(page, projectKey, summary, typeName) {
+/** The id of the issue type with this name, as the creation form would offer it. */
+async function issueTypeId(page, name) {
+  const { issueTypes } = await callAPI(page, "GET", "/issue-types");
+  const found = issueTypes.find((each) => each.name === name);
+  if (!found) throw new Error(`There is no issue type called ${name}; name one of ${issueTypes.map((t) => t.name).join(", ")}.`);
+  return found.id;
+}
+
+/**
+ * Creates an issue and returns its key; with visit, on the project's page
+ * where the form leaves it. A string in place of the options names the type.
+ */
+export async function createIssue(page, projectKey, summary, options = {}) {
+  const { type, visit = true } = typeof options === "string" ? { type: options } : options;
+  const body = { summary };
+  if (type) body.typeId = await issueTypeId(page, type);
+  const { issue } = await callAPI(page, "POST", `/projects/${projectKey}/issues`, body);
+  if (visit) await goto(page, `/projects/${projectKey}`);
+  return issue.key;
+}
+
+/** Creates an issue in a project through the form and returns its key. */
+export async function createIssueThroughForm(page, projectKey, summary, typeName) {
   await goto(page, `/projects/${projectKey}`);
   await clickButton(page, "New issue");
   if (typeName) await selectByLabel(page, "#issue-type", typeName);
@@ -1110,18 +1211,15 @@ export async function tryAcceptInvite(page, { token, name = "Invited Person", pa
 }
 
 /**
- * Accepts an invitation in this browser, which leaves it signed in as them.
- *
- * Signing out first is not tidiness: an invitation accepted while somebody else
- * is signed in joins with that existing account, which is right for a person
- * following a link in their own browser and wrong for a test pretending to be
- * two people.
+ * Accepts an invitation, which leaves this browser signed in as them; with
+ * visit, on whatever "/" shows them. joinThroughLink drives the form instead.
  */
-export async function acceptInvite(page, who) {
-  await signOut(page);
-  await goto(page, "/login");
-  const refused = await tryAcceptInvite(page, { token: who.token, name: who.name });
-  if (refused) throw new Error(`accept failed: ${refused}`);
+export async function acceptInvite(page, who, { visit = true } = {}) {
+  // Accepted as whoever is signed in, it would join that account: a test
+  // pretending to be two people wants the second to be somebody new.
+  await signOut(page, { visit: false });
+  await callAPI(page, "POST", "/auth/invites/accept", { token: who.token, name: who.name, password: PASSWORD }, { asNobody: true });
+  if (visit) await goto(page, "/");
 }
 
 /** Grants a role on the access page, the way an administrator would. */
@@ -1188,22 +1286,33 @@ async function rolesHeldBy(page, who) {
   );
 }
 
-/** Signs out, which the sign-in page needs before it will show a form again. */
-export async function signOut(page) {
-  await goto(page, "/");
-  const found = await page.evaluate(() => {
-    const button = [...document.querySelectorAll("button")].find(
-      (b) => b.textContent.trim() === "Sign out",
-    );
-    button?.click();
-    return Boolean(button);
-  });
-  if (found) await waitForPath(page, "/login");
+/**
+ * Signs out, which the sign-in page needs before it will show a form again;
+ * with visit, on the sign-in page where the button leaves it.
+ */
+export async function signOut(page, { visit = true } = {}) {
+  // Already signed out, or the account is gone: the cookie goes either way.
+  if (await cookiesOf(page)) await callAPI(page, "POST", "/auth/logout").catch(() => {});
+  await forgetTheme(page);
+  if (visit) await goto(page, "/login");
 }
 
-export async function signIn(page, email, password = PASSWORD) {
+/** Signing out forgets the theme this browser paints first, so the next person does not see it. */
+async function forgetTheme(page) {
+  if (!page.url().startsWith(BASE_URL)) return;
+  await page.evaluate(() => localStorage.removeItem("armature.theme-css")).catch(() => {});
+}
+
+/** Signs in as somebody else; with visit, on whatever "/" shows them. */
+export async function signIn(page, email, password = PASSWORD, { visit = true } = {}) {
+  await signOut(page, { visit: false });
+  await callAPI(page, "POST", "/auth/login", { email, password }, { asNobody: true });
+  if (visit) await goto(page, "/");
+}
+
+/** Signs in through the form and leaves it to the scenario to see where it went. */
+export async function signInThroughForm(page, email, password = PASSWORD) {
   await signOut(page);
-  await goto(page, "/login");
   await fill(page, "Email", email);
   await fill(page, "Password", password);
   await submit(page);
@@ -1403,7 +1512,7 @@ export async function inviteFromMembersPage(page, email, roleLabel = "Member") {
 
 /** Opens an invitation link while signed out and makes the account it asks for. */
 export async function joinThroughLink(page, token, who) {
-  await signOut(page);
+  await signOut(page, { visit: false });
   await goto(page, `/invite#${token}`);
   await fill(page, "Your name", who.name);
   await fill(page, "Password", PASSWORD);
@@ -1754,11 +1863,11 @@ export async function expectCounted(page, count) {
 
 /** A signed-up person with a project of two tasks and a bug, on its dashboard. */
 export async function dashboardFixture(page, name) {
-  const who = await signUp(page);
-  const key = await createProject(page, name);
-  await createIssue(page, key, "one task", "Task");
-  await createIssue(page, key, "another task", "Task");
-  await createIssue(page, key, "the bug", "Bug");
+  const who = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, name, { visit: false });
+  await createIssue(page, key, "one task", { type: "Task", visit: false });
+  await createIssue(page, key, "another task", { type: "Task", visit: false });
+  await createIssue(page, key, "the bug", { type: "Bug", visit: false });
   await goto(page, `/projects/${key}/dashboard`);
   await expectCounted(page, 3);
   return { who, key };

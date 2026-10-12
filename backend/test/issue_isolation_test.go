@@ -19,6 +19,7 @@ import (
 // milestone added. Each new table is another chance to leak, so each is checked
 // rather than assumed to inherit the property.
 func TestIssueTenantIsolation(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 
 	alpha := h.newWorkspace(t, "isoalpha")
@@ -148,6 +149,7 @@ func TestIssueTenantIsolation(t *testing.T) {
 }
 
 func TestIssueEditing(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "editing")
 
@@ -293,6 +295,7 @@ func TestIssueEditing(t *testing.T) {
 }
 
 func TestIssueFiltering(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "filtering")
 

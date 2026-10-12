@@ -65,6 +65,7 @@ func (ws *workspace) planOf(t *testing.T) *plan.Plan {
 }
 
 func TestSprintStartsOnlyWhenItCan(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "starting")
 
@@ -126,6 +127,7 @@ func TestSprintStartsOnlyWhenItCan(t *testing.T) {
 }
 
 func TestSprintCapacityCountsTheWorkInIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "capacity")
 
@@ -197,6 +199,7 @@ func TestSprintCapacityCountsTheWorkInIt(t *testing.T) {
 // A subtask inside a story that is in the same sprint is the story's work, and
 // counting both would double it.
 func TestWorkInASprintIsCountedOnceEndToEnd(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "once")
 
@@ -227,6 +230,7 @@ func TestWorkInASprintIsCountedOnceEndToEnd(t *testing.T) {
 // A project with sprints and nothing in them yet still has sprints, which is
 // exactly the state a team is in the moment before they plan one.
 func TestAnEmptyProjectStillShowsItsSprints(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "empty")
 
@@ -245,6 +249,7 @@ func TestAnEmptyProjectStillShowsItsSprints(t *testing.T) {
 }
 
 func TestCompletingASprintCarriesTheUnfinishedWork(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "completing")
 
@@ -319,6 +324,7 @@ func TestCompletingASprintCarriesTheUnfinishedWork(t *testing.T) {
 // A closed sprint's report is a record of a moment. Editing the issues in it
 // afterwards must not rewrite what it says.
 func TestAClosedSprintsReportDoesNotDrift(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "record")
 
@@ -352,6 +358,7 @@ func TestAClosedSprintsReportDoesNotDrift(t *testing.T) {
 }
 
 func TestASprintOnlyMovesForwards(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "forwards")
 
@@ -406,6 +413,7 @@ func TestASprintOnlyMovesForwards(t *testing.T) {
 }
 
 func TestDeletingAPlannedSprintReturnsItsWork(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "deleting")
 
@@ -430,6 +438,7 @@ func TestDeletingAPlannedSprintReturnsItsWork(t *testing.T) {
 }
 
 func TestASprintCannotBeBorrowedFromAnotherProject(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	mine := h.newWorkspace(t, "mine")
 	theirs := h.newWorkspace(t, "theirs")
@@ -461,6 +470,7 @@ func TestASprintCannotBeBorrowedFromAnotherProject(t *testing.T) {
 }
 
 func TestWorkScheduledOutsideItsSprintIsReportedOnThePlan(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "outside")
 

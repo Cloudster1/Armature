@@ -52,6 +52,7 @@ func (h *harness) countUnpublished(t *testing.T, orgID uuid.UUID) int {
 }
 
 func TestOutbox(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 
 	t.Run("an event is committed with the change that caused it", func(t *testing.T) {

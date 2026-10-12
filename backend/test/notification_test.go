@@ -23,6 +23,7 @@ import (
 // often the stream repeats it, and mail is a copy that a preference can turn
 // off without touching the inbox.
 func TestPeopleOnAnIssueAreToldOnce(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "inbox")
 	bob := h.joinExisting(t, ws, h.email(t, "bob"), "member")
@@ -187,6 +188,7 @@ func TestADigestBundlesTheQueue(t *testing.T) {
 // The inbox over the API is the caller's own, and the preferences page saves
 // what it says.
 func TestTheInboxOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)

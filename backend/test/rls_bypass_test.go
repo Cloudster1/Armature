@@ -12,6 +12,7 @@ import (
 // A migration naming a role the bootstrap did not create is skipped, not
 // refused, so the bypass signup and the relay need vanishes without an error.
 func TestEveryGuardedTableHasAnAdminBypass(t *testing.T) {
+	t.Parallel()
 	// The role's name comes from the admin pool, never a literal, so the
 	// assertion cannot drift from the configuration.
 	h := newHarness(t)

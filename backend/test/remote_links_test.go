@@ -18,6 +18,7 @@ import (
 // Putting the same address again retitles the page, so a sync can resend
 // everything and the issue carries each page once, without an edit of its own.
 func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -116,6 +117,8 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 		made := want(t, owner.post("/api/v1/tokens", map[string]any{"name": "sync", "scopes": []string{"read"}}), http.StatusCreated, "read token")
 		token := api.client(t)
 		token.bearer = principalField(t, made, "token", "secret").(string)
+		// A new key is not pinned to its owner's writes; let the replica catch up.
+		h.waitForPrimary(t)
 		want(t, token.get(path), http.StatusOK, "token lists")
 		refused := token.post(path, map[string]any{"url": spec + "/token", "title": "From a token", "source": "Stator"})
 		if refused.Status != http.StatusForbidden || refused.ErrorCode() != "read_only_token" {
@@ -130,6 +133,7 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 // The service keeping pages to their organization is not the proof. The same
 // reads and writes are tried straight through SQL and the database refuses them.
 func TestAPageLinkStaysInItsOrganizationEvenThroughSQL(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	home := h.newWorkspace(t, "pagehome")
 	away := h.newWorkspace(t, "pageaway")

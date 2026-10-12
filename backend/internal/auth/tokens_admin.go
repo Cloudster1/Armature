@@ -412,7 +412,9 @@ func (s *Service) CallingToken(ctx context.Context, p *Principal) (*APIToken, er
 		return nil, nil
 	}
 	var t APIToken
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	// The key was just found on the primary; a key that has written nothing
+	// pins no read, and a replica that has not seen it would refuse it here.
+	err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		t, err = scanAPIToken(tx.QueryRow(ctx, selectAPITokens+` WHERE t.id = $1 AND t.user_id = $2`, *p.TokenID, p.User.ID))
 		return err

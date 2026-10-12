@@ -7,7 +7,9 @@ import {
   commitIssue,
   createBoard,
   createIssue,
+  createIssueThroughForm,
   createProject,
+  createProjectThroughForm,
   createSprint,
   expect,
   goto,
@@ -15,14 +17,15 @@ import {
   signUp,
   startSprint,
   turnFeature,
+  unique,
   WAIT,
 } from "../helpers.mjs";
 
 scenario("a project made from the Scrum template shows only the running sprint", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Sprinting", "scrum");
-  const committed = await createIssue(page, key, "committed to the sprint", "Task");
-  const waiting = await createIssue(page, key, "still in the backlog", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProjectThroughForm(page, "Sprinting", "scrum");
+  const committed = await createIssueThroughForm(page, key, "committed to the sprint", "Task");
+  const waiting = await createIssue(page, key, "still in the backlog", { type: "Task", visit: false });
 
   // Nothing is running, so the board says so instead of drawing empty columns.
   await goto(page, `/projects/${key}/board`);
@@ -54,9 +57,9 @@ scenario("a project made from the Scrum template shows only the running sprint",
 });
 
 scenario("a kanban board added to a scrum project shows everything", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Mixed", "scrum");
-  const issueKey = await createIssue(page, key, "work with no sprint", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Mixed", { template: "scrum", visit: false });
+  const issueKey = await createIssue(page, key, "work with no sprint", { type: "Task", visit: false });
 
   await createBoard(page, key, "Flow", "kanban");
 
@@ -68,8 +71,8 @@ scenario("a kanban board added to a scrum project shows everything", async ({ pa
 });
 
 scenario("a service desk has no sprints until an administrator turns them on", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Helpdesk", "service-desk");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Helpdesk", { template: "service-desk", visit: false });
 
   // The template left the page out: the sidebar does not list it, and an old
   // link lands on a notice rather than an empty page.
@@ -89,9 +92,9 @@ scenario("a service desk has no sprints until an administrator turns them on", a
 });
 
 scenario("the Task tracking template gives a project a simple workflow of its own", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Chores", "task-tracking");
-  await createIssue(page, key, "take the bins out", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Chores", { template: "task-tracking", visit: false });
+  await createIssue(page, key, "take the bins out", { type: "Task", visit: false });
 
   await goto(page, `/projects/${key}/board`);
   await page.waitForSelector("[data-card]", { timeout: WAIT });

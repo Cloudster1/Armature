@@ -19,6 +19,7 @@ import (
 // into a bucket later with one command. Tried the whole way: uploaded through
 // the API onto the directory, copied into the real bucket, read back from it.
 func TestAttachmentsLiveOnAVolumeAndMoveToTheBucket(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	dir := filepath.Join(t.TempDir(), "attachments")

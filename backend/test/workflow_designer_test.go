@@ -39,6 +39,7 @@ func layoutOf(w *workflow.Workflow, statusID uuid.UUID) *workflow.Point {
 // The designer is only worth having if the picture comes back the way it was
 // left, so where each status was drawn is part of the workflow.
 func TestTheDesignerKeepsWhereStatusesWereDrawn(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "drawn")
 
@@ -121,6 +122,7 @@ func ruleTypes(t *workflow.Transition) []string {
 // The designer edits rules in place, so what it sends is the whole set; an
 // editor that never looked at the rules says nothing and changes nothing.
 func TestSentRulesReplaceAndUnsentRulesStay(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "ruled")
 
@@ -212,6 +214,7 @@ func TestSentRulesReplaceAndUnsentRulesStay(t *testing.T) {
 // A status is the organization's, shared by every workflow, so it is coined
 // once and kept unique by name whatever the case.
 func TestAStatusIsCoinedOnce(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "coining")
 

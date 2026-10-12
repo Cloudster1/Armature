@@ -24,13 +24,13 @@ import {
 } from "../helpers.mjs";
 
 scenario("a role in one project hides the others", async ({ page }) => {
-  const owner = await signUp(page);
-  const mine = await createProject(page, "Mine");
-  const theirs = await createProject(page, "Theirs");
-  const secret = await createIssue(page, theirs, "the other project's secret", "Task");
+  const owner = await signUp(page, unique("user"), { visit: false });
+  const mine = await createProject(page, "Mine", { visit: false });
+  const theirs = await createProject(page, "Theirs", { visit: false });
+  const secret = await createIssue(page, theirs, "the other project's secret", { type: "Task", visit: false });
 
   const who = await inviteMember(page, "walled");
-  await acceptInvite(page, who);
+  await acceptInvite(page, who, { visit: false });
   await signIn(page, owner.email);
   await waitForApp(page);
   await revokeAll(page, who.name);
@@ -51,12 +51,12 @@ scenario("a role in one project hides the others", async ({ page }) => {
 });
 
 scenario("a reader sees a project and changes nothing in it", async ({ page }) => {
-  const owner = await signUp(page);
-  const key = await createProject(page, "Read only");
-  await createIssue(page, key, "something they cannot touch", "Task");
+  const owner = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Read only", { visit: false });
+  await createIssue(page, key, "something they cannot touch", { type: "Task", visit: false });
 
   const who = await inviteMember(page, "reader");
-  await acceptInvite(page, who);
+  await acceptInvite(page, who, { visit: false });
 
   // Back as the owner to set the roles. Joining grants an ordinary user role,
   // so it is taken away first: this is a test about what a reader alone can do.
@@ -88,8 +88,8 @@ scenario("a reader sees a project and changes nothing in it", async ({ page }) =
 });
 
 scenario("roles are granted to people and to groups", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Granting");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Granting", { visit: false });
 
   const who = await inviteMember(page, "scrum");
 
@@ -111,8 +111,8 @@ scenario("roles are granted to people and to groups", async ({ page }) => {
 });
 
 scenario("global administration cannot be scoped to one project", async ({ page }) => {
-  await signUp(page);
-  await createProject(page, "Whole tenant");
+  await signUp(page, unique("user"), { visit: false });
+  await createProject(page, "Whole tenant", { visit: false });
 
   await goto(page, "/settings/access");
   await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
@@ -128,7 +128,7 @@ scenario("global administration cannot be scoped to one project", async ({ page 
 });
 
 scenario("the access page explains what each role grants", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/access");
   await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
 
@@ -146,7 +146,7 @@ scenario("the access page explains what each role grants", async ({ page }) => {
 });
 
 scenario("single sign-on is configured per organization", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/access");
   await page.click('[data-access-tab="Single sign-on"]');
   await page.waitForSelector("#field-issuer", { timeout: WAIT });
@@ -220,9 +220,9 @@ scenario("every tab of the access page fits a phone", async ({ page }) => {
 // Access page could not author workflows, because the library page looked at
 // the seat they held rather than at what they had been granted.
 scenario("a member granted global administration can author workflows", async ({ page }) => {
-  const owner = await signUp(page);
+  const owner = await signUp(page, unique("user"), { visit: false });
   const who = await inviteMember(page, "granted");
-  await acceptInvite(page, who);
+  await acceptInvite(page, who, { visit: false });
 
   await signIn(page, owner.email);
   await waitForApp(page);
@@ -239,7 +239,7 @@ scenario("a member granted global administration can author workflows", async ({
 // The matrix: a role of the organization's own is added, given a permission
 // with one tick, and offered on the Roles tab with what it grants.
 scenario("the role matrix adds a role and decides what it grants", async ({ page }) => {
-  const owner = await signUp(page);
+  const owner = await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/access");
   await page.click('[data-access-tab="Matrix"]');
   await page.waitForSelector("[data-role-matrix]", { timeout: WAIT });

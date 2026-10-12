@@ -16,6 +16,7 @@ import (
 // A template decides which pages a project has. Off means hidden and refused,
 // not deleted, and an administrator may turn a page back on.
 func TestATemplateDecidesAProjectsFeatures(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

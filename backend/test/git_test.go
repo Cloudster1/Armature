@@ -169,6 +169,7 @@ func jsonString(s string) string {
 }
 
 func TestAPushLinksCommitsAndDrivesTheWorkflow(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "pushing")
 	stub := newStubHost(t)
@@ -264,6 +265,7 @@ func TestAPushLinksCommitsAndDrivesTheWorkflow(t *testing.T) {
 }
 
 func TestAPullRequestLinksAndMergingMovesTheIssue(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "merging")
 	stub := newStubHost(t)
@@ -339,6 +341,7 @@ func boolString(b bool) string {
 }
 
 func TestGitLabDeliveriesAreReadToo(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "gitlabbing")
 	stub := newStubHost(t)
@@ -381,6 +384,7 @@ func TestGitLabDeliveriesAreReadToo(t *testing.T) {
 }
 
 func TestABranchIsMadeOnTheHost(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "branching")
 	stub := newStubHost(t)
@@ -491,6 +495,7 @@ func TestABranchIsMadeOnTheHost(t *testing.T) {
 // pushed to it and the pull request from it reach the issue without the key
 // being repeated in every message.
 func TestABranchIsFollowedFromTheIssue(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "following")
 	stub := newStubHost(t)
@@ -576,6 +581,7 @@ func TestABranchIsFollowedFromTheIssue(t *testing.T) {
 }
 
 func TestGiteaDeliveriesAreReadToo(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "gitea")
 	stub := newStubHost(t)
@@ -616,6 +622,7 @@ func TestGiteaDeliveriesAreReadToo(t *testing.T) {
 }
 
 func TestATransitionTellsTheOpenPullRequest(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "telling")
 	stub := newStubHost(t)
@@ -657,6 +664,7 @@ func TestATransitionTellsTheOpenPullRequest(t *testing.T) {
 }
 
 func TestRepositoriesAreTenantScoped(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "mine")
 	other := h.newWorkspace(t, "theirs")
@@ -684,6 +692,7 @@ func TestRepositoriesAreTenantScoped(t *testing.T) {
 }
 
 func TestRepositoriesOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
