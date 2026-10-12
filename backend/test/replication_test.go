@@ -349,6 +349,26 @@ func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 	}
 }
 
+// Saving preferences answers with what was saved, however far a replica lags:
+// the answer is read after the write, in the same request.
+func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
+	h := newHarness(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+	c := api.client(t)
+	c.signup(t, h, "prefsback")
+
+	h.holdTheReplicaHere(t)
+
+	saved := want(t, c.put("/api/v1/notification-preferences", map[string]any{"digest": "daily", "watchOwn": false, "mail": map[string]bool{}, "inapp": map[string]bool{}}), http.StatusOK, "saving")
+	p := saved.Body["preferences"].(map[string]any)
+	if p["digest"] != "daily" || p["watchOwn"] != false {
+		t.Errorf("the answer to saving is %v, not what was saved", p)
+	}
+}
+
 // A key used the moment it was made is known, however far a replica lags: the
 // caller has written nothing with it yet, so nothing pins its reads.
 func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {

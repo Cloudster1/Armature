@@ -7,6 +7,8 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: saving notification preferences answers with what was saved, not
+  the preferences from before, while a replica lags behind.
 - Fixed: an API key used the moment it was made is no longer refused at
   `/auth/me` as an expired session while a replica lags behind.
 - Fixed: a scrum master or project administrator can change or remove only

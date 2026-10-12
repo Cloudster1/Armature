@@ -90,7 +90,8 @@ func (s *Server) handleSaveNotificationPreferences(w http.ResponseWriter, r *htt
 		return
 	}
 	NoteWrite(r.Context(), lsn)
-	p, err := s.Notify.Preferences(r.Context(), userFrom(r))
+	// NoteWrite pins the caller's next requests; this read is still this one.
+	p, err := s.Notify.Preferences(db.PinLSN(r.Context(), lsn), userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return
