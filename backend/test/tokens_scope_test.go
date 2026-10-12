@@ -30,6 +30,9 @@ func TestAReadTokenReadsAndNeverWrites(t *testing.T) {
 	reader := api.client(t)
 	reader.bearer = principalField(t, created, "token", "secret").(string)
 
+	// Freshness is pinned per session and per key, so the key's first read
+	// may come from a replica behind the owner's writes.
+	h.waitForPrimary(t)
 	t.Run("it reads", func(t *testing.T) {
 		if resp := reader.get("/api/v1/projects/RDO/issues"); resp.Status != http.StatusOK || resp.Body["total"].(float64) != 1 {
 			t.Fatalf("list issues: %d %s", resp.Status, resp.Raw)

@@ -447,6 +447,9 @@ func TestCustomersAreKeptToThePortal(t *testing.T) {
 		t.Fatalf("reply: %d %s", reply.Status, reply.Raw)
 	}
 
+	// The customer's own last write was the request, so their read may come
+	// from a replica that has not reached the agent's reply yet.
+	h.waitForPrimary(t)
 	seen := customer.get("/api/v1/portal/requests/" + key)
 	if seen.Status != http.StatusOK {
 		t.Fatalf("request: %d %s", seen.Status, seen.Raw)

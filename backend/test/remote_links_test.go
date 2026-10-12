@@ -117,6 +117,8 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 		made := want(t, owner.post("/api/v1/tokens", map[string]any{"name": "sync", "scopes": []string{"read"}}), http.StatusCreated, "read token")
 		token := api.client(t)
 		token.bearer = principalField(t, made, "token", "secret").(string)
+		// A new key is not pinned to its owner's writes; let the replica catch up.
+		h.waitForPrimary(t)
 		want(t, token.get(path), http.StatusOK, "token lists")
 		refused := token.post(path, map[string]any{"url": spec + "/token", "title": "From a token", "source": "Stator"})
 		if refused.Status != http.StatusForbidden || refused.ErrorCode() != "read_only_token" {
