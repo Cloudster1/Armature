@@ -15,6 +15,11 @@ export function shownOf(total: number, offset: number, shown: number, noun: stri
   return `${range(offset, shown, total)} ${noun}s`;
 }
 
+/** A page past the first, as an address names it; the first page is the address without one. */
+export function isPageOffset(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+
 /** The start of the last page, for a page left past the end when the list shrank. */
 export function clampOffset(offset: number, total: number, pageSize: number): number {
   if (offset < total) return offset;

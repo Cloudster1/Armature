@@ -7,6 +7,10 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: search and a project's issue list page through every issue they
+  match, a hundred at a time, with the page kept in the address; the
+  project's list says how many of the total it shows, and a bulk selection
+  says it covers the page on screen (#90).
 - Changed: integration tests run in parallel; the ones that share the
   replica, Redis, the mailpit box, the per-address brakes or a pass over
   every organization run one at a time first, each listed with its reason,

@@ -9,29 +9,44 @@ import { QueryInput } from "@/features/search/QueryInput";
 import { useRecentQueries } from "@/features/search/recent";
 import { SavedFilterBar } from "@/features/filters/SavedFilterBar";
 import { BulkBar } from "@/features/filters/BulkBar";
-import { Button, EmptyState, Page, PageHeader, Skeleton } from "@/components/ui";
+import { Button, EmptyState, Page, PageHeader, Pager, Skeleton, clampOffset, isPageOffset, shownOf } from "@/components/ui";
 import { SEARCH_PAGE_SIZE } from "@/config";
 
 /** The query is in the address, so a search somebody sends is the search they ran; f names the saved filter it came from. */
 export const searchRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/search",
-  validateSearch: (search: Record<string, unknown>): { q: string; f?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { q: string; f?: string; offset?: number } => ({
     q: typeof search.q === "string" ? search.q : "",
     ...(typeof search.f === "string" && search.f !== "" ? { f: search.f } : {}),
+    ...(isPageOffset(search.offset) ? { offset: search.offset } : {}),
   }),
   component: SearchPage,
 });
 
 function SearchPage() {
-  const { q, f } = searchRoute.useSearch();
+  const { q, f, offset = 0 } = searchRoute.useSearch();
   const navigate = useNavigate();
-  const { data, error, isLoading } = useIssues({ q: q || undefined, limit: SEARCH_PAGE_SIZE });
+  const { data, error, isLoading } = useIssues({ q: q || undefined, limit: SEARCH_PAGE_SIZE, offset: offset || undefined });
   const { data: me } = useMe();
   const { data: saved } = useSavedFilters();
   const issues = data?.issues ?? [];
   const [recent, remember] = useRecentQueries();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // A selection is of the rows on screen, so another page or query starts afresh.
+  const page = `${offset} ${q}`;
+  const [selectedOn, setSelectedOn] = useState(page);
+  if (selectedOn !== page) {
+    setSelectedOn(page);
+    setSelected(new Set());
+  }
+  const turn = (next: number) => navigate({ to: "/search", search: { q, f, offset: next || undefined } });
+  // Issues leave a result while it is open; a page past the end steps back.
+  useEffect(() => {
+    if (data && offset > 0 && offset >= data.total) {
+      navigate({ to: "/search", search: { q, f, offset: clampOffset(offset, data.total, SEARCH_PAGE_SIZE) || undefined }, replace: true });
+    }
+  }, [data, offset, q, f, navigate]);
   // A query is worth remembering once it has run without the server refusing it.
   useEffect(() => {
     if (q && data) remember(q);
@@ -67,7 +82,7 @@ function SearchPage() {
       )}
 
       <p className="mb-2 text-sm text-ink-subtle tabular-nums" data-testid="search-count">
-        {data ? (data.total > issues.length ? `${data.total} issues, the first ${issues.length} shown` : `${data.total} issue${data.total === 1 ? "" : "s"}`) : ""}
+        {data ? shownOf(data.total, data.offset, issues.length, "issue") : ""}
       </p>
 
       {isLoading ? (
@@ -80,6 +95,7 @@ function SearchPage() {
       ) : (
         <IssueTable issues={issues} showProject selected={selected} onSelect={setSelected} />
       )}
+      {data && <Pager label="Issue pages" total={data.total} offset={data.offset} pageSize={SEARCH_PAGE_SIZE} onChange={turn} />}
     </Page>
   );
 }
