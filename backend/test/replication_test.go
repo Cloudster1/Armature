@@ -356,26 +356,6 @@ func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 	}
 }
 
-// A key used the moment it was made is known, however far a replica lags: the
-// caller has written nothing with it yet, so nothing pins its reads.
-func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {
-	h := newHarness(t)
-	h.ownCluster(t)
-	if h.replica == nil {
-		t.Skip("no replica configured")
-	}
-	api := newAPIServer(t, h)
-	owner := api.client(t)
-	owner.signup(t, h, "keyatonce")
-
-	h.holdTheReplicaHere(t)
-
-	made := want(t, owner.post("/api/v1/tokens", map[string]any{"name": "ci"}), http.StatusCreated, "a key")
-	bearer := api.client(t)
-	bearer.bearer = principalField(t, made, "token", "secret").(string)
-	want(t, bearer.get("/api/v1/auth/me"), http.StatusOK, "the key used at once")
-}
-
 // Saving preferences answers with what was saved, however far a replica lags:
 // the answer is read after the write, in the same request.
 func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
@@ -395,4 +375,24 @@ func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
 	if p["digest"] != "daily" || p["watchOwn"] != false {
 		t.Errorf("the answer to saving is %v, not what was saved", p)
 	}
+}
+
+// A key used the moment it was made is known, however far a replica lags: the
+// caller has written nothing with it yet, so nothing pins its reads.
+func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {
+	h := newHarness(t)
+	h.ownCluster(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signup(t, h, "keyatonce")
+
+	h.holdTheReplicaHere(t)
+
+	made := want(t, owner.post("/api/v1/tokens", map[string]any{"name": "ci"}), http.StatusCreated, "a key")
+	bearer := api.client(t)
+	bearer.bearer = principalField(t, made, "token", "secret").(string)
+	want(t, bearer.get("/api/v1/auth/me"), http.StatusOK, "the key used at once")
 }

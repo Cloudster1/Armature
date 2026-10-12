@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/armature-logo.jpg" alt="Armature" width="240"></p>
+
 # Armature
 
 **Project and service management in the Jira and Jira Service Management
@@ -503,3 +505,8 @@ itself is plain Go.
 ## License
 
 [Apache 2.0](LICENSE).
+
+The logo, the favicon and the emblem cut from it show the Go gopher, which
+was designed by [Renée French](https://reneefrench.blogspot.com/) and is
+licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
+The Armature logo is an adaptation of it. See [NOTICE](NOTICE).
