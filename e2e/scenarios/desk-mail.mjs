@@ -32,6 +32,12 @@ import {
   writeCannedResponse,
 } from "../helpers.mjs";
 
+/** How often the request is asked for a mailed reply; the worker reads the box every 3s. */
+const REPLY_POLL_MS = 250;
+
+/** How long a mailed reply may take: a few of the worker's rounds through the box. */
+const REPLY_WAIT = 40_000;
+
 scenario("a request is followed by somebody who was only named", async ({ page }) => {
   const agent = await signUp(page);
   await createProject(page, "Helpdesk", "service-desk");
@@ -113,15 +119,24 @@ scenario("a reply by mail lands on the request", async ({ page }) => {
     inReplyTo: reply.messageId,
     body: "The tank, and it is getting worse.\n\nOn Monday Armature wrote:\n> Is it the tray or the tank?",
   });
-  // The worker reads the box every few seconds; the page is reloaded until
-  // the words are on it, since an open issue page does not poll.
-  const deadline = Date.now() + 40_000;
-  while (!(await bodyText(page)).includes("The tank, and it is getting worse.")) {
-    if (Date.now() > deadline) throw new Error("the mailed reply never reached the request");
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    await goto(page, `/issues/${requestKey}`);
-  }
+  // The worker reads the box every few seconds and an open issue page does not
+  // poll, so the comments are asked for until the reply is in, then shown once.
+  await page
+    .waitForFunction(
+      async (key, words) => {
+        const response = await fetch(`/api/v1/issues/${key}/comments`, { credentials: "include" });
+        return response.ok && (await response.text()).includes(words);
+      },
+      { polling: REPLY_POLL_MS, timeout: REPLY_WAIT },
+      requestKey,
+      "The tank, and it is getting worse.",
+    )
+    .catch((error) => {
+      throw new Error(`the mailed reply never reached the request: ${error.message}`);
+    });
+  await goto(page, `/issues/${requestKey}`);
   const thread = await bodyText(page);
+  expect.contains(thread, "The tank, and it is getting worse.", "the mailed reply is on the request");
   expect.truthy(!thread.includes("> Is it the tray"), "the quoted words stay out");
   expect.truthy(!thread.includes("internal note"), "a mailed reply is public");
 });
