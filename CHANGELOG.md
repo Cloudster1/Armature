@@ -27,6 +27,11 @@ here in the branch that makes it.
   issues a scenario needs through the API instead of filling in forms, which
   saves most of its page loads; the scenarios about those forms still drive
   them (#187).
+- The browser suite and `make screenshots` load the app from the production
+  build behind its nginx and CSP, as it ships, instead of the Vite dev server,
+  so a page load is a few files rather than every module, and a scenario
+  fails if the CSP refuses anything on its pages; `E2E_WEB=dev` keeps
+  the dev server for following a scenario through hot reload (#187).
 - Fixed: a scrum master or project administrator can change or remove only
   the absences they recorded themselves, never the person's own or an
   administrator's, and the person is told in their inbox, and by mail if they

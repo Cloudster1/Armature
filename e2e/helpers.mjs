@@ -2,7 +2,7 @@ import net from "node:net";
 import { basename } from "node:path";
 import { expect } from "./runner.mjs";
 
-export const BASE_URL = process.env.E2E_BASE_URL ?? "http://web:5173";
+export const BASE_URL = process.env.E2E_BASE_URL ?? "http://web-e2e";
 
 /** A password long enough to satisfy the minimum length rule. */
 export const PASSWORD = "an entirely adequate password";
@@ -10,8 +10,8 @@ export const PASSWORD = "an entirely adequate password";
 /** How long any one thing on the page is waited for before the step gives up. */
 export const WAIT = 15_000;
 
-/** A full page load fetches every module from the dev server; with several browsers at it, longer. */
-export const LOAD_WAIT = 30_000;
+/** A full load from the dev server (E2E_WEB=dev) fetches every module, slower with several browsers at it. */
+export const LOAD_WAIT = process.env.E2E_WEB === "dev" ? 30_000 : WAIT;
 
 /** A day in milliseconds, for the dates the scenarios ask for by offset. */
 const DAY_MS = 86_400_000;

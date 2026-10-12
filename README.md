@@ -256,6 +256,12 @@ from the runner's side, and the session cookie is handed to the browser.
 The forms themselves are driven by `signUpThroughForm`, `signInThroughForm`,
 `createProjectThroughForm`, `createIssueThroughForm` and `joinThroughLink`, in
 the scenarios whose subject they are.
+The suite drives the production build: `make test-e2e` and `make screenshots`
+first build and start `web-e2e`, the production web image with its nginx and
+CSP, and the browsers load the app from there. A scenario fails if the CSP
+refuses anything on its pages. With `web/` unchanged the build is cached and
+costs a few seconds. `E2E_WEB=dev` runs against the Vite dev server instead,
+with no build, for following a scenario through hot reload.
 
 The API is described by `api/openapi.json`, derived from the handler tables and
 types. After changing a route or a request or response type, run `make openapi`

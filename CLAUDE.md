@@ -28,7 +28,9 @@ Commits describe a change to the product, not to a file.
 `make test`, `make test-integration`, `make npm ARGS="run test"` and
 `make test-e2e`. A feature is finished when all four pass, not when the code is
 written. `ONLY=<substring>` filters the browser suite while iterating and
-`WORKERS=<n>` sets how many browsers run it (four unless said otherwise).
+`WORKERS=<n>` sets how many browsers run it (four unless said otherwise). It
+runs against the production build, so a CSP or nginx problem fails it;
+`E2E_WEB=dev` points it at the Vite dev server instead.
 
 The API is described by `api/openapi.json`, derived from the handler tables and
 types. After changing a route, a request type or a response type, run
