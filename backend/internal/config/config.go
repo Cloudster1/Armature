@@ -149,6 +149,9 @@ type Auth struct {
 	ReadYourWritesTTL time.Duration
 	// PortalCodeCooldown is how long an address waits between portal codes.
 	PortalCodeCooldown time.Duration
+	// DoorWindow is how long the brakes on codes, entries and guesses remember
+	// an address.
+	DoorWindow time.Duration
 	// Signup is open, first or closed: who may create an organization.
 	Signup string
 	// OIDCRedirectURL is what the identity provider sends people back to; it
@@ -257,6 +260,7 @@ func Load() (Config, error) {
 			ArgonThreads:       uint8(envInt("ARMATURE_ARGON_THREADS", 4)),
 			ReadYourWritesTTL:  envDur("ARMATURE_READ_YOUR_WRITES_TTL", 30*time.Second),
 			PortalCodeCooldown: envDur("ARMATURE_PORTAL_CODE_COOLDOWN", time.Minute),
+			DoorWindow:         envDur("ARMATURE_DOOR_WINDOW", 10*time.Minute),
 			Signup:             env("ARMATURE_SIGNUP", "open"),
 			OIDCRedirectURL:    env("ARMATURE_OIDC_REDIRECT_URL", DevOIDCRedirectURL),
 		},

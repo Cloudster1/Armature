@@ -19,6 +19,10 @@ here in the branch that makes it.
   pools, telemetry and attachment bucket once, in `TestMain`, instead of in
   every test, and `TestMain` now refuses a run that left an operation
   unexercised; the suite runs in about 55s instead of 140s (#187).
+- Added: `ARMATURE_DOOR_WINDOW` sets how long the brakes on portal codes,
+  portal entries and password or invitation guesses remember an address,
+  ten minutes unless set; the development stack uses one minute, so browser
+  test runs in a row are not refused (#187).
 - Fixed: a scrum master or project administrator can change or remove only
   the absences they recorded themselves, never the person's own or an
   administrator's, and the person is told in their inbox, and by mail if they

@@ -172,6 +172,7 @@ func run() error {
 	accounts := auth.NewService(cluster, passwordParams, cfg.Auth.SessionTTL).
 		PortalCodeCooldown(cfg.Auth.PortalCodeCooldown).
 		Signups(auth.SignupPolicy(cfg.Auth.Signup))
+	httpapi.SetDoorWindow(cfg.Auth.DoorWindow)
 	themes := theme.NewService(cluster, store)
 	labels := label.NewService(cluster)
 	webhooks := webhook.NewService(cluster, log)
