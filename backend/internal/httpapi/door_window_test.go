@@ -32,7 +32,7 @@ func TestANonPositiveDoorWindowChangesNothing(t *testing.T) {
 	t.Cleanup(func() { SetDoorWindow(DoorWindow) })
 	SetDoorWindow(time.Minute)
 	SetDoorWindow(0)
-	for _, b := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries} {
+	for _, b := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries, resetRequests, resetAddresses} {
 		if b.window != time.Minute {
 			t.Errorf("a zero window replaced %v", b.window)
 		}

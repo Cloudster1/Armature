@@ -93,8 +93,9 @@ rest.
 or over one project: global administrator, project administrator, scrum master,
 user, reader. Groups can come from the identity provider, replaced at every
 sign-in. An administrator makes local accounts with a password, resets them
-and switches them off. A project is a wall: what a role does not reach is not
-found.
+and switches them off, and somebody who forgot their password asks the sign-in
+page for a link by mail. A project is a wall: what a role does not reach is
+not found.
 
 **Planning.** Boards (scrum follows the running sprint, kanban shows
 everything), backlogs, sprints per team with capacity, a timeline where epics
@@ -374,7 +375,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_ARGON_MEMORY_KIB` / `_ITERATIONS` / `_THREADS` | `65536` / `3` / `4` | password hashing cost |
 | `ARMATURE_READ_YOUR_WRITES_TTL` | `30s` | how long a writer is pinned past their write |
 | `ARMATURE_PORTAL_CODE_COOLDOWN` | `1m` | how long an address waits between portal codes |
-| `ARMATURE_DOOR_WINDOW` | `10m` | how long the brakes on portal codes, portal entries and password or invitation guesses remember an address |
+| `ARMATURE_DOOR_WINDOW` | `10m` | how long the brakes on portal codes, portal entries, password links and password or invitation guesses remember an address |
 | `ARMATURE_SMTP_ADDR` | none | the relay; empty turns mail off |
 | `ARMATURE_MAIL_FROM` | `Armature <no-reply@armature.test>` | the sender |
 | `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off |

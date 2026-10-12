@@ -372,3 +372,6 @@ export const SHARE_FULL_PERCENT = 100;
 
 /** Edge of the emblem beside the wordmark, in pixels: large on the door pages, small in a header bar. */
 export const WORDMARK_EMBLEM_SIZE = { sm: 24, md: 40 } as const;
+
+/** Where a password link's secret waits in the tab once it is off the address bar. */
+export const PASSWORD_RESET_TOKEN_KEY = "armature.password-reset";

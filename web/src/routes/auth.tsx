@@ -17,7 +17,7 @@ import { applyCustomTheme } from "@/lib/theme";
  * mean catching our own redirect and swallowing it, leaving a signed-in visitor
  * stuck on the sign-in page.
  */
-async function redirectIfSignedIn({ context }: { context: { queryClient: import("@tanstack/react-query").QueryClient } }) {
+export async function redirectIfSignedIn({ context }: { context: { queryClient: import("@tanstack/react-query").QueryClient } }) {
   const signedIn = await context.queryClient
     .ensureQueryData({
       queryKey: meQueryKey,
@@ -53,16 +53,24 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
 export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  validateSearch: (search: Record<string, unknown>): { next?: string } =>
-    typeof search.next === "string" ? { next: search.next } : {},
+  validateSearch: (search: Record<string, unknown>): { next?: string; reset?: "done" } => ({
+    ...(typeof search.next === "string" ? { next: search.next } : {}),
+    // Set by the page a password link opens, once the new password is saved.
+    ...(search.reset === "done" ? { reset: "done" as const } : {}),
+  }),
   beforeLoad: redirectIfSignedIn,
   component: LoginPage,
 });
 
 function LoginPage() {
-  const { next } = loginRoute.useSearch();
+  const { next, reset } = loginRoute.useSearch();
   return (
     <AuthLayout title="Sign in" footer={<SignupOffer />}>
+      {reset === "done" && (
+        <p role="status" className="mb-4 rounded-control border border-success/30 bg-success-subtle px-3 py-2 text-sm text-success" data-password-changed>
+          Your password is changed. Sign in with it.
+        </p>
+      )}
       <LoginForm next={next} />
     </AuthLayout>
   );

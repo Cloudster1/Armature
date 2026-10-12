@@ -85,6 +85,8 @@ var sequentialTests = map[string]string{
 	"TestADashboardIsSharedByALinkUntilItIsRevoked":                "counts against the shared link brake",
 	"TestAModelAnswersWithTheCallersOwnTools":                      "counts against the assistant brake",
 	"TestAModelsChangeWaitsForTheReader":                           "counts against the assistant brake",
+	"TestAForgottenPasswordIsResetByMail":                          "counts against the password link brakes",
+	"TestAskingForAPasswordLinkTellsNothing":                       "trips the password link brakes",
 
 	// They read rows by a value other organizations may hold too.
 	"TestUploadsThatCannotBeTakenAreRefused":             "counts attachments by project key across organizations",

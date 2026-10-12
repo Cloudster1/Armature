@@ -7,6 +7,7 @@ import { useLogout, useMe } from "@/api/auth";
 import { useAcceptInvite, useInvitePreview, type InvitePreview } from "@/api/invites";
 import { NewPasswordFields, passwordsMatch } from "@/features/auth/AuthForms";
 import { Button, ErrorBanner, Field } from "@/components/ui";
+import { takeLinkSecret } from "@/lib/linkSecret";
 
 /** Where the secret waits while its holder signs in first. */
 export const INVITE_TOKEN_KEY = "armature.invite";
@@ -23,13 +24,7 @@ export const inviteRoute = createRoute({
 });
 
 export function readInviteToken(): string | undefined {
-  const fromLink = window.location.hash.replace(/^#/, "");
-  if (fromLink) {
-    sessionStorage.setItem(INVITE_TOKEN_KEY, fromLink);
-    window.history.replaceState(null, "", window.location.pathname);
-    return fromLink;
-  }
-  return sessionStorage.getItem(INVITE_TOKEN_KEY) ?? undefined;
+  return takeLinkSecret(INVITE_TOKEN_KEY);
 }
 
 const roleWords: Record<InvitePreview["role"], string> = {

@@ -388,6 +388,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 		for _, q := range []string{
 			`DELETE FROM user_session WHERE user_id = $1`,
 			`DELETE FROM api_token WHERE user_id = $1`,
+			`DELETE FROM password_reset WHERE user_id = $1`,
 			`DELETE FROM notification WHERE user_id = $1`,
 			`DELETE FROM notification_preference WHERE user_id = $1`,
 			`DELETE FROM notification_digest WHERE user_id = $1`,
