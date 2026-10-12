@@ -36,12 +36,25 @@ const (
 	// CredentialTriesPerWindow brakes guessing at one account's password, by
 	// the address guessed at: an office shares one address, a guesser moves.
 	CredentialTriesPerWindow = 10
+	// ResetRequestsPerWindow brakes asking for password links from one
+	// caller's address, which an office may share.
+	ResetRequestsPerWindow = 10
+	// ResetAddressRequestsPerWindow brakes asking for links to one mailbox:
+	// its owner needs one or two, and anybody else is filling it.
+	ResetAddressRequestsPerWindow = 3
 	// throttleMaxKeys bounds what a brake remembers at once.
 	throttleMaxKeys = 10000
 )
 
 // credentialTries brakes password and invitation guessing, by address.
 var credentialTries = newThrottle(CredentialTriesPerWindow, DoorWindow)
+
+// resetRequests and resetAddresses brake mailing password links, by caller
+// and by mailbox, so the form cannot be used to flood either.
+var (
+	resetRequests  = newThrottle(ResetRequestsPerWindow, DoorWindow)
+	resetAddresses = newThrottle(ResetAddressRequestsPerWindow, DoorWindow)
+)
 
 type throttle struct {
 	mu     sync.Mutex
@@ -67,7 +80,7 @@ func SetDoorWindow(d time.Duration) {
 	if d <= 0 {
 		return
 	}
-	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries} {
+	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries, resetRequests, resetAddresses} {
 		t.mu.Lock()
 		t.window = d
 		t.mu.Unlock()
@@ -81,6 +94,8 @@ func ResetThrottles() {
 	openEntries.reset()
 	codeRedemptions.reset()
 	credentialTries.reset()
+	resetRequests.reset()
+	resetAddresses.reset()
 }
 
 // allow records one request from a key and says whether it was inside the limit.
