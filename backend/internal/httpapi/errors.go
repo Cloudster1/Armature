@@ -165,6 +165,8 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That organization was not found.")
 	case errors.Is(err, auth.ErrInviteInvalid):
 		return &APIError{Status: http.StatusGone, Code: "invite_invalid", Message: auth.ErrInviteInvalid.Error()}
+	case errors.Is(err, auth.ErrResetLinkInvalid):
+		return &APIError{Status: http.StatusGone, Code: "reset_link_invalid", Message: capitalize(auth.ErrResetLinkInvalid.Error()) + "."}
 	case errors.Is(err, auth.ErrSignInToAccept):
 		return &APIError{Status: http.StatusConflict, Code: "sign_in_to_accept",
 			Message: "An account already uses this address. Sign in with it, then open the invitation again."}

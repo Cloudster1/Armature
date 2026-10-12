@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: "Forgot your password?" on the sign-in page mails a link that sets
+  a new password once, within an hour, and ends every session and API token
+  the account holds; every address gets the same answer, an account the
+  identity provider signs in is told to use it, and asking is braked per
+  caller and per mailbox (#104).
 - Changed: integration tests run in parallel; the ones that share the
   replica, Redis, the mailpit box, the per-address brakes or a pass over
   every organization run one at a time first, each listed with its reason,

@@ -47,6 +47,8 @@ var discardsAllowed = map[string]string{
 	"auth/service.go (*Service).Logout":                "sessions are read through Authenticate, on the primary",
 	"auth/login.go (*Service).Login":                   "a rehashed password is read only at sign-in, on the primary",
 	"auth/portal.go (*Service).IssuePortalCode":        "the code is checked through WriteAdmin, on the primary",
+	"auth/recovery.go (*Service).RequestPasswordReset": "the link is read back only through WriteAdmin, on the primary",
+	"auth/recovery.go (*Service).ResetPassword":        "the new password is read only at sign-in, on the primary",
 	"auth/profile.go (*Service).UpdateProfile":         "the owner reads it back through Authenticate, on the primary",
 	"auth/profile.go (*Service).SetAvatarURL":          "the owner reads it back through Authenticate, on the primary",
 	"oidc/service.go (*Service).Start":                 "the login is read back by Exchange through WriteAdmin",

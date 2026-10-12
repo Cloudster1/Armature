@@ -1583,6 +1583,37 @@ check is kept twice.
 **Reconsider if** an organization needs to suspend somebody it shares, at
 which point suspension moves onto the membership rather than the account.
 
+### A forgotten password is reset by mail, and the answer names nobody
+
+Somebody who forgot their password had no way back but an administrator, and
+an administrator resets only a person whose one organization is theirs: an
+owner, or anybody in two organizations, was locked out. The sign-in page now
+takes an address and mails a link that sets a new password.
+
+The answer is the same for every address, known or not, and the mail goes in a
+send of its own after the answer, so neither the words nor the time taken say
+whether an account exists. A server without mail says so for every address
+alike. Asking is braked per caller and per mailbox, so the form cannot be used
+to fill somebody's inbox. The secret travels after the #, which no server sees
+as part of an address; the database keeps only its digest, one link per
+person, replaced by a newer one, and it works once, for an hour.
+
+Using it ends every session and every API token the person holds. Somebody may
+ask precisely because another has their password, and whatever was opened with
+the old one would otherwise outlive it. It opens no session itself: the person
+signs in with what they just chose, which proves they know it, and lands as any
+password sign-in does.
+
+An account the identity provider signs in has no password to forget, so it is
+mailed the way it does sign in rather than a link. A row without a password
+that no provider vouches for, a portal customer or a follower named in a mail,
+is mailed nothing: there is no account to recover, and its way in is the
+desk's code. Each request and each reset is written, without the secret, to the
+log of every organization the person belongs to, as an erasure is.
+
+**Reconsider if** somebody needs back into an account whose mailbox they have
+lost, which wants a second proof rather than a mail.
+
 ### A theme is a saved redefinition of the tokens, compiled in the browser
 
 Every colour in the interface is one of forty-three names, and the dark theme
