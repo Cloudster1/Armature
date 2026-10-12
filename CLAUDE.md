@@ -28,13 +28,19 @@ Commits describe a change to the product, not to a file.
 `make test`, `make test-integration`, `make npm ARGS="run test"` and
 `make test-e2e`. A feature is finished when all four pass, not when the code is
 written. `ONLY=<substring>` filters the browser suite while iterating and
-`WORKERS=<n>` sets how many browsers run it (four unless said otherwise).
+`WORKERS=<n>` sets how many browsers run it (four unless said otherwise). It
+runs against the production build, so a CSP or nginx problem fails it;
+`E2E_WEB=dev` points it at the Vite dev server instead.
 
 The API is described by `api/openapi.json`, derived from the handler tables and
 types. After changing a route, a request type or a response type, run
 `make openapi` and commit the regenerated document and `web/src/api/schema.d.ts`;
 a unit test refuses a stale copy, and the integration suite validates every
 response against it and refuses a run that left an operation unexercised.
+
+An integration test calls `t.Parallel()` first thing, or is listed in
+`backend/test/parallel_test.go` with what it shares that a parallel test would
+disturb; `make test` refuses one that is neither.
 
 Nothing is mocked below the layer under test. A guard is not proven by the
 service refusing: try the same thing straight through SQL and watch the database

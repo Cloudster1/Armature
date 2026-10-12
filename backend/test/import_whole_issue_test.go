@@ -21,6 +21,7 @@ import (
 // An issue is more than its own fields: the epic over it, the sprint and the
 // version it is in, what it blocks, and what was said and spent on it.
 func TestAnImportBringsTheWholeIssue(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "wholeissue")
 	byrne := h.joinExisting(t, ws, h.email(t, "ada.byrne"), "member")
@@ -158,6 +159,7 @@ func TestAnImportBringsTheWholeIssue(t *testing.T) {
 // Two projects of one organization may be told the same file. The second makes
 // its own issues; the first one's are not touched, whatever the file calls them.
 func TestTwoProjectsMayImportTheSameFile(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "twice")
 	files := csvio.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster), h.authService()).

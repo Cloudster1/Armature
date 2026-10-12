@@ -20,16 +20,17 @@ import {
   planSprint,
   selectByLabel,
   signUp,
+  unique,
   waitForButtonToGo,
   WAIT,
 } from "../helpers.mjs";
 
 scenario("a sprint counts what is committed to it against its capacity", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Committing");
-  const first = await createIssue(page, key, "five points of work", "Story");
-  const second = await createIssue(page, key, "three points of work", "Task");
-  await createIssue(page, key, "nobody has sized this", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Committing", { visit: false });
+  const first = await createIssue(page, key, "five points of work", { type: "Story", visit: false });
+  const second = await createIssue(page, key, "three points of work", { type: "Task", visit: false });
+  await createIssue(page, key, "nobody has sized this", { type: "Task", visit: false });
 
   await createSprint(page, key, "Sprint 1");
   await planSprint(page, "Sprint 1", { from: "2026-03-02", to: "2026-03-13", capacity: 10 });
@@ -44,9 +45,9 @@ scenario("a sprint counts what is committed to it against its capacity", async (
 });
 
 scenario("committing past the capacity is reported, not refused", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Overcommitting");
-  const heavy = await createIssue(page, key, "more than fits", "Story");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Overcommitting", { visit: false });
+  const heavy = await createIssue(page, key, "more than fits", { type: "Story", visit: false });
 
   await createSprint(page, key, "Sprint 1");
   await planSprint(page, "Sprint 1", { from: "2026-03-02", to: "2026-03-13", capacity: 5 });
@@ -63,10 +64,10 @@ scenario("committing past the capacity is reported, not refused", async ({ page 
 });
 
 scenario("an unsized issue is counted, not guessed at", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Unsized");
-  const sized = await createIssue(page, key, "this one has a number", "Story");
-  const unsized = await createIssue(page, key, "this one does not", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Unsized", { visit: false });
+  const sized = await createIssue(page, key, "this one has a number", { type: "Story", visit: false });
+  const unsized = await createIssue(page, key, "this one does not", { type: "Task", visit: false });
 
   await createSprint(page, key, "Sprint 1");
   await planSprint(page, "Sprint 1", { from: "2026-03-02", to: "2026-03-13", capacity: 10 });
@@ -80,8 +81,8 @@ scenario("an unsized issue is counted, not guessed at", async ({ page }) => {
 });
 
 scenario("a team runs one sprint at a time", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "One at a time");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "One at a time", { visit: false });
 
   await createSprint(page, key, "Sprint 1");
   await planSprint(page, "Sprint 1", { from: "2026-03-02", to: "2026-03-13", capacity: 10 });
@@ -107,9 +108,9 @@ scenario("a team runs one sprint at a time", async ({ page }) => {
 });
 
 scenario("completing a sprint carries the unfinished work onward", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Carrying");
-  const unfinished = await createIssue(page, key, "this does not get done", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Carrying", { visit: false });
+  const unfinished = await createIssue(page, key, "this does not get done", { type: "Task", visit: false });
 
   await createSprint(page, key, "Sprint 1");
   await planSprint(page, "Sprint 1", { from: "2026-03-02", to: "2026-03-13", capacity: 10 });
@@ -140,11 +141,11 @@ scenario("completing a sprint carries the unfinished work onward", async ({ page
 });
 
 scenario("a project splits into teams and each gets a board of its own", async ({ page }) => {
-  const who = await signUp(page);
-  const key = await createProject(page, "Splitting");
-  const mine = await createIssue(page, key, "platform work", "Task");
-  const theirs = await createIssue(page, key, "portal work", "Task");
-  const nobodys = await createIssue(page, key, "nobody has taken this on", "Task");
+  const who = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Splitting", { visit: false });
+  const mine = await createIssue(page, key, "platform work", { type: "Task", visit: false });
+  const theirs = await createIssue(page, key, "portal work", { type: "Task", visit: false });
+  const nobodys = await createIssue(page, key, "nobody has taken this on", { type: "Task", visit: false });
 
   await createTeam(page, key, "Platform");
   await createTeam(page, key, "Portal");
@@ -175,10 +176,10 @@ scenario("a project splits into teams and each gets a board of its own", async (
 });
 
 scenario("each team plans out of its own backlog", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Two backlogs");
-  const mine = await createIssue(page, key, "platform work", "Task");
-  const theirs = await createIssue(page, key, "portal work", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Two backlogs", { visit: false });
+  const mine = await createIssue(page, key, "platform work", { type: "Task", visit: false });
+  const theirs = await createIssue(page, key, "portal work", { type: "Task", visit: false });
 
   await createTeam(page, key, "Platform");
   await createTeam(page, key, "Portal");
@@ -208,8 +209,8 @@ scenario("each team plans out of its own backlog", async ({ page }) => {
 });
 
 scenario("two teams run sprints at the same time", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "In parallel");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "In parallel", { visit: false });
   await createTeam(page, key, "Platform");
   await createTeam(page, key, "Portal");
 
@@ -243,9 +244,9 @@ scenario("two teams run sprints at the same time", async ({ page }) => {
 });
 
 scenario("a team carrying work cannot just be deleted", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Still carrying");
-  const task = await createIssue(page, key, "carried by the team", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Still carrying", { visit: false });
+  const task = await createIssue(page, key, "carried by the team", { type: "Task", visit: false });
 
   await createTeam(page, key, "Platform");
   await assignTeam(page, task, "Platform");
@@ -266,10 +267,10 @@ scenario("a team carrying work cannot just be deleted", async ({ page }) => {
 const PAST_A_PAGE = 205;
 
 scenario("an old committed issue stays in its sprint past the newest 200", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Long history");
-  const old = await createIssue(page, key, "committed long ago", "Task");
-  const finished = await createIssue(page, key, "finished long ago", "Task");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Long history", { visit: false });
+  const old = await createIssue(page, key, "committed long ago", { type: "Task", visit: false });
+  const finished = await createIssue(page, key, "finished long ago", { type: "Task", visit: false });
   await goto(page, `/issues/${finished}`);
   await clickButton(page, "Close");
   await waitForButtonToGo(page, "Close");

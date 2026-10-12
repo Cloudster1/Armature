@@ -45,6 +45,7 @@ func (h *harness) buildTree(t *testing.T, ws *workspace) tree {
 }
 
 func TestHierarchyLevels(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "levels")
 
@@ -133,6 +134,7 @@ func TestHierarchyLevels(t *testing.T) {
 }
 
 func TestHierarchyReparenting(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "reparent")
 
@@ -218,6 +220,7 @@ func TestHierarchyReparenting(t *testing.T) {
 }
 
 func TestHierarchyReading(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "reading")
 
@@ -321,6 +324,7 @@ func TestHierarchyReading(t *testing.T) {
 }
 
 func TestHierarchyAndIssueType(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "typechange")
 
@@ -361,6 +365,7 @@ func TestHierarchyAndIssueType(t *testing.T) {
 // The service writes the readable refusals; the trigger is what makes the rule
 // true for anything that reaches the table another way.
 func TestHierarchyIsEnforcedByTheDatabase(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "trigger")
 	tr := h.buildTree(t, ws)
@@ -409,6 +414,7 @@ func TestHierarchyIsEnforcedByTheDatabase(t *testing.T) {
 }
 
 func TestHierarchyStaysInsideTheTenant(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	alpha := h.newWorkspace(t, "halpha")
 	beta := h.newWorkspace(t, "hbeta")
@@ -453,6 +459,7 @@ func TestHierarchyStaysInsideTheTenant(t *testing.T) {
 // The board shows the work a team moves. Before the hierarchy that meant
 // "anything without a parent", which would now hide every story in an epic.
 func TestBoardShowsIssuesInsideEpics(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "boardtree")
 	tr := h.buildTree(t, ws)

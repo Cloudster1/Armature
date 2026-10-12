@@ -12,6 +12,7 @@ import (
 // The search bar finishes the sentence: fields, operators and values the
 // query takes at the caret, names from the tables, and issues the words find.
 func TestTheSearchBarSuggests(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	agent := api.client(t)

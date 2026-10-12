@@ -46,6 +46,7 @@ func wire(t *testing.T, b git.Branch) map[string]any {
 // GitHub and GitLab both delete a merged branch on their own, so the merge
 // must outlive the branch or the issue forgets how far its work came.
 func TestAMergedBranchOutlivesItsDeletion(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "branchgone")
 	stub := newStubHost(t)

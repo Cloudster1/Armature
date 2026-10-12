@@ -27,17 +27,18 @@ import {
   signOut,
   signUp,
   textOf,
+  unique,
   WAIT,
   waitForApp,
   waitForPath,
 } from "../helpers.mjs";
 
 scenario("the audit log says who granted a role", async ({ page }) => {
-  const admin = await signUp(page);
-  const key = await createProject(page, "Audited");
+  const admin = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Audited", { visit: false });
   const who = await inviteMember(page, "newcomer");
-  await acceptInvite(page, who);
-  await signOut(page);
+  await acceptInvite(page, who, { visit: false });
+  await signOut(page, { visit: false });
   await signIn(page, admin.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -59,8 +60,8 @@ scenario("the audit log says who granted a role", async ({ page }) => {
 });
 
 scenario("a due date is dragged to another day on the calendar", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Dated");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Dated", { visit: false });
   const issueKey = await createIssue(page, key, "Paint the fence", "Task");
   // Inside this month, whatever day it is: the second week to the third.
   const now = new Date();
@@ -81,8 +82,8 @@ scenario("a due date is dragged to another day on the calendar", async ({ page }
 });
 
 scenario("a project posts a status update and the projects table shows it", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Reported");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Reported", { visit: false });
   await goto(page, "/projects");
   await page.waitForSelector(`[data-project="${key}"]`, { timeout: WAIT });
   expect.contains(await textOf(page, `[data-project="${key}"]`), "Not said", "a fresh project has said nothing");
@@ -102,9 +103,9 @@ scenario("a project posts a status update and the projects table shows it", asyn
 });
 
 scenario("a field defined for the organization is on every project", async ({ page }) => {
-  await signUp(page);
-  const first = await createProject(page, "First");
-  const second = await createProject(page, "Second");
+  await signUp(page, unique("user"), { visit: false });
+  const first = await createProject(page, "First", { visit: false });
+  const second = await createProject(page, "Second", { visit: false });
 
   await goto(page, "/settings/fields");
   await clickButton(page, "New field");
@@ -134,7 +135,7 @@ scenario("a field defined for the organization is on every project", async ({ pa
 // One press on the organization page makes a second organization with a
 // production line in it and lands the reader on that project.
 scenario("a demo organization with a production line is one press away", async ({ page }) => {
-  const owner = await signUp(page);
+  const owner = await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/organization");
   await page.waitForSelector('[data-action="create-demo"]', { timeout: WAIT });
   await page.click('[data-action="create-demo"]');

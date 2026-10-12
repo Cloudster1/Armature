@@ -120,6 +120,7 @@ func TestEachOrganizationsDigestGoesInOnePassAtTheDigestHour(t *testing.T) {
 // The record of what was sent belongs to its organization: another one can
 // neither read it nor write one for it, whatever the service does.
 func TestTheRecordOfADigestStaysInItsOrganization(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	mine := h.newWorkspace(t, "digestmine")
 	theirs := h.newWorkspace(t, "digesttheirs")

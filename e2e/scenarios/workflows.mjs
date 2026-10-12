@@ -27,14 +27,15 @@ import {
   selectNode,
   signIn,
   signUp,
+  unique,
   WAIT,
   waitForApp,
   waitForPath,
 } from "../helpers.mjs";
 
 scenario("a project follows the organization's workflows until it says otherwise", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Following");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Following", { visit: false });
 
   const rows = await assignmentRows(page, key);
   expect.contains(await bodyText(page), "This project follows the organization", "it says so plainly");
@@ -44,8 +45,8 @@ scenario("a project follows the organization's workflows until it says otherwise
 });
 
 scenario("a project overrides one issue type and inherits the rest", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Overriding");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Overriding", { visit: false });
 
   await createWorkflow(page, {
     name: "Bug triage",
@@ -73,20 +74,20 @@ scenario("a project overrides one issue type and inherits the rest", async ({ pa
   expect.contains(rows.Task, "Organization", "tasks still follow the organization");
 
   // The table is a description of behaviour, so the behaviour has to match it.
-  const bug = await createIssue(page, key, "the override decides this one", "Bug");
+  const bug = await createIssue(page, key, "the override decides this one", { type: "Bug", visit: false });
   const bugMoves = await movesOffered(page, bug);
   expect.truthy(bugMoves.includes("Fixed"), "the bug offers the override's move");
   expect.truthy(!bugMoves.includes("Start progress"), "and not the organization's");
 
-  const task = await createIssue(page, key, "this one is ordinary", "Task");
+  const task = await createIssue(page, key, "this one is ordinary", { type: "Task", visit: false });
   const taskMoves = await movesOffered(page, task);
   expect.truthy(taskMoves.includes("Start progress"), "the task offers the organization's move");
   expect.truthy(!taskMoves.includes("Fixed"), "and not the override's");
 });
 
 scenario("the project's workflow page draws the workflow each issue type follows", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Drawn");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Drawn", { visit: false });
 
   await createWorkflow(page, {
     name: "Bug triage",
@@ -113,8 +114,8 @@ scenario("the project's workflow page draws the workflow each issue type follows
 });
 
 scenario("a project administrator picks a workflow for one issue type without drawing one", async ({ page }) => {
-  const owner = await signUp(page);
-  const key = await createProject(page, "Mapped");
+  const owner = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Mapped", { visit: false });
   await createWorkflow(page, {
     name: "Bug triage",
     statuses: ["To Do", "Done"],
@@ -123,7 +124,7 @@ scenario("a project administrator picks a workflow for one issue type without dr
   });
 
   const who = await inviteMember(page, "projadmin");
-  await acceptInvite(page, who);
+  await acceptInvite(page, who, { visit: false });
   await signIn(page, owner.email);
   await waitForApp(page);
   await revokeAll(page, who.name);
@@ -140,7 +141,7 @@ scenario("a project administrator picks a workflow for one issue type without dr
   expect.contains(rows.Task, "Organization", "tasks still follow the organization");
   expect.equal(await page.$("#project-scheme"), null, "the whole-scheme picker is the organization's, not theirs");
 
-  const bug = await createIssue(page, key, "mapped by a row", "Bug");
+  const bug = await createIssue(page, key, "mapped by a row", { type: "Bug", visit: false });
   const moves = await movesOffered(page, bug);
   expect.truthy(moves.includes("Fixed"), "the bug offers the mapped workflow's move");
   expect.truthy(!moves.includes("Start progress"), "and not the organization's");
@@ -154,8 +155,8 @@ scenario("a project administrator picks a workflow for one issue type without dr
 });
 
 scenario("a project can hand the decision back to the organization", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Handing back");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Handing back", { visit: false });
 
   await createWorkflow(page, { name: "Lean", statuses: ["To Do", "Done"], opensIn: "Done" });
   await createScheme(page, { name: "Lean scheme", issueType: "Bug", workflow: "Lean" });
@@ -179,7 +180,7 @@ scenario("a project can hand the decision back to the organization", async ({ pa
 });
 
 scenario("a workflow that could not work is refused with a reason", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/workflows");
   await clickButton(page, "New workflow");
   await page.waitForSelector("#field-name", { timeout: WAIT });
@@ -201,8 +202,8 @@ scenario("a workflow that could not work is refused with a reason", async ({ pag
 });
 
 scenario("a workflow drawn on the canvas comes back as it was left, rules included", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Drawn up");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Drawn up", { visit: false });
 
   await goto(page, "/settings/workflows");
   await clickButton(page, "New workflow");
@@ -259,7 +260,7 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
     () => document.body.innerText.includes("This project uses its own scheme"),
     { timeout: WAIT },
   );
-  const issueKey = await createIssue(page, key, "needs a word first", "Bug");
+  const issueKey = await createIssue(page, key, "needs a word first", { type: "Bug", visit: false });
   await goto(page, `/issues/${issueKey}`);
   await clickButton(page, "Start");
   await page.waitForFunction(
@@ -269,8 +270,8 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
 });
 
 scenario("deleting a scheme a project uses is refused and says which", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Still using");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Still using", { visit: false });
 
   await createWorkflow(page, { name: "Lean", statuses: ["To Do", "Done"], opensIn: "To Do" });
   await createScheme(page, { name: "Lean scheme", issueType: "Bug", workflow: "Lean" });

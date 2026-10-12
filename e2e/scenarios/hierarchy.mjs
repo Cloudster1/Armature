@@ -12,14 +12,15 @@ import {
   selectByLabel,
   signUp,
   treeRows,
+  unique,
   WAIT,
 } from "../helpers.mjs";
 
 scenario("an epic holds stories and the tree shows the nesting", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Nesting");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Nesting", { visit: false });
 
-  const epic = await createIssue(page, key, "Password and recovery", "Epic");
+  const epic = await createIssue(page, key, "Password and recovery", { type: "Epic", visit: false });
   const story = await addChild(page, epic, "Add password reset by email", "Story");
 
   await goto(page, `/projects/${key}/hierarchy`);
@@ -36,10 +37,10 @@ scenario("an epic holds stories and the tree shows the nesting", async ({ page }
 });
 
 scenario("a child's page shows the chain above it", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Breadcrumb");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Breadcrumb", { visit: false });
 
-  const initiative = await createIssue(page, key, "Make signing in effortless", "Initiative");
+  const initiative = await createIssue(page, key, "Make signing in effortless", { type: "Initiative", visit: false });
   const epic = await addChild(page, initiative, "Password and recovery", "Epic");
   const story = await addChild(page, epic, "Add password reset by email", "Story");
 
@@ -52,10 +53,10 @@ scenario("a child's page shows the chain above it", async ({ page }) => {
 });
 
 scenario("an epic reports how much of its work is done", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Rollup");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Rollup", { visit: false });
 
-  const epic = await createIssue(page, key, "Portal performance", "Epic");
+  const epic = await createIssue(page, key, "Portal performance", { type: "Epic", visit: false });
   const first = await addChild(page, epic, "Cache the account page", "Story");
   await addChild(page, epic, "Compress the bundle", "Story");
 
@@ -70,11 +71,11 @@ scenario("an epic reports how much of its work is done", async ({ page }) => {
 });
 
 scenario("an issue can be moved to a different epic", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Moving");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Moving", { visit: false });
 
-  const first = await createIssue(page, key, "Password and recovery", "Epic");
-  const second = await createIssue(page, key, "Portal performance", "Epic");
+  const first = await createIssue(page, key, "Password and recovery", { type: "Epic", visit: false });
+  const second = await createIssue(page, key, "Portal performance", { type: "Epic", visit: false });
   const story = await addChild(page, first, "Add password reset by email", "Story");
 
   await goto(page, `/issues/${story}`);
@@ -92,10 +93,10 @@ scenario("an issue can be moved to a different epic", async ({ page }) => {
 });
 
 scenario("the levels a parent may hold are the only ones offered", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Offered");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Offered", { visit: false });
 
-  const epic = await createIssue(page, key, "Password and recovery", "Epic");
+  const epic = await createIssue(page, key, "Password and recovery", { type: "Epic", visit: false });
   await goto(page, `/issues/${epic}`);
   await clickButton(page, "Add child");
   await page.waitForSelector("#child-type", { timeout: WAIT });
@@ -115,10 +116,10 @@ scenario("the levels a parent may hold are the only ones offered", async ({ page
 });
 
 scenario("a card on the board names the epic it belongs to", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Chips");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Chips", { visit: false });
 
-  const epic = await createIssue(page, key, "Password and recovery", "Epic");
+  const epic = await createIssue(page, key, "Password and recovery", { type: "Epic", visit: false });
   const story = await addChild(page, epic, "Add password reset by email", "Story");
   const subtask = await addChild(page, story, "Design the email", "Subtask");
 

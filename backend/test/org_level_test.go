@@ -134,6 +134,7 @@ func hasAction(rows []audit.Row, action string) bool {
 // a field by its name; promoting folds same-named fields and their answers
 // into one, and refuses when the kinds differ.
 func TestOrganizationFieldsAreSharedAndPromoted(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "orgfields")
 	other := h.newWorkspace(t, "orgfieldsother")
@@ -223,6 +224,7 @@ func TestOrganizationFieldsAreSharedAndPromoted(t *testing.T) {
 // A project's latest post is its status on the list, and a month gathers
 // what is dated inside it, ranges crossing its edges included.
 func TestStatusUpdatesAndTheCalendar(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "health")
 
@@ -316,6 +318,7 @@ func TestStatusUpdatesAndTheCalendar(t *testing.T) {
 // Every organization-level operation answers over the API, and refuses what
 // it should.
 func TestOrgLevelOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)

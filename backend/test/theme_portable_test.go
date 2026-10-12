@@ -15,6 +15,7 @@ import (
 // theme of the importer's own: the files get new ids, and everything that
 // named them, the spec and the CSS alike, names the new ones.
 func TestAThemeTravelsAsOneFile(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

@@ -11,6 +11,7 @@ import {
   goto,
   PASSWORD,
   signIn,
+  signInThroughForm,
   signUp,
   textOf,
   unique,
@@ -54,13 +55,13 @@ scenario("an administrator makes a local user who can sign in, then resets and s
     who.email,
   );
 
-  await signIn(page, who.email, reset);
+  await signInThroughForm(page, who.email, reset);
   await page.waitForSelector("[role=alert]", { timeout: WAIT });
   expect.contains((await textOf(page, "[role=alert]")).toLowerCase(), "deactivated", "a switched off account is told so");
 });
 
 scenario("an administrator's own row is not theirs to change here", async ({ page }) => {
-  const owner = await signUp(page);
+  const owner = await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/users");
   await page.waitForSelector(`[data-user="${owner.email}"]`, { timeout: WAIT });
   await page.click(`[data-user="${owner.email}"] [data-action="user-menu"]`);
@@ -79,7 +80,7 @@ scenario("somebody the provider knows is told who can let them in", async ({ pag
   expect.contains(told, "let you in", "the refusal says what happens next");
   expect.contains(told, "Users page", "the refusal says where");
 
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/users");
   await page.waitForSelector("[data-new-user]", { timeout: WAIT });
   const waiting = await page.$("[data-join-requests]");

@@ -7,6 +7,34 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: integration tests run in parallel; the ones that share the
+  replica, Redis, the mailpit box, the per-address brakes or a pass over
+  every organization run one at a time first, each listed with its reason,
+  and `make test` refuses a test that is neither (#187).
+- Fixed: saving notification preferences answers with what was saved, not
+  the preferences from before, while a replica lags behind.
+- Fixed: an API key used the moment it was made is no longer refused at
+  `/auth/me` as an expired session while a replica lags behind.
+- Changed: the integration suite opens its database cluster, superuser
+  pools, telemetry and attachment bucket once, in `TestMain`, instead of in
+  every test, and `TestMain` now refuses a run that left an operation
+  unexercised; the suite runs in about 55s instead of 140s (#187).
+- Added: `ARMATURE_DOOR_WINDOW` sets how long the brakes on portal codes,
+  portal entries and password or invitation guesses remember an address,
+  ten minutes unless set; the development stack uses one minute, so browser
+  test runs in a row are not refused (#187).
+- Changed: the browser suite signs up, signs in, and makes the projects and
+  issues a scenario needs through the API instead of filling in forms, which
+  saves most of its page loads; the scenarios about those forms still drive
+  them (#187).
+- The browser suite and `make screenshots` load the app from the production
+  build behind its nginx and CSP, as it ships, instead of the Vite dev server,
+  so a page load is a few files rather than every module, and a scenario
+  fails if the CSP refuses anything on its pages; `E2E_WEB=dev` keeps
+  the dev server for following a scenario through hot reload (#187).
+- Faster tests: the browser suite waits for what it checks instead of
+  sleeping, so the swimlane, drawer and mailed reply scenarios go on the
+  moment the save, the key or the reply has landed (#187).
 - Browser suite timings: a run ends with its ten slowest scenarios and its
   number of full page loads, and leaves each scenario's time and page loads in
   `.cache/e2e/timings.json`; `ONLY` also takes a scenario file's name, as

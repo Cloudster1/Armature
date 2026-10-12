@@ -16,6 +16,7 @@ import (
 // author a workflow. Reported as failing on a deployment; tried here in
 // exactly that order.
 func TestAProviderAccountMadeGlobalAdministratorCanAuthorWorkflows(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	ws := h.newWorkspace(t, "oidcadmin")

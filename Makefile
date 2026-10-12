@@ -135,18 +135,34 @@ test-integration: ## Run the integration suite against the running stack
 # WORKERS=<n> sets how many browsers run scenarios side by side; ONLY=<words>
 # narrows the run to the scenarios whose names contain them, or to one file's
 # (ONLY=board). Each run writes .cache/e2e/timings.json and lists its slowest.
+#
+# The suite runs against the production build behind the production nginx,
+# compose's web-e2e, which is built first; with web/ unchanged every layer is
+# cached. It is recreated each time because nginx looks the api up only once.
+# E2E_WEB=dev runs against the Vite dev server instead, with no build, for
+# debugging a scenario with hot reload.
 E2E_IMAGE ?= zenika/alpine-chrome:with-puppeteer
+E2E_WEB   ?= production
+ifeq ($(E2E_WEB),dev)
+E2E_BASE_URL := http://web:5173
+E2E_WEB_UP   := @true
+else
+E2E_BASE_URL := http://web-e2e
+E2E_WEB_UP   := docker compose -f deploy/docker-compose.yml --profile e2e up -d --no-deps --build --force-recreate --wait web-e2e
+endif
 
 .PHONY: test-e2e
 test-e2e: ## Run the browser end-to-end suite against the running stack
 	@mkdir -p $(ROOT)/.cache/e2e
+	$(E2E_WEB_UP)
 	docker run --rm -t \
 		-u $(UID):$(GID) \
 		--network armature_default \
 		-v $(ROOT)/e2e:/usr/src/app/e2e:ro \
 		-v $(ROOT)/.cache/e2e:/artifacts \
 		-e HOME=/tmp \
-		-e E2E_BASE_URL=http://web:5173 \
+		-e E2E_BASE_URL=$(E2E_BASE_URL) \
+		-e E2E_WEB=$(E2E_WEB) \
 		-e E2E_GITEA_URL=http://gitea:3000 \
 		-e E2E_ARTIFACTS=/artifacts \
 		-e E2E_ONLY='$(ONLY)' \
@@ -214,11 +230,11 @@ up: ## Start the full stack (postgres primary + replica, redis, gitea, api, work
 
 .PHONY: down
 down: ## Stop the stack
-	docker compose -f deploy/docker-compose.yml down
+	docker compose -f deploy/docker-compose.yml --profile e2e down
 
 .PHONY: clean
 clean: ## Stop the stack and delete its volumes
-	docker compose -f deploy/docker-compose.yml down -v
+	docker compose -f deploy/docker-compose.yml --profile e2e down -v
 
 .PHONY: logs
 logs: ## Tail stack logs
@@ -251,13 +267,14 @@ psql: ## Open psql against the primary
 .PHONY: screenshots
 screenshots: ## Refresh the pictures in docs/ from the seeded demo, through the browser runner
 	@mkdir -p $(ROOT)/.cache/e2e/shots
+	$(E2E_WEB_UP)
 	docker run --rm -t \
 		-u $(UID):$(GID) \
 		--network armature_default \
 		-v $(ROOT)/e2e:/usr/src/app/e2e:ro \
 		-v $(ROOT)/.cache/e2e:/artifacts \
 		-e HOME=/tmp \
-		-e E2E_BASE_URL=http://web:5173 \
+		-e E2E_BASE_URL=$(E2E_BASE_URL) \
 		-e E2E_ARTIFACTS=/artifacts \
 		-w /usr/src/app \
 		--entrypoint node $(E2E_IMAGE) /usr/src/app/e2e/screenshots.mjs

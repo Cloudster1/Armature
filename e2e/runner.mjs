@@ -93,9 +93,10 @@ export async function run({ launch, open, artifacts, workers = DEFAULT_WORKERS }
     const started = Date.now();
     // A fresh incognito context per scenario, so cookies and storage from one
     // never leak into the next on the same browser.
-    const { context, page, loads } = await open(browser);
+    const { context, page, loads, check } = await open(browser);
     try {
       await fn({ page, context });
+      await check?.();
       const ms = Date.now() - started;
       process.stdout.write(`  PASS  ${name} (${ms}ms)\n`);
       return { name, file, ok: true, ms, loads: loads() };

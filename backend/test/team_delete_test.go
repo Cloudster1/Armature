@@ -44,6 +44,7 @@ func teamExists(t *testing.T, h *harness, id uuid.UUID) bool {
 // When the project's own stream is running a sprint, a team's running sprint
 // had nowhere to go and the delete failed with a 500. It is refused instead.
 func TestATeamRunningASprintBesideTheProjectIsRefusedWithASentence(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -81,6 +82,7 @@ func TestATeamRunningASprintBesideTheProjectIsRefusedWithASentence(t *testing.T)
 // Otherwise the team's sprints quietly became the project's, and its closed
 // ones joined the project's velocity and history. They stay the team's.
 func TestATeamsSprintsNeverBecomeTheProjects(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "keepsprints")
 	alpha := ws.newTeam(t, "Alpha")
@@ -122,6 +124,7 @@ func TestATeamsSprintsNeverBecomeTheProjects(t *testing.T) {
 // Sprints that never started are plans, not record: once they are deleted the
 // team can go.
 func TestATeamGoesOnceItsUnstartedSprintsDo(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "unstarted")
 	alpha := ws.newTeam(t, "Alpha")
@@ -149,6 +152,7 @@ func TestATeamGoesOnceItsUnstartedSprintsDo(t *testing.T) {
 // A request type routed to the team used to stop routing without anybody being
 // told. The refusal names it, and the routing is left alone.
 func TestATeamRequestsAreRoutedToIsNotDeletedUnderThem(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "routedteam")
 	d, p := ws.aDesk(t, h, "Routed desk")
@@ -187,6 +191,7 @@ func TestATeamRequestsAreRoutedToIsNotDeletedUnderThem(t *testing.T) {
 // The service refusing is not enough: a team deleted straight through SQL must
 // not hand its sprints or its requests to the project either.
 func TestTheDatabaseRefusesToDeleteATeamThatStillHasSprints(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "rawteam")
 	alpha := ws.newTeam(t, "Alpha")

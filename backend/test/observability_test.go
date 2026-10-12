@@ -14,11 +14,13 @@ import (
 // came along, with its statements underneath; and it is one count on a series
 // named the same way, scraped off a handler that is not part of the API.
 func TestARequestIsCountedAndTraced(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
+	h.ownMetrics(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
 	owner.signup(t, h, "watched")
-	h.spans.Reset()
+	h.listenToSpans(t)
 
 	const traceID = "4bf92f3577b34da6a3ce929d0e0e4736"
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, owner.base+"/api/v1/auth/me", nil)
@@ -37,7 +39,7 @@ func TestARequestIsCountedAndTraced(t *testing.T) {
 	if got := resp.Header.Get("X-Trace-Id"); got != traceID {
 		t.Errorf("X-Trace-Id = %q, want the caller's trace", got)
 	}
-	if err := h.tel.Flush(context.Background()); err != nil {
+	if err := shared.tel.Flush(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 

@@ -15,17 +15,19 @@ import {
   openPalette,
   PASSWORD,
   reload,
-  signIn,
+  signInThroughForm,
   signUp,
+  signUpThroughForm,
   submit,
   textOf,
+  unique,
   WAIT,
   waitForApp,
   waitForPath,
 } from "../helpers.mjs";
 
 scenario("a new organization can be created and lands in the app", async ({ page }) => {
-  const who = await signUp(page);
+  const who = await signUpThroughForm(page);
 
   expect.contains(await textOf(page, "h1"), who.name.split(" ")[0], "welcome heading");
   expect.contains(await bodyText(page), who.org, "the organization name is shown");
@@ -44,7 +46,7 @@ scenario("signing out ends the session and protects the app", async ({ page }) =
 });
 
 scenario("signing out in a second page sends the first to sign in on its next action", async ({ page, context }) => {
-  const who = await signUp(page);
+  const who = await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/tokens");
 
   const second = await context.newPage();
@@ -76,14 +78,14 @@ scenario("an existing account can sign back in", async ({ page }) => {
   await page.click('[data-action="sign-out"]');
   await waitForPath(page, "/login");
 
-  await signIn(page, who.email);
+  await signInThroughForm(page, who.email);
   await waitForPath(page, "/");
   await waitForApp(page);
   expect.contains(await bodyText(page), who.org, "back in the same organization");
 });
 
 scenario("a person changes their own password from the profile", async ({ page }) => {
-  const who = await signUp(page);
+  const who = await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/profile");
   await page.waitForSelector("[data-change-password]", { timeout: WAIT });
   await fill(page, "Current password", PASSWORD);
@@ -92,9 +94,9 @@ scenario("a person changes their own password from the profile", async ({ page }
   await clickButton(page, "Change password");
   await page.waitForFunction(() => document.body.innerText.includes("Password changed"), { timeout: WAIT });
 
-  await signIn(page, who.email, PASSWORD);
+  await signInThroughForm(page, who.email, PASSWORD);
   await page.waitForSelector("[role=alert]", { timeout: WAIT });
-  await signIn(page, who.email, next);
+  await signInThroughForm(page, who.email, next);
   await waitForPath(page, "/");
   await waitForApp(page);
 });
@@ -104,7 +106,7 @@ scenario("a wrong password is refused without saying whether the account exists"
   await page.click('[data-action="sign-out"]');
   await waitForPath(page, "/login");
 
-  await signIn(page, who.email, "definitely not the password");
+  await signInThroughForm(page, who.email, "definitely not the password");
   await page.waitForSelector("[role=alert]", { timeout: 10_000 });
 
   const message = await textOf(page, "[role=alert]");
@@ -112,7 +114,7 @@ scenario("a wrong password is refused without saying whether the account exists"
   expect.equal(new URL(page.url()).pathname, "/login", "still on the sign-in page");
 
   // The same message for an address with no account at all.
-  await signIn(page, `nobody-${Date.now()}@armature.test`, PASSWORD);
+  await signInThroughForm(page, `nobody-${Date.now()}@armature.test`, PASSWORD);
   await page.waitForSelector("[role=alert]", { timeout: 10_000 });
   expect.equal(await textOf(page, "[role=alert]"), message, "unknown address gives the same answer");
 });
@@ -126,7 +128,7 @@ scenario("the session survives a full page reload", async ({ page }) => {
 });
 
 scenario("signing in is not offered to someone already signed in", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
 
   await goto(page, "/login");
   await waitForPath(page, "/");
@@ -167,8 +169,8 @@ scenario("an API token can be created and revoked", async ({ page }) => {
 });
 
 scenario("the palette jumps to an issue by its key", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Palette");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Palette", { visit: false });
   await createIssue(page, key, "found by key", "Task");
   await openPalette(page);
   await page.type("[data-palette] input", `${key}-1`);
@@ -179,8 +181,8 @@ scenario("the palette jumps to an issue by its key", async ({ page }) => {
 });
 
 scenario("a question typed into the palette lands on the answer and points at it", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Guided");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Guided", { visit: false });
   await goto(page, `/projects/${key}`);
   await waitForApp(page);
 
@@ -210,8 +212,8 @@ scenario("a question typed into the palette lands on the answer and points at it
 });
 
 scenario("a read-only token is marked and refused a write", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Read only");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Read only", { visit: false });
   const secret = await createToken(page, "Assistant", { readOnly: true });
   expect.equal(secret.startsWith("armature_pat_"), true, "the secret is shown once");
   await page.waitForSelector('[data-token="Assistant"][data-token-scope="read"]', { timeout: WAIT });
@@ -234,9 +236,9 @@ scenario("a read-only token is marked and refused a write", async ({ page }) => 
 });
 
 scenario("a token confined to one project cannot reach another", async ({ page }) => {
-  await signUp(page);
-  const near = await createProject(page, "Near");
-  const far = await createProject(page, "Far");
+  await signUp(page, unique("user"), { visit: false });
+  const near = await createProject(page, "Near", { visit: false });
+  const far = await createProject(page, "Far", { visit: false });
   const secret = await createToken(page, "Pipeline", { projects: [near] });
   await page.waitForSelector(`[data-token="Pipeline"][data-token-projects="${near}"]`, { timeout: WAIT });
   expect.contains(await bodyText(page), `Only ${near}`, "the row says what the token reaches");

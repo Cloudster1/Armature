@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-import { DEFAULT_WORKERS, registeringFrom, run } from "./runner.mjs";
+import { AssertionError, DEFAULT_WORKERS, registeringFrom, run } from "./runner.mjs";
 import {
   BASE_URL,
   WAIT,
@@ -60,6 +60,9 @@ async function launch() {
   });
 }
 
+/** Marks the console line a refusal under the Content Security Policy is reported on. */
+const CSP_MARK = "e2e: refused by the CSP:";
+
 async function open(browser) {
   const context = await browser.createBrowserContext();
   // Every full load in the context counts, on a page the scenario opens too. A
@@ -80,7 +83,21 @@ async function open(browser) {
   count(page);
   await page.setViewport({ width: 1280, height: 860 });
   page.setDefaultTimeout(WAIT);
-  return { context, page, loads: () => loads };
+  // The production nginx sends a CSP, and what it refuses is a bug in what
+  // ships even when the scenario's own checks still pass.
+  const refused = [];
+  await page.evaluateOnNewDocument((mark) => {
+    document.addEventListener("securitypolicyviolation", (e) => console.error(`${mark} ${e.violatedDirective} ${e.blockedURI}`));
+  }, CSP_MARK);
+  page.on("console", (message) => {
+    if (message.text().startsWith(CSP_MARK)) refused.push(`${message.text().slice(CSP_MARK.length + 1)} on ${page.url()}`);
+  });
+  const check = async () => {
+    // A refusal is reported in a task of its own: one more round trip lets the last one arrive.
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0))).catch(() => {});
+    if (refused.length) throw new AssertionError(`the Content Security Policy refused ${refused.join("; ")}`);
+  };
+  return { context, page, loads: () => loads, check };
 }
 
 const workers = Number(process.env.E2E_WORKERS) || DEFAULT_WORKERS;

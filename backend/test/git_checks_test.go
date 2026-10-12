@@ -19,6 +19,7 @@ func checkRun(id int64, name, conclusion, sha, startedAt string) string {
 // A pull request's CI answer is every check against its head, not whichever
 // one started last: a failing test must not hide behind a passing lint.
 func TestAPullRequestsCIReadsFailedWhenAnyCheckFailed(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "checking")
 	stub := newStubHost(t)

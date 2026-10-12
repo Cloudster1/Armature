@@ -38,6 +38,7 @@ func versionNames(t *testing.T, out any) []string {
 // A template carries no id of the project it was saved in, so a widget
 // pinned to a version there shows the next project's own versions.
 func TestATemplateLeavesItsProjectsVersionBehind(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "tplversion")
 	r := ws.reports(h)

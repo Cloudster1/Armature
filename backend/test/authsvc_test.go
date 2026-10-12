@@ -15,6 +15,7 @@ import (
 )
 
 func TestSignup(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	svc := h.authService()
 	ctx := context.Background()
@@ -144,6 +145,7 @@ func TestSignup(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	svc := h.authService()
 	ctx := context.Background()
@@ -207,6 +209,7 @@ func TestLogin(t *testing.T) {
 }
 
 func TestSessionLifecycle(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	svc := h.authService()
 	ctx := context.Background()
@@ -284,6 +287,7 @@ func TestSessionLifecycle(t *testing.T) {
 }
 
 func TestOrgSwitching(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	svc := h.authService()
 	ctx := context.Background()

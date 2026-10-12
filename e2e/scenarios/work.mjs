@@ -33,6 +33,7 @@ import {
   signIn,
   signUp,
   textOf,
+  unique,
   unreadCount,
   versionMenu,
   WAIT,
@@ -42,11 +43,11 @@ import {
 } from "../helpers.mjs";
 
 scenario("a mention in a comment lands in the person's inbox and makes them a watcher", async ({ page }) => {
-  const owner = await signUp(page);
-  const key = await createProject(page, "Mentions");
-  const issueKey = await createIssue(page, key, "Wire the doorbell");
+  const owner = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Mentions", { visit: false });
+  const issueKey = await createIssue(page, key, "Wire the doorbell", { visit: false });
   const ben = await inviteMember(page, "ben");
-  await acceptInvite(page, ben);
+  await acceptInvite(page, ben, { visit: false });
 
   // Back as the owner: the picker offers Ben after an at sign, and the comment names him.
   await signIn(page, owner.email);
@@ -87,12 +88,12 @@ scenario("a mention in a comment lands in the person's inbox and makes them a wa
 });
 
 scenario("a rule labels a ticket when it is moved, and the run log says so", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Automated");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Automated", { visit: false });
   await createRule(page, key, { name: "Mark moved work", trigger: "An issue moves", action: "Add a label", value: "moving" });
   expect.contains(await bodyText(page), "When an issue moves, then add the label moving.", "the table reads the rule as a sentence");
 
-  const issueKey = await createIssue(page, key, "Oil the hinge");
+  const issueKey = await createIssue(page, key, "Oil the hinge", { visit: false });
   await goto(page, `/issues/${issueKey}`);
   await clickButton(page, "Start progress");
   // The worker runs the rule from the stream; the label arrives on its own.
@@ -106,8 +107,8 @@ scenario("a rule labels a ticket when it is moved, and the run log says so", asy
 });
 
 scenario("a webhook endpoint gets a signed test delivery, and it starts a rule", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Hooked");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Hooked", { visit: false });
   // The receiver is Armature itself: an incoming rule that files an issue.
   await createRule(page, key, { name: "From the pager", trigger: "An incoming call", action: "Create an issue", text: "An alert came in" });
   const address = await incomingAddress(page, "From the pager");
@@ -130,10 +131,10 @@ scenario("a webhook endpoint gets a signed test delivery, and it starts a rule",
 });
 
 scenario("a version is released and its notes list the finished work", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Shipping");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Shipping", { visit: false });
   await createVersion(page, key, "1.0", "2026-12-24");
-  const fixed = await createIssue(page, key, "Fix the login");
+  const fixed = await createIssue(page, key, "Fix the login", { visit: false });
   const open = await createIssue(page, key, "Polish the icons");
 
   // Both name the version as what fixes them; one gets finished.
@@ -162,12 +163,12 @@ scenario("a version is released and its notes list the finished work", async ({ 
 });
 
 scenario("a ticket filed with a component lands on the component's default assignee", async ({ page }) => {
-  const owner = await signUp(page);
-  const key = await createProject(page, "Parts");
+  const owner = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Parts", { visit: false });
   await createComponent(page, key, "Billing", { assignee: owner.name });
   expect.equal(await page.$eval('[data-component="Billing"] [data-component-assignee]', (el) => el.dataset.componentAssignee), owner.name, "the component says who takes new work");
 
-  const issueKey = await createIssue(page, key, "Invoice is wrong");
+  const issueKey = await createIssue(page, key, "Invoice is wrong", { visit: false });
   await goto(page, `/issues/${issueKey}`);
   await pickName(page, "issue-components", "Billing");
   // Filing through the API with the component, as the create dialog will: the assignee is the component's.
@@ -189,9 +190,9 @@ scenario("a ticket filed with a component lands on the component's default assig
 });
 
 scenario("a search is saved, starred and offered on the search page", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Searches");
-  await createIssue(page, key, "Something open");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Searches", { visit: false });
+  await createIssue(page, key, "Something open", { visit: false });
   await goto(page, `/search?q=${encodeURIComponent("statusCategory != done")}`);
   await saveSearch(page, "Open work", { shared: true });
   // Saving lands on the saved search: its name is the title and its chip is pressed.
@@ -223,11 +224,11 @@ scenario("a search is saved, starred and offered on the search page", async ({ p
 });
 
 scenario("three tickets are edited at once and the one that cannot move says why", async ({ page }) => {
-  await signUp(page);
-  const key = await createProject(page, "Batches");
-  const a = await createIssue(page, key, "Batch one");
-  const b = await createIssue(page, key, "Batch two");
-  const c = await createIssue(page, key, "Batch three, already going");
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Batches", { visit: false });
+  const a = await createIssue(page, key, "Batch one", { visit: false });
+  const b = await createIssue(page, key, "Batch two", { visit: false });
+  const c = await createIssue(page, key, "Batch three, already going", { visit: false });
   await goto(page, `/issues/${c}`);
   await clickButton(page, "Start progress");
   await page.waitForFunction(() => document.body.innerText.includes("In Progress"), { timeout: WAIT });
@@ -247,10 +248,10 @@ scenario("three tickets are edited at once and the one that cannot move says why
 });
 
 scenario("a ticket moves to another project and keeps its history", async ({ page }) => {
-  await signUp(page);
-  const from = await createProject(page, "From here");
-  const to = await createProject(page, "To there");
-  const issueKey = await createIssue(page, from, "Wandering ticket");
+  await signUp(page, unique("user"), { visit: false });
+  const from = await createProject(page, "From here", { visit: false });
+  const to = await createProject(page, "To there", { visit: false });
+  const issueKey = await createIssue(page, from, "Wandering ticket", { visit: false });
   await goto(page, `/issues/${issueKey}`);
   await clickButton(page, "Start progress");
   await page.waitForFunction(() => document.body.innerText.includes("In Progress"), { timeout: WAIT });
@@ -269,7 +270,7 @@ scenario("a ticket moves to another project and keeps its history", async ({ pag
 });
 
 scenario("a CSV file becomes issues after a dry run", async ({ page }) => {
-  await signUp(page);
+  await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Imports");
   const csvPath = `/tmp/import-${Date.now()}.csv`;
   // Two columns of one name, as every Jira export has, and a comment packed

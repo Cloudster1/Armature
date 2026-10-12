@@ -31,6 +31,7 @@ func (ws *workspace) automation(h *harness) *automation.Service {
 // A rule runs once per event however often the stream repeats it, does not
 // chase its own tail, and stops at its hourly cap; the run log says why.
 func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "rules")
 	svc := ws.automation(h)
@@ -319,6 +320,7 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 // Every operation over the API, the way the pages use them: a project's
 // rules, the organization's, an incoming hook, and the webhook pages.
 func TestAutomationOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)

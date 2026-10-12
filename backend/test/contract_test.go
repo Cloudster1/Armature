@@ -18,7 +18,7 @@ import (
 
 // The contract: every call the suite makes is checked against the OpenAPI
 // document the server derives from itself. A response that does not fit its
-// own description fails the test that provoked it, and a final test refuses a
+// own description fails the test that provoked it, and TestMain refuses a
 // suite that left an operation unexercised. Nothing here knows what the
 // endpoints do; it only knows what they promised.
 
