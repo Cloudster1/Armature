@@ -10,6 +10,7 @@ import (
 // A read token is refused in the api, before any handler: it reads everything
 // its owner can and changes nothing, on every route there is or will be.
 func TestAReadTokenReadsAndNeverWrites(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

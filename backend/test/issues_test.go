@@ -24,6 +24,7 @@ import (
 // something, rather than one that needs configuring before it can hold a single
 // issue.
 func TestOrgBootstrap(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "bootstrapped")
 
@@ -80,6 +81,7 @@ func TestOrgBootstrap(t *testing.T) {
 }
 
 func TestProjects(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "projects")
 
@@ -186,6 +188,7 @@ func TestProjects(t *testing.T) {
 }
 
 func TestIssueKeys(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "keys")
 
@@ -292,6 +295,7 @@ func TestIssueKeys(t *testing.T) {
 }
 
 func TestIssueCreation(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "creating")
 
@@ -398,6 +402,7 @@ func TestIssueCreation(t *testing.T) {
 // An issue can be filed where it will sit: on a team, sized, and in a sprint,
 // in one request, so the plan can make a ticket in a sprint's own row.
 func TestAnIssueCanBeFiledStraightIntoASprint(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "filed-into")
 	alpha := ws.newTeam(t, "Alpha")

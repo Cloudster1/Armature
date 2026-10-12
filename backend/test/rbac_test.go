@@ -46,6 +46,7 @@ func (h *harness) joinAs(t *testing.T, ws *workspace, name, role string) uuid.UU
 }
 
 func TestARoleGrantedOverOneProjectStaysThere(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "scoped")
 	other := h.newWorkspace(t, "other")
@@ -73,6 +74,7 @@ func TestARoleGrantedOverOneProjectStaysThere(t *testing.T) {
 // The whole point of groups: a role granted to one reaches everybody in it, and
 // stops reaching somebody the moment they leave.
 func TestARoleGrantedToAGroupReachesItsMembers(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "grouped")
 	perms := h.perms()
@@ -108,6 +110,7 @@ func TestARoleGrantedToAGroupReachesItsMembers(t *testing.T) {
 }
 
 func TestAccessIsNeverGrantedToAStranger(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "strangers")
 	elsewhere := h.newWorkspace(t, "elsewhere")
@@ -155,6 +158,7 @@ func TestAccessIsNeverGrantedToAStranger(t *testing.T) {
 // Global administration is administration of the tenant. Scoping it to one
 // project would read as a smaller thing than it is.
 func TestGlobalAdministrationCannotBeScopedToAProject(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "globalscope")
 
@@ -169,6 +173,7 @@ func TestGlobalAdministrationCannotBeScopedToAProject(t *testing.T) {
 // An organization nobody can administer is one where the fix is a database
 // console.
 func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "lastadmin")
 	perms := h.perms()
@@ -209,6 +214,7 @@ func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 // An owner who edits their own roles must not be able to lock themselves out of
 // the organization they own.
 func TestTheOwnerAlwaysAdministersTheirOwnOrganization(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "ownerlock")
 
@@ -228,6 +234,7 @@ func TestTheOwnerAlwaysAdministersTheirOwnOrganization(t *testing.T) {
 }
 
 func TestGrantingTheSameRoleTwiceIsTheSameGrant(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "twice")
 	perms := h.perms()
@@ -251,6 +258,7 @@ func TestGrantingTheSameRoleTwiceIsTheSameGrant(t *testing.T) {
 }
 
 func TestJoiningAnOrganizationGrantsARole(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 

@@ -31,6 +31,7 @@ type far struct {
 // A person granted a role in one project sees nothing of another: not its
 // issues, not the things hanging off them, and not through an id.
 func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -195,6 +196,7 @@ func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
 
 // Only an owner lets an owner go, whoever else administers the organization.
 func TestOnlyAnOwnerLetsAnOwnerGo(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

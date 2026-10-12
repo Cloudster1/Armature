@@ -58,6 +58,7 @@ func configured(t *testing.T, h *harness, ws *workspace, provider *idp, createGr
 }
 
 func TestSigningInThroughAProvider(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "sso")
 	provider := newIDP(t)
@@ -88,6 +89,7 @@ func TestSigningInThroughAProvider(t *testing.T) {
 
 // Authenticating is not the same as being let in.
 func TestSomebodyWhoWasNeverInvitedIsRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "uninvited")
 	provider := newIDP(t)
@@ -104,6 +106,7 @@ func TestSomebodyWhoWasNeverInvitedIsRefused(t *testing.T) {
 // The point of reading groups from the token: revoking access at the provider
 // has to revoke it here.
 func TestGroupsFollowTheProvider(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "claims")
 	provider := newIDP(t)
@@ -173,6 +176,7 @@ func TestGroupsFollowTheProvider(t *testing.T) {
 }
 
 func TestAGroupTheProviderNamesCanBeCreatedOnSight(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "autogroup")
 	provider := newIDP(t)
@@ -211,6 +215,7 @@ func TestAGroupTheProviderNamesCanBeCreatedOnSight(t *testing.T) {
 // The tokens a verifier has to refuse. Each of these is a way somebody would
 // try to sign in as anybody at all.
 func TestForgedTokensAreRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "forgery")
 	provider := newIDP(t)
@@ -294,6 +299,7 @@ func TestForgedTokensAreRefused(t *testing.T) {
 // A callback whose state this server never issued is what a forged callback
 // looks like, and a state is good for exactly one sign-in.
 func TestACallbackMustBelongToASignInThatStartedHere(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "state")
 	provider := newIDP(t)
@@ -328,6 +334,7 @@ func TestACallbackMustBelongToASignInThatStartedHere(t *testing.T) {
 }
 
 func TestSignInIsRefusedWhenTheProviderIsOff(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "disabled")
 	provider := newIDP(t)
@@ -343,6 +350,7 @@ func TestSignInIsRefusedWhenTheProviderIsOff(t *testing.T) {
 
 // The secret is never handed back, and saving without one keeps the stored one.
 func TestTheClientSecretIsKeptOutOfSight(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "secret")
 	provider := newIDP(t)

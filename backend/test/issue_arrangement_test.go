@@ -18,6 +18,7 @@ import (
 // Until somebody arranges an issue, every type is drawn the way the page was
 // drawn before a project could say otherwise.
 func TestAnUnarrangedProjectIsDrawnTheBuiltInWay(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "arrange")
 	arrangements := arrange.NewService(h.cluster)
@@ -59,6 +60,7 @@ func TestAnUnarrangedProjectIsDrawnTheBuiltInWay(t *testing.T) {
 // Both ways over the API: read here, read the organization's, and be refused
 // the project that is not yours and the organization you do not administer.
 func TestArrangementsOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -107,6 +109,7 @@ func TestArrangementsOverTheAPI(t *testing.T) {
 // A project's own arrangement beats the organization's, and the organization's
 // beats the built-in, per issue type.
 func TestAProjectArrangesItsOwnIssues(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "arranging")
 	arrangements := arrange.NewService(h.cluster)

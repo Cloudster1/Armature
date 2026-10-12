@@ -13,6 +13,7 @@ import (
 // A key holds what the person who made it holds, and never more: not the
 // administration, and not a project it was not given.
 func TestAKeyIsNarrowerThanTheOwnerWhoMadeIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -88,6 +89,7 @@ func TestAKeyIsNarrowerThanTheOwnerWhoMadeIt(t *testing.T) {
 // The owner here is the organization's owner, which is as much standing as
 // anybody has. Their key still does not administer.
 func TestAKeyNeverAdministersHoweverMuchItsOwnerCan(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

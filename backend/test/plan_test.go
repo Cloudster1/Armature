@@ -41,6 +41,7 @@ func (h *harness) schedule(t *testing.T, ws *workspace, key, start, due string) 
 }
 
 func TestScheduling(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "sched")
 
@@ -153,6 +154,7 @@ func TestScheduling(t *testing.T) {
 }
 
 func TestIssueLinks(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "linking")
 
@@ -248,6 +250,7 @@ func TestIssueLinks(t *testing.T) {
 }
 
 func TestPlanForProject(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "planning")
 	plans := ws.plans
@@ -438,6 +441,7 @@ func containsAll(haystack []string, needles ...string) bool {
 // The plan reads the load per team: what is scheduled into each week against
 // what the team said it could take, and the work no team carries beside it.
 func TestOneFarDateDoesNotStretchThePlansLoadAcrossCenturies(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "farout")
 	near := ws.newIssue(t, "this autumn")
@@ -456,6 +460,7 @@ func TestOneFarDateDoesNotStretchThePlansLoadAcrossCenturies(t *testing.T) {
 }
 
 func TestADateOutsideTheYearsAnIssueCanHaveIsRefusedWithASentence(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -471,6 +476,7 @@ func TestADateOutsideTheYearsAnIssueCanHaveIsRefusedWithASentence(t *testing.T) 
 }
 
 func TestThePlanReadsTheLoadPerTeam(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "loaded")
 	alpha := ws.newTeam(t, "Alpha")

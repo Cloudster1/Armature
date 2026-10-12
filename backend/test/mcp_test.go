@@ -12,6 +12,7 @@ import (
 // MCP is the same table, dispatched in process: a tool call answers what the
 // HTTP call answers, under the same credential and the same refusals.
 func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)

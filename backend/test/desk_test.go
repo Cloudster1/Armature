@@ -71,6 +71,7 @@ func timerFor(t *testing.T, timers []desk.Timer, metric desk.Metric) desk.Timer 
 }
 
 func TestAServiceDeskIsSetUpFromItsTemplate(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "desking")
 	d, p := ws.aDesk(t, h, "Helpdesk")
@@ -113,6 +114,7 @@ func TestAServiceDeskIsSetUpFromItsTemplate(t *testing.T) {
 }
 
 func TestACustomerRaisesAndFollowsARequest(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "raising")
 	d, p := ws.aDesk(t, h, "Support")
@@ -336,6 +338,7 @@ func (m *fakeMailer) Send(ctx context.Context, mail desk.Mail) error {
 }
 
 func TestACustomerIsMailedAboutTheirRequest(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "mailing")
 	d, p := ws.aDesk(t, h, "Mail desk")
@@ -387,6 +390,7 @@ func TestACustomerIsMailedAboutTheirRequest(t *testing.T) {
 }
 
 func TestCustomersAreKeptToThePortal(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
@@ -473,6 +477,7 @@ func TestCustomersAreKeptToThePortal(t *testing.T) {
 // under, the details a requester starts from, and the team the request lands
 // with. The team has to be the project's own, and the row refuses otherwise.
 func TestARequestIsRoutedByItsTemplate(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "routing")
 	d, p := ws.aDesk(t, h, "Routed desk")

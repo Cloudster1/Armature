@@ -57,6 +57,7 @@ func bucket(b *report.Breakdown, label string) int {
 }
 
 func TestANewProjectHasADashboardThatSuitsIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "dashing")
 	r := ws.reports(h)
@@ -108,6 +109,7 @@ func TestANewProjectHasADashboardThatSuitsIt(t *testing.T) {
 }
 
 func TestReportsCountTheProjectsWork(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "counting")
 	r := ws.reports(h)
@@ -254,6 +256,7 @@ func TestReportsCountTheProjectsWork(t *testing.T) {
 }
 
 func TestTheDeskReportsHowItKeptItsGoals(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "goalkeeping")
 	d, p := ws.aDesk(t, h, "Report desk")
@@ -296,6 +299,7 @@ func TestTheDeskReportsHowItKeptItsGoals(t *testing.T) {
 }
 
 func TestDashboardsAreArranged(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "arranging")
 	other := h.newWorkspace(t, "elsewhere")
@@ -374,6 +378,7 @@ func TestDashboardsAreArranged(t *testing.T) {
 }
 
 func TestDashboardsOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
@@ -405,6 +410,7 @@ func TestDashboardsOverTheAPI(t *testing.T) {
 // A dashboard's filter is an NQL clause handed to every report that counts
 // issues; the reports about sprints count sprints and are left alone.
 func TestAQueryNarrowsWhatAReportCounts(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "narrowed")
 	r := ws.reports(h)
@@ -487,6 +493,7 @@ func TestAQueryNarrowsWhatAReportCounts(t *testing.T) {
 }
 
 func TestADashboardKeepsOneFilter(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "onefilter")
 	r := ws.reports(h)
@@ -537,6 +544,7 @@ func TestADashboardKeepsOneFilter(t *testing.T) {
 }
 
 func TestReportsNarrowOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
@@ -568,6 +576,7 @@ func TestReportsNarrowOverTheAPI(t *testing.T) {
 // The chart widget is one grouped query with a short list of words for each
 // question; anything off the lists is refused with the list.
 func TestAChartGroupsIssuesByAField(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
@@ -684,6 +693,7 @@ func TestAChartGroupsIssuesByAField(t *testing.T) {
 // The milestones widget says what the milestone card says, subtasks included,
 // and narrows with the dashboard's query like anything else.
 func TestAMilestonesWidgetCountsWhatTheCardCounts(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "mwidget")
 	r := ws.reports(h)
@@ -781,6 +791,7 @@ func TestAMilestonesWidgetCountsWhatTheCardCounts(t *testing.T) {
 // A template is a copy: built in as code or saved as the organization's own
 // rows, and a dashboard made from one never follows it.
 func TestADashboardIsMadeFromATemplate(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "templated")
 	r := ws.reports(h)
@@ -925,6 +936,7 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 // A milestone's dashboard is a copy pinned to the milestone: the filter says
 // its name and the widget carries its id, so the two cannot disagree.
 func TestAMilestoneGetsADashboard(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "mdash")
 	r := ws.reports(h)

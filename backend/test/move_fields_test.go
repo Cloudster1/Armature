@@ -29,6 +29,7 @@ func changeOf(entry issue.HistoryEntry, name string) *issue.Change {
 // An organization field applies in every project, so a move keeps its value;
 // only the old project's own fields are dropped, each named in the history.
 func TestAMoveKeepsOrganizationFieldsAndNamesTheValuesItDrops(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ws := h.newWorkspace(t, "movefields")
 	fields := ws.fields(h)

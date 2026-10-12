@@ -12,6 +12,7 @@ import (
 // An integration asks who it is when it connects, and learns there what its
 // token will be refused, rather than at the first write that fails.
 func TestAuthMeTellsATokenWhatItMayDo(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
