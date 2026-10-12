@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { ResourceRow, ResourceWeek } from "@/api/resources";
+import { atInstantIn } from "@/test/zone";
 import { cellShares, cellState, describeCell, describeHours, hasPlannedRows, hours, mondayOf, shiftWeeks, weekLabel, windowFrom } from "./cells";
 
 const week = (over: Partial<ResourceWeek> = {}): ResourceWeek => ({ start: "2031-03-03T00:00:00Z", loadHours: 0, issues: [], ...over });
@@ -63,26 +64,13 @@ describe("the resource window", () => {
   });
 
   describe("opens on the reader's own week", () => {
-    const zone = process.env.TZ;
-    // Node reads TZ again whenever it changes, so a test can stand in any zone.
-    const standIn = (tz: string, utc: string) => {
-      process.env.TZ = tz;
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date(utc));
-    };
-    afterEach(() => {
-      vi.useRealTimers();
-      if (zone === undefined) delete process.env.TZ;
-      else process.env.TZ = zone;
-    });
-
     it("in Berlin at half past midnight on a Monday, which is still Sunday in UTC", () => {
-      standIn("Europe/Berlin", "2031-06-01T22:30:00Z");
+      atInstantIn("Europe/Berlin", "2031-06-01T22:30:00Z");
       expect(mondayOf(new Date())).toBe("2031-06-02");
     });
 
     it("in New York on a Sunday evening, which is already Monday in UTC", () => {
-      standIn("America/New_York", "2031-06-02T00:00:00Z");
+      atInstantIn("America/New_York", "2031-06-02T00:00:00Z");
       expect(mondayOf(new Date())).toBe("2031-05-26");
     });
   });

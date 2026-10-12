@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the SPA's tests run in worker threads, and the few that change
+  the time zone, now named `*.zone.test.ts(x)`, in processes of their own;
+  Tailwind is no longer loaded for tests (#187).
 - Fixed: a scrum master or project administrator can change or remove only
   the absences they recorded themselves, never the person's own or an
   administrator's, and the person is told in their inbox, and by mail if they

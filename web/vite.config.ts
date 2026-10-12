@@ -1,12 +1,16 @@
 // vitest/config re-exports Vite's defineConfig with the `test` block typed,
 // which keeps one config file instead of two that can drift apart.
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 
+/** Tests that stand the browser in another time zone, see src/test/zone.ts. */
+const ZONE_TESTS = "src/**/*.zone.test.{ts,tsx}";
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  // Tests never load the stylesheet, so Tailwind would only add start-up time.
+  plugins: process.env.VITEST ? [react()] : [react(), tailwindcss()],
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
@@ -31,5 +35,11 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // Worker threads start faster than child processes and each file still gets
+    // its own jsdom, but a thread ignores TZ, so tests that change it get a process.
+    projects: [
+      { extends: true, test: { name: "threads", pool: "threads", exclude: [...configDefaults.exclude, ZONE_TESTS] } },
+      { extends: true, test: { name: "zone", pool: "forks", include: [ZONE_TESTS] } },
+    ],
   },
 });

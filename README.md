@@ -236,6 +236,12 @@ order of things matters. A page load is waited for by the page's own word,
 `data-settled` on the body, which the app writes from its in-flight queries and
 the router's state.
 
+The SPA's tests run in worker threads, which start faster than processes but
+cannot change their time zone. A test that stands the browser in another zone
+with `atInstantIn` (src/test/zone.ts) is named `*.zone.test.ts(x)` and runs in a
+process of its own; in a thread the helper refuses rather than let the test
+pass in UTC.
+
 The API is described by `api/openapi.json`, derived from the handler tables and
 types. After changing a route or a request or response type, run `make openapi`
 and commit the regenerated document and `web/src/api/schema.d.ts`; a unit test
