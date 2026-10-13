@@ -231,8 +231,8 @@ Four layers, each testing something the layer below cannot.
 
 Nothing is mocked below the layer under test. The integration suite talks to the
 actual primary and replica, pauses WAL replay to create deterministic lag, and,
-while the schema still has organizations, asserts row level security with two
-of them holding real credentials. The browser suite drives the same UI a person would. A guard is not proven by the
+while the tables still carry `org_id`, asserts that row level security lets the
+api's own role read and write nothing without the organization set. The browser suite drives the same UI a person would. A guard is not proven by the
 service refusing: the same thing is tried straight through SQL and the database
 refuses it too.
 
@@ -242,15 +242,22 @@ background worker draining the same outbox would race them. It is restarted
 afterwards, including on failure.
 
 The integration suite opens one cluster, the superuser pools and the attachment
-bucket in `TestMain`, and `newHarness` hands them to every test. For now a new
-test works in organizations of its own, which the harness founds with their owner
-straight through the database since no product path makes a second one, and
-calls `t.Parallel()` first thing. The tests of sign-up itself run against a
-database of their own, migrated from nothing, the one place an installation
-is empty. A test
-that shares something another test would disturb (pausing the replica, a worker
-pass over every organization, the mailpit box, Redis, the per-address brakes, a
-row read across organizations) stays sequential and is listed in
+bucket in `TestMain`, and `newHarness` hands them to every test. Every test
+works in the one installation, the database's organization, which `TestMain`
+makes the way the first sign-up would when there is none yet. Tests keep apart
+by what they make rather than where: `h.person` and `h.outsider` make people at
+the standing a test needs, `h.newProject` an owner with a project of their own,
+`h.projectKey` a project key nobody else has and `h.name` a name for anything
+everybody shares one list of, such as labels, statuses, workflows, schemes,
+groups, roles, fields, calendars, templates and webhooks. Each goes when its
+test ends. An administrator sees every test's projects and people, so a test
+asserts on what it made, never on totals, and calls `t.Parallel()` first thing.
+The tests of sign-up itself run against a database of their own, migrated from
+nothing, the one place an installation is empty. A test that shares something
+another test would disturb (pausing the replica, a worker pass over everything,
+the mailpit box, Redis, the per-address brakes, a setting every test lives with
+such as a default, the roles, the provider or the second-factor rule) stays
+sequential, puts back what it changed, and is listed in
 `backend/test/parallel_test.go` with what it shares. Go runs the sequential ones
 first, before any parallel test starts, and `make test` refuses a test that is
 neither.
