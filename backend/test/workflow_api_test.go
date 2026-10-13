@@ -356,12 +356,12 @@ func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
 		}
 	})
 
-	t.Run("a workflow that is not the organization's is refused with a sentence", func(t *testing.T) {
+	t.Run("a workflow that does not exist is refused with a sentence", func(t *testing.T) {
 		resp := admin.put("/api/v1/projects/ROW/workflow-assignments/"+bug, map[string]any{"workflowId": uuid.New().String()})
 		if resp.Status != http.StatusBadRequest {
 			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
 		}
-		if message, _ := resp.Error()["message"].(string); !strings.Contains(message, "organization's workflows") {
+		if message, _ := resp.Error()["message"].(string); !strings.Contains(message, "Settings, under Workflows") {
 			t.Errorf("message = %q, want it to say what to choose", message)
 		}
 	})
