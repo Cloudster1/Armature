@@ -8,6 +8,7 @@ import type { Attachment } from "./attachments";
 import type { ManagedUser } from "./users";
 import type { Theme, ThemeExample } from "./themes";
 import type { Build } from "./build";
+import type { ActiveSession } from "./auth";
 import type { Absence, Holiday, HolidayCalendar, WorkingWeek } from "./availability";
 
 // The hand written types are what the components render; the generated ones
@@ -45,6 +46,10 @@ describe("the hand written types agree with the document", () => {
 
   it("for the build", () => {
     expectTypeOf<Schemas["BuildinfoInfo"]>().toMatchTypeOf<Build>();
+  });
+
+  it("for where a person is signed in", () => {
+    expectTypeOf<Schemas["Session"]>().toMatchTypeOf<ActiveSession>();
   });
 });
 

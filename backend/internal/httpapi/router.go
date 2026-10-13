@@ -93,6 +93,11 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Patch("/auth/me", s.handleUpdateProfile)
 			// A password is changed by the person who has it, never by a token.
 			r.With(requireSession).Put("/auth/me/password", s.handleChangePassword)
+			// Where one is signed in, and ending the others; a token is no
+			// session of its own to keep.
+			r.With(requireSession).Get("/auth/sessions", s.handleListSessions)
+			r.With(requireSession).Delete("/auth/sessions", s.handleEndOtherSessions)
+			r.With(requireSession).Delete("/auth/sessions/{sessionID}", s.handleEndSession)
 			r.Post("/auth/me/avatar", s.handleSetAvatar)
 			r.Delete("/auth/me/avatar", s.handleRemoveAvatar)
 			// A person's data is theirs to take and theirs to have erased.

@@ -21,6 +21,11 @@ here in the branch that makes it.
   corrected in place, its duration, day and note together. An edited
   internal note answers as one again, a comment is found only on the issue
   its address names, and a missing one answers 404 instead of 422 (#113).
+- Added: the profile lists where you are signed in, each device with its
+  address, organization and when it was last active, and signs one out or
+  every one but this; no password change is needed, so an account the
+  identity provider signs in can do it too. Both are in the audit log
+  (#106).
 - Fixed: swimlanes reordered under Configure swimlanes stay where they were
   put. A project whose oldest board had gone to a team opened on that board
   while the panel edited the project-wide one, and a second arrow press

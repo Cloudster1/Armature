@@ -368,6 +368,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where you are signed in, newest first, the session asking marked current. From a browser session only. */
+        get: operations["listSessions"];
+        put?: never;
+        post?: never;
+        /** Sign out everywhere but the session asking. From a browser session only. */
+        delete: operations["endOtherSessions"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sessions/{sessionID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign out one of your other sessions; the one asking is ended by signing out. From a browser session only. */
+        delete: operations["endSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/signup": {
         parameters: {
             query?: never;
@@ -6253,6 +6288,20 @@ export interface components {
             description?: string;
             url: string;
         };
+        Session: {
+            /** Format: date-time */
+            createdAt: string;
+            current: boolean;
+            /** Format: uuid */
+            id: string;
+            ip: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            orgName: string;
+            /** @enum {string} */
+            proof: "password" | "invite" | "portal_code" | "open_door" | "oidc";
+            userAgent: string;
+        };
         SetAssignmentRequest: {
             /** Format: uuid */
             workflowId: string | null;
@@ -7927,6 +7976,93 @@ export interface operations {
                 "application/json": components["schemas"]["ConfirmPasswordResetRequest"];
             };
         };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sessions: components["schemas"]["Session"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    endOtherSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    endSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description No Content */
             204: {
