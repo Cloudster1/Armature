@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// org forces row security on its owner, and a cluster migrates as a plain
-// owner, so a migration reading org without lifting that first reads nothing.
+// org forced row security on its owner until 00932, and a cluster migrates as a
+// plain owner, so a migration reading org without lifting that first read nothing.
 var (
 	readsOrg     = regexp.MustCompile(`(?i)\b(from|join)\s+(public\.)?org\b`)
 	liftsOrg     = regexp.MustCompile(`(?i)alter\s+table\s+(public\.)?org\s+no\s+force\s+row\s+level\s+security`)
@@ -18,6 +18,10 @@ var (
 
 // The repair that reran the backfills written before the rule was.
 const ownerBackfillsRepair = "00926_backfills_reach_every_org.sql"
+
+// From this migration on nothing hides a row from the owner, so the ones after
+// it read org freely and the rule holds only for those before.
+const rowSecurityDropped = "00932_drop_row_security.sql"
 
 // Files that read org without lifting its row security. A backfill is listed
 // with the migration that repaired it; a trigger body runs as the tenant.
@@ -66,7 +70,13 @@ func TestBackfillsReadingOrgLiftItsRowSecurity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := fs.Stat(FS, rowSecurityDropped); err != nil {
+		t.Fatalf("%s, which ends the rule, is missing: %v", rowSecurityDropped, err)
+	}
 	for _, name := range names {
+		if name >= rowSecurityDropped {
+			continue
+		}
 		up := upSection(t, name)
 		if liftsAroundItsReads(up) {
 			continue

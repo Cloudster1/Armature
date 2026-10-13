@@ -15,9 +15,8 @@ import (
 	"github.com/armature/armature/backend/internal/events"
 )
 
-// The operations below are tenant scoped like any other data access: they run
-// through the cluster's normal Write and Read paths, so row level security
-// constrains them exactly as it constrains issues or projects.
+// The operations below run through the cluster's normal Write and Read paths,
+// like any other data access.
 
 // CreateInvite records an invitation and returns it together with the secret to
 // put in the invitation link. The secret is not recoverable afterwards.

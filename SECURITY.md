@@ -22,7 +22,7 @@ The interesting surfaces, and what each is supposed to guarantee:
 
 | Area | The claim to try to break |
 |---|---|
-| Database roles | The api and the worker connect as a role that is neither owner nor superuser, and outside development refuse one that has `rolsuper` or `rolbypassrls`. The tables of the work keep forced row level security on `current_org_id()`, set per transaction, so a query with none set reads nothing |
+| Database roles | The api and the worker connect as a role that is neither owner nor superuser, and outside development refuse one that has `rolsuper` or `rolbypassrls`. There is no row level security, since an installation is one team's. The walls inside it are projects, kept by the api, and the rules every write must keep, whoever makes it, are triggers |
 | Session provenance | A session keeps the proof it was opened with, and the database refuses rewriting it. A session that came through an open desk door sees that one desk and cannot export or erase the account behind the address |
 | Roles | A project is a wall. What a role does not reach is not found, rather than refused |
 | The desk portal | A customer sees their own requests and never an internal note |

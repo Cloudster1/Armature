@@ -171,11 +171,11 @@ browser ──> web (Vite SPA, Tailwind)
 
 Writes go to the primary and return the write ahead log position they committed
 at; a reader who just wrote is pinned to a replica caught up past it, or to the
-primary. The API connects as a role that is neither owner nor superuser. The
-tables that kept organizations apart still carry `org_id` and a forced row
-level security policy on `current_org_id()`, set transaction-locally; an
-installation holds one organization now, kept inside until the schema drops
-both. Events are written to an outbox table in the
+primary. The API connects as a role that is neither owner nor superuser.
+Inside an installation the walls are projects, kept by the API and by
+triggers on the tables; there is no row level security. The tables still
+carry `org_id` for the one organization kept inside, until the schema drops
+it. Events are written to an outbox table in the
 same transaction as the change and relayed to Redis, so an event never describes
 a transaction that rolled back.
 
@@ -203,12 +203,12 @@ at length, because each is a way to get it wrong:
 
 - **Three database roles.** The application never connects as a privileged one.
   Outside `development` both binaries refuse to start if the role they are given
-  has `rolsuper` or `rolbypassrls`. The admin role is exempt from row level
-  security by policy, not by `BYPASSRLS`, which is exactly why it still passes.
+  has `rolsuper` or `rolbypassrls`. The admin role is the second, for sign-up,
+  sign-in and the outbox relay; it holds the same grants as the app role.
 - **The role names must match the migrations.** Every role reference in a
   migration is wrapped in `IF EXISTS`, so a name that does not match is skipped
-  rather than refused: the grants and the RLS bypass go missing and nothing says
-  so. The chart takes one value per role name for that reason.
+  rather than refused: the grants go missing and nothing says so. The chart
+  takes one value per role name for that reason.
 - **The worker runs once.** `worker.replicas` may only be 1 and the chart
   refuses anything else. There is no leader election, the Redis consumers all
   identify themselves as the literal `worker`. The digest alone would cope with
@@ -225,14 +225,13 @@ Four layers, each testing something the layer below cannot.
 | Command | What it covers |
 |---|---|
 | `make test` | Pure logic: argon2 hashing, token digests, slug shapes, LSN parsing, replica selection, freshness pinning, the query compiler, markup conversion |
-| `make test-integration` | The Go stack against real Postgres: row level security, streaming replication, the auth service, the HTTP API through its real router and middleware, the outbox relay |
+| `make test-integration` | The Go stack against real Postgres: triggers, streaming replication, the auth service, the HTTP API through its real router and middleware, the outbox relay |
 | `make npm ARGS="run test"` | The SPA: API client error handling, theme persistence, forms and UI primitives |
 | `make test-e2e` | A real Chromium against the running stack, 186 scenarios over every feature: signing in, roles, projects and issues, workflows, boards, sprints, the plan, git, the desk, dashboards, search, import and export |
 
 Nothing is mocked below the layer under test. The integration suite talks to the
-actual primary and replica, pauses WAL replay to create deterministic lag, and,
-while the tables still carry `org_id`, asserts that row level security lets the
-api's own role read and write nothing without the organization set. The browser suite drives the same UI a person would. A guard is not proven by the
+actual primary and replica, and pauses WAL replay to create deterministic lag.
+The browser suite drives the same UI a person would. A guard is not proven by the
 service refusing: the same thing is tried straight through SQL and the database
 refuses it too.
 
@@ -409,7 +408,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_OUTBOUND_ALLOW` | none | addresses, CIDRs or host names the server may call inside the network |
 | `ARMATURE_DB_PRIMARY_URL` | required | the writable Postgres |
 | `ARMATURE_DB_REPLICA_URLS` | none | read replicas |
-| `ARMATURE_DB_ADMIN_URL` | the primary | the role exempt from row level security |
+| `ARMATURE_DB_ADMIN_URL` | the primary | the role for sign-up, sign-in and the outbox relay |
 | `ARMATURE_DB_MAX_CONNS` / `_MIN_CONNS` | `20` / `2` | pool bounds per process |
 | `ARMATURE_DB_CONN_MAX_LIFETIME` | `1h` | how long a connection is kept |
 | `ARMATURE_DB_HEALTH_INTERVAL` | `5s` | how often a replica's lag is re-read, and one that is down is tried again |

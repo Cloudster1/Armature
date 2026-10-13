@@ -64,11 +64,8 @@ type Telemetry struct {
 type DB struct {
 	PrimaryURL  string
 	ReplicaURLs []string
-	// AdminURL connects as the role that is exempt from row level security by
-	// explicit policy. Signup, login and the outbox relay legitimately operate
-	// before or across tenants and use it; everything else must not. Defaults
-	// to PrimaryURL when unset, which is correct for single-role setups such as
-	// the test harness.
+	// AdminURL is the role for what runs before a tenant is known, such as signup,
+	// login and the outbox relay; unset, it is PrimaryURL, as in the test harness.
 	AdminURL string
 
 	MaxConns          int32

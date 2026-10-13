@@ -1,8 +1,5 @@
-// Package tenant carries the current organization (tenant) through a request.
-//
-// It deliberately has no database dependency: the db package reads from here to
-// set the Postgres session variable that row level security policies key on, so
-// tenant must sit below db in the import graph.
+// Package tenant carries the organization through a request. It sits below db,
+// which reads it to set the session variable current_org_id() answers with.
 package tenant
 
 import (
@@ -12,9 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// PostgresVar is the session variable that every row level security policy
-// compares org_id against. It is set with SET LOCAL inside each transaction, so
-// it is scoped to that transaction and cannot leak across pooled connections.
+// PostgresVar is what current_org_id() reads, for the inserts and triggers that
+// still name the organization; it is set per transaction.
 const PostgresVar = "app.org_id"
 
 // ErrNoTenant is returned when a tenant scoped operation is attempted without an

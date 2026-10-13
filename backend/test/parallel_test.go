@@ -32,6 +32,8 @@ var sequentialTests = map[string]string{
 	"TestOldKeysComeOverFromTheColumnThatKeptOne":                "creates databases and roles",
 	"TestMigrationsRunAsPlainOwner":                              "creates databases and roles",
 	"TestTheUpgradeRefusesSeveralOrganizations":                  "creates databases and roles",
+	"TestRowSecurityGoesAsThePlainOwner":                         "creates databases and roles",
+	"TestTheDropStopsAtAPolicyItDidNotMake":                      "creates databases and roles",
 	"TestOutboxRelay":                                            "relays the whole installation's outbox into the shared stream",
 	"TestOutboxRelayWaitsForTheSlowestGroup":                     "relays the whole installation's outbox into the shared stream",
 	"TestAConsumerRetriesAHandlerThatFailedOnce":                 "consumes the shared Redis stream",

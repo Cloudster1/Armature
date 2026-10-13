@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the database keeps no row level security. Its policies kept
+  organizations apart, and an installation holds one; the walls inside it,
+  projects, the desk's customers and the owners, stay in the api and in the
+  triggers, as they were. The upgrade drops only the policies Armature made
+  and stops at any other, naming it, so drop or move a policy you added
+  yourself before upgrading (#218).
 - Changed: the integration suite works in the one installation instead of
   an organization per test. A test makes its own people, project keys and
   names, removes them when it ends and asserts only on what it made; the

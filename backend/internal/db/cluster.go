@@ -423,8 +423,8 @@ func (c *Cluster) Stats() Stats {
 	return s
 }
 
-// RefuseSuperuser fails when this connects as a role that ignores row level
-// security, which would make every policy in the schema decoration.
+// RefuseSuperuser fails on a superuser or a role made to skip row security: the
+// application needs neither, so either is a deployment mistake.
 func (c *Cluster) RefuseSuperuser(ctx context.Context) error {
 	var privileged bool
 	err := c.primary.QueryRow(ctx, `SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user`).Scan(&privileged)

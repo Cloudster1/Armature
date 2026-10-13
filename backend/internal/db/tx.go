@@ -10,10 +10,8 @@ import (
 	"github.com/armature/armature/backend/internal/tenant"
 )
 
-// setOrgSQL binds the row level security session variable for the current
-// transaction. SET LOCAL cannot take a bind parameter, but set_config can, and
-// its third argument makes the setting transaction local, so it is discarded on
-// commit or rollback and can never leak to the next user of a pooled connection.
+// setOrgSQL binds what current_org_id() answers, transaction-locally so a pooled
+// connection never carries it on; set_config, unlike SET LOCAL, takes a parameter.
 const setOrgSQL = `SELECT set_config($1, $2, true)`
 
 // currentLSNSQL reads the primary's current write ahead log insert position.
@@ -99,13 +97,8 @@ func (c *Cluster) inTx(
 	return nil
 }
 
-// WriteAdmin runs fn on the primary as the row-level-security exempt role.
-//
-// It exists for the handful of operations that cannot be tenant scoped because
-// they run before a tenant is known: creating an organization, looking a user
-// up by email at login, accepting an invite, and relaying the outbox. Every
-// other write must go through Write so that its tenant scope is enforced by the
-// database rather than by the caller remembering to add a filter.
+// WriteAdmin runs fn on the primary as the admin role, for what runs before a
+// tenant is known: sign-up, a sign-in's lookup, an invitation, the outbox relay.
 func (c *Cluster) WriteAdmin(ctx context.Context, fn func(context.Context, DBTX) error) (LSN, error) {
 	err := c.inTx(WithSystem(ctx), c.admin, pgx.TxOptions{AccessMode: pgx.ReadWrite}, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)

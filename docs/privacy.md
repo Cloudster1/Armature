@@ -83,7 +83,7 @@ profile, which ends every other session of theirs.
 Every retention window is a duration read from the environment
 (`ARMATURE_RETAIN_*`, Go duration syntax such as `720h`); zero keeps a kind
 forever, which nothing here recommends. The worker sweeps on start and every
-24 hours, under row security for the installation's tables and as the
+24 hours, in the installation's own transactions for its tables and as the
 administrator for the tables that belong to nobody in particular.
 
 ## Where it lives and where it goes

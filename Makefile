@@ -98,7 +98,7 @@ build: ## Compile all backend binaries
 test: ## Run backend unit tests
 	$(DOCKER_GO) go test ./...
 
-# The integration suite talks to the running compose stack: row level security,
+# The integration suite talks to the running compose stack: triggers,
 # streaming replication and replay lag are properties of Postgres itself and
 # cannot be usefully faked. Bring the stack up with `make up` first.
 .PHONY: test-integration

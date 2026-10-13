@@ -87,8 +87,8 @@ func SetSchemeItem(ctx context.Context, tx db.DBTX, schemeID, issueTypeID uuid.U
 	if workflowID == nil {
 		return nil
 	}
-	// Under row level security a workflow of another organization is simply
-	// absent, so the check is made here where the answer can be a sentence.
+	// The foreign key would refuse a workflow that is not there too, but here
+	// the answer can be a sentence.
 	var exists bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM workflow WHERE id = $1)`, *workflowID).Scan(&exists); err != nil {
 		return fmt.Errorf("look for the workflow: %w", err)
