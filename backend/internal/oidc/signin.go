@@ -93,10 +93,10 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 		}
 		var sessionID uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO user_session (user_id, token_hash, current_org_id, proof_org_id, user_agent, ip, expires_at, proof)
-			VALUES ($1, $2, $3, $3, NULLIF($4, ''), NULLIF($5, '')::inet, $6, 'oidc')
+			INSERT INTO user_session (user_id, token_hash, user_agent, ip, expires_at, proof)
+			VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, '')::inet, $5, 'oidc')
 			RETURNING id`,
-			userID, digest, orgID, userAgent, ip, time.Now().Add(ttl),
+			userID, digest, userAgent, ip, time.Now().Add(ttl),
 		).Scan(&sessionID)
 		if err != nil {
 			return fmt.Errorf("create session: %w", err)

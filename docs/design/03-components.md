@@ -62,7 +62,7 @@ Every name the first kit exported is still exported, so callers keep
 - **SelectInput**: the select without a label, named by `aria-label`, for a
   toolbar or a table cell. `Select` composes it.
 - **Button variant="link"**: text in a sentence, no height and no padding, for
-  "Remove", "Sign in with single sign-on", an example query.
+  "Remove", an example query.
 - **IconButton size="xs"**: 20px, for a tree's collapse toggle or a chip's x.
 - **isInteractiveTarget(target)**: whether a click landed on a link, a button
   or a control of its own, so a row around it does not act as well. Beside

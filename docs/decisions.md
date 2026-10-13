@@ -1577,6 +1577,9 @@ request to join instead, which an administrator can admit.
 
 ### A sign-in reaches what its proof vouches for
 
+**Superseded** by [A sign-in lands in the installation, with one provider and one rule](#a-sign-in-lands-in-the-installation-with-one-provider-and-one-rule)
+(#212): with one installation there is no other organization to reach.
+
 An account is global and a person may belong to many organizations, while
 anybody can sign up and own one. Four doors of an organization opened a session
 for an existing account without the person proving anything: an invitation
@@ -1684,6 +1687,41 @@ to make somebody else an administrator first, and the trigger
 because a column the code forgets to check is not a rule. An owner beside an
 active administrator may now be switched off; the owner's standing grant still
 means an owner who is active always administers.
+
+### A sign-in lands in the installation, with one provider and one rule
+
+An installation serves one team (#208), so there is nothing to choose after
+signing in and nothing to switch to. `POST /auth/switch-org`, the chooser on
+the sign-in page, the sidebar's switcher and the profile's list are gone, and
+`/auth/me` no longer lists organizations. A session names no organization: it
+acts in the person's own, read from the membership at every request, and the
+database refuses a session row that names one (`00931`). The columns stay,
+empty, until the tenant goes (#218); until then the integration harness gives
+some people a second organization, so the one joined first is the one, as a
+password sign-in always chose. A session through an open desk door acts in
+that desk's organization and sees that desk alone.
+
+What made a session reach further is gone with it: `session_reaches`, the
+trigger that applied it, the trust between organizations sharing an issuer,
+and the `session_bound` refusal. The proof stays, and the database still
+refuses rewriting it. An open door takes an address on trust, so its session
+may not export or erase the account behind it; a mailed code may.
+
+Single sign-on starts at `/auth/oidc/start`, at the installation's one
+provider, and the sign-in page offers it as one link. The address that named
+an organization sends the browser there for one release, because links and
+bookmarks outlive a deploy. The callback never named one, so what the provider
+has registered stays right. A session the provider opened brings the
+provider's own second factor and is held by no rule.
+
+The second-factor rule lives at `/settings/second-factor` and reads off, for
+administrators or for everyone. The old address goes without a stand-in: the
+web is its one caller and changes with it. A held session may set the factor
+up, look at it, end other sessions or sign out, and hears nothing about
+another organization.
+
+**Reconsider if** an installation needs more than one identity provider, at
+which point the start takes the provider rather than an organization.
 
 ### A forgotten password is reset by mail, and the answer names nobody
 

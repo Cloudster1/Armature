@@ -3,7 +3,6 @@
 import { scenario, serialScenario } from "../runner.mjs";
 import {
   acceptInvite,
-  bodyText,
   auditRowsFor,
   calendarDaysOf,
   clickButton,
@@ -19,7 +18,6 @@ import {
   goto,
   grantRole,
   inviteMember,
-  LOAD_WAIT,
   postStatus,
   removeOrgFields,
   scheduleIssue,
@@ -170,18 +168,4 @@ serialScenario("a field defined for the organization is on every project", async
   } finally {
     await removeOrgFields([costCentre, region]);
   }
-});
-
-// One press on the organization page makes a second organization with a
-// production line in it and lands the reader on that project.
-scenario("a demo organization with a production line is one press away", async ({ page }) => {
-  const owner = await signUp(page, unique("user"), { visit: false });
-  await goto(page, "/settings/organization");
-  await page.waitForSelector('[data-action="create-demo"]', { timeout: WAIT });
-  await page.click('[data-action="create-demo"]');
-  await page.waitForFunction(() => location.pathname.startsWith("/projects/LINE"), { timeout: LOAD_WAIT });
-  await waitForApp(page);
-  await page.waitForFunction(() => document.body.innerText.includes("Production line 3"), { timeout: WAIT });
-  expect.contains(await bodyText(page), "Demo factory", "the session moved into the demo organization");
-  expect.truthy(owner.org.length > 0, "the home organization still exists");
 });

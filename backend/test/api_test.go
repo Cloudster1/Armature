@@ -46,9 +46,8 @@ func TestAPIAuthFlow(t *testing.T) {
 		if me.Status != http.StatusOK {
 			t.Fatalf("me returned %d: %s", me.Status, me.Raw)
 		}
-		orgs, ok := me.Body["organizations"].([]any)
-		if !ok || len(orgs) != 1 {
-			t.Errorf("organizations = %v, want exactly one", me.Body["organizations"])
+		if listed, ok := me.Body["organizations"]; ok {
+			t.Errorf("/auth/me lists organizations to switch to: %v", listed)
 		}
 
 		if out := c.post("/api/v1/auth/logout", nil); out.Status != http.StatusNoContent {
@@ -122,19 +121,6 @@ func TestAPIAuthFlow(t *testing.T) {
 		}
 	})
 
-	t.Run("an API token cannot switch organization", func(t *testing.T) {
-		owner := api.client(t)
-		owner.signup(t, h, "bearerswitch")
-		created := owner.post("/api/v1/tokens", map[string]any{"name": "ci"})
-		secret := principalField(t, created, "token", "secret").(string)
-
-		bearer := api.client(t)
-		bearer.bearer = secret
-		resp := bearer.post("/api/v1/auth/switch-org", map[string]string{"slug": "anything"})
-		if resp.Status != http.StatusBadRequest {
-			t.Errorf("status = %d, want 400: a token is bound to one organization", resp.Status)
-		}
-	})
 }
 
 func TestAPIAuthorization(t *testing.T) {
@@ -151,7 +137,6 @@ func TestAPIAuthorization(t *testing.T) {
 		}{
 			{http.MethodGet, "/api/v1/auth/me"},
 			{http.MethodPost, "/api/v1/auth/logout"},
-			{http.MethodPost, "/api/v1/auth/switch-org"},
 			{http.MethodGet, "/api/v1/tokens"},
 			{http.MethodPost, "/api/v1/tokens"},
 			{http.MethodDelete, "/api/v1/tokens/00000000-0000-0000-0000-000000000000"},

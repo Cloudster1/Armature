@@ -124,6 +124,21 @@ func installationOrg(ctx context.Context, tx db.DBTX) (*Org, error) {
 	return &org, nil
 }
 
+// InstallationOrg is the organization a sign-in that names none is for, such as
+// single sign-on's; ErrNotAMember before the first account set it up.
+func (s *Service) InstallationOrg(ctx context.Context) (*Org, error) {
+	var org *Org
+	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		org, err = installationOrg(ctx, tx)
+		return err
+	})
+	if err == nil && org == nil {
+		err = ErrNotAMember
+	}
+	return org, err
+}
+
 // SignupInput is the person signing up; the installation is not theirs to name.
 type SignupInput struct {
 	Email     string
@@ -198,7 +213,7 @@ func (s *Service) Signup(ctx context.Context, in SignupInput) (*Credentials, err
 			return err
 		}
 
-		sessionID, sessionSecret, err := insertSession(ctx, tx, userID, &org.ID, ProofPassword, expiresAt, in.UserAgent, in.IP)
+		sessionID, sessionSecret, err := insertSession(ctx, tx, userID, ProofPassword, expiresAt, in.UserAgent, in.IP)
 		if err != nil {
 			return err
 		}

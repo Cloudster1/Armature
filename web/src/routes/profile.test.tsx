@@ -19,7 +19,7 @@ vi.mock("./app", () => ({ appRoute: {} }));
 vi.mock("@/api/auth", () => ({
   LOCALES: [],
   MY_DATA_HREF: "/api/v1/auth/me/export",
-  useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada", email: "ada@example.com", timezone: "UTC", locale: "en-GB" } }, organizations: [] } }),
+  useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada", email: "ada@example.com", timezone: "UTC", locale: "en-GB" } } } }),
   useUpdateProfile: () => idle,
   useUploadAvatar: () => idle,
   useRemoveAvatar: () => idle,

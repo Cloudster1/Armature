@@ -29,7 +29,7 @@ function serveShares(): { sent: () => Record<string, string> | undefined } {
 
 function openShareDialog(profileZone: string) {
   const client = new QueryClient();
-  client.setQueryData(meQueryKey, { principal: { user: { id: "ada", timezone: profileZone, locale: "en-GB" } }, organizations: [] });
+  client.setQueryData(meQueryKey, { principal: { user: { id: "ada", timezone: profileZone, locale: "en-GB" } } });
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>

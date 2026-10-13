@@ -20,6 +20,7 @@ import {
   selectByLabel,
   signIn,
   signUp,
+  textOf,
   WAIT,
   waitForApp,
   inviteFromMembersPage,
@@ -153,7 +154,7 @@ scenario("the access page explains what each role grants", async ({ page }) => {
 });
 
 // Serial: there is one provider for everybody, and no taking it away again.
-serialScenario("single sign-on is configured per organization", async ({ page }) => {
+serialScenario("single sign-on is configured once, and people sign in at one address", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const putBack = await keepProvider();
   try {
@@ -174,6 +175,7 @@ serialScenario("single sign-on is configured per organization", async ({ page })
       () => document.body.innerText.includes("People can sign in at"),
       { timeout: WAIT },
     );
+    expect.equal(await textOf(page, "[data-sso-start]"), "/api/v1/auth/oidc/start", "the address names no organization");
 
     // The secret is never sent back, only the fact that one is stored.
     await goto(page, "/settings/access");
@@ -191,19 +193,12 @@ serialScenario("single sign-on is configured per organization", async ({ page })
   }
 });
 
-scenario("the sign-in page offers single sign-on", async ({ page }) => {
-  await goto(page, "/login");
-  await clickButton(page, "Sign in with single sign-on");
-  await page.waitForSelector("#field-organization", { timeout: WAIT });
-
-  await page.type("#field-organization", "some-company");
-  const enabled = await page.evaluate(
-    () =>
-      ![...document.querySelectorAll("button")].find(
-        (b) => b.textContent.trim() === "Continue to your provider",
-      )?.disabled,
-  );
-  expect.truthy(enabled, "the button to continue is not usable once an organization is named");
+scenario("the sign-in page offers single sign-on without asking for an organization", async ({ page }) => {
+  await goto(page, "/login?next=/projects");
+  await page.waitForSelector('[data-action="single-sign-on"]', { timeout: WAIT });
+  const href = await page.$eval('[data-action="single-sign-on"]', (a) => a.getAttribute("href"));
+  expect.equal(href, "/api/v1/auth/oidc/start?next=%2Fprojects", "single sign-on starts at the installation's one address");
+  expect.equal(await page.$("#field-organization"), null, "nobody is asked for an organization");
 });
 
 // Reported as the page looking broken: on a narrow screen a table widened the

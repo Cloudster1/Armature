@@ -8,6 +8,8 @@ const state = {
   pathname: "/",
   params: {} as { projectKey?: string },
   projects: [] as Array<{ key: string; name: string }>,
+  /** What an older server listed beside the principal; nothing reads it now. */
+  organizations: [] as Array<{ orgId: string; orgSlug: string; orgName: string; role: string }>,
 };
 const navigate = vi.fn();
 const toggleMode = vi.fn(() => {
@@ -25,8 +27,7 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: () => state.params,
 }));
 vi.mock("@/api/auth", () => ({
-  useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada Lovelace" }, org: { name: "Acme" }, role: "owner" }, organizations: [] } }),
-  useSwitchOrg: () => ({ mutate: vi.fn() }),
+  useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada Lovelace" }, org: { name: "Acme" }, role: "owner" }, organizations: state.organizations } }),
   useLogout: () => ({ mutate: vi.fn(), isPending: false }),
   useEraseMe: () => ({ mutate: vi.fn(), isPending: false }),
   MY_DATA_HREF: "/api/v1/auth/me/export",
@@ -48,10 +49,22 @@ beforeEach(() => {
   state.pathname = "/";
   state.params = {};
   state.projects = [];
+  state.organizations = [];
   navigate.mockReset();
 });
 
 describe("the shell's chrome", () => {
+  it("heads the sidebar with the installation's name, and offers nothing to switch to", () => {
+    state.organizations = [
+      { orgId: "o1", orgSlug: "acme", orgName: "Acme", role: "owner" },
+      { orgId: "o2", orgSlug: "other", orgName: "Other Corp", role: "member" },
+    ];
+    render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
+    expect(screen.getByText("Acme")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Acme/ })).toBeNull();
+    expect(screen.queryByText("Other Corp")).toBeNull();
+  });
+
   // The suite waits for a header and for the tokens link on every arrival.
   it("opens the settings group with the tokens link, and folds a group by its title", async () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);

@@ -13,45 +13,20 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 )
 
-// orBound answers a failed lookup with its error and a refusal with the
-// bound-session sentence.
-func orBound(err error) error {
-	if err != nil {
-		return err
+// doorVouchesForNobody refuses an act on the account itself from a session that
+// came through an open door, which took the address on trust.
+func doorVouchesForNobody(w http.ResponseWriter, r *http.Request, p *auth.Principal) bool {
+	if p.SessionID == nil || p.Proof != auth.ProofOpenDoor {
+		return false
 	}
-	return sessionBound(http.StatusForbidden)
-}
-
-// sessionBound is the answer to a session reaching past the organization its
-// proof vouches for.
-func sessionBound(status int) *APIError {
-	return &APIError{Status: status, Code: "session_bound",
-		Message: "This sign-in reaches the organizations that trust the same identity provider, and the ones you own. Sign in with your password for the others."}
-}
-
-// actsForTheWholePerson says whether the caller may act on the account itself,
-// which reaches every organization: a bound session only when it has no other.
-func (s *Server) actsForTheWholePerson(r *http.Request, p *auth.Principal) (bool, error) {
-	if p.TokenID != nil || p.ReachesEverywhere() {
-		return true, nil
-	}
-	memberships, err := s.Auth.Memberships(r.Context(), p.User.ID)
-	if err != nil {
-		return false, err
-	}
-	for _, m := range memberships {
-		if m.OrgID != p.Org.ID {
-			return false, nil
-		}
-	}
-	return true, nil
+	respondError(w, r, ErrForbidden("A desk entered without a code cannot export or erase the account behind the address. Ask the desk for a code by mail and sign in with it."))
+	return true
 }
 
 // handleExportMe hands the caller everything held about them as one file.
 func (s *Server) handleExportMe(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
-	if ok, err := s.actsForTheWholePerson(r, p); err != nil || !ok {
-		respondError(w, r, orBound(err))
+	if doorVouchesForNobody(w, r, p) {
 		return
 	}
 	export, err := s.Privacy.Export(r.Context(), p.User.ID)
@@ -82,8 +57,7 @@ func (s *Server) handleEraseMe(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrForbidden("Deleting an account is done from a browser session, not with an API token."))
 		return
 	}
-	if ok, err := s.actsForTheWholePerson(r, p); err != nil || !ok {
-		respondError(w, r, orBound(err))
+	if doorVouchesForNobody(w, r, p) {
 		return
 	}
 	if err := s.Privacy.Erase(r.Context(), p.User.ID, p.User.ID); err != nil {

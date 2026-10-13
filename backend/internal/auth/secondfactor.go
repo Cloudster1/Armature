@@ -16,7 +16,7 @@ import (
 	"github.com/armature/armature/backend/internal/seal"
 )
 
-// SecondFactorRule is who an organization requires a second factor of.
+// SecondFactorRule is who the installation requires a second factor of.
 type SecondFactorRule string
 
 const (
@@ -66,7 +66,7 @@ var (
 	ErrChallengeInvalid = errors.New("this sign-in has expired or had too many wrong codes. Sign in again with your password")
 	// ErrEnrolFirst is an administrator requiring what they do not have, which would hold their own session.
 	ErrEnrolFirst = errors.New("set up two-step sign-in for yourself first, on your profile, so the requirement does not hold you up too")
-	// ErrBadSecondFactorRule is a requirement the organization cannot have.
+	// ErrBadSecondFactorRule is a requirement the installation cannot have.
 	ErrBadSecondFactorRule = errors.New("require off, admins or everyone")
 )
 
@@ -299,8 +299,8 @@ func (s *Service) RemoveMembersSecondFactor(ctx context.Context, orgID, userID u
 	})
 }
 
-// OrgSecondFactor reads who the caller's organization requires a second factor of.
-func (s *Service) OrgSecondFactor(ctx context.Context) (SecondFactorRule, error) {
+// SecondFactorRequirement reads who the installation requires a second factor of.
+func (s *Service) SecondFactorRequirement(ctx context.Context) (SecondFactorRule, error) {
 	var rule string
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
@@ -310,7 +310,7 @@ func (s *Service) OrgSecondFactor(ctx context.Context) (SecondFactorRule, error)
 	return SecondFactorRule(rule), err
 }
 
-// RequireSecondFactor sets who the organization requires a second factor of.
+// RequireSecondFactor sets who the installation requires a second factor of.
 // It refuses a rule that would hold the administrator setting it.
 func (s *Service) RequireSecondFactor(ctx context.Context, p *Principal, rule SecondFactorRule, ip string) (db.LSN, error) {
 	if !rule.Valid() {

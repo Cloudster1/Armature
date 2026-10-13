@@ -23,7 +23,7 @@ function answerWithNothing() {
 
 function openWorkLog(profileZone: string) {
   const client = new QueryClient();
-  client.setQueryData(meQueryKey, { principal: { user: { id: "ada", timezone: profileZone, locale: "en-GB" } }, organizations: [] });
+  client.setQueryData(meQueryKey, { principal: { user: { id: "ada", timezone: profileZone, locale: "en-GB" } } });
   render(
     <QueryClientProvider client={client}>
       <ConfirmProvider>

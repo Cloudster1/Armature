@@ -153,25 +153,21 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	// Custom fields, groups, roles and tokens.
 	walkFieldsGroupsAndTokens(t, api, c, taskKey, myID)
 
-	// Somebody else joins: by invitation, from an account of their own, and
-	// can then switch between the two organizations.
-	other := api.client(t)
-	other.signup(t, h, "elsewhere")
-	invited := want(t, c.post("/api/v1/invites", map[string]any{"email": principalField(t, c.get("/api/v1/auth/me"), "principal", "user", "email").(string) + ".other", "role": "member"}), http.StatusCreated, "invite")
-	_ = invited
+	// Somebody else joins by invitation, with an account made on accepting it.
+	invited := want(t, c.post("/api/v1/invites", map[string]any{"email": myEmail + ".other", "role": "member"}), http.StatusCreated, "invite")
 	want(t, c.get("/api/v1/invites"), http.StatusOK, "invites")
 	want(t, c.delete("/api/v1/invites/"+idOf(t, invited, "invite")), http.StatusNoContent, "revoke invite")
-	otherEmail := principalField(t, other.get("/api/v1/auth/me"), "principal", "user", "email").(string)
-	forOther := want(t, c.post("/api/v1/invites", map[string]any{"email": otherEmail, "role": "member"}), http.StatusCreated, "invite the other")
-	want(t, other.post("/api/v1/auth/invites/accept", map[string]any{"token": forOther.Body["token"]}), http.StatusOK, "accept invite")
-	want(t, other.post("/api/v1/auth/switch-org", map[string]any{"slug": orgSlug}), http.StatusOK, "switch org")
+	other := api.client(t)
+	forOther := want(t, c.post("/api/v1/invites", map[string]any{"email": h.email(t, "elsewhere"), "role": "member"}), http.StatusCreated, "invite the other")
+	want(t, other.post("/api/v1/auth/invites/accept", map[string]any{"token": forOther.Body["token"], "name": "Other Person", "password": testPassword}), http.StatusOK, "accept invite")
 	want(t, other.get("/api/v1/projects/EVR"), http.StatusOK, "the other sees the project")
 	want(t, other.post("/api/v1/auth/logout", nil), http.StatusNoContent, "logout")
 
 	// Repositories, the webhook, and the branch made on the host.
 	walkRepositories(t, api, c, storyKey)
 
-	// The identity provider: configured, started, and the browser sent back.
+	// The identity provider: configured, and the address that named the
+	// organization sends the browser to the one the installation signs in at.
 	provider := newIDP(t)
 	want(t, c.put("/api/v1/oidc-provider", map[string]any{
 		"issuer": provider.URL, "clientId": "armature-test", "clientSecret": "shh", "groupsClaim": "groups",
@@ -181,18 +177,8 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	browser := api.client(t).noRedirects()
 	startReq, _ := http.NewRequest(http.MethodGet, api.URL+"/api/v1/auth/oidc/"+orgSlug+"/start?next=/projects", nil)
 	startResp, _ := browser.raw(startReq)
-	if startResp.StatusCode != http.StatusFound {
-		t.Fatalf("oidc start: %d", startResp.StatusCode)
-	}
-	state, nonce := stateFrom(t, startResp.Header.Get("Location"))
-	provider.says("armature-test", map[string]any{"nonce": nonce, "email": myEmail, "sub": "subject-everything"})
-	callback, _ := http.NewRequest(http.MethodGet, api.URL+"/api/v1/auth/oidc/callback?"+url.Values{"state": {state}, "code": {"any-code"}}.Encode(), nil)
-	callbackResp, raw := browser.raw(callback)
-	if callbackResp.StatusCode != http.StatusFound {
-		t.Fatalf("oidc callback: %d %s", callbackResp.StatusCode, raw)
-	}
-	if !strings.HasSuffix(callbackResp.Header.Get("Location"), "/projects") {
-		t.Errorf("after the callback the browser goes to %q", callbackResp.Header.Get("Location"))
+	if startResp.StatusCode != http.StatusFound || !strings.HasPrefix(startResp.Header.Get("Location"), "/api/v1/auth/oidc/start") {
+		t.Fatalf("oidc start at the old address: %d to %q", startResp.StatusCode, startResp.Header.Get("Location"))
 	}
 
 	// Team clean-up: a team carrying work or a board cannot go, so first the
@@ -319,8 +305,8 @@ func TestEveryEndpointRefusesAnAnonymousCaller(t *testing.T) {
 }
 
 // The public entry points refuse what they should: a malformed sign-up, a
-// dead invitation, an unsigned webhook, a sign-in for no organization, and a
-// callback for a sign-in that never started.
+// dead invitation, an unsigned webhook, and a callback for a sign-in that
+// never started.
 func TestThePublicEntryPointsRefuseBadInput(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -332,10 +318,6 @@ func TestThePublicEntryPointsRefuseBadInput(t *testing.T) {
 	req.Header.Set("X-GitHub-Event", "push")
 	if resp, _ := c.raw(req); resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("an unsigned webhook for no repository answered %d", resp.StatusCode)
-	}
-	start, _ := http.NewRequest(http.MethodGet, api.URL+"/api/v1/auth/oidc/no-such-org/start", nil)
-	if resp, _ := c.raw(start); resp.StatusCode != http.StatusNotFound {
-		t.Errorf("sign-in for no organization answered %d, want 404", resp.StatusCode)
 	}
 	callback, _ := http.NewRequest(http.MethodGet, api.URL+"/api/v1/auth/oidc/callback?state=made-up&code=x", nil)
 	if resp, _ := c.raw(callback); resp.StatusCode/100 != 4 && resp.StatusCode != http.StatusFound {

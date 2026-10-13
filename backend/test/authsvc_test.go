@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -148,84 +147,6 @@ func TestSessionLifecycle(t *testing.T) {
 
 		if principal, err := svc.Authenticate(ctx, creds.SessionSecret); !errors.Is(err, auth.ErrInvalidToken) {
 			t.Fatalf("a session whose membership was revoked authenticated as %+v, %v; want ErrInvalidToken", principal, err)
-		}
-	})
-}
-
-func TestOrgSwitching(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	svc := h.authService()
-	ctx := context.Background()
-
-	member := h.signup(t, svc, "switcher")
-	other := h.signup(t, svc, "elsewhere")
-
-	t.Run("refuses an organization the user does not belong to", func(t *testing.T) {
-		_, _, err := svc.SwitchOrg(ctx, *member.Principal.SessionID, member.Principal.User.ID, other.Principal.Org.Slug)
-		if !errors.Is(err, auth.ErrNotAMember) {
-			t.Fatalf("error = %v, want ErrNotAMember", err)
-		}
-	})
-
-	t.Run("refuses an organization that does not exist", func(t *testing.T) {
-		_, _, err := svc.SwitchOrg(ctx, *member.Principal.SessionID, member.Principal.User.ID, "no-such-org")
-		if !errors.Is(err, auth.ErrNotAMember) {
-			t.Fatalf("error = %v, want ErrNotAMember", err)
-		}
-	})
-
-	t.Run("switches into a second organization once invited", func(t *testing.T) {
-		// Invite the switcher into the other organization and accept it.
-		otherCtx := auth.ContextForOrg(ctx, other.Principal)
-		_, token, _, err := svc.CreateInvite(otherCtx, member.Principal.User.Email, auth.RoleMember, other.Principal.User.ID, time.Hour)
-		if err != nil {
-			t.Fatalf("create invite: %v", err)
-		}
-		if _, err := svc.AcceptInvite(ctx, auth.AcceptInviteInput{
-			Secret: token,
-			UserID: &member.Principal.User.ID,
-			Proof:  auth.ProofPassword,
-		}); err != nil {
-			t.Fatalf("accept invite: %v", err)
-		}
-
-		org, lsn, err := svc.SwitchOrg(ctx, *member.Principal.SessionID, member.Principal.User.ID, other.Principal.Org.Slug)
-		if err != nil {
-			t.Fatalf("switch: %v", err)
-		}
-		if org.Slug != other.Principal.Org.Slug {
-			t.Errorf("switched into %q, want %q", org.Slug, other.Principal.Org.Slug)
-		}
-		if lsn == 0 {
-			t.Error("switching returned no log position")
-		}
-
-		// The change must be visible through the session, not merely returned.
-		principal, err := svc.Authenticate(ctx, member.SessionSecret)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if principal.Org == nil || principal.Org.Slug != other.Principal.Org.Slug {
-			t.Errorf("the session is still in %v after switching", principal.Org)
-		}
-	})
-
-	t.Run("memberships list every organization the user is in", func(t *testing.T) {
-		memberships, err := svc.Memberships(ctx, member.Principal.User.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(memberships) != 2 {
-			t.Fatalf("got %d memberships, want 2", len(memberships))
-		}
-		// Ordered by when they were joined, so the original organization is first
-		// and stays the stable default.
-		if memberships[0].OrgSlug != member.Principal.Org.Slug {
-			t.Errorf("first membership is %q, want the original %q", memberships[0].OrgSlug, member.Principal.Org.Slug)
-		}
-		if memberships[0].Role != auth.RoleOwner || memberships[1].Role != auth.RoleMember {
-			t.Errorf("roles = %q, %q; want owner then member", memberships[0].Role, memberships[1].Role)
 		}
 	})
 }

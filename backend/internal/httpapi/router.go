@@ -54,8 +54,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 
 		// Signing in through an identity provider. Both halves are outside
 		// authentication: nobody is signed in yet, which is the point.
-		r.Get("/auth/oidc/{orgSlug}/start", s.handleOIDCStart)
+		r.Get("/auth/oidc/start", s.handleOIDCStart)
 		r.Get("/auth/oidc/callback", s.handleOIDCCallback)
+		// Until the next release, for addresses that named an organization.
+		r.Get("/auth/oidc/{orgSlug}/start", s.handleOIDCStartForOrganization)
 
 		// The portal's door for people without an account: the desk is named
 		// by its organization, since nobody is signed in to say which one.
@@ -84,7 +86,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// Anything below here needs a signed-in caller.
 		r.Group(func(r chi.Router) {
 			r.Use(requireAuth)
-			// A session its organization holds to enrolment reaches little else.
+			// A session the installation holds to enrolment reaches little else.
 			r.Use(requireSecondFactor)
 
 			r.Post("/auth/logout", s.handleLogout)
@@ -106,10 +108,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			// A person's data is theirs to take and theirs to have erased.
 			r.Get("/auth/me/export", s.handleExportMe)
 			r.Delete("/auth/me", s.handleEraseMe)
-			r.Post("/auth/switch-org", s.handleSwitchOrg)
 			s.secondFactorRoutes(r)
-			// A whole organization with an operation in it, for showing the product.
-			r.With(requireSession).Post("/organizations/demo", s.handleCreateDemoOrganization)
 
 			// Below here, the work itself.
 			r.Group(func(r chi.Router) {

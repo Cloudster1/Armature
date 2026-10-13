@@ -34,7 +34,6 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	userID := principalField(t, signedUp, "principal", "user", "id").(string)
 	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
-	orgName := principalField(t, signedUp, "principal", "org", "name").(string)
 	signIn := func(what string) *client {
 		c := api.client(t)
 		want(t, c.post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), http.StatusOK, what)
@@ -57,7 +56,7 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 		if row["current"] != (i == 3) {
 			t.Fatalf("session %d marked current = %v: %v", i, row["current"], row)
 		}
-		if row["userAgent"] == "" || row["ip"] == "" || row["orgName"] != orgName || row["proof"] != "password" || row["lastSeenAt"] == "" {
+		if row["userAgent"] == "" || row["ip"] == "" || row["proof"] != "password" || row["lastSeenAt"] == "" {
 			t.Fatalf("a session without where and how it was opened: %v", row)
 		}
 	}

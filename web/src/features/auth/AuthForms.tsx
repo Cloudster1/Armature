@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ApiError, BASE, request } from "@/api/client";
-import { useLogin, useSignup, useSwitchOrg, type Membership, type Principal } from "@/api/auth";
+import { ApiError, BASE } from "@/api/client";
+import { SSO_START, useLogin, useSignup } from "@/api/auth";
 import { isChallenge } from "@/api/secondFactor";
-import { Button, ErrorBanner, Field } from "@/components/ui";
+import { Button, ButtonLink, ErrorBanner, Field } from "@/components/ui";
 import { SecondFactorStep } from "./SecondFactor";
 
 /** Pulls per-field messages out of the API's validation envelope. */
@@ -30,9 +30,6 @@ export function LoginForm({ next }: { next?: string } = {}) {
   const login = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [org, setOrg] = useState("");
-  const [sso, setSSO] = useState(false);
-  const [choice, setChoice] = useState<{ organizations: Membership[]; current?: string } | null>(null);
   const [challenge, setChallenge] = useState<string | null>(null);
   const target = safeNext(next);
 
@@ -41,30 +38,19 @@ export function LoginForm({ next }: { next?: string } = {}) {
     else navigate({ to: "/" });
   }
 
-  // Somebody in more than one organization says which one they came for,
-  // rather than landing in whichever they joined first. A page that sent
-  // them here names a path, not an organization, so the question stands.
-  async function signedIn() {
-    const me = await request<{ principal: Principal; organizations: Membership[] | null }>("/auth/me").catch(() => null);
-    const organizations = me?.organizations ?? [];
-    if (organizations.length > 1) setChoice({ organizations, current: me?.principal.org?.slug });
-    else proceed();
-  }
-
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     login.mutate(
       { email, password },
-      { onSuccess: (answer) => (isChallenge(answer) ? setChallenge(answer.challenge) : signedIn()) },
+      { onSuccess: (answer) => (isChallenge(answer) ? setChallenge(answer.challenge) : proceed()) },
     );
   }
 
-  if (choice) return <OrganizationChoice {...choice} onChosen={proceed} />;
   if (challenge) {
     return (
       <SecondFactorStep
         challenge={challenge}
-        onSignedIn={() => void signedIn()}
+        onSignedIn={proceed}
         onStartAgain={() => {
           setChallenge(null);
           setPassword("");
@@ -102,83 +88,24 @@ export function LoginForm({ next }: { next?: string } = {}) {
         Sign in
       </Button>
 
-      <SingleSignOn open={sso} org={org} onOrg={setOrg} onOpen={() => setSSO(true)} />
+      <SingleSignOn next={target} />
     </form>
   );
 }
 
-function OrganizationChoice({ organizations, current, onChosen }: { organizations: Membership[]; current?: string; onChosen: () => void }) {
-  const switchOrg = useSwitchOrg();
-  return (
-    <div className="space-y-3" data-org-choice-list>
-      <p className="text-sm font-medium text-ink">Which organization?</p>
-      {switchOrg.error && <ErrorBanner>{(switchOrg.error as Error).message}</ErrorBanner>}
-      {organizations.map((each) => (
-        <Button
-          key={each.orgId}
-          variant={each.orgSlug === current ? "primary" : "secondary"}
-          className="w-full justify-between"
-          loading={switchOrg.isPending && switchOrg.variables === each.orgSlug}
-          data-org-choice={each.orgSlug}
-          onClick={() => (each.orgSlug === current ? onChosen() : switchOrg.mutateAsync(each.orgSlug).then(onChosen, () => {}))}
-        >
-          <span className="truncate">{each.orgName}</span>
-          <span className="text-xs capitalize opacity-70">{each.role}</span>
-        </Button>
-      ))}
-    </div>
-  );
-}
-
 /**
- * Signing in through an identity provider.
- *
- * The organization has to be named first, because a sign-in has to know which
- * tenant it is for before there is anybody signed in to ask. The link is a
- * plain navigation rather than a fetch: the browser has to follow the
- * provider's redirects itself.
+ * Signing in through the installation's identity provider. A plain link rather
+ * than a fetch: the browser has to follow the provider's redirects itself.
  */
-function SingleSignOn({
-  open,
-  org,
-  onOrg,
-  onOpen,
-}: {
-  open: boolean;
-  org: string;
-  onOrg: (value: string) => void;
-  onOpen: () => void;
-}) {
+function SingleSignOn({ next }: { next?: string }) {
   const failure = ssoFailure();
-
-  if (!open && !failure) {
-    return (
-      <Button variant="link" onClick={onOpen} className="w-full justify-center">
-        Sign in with single sign-on
-      </Button>
-    );
-  }
-
+  const href = `${BASE}${SSO_START}${next ? `?${new URLSearchParams({ next })}` : ""}`;
   return (
     <div className="space-y-2 border-t border-border pt-4">
       {failure && <ErrorBanner>{failure}</ErrorBanner>}
-      <Field
-        label="Organization"
-        placeholder="your-company"
-        value={org}
-        onChange={(event) => onOrg(event.target.value)}
-      />
-      <Button
-        type="button"
-        variant="secondary"
-        className="w-full"
-        disabled={!org.trim()}
-        onClick={() => {
-          window.location.href = `${BASE}/auth/oidc/${encodeURIComponent(org.trim())}/start`;
-        }}
-      >
-        Continue to your provider
-      </Button>
+      <ButtonLink href={href} className="w-full" data-action="single-sign-on">
+        Continue with single sign-on
+      </ButtonLink>
     </div>
   );
 }
@@ -192,7 +119,7 @@ function ssoFailure(): string | null {
     case "not_a_member":
       return "Your provider knows you, but nobody here has let you in yet. An administrator can do that on the Users page; sign in again once they have.";
     case "not_configured":
-      return "That organization does not use single sign-on.";
+      return "Single sign-on is not set up here. Sign in with your password, or ask an administrator to set it up.";
     case "expired":
       return "That sign-in took too long. Start it again.";
     case "no_email":

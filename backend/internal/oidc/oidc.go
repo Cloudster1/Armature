@@ -65,9 +65,9 @@ type Identity struct {
 }
 
 var (
-	// ErrNotConfigured is returned when an organization has no provider, or has
+	// ErrNotConfigured is returned when the installation has no provider, or has
 	// turned the one it has off.
-	ErrNotConfigured = errors.New("this organization does not sign in through an identity provider")
+	ErrNotConfigured = errors.New("single sign-on is not set up here")
 	// ErrUnknownLogin is returned for a callback whose state does not match a
 	// login this server started, which is what a forged callback looks like.
 	ErrUnknownLogin = errors.New("that sign-in did not start here, or it has expired")
@@ -79,7 +79,7 @@ var (
 	ErrEmailUnverified = errors.New("the identity provider has not verified that email address")
 	// ErrNotAMember is returned when somebody authenticates correctly but has
 	// not been invited. Signing in is not the same as being let in.
-	ErrNotAMember = errors.New("you are not a member of that organization")
+	ErrNotAMember = errors.New("nobody here has let you in yet")
 )
 
 // howLongALoginMayTake bounds the window between the redirect out and the

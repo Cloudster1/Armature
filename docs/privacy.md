@@ -128,11 +128,9 @@ administrator for the tables that belong to nobody in particular.
   person wrote stays, attributed to "Former user": the record belongs to the
   team. The last active administrator is refused until somebody else
   administers the installation.
-- **Who may ask for the whole person:** export and erasure reach every
-  organization the person belongs to, so they take a session opened with the
-  person's password. A session opened by a mailed code, an open door or single
-  sign-on vouches for one organization and may ask only when the person
-  belongs to no other.
+- **Who may ask for the whole person:** any session but one that came through
+  an open desk door, which took the address on trust and never proved the
+  mailbox. A mailed code does prove it, so a desk's customer asks with one.
 - **Letting a member go:** `DELETE /api/v1/members/{id}`, or switching the
   account off on the users page, by an administrator: every session and token
   ends and the address no longer signs in. The account and what hung off it

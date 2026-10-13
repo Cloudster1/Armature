@@ -23,7 +23,7 @@ The interesting surfaces, and what each is supposed to guarantee:
 | Area | The claim to try to break |
 |---|---|
 | Tenancy | No request reaches another organization's rows. Every tenant table has forced row level security on `current_org_id()`, and the API connects as a role that is neither owner nor superuser |
-| Session provenance | A session reaches only what its proof vouches for. A mailed code, an open desk door and single sign-on each reach one organization, and the database refuses the switch as well |
+| Session provenance | A session keeps the proof it was opened with and names no organization, and the database refuses either changing. A session that came through an open desk door sees that one desk and cannot export or erase the account behind the address |
 | Roles | A project is a wall. What a role does not reach is not found, rather than refused |
 | The desk portal | A customer sees their own requests and never an internal note |
 | Outbound requests | Webhooks, git hosts and OIDC issuers are resolved first and dialled as the address that was checked, so nothing inside the network answers by accident. `ARMATURE_OUTBOUND_ALLOW` is the only way in |

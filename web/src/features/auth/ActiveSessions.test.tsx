@@ -21,7 +21,6 @@ const here: ActiveSession = {
   id: "s1",
   userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
   ip: "192.0.2.1",
-  orgName: "Acme",
   proof: "password",
   createdAt: "2026-10-12T08:00:00Z",
   lastSeenAt: "2026-10-13T09:00:00Z",
@@ -52,11 +51,11 @@ beforeEach(() => {
 });
 
 describe("where you are signed in", () => {
-  it("names each device with its address, organization and last activity", () => {
+  it("names each device with its address and last activity", () => {
     show();
     const other = document.querySelector('[data-session="s2"]') as HTMLElement;
     expect(within(other).getByText("Chrome on Windows")).toBeTruthy();
-    expect(other.textContent).toContain("198.51.100.7 · Acme · last active since 2026-10-01T17:00:00Z");
+    expect(other.textContent).toContain("198.51.100.7 · last active since 2026-10-01T17:00:00Z");
     expect(within(other).queryByText("This device")).toBeNull();
   });
 

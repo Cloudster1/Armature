@@ -76,7 +76,7 @@ function chosenBy(only, { name, file }) {
  * words: reviewed by hand, since a URL cannot say whether what it changes is shared.
  */
 const INSTALLATION_WIDE = [
-  ["PUT", /^\/organization\/second-factor$/, "who must sign in with a second factor"],
+  ["PUT", /^\/settings\/second-factor$/, "who must sign in with a second factor"],
   ["DELETE", /^\/organization$/, "the organization itself"],
   ["PUT", /^\/installation$/, "the installation's name"],
   ["PUT", /^\/themes\/default$/, "the default theme"],

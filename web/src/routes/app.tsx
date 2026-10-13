@@ -13,7 +13,6 @@ import { CommandPalette, usePaletteShortcut, type PaletteMode, type SpotlightReq
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
 import { IssueDrawerProvider } from "@/features/issues/IssueDrawer";
 import { IssuePanel } from "@/features/issues/IssuePanel";
-import { NoOrganization } from "@/features/shell/NoOrganization";
 import { EnrolmentRequired } from "@/features/auth/SecondFactor";
 import { ThemeLoader } from "@/features/themes/ThemeLoader";
 import { BackdropEffect } from "@/features/themes/BackdropEffect";
@@ -64,9 +63,8 @@ function RouteError({ error, reset }: { error: Error; reset: () => void }) {
 
 function AppShell() {
   const { data } = useMe();
-  if (data?.principal && !data.principal.org) return <NoOrganization />;
   if (data?.principal?.role === "customer") return <PortalShell />;
-  // Held by the organization until two-step sign-in is set up: nothing else would load.
+  // Held until two-step sign-in is set up: nothing else would load.
   if (data?.principal?.mustEnrol) return <EnrolmentRequired />;
   return (
     <ToastProvider>

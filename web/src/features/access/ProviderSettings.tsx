@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useProvider, useSaveProvider } from "@/api/access";
-import { useMe } from "@/api/auth";
+import { SSO_START } from "@/api/auth";
+import { BASE } from "@/api/client";
 import { Button, Card, ErrorBanner, Field } from "@/components/ui";
 
 /**
@@ -12,11 +13,9 @@ import { Button, Card, ErrorBanner, Field } from "@/components/ui";
  */
 export function ProviderSettings() {
   const { data, isLoading } = useProvider();
-  const { data: me } = useMe();
   const save = useSaveProvider();
 
   const provider = data?.provider;
-  const slug = me?.principal?.org?.slug;
 
   const [issuer, setIssuer] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
@@ -102,7 +101,10 @@ export function ProviderSettings() {
         {provider && (
           <span className="text-xs text-ink-muted">
             {provider.enabled ? "People can sign in at" : "Turned off. The address would be"}{" "}
-            <code className="rounded bg-surface-raised px-1">/api/v1/auth/oidc/{slug}/start</code>
+            <code className="rounded bg-surface-raised px-1" data-sso-start>
+              {BASE}
+              {SSO_START}
+            </code>
           </span>
         )}
       </div>

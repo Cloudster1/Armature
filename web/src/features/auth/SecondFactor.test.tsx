@@ -26,7 +26,6 @@ vi.mock("@/api/secondFactor", async () => {
   };
 });
 
-const switchOrg = vi.fn();
 const logout = vi.fn();
 vi.mock("@/api/auth", async () => {
   const actual = await vi.importActual<typeof import("@/api/auth")>("@/api/auth");
@@ -41,7 +40,6 @@ vi.mock("@/api/auth", async () => {
         ],
       },
     }),
-    useSwitchOrg: () => ({ ...idle, mutate: switchOrg }),
     useLogout: () => ({ ...idle, mutate: logout }),
   };
 });
@@ -98,13 +96,11 @@ describe("setting up two-step sign-in", () => {
 });
 
 describe("a session held to setting it up", () => {
-  it("offers the setup, another organization, and signing out, and nothing else", async () => {
+  it("offers the setup and signing out, and nothing else", async () => {
     render(<EnrolmentRequired />);
     expect(screen.getByRole("heading", { name: "Set up two-step sign-in" })).toBeInTheDocument();
     expect(screen.getByText(/Strict Corp asks everybody/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Go to Strict Corp" })).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Go to Relaxed Corp" }));
-    expect(switchOrg.mock.calls[0]?.[0]).toBe("relaxed");
+    expect(screen.queryByRole("button", { name: /Go to/ })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(logout).toHaveBeenCalled();
   });

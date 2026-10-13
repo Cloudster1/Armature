@@ -9,24 +9,20 @@ import (
 	"github.com/armature/armature/backend/internal/oidc"
 )
 
-// Signing in through an identity provider. The start and callback are outside
-// authentication for the obvious reason; the configuration behind them is
-// organization administration.
+// Signing in through the installation's identity provider. The start and
+// callback are outside authentication for the obvious reason; the configuration
+// behind them is administration.
 
-// handleOIDCStart sends the browser to the provider.
-//
-// The organization is named in the path because a sign-in has to know which
-// tenant it is for before anybody is signed in to ask.
+// handleOIDCStart sends the browser to the installation's provider.
 func (s *Server) handleOIDCStart(w http.ResponseWriter, r *http.Request) {
 	if s.OIDC == nil {
 		respondError(w, r, toAPIError(oidc.ErrNotConfigured))
 		return
 	}
 
-	org, err := s.Auth.OrgBySlug(r.Context(), r.PathValue("orgSlug"))
+	org, err := s.Auth.InstallationOrg(r.Context())
 	if err != nil {
-		// An organization that does not exist and one with no provider are the
-		// same answer, so that this endpoint cannot be used to enumerate slugs.
+		// An installation nobody set up has no provider either.
 		respondError(w, r, toAPIError(oidc.ErrNotConfigured))
 		return
 	}
@@ -35,6 +31,20 @@ func (s *Server) handleOIDCStart(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondError(w, r, err)
 		return
+	}
+	http.Redirect(w, r, target, http.StatusFound)
+}
+
+// oidcStartPath is where single sign-on starts, for the address that named an
+// organization to send the browser on to.
+const oidcStartPath = "/api/v1/auth/oidc/start"
+
+// handleOIDCStartForOrganization keeps the address that named an organization
+// working for a release, for links and bookmarks made before there was one.
+func (s *Server) handleOIDCStartForOrganization(w http.ResponseWriter, r *http.Request) {
+	target := oidcStartPath
+	if next := safeRedirect(r.URL.Query().Get("next")); next != "" {
+		target += "?" + url.Values{"next": {next}}.Encode()
 	}
 	http.Redirect(w, r, target, http.StatusFound)
 }
