@@ -1457,6 +1457,105 @@
         }
       }
     },
+    "/auth/sessions": {
+      "delete": {
+        "operationId": "endOtherSessions",
+        "summary": "Sign out everywhere but the session asking. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listSessions",
+        "summary": "Where you are signed in, newest first, the session asking marked current. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Session"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sessions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/sessions/{sessionID}": {
+      "delete": {
+        "operationId": "endSession",
+        "summary": "Sign out one of your other sessions; the one asking is ended by signing out. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "sessionID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/signup": {
       "get": {
         "operationId": "signupOpen",
@@ -25281,6 +25380,55 @@
         },
         "required": [
           "url"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "orgName": {
+            "type": "string"
+          },
+          "proof": {
+            "type": "string",
+            "enum": [
+              "password",
+              "invite",
+              "portal_code",
+              "open_door",
+              "oidc"
+            ]
+          },
+          "userAgent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userAgent",
+          "ip",
+          "orgName",
+          "proof",
+          "createdAt",
+          "lastSeenAt",
+          "current"
         ]
       },
       "SetAssignmentRequest": {
