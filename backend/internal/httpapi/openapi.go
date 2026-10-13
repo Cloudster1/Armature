@@ -291,7 +291,7 @@ func declareEnums(b *openapi.Builder) {
 	set(desk.QueueFilter(""), "open", "unassigned", "mine", "breached", "all")
 	set(desk.Metric(""), "first_response", "resolution")
 	set(field.Kind(""), "text", "number", "date", "select", "checkbox", "url")
-	set(arrange.Scope(""), "builtin", "organization", "project")
+	set(arrange.Scope(""), "builtin", "everyone", "project")
 	// The vocabulary comes from the package rather than a list written twice,
 	// so a slot the server knows is one the client is made to draw.
 	slots := make([]string, 0)

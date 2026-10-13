@@ -60,7 +60,7 @@ func (a *Admin) CreateStatus(ctx context.Context, in StatusInput, actor uuid.UUI
 	lsn, err := a.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		id, err := InsertStatus(ctx, tx, in)
 		if isUniqueViolation(err) {
-			return invalid("this organization already has a status called %s", in.Name)
+			return invalid("there is already a status called %s", in.Name)
 		}
 		if err != nil {
 			return err
@@ -123,7 +123,7 @@ func (a *Admin) CreateWorkflow(ctx context.Context, in GraphInput, actor uuid.UU
 			in.Name, in.Description,
 		).Scan(&id)
 		if isUniqueViolation(err) {
-			return invalid("this organization already has a workflow called %s", in.Name)
+			return invalid("there is already a workflow called %s", in.Name)
 		}
 		if err != nil {
 			return fmt.Errorf("create workflow: %w", err)
@@ -162,7 +162,7 @@ func (a *Admin) SaveWorkflow(ctx context.Context, id uuid.UUID, in GraphInput, a
 			UPDATE workflow SET name = $2, description = $3 WHERE id = $1`,
 			id, in.Name, in.Description)
 		if isUniqueViolation(err) {
-			return invalid("this organization already has a workflow called %s", in.Name)
+			return invalid("there is already a workflow called %s", in.Name)
 		}
 		if err != nil {
 			return fmt.Errorf("rename workflow: %w", err)
@@ -229,7 +229,7 @@ func (a *Admin) CopyWorkflow(ctx context.Context, id uuid.UUID, name string, act
 			name, source.Description,
 		).Scan(&copyID)
 		if isUniqueViolation(err) {
-			return invalid("this organization already has a workflow called %s", name)
+			return invalid("there is already a workflow called %s", name)
 		}
 		if err != nil {
 			return fmt.Errorf("copy workflow: %w", err)

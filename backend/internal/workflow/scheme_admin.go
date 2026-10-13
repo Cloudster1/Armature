@@ -47,7 +47,7 @@ func ValidateScheme(in SchemeInput, isDefault bool, typeNames map[uuid.UUID]stri
 		}
 		name, known := typeNames[*item.IssueTypeID]
 		if !known {
-			return invalid("this organization has no such issue type")
+			return invalid("there is no such issue type")
 		}
 		if seen[*item.IssueTypeID] {
 			return invalid("%s is mapped twice", name)
@@ -58,7 +58,7 @@ func ValidateScheme(in SchemeInput, isDefault bool, typeNames map[uuid.UUID]stri
 		return invalid("a scheme can only have one fallback")
 	}
 	if isDefault && fallbacks == 0 {
-		return invalid("the organization's scheme needs a fallback, or an issue type nobody mapped would have no workflow")
+		return invalid("the default scheme needs a fallback, or an issue type nobody mapped would have no workflow")
 	}
 	return nil
 }
@@ -77,7 +77,7 @@ func (a *Admin) CreateScheme(ctx context.Context, in SchemeInput, actor uuid.UUI
 			in.Name,
 		).Scan(&id)
 		if isUniqueViolation(err) {
-			return invalid("this organization already has a scheme called %s", in.Name)
+			return invalid("there is already a scheme called %s", in.Name)
 		}
 		if err != nil {
 			return fmt.Errorf("create scheme: %w", err)
@@ -117,7 +117,7 @@ func (a *Admin) SaveScheme(ctx context.Context, id uuid.UUID, in SchemeInput, ac
 		}
 
 		if _, err := tx.Exec(ctx, `UPDATE workflow_scheme SET name = $2 WHERE id = $1`, id, in.Name); isUniqueViolation(err) {
-			return invalid("this organization already has a scheme called %s", in.Name)
+			return invalid("there is already a scheme called %s", in.Name)
 		} else if err != nil {
 			return fmt.Errorf("rename scheme: %w", err)
 		}
@@ -158,7 +158,7 @@ func (a *Admin) SetDefaultScheme(ctx context.Context, id uuid.UUID, actor uuid.U
 			return fmt.Errorf("read scheme: %w", err)
 		}
 		if !hasFallback {
-			return invalid("the organization's scheme needs a fallback, or an issue type nobody mapped would have no workflow")
+			return invalid("the default scheme needs a fallback, or an issue type nobody mapped would have no workflow")
 		}
 
 		// Clearing first keeps the one-default index satisfied at every step.
@@ -197,7 +197,7 @@ func (a *Admin) DeleteScheme(ctx context.Context, id uuid.UUID) (db.LSN, error) 
 			return fmt.Errorf("read scheme: %w", err)
 		}
 		if isDefault {
-			return fmt.Errorf("%w: it is the organization's own scheme, so promote another one first", ErrInUse)
+			return fmt.Errorf("%w: it is the default scheme, so make another one the default first", ErrInUse)
 		}
 		if len(projects) > 0 {
 			return fmt.Errorf("%w: %s still uses it", ErrInUse, strings.Join(projects, ", "))
@@ -226,7 +226,7 @@ func writeSchemeItems(ctx context.Context, tx db.DBTX, schemeID uuid.UUID, items
 			VALUES (current_org_id(), $1, $2, $3)`,
 			schemeID, item.IssueTypeID, item.WorkflowID)
 		if isForeignKeyViolation(err) {
-			return invalid("that workflow does not exist in this organization")
+			return invalid("that workflow does not exist")
 		}
 		if err != nil {
 			return fmt.Errorf("map workflow: %w", err)

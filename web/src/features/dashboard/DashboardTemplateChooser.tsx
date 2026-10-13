@@ -49,7 +49,7 @@ export function DashboardTemplateChooser({
               data-dashboard-template={template.key}
               onSelect={() => onChange(template.key)}
               title={template.name}
-              description={template.description || (template.builtIn ? "" : "Saved by this organization.")}
+              description={template.description || (template.builtIn ? "" : "Saved here for everyone.")}
               extra={dashboardTemplateShape(template)}
               className="flex-1"
             />

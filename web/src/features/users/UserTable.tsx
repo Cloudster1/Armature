@@ -160,7 +160,7 @@ function RoleDialog({ user, onClose }: { user: ManagedUser; onClose: () => void 
     update.mutate({ id: user.id, role }, { onSuccess: () => { toast.success(`${user.name} is now ${roleWords[role].toLowerCase()}`); onClose(); } });
   }
   return (
-    <Dialog open onClose={onClose} title={`Change ${user.name}'s role`} description="An administrator holds every key to the organization; a member starts as a user in every project." attrs={{ "data-change-role": user.email }}>
+    <Dialog open onClose={onClose} title={`Change ${user.name}'s role`} description="An administrator holds every key to Armature; a member starts as a user in every project." attrs={{ "data-change-role": user.email }}>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <Select label="New role" value={role} onChange={(e) => setRole(e.target.value as "admin" | "member")}>
           <option value="member">Member</option>

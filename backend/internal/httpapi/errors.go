@@ -170,7 +170,7 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusForbidden, Code: "signup_closed",
 			Message: "Sign-up is closed here. Ask an administrator to invite you."}
 	case errors.Is(err, auth.ErrNotAMember):
-		return ErrNotFound("That organization was not found.")
+		return ErrNotFound("Armature has not been set up yet. The first person to sign up sets it up.")
 	case errors.Is(err, auth.ErrInviteInvalid):
 		return &APIError{Status: http.StatusGone, Code: "invite_invalid", Message: auth.ErrInviteInvalid.Error()}
 	case errors.Is(err, auth.ErrResetLinkInvalid):
@@ -354,7 +354,7 @@ func moreAPIError(err error) *APIError {
 	case errors.Is(err, report.ErrTemplateName):
 		return ErrBadRequest("Give the template a name.")
 	case errors.Is(err, report.ErrTemplateNameTaken):
-		return ErrConflict("This organization already has a template by that name. Choose another.")
+		return ErrConflict("There is already a template by that name. Choose another.")
 	case errors.Is(err, field.ErrNotFound):
 		return ErrNotFound("That field was not found.")
 	case errors.Is(err, field.ErrNameTaken):

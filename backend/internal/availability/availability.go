@@ -86,7 +86,7 @@ var (
 	// ErrNotFound is returned for a calendar that is not in the caller's organization.
 	ErrNotFound = errors.New("holiday calendar not found")
 	// ErrNameTaken is returned when the organization has a calendar by that name.
-	ErrNameTaken = errors.New("this organization already has a holiday calendar by that name")
+	ErrNameTaken = errors.New("there is already a holiday calendar by that name")
 	// ErrDefaultCalendar is returned for deleting the default, or unmaking it
 	// without naming another: somebody always needs a calendar to fall back to.
 	ErrDefaultCalendar = errors.New("the default calendar stays until another one is made the default")
@@ -95,7 +95,7 @@ var (
 	// ErrBadFile wraps a refusal of an uploaded calendar file, likewise.
 	ErrBadFile = errors.New("calendar file refused")
 	// ErrNotAMember is returned for a person who is not in the organization.
-	ErrNotAMember = errors.New("that person is not a member of this organization")
+	ErrNotAMember = errors.New("that person is not a member here")
 	// ErrCustomer is returned for a portal customer, who has no working week or absences here.
 	ErrCustomer = errors.New("a portal customer keeps no working week or absences")
 )

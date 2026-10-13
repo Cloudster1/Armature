@@ -94,7 +94,7 @@ func SetSchemeItem(ctx context.Context, tx db.DBTX, schemeID, issueTypeID uuid.U
 		return fmt.Errorf("look for the workflow: %w", err)
 	}
 	if !exists {
-		return invalid("choose one of this organization's workflows.")
+		return invalid("choose one of the workflows here.")
 	}
 	return writeSchemeItems(ctx, tx, schemeID, []SchemeItemInput{{IssueTypeID: &issueTypeID, WorkflowID: *workflowID}})
 }

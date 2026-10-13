@@ -127,7 +127,7 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 			return err
 		}
 		if wholeOrg && in.ProjectKey != "" {
-			return fmt.Errorf("%w: %s answers for the whole organization", ErrScope, in.Role)
+			return fmt.Errorf("%w: %s answers for all projects at once", ErrScope, in.Role)
 		}
 		var projectID *uuid.UUID
 		if in.ProjectKey != "" {

@@ -204,20 +204,19 @@ type Source string
 const (
 	// SourceChosen is a theme the person picked for themselves.
 	SourceChosen Source = "chosen"
-	// SourceOrganization is the organization's default, shown to whoever has
-	// not chosen.
-	SourceOrganization Source = "organization"
+	// SourceEveryone is everyone's default, shown to whoever has not chosen.
+	SourceEveryone Source = "everyone"
 	// SourceBuiltIn is the stylesheet's own look: nothing chosen and no
 	// default, or the built-in theme chosen over the default.
 	SourceBuiltIn Source = ""
 )
 
 // ErrDefaultNotShared is returned when a theme nobody else can see is made
-// the organization's default.
-var ErrDefaultNotShared = errors.New("the organization's default has to be a shared theme")
+// everyone's default.
+var ErrDefaultNotShared = errors.New("everyone's default has to be a shared theme")
 
-// Active is the theme the reader sees: the one they chose, else the
-// organization's default, else nil for the built-in one. A row that names no
+// Active is the theme the reader sees: the one they chose, else
+// everyone's default, else nil for the built-in one. A row that names no
 // theme is the built-in one chosen over the default.
 func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, Source, error) {
 	var (
@@ -236,7 +235,7 @@ func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, Source,
 			if fallback == nil {
 				return nil
 			}
-			chosen, source = fallback, SourceOrganization
+			chosen, source = fallback, SourceEveryone
 		case err != nil:
 			return err
 		case chosen == nil:

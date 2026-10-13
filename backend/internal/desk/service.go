@@ -108,7 +108,7 @@ func (s *Service) Setup(ctx context.Context, tx db.DBTX, projectID uuid.UUID) er
 		if !ok {
 			typeID, ok = types["Task"]
 			if !ok {
-				return errors.New("the organization has no Task issue type for requests to become")
+				return errors.New("there is no Task issue type for requests to become")
 			}
 		}
 		if _, err := tx.Exec(ctx, `

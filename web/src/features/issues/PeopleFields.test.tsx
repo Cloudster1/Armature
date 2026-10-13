@@ -20,7 +20,7 @@ const members = {
   ],
 };
 
-const notAMember = "That person is not a member of this organization.";
+const notAMember = "That person is not a member here.";
 
 afterEach(() => {
   vi.unstubAllGlobals();

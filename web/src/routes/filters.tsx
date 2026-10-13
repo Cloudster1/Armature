@@ -113,7 +113,7 @@ function FiltersPage() {
                         align="end"
                         trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${f.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-filter-menu={f.name} />}
                         items={[
-                          { label: f.shared ? "Stop sharing" : "Share with the organization", icon: <Icon.Share />, onSelect: () => update.mutate({ id: f.id, shared: !f.shared }), attrs: { "data-action": "filter-share" } },
+                          { label: f.shared ? "Stop sharing" : "Share with everyone", icon: <Icon.Share />, onSelect: () => update.mutate({ id: f.id, shared: !f.shared }), attrs: { "data-action": "filter-share" } },
                           {
                             label: "Delete",
                             icon: <Icon.Trash />,

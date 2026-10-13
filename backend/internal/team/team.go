@@ -64,7 +64,7 @@ var (
 	// ErrNotAMember is returned when adding somebody who is not in the
 	// organization, or is only a portal customer. Joining a team is never a way
 	// to gain access to something.
-	ErrNotAMember = errors.New("that person is not a member of this organization")
+	ErrNotAMember = errors.New("that person is not a member here")
 	// ErrInUse is returned when deleting a team that still carries work.
 	ErrInUse = errors.New("that team still has work")
 )

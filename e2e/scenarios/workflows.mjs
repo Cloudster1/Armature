@@ -34,14 +34,14 @@ import {
   waitForPath,
 } from "../helpers.mjs";
 
-scenario("a project follows the organization's workflows until it says otherwise", async ({ page }) => {
+scenario("a project follows the default workflows until it says otherwise", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Following", { visit: false });
 
   const rows = await assignmentRows(page, key);
-  expect.contains(await bodyText(page), "This project follows the organization", "it says so plainly");
+  expect.contains(await bodyText(page), "This project follows the default", "it says so plainly");
   for (const [type, text] of Object.entries(rows)) {
-    expect.contains(text, "Organization", `${type} is decided by the organization`);
+    expect.contains(text, "All projects", `${type} is decided for all projects`);
   }
 });
 
@@ -75,17 +75,17 @@ scenario("a project overrides one issue type and inherits the rest", async ({ pa
   const rows = await assignmentRows(page, key);
   expect.contains(rows.Bug, triage, "bugs use the project's workflow");
   expect.contains(rows.Bug, "This project", "and the project is named as the one that decided");
-  expect.contains(rows.Task, "Organization", "tasks still follow the organization");
+  expect.contains(rows.Task, "All projects", "tasks still follow the default");
 
   // The table is a description of behaviour, so the behaviour has to match it.
   const bug = await createIssue(page, key, "the override decides this one", { type: "Bug", visit: false });
   const bugMoves = await movesOffered(page, bug);
   expect.truthy(bugMoves.includes("Fixed"), "the bug offers the override's move");
-  expect.truthy(!bugMoves.includes("Start progress"), "and not the organization's");
+  expect.truthy(!bugMoves.includes("Start progress"), "and not the default's");
 
   const task = await createIssue(page, key, "this one is ordinary", { type: "Task", visit: false });
   const taskMoves = await movesOffered(page, task);
-  expect.truthy(taskMoves.includes("Start progress"), "the task offers the organization's move");
+  expect.truthy(taskMoves.includes("Start progress"), "the task offers the default's move");
   expect.truthy(!taskMoves.includes("Fixed"), "and not the override's");
 });
 
@@ -147,23 +147,23 @@ scenario("a project administrator picks a workflow for one issue type without dr
   const rows = await assignmentRows(page, key);
   expect.contains(rows.Bug, triage, "bugs follow the workflow the row was given");
   expect.contains(rows.Bug, "This project", "and the project is named as the one that decided");
-  expect.contains(rows.Task, "Organization", "tasks still follow the organization");
-  expect.equal(await page.$("#project-scheme"), null, "the whole-scheme picker is the organization's, not theirs");
+  expect.contains(rows.Task, "All projects", "tasks still follow the default");
+  expect.equal(await page.$("#project-scheme"), null, "the whole-scheme picker is an administrator's, not theirs");
 
   const bug = await createIssue(page, key, "mapped by a row", { type: "Bug", visit: false });
   const moves = await movesOffered(page, bug);
   expect.truthy(moves.includes("Fixed"), "the bug offers the mapped workflow's move");
-  expect.truthy(!moves.includes("Start progress"), "and not the organization's");
+  expect.truthy(!moves.includes("Start progress"), "and not the default's");
 
   // Handing the last type back leaves nothing of the project's own behind.
-  await assignWorkflow(page, key, "Bug", "Follow the organization");
+  await assignWorkflow(page, key, "Bug", "Follow the default");
   await page.waitForFunction(
-    () => document.body.innerText.includes("This project follows the organization"),
+    () => document.body.innerText.includes("This project follows the default"),
     { timeout: WAIT },
   );
 });
 
-scenario("a project can hand the decision back to the organization", async ({ page }) => {
+scenario("a project can hand the decision back to the default", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   // Workflows and schemes are everybody's, so these have names nobody else took.
   const leanScheme = uniqueName("Lean scheme");
@@ -181,14 +181,14 @@ scenario("a project can hand the decision back to the organization", async ({ pa
     { timeout: WAIT },
   );
 
-  await clickButton(page, "Follow the organization");
+  await clickButton(page, "Follow the default");
   await page.waitForFunction(
-    () => document.body.innerText.includes("This project follows the organization"),
+    () => document.body.innerText.includes("This project follows the default"),
     { timeout: WAIT },
   );
 
   const rows = await assignmentRows(page, key);
-  expect.contains(rows.Bug, "Organization", "bugs are the organization's business again");
+  expect.contains(rows.Bug, "All projects", "bugs follow the default again");
 });
 
 scenario("a workflow that could not work is refused with a reason", async ({ page }) => {

@@ -8,12 +8,21 @@ import { useFormat } from "@/lib/format";
 import { deviceName } from "@/lib/device";
 import { AUDIT_PAGE_SIZE } from "@/config";
 
-/** Who did what to the organization, newest first, for its administrators. */
+/** Who did what, newest first, for the administrators. */
 export const auditRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/audit",
   component: AuditPage,
 });
+
+// Stored rows, the export and scripts keep these keys, so only the page reads
+// them under the installation's name, beside installation.renamed.
+const ACTION_NAMES: Record<string, string> = {
+  "org.created": "installation.created",
+  "org.second_factor_required": "installation.second_factor_required",
+};
+
+const actionName = (action: string) => ACTION_NAMES[action] ?? action;
 
 function AuditPage() {
   const [filter, setFilter] = useState<AuditFilter>({});
@@ -33,7 +42,7 @@ function AuditPage() {
     <Page width="content">
       <PageHeader
         title="Audit log"
-        meta="Who did what to the organization: roles, groups, projects, workflows, webhooks, rules, invitations, tokens and sign-ins. Kept for a year."
+        meta="Who did what in Armature: roles, groups, projects, workflows, webhooks, rules, invitations, tokens and sign-ins. Kept for a year."
         actions={
           <ButtonLink href={auditExportHref(filter)} download variant="secondary" size="sm" icon={<Icon.Download />} data-action="export-audit">
             Export CSV
@@ -45,7 +54,7 @@ function AuditPage() {
           <option value="">Every action</option>
           {actions.map((a) => (
             <option key={a} value={a}>
-              {a}
+              {actionName(a)}
             </option>
           ))}
         </Select>
@@ -72,7 +81,7 @@ function AuditPage() {
                   {format.dateTime(entry.createdAt)}
                 </Td>
                 <Td>
-                  <Tag>{entry.action}</Tag>
+                  <Tag>{actionName(entry.action)}</Tag>
                 </Td>
                 <Td className="text-sm text-ink" data-audit-actor>
                   {entry.actorName || <span className="text-ink-subtle">system</span>}

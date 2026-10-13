@@ -14,7 +14,7 @@ export function ScopeBadge({ origin }: { origin: Origin }) {
           : "bg-surface-raised text-ink-muted",
       )}
     >
-      {ownedHere ? "This project" : "Organization"}
+      {ownedHere ? "This project" : "All projects"}
     </span>
   );
 }

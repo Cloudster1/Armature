@@ -73,7 +73,7 @@ function WorkflowCard({ workflow, highlighted, canConfigure, schemeCount, status
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 text-sm font-medium text-ink">
             {workflow.name}
-            {workflow.inDefault && <Tag className="text-accent">The organization's</Tag>}
+            {workflow.inDefault && <Tag className="text-accent">In the default</Tag>}
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">{usedBy}</p>
           {workflow.description && <p className="mt-2 text-sm text-ink-muted">{workflow.description}</p>}

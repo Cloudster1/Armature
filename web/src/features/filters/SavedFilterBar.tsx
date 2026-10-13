@@ -86,7 +86,7 @@ function SaveDialog({ query, onClose }: { query: string; onClose: () => void }) 
       <form id="save-filter-form" onSubmit={submit} className="space-y-3" noValidate>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
         <Field label="Filter name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="My open work" autoFocus />
-        <Checkbox label="Share with everyone in the organization" checked={shared} onChange={(e) => setShared(e.target.checked)} id="field-share-filter" />
+        <Checkbox label="Share with everyone" checked={shared} onChange={(e) => setShared(e.target.checked)} id="field-share-filter" />
       </form>
     </Dialog>
   );

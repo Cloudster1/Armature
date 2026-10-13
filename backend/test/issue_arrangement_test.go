@@ -158,7 +158,7 @@ func TestAProjectArrangesItsOwnIssues(t *testing.T) {
 	if _, err := arrangements.SaveInOrg(ws.ctx, nil, everywhere); err != nil {
 		t.Fatalf("arrange for the organization: %v", err)
 	}
-	if got := arrangementFor(t, arrangements, ws, bug); got.Origin.Scope != arrange.ScopeOrganization || got.Origin.Named {
+	if got := arrangementFor(t, arrangements, ws, bug); got.Origin.Scope != arrange.ScopeEveryone || got.Origin.Named {
 		t.Errorf("origin = %+v, want the organization's fallback", got.Origin)
 	}
 
@@ -166,7 +166,7 @@ func TestAProjectArrangesItsOwnIssues(t *testing.T) {
 	if _, err := arrangements.SaveInProject(ws.ctx, ws.project.Key, &story, nil); err != nil {
 		t.Fatalf("hand the story back: %v", err)
 	}
-	if got := arrangementFor(t, arrangements, ws, story); got.Origin.Scope != arrange.ScopeOrganization {
+	if got := arrangementFor(t, arrangements, ws, story); got.Origin.Scope != arrange.ScopeEveryone {
 		t.Errorf("origin = %+v, want the organization's after handing it back", got.Origin)
 	}
 

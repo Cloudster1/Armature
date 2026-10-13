@@ -63,7 +63,7 @@ describe("TemplateChooser", () => {
   });
 
   it("says what each template brings", () => {
-    expect(templateShape(scrum)).toBe("Scrum board · the organization's workflows");
+    expect(templateShape(scrum)).toBe("Scrum board · the default workflows");
     expect(templateShape(tasks)).toBe("Kanban board · Simple task workflow · no sprints, resources, releases, components, repositories");
   });
 });

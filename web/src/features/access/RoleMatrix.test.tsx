@@ -13,7 +13,7 @@ vi.mock("@/api/access", () => ({
       permissions: [
         { permission: "read", words: "See projects" },
         { permission: "sprint.manage", words: "Plan sprints" },
-        { permission: "org.administer", words: "Administer the organization" },
+        { permission: "org.administer", words: "Administer Armature" },
       ],
     },
   }),
@@ -50,12 +50,12 @@ describe("the role matrix", () => {
 
   it("never lets the global administrator stop administering", () => {
     render(<RoleMatrix />);
-    const fixed = screen.getByLabelText("Global administrator may administer the organization") as HTMLInputElement;
+    const fixed = screen.getByLabelText("Global administrator may administer Armature") as HTMLInputElement;
     expect(fixed.checked).toBe(true);
     expect(fixed.disabled).toBe(true);
   });
 
-  it("deletes a role of the organization's own after asking, and never a built-in one", async () => {
+  it("deletes a role somebody added after asking, and never a built-in one", async () => {
     render(<RoleMatrix />);
     await userEvent.click(screen.getByRole("button", { name: "Actions for Sprint planner" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));

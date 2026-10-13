@@ -84,7 +84,7 @@ export function FieldList({ projectKey, canConfigure, canPromote = false }: { pr
                   canPromote && !field.org
                     ? async () =>
                         (await confirm({ noun: "field", verb: "Promote", body: `${field.name} becomes every project's; a field by the same name elsewhere is folded into it and keeps its answers.` })) &&
-                        promote.mutate(field.id, { onSuccess: () => toast.info(`${field.name} is now the organization's`) })
+                        promote.mutate(field.id, { onSuccess: () => toast.info(`${field.name} is now on every project`) })
                     : undefined
                 }
               />
@@ -162,7 +162,7 @@ function FieldRow({
     <tr data-field={field.name} data-field-scope={field.org ? "org" : "project"}>
       <Td className="font-medium text-ink">
         {field.name}
-        {field.org && <Tag className="ml-2">Organization</Tag>}
+        {field.org && <Tag className="ml-2">All projects</Tag>}
       </Td>
       <Td className="text-ink-muted">{kindTitle}</Td>
       <Td>

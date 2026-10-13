@@ -203,7 +203,7 @@ func Catalog() []Descriptor {
 		{Kind: "action", Type: ActionAddComment, Label: "Add a comment", Description: "{{issue.key}}, {{issue.summary}} and {{actor.name}} are filled in.", NeedsIssue: true, Options: []workflow.Option{text("text", "Comment", true)}},
 		{Kind: "action", Type: ActionCreateSubissue, Label: "Create a subtask", Description: "Under the issue, with this summary.", NeedsIssue: true, Options: []workflow.Option{text("text", "Summary", true)}},
 		{Kind: "action", Type: ActionCreateIssue, Label: "Create an issue", Description: "In the rule's project, with this summary; what an incoming call usually does.", Options: []workflow.Option{text("text", "Summary", true)}},
-		{Kind: "action", Type: ActionSendWebhook, Label: "Send a webhook", Description: "Posts the event to one of the organization's endpoints.", Options: []workflow.Option{text("endpointId", "Endpoint", true)}},
+		{Kind: "action", Type: ActionSendWebhook, Label: "Send a webhook", Description: "Posts the event to one of the webhook endpoints.", Options: []workflow.Option{text("endpointId", "Endpoint", true)}},
 		{Kind: "action", Type: ActionSendMail, Label: "Send a mail", Description: "To assignee, reporter, watchers, or an address.", Options: []workflow.Option{text("to", "To", true), text("subject", "Subject", true), text("text", "Body", true)}},
 	}
 	for i := range out {

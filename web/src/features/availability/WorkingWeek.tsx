@@ -12,7 +12,7 @@ export function WorkingWeekTable({ week }: { week: WorkingWeek }) {
     <div className="space-y-3" data-working-week>
       <p className="text-sm text-ink-muted">
         Days off from <span className="text-ink" data-week-calendar>{week.calendar?.name ?? "no calendar yet"}</span>
-        {week.calendarId === null && week.calendar ? ", the organization's default" : ""}.
+        {week.calendarId === null && week.calendar ? ", everyone's default" : ""}.
         {!week.saved && " Nobody has set your week, so it is the standard one."}
       </p>
       <Table dense>

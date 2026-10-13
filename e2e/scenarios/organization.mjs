@@ -134,7 +134,7 @@ scenario("a project posts a status update and the projects table shows it", asyn
 });
 
 // Serial: a field of the organization's is on every project there is.
-serialScenario("a field defined for the organization is on every project", async ({ page }) => {
+serialScenario("a field defined for all projects is on every project", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const first = await createProject(page, "First", { visit: false });
   const second = await createProject(page, "Second", { visit: false });

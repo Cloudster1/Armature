@@ -464,5 +464,5 @@ var (
 	// ErrTemplateName is returned when a template is saved without a name.
 	ErrTemplateName = errors.New("a template needs a name")
 	// ErrTemplateNameTaken is returned when the organization has that template.
-	ErrTemplateNameTaken = errors.New("this organization already has a template by that name")
+	ErrTemplateNameTaken = errors.New("there is already a template by that name")
 )

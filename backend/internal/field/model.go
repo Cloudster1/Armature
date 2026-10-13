@@ -89,7 +89,7 @@ var (
 	ErrNotFound = errors.New("field not found")
 	// ErrNameTaken is returned when the project already has a field by that
 	// name.
-	ErrNameTaken = errors.New("a field by that name already exists here; a name means one field across the organization")
+	ErrNameTaken = errors.New("a field by that name already exists here; a name means one field across all projects")
 	// ErrBadKind is returned for a kind the service does not know.
 	ErrBadKind = errors.New("that is not a kind of field")
 	// ErrBadValue is returned when a value does not fit the field's kind. It is

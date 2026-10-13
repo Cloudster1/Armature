@@ -261,7 +261,7 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
 });
 
 // Serial: a label is the organization's, and renaming one renames it for everybody.
-serialScenario("a label is listed for the organization and renamed everywhere", async ({ page }) => {
+serialScenario("a label is listed for everyone and renamed everywhere", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Labelled", { visit: false });
   const issueKey = await createIssue(page, key, "carries the word", { visit: false });

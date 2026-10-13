@@ -261,7 +261,7 @@ export function permissionWords(permission: string): string {
     "board.configure": "set up boards",
     "project.administer": "administer projects",
     "project.create": "create projects",
-    "org.administer": "administer the organization",
+    "org.administer": "administer Armature",
   };
   return words[permission] ?? permission;
 }
