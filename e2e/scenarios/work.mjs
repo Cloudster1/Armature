@@ -17,6 +17,7 @@ import {
   dashboardFixture,
   eventually,
   expect,
+  exportedCSV,
   goto,
   importCSV,
   inboxRows,
@@ -245,6 +246,41 @@ scenario("three tickets are edited at once and the one that cannot move says why
   await page.waitForFunction(() => document.body.innerText.includes("In Progress"), { timeout: WAIT });
   await goto(page, `/issues/${b}`);
   await page.waitForFunction(() => document.body.innerText.includes("In Progress"), { timeout: WAIT });
+});
+
+scenario("one issue is exported from its page, ticked rows from search, and a project's list from the list", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Exports", { visit: false });
+  const a = await createIssue(page, key, "Export me alone", { visit: false });
+  const b = await createIssue(page, key, "Export me with a friend", { visit: false });
+  await createIssue(page, key, "Leave me out", { visit: false });
+  const keysOf = (rows) => rows.slice(1).map((row) => row.split(",")[0]).sort().join(" ");
+
+  // The issue that is open, from its More menu.
+  await goto(page, `/issues/${a}`);
+  await page.waitForSelector('[data-action="issue-more"]', { timeout: WAIT });
+  await page.click('[data-action="issue-more"]');
+  const one = await exportedCSV(page, '[data-action="export-issue"]');
+  expect.contains(one.rows[0], "key,summary", "the file starts with its header");
+  expect.equal(keysOf(one.rows), a, "and holds that issue alone");
+
+  // Two ticked rows on search, with no change chosen.
+  await goto(page, `/search?q=${encodeURIComponent(`project = ${key}`)}`);
+  await page.waitForSelector(`[data-select-issue="${a}"]`, { timeout: WAIT });
+  await page.click(`[data-select-issue="${a}"]`);
+  await page.click(`[data-select-issue="${b}"]`);
+  await page.waitForSelector('[data-bulk-bar="2"]', { timeout: WAIT });
+  const two = await exportedCSV(page, '[data-action="export-selected"]');
+  expect.equal(keysOf(two.rows), [a, b].sort().join(" "), "the ticked rows and nothing else");
+
+  // The project's list, narrowed to words in the summary, on every page.
+  await goto(page, `/projects/${key}`);
+  await page.waitForSelector('input[aria-label="Search issues"]', { timeout: WAIT });
+  await page.type('input[aria-label="Search issues"]', "Export me");
+  await page.waitForFunction(() => !document.body.innerText.includes("Leave me out"), { timeout: WAIT });
+  const list = await exportedCSV(page, '[data-action="export-list"]');
+  expect.contains(list.href, `project=${key}`, "the file is the project's");
+  expect.equal(keysOf(list.rows), [a, b].sort().join(" "), "and holds what the list shows");
 });
 
 scenario("a ticket moves to another project and keeps its history", async ({ page }) => {

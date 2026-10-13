@@ -7,6 +7,15 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: entries on the calendar open. A click on an issue opens it in the
+  drawer beside the calendar, whose arrows walk the month's issues, while a
+  drag still only moves its dates; a sprint opens its board, a milestone the
+  milestones and a version the releases (#120).
+- Added: issues are exported from where they are. An issue's More button
+  has Export as CSV for that issue, readers included; the bar over ticked
+  rows exports them, before any change is chosen and past the bulk limit;
+  and a project's issue list exports every page of what it shows. All open
+  the same column choice as search's Export (#121).
 - Added: a comment's author edits it in place or deletes it, and whoever
   administers the project may delete anybody's; a work log entry is
   corrected in place, its duration, day and note together. An edited
