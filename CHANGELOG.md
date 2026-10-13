@@ -7,6 +7,13 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the database's triggers keep their rules without the
+  organization. Each still holds a row to its project, its service desk or
+  its member, and none reads `org_id` or fires on it changing; the nine that
+  held a row to its organization alone are gone. Deleting an account that
+  granted itself a role no longer trips the role assignment's trigger, and
+  the database's refusals say "here" or "the installation" where they said
+  "the organization" (#218).
 - Changed: names and keys are unique in the installation rather than in each
   organization: a project key, and so an issue key, names one project, and
   the keys and indexes of the schema no longer carry `org_id`. The upgrade

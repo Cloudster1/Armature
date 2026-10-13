@@ -24,7 +24,7 @@ func TestDeletingAnEpicRemovesItsDescendantsFilesFromTheBucket(t *testing.T) {
 	api := newAPIServer(t, h)
 	ctx := context.Background()
 	owner := api.client(t)
-	orgID := obj(t, owner.signIn(t, h.person(t, "subtree", auth.RoleOwner)), "principal", "org")["id"].(string)
+	owner.signIn(t, h.person(t, "subtree", auth.RoleOwner))
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Subtree", "key": sbtKey}), http.StatusCreated, "project")
 	typeID := map[string]string{}
 	for _, raw := range list(t, want(t, owner.get("/api/v1/issue-types"), http.StatusOK, "issue types"), "issueTypes") {
@@ -56,12 +56,8 @@ func TestDeletingAnEpicRemovesItsDescendantsFilesFromTheBucket(t *testing.T) {
 
 	want(t, owner.delete("/api/v1/issues/"+epic), http.StatusNoContent, "delete the epic")
 	for _, key := range objects {
-		org, ok := tombstoneOrg(t, h, key)
-		if !ok {
+		if !hasTombstone(t, h, key) {
 			t.Fatalf("no tombstone for %s, a file under the deleted epic", key)
-		}
-		if org == nil || *org != orgID {
-			t.Errorf("the tombstone for %s names organization %v, want %s", key, org, orgID)
 		}
 	}
 
@@ -86,35 +82,27 @@ func TestAnAttachmentRowNeverLeavesWithoutATombstone(t *testing.T) {
 
 	t.Run("an issue deleted in SQL", func(t *testing.T) {
 		c := api.client(t)
-		orgID := obj(t, c.signIn(t, h.person(t, "rawissue", auth.RoleOwner)), "principal", "org")["id"].(string)
+		c.signIn(t, h.person(t, "rawissue", auth.RoleOwner))
 		issueID, objectKey := withFile(c, h.projectKey(t, "RWI"))
 		if _, err := h.super.Exec(ctx, `DELETE FROM issue WHERE id = $1`, issueID); err != nil {
 			t.Fatal(err)
 		}
-		org, ok := tombstoneOrg(t, h, objectKey)
-		if !ok {
+		if !hasTombstone(t, h, objectKey) {
 			t.Fatal("deleting the issue in SQL left no tombstone for its file")
-		}
-		if org == nil || *org != orgID {
-			t.Errorf("the tombstone names organization %v, want %s", org, orgID)
 		}
 		reapUntilGone(t, h, store, objectKey)
 	})
 
 	t.Run("a project deleted in SQL", func(t *testing.T) {
 		c := api.client(t)
-		orgID := obj(t, c.signIn(t, h.person(t, "rawproject", auth.RoleOwner)), "principal", "org")["id"].(string)
+		c.signIn(t, h.person(t, "rawproject", auth.RoleOwner))
 		key := h.projectKey(t, "RWP")
 		_, objectKey := withFile(c, key)
 		if _, err := h.super.Exec(ctx, `DELETE FROM project WHERE key = $1`, key); err != nil {
 			t.Fatalf("deleting a project with files in SQL: %v", err)
 		}
-		org, ok := tombstoneOrg(t, h, objectKey)
-		if !ok {
+		if !hasTombstone(t, h, objectKey) {
 			t.Fatal("deleting the project in SQL left no tombstone for its file")
-		}
-		if org == nil || *org != orgID {
-			t.Errorf("the tombstone names organization %v, want %s", org, orgID)
 		}
 		reapUntilGone(t, h, store, objectKey)
 	})
@@ -135,13 +123,14 @@ func uploadObject(t *testing.T, h *harness, c *client, issueKey, name string) st
 	return objectKey
 }
 
-// tombstoneOrg is the organization an object's tombstone names, and whether
-// there is a tombstone at all.
-func tombstoneOrg(t *testing.T, h *harness, objectKey string) (*string, bool) {
+// hasTombstone reports whether the object's bytes are marked for the reaper.
+func hasTombstone(t *testing.T, h *harness, objectKey string) bool {
 	t.Helper()
-	var org *string
-	err := h.super.QueryRow(context.Background(), `SELECT org_id::text FROM attachment_tombstone WHERE object_key = $1`, objectKey).Scan(&org)
-	return org, err == nil
+	var marked bool
+	if err := h.super.QueryRow(context.Background(), `SELECT EXISTS (SELECT 1 FROM attachment_tombstone WHERE object_key = $1)`, objectKey).Scan(&marked); err != nil {
+		t.Fatal(err)
+	}
+	return marked
 }
 
 // reapPasses bounds the reaper runs a test waits through; other tests leave
