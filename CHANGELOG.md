@@ -7,6 +7,32 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: accounts belong to the installation. Sign-up asks for the person
+  alone: on an installation with no organization yet, the first account sets
+  it up, named by the new `ARMATURE_NAME` (`Armature` unless set), and
+  administers it. After that `ARMATURE_SIGNUP` decides: `first`, now the
+  default, closes sign-up; `open` lets people sign up as members; `closed`
+  never offers it. `POST /auth/signup` refuses `orgName` and `orgSlug`, and
+  `GET /auth/signup` also says whether the next account sets the installation
+  up. Invitations lead into the installation and their mail and page name it;
+  the invitation preview's `orgName` is now `installation`. The development
+  stack keeps sign-up open (#211).
+- Changed: letting a member go switches their account off. `DELETE
+  /members/{id}` ends their sessions and tokens and keeps the account, which
+  switching on brings back, and "Remove from organization" is gone from
+  Access. An administrator renames, resets and switches off every account,
+  not only those in no other organization, and a switched-off account is told
+  "Your account has been switched off. Ask an administrator." (#211).
+- Changed: the installation keeps an active administrator rather than an
+  owner: the last one cannot be switched off or erase their account, refused
+  with `last_administrator`, and migration `00930` holds the database to the
+  same. Pictures are seen by everybody signed in, API tokens are the
+  person's, and acts on an account are recorded once (#211).
+- Changed: the browser suite runs as the seed's Ada unless
+  `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` say otherwise, and on an
+  installation nobody has set up it signs her up through the sign-up page
+  first (#211).
+
 - Changed: nobody is signed in without the organization. A password
   sign-in, its code step or an API token of somebody with no membership left
   is refused with "Your account has been switched off. Ask an

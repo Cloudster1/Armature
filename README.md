@@ -34,7 +34,7 @@ install; Docker is the only requirement.
 git clone https://github.com/armature/armature.git && cd armature
 make up      # postgres primary and replica, valkey, seaweedfs, mailpit,
              # keycloak, gitea, the api, the worker, the SPA and the renderer
-make seed    # a demo organization to sign in to
+make seed    # demo people and a project to sign in to
 ```
 
 Then open <http://localhost:5173> and sign in as `ada@armature.test` with the
@@ -42,7 +42,7 @@ password the seed prints. There is a demo project with issues spread across the
 workflow waiting for you.
 
 Or sign in the way a company would: on the sign-in page choose single sign-on
-and give the organization `demo`. The stack runs a Keycloak at
+and give the organization `armature`. The stack runs a Keycloak at
 <http://localhost:8180> (admin console: `admin` / `admin`) with the same
 people, the same password, and groups that grant their roles here. Grace is in
 `portal-owners` and `scrum-masters`, Alan in `developers`, Rita in `readers`;
@@ -92,9 +92,12 @@ rest.
 **Roles.** Five of them, granted to people or to groups, over the organization
 or over one project: global administrator, project administrator, scrum master,
 user, reader. Groups can come from the identity provider, replaced at every
-sign-in. An administrator makes local accounts with a password, resets them
-and switches them off, and somebody who forgot their password asks the sign-in
-page for a link by mail. A person can add two-step sign-in with an
+sign-in. The first account to sign up sets the installation up and administers
+it; after that people come in by invitation, by single sign-on, by an
+administrator making their account, or, with `ARMATURE_SIGNUP=open`, by
+signing up as members. An administrator makes local accounts with a password,
+resets them and switches them off, which is also how somebody is let go, and
+somebody who forgot their password asks the sign-in page for a link by mail. A person can add two-step sign-in with an
 authenticator app, with recovery codes for a lost phone, and an organization
 can require it of its administrators or of everyone. A project is a wall: what a role does not reach is
 not found.
@@ -234,7 +237,11 @@ afterwards, including on failure.
 
 The integration suite opens one cluster, the superuser pools and the attachment
 bucket in `TestMain`, and `newHarness` hands them to every test. A new test
-works in organizations of its own and calls `t.Parallel()` first thing. A test
+works in organizations of its own, which the harness founds with their owner
+straight through the database since no product path makes a second one, and
+calls `t.Parallel()` first thing. The tests of sign-up itself run against a
+database of their own, migrated from nothing, the one place an installation
+is empty. A test
 that shares something another test would disturb (pausing the replica, a worker
 pass over every organization, the mailpit box, Redis, the per-address brakes, a
 row read across organizations) stays sequential and is listed in
@@ -244,9 +251,11 @@ neither.
 
 The browser suite runs its scenarios in one installation, four abreast. A run
 sets up its administrator once, before any scenario starts: signed in with
-`E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` when both are set, otherwise signed
-up anew, which still founds an organization of its own and keeps one run apart
-from the next. `signUp` is a new person: the administrator makes the account
+`E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD`, which `make test-e2e` sets to the
+seed's Ada unless told otherwise. On an installation nobody has set up yet,
+that account is signed up through the sign-up page instead, in a browser of
+its own, which sets the installation up; on one set up by somebody else, the
+run stops and says which variables to set. `signUp` is a new person: the administrator makes the account
 with the role the scenario asks for, an administrator unless it says otherwise,
 and the scenario signs in as it. Scenarios keep apart by what they make rather
 than where: `createProject` gives every project a unique key, which scenarios
@@ -279,8 +288,8 @@ as, its projects and issues, or signing in as somebody else, is made through the
 API from the runner's side, and the session cookie is handed to the browser.
 `signUp`, `signIn`, `signOut`, `createProject`, `createIssue` and
 `acceptInvite` take `{ visit: false }` when the next step loads a page anyway.
-The scenarios about several organizations sign one up with
-`signUpOwnOrganization`. The forms themselves are driven by `signUpThroughForm`,
+The forms themselves are driven by `signUpThroughForm`, which the development
+stack's open sign-up lets a member through,
 `signInThroughForm`, `createProjectThroughForm`, `createIssueThroughForm` and
 `joinThroughLink`, in the scenarios whose subject they are.
 
@@ -396,7 +405,8 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_DB_MAX_REPLICA_LAG` | `2s` | lag past which a replica is not used |
 | `ARMATURE_DB_REPLICA_LAG_SAMPLES` | `3` | lag readings kept per replica; their median is held against the maximum lag, so one slow check does not take a replica out |
 | `ARMATURE_REDIS_URL` | `redis://localhost:6379/0` | the event stream |
-| `ARMATURE_SIGNUP` | `open` | who may create an organization: `open`, `first` (only the first one) or `closed` |
+| `ARMATURE_NAME` | `Armature` | what the installation is called when its first account sets it up; administrators rename it afterwards |
+| `ARMATURE_SIGNUP` | `first` | who may sign up: `first` (the first account, which sets the installation up and administers it), `open` (later people too, as members) or `closed` (nobody) |
 | `ARMATURE_SESSION_TTL` | `720h` | how long a session lives |
 | `ARMATURE_SESSION_COOKIE` | `armature_session` | the cookie's name |
 | `ARMATURE_SECURE_COOKIES` | `false` | required true outside development |

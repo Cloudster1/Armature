@@ -1493,6 +1493,10 @@ key because that is what every question arrives as.
 
 ### The owner always administers their own organization
 
+**Superseded** by [The installation keeps an active administrator](#the-installation-keeps-an-active-administrator)
+(#211): the owner keeps the standing grant, but what is kept is somebody active
+to administer, owner or not.
+
 A standing grant, outside the assignment table. Roles are data, and data can be
 edited: an owner who removes their own last administrator role would otherwise
 have locked themselves out of a tenant they own. The last-administrator check
@@ -1595,6 +1599,10 @@ account could be let through more doors.
 
 ### An administrator makes a local user, and manages only what is theirs
 
+**Superseded** by [An administrator manages every account, and letting go is switching off](#an-administrator-manages-every-account-and-letting-go-is-switching-off)
+(#211): with one installation there is no other organization whose interest
+an account's could be.
+
 Signing up makes an organization and an invitation needs a mailbox at the
 other end, so a company that keeps its people off mail, or a desk that wants an
 account ready before the person arrives, had no way to make one. An
@@ -1619,6 +1627,63 @@ check is kept twice.
 
 **Reconsider if** an organization needs to suspend somebody it shares, at
 which point suspension moves onto the membership rather than the account.
+
+### The first account sets the installation up, and sign-up asks for nobody else
+
+An installation serves one team (#208), so a sign-up has no organization to
+name. The page asks for the person alone. On an installation with no
+organization yet, the first account makes it, named by `ARMATURE_NAME`, with
+the statuses, types and workflow a project needs, and owns it; a lock taken in
+the same transaction stops two first accounts racing. After that
+`ARMATURE_SIGNUP` decides: `first`, the default, closes the page; `open` keeps
+it open, and whoever signs up joins as a plain member; `closed` never offers
+it, not even to the first. No sign-up makes a second organization, so the
+upgrade's refusal of several (`00929`) never has a new one to count. Invitations
+lead into the installation and its mail and page name it. The development
+stack runs with `open`, so its sign-up form stays to be tried, and the browser
+suite's administrator, the seed's Ada by default, signs up through the page
+when it finds the installation empty.
+
+The integration suite still keeps its tests apart by organization until #217:
+its harness founds one with an owner straight through the admin path, the
+way the first sign-up does, and no route or exported function offers that to
+anybody else. The tests of sign-up itself run against a database of their own,
+migrated from nothing, which is the only place an installation is reliably
+empty.
+
+**Reconsider if** an installation wants people to sign up only from its own
+mail domain, at which point `open` takes a domain rather than growing a fourth
+value.
+
+### An administrator manages every account, and letting go is switching off
+
+Every account belongs to the installation, so an administrator renames,
+resets and switches off anybody but themselves; only an owner touches another
+owner, and an owner's standing is not changed here. Letting somebody go, from
+the API's `DELETE /members/{id}` or the users page, is switching their account
+off: every session and token ends and the address no longer signs in, with
+the same sentence as any other switched-off account. The account, its work,
+its groups and its absences stay, so switching on undoes it, and erasure is
+what takes a person out. The resource plan leaves a switched-off person out,
+and what is assigned to them counts as nobody's. An address that already signs
+in is refused with a pointer to the list; a passwordless row, such as a desk's
+customer, is claimed and becomes the account.
+
+API tokens and pictures follow the person rather than an organization: a
+token is its owner's, and anybody signed in sees anybody's picture. An act on
+the account itself, such as a reset password or a second factor turned on, is
+recorded once, in the log of the person's organization, rather than once per
+organization.
+
+### The installation keeps an active administrator
+
+The last active administrator, owner or admin, cannot be switched off and
+cannot erase their account: the service refuses it with a sentence that says
+to make somebody else an administrator first, and the trigger
+`app_user_keeps_an_administrator` (migration `00930`) refuses the same row,
+because a column the code forgets to check is not a rule. An owner beside an
+active administrator may now be switched off; the owner's standing grant still
+means an owner who is active always administers.
 
 ### A forgotten password is reset by mail, and the answer names nobody
 
