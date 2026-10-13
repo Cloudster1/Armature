@@ -138,7 +138,10 @@ test-integration: ## Run the integration suite against the running stack
 # module resolution walks up from the importing file and ignores NODE_PATH.
 # WORKERS=<n> sets how many browsers run scenarios side by side; ONLY=<words>
 # narrows the run to the scenarios whose names contain them, or to one file's
-# (ONLY=board). Each run writes .cache/e2e/timings.json and lists its slowest.
+# (ONLY=board). SHUFFLE=1 runs the parallel pool in a random order and prints
+# the seed, which SHUFFLE=<seed> repeats. E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD,
+# from the environment, name an existing administrator to run as instead of
+# signing one up. Each run writes .cache/e2e/timings.json and lists its slowest.
 #
 # The suite runs against the production build behind the production nginx,
 # compose's web-e2e, which is built first; with web/ unchanged every layer is
@@ -171,6 +174,9 @@ test-e2e: ## Run the browser end-to-end suite against the running stack
 		-e E2E_ARTIFACTS=/artifacts \
 		-e E2E_ONLY='$(ONLY)' \
 		-e E2E_WORKERS='$(WORKERS)' \
+		-e E2E_SHUFFLE='$(SHUFFLE)' \
+		-e E2E_ADMIN_EMAIL \
+		-e E2E_ADMIN_PASSWORD \
 		-w /usr/src/app \
 		--entrypoint node $(E2E_IMAGE) /usr/src/app/e2e/suite.mjs
 

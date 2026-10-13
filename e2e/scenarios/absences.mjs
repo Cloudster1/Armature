@@ -84,17 +84,17 @@ scenario("a scrum master records an absence for somebody on their team", async (
   const key = await createProject(page, "Away crew", "scrum");
   const master = unique("master");
   const member = unique("member");
-  await createLocalUser(page, { email: master.email, name: "Sam Master" });
-  await createLocalUser(page, { email: member.email, name: "Tea Member" });
+  await createLocalUser(page, master);
+  await createLocalUser(page, member);
   await createTeam(page, key, "Crew");
-  await joinTeam(page, key, "Crew", "Tea Member");
+  await joinTeam(page, key, "Crew", member.name);
   await grantScrumMaster(page, key, master.email);
 
   await signIn(page, master.email, PASSWORD);
   await waitForApp(page);
   await goto(page, `/projects/${key}/teams`);
-  await page.waitForSelector('[data-team-member="Tea Member"] [data-action="record-member-absence"]', { timeout: WAIT });
-  await page.click('[data-team-member="Tea Member"] [data-action="record-member-absence"]');
+  await page.waitForSelector(`[data-team-member="${member.name}"] [data-action="record-member-absence"]`, { timeout: WAIT });
+  await page.click(`[data-team-member="${member.name}"] [data-action="record-member-absence"]`);
   await page.waitForSelector("[data-absence-dialog] [data-absence-form]", { timeout: WAIT });
   await recordAbsence(page, "[data-absence-dialog]", day(TEAM_AWAY_DAY), day(TEAM_AWAY_DAY));
 
@@ -109,38 +109,39 @@ scenario("a person is told in their inbox when a scrum master records an absence
   const key = await createProject(page, "Told crew", "scrum");
   const master = unique("master");
   const member = unique("member");
-  await createLocalUser(page, { email: master.email, name: "Sam Master" });
-  await createLocalUser(page, { email: member.email, name: "Tea Member" });
+  await createLocalUser(page, master);
+  await createLocalUser(page, member);
   await createTeam(page, key, "Crew");
-  await joinTeam(page, key, "Crew", "Tea Member");
+  await joinTeam(page, key, "Crew", member.name);
   await grantScrumMaster(page, key, master.email);
 
-  // Tea writes down her own days first.
+  // The member writes down their own days first.
   await signIn(page, member.email, PASSWORD);
   await waitForApp(page);
   await goto(page, "/settings/profile");
   await page.waitForSelector("[data-absence-form]", { timeout: WAIT });
   await recordAbsence(page, "[data-absences]", day(AWAY_FIRST_DAY), day(AWAY_LAST_DAY));
 
-  // Sam adds a day for her, and is refused when he tries to take hers away.
+  // The scrum master adds a day for them, and is refused taking theirs away.
   await signIn(page, master.email, PASSWORD);
   await waitForApp(page);
   await goto(page, `/projects/${key}/teams`);
-  await page.waitForSelector('[data-team-member="Tea Member"] [data-action="record-member-absence"]', { timeout: WAIT });
-  await page.click('[data-team-member="Tea Member"] [data-action="record-member-absence"]');
+  await page.waitForSelector(`[data-team-member="${member.name}"] [data-action="record-member-absence"]`, { timeout: WAIT });
+  await page.click(`[data-team-member="${member.name}"] [data-action="record-member-absence"]`);
   await page.waitForSelector("[data-absence-dialog] [data-absence-form]", { timeout: WAIT });
   const before = Date.now();
   await recordAbsence(page, "[data-absence-dialog]", day(TEAM_AWAY_DAY), day(TEAM_AWAY_DAY));
   await page.click(`[data-absence-dialog] [data-absence="${day(AWAY_FIRST_DAY)}"] [data-action="remove-absence"]`);
   await confirm(page);
   await page.waitForFunction(
-    () => document.querySelector("[data-absence-dialog]")?.innerText.includes("Only Tea Member or an administrator can change this absence."),
+    (name) => document.querySelector("[data-absence-dialog]")?.innerText.includes(`Only ${name} or an administrator can change this absence.`),
     { timeout: WAIT },
+    member.name,
   );
   await page.waitForSelector(`[data-absence-dialog] [data-absence="${day(AWAY_FIRST_DAY)}"]`, { timeout: WAIT });
 
-  // Tea is mailed and finds a notice in her inbox; neither says which days.
-  const mail = await mailFor(member.email, "Sam Master", { since: before });
+  // The member is mailed and finds a notice in the inbox; neither says which days.
+  const mail = await mailFor(member.email, master.name, { since: before });
   expect.contains(mail.text, "/settings/profile", "the mail points at her profile");
   expect.equal(mail.text.includes(day(TEAM_AWAY_DAY)), false, "the mail does not carry the days");
   await signIn(page, member.email, PASSWORD);
@@ -149,7 +150,7 @@ scenario("a person is told in their inbox when a scrum master records an absence
   const notice = '[data-notification="absence"]';
   await eventually(page, notice);
   const told = await textOf(page, notice);
-  expect.contains(told, "Sam Master recorded an absence for you", "the notice says who did what");
+  expect.contains(told, `${master.name} recorded an absence for you`, "the notice says who did what");
   expect.equal(told.includes(day(TEAM_AWAY_DAY)), false, `the notice carries no days: ${told}`);
   await page.click(notice);
   await waitForPath(page, "/settings/profile");

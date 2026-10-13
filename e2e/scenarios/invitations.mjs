@@ -16,6 +16,7 @@ import {
   signInThroughForm,
   signOut,
   signUp,
+  signUpOwnOrganization,
   submit,
   unique,
   WAIT,
@@ -82,7 +83,8 @@ scenario("a withdrawn invitation cannot be used", async ({ page }) => {
 scenario("somebody who already has an account signs in from the invitation and belongs to both", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   await signOut(page, { visit: false });
-  const other = await signUp(page, unique("twofold"), { visit: false });
+  // An account of their own elsewhere: an organization of their own.
+  const other = await signUpOwnOrganization(page, unique("twofold"), { visit: false });
   await signIn(page, owner.email);
   await waitForApp(page);
   const { token } = await inviteFromMembersPage(page, other.email);
@@ -114,7 +116,7 @@ scenario("somebody who already has an account signs in from the invitation and b
 scenario("somebody in two organizations chooses which one when signing in", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   await signOut(page, { visit: false });
-  const other = await signUp(page, unique("chooser"), { visit: false });
+  const other = await signUpOwnOrganization(page, unique("chooser"), { visit: false });
   await signIn(page, owner.email);
   await waitForApp(page);
   const { token } = await inviteFromMembersPage(page, other.email);

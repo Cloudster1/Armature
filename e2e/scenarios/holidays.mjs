@@ -1,6 +1,6 @@
 // Calendars of days off, and the working week each person keeps.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   clickButton,
   createIssue,
@@ -8,8 +8,10 @@ import {
   createProject,
   expect,
   goto,
+  keepHolidays,
   openMonth,
   PASSWORD,
+  press,
   replaceValue,
   scheduleIssue,
   selectByLabel,
@@ -35,15 +37,21 @@ async function importHolidays(page) {
 
 // The .ics kept under e2e/fixtures is what a calendar application exports: a
 // folded name and an event over three days, each of which becomes a day off.
-scenario("an administrator imports an .ics and sees its days on the default calendar", async ({ page }) => {
+// Serial, like every scenario that changes the default calendar: everybody's days off are on it.
+serialScenario("an administrator imports an .ics and sees its days on the default calendar", async ({ page }) => {
   await signUp(page);
-  await importHolidays(page);
-  const name = await page.$eval('[data-holiday-day="2026-12-25"] input[aria-label="Name"]', (el) => el.value);
-  expect.equal(name, "Christmas break", "a folded name is read whole");
-  await page.waitForFunction(
-    () => document.querySelector('[data-calendar-row="Holidays"] td:nth-child(2)')?.textContent.trim() === "4",
-    { timeout: WAIT },
-  );
+  const putBack = await keepHolidays();
+  try {
+    await importHolidays(page);
+    const name = await page.$eval('[data-holiday-day="2026-12-25"] input[aria-label="Name"]', (el) => el.value);
+    expect.equal(name, "Christmas break", "a folded name is read whole");
+    await page.waitForFunction(
+      () => document.querySelector('[data-calendar-row="Holidays"] td:nth-child(2)')?.textContent.trim() === "4",
+      { timeout: WAIT },
+    );
+  } finally {
+    await putBack();
+  }
 });
 
 scenario("an administrator sets somebody's working week and they read it on their profile", async ({ page }) => {
@@ -51,9 +59,8 @@ scenario("an administrator sets somebody's working week and they read it on thei
   const who = unique("parttime");
   await createLocalUser(page, { email: who.email, name: who.name });
 
-  await page.click(`[data-user="${who.email}"] [data-action="user-menu"]`);
-  await page.waitForSelector('[data-action="working-week"]', { timeout: WAIT });
-  await page.click('[data-action="working-week"]');
+  await press(page, `[data-user="${who.email}"] [data-action="user-menu"]`);
+  await press(page, '[data-action="working-week"]');
   await page.waitForSelector('[data-week-day="fri"]', { timeout: WAIT });
   await replaceValue(page, '[data-week-day="fri"]', "4");
   await selectByLabel(page, "#field-holiday-calendar", "Holidays");
@@ -69,18 +76,23 @@ scenario("an administrator sets somebody's working week and they read it on thei
   expect.equal(await textOf(page, "[data-week-calendar]"), "Holidays", "the profile names the calendar");
 });
 
-scenario("the default calendar's holidays shade the timeline and the project calendar", async ({ page }) => {
+serialScenario("the default calendar's holidays shade the timeline and the project calendar", async ({ page }) => {
   await signUp(page);
-  await importHolidays(page);
-  const key = await createProject(page, "Festive", { visit: false });
-  const issue = await createIssue(page, key, "over the holidays", { visit: false });
-  await scheduleIssue(page, issue, "2026-12-21", "2026-12-31");
+  const putBack = await keepHolidays();
+  try {
+    await importHolidays(page);
+    const key = await createProject(page, "Festive", { visit: false });
+    const issue = await createIssue(page, key, "over the holidays", { visit: false });
+    await scheduleIssue(page, issue, "2026-12-21", "2026-12-31");
 
-  await goto(page, `/projects/${key}/plan`);
-  await page.waitForSelector('[data-plan-holiday="2026-12-25"]', { timeout: WAIT });
-  expect.truthy(await page.$('[data-plan-holiday-label="Christmas break"]'), "the shaded day is named in the header");
+    await goto(page, `/projects/${key}/plan`);
+    await page.waitForSelector('[data-plan-holiday="2026-12-25"]', { timeout: WAIT });
+    expect.truthy(await page.$('[data-plan-holiday-label="Christmas break"]'), "the shaded day is named in the header");
 
-  await openMonth(page, key, "2026-12");
-  await page.waitForSelector('[data-day="2026-12-25"][data-holiday="Christmas break"]', { timeout: WAIT });
-  expect.contains(await textOf(page, '[data-day="2026-12-25"]'), "Christmas break", "the day says which holiday it is");
+    await openMonth(page, key, "2026-12");
+    await page.waitForSelector('[data-day="2026-12-25"][data-holiday="Christmas break"]', { timeout: WAIT });
+    expect.contains(await textOf(page, '[data-day="2026-12-25"]'), "Christmas break", "the day says which holiday it is");
+  } finally {
+    await putBack();
+  }
 });

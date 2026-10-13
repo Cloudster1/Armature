@@ -1,7 +1,8 @@
 import puppeteer from "puppeteer";
-import { AssertionError, DEFAULT_WORKERS, registeringFrom, run } from "./runner.mjs";
+import { AssertionError, DEFAULT_WORKERS, refusal, registeringFrom, run } from "./runner.mjs";
 import {
   BASE_URL,
+  setUpAdministrator,
   WAIT,
 } from "./helpers.mjs";
 
@@ -68,12 +69,18 @@ async function open(browser) {
   // Every full load in the context counts, on a page the scenario opens too. A
   // route change inside the app has no DOMContentLoaded; a goto never misses one.
   let loads = 0;
+  // What a page in the pool asked the API that only a serial scenario may.
+  const refused = [];
   const counted = new WeakSet();
   const count = (page) => {
     if (!page || counted.has(page)) return;
     counted.add(page);
     page.on("domcontentloaded", () => {
       loads += 1;
+    });
+    page.on("request", (request) => {
+      const why = refusal(request.method(), request.url());
+      if (why) refused.push(why);
     });
   };
   context.on("targetcreated", async (target) => {
@@ -85,22 +92,22 @@ async function open(browser) {
   page.setDefaultTimeout(WAIT);
   // The production nginx sends a CSP, and what it refuses is a bug in what
   // ships even when the scenario's own checks still pass.
-  const refused = [];
+  const violations = [];
   await page.evaluateOnNewDocument((mark) => {
     document.addEventListener("securitypolicyviolation", (e) => console.error(`${mark} ${e.violatedDirective} ${e.blockedURI}`));
   }, CSP_MARK);
   page.on("console", (message) => {
-    if (message.text().startsWith(CSP_MARK)) refused.push(`${message.text().slice(CSP_MARK.length + 1)} on ${page.url()}`);
+    if (message.text().startsWith(CSP_MARK)) violations.push(`${message.text().slice(CSP_MARK.length + 1)} on ${page.url()}`);
   });
   const check = async () => {
     // A refusal is reported in a task of its own: one more round trip lets the last one arrive.
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0))).catch(() => {});
-    if (refused.length) throw new AssertionError(`the Content Security Policy refused ${refused.join("; ")}`);
+    if (violations.length) throw new AssertionError(`the Content Security Policy refused ${violations.join("; ")}`);
   };
-  return { context, page, loads: () => loads, check };
+  return { context, page, loads: () => loads, check, refused: () => refused };
 }
 
 const workers = Number(process.env.E2E_WORKERS) || DEFAULT_WORKERS;
 process.stdout.write(`\nBrowser end-to-end suite against ${BASE_URL}\n\n`);
-const ok = await run({ launch, open, workers, artifacts: process.env.E2E_ARTIFACTS ?? null });
+const ok = await run({ launch, open, prepare: setUpAdministrator, workers, artifacts: process.env.E2E_ARTIFACTS ?? null });
 process.exit(ok ? 0 : 1);

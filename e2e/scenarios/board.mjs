@@ -1,6 +1,6 @@
 // The board and its swimlanes.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
   cardsIn,
@@ -16,6 +16,7 @@ import {
   fill,
   goto,
   issueRows,
+  keepWorkflow,
   openIssueBeside,
   openWorkflowDesign,
   reload,
@@ -24,6 +25,7 @@ import {
   signUp,
   textOf,
   unique,
+  uniqueName,
   WAIT,
   waitForButtonToGo,
   withViewport,
@@ -231,7 +233,8 @@ scenario("dragging a card between swimlanes takes the workflow transition", asyn
   );
 
   expect.equal((await cardsIn(page, "To Do")).join(","), "", "left the old swimlane");
-  expect.contains(await bodyText(page), "Start progress", "the transition it took is reported");
+  // The card moves at once; the report follows the server's answer.
+  await page.waitForFunction(() => document.body.innerText.includes("Start progress"), { timeout: WAIT });
 
   // And the issue itself really moved, post-function and all.
   await goto(page, `/issues/${issueKey}`);
@@ -359,41 +362,49 @@ function laneOrder(page) {
   return page.$$eval("[data-swimlane]", (els) => els.map((el) => el.getAttribute("data-swimlane")).join(", "));
 }
 
-scenario("a lane for a status added to the workflow is moved off the end and stays there", async ({ page }) => {
+// Serial: the organization's own workflow is every project's.
+serialScenario("a lane for a status added to the workflow is moved off the end and stays there", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "On hold", { visit: false });
+  // Statuses are everybody's, so this one has a name nobody else took.
+  const hold = uniqueName("On Hold");
+  const putBack = await keepWorkflow("Default software workflow");
 
-  // The workflow from the report: On Hold, in and out of In Progress.
-  await openWorkflowDesign(page, "Default software workflow");
-  await coinStatus(page, { name: "On Hold", category: "In progress" });
-  await dragConnect(page, "In Progress", "On Hold");
-  await replaceValue(page, "#field-transition-name", "Hold");
-  await dragConnect(page, "On Hold", "In Progress");
-  await replaceValue(page, "#field-transition-name", "Resume");
-  await clickButton(page, "Save workflow");
-  await waitForButtonToGo(page, "Save workflow");
+  try {
+    // The workflow from the report: On Hold, in and out of In Progress.
+    await openWorkflowDesign(page, "Default software workflow");
+    await coinStatus(page, { name: hold, category: "In progress" });
+    await dragConnect(page, "In Progress", hold);
+    await replaceValue(page, "#field-transition-name", "Hold");
+    await dragConnect(page, hold, "In Progress");
+    await replaceValue(page, "#field-transition-name", "Resume");
+    await clickButton(page, "Save workflow");
+    await waitForButtonToGo(page, "Save workflow");
 
-  await goto(page, `/projects/${key}/board`);
-  await page.waitForSelector('[data-swimlane="On Hold"]', { timeout: WAIT });
-  expect.equal(await laneOrder(page), "To Do, In Progress, In Review, Done, On Hold", "the new lane starts last");
+    await goto(page, `/projects/${key}/board`);
+    await page.waitForSelector(`[data-swimlane="${hold}"]`, { timeout: WAIT });
+    expect.equal(await laneOrder(page), `To Do, In Progress, In Review, Done, ${hold}`, "the new lane starts last");
 
-  // Twice to the left, each press once the one before has landed.
-  await clickButton(page, "Configure swimlanes");
-  const left = 'button[aria-label="Move On Hold left"]:not([disabled])';
-  for (const want of ["To Do, In Progress, In Review, On Hold, Done", "To Do, In Progress, On Hold, In Review, Done"]) {
-    await page.waitForSelector(left, { timeout: WAIT });
-    await page.click(left);
-    await page.waitForFunction(
-      (order) => [...document.querySelectorAll("[data-swimlane]")].map((el) => el.getAttribute("data-swimlane")).join(", ") === order,
-      { timeout: WAIT },
-      want,
-    );
+    // Twice to the left, each press once the one before has landed.
+    await clickButton(page, "Configure swimlanes");
+    const left = `button[aria-label="Move ${hold} left"]:not([disabled])`;
+    for (const want of [`To Do, In Progress, In Review, ${hold}, Done`, `To Do, In Progress, ${hold}, In Review, Done`]) {
+      await page.waitForSelector(left, { timeout: WAIT });
+      await page.click(left);
+      await page.waitForFunction(
+        (order) => [...document.querySelectorAll("[data-swimlane]")].map((el) => el.getAttribute("data-swimlane")).join(", ") === order,
+        { timeout: WAIT },
+        want,
+      );
+    }
+    await clickButton(page, "Done configuring");
+
+    await reload(page);
+    await page.waitForSelector(`[data-swimlane="${hold}"]`, { timeout: WAIT });
+    expect.equal(await laneOrder(page), `To Do, In Progress, ${hold}, In Review, Done`, "the board kept the order after a reload");
+  } finally {
+    await putBack();
   }
-  await clickButton(page, "Done configuring");
-
-  await reload(page);
-  await page.waitForSelector('[data-swimlane="On Hold"]', { timeout: WAIT });
-  expect.equal(await laneOrder(page), "To Do, In Progress, On Hold, In Review, Done", "the board kept the order after a reload");
 });
 
 /** Opens one of the project's boards by name and waits until it is the one shown. */

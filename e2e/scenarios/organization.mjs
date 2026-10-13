@@ -1,6 +1,6 @@
 // The organization's audit log, calendar, status updates and fields.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   acceptInvite,
   bodyText,
@@ -21,6 +21,7 @@ import {
   inviteMember,
   LOAD_WAIT,
   postStatus,
+  removeOrgFields,
   scheduleIssue,
   selectByLabel,
   signIn,
@@ -28,6 +29,7 @@ import {
   signUp,
   textOf,
   unique,
+  uniqueName,
   WAIT,
   waitForApp,
   waitForPath,
@@ -43,19 +45,25 @@ scenario("the audit log says who granted a role", async ({ page }) => {
   await waitForPath(page, "/");
   await waitForApp(page);
   await grantRole(page, { who: who.name, role: "Project administrator", projectKey: key });
-  await createToken(page, "Nightly build");
+  const nightly = uniqueName("Nightly build");
+  await createToken(page, nightly);
 
   // The grant reached the log through the worker, naming who granted it; the
-  // token was written by the act itself.
+  // token was written by the act itself. Everybody's acts share the log, so
+  // the rows are found by who did them.
   await goto(page, "/settings/audit");
-  const grants = await eventually(page, '[data-audit-row="role.granted"]');
-  expect.truthy(grants, "the grant is in the log");
-  const rows = await auditRowsFor(page, "role.granted");
-  expect.truthy(rows.every((r) => r.action === "role.granted"), "narrowing to an action shows only it");
-  expect.contains(rows[0].text, admin.name, "and names who granted");
-  expect.contains(rows[0].text, "project_administrator", "and what");
+  await eventually(page, '[data-audit-row="role.granted"]');
+  let grants = [];
+  for (const until = Date.now() + WAIT; Date.now() < until; ) {
+    const rows = await auditRowsFor(page, "role.granted");
+    expect.truthy(rows.every((r) => r.action === "role.granted"), "narrowing to an action shows only it");
+    grants = rows.filter((r) => r.text.includes(admin.name));
+    if (grants.length) break;
+  }
+  expect.truthy(grants.length > 0, "the grant is in the log, naming who granted");
+  expect.contains(grants[0].text, "project_administrator", "and what");
   const tokens = await auditRowsFor(page, "token.created");
-  expect.contains(tokens[0].text, "Nightly build", "the token is in the log by name");
+  expect.truthy(tokens.some((r) => r.text.includes(nightly)), "the token is in the log by name");
   expect.truthy(await page.$('[data-action="export-audit"]'), "and the log can be exported");
 });
 
@@ -127,34 +135,41 @@ scenario("a project posts a status update and the projects table shows it", asyn
   expect.equal(history.join(","), "on_track,at_risk", "the history has both, newest first");
 });
 
-scenario("a field defined for the organization is on every project", async ({ page }) => {
+// Serial: a field of the organization's is on every project there is.
+serialScenario("a field defined for the organization is on every project", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const first = await createProject(page, "First", { visit: false });
   const second = await createProject(page, "Second", { visit: false });
+  const costCentre = uniqueName("Cost centre");
+  const region = uniqueName("Region");
 
-  await goto(page, "/settings/fields");
-  await clickButton(page, "New field");
-  await fill(page, "Field name", "Cost centre");
-  await selectByLabel(page, "#field-kind", "Text");
-  await clickButton(page, "Create field");
-  await page.waitForSelector('[data-field="Cost centre"][data-field-scope="org"]', { timeout: WAIT });
+  try {
+    await goto(page, "/settings/fields");
+    await clickButton(page, "New field");
+    await fill(page, "Field name", costCentre);
+    await selectByLabel(page, "#field-kind", "Text");
+    await clickButton(page, "Create field");
+    await page.waitForSelector(`[data-field="${costCentre}"][data-field-scope="org"]`, { timeout: WAIT });
 
-  for (const key of [first, second]) {
-    await goto(page, `/projects/${key}/fields`);
-    await page.waitForSelector('[data-field="Cost centre"][data-field-scope="org"]', { timeout: WAIT });
+    for (const key of [first, second]) {
+      await goto(page, `/projects/${key}/fields`);
+      await page.waitForSelector(`[data-field="${costCentre}"][data-field-scope="org"]`, { timeout: WAIT });
+    }
+
+    // A project's own field is promoted from its page and joins them.
+    await clickButton(page, "New field");
+    await fill(page, "Field name", region);
+    await selectByLabel(page, "#field-kind", "Text");
+    await clickButton(page, "Create field");
+    await page.waitForSelector(`[data-field="${region}"][data-field-scope="project"]`, { timeout: WAIT });
+    await page.click(`[data-field="${region}"] [data-action="promote-field"]`);
+    await confirm(page);
+    await page.waitForSelector(`[data-field="${region}"][data-field-scope="org"]`, { timeout: WAIT });
+    await goto(page, `/projects/${first}/fields`);
+    await page.waitForSelector(`[data-field="${region}"][data-field-scope="org"]`, { timeout: WAIT });
+  } finally {
+    await removeOrgFields([costCentre, region]);
   }
-
-  // A project's own field is promoted from its page and joins them.
-  await clickButton(page, "New field");
-  await fill(page, "Field name", "Region");
-  await selectByLabel(page, "#field-kind", "Text");
-  await clickButton(page, "Create field");
-  await page.waitForSelector('[data-field="Region"][data-field-scope="project"]', { timeout: WAIT });
-  await page.click('[data-field="Region"] [data-action="promote-field"]');
-  await confirm(page);
-  await page.waitForSelector('[data-field="Region"][data-field-scope="org"]', { timeout: WAIT });
-  await goto(page, `/projects/${first}/fields`);
-  await page.waitForSelector('[data-field="Region"][data-field-scope="org"]', { timeout: WAIT });
 });
 
 // One press on the organization page makes a second organization with a

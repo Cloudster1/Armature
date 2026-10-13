@@ -28,7 +28,8 @@ Commits describe a change to the product, not to a file.
 `make test`, `make test-integration`, `make npm ARGS="run test"` and
 `make test-e2e`. A feature is finished when all four pass, not when the code is
 written. `ONLY=<substring>` filters the browser suite while iterating and
-`WORKERS=<n>` sets how many browsers run it (four unless said otherwise). It
+`WORKERS=<n>` sets how many browsers run it (four unless said otherwise), and
+`SHUFFLE=1` runs it in a random order. It
 runs against the production build, so a CSP or nginx problem fails it;
 `E2E_WEB=dev` points it at the Vite dev server instead.
 
@@ -41,6 +42,15 @@ response against it and refuses a run that left an operation unexercised.
 An integration test calls `t.Parallel()` first thing, or is listed in
 `backend/test/parallel_test.go` with what it shares that a parallel test would
 disturb; `make test` refuses one that is neither.
+
+A browser scenario shares one installation with every other scenario of the run.
+It signs in as a new person (`signUp`), keeps to its own projects, which
+`createProject` gives unique keys, and gives anything everybody shares (labels,
+statuses, workflows, schemes, groups, roles, fields, templates, webhooks, shared
+filters) a name from `uniqueName`. A scenario that changes something every
+scenario lives with, such as a default or the second-factor rule, is registered
+with `serialScenario` and puts it back in a `finally`; the runner fails one that
+makes such a request from the parallel pool, from the list in `e2e/runner.mjs`.
 
 Nothing is mocked below the layer under test. A guard is not proven by the
 service refusing: try the same thing straight through SQL and watch the database

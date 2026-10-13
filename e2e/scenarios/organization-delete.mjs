@@ -1,6 +1,6 @@
 // An organization deleted by its owner, and what everybody in it sees next.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
   clickButton,
@@ -13,6 +13,7 @@ import {
   signInThroughForm,
   signOut,
   signUp,
+  signUpOwnOrganization,
   unique,
   WAIT,
   waitForApp,
@@ -30,8 +31,9 @@ async function deleteOrganization(page) {
   await page.click('[data-action="confirm-delete-organization"]');
 }
 
-scenario("an owner deletes the organization, and the people in it are told it is gone", async ({ page }) => {
-  const owner = await signUp(page);
+// Serial, like every deletion of an organization: this one is the scenario's own.
+serialScenario("an owner deletes the organization, and the people in it are told it is gone", async ({ page }) => {
+  const owner = await signUpOwnOrganization(page);
   const member = unique("stranded");
   const { token } = await inviteFromMembersPage(page, member.email);
   await joinThroughLink(page, token, member);
@@ -48,20 +50,18 @@ scenario("an owner deletes the organization, and the people in it are told it is
 });
 
 scenario("an administrator who does not own the organization is not offered deleting it", async ({ page }) => {
-  await signUp(page);
-  const admin = unique("notowner");
-  const { token } = await inviteFromMembersPage(page, admin.email, "Administrator");
-  await joinThroughLink(page, token, admin);
+  // The run's people are administrators; the run's administrator owns it.
+  await signUp(page, unique("notowner"), { visit: false });
 
   await goto(page, "/settings/organization");
   await page.waitForFunction(() => document.body.innerText.includes("Only an owner of the organization can delete it."), { timeout: WAIT });
   expect.equal(await page.$('[data-action="delete-organization"]'), null, "no delete button");
 });
 
-scenario("deleting one of two organizations leaves the other to choose", async ({ page }) => {
-  const first = await signUp(page, unique("user"), { visit: false });
+serialScenario("deleting one of two organizations leaves the other to choose", async ({ page }) => {
+  const first = await signUpOwnOrganization(page, unique("user"), { visit: false });
   await signOut(page, { visit: false });
-  const second = await signUp(page, unique("survivor"), { visit: false });
+  const second = await signUpOwnOrganization(page, unique("survivor"), { visit: false });
   await signIn(page, first.email);
   await waitForApp(page);
   const { token } = await inviteFromMembersPage(page, second.email);

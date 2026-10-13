@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the browser suite keeps its scenarios apart without an
+  organization each. A run sets up one administrator, who makes the person
+  each scenario signs in as; projects take unique keys and shared things
+  unique names. Scenarios that change what everybody shares run serially
+  after the rest and put it back, the runner refuses such a change from the
+  parallel pool, and `SHUFFLE=1` runs the pool in a random order (#209).
 - Fixed: entries on the calendar open. A click on an issue opens it in the
   drawer beside the calendar, whose arrows walk the month's issues, while a
   drag still only moves its dates; a sprint opens its board, a milestone the

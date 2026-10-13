@@ -1,6 +1,6 @@
 // Signing up, in and out, tokens, and the palette.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   askGuide,
   bodyText,
@@ -16,6 +16,7 @@ import {
   goto,
   inviteMember,
   acceptInvite,
+  keepSecondFactorRule,
   mailFor,
   nextTotp,
   openPalette,
@@ -237,24 +238,36 @@ scenario("a recovery code signs in once when the phone is not at hand", async ({
   expect.equal(new URL(page.url()).pathname, "/login", "still signing in");
 });
 
-scenario("an administrator requires two-step sign-in and a member is held until they set it up", async ({ page }) => {
+serialScenario("an administrator requires two-step sign-in and a member is held until they set it up", async ({ page, context }) => {
   await signUp(page, unique("strict"), { visit: false });
   await enrolSecondFactor(page);
   const member = await inviteMember(page, "held");
+  const putBack = await keepSecondFactorRule(page);
 
-  await goto(page, "/settings/access");
-  await page.click('[data-access-tab="Sign-in"]');
-  await selectByLabel(page, "#field-require-it-of", "Everyone");
-  await page.click('[data-action="save-second-factor-rule"]');
-  await page.waitForFunction(() => document.body.innerText.includes("requirement saved"), { timeout: WAIT });
+  // The member signs in in a browser of their own, so this one stays with the
+  // administrator who puts the rule back.
+  const elsewhere = await context.browser().createBrowserContext();
+  try {
+    await goto(page, "/settings/access");
+    await page.click('[data-access-tab="Sign-in"]');
+    await selectByLabel(page, "#field-require-it-of", "Everyone");
+    await page.click('[data-action="save-second-factor-rule"]');
+    await page.waitForFunction(() => document.body.innerText.includes("requirement saved"), { timeout: WAIT });
 
-  await acceptInvite(page, member);
-  await page.waitForSelector("[data-enrolment-required]", { timeout: WAIT });
-  expect.contains(await bodyText(page), "Set it up to carry on", "the member is told why they are held");
-  expect.equal(await page.$('a[href="/settings/tokens"]'), null, "nothing of the app is offered while held");
+    const other = await elsewhere.newPage();
+    await other.setViewport(page.viewport());
+    other.setDefaultTimeout(WAIT);
+    await acceptInvite(other, member);
+    await other.waitForSelector("[data-enrolment-required]", { timeout: WAIT });
+    expect.contains(await bodyText(other), "Set it up to carry on", "the member is told why they are held");
+    expect.equal(await other.$('a[href="/settings/tokens"]'), null, "nothing of the app is offered while held");
 
-  await enrolThroughPage(page);
-  await waitForApp(page);
+    await enrolThroughPage(other);
+    await waitForApp(other);
+  } finally {
+    await elsewhere.close();
+    await putBack();
+  }
 });
 
 scenario("the session survives a full page reload", async ({ page }) => {

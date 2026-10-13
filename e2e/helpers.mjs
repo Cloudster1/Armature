@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import net from "node:net";
 import { basename } from "node:path";
-import { expect } from "./runner.mjs";
+import { AssertionError, expect, guardAlso, refusal } from "./runner.mjs";
 
 export const BASE_URL = process.env.E2E_BASE_URL ?? "http://web-e2e";
 
@@ -22,14 +22,47 @@ export function day(offset) {
   return new Date(Date.now() + offset * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Returns identifiers that will not collide with other runs. */
+/** A piece of text no other scenario or run will have made. */
+function suffix() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/**
+ * Returns identifiers that will not collide with other scenarios or runs; the
+ * name too, since a picker offering two people of one name cannot be read.
+ */
 export function unique(prefix) {
-  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const tail = suffix();
   return {
-    email: `${prefix}-${suffix}@armature.test`,
-    org: `${prefix} ${suffix}`,
-    name: `${prefix} tester`,
+    email: `${prefix}-${tail}@armature.test`,
+    org: `${prefix} org ${tail}`,
+    name: `${prefix} ${tail}`,
   };
+}
+
+/**
+ * A name for something every scenario shares one list of, such as a label, a
+ * status, a workflow or a group, that no other scenario will have taken.
+ */
+export function uniqueName(base, joiner = " ") {
+  return `${base}${joiner}${suffix()}`;
+}
+
+/** How many random characters follow a project key's letters. */
+const KEY_RANDOM_LENGTH = 6;
+
+/** How many of a project name's letters start its key. */
+const KEY_LETTERS = 3;
+
+/**
+ * A project key no other scenario or run has: a few of the name's letters,
+ * then random ones, inside the key's ten characters.
+ */
+export function uniqueKey(name) {
+  const letters = name.toUpperCase().replace(/[^A-Z]/g, "").slice(0, KEY_LETTERS) || "P";
+  let random = "";
+  while (random.length < KEY_RANDOM_LENGTH) random += Math.random().toString(36).slice(2).toUpperCase();
+  return `${letters}${random.slice(0, KEY_RANDOM_LENGTH)}`;
 }
 
 // Waits for the app's own data-settled rather than network silence, which is
@@ -193,20 +226,21 @@ async function keepCookies(page, response) {
 }
 
 /**
- * Sends one JSON request as the browser's session, or as nobody, and returns
- * the answer; a refusal throws with the API's own sentence.
+ * Sends one JSON request with these cookies and returns the response and its
+ * answer; a refusal throws with the API's own sentence. A request only a
+ * serial scenario may make is refused here before it is sent.
  */
-async function callAPI(page, method, path, body, { asNobody = false } = {}) {
+async function sendJSON(method, path, body, cookies) {
+  const why = refusal(method, `/api/v1${path}`);
+  if (why) throw new AssertionError(why);
   const headers = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  const cookies = asNobody ? "" : await cookiesOf(page);
   if (cookies) headers.Cookie = cookies;
   const response = await fetch(`${BASE_URL}/api/v1${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  await keepCookies(page, response);
   const text = await response.text();
   let answer = {};
   try {
@@ -217,11 +251,95 @@ async function callAPI(page, method, path, body, { asNobody = false } = {}) {
   if (!response.ok) {
     throw new Error(`${method} ${path} was refused with ${response.status}: ${answer.error?.message ?? text.slice(0, 200)}`);
   }
+  return { response, answer };
+}
+
+/**
+ * Sends one JSON request as the browser's session, or as nobody, and returns
+ * the answer; a refusal throws with the API's own sentence.
+ */
+async function callAPI(page, method, path, body, { asNobody = false } = {}) {
+  const cookies = asNobody ? "" : await cookiesOf(page);
+  const { response, answer } = await sendJSON(method, path, body, cookies);
+  await keepCookies(page, response);
   return answer;
 }
 
-/** Registers a new organization and, with visit, lands in the app. */
-export async function signUp(page, who = unique("user"), { visit = true } = {}) {
+// ------------------------------------------------- the run's administrator ---
+// One per run, made before any scenario starts: the person who makes everybody
+// the scenarios sign in as. This is the one place a run comes by its installation.
+
+/** The administrator's cookies, and the organization it administers once set up. */
+const administrator = { jar: new Map(), org: null };
+
+/** Sends one request as the run's administrator, keeping the session it is given. */
+async function administer(method, path, body) {
+  const { jar } = administrator;
+  const cookies = [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
+  const { response, answer } = await sendJSON(method, path, body, cookies);
+  for (const header of response.headers.getSetCookie()) {
+    const [pair] = header.split(";");
+    const at = pair.indexOf("=");
+    const name = pair.slice(0, at).trim();
+    const value = pair.slice(at + 1).trim();
+    if (value) jar.set(name, value);
+    else jar.delete(name);
+  }
+  return answer;
+}
+
+/**
+ * Signs in as E2E_ADMIN_EMAIL when it is given, or signs one up: a sign-up
+ * still founds an organization of its own, which keeps one run from the next.
+ */
+export async function setUpAdministrator() {
+  const email = process.env.E2E_ADMIN_EMAIL ?? "";
+  const password = process.env.E2E_ADMIN_PASSWORD ?? "";
+  if (email && password) {
+    await administer("POST", "/auth/login", { email, password }).catch((error) => {
+      throw new Error(`E2E_ADMIN_EMAIL did not sign in (${error.message}); name an administrator of this installation, or leave both unset to sign one up.`);
+    });
+  } else {
+    const who = unique("e2e-admin");
+    await administer("POST", "/auth/signup", { name: who.name, email: who.email, password: PASSWORD, orgName: who.org });
+  }
+  const { principal } = await administer("GET", "/auth/me");
+  administrator.org = principal.org;
+  await guardSharedWorkflows();
+  process.stdout.write(`  the run's administrator is ${principal.user.email}, in ${principal.org.name}\n\n`);
+}
+
+/**
+ * The workflows and schemes there before any scenario ran are every project's,
+ * so changing one is for a serial scenario; the ones a scenario makes are its own.
+ */
+async function guardSharedWorkflows() {
+  const { workflows } = await administer("GET", "/workflows");
+  const { schemes } = await administer("GET", "/workflow-schemes");
+  const ids = (list) => list.map((each) => each.id).join("|");
+  if (workflows.length) guardAlso("PUT|DELETE", new RegExp(`^/workflows/(${ids(workflows)})$`), "a workflow every project may follow");
+  if (schemes.length) guardAlso("PUT|DELETE", new RegExp(`^/workflow-schemes/(${ids(schemes)})$`), "a scheme every project may follow");
+}
+
+/**
+ * Makes a new person in the run's installation, made by its administrator
+ * with the role asked for, and signs in as them; with visit, lands in the app.
+ */
+export async function signUp(page, who = unique("user"), { visit = true, role = "admin" } = {}) {
+  await administer("POST", "/users", { email: who.email, name: who.name, role, password: PASSWORD });
+  await signIn(page, who.email, PASSWORD, { visit: false });
+  if (visit) {
+    await goto(page, "/");
+    await waitForApp(page);
+  }
+  return { ...who, org: administrator.org.name };
+}
+
+/**
+ * Registers a new organization of its own, for the scenarios about several
+ * organizations and nothing else; with visit, lands in the app.
+ */
+export async function signUpOwnOrganization(page, who = unique("user"), { visit = true } = {}) {
   await callAPI(
     page,
     "POST",
@@ -256,7 +374,7 @@ export async function signUpThroughForm(page, who = unique("user")) {
  */
 export async function createProject(page, name, options = {}) {
   const { template, visit = true } = typeof options === "string" ? { template: options } : options;
-  const { project } = await callAPI(page, "POST", "/projects", { name, template });
+  const { project } = await callAPI(page, "POST", "/projects", { name, template, key: uniqueKey(name) });
   if (visit) {
     await goto(page, `/projects/${project.key}`);
     await page.waitForFunction((n) => document.body.innerText.includes(n), { timeout: WAIT }, name);
@@ -278,9 +396,13 @@ export async function createProjectThroughForm(page, name, template) {
     await page.click(`[data-template="${template}"]`);
   }
 
-  // The key field is prefilled from the server's suggestion; read it back so
-  // the test refers to the project the same way the application does.
+  // The key field is prefilled from the server's suggestion, which another
+  // scenario's project may hold already; a key of its own replaces it, and is
+  // read back so the test refers to the project the way the application does.
   await page.waitForFunction(() => document.querySelector("#field-key")?.value?.length >= 2, { timeout: WAIT });
+  const wanted = uniqueKey(name);
+  await fill(page, "Key", wanted);
+  await page.waitForFunction((k) => document.querySelector("#field-key")?.value === k, { timeout: WAIT }, wanted);
   const key = await page.$eval("#field-key", (el) => el.value);
 
   await clickButton(page, "Create project");
@@ -590,6 +712,15 @@ export async function clickButton(page, label) {
     const button = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === text);
     button?.click();
   }, label);
+}
+
+/**
+ * Presses a control through the DOM: a list of everybody in the installation
+ * grows while it is read, and can move a control from under a press by position.
+ */
+export async function press(page, selector) {
+  await page.waitForSelector(selector, { timeout: WAIT });
+  await page.$eval(selector, (el) => el.click());
 }
 
 /** Sets a controlled input's value the way typing would, replacing what was there. */
@@ -1144,7 +1275,7 @@ export async function inviteMember(page, prefix, role = "member") {
   // The display name is unique too: the access table is read by name, and two
   // people called the same thing would make it ambiguous.
   const identity = unique(prefix);
-  const who = { email: identity.email, name: identity.org };
+  const who = { email: identity.email, name: identity.name };
   const token = await inviteAddress(page, who.email, role);
   return { ...who, token };
 }
@@ -1587,8 +1718,7 @@ export async function removeMember(page, name) {
   await goto(page, "/settings/access");
   await page.click('[data-access-tab="Members"]');
   const row = `[data-member="${name}"]`;
-  await page.waitForSelector(`${row} [data-action="remove-member"]`, { timeout: WAIT });
-  await page.click(`${row} [data-action="remove-member"]`);
+  await press(page, `${row} [data-action="remove-member"]`);
   await confirm(page);
   await page.waitForFunction((sel) => !document.querySelector(sel), { timeout: WAIT }, row);
 }
@@ -2300,4 +2430,127 @@ export async function openMonth(page, projectKey, month) {
     await page.click(shown < month ? '[data-action="calendar-next"]' : '[data-action="calendar-prev"]');
     await page.waitForFunction((was) => document.querySelector("[data-calendar]")?.getAttribute("data-calendar") !== was, { timeout: WAIT }, shown);
   }
+}
+
+// ------------------------------------------------------------- serial lane ---
+// A serial scenario changes what every scenario lives with, and puts it back
+// before it ends: each keep... notes how a setting is and returns what restores it.
+
+/** Notes which theme is everybody's default, and returns what makes it so again. */
+export async function keepDefaultTheme() {
+  const { themes } = await administer("GET", "/themes");
+  const was = themes.find((theme) => theme.default)?.id ?? null;
+  return () => administer("PUT", "/themes/default", { themeId: was });
+}
+
+/** Notes a workflow's whole graph, by name, and returns what saves it back. */
+export async function keepWorkflow(name) {
+  const { workflows } = await administer("GET", "/workflows");
+  const found = workflows.find((each) => each.name === name);
+  if (!found) throw new Error(`There is no workflow called ${name}; name one of ${workflows.map((w) => w.name).join(", ")}.`);
+  const { workflow, rules } = await administer("GET", `/workflows/${found.id}`);
+  const statusOf = Object.fromEntries(workflow.steps.map((step) => [step.id, step.status.id]));
+  const graph = {
+    name: workflow.name,
+    description: workflow.description ?? "",
+    steps: workflow.steps.map((step) => ({ statusId: step.status.id, isInitial: step.isInitial, layout: step.layout })),
+    transitions: workflow.transitions.map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description ?? "",
+      fromStatusId: t.fromStepId ? statusOf[t.fromStepId] : null,
+      toStatusId: statusOf[t.toStepId],
+      rules: (rules[t.id] ?? []).map(({ kind, type, config }) => ({ kind, type, config })),
+    })),
+  };
+  return () => administer("PUT", `/workflows/${found.id}`, graph);
+}
+
+/** Notes the default holiday calendar's days, and returns what puts them back. */
+export async function keepHolidays() {
+  const { calendars } = await administer("GET", "/holiday-calendars");
+  const chosen = calendars.find((each) => each.default);
+  if (!chosen) return async () => {};
+  const { calendar } = await administer("GET", `/holiday-calendars/${chosen.id}`);
+  const days = calendar.days ?? [];
+  return () => administer("PUT", `/holiday-calendars/${chosen.id}/days`, { days });
+}
+
+/**
+ * Notes the single sign-on provider, and returns what puts it back. There is
+ * no taking one away, so one set up where there was none is switched off.
+ */
+export async function keepProvider() {
+  const { provider: was } = await administer("GET", "/oidc-provider");
+  return async () => {
+    const { provider: now } = await administer("GET", "/oidc-provider");
+    const kept = was ?? now;
+    if (!kept) return;
+    await administer("PUT", "/oidc-provider", {
+      issuer: kept.issuer,
+      clientId: kept.clientId,
+      // Blank keeps the stored secret, which is never sent back to read.
+      clientSecret: "",
+      groupsClaim: kept.groupsClaim ?? "",
+      scopes: kept.scopes ?? "",
+      createGroups: kept.createGroups ?? false,
+      enabled: was ? was.enabled : false,
+    });
+  };
+}
+
+/**
+ * Notes who must sign in with a second factor, and returns what puts the rule
+ * back. It is put back by this page's person, who has one: the rule holds anybody else.
+ */
+export async function keepSecondFactorRule(page) {
+  const { require: was } = await callAPI(page, "GET", "/organization/second-factor");
+  return () => callAPI(page, "PUT", "/organization/second-factor", { require: was });
+}
+
+/** Takes a role and every grant of it away again, by the key the matrix shows. */
+export async function removeRole(roleKey) {
+  const { assignments = [] } = await administer("GET", "/role-assignments");
+  for (const each of assignments.filter((a) => a.role === roleKey)) {
+    await administer("DELETE", `/role-assignments/${each.id}`);
+  }
+  await administer("DELETE", `/roles/${roleKey}`);
+}
+
+/** Deletes the fields every project shares that carry these names. */
+export async function removeOrgFields(names) {
+  const { fields } = await administer("GET", "/fields");
+  for (const field of fields.filter((f) => names.includes(f.name))) {
+    await administer("DELETE", `/fields/${field.id}`);
+  }
+}
+
+/** Deletes a webhook by its name. */
+export async function removeWebhook(name) {
+  const { webhooks = [] } = await administer("GET", "/webhooks");
+  const found = webhooks.find((each) => each.name === name);
+  if (found) await administer("DELETE", `/webhooks/${found.id}`);
+}
+
+/**
+ * On the portal's request form, picks the desk a request goes to. Every desk
+ * in the installation is offered there, so the scenario names its own.
+ */
+export async function chooseDesk(page, projectKey) {
+  await page.waitForSelector("[data-request-type]", { timeout: WAIT });
+  const offered = await page.evaluate((key) => {
+    const select = document.querySelector("#portal-desk");
+    if (!select) return true;
+    if (![...select.options].some((o) => o.value === key)) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+    setter.call(select, key);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }, projectKey);
+  if (!offered) throw new Error(`The portal offers no desk ${projectKey}; check the customer may raise requests there.`);
+  await page.waitForFunction((key) => {
+    const select = document.querySelector("#portal-desk");
+    return !select || select.value === key;
+  }, { timeout: WAIT }, projectKey);
+  await settled(page);
 }

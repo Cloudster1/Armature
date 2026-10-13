@@ -1,7 +1,7 @@
 // Everyday work across the product: mentions, rules, webhooks, versions, searches, bulk edits, moves, imports.
 
 import { writeFileSync } from "node:fs";
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   acceptInvite,
   addWidget,
@@ -27,6 +27,7 @@ import {
   mentionInComment,
   moveIssue,
   pickName,
+  removeWebhook,
   ruleMenu,
   saveSearch,
   selectAllIssues,
@@ -35,6 +36,7 @@ import {
   signUp,
   textOf,
   unique,
+  uniqueName,
   unreadCount,
   versionMenu,
   WAIT,
@@ -107,7 +109,8 @@ scenario("a rule labels a ticket when it is moved, and the run log says so", asy
   expect.contains(await textOf(page, '[data-rule-log="Mark moved work"]'), `labelled ${issueKey} moving`, "the log says what was done");
 });
 
-scenario("a webhook endpoint gets a signed test delivery, and it starts a rule", async ({ page }) => {
+// Serial: a webhook hears every project, and the list of them is everybody's.
+serialScenario("a webhook endpoint gets a signed test delivery, and it starts a rule", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Hooked", { visit: false });
   // The receiver is Armature itself: an incoming rule that files an issue.
@@ -117,18 +120,23 @@ scenario("a webhook endpoint gets a signed test delivery, and it starts a rule",
   // Subscribed to a topic that never fires here, so only the test's ping goes
   // through: an endpoint that took everything and filed an issue for each
   // would be feeding itself.
-  const secret = await createWebhook(page, "Pager", `http://api:8080${address}`, { topics: ["sla.breached"] });
-  expect.equal(secret.startsWith("armature_whs_"), true, "the secret is shown once");
-  await webhookMenu(page, "Pager", "webhook-test");
-  await page.waitForFunction(() => document.body.innerText.includes("Delivered, 202"), { timeout: WAIT });
-  await webhookMenu(page, "Pager", "webhook-deliveries");
-  await page.waitForSelector('[data-delivery="ping"][data-delivery-state="delivered"]', { timeout: WAIT });
-  await page.keyboard.press("Escape");
+  const hook = uniqueName("Pager");
+  try {
+    const secret = await createWebhook(page, hook, `http://api:8080${address}`, { topics: ["sla.breached"] });
+    expect.equal(secret.startsWith("armature_whs_"), true, "the secret is shown once");
+    await webhookMenu(page, hook, "webhook-test");
+    await page.waitForFunction(() => document.body.innerText.includes("Delivered, 202"), { timeout: WAIT });
+    await webhookMenu(page, hook, "webhook-deliveries");
+    await page.waitForSelector('[data-delivery="ping"][data-delivery-state="delivered"]', { timeout: WAIT });
+    await page.keyboard.press("Escape");
 
-  // The ping went through the incoming address, and the rule filed the issue.
-  await goto(page, `/projects/${key}`);
-  await eventually(page, '[data-issue-row]');
-  await page.waitForFunction(() => document.body.innerText.includes("An alert came in"), { timeout: 30_000 });
+    // The ping went through the incoming address, and the rule filed the issue.
+    await goto(page, `/projects/${key}`);
+    await eventually(page, '[data-issue-row]');
+    await page.waitForFunction(() => document.body.innerText.includes("An alert came in"), { timeout: 30_000 });
+  } finally {
+    await removeWebhook(hook);
+  }
 });
 
 scenario("a version is released and its notes list the finished work", async ({ page }) => {
@@ -194,24 +202,27 @@ scenario("a search is saved, starred and offered on the search page", async ({ p
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Searches", { visit: false });
   await createIssue(page, key, "Something open", { visit: false });
-  await goto(page, `/search?q=${encodeURIComponent("statusCategory != done")}`);
-  await saveSearch(page, "Open work", { shared: true });
+  // Shared filters are everybody's to see, so this one has a name of its own.
+  const open = uniqueName("Open work");
+  const query = `project = ${key} AND statusCategory != done`;
+  await goto(page, `/search?q=${encodeURIComponent(query)}`);
+  await saveSearch(page, open, { shared: true });
   // Saving lands on the saved search: its name is the title and its chip is pressed.
   await page.waitForFunction(() => document.body.innerText.includes("A saved search"), { timeout: WAIT });
-  expect.equal(await page.$eval('[data-filter="Open work"]', (el) => el.getAttribute("aria-pressed")), "true", "the chip is pressed");
-  expect.equal(await page.$eval('[data-filter="Open work"]', (el) => el.dataset.filterShared), "true", "and shared");
-  await page.click('[data-filter-star="Open work"]');
-  await page.waitForSelector('[data-filter-star="Open work"][data-starred="true"]', { timeout: WAIT });
+  expect.equal(await page.$eval(`[data-filter="${open}"]`, (el) => el.getAttribute("aria-pressed")), "true", "the chip is pressed");
+  expect.equal(await page.$eval(`[data-filter="${open}"]`, (el) => el.dataset.filterShared), "true", "and shared");
+  await page.click(`[data-filter-star="${open}"]`);
+  await page.waitForSelector(`[data-filter-star="${open}"][data-starred="true"]`, { timeout: WAIT });
 
   await goto(page, "/filters");
-  await page.waitForSelector('[data-filter-row="Open work"]', { timeout: WAIT });
+  await page.waitForSelector(`[data-filter-row="${open}"]`, { timeout: WAIT });
   await page.click('[data-filters-view="starred"]');
-  await page.waitForSelector('[data-filter-row="Open work"]', { timeout: WAIT });
-  await selectByLabel(page, '[data-filter-subscription="Open work"]', "Daily at 08:00");
-  await page.waitForFunction(() => document.body.innerText.includes("You will get Open work daily"), { timeout: WAIT });
+  await page.waitForSelector(`[data-filter-row="${open}"]`, { timeout: WAIT });
+  await selectByLabel(page, `[data-filter-subscription="${open}"]`, "Daily at 08:00");
+  await page.waitForFunction((n) => document.body.innerText.includes(`You will get ${n} daily`), { timeout: WAIT }, open);
 
   // Export offers the columns and a file link.
-  await goto(page, `/search?q=${encodeURIComponent("statusCategory != done")}`);
+  await goto(page, `/search?q=${encodeURIComponent(query)}`);
   await page.waitForSelector('[data-action="export-csv"]', { timeout: WAIT });
   await page.click('[data-action="export-csv"]');
   await page.waitForSelector("[data-export-dialog]", { timeout: WAIT });
