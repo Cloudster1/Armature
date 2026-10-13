@@ -841,7 +841,7 @@
     "/auth/invites/accept": {
       "post": {
         "operationId": "acceptInvite",
-        "summary": "Join an organization with an invitation token.",
+        "summary": "Join the installation with an invitation token.",
         "tags": [
           "auth"
         ],
@@ -1844,7 +1844,7 @@
     "/auth/signup": {
       "get": {
         "operationId": "signupOpen",
-        "summary": "Whether a new organization may be created by signing up.",
+        "summary": "Whether signing up would work now, and whether it would set the installation up.",
         "tags": [
           "auth"
         ],
@@ -1854,15 +1854,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "open": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "open"
-                  ]
+                  "$ref": "#/components/schemas/SignupState"
                 }
               }
             }
@@ -1881,7 +1873,7 @@
       },
       "post": {
         "operationId": "signup",
-        "summary": "Create an account and its organization, and sign in.",
+        "summary": "Create an account and sign in: the first one sets the installation up and administers it, a later one joins it as a member where sign-up is open.",
         "tags": [
           "auth"
         ],
@@ -8881,7 +8873,7 @@
     "/members/{userID}": {
       "delete": {
         "operationId": "removeMember",
-        "summary": "Let a member go: their membership, grants, groups, teams and tokens here.",
+        "summary": "Let a member go by switching their account off: their sessions and tokens end, and what they did stays theirs.",
         "tags": [
           "organization"
         ],
@@ -16596,7 +16588,7 @@
     "/users/{userID}/avatar": {
       "get": {
         "operationId": "avatar",
-        "summary": "Somebody's picture, for anyone in an organization with them.",
+        "summary": "Somebody's picture, for anyone signed in.",
         "tags": [
           "auth"
         ],
@@ -22133,7 +22125,7 @@
           "email": {
             "type": "string"
           },
-          "orgName": {
+          "installation": {
             "type": "string"
           },
           "role": {
@@ -22147,7 +22139,7 @@
           }
         },
         "required": [
-          "orgName",
+          "installation",
           "email",
           "role"
         ]
@@ -26310,12 +26302,6 @@
           "name": {
             "type": "string"
           },
-          "orgName": {
-            "type": "string"
-          },
-          "orgSlug": {
-            "type": "string"
-          },
           "password": {
             "type": "string"
           }
@@ -26323,8 +26309,22 @@
         "required": [
           "email",
           "password",
-          "name",
-          "orgName"
+          "name"
+        ]
+      },
+      "SignupState": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "boolean"
+          },
+          "open": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "open",
+          "first"
         ]
       },
       "Span": {

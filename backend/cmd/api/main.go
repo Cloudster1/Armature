@@ -173,7 +173,8 @@ func run() error {
 
 	accounts := auth.NewService(cluster, passwordParams, cfg.Auth.SessionTTL).
 		PortalCodeCooldown(cfg.Auth.PortalCodeCooldown).
-		Signups(auth.SignupPolicy(cfg.Auth.Signup))
+		Signups(auth.SignupPolicy(cfg.Auth.Signup)).
+		NamedInstallation(cfg.Auth.InstallationName)
 	if cfg.Auth.SecretKey != "" {
 		sealer, err := seal.Parse(cfg.Auth.SecretKey)
 		if err != nil {

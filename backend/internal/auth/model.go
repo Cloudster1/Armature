@@ -106,7 +106,7 @@ type Principal struct {
 }
 
 // ReachesEverywhere reports whether the caller may act beyond the organization
-// the session was opened for. A token is bound to its organization anyway.
+// the session was opened for. A token is not a session, and is the person's.
 func (p *Principal) ReachesEverywhere() bool {
 	return p != nil && p.SessionID != nil && p.Proof.ReachesEverywhere()
 }
@@ -146,7 +146,7 @@ type Org struct {
 	Name string    `json:"name"`
 }
 
-// Invite is a pending invitation to join an organization.
+// Invite is a pending invitation to join the installation.
 type Invite struct {
 	ID        uuid.UUID `json:"id"`
 	OrgID     uuid.UUID `json:"orgId"`

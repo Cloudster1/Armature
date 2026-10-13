@@ -114,7 +114,8 @@ func TestTheFirstAccountSetsTheInstallationUp(t *testing.T) {
 			t.Errorf("open on a set up installation says %v, want open and not first", got)
 		}
 		joiner := api.client(t)
-		joined := want(t, signUp(joiner, "joiner"), http.StatusCreated, "a later sign-up")
+		joinerEmail := h.email(t, "joiner")
+		joined := want(t, joiner.post("/api/v1/auth/signup", map[string]string{"email": joinerEmail, "password": testPassword, "name": "Joiner"}), http.StatusCreated, "a later sign-up")
 		if role := principalField(t, joined, "principal", "role"); role != "member" {
 			t.Errorf("a later sign-up is %v, want member", role)
 		}
@@ -127,7 +128,7 @@ func TestTheFirstAccountSetsTheInstallationUp(t *testing.T) {
 		if n := organizations(t); n != 1 {
 			t.Errorf("open sign-ups left %d organizations, want 1", n)
 		}
-		taken := signUp(api.client(t), "joiner")
+		taken := api.client(t).post("/api/v1/auth/signup", map[string]string{"email": joinerEmail, "password": testPassword, "name": "Twin"})
 		if taken.Status != http.StatusConflict || taken.ErrorCode() != "email_taken" {
 			t.Errorf("signing up twice with one address = %d %s, want 409 email_taken", taken.Status, taken.Raw)
 		}

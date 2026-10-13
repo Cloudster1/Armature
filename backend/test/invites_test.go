@@ -149,31 +149,31 @@ func TestInvites(t *testing.T) {
 		}
 	})
 
-	t.Run("an existing account joins with the account it already has", func(t *testing.T) {
-		existing := h.signup(t, svc, "existing")
-		_, token, _, err := svc.CreateInvite(orgCtx, existing.Principal.User.Email, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+	t.Run("a desk's customer joins the team with the account they have", func(t *testing.T) {
+		email := h.email(t, "customer")
+		customerID := h.joinExisting(t, &workspace{orgID: owner.Principal.Org.ID}, email, "customer")
+		_, token, _, err := svc.CreateInvite(orgCtx, email, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		creds, err := svc.AcceptInvite(ctx, auth.AcceptInviteInput{
 			Secret: token,
-			UserID: &existing.Principal.User.ID,
-			Proof:  auth.ProofPassword,
+			UserID: &customerID,
+			Proof:  auth.ProofPortalCode,
 		})
 		if err != nil {
 			t.Fatalf("accept: %v", err)
 		}
-		if creds.Principal.User.ID != existing.Principal.User.ID {
-			t.Error("accepting created a second account instead of reusing the existing one")
+		if creds.Principal.User.ID != customerID || creds.Principal.Role != auth.RoleMember {
+			t.Errorf("accepting gave %v as %q, want the customer's own account lifted to member", creds.Principal.User.ID, creds.Principal.Role)
 		}
-
-		memberships, err := svc.Memberships(ctx, existing.Principal.User.ID)
+		memberships, err := svc.Memberships(ctx, customerID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(memberships) != 2 {
-			t.Errorf("got %d memberships, want the original plus the invited one", len(memberships))
+		if len(memberships) != 1 || memberships[0].Role != auth.RoleMember {
+			t.Errorf("memberships = %v, want the one, now a member's", memberships)
 		}
 	})
 

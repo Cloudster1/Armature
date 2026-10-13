@@ -11,9 +11,8 @@ const signsInWords: Record<ManagedUser["signsInWith"], string> = { password: "Pa
 const roleWords: Record<ManagedUser["role"], string> = { owner: "Owner", admin: "Administrator", member: "Member", customer: "Customer" };
 
 /**
- * Everybody in the organization, and the tools for the accounts that are its
- * own. A person who also belongs elsewhere is shown but left alone: their
- * account is theirs, and Access is where they are let go.
+ * Everybody in the installation, and the tools for their accounts: letting
+ * somebody go is switching them off here, and switching on brings them back.
  */
 export function UserTable() {
   const { data, isLoading, error } = useManagedUsers();
@@ -116,7 +115,6 @@ export function UserTable() {
           })}
         </tbody>
       </Table>
-      <p className="text-sm text-ink-subtle">Somebody who also belongs to another organization keeps their account to themselves; let them go under Access, Members.</p>
 
       {renaming && <RenameDialog user={renaming} onClose={() => setRenaming(null)} />}
       {changingRole && <RoleDialog user={changingRole} onClose={() => setChangingRole(null)} />}

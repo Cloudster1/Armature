@@ -74,7 +74,7 @@ func (s *Service) EndSession(ctx context.Context, userID, current, sessionID uui
 		if err != nil {
 			return fmt.Errorf("end session: %w", err)
 		}
-		return auditEveryOrg(ctx, tx, userID, audit.Entry{
+		return AuditAccount(ctx, tx, userID, audit.Entry{
 			Action: "auth.session_ended", TargetType: "session", TargetID: &sessionID, Actor: userID, IP: ip,
 			Data: map[string]any{"userAgent": agent},
 		})
@@ -92,7 +92,7 @@ func (s *Service) EndOtherSessions(ctx context.Context, userID, current uuid.UUI
 		if err := endEverySession(ctx, tx, userID, &current); err != nil {
 			return err
 		}
-		return auditEveryOrg(ctx, tx, userID, audit.Entry{
+		return AuditAccount(ctx, tx, userID, audit.Entry{
 			Action: "auth.sessions_ended", TargetType: "user", TargetID: &userID, Actor: userID, IP: ip,
 			Data: map[string]any{"ended": ended},
 		})

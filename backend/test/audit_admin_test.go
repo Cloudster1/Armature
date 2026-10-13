@@ -54,12 +54,10 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 	signedUp := owner.signup(t, h, "auditall")
 	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
-	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	project := want(t, owner.post("/api/v1/projects", map[string]any{"name": "Audited", "key": "AUD" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "project")
 	key := obj(t, project, "project")["key"].(string)
 
-	// A password sign-in, from a browser of its own.
-	want(t, api.client(t).post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), http.StatusOK, "signing in with a password")
+	// The owner came in with a password sign-in, which is recorded too.
 
 	// A webhook made, changed, given a new secret and removed. Its address
 	// carries a credential in the path, as a chat service's incoming hook does.

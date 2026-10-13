@@ -74,19 +74,23 @@ export function useCreateDemoOrganization() {
   });
 }
 
+/** The person signing up; the installation is not theirs to name. */
 export interface SignupInput {
   email: string;
   password: string;
   name: string;
-  orgName: string;
-  orgSlug?: string;
 }
 
-/** Whether this installation lets a new organization be created by signing up. */
+/** Whether signing up would work, and whether it would set the installation up. */
+export interface SignupState {
+  open: boolean;
+  first: boolean;
+}
+
 export function useSignupOpen() {
   return useQuery({
     queryKey: ["auth", "signup"],
-    queryFn: () => request<{ open: boolean }>("/auth/signup"),
+    queryFn: () => request<SignupState>("/auth/signup"),
     staleTime: 60_000,
   });
 }
@@ -146,14 +150,6 @@ export function useEraseMe() {
 }
 
 /** Lets a member go from the organization; their account stays theirs elsewhere. */
-export function useRemoveMember() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (userID: string) => request<void>(`/members/${userID}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["members"] }),
-  });
-}
-
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({

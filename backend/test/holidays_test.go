@@ -238,12 +238,12 @@ func TestAWorkingWeekIsAPersonsOwnToReadAndAnAdministratorsToSet(t *testing.T) {
 		}
 	})
 
-	t.Run("the person takes their week with their data, and it goes when they do", func(t *testing.T) {
+	t.Run("the person takes their week with their data, and it goes when they are erased", func(t *testing.T) {
 		exported := want(t, member.get("/api/v1/auth/me/export"), http.StatusOK, "export my data")
 		if hours := list(t, exported, "workingHours"); len(hours) != 1 {
 			t.Errorf("the export holds %v, want the one week", hours)
 		}
-		want(t, owner.delete("/api/v1/members/"+memberID), http.StatusNoContent, "let the member go")
+		want(t, member.delete("/api/v1/auth/me"), http.StatusNoContent, "the member erases their account")
 		var left int
 		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM member_schedule WHERE user_id = $1`, memberID).Scan(&left); err != nil {
 			t.Fatal(err)

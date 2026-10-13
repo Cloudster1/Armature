@@ -210,7 +210,7 @@ func TestTheResourceViewSetsHoursAgainstTeamsOrPeople(t *testing.T) {
 		}
 	})
 
-	t.Run("somebody who has left has no row, and their work is nobody's", func(t *testing.T) {
+	t.Run("somebody switched off has no row, and their work is nobody's", func(t *testing.T) {
 		want(t, owner.patch("/api/v1/projects/FLOW", map[string]any{"planningMethod": "kanban", "resourceGrouping": "person"}), http.StatusOK, "plan by person")
 		_, cleoID := api.namedMember(t, h, owner, "Cleo Leaving")
 		theirs := file(map[string]any{"summary": "Cleo's last task", "assigneeId": cleoID, "startDate": "2031-03-05", "dueDate": "2031-03-05"}, 6*60)
@@ -220,7 +220,7 @@ func TestTheResourceViewSetsHoursAgainstTeamsOrPeople(t *testing.T) {
 		want(t, owner.delete("/api/v1/members/"+cleoID), http.StatusNoContent, "let Cleo go")
 		rows := resourceRows(t, want(t, owner.get("/api/v1/projects/FLOW/resources"+window), http.StatusOK, "the resources"))
 		if rows["Cleo Leaving"] != nil {
-			t.Errorf("rows = %v, want no row for somebody who has left", rows)
+			t.Errorf("rows = %v, want no row for somebody switched off", rows)
 		}
 		u := rows["Unassigned"]["2031-03-03"]
 		if issues := u["issues"].([]any); u["loadHours"] != 6.0 || len(issues) != 1 || issues[0].(map[string]any)["key"] != theirs {

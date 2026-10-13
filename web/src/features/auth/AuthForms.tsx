@@ -261,7 +261,7 @@ export function passwordsMatch(password: string, repeat: string): boolean {
 export function SignupForm() {
   const navigate = useNavigate();
   const signup = useSignup();
-  const [values, setValues] = useState({ name: "", email: "", password: "", orgName: "" });
+  const [values, setValues] = useState({ name: "", email: "", password: "" });
   const [repeat, setRepeat] = useState("");
   const [checked, setChecked] = useState(false);
 
@@ -300,16 +300,8 @@ export function SignupForm() {
         checked={checked}
         error={errors.password}
       />
-      <Field
-        label="Organization name"
-        required
-        value={values.orgName}
-        onChange={set("orgName")}
-        hint="You can change this later."
-        error={errors.orgName}
-      />
       <Button type="submit" loading={signup.isPending} className="w-full">
-        Create your organization
+        Create your account
       </Button>
     </form>
   );

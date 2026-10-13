@@ -92,7 +92,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, ip string) (*
 		}
 
 		// Nobody is proven yet, so the entry names the account and no actor.
-		if err := auditEveryOrg(ctx, tx, userID, audit.Entry{
+		if err := AuditAccount(ctx, tx, userID, audit.Entry{
 			Action: "auth.password_reset_requested", TargetType: "user", TargetID: &userID, IP: ip,
 			Data: map[string]any{"answer": answer},
 		}); err != nil {
@@ -144,28 +144,24 @@ func (s *Service) ResetPassword(ctx context.Context, secret, password, ip string
 		if _, err := tx.Exec(ctx, `DELETE FROM api_token WHERE user_id = $1`, userID); err != nil {
 			return fmt.Errorf("revoke tokens: %w", err)
 		}
-		return auditEveryOrg(ctx, tx, userID, audit.Entry{
+		return AuditAccount(ctx, tx, userID, audit.Entry{
 			Action: "auth.password_reset", TargetType: "user", TargetID: &userID, Actor: userID, IP: ip,
 		})
 	})
 	return err
 }
 
-// auditEveryOrg records an act on an account in each organization the person
-// belongs to, since the account is all of theirs and the log is per organization.
-func auditEveryOrg(ctx context.Context, tx db.DBTX, userID uuid.UUID, e audit.Entry) error {
-	rows, err := tx.Query(ctx, `SELECT org_id FROM org_member WHERE user_id = $1`, userID)
+// AuditAccount records an act on an account once, in the log of the person's
+// organization; somebody with no membership left has no log to be in.
+func AuditAccount(ctx context.Context, tx db.DBTX, userID uuid.UUID, e audit.Entry) error {
+	var orgID uuid.UUID
+	err := tx.QueryRow(ctx, `
+		SELECT org_id FROM org_member WHERE user_id = $1 ORDER BY created_at, org_id LIMIT 1`, userID).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
-	orgs, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
-	if err != nil {
-		return err
-	}
-	for _, org := range orgs {
-		if err := audit.Write(ctx, tx, org, e); err != nil {
-			return err
-		}
-	}
-	return nil
+	return audit.Write(ctx, tx, orgID, e)
 }

@@ -75,22 +75,22 @@ func (s *Server) clearSessionCookie(w http.ResponseWriter) {
 	})
 }
 
+// signupRequest is the person alone: the installation is named by ARMATURE_NAME.
 type signupRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Name     string `json:"name"`
-	OrgName  string `json:"orgName"`
-	OrgSlug  string `json:"orgSlug,omitempty"`
 }
 
-// handleSignupOpen lets the sign-in page offer sign-up only where it would work.
+// handleSignupOpen lets the sign-in page offer sign-up only where it would
+// work, and say whether it sets the installation up.
 func (s *Server) handleSignupOpen(w http.ResponseWriter, r *http.Request) {
-	open, err := s.Auth.SignupAllowed(r.Context())
+	state, err := s.Auth.SignupOffer(r.Context())
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"open": open})
+	respondJSON(w, r, http.StatusOK, state)
 }
 
 func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
@@ -104,8 +104,6 @@ func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
 		Email:     req.Email,
 		Password:  req.Password,
 		Name:      req.Name,
-		OrgName:   req.OrgName,
-		OrgSlug:   req.OrgSlug,
 		UserAgent: r.UserAgent(),
 		IP:        clientIP(r),
 	})
@@ -115,7 +113,7 @@ func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.setSessionCookie(w, creds.SessionSecret, creds.ExpiresAt)
-	// A brand new account reads its own organization immediately; pin it so the
+	// A brand new account reads the installation immediately; pin it so the
 	// first page load is not served by a replica that has not caught up.
 	s.Fresh.Note(r.Context(), "s:"+creds.Principal.SessionID.String(), creds.LSN)
 	respondJSON(w, r, http.StatusCreated, map[string]any{"principal": creds.Principal})
@@ -208,7 +206,7 @@ type switchOrgRequest struct {
 func (s *Server) handleSwitchOrg(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
 	if p.SessionID == nil {
-		respondError(w, r, ErrBadRequest("An API token is bound to one organization and cannot switch."))
+		respondError(w, r, ErrBadRequest("Switching organizations is done from a browser session, not with an API token."))
 		return
 	}
 
@@ -233,7 +231,7 @@ func (s *Server) handleSwitchOrg(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateDemoOrganization(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
 	if p.SessionID == nil {
-		respondError(w, r, ErrBadRequest("An API token is bound to one organization and cannot make another."))
+		respondError(w, r, ErrBadRequest("A demo organization is made from a browser session, not with an API token."))
 		return
 	}
 	if !p.Role.IsAgent() {
@@ -297,13 +295,13 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusCreated, map[string]any{"invite": invite, "token": secret, "link": link, "mailed": mailed})
 }
 
-// invitationMail words the mail that carries an invitation link.
-func invitationMail(to, inviter, orgName, link string) mail.Mail {
+// invitationMail words the mail that carries an invitation link into the installation.
+func invitationMail(to, inviter, installation, link string) mail.Mail {
 	return mail.Mail{
 		To:      to,
-		Subject: fmt.Sprintf("%s invited you to %s", inviter, orgName),
-		Body: fmt.Sprintf("%s invited you to join %s on Armature.\n\nAccept the invitation at %s\n\nThe link works once and expires in a week. If you did not expect it, ignore this mail.\n",
-			inviter, orgName, link),
+		Subject: fmt.Sprintf("%s invited you to %s", inviter, installation),
+		Body: fmt.Sprintf("%s invited you to %s, where your team keeps its work.\n\nAccept the invitation at %s\n\nThe link works once and expires in a week. If you did not expect it, ignore this mail.\n",
+			inviter, installation, link),
 	}
 }
 
@@ -390,7 +388,6 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	if p := PrincipalFrom(r.Context()); p != nil {
 		in.UserID = &p.User.ID
 		in.Proof = p.Proof
-		in.SessionOrg = &p.Org.ID
 	}
 
 	creds, err := s.Auth.AcceptInvite(r.Context(), in)

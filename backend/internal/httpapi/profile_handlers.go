@@ -99,21 +99,11 @@ func (s *Server) handleRemoveAvatar(w http.ResponseWriter, r *http.Request) {
 	respondNoContent(w)
 }
 
-// handleAvatar streams a picture to anyone in an organization with its owner.
+// handleAvatar streams a picture to anyone signed in, since everybody here works together.
 // The version in the URL changes with the picture, so the browser may keep it.
 func (s *Server) handleAvatar(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("userID"))
 	if err != nil {
-		respondError(w, r, ErrNotFound("There is no picture for that person."))
-		return
-	}
-	p := PrincipalFrom(r.Context())
-	shared, err := s.Auth.SharesOrganization(r.Context(), p.User.ID, id)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	if !shared && p.User.ID != id {
 		respondError(w, r, ErrNotFound("There is no picture for that person."))
 		return
 	}

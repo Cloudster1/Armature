@@ -96,6 +96,7 @@ data:
   # Sessions and hashing. secureCookies must be true unless env is development,
   # on the worker as much as the api: they share one configuration loader.
   ARMATURE_SIGNUP: "open"
+  ARMATURE_NAME: "Armature"
   ARMATURE_SESSION_TTL: "720h"
   ARMATURE_SESSION_COOKIE: "armature_session"
   ARMATURE_SECURE_COOKIES: "false"
@@ -634,7 +635,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 7d1b8e13d997f39259ab613b1563c3720ab7523d0651a652a96cf86ed7afd49a
+        checksum/env: 3270ca57e7eed00afc260b349ab34f2f20904b1aecbe4353e04d6b7a94dda729
     spec:
       serviceAccountName: armature
       securityContext:
@@ -841,7 +842,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 7d1b8e13d997f39259ab613b1563c3720ab7523d0651a652a96cf86ed7afd49a
+        checksum/env: 3270ca57e7eed00afc260b349ab34f2f20904b1aecbe4353e04d6b7a94dda729
     spec:
       serviceAccountName: armature
       securityContext:

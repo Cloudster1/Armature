@@ -315,6 +315,10 @@ services:
       # Every browser in a test run reaches the api from one address, so the
       # brakes on codes and guesses forget it after a minute, not ten.
       ARMATURE_DOOR_WINDOW: 1m
+      # The first account sets the installation up; development keeps the
+      # sign-up page open after it, so later people join as members.
+      ARMATURE_NAME: Armature
+      ARMATURE_SIGNUP: open
       # Seals authenticator secrets for two-step sign-in. A fixed key, public
       # and good only for a development stack; the integration suite uses it too.
       ARMATURE_SECRET_KEY: ${SECRET_KEY:-YXJtYXR1cmUtZGV2LWtleS1ub3QtYS1zZWNyZXQtMDA=}

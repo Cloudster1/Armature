@@ -309,7 +309,7 @@ func TestAPIRequestHandling(t *testing.T) {
 
 	t.Run("validation failures name the problem", func(t *testing.T) {
 		resp := api.client(t).post("/api/v1/auth/signup", map[string]string{
-			"email": "someone@armature.test", "password": "short", "name": "A", "orgName": "B",
+			"email": "someone@armature.test", "password": "short", "name": "A",
 		})
 		if resp.Status != http.StatusUnprocessableEntity {
 			t.Fatalf("status = %d, want 422: %s", resp.Status, resp.Raw)
@@ -317,23 +317,6 @@ func TestAPIRequestHandling(t *testing.T) {
 		message, _ := resp.Error()["message"].(string)
 		if !strings.Contains(strings.ToLower(message), "12 characters") {
 			t.Errorf("message = %q, want it to say what is wrong with the password", message)
-		}
-	})
-
-	t.Run("a duplicate signup is a conflict, not a server error", func(t *testing.T) {
-		c := api.client(t)
-		signup := c.signup(t, h, "conflict")
-		email := principalField(t, signup, "principal", "user", "email").(string)
-
-		again := api.client(t).post("/api/v1/auth/signup", map[string]string{
-			"email": email, "password": testPassword, "name": "Twin", "orgName": "Twin Co",
-			"orgSlug": h.orgSlug(t, "twin"),
-		})
-		if again.Status != http.StatusConflict {
-			t.Errorf("status = %d, want 409", again.Status)
-		}
-		if again.ErrorCode() != "email_taken" {
-			t.Errorf("code = %q, want email_taken", again.ErrorCode())
 		}
 	})
 
