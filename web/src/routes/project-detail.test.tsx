@@ -61,7 +61,7 @@ vi.mock("@/api/issues", async () => {
   };
 });
 
-const { projectDetailRoute } = await import("./project-detail");
+const { listQuery, projectDetailRoute } = await import("./project-detail");
 const ProjectDetail = (projectDetailRoute as unknown as { component: () => ReactNode }).component;
 const validate = (projectDetailRoute as unknown as { validateSearch: (search: Record<string, unknown>) => unknown }).validateSearch;
 
@@ -107,5 +107,27 @@ describe("the project's issue list", () => {
     await userEvent.type(screen.getByLabelText("Search issues"), "l");
     expect(lastCall().search).toEqual({});
     expect(lastCall().replace).toBe(true);
+  });
+});
+
+describe("listQuery", () => {
+  it("says what the list shows as one query, for every page of the export", () => {
+    expect(listQuery({ scope: "all", words: "", query: "" })).toBe("");
+    expect(listQuery({ scope: "open", words: "", query: "" })).toBe("statusCategory in (todo, in_progress)");
+    expect(listQuery({ scope: "mine", words: ' say "hi" ', query: "", label: "ux", milestone: "Beta 1" })).toBe('assignee = currentUser() AND summary ~ "say \\"hi\\"" AND labels = "ux" AND milestone = "Beta 1"');
+  });
+
+  it("keeps a query that stands alone as it is, and brackets one that does not", () => {
+    expect(listQuery({ scope: "all", words: "", query: "priority = high ORDER BY due" })).toBe("priority = high ORDER BY due");
+    expect(listQuery({ scope: "open", words: "", query: "priority = high OR type = Bug" })).toBe("statusCategory in (todo, in_progress) AND (priority = high OR type = Bug)");
+  });
+
+  it("offers the list to export", async () => {
+    render(<ProjectDetail />);
+    await userEvent.click(screen.getByRole("button", { name: "Export" }));
+    const href = document.querySelector('[data-action="download-csv"]')?.getAttribute("href") ?? "";
+    const params = new URL(href, "http://armature.test").searchParams;
+    expect(params.get("project")).toBe("CP");
+    expect(params.get("q")).toBe("statusCategory in (todo, in_progress)");
   });
 });

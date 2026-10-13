@@ -267,7 +267,7 @@ func TestIssueEditing(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		edited, _, err := ws.issues.EditComment(ws.ctx, comment.ID, issue.TextDocument("second thoughts"), ws.actor)
+		edited, _, err := ws.issues.EditComment(ws.ctx, created.Key, comment.ID, issue.TextDocument("second thoughts"), ws.actor)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -279,7 +279,7 @@ func TestIssueEditing(t *testing.T) {
 		}
 
 		stranger := issue.Actor{UserID: uuid.New(), OrgRole: "member"}
-		if _, _, err := ws.issues.EditComment(ws.ctx, comment.ID, issue.TextDocument("hijacked"), stranger); !errors.Is(err, issue.ErrNotYourComment) {
+		if _, _, err := ws.issues.EditComment(ws.ctx, created.Key, comment.ID, issue.TextDocument("hijacked"), stranger); !errors.Is(err, issue.ErrNotYourComment) {
 			t.Errorf("error = %v, want ErrNotYourComment", err)
 		}
 	})

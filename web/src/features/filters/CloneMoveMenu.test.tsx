@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import type { FieldValue } from "@/api/fields";
 import type { Issue } from "@/api/issues";
@@ -36,7 +37,7 @@ vi.mock("@/api/fields", async () => ({
 }));
 
 const { ToastProvider } = await import("@/components/ui");
-const { MoveDialog } = await import("./CloneMoveMenu");
+const { CloneMoveMenu, MoveDialog } = await import("./CloneMoveMenu");
 
 const issue = { key: "CP-5", projectKey: "CP", summary: "Priced work" } as Issue;
 
@@ -83,5 +84,37 @@ describe("MoveDialog", () => {
     draw([answer("Cost", true, 120, "120"), answer("Platform", false)]);
     expect(document.querySelector("[data-move-dropped]")).toBeNull();
     expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
+  });
+});
+
+/** The query a download link asks the export for. */
+function exportedQuery(): string | null {
+  const href = document.querySelector('[data-action="download-csv"]')?.getAttribute("href") ?? "";
+  return new URL(href, "http://armature.test").searchParams.get("q");
+}
+
+describe("CloneMoveMenu", () => {
+  it("exports the issue that is open, and nothing else", async () => {
+    render(
+      <ToastProvider>
+        <CloneMoveMenu issue={issue} editable />
+      </ToastProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "More about this issue" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Export as CSV" }));
+    expect(document.querySelector("[data-export-dialog]")).not.toBeNull();
+    expect(exportedQuery()).toBe("key = CP-5");
+  });
+
+  it("offers a reader the export but not clone or move", async () => {
+    render(
+      <ToastProvider>
+        <CloneMoveMenu issue={issue} editable={false} />
+      </ToastProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "More about this issue" }));
+    expect(screen.getByRole("menuitem", { name: "Export as CSV" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Clone" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Move to another project" })).toBeNull();
   });
 });

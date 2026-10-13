@@ -2080,6 +2080,16 @@ export async function applyBulk(page, { transition, priority } = {}) {
   return { refused, title };
 }
 
+/** Opens an export with the button given and fetches the file its Download link names. */
+export async function exportedCSV(page, opener) {
+  await page.waitForSelector(opener, { timeout: WAIT });
+  await page.click(opener);
+  await page.waitForSelector("[data-export-dialog]", { timeout: WAIT });
+  const href = await page.$eval('[data-action="download-csv"]', (a) => a.getAttribute("href"));
+  const csv = await page.evaluate(async (h) => (await fetch(h, { credentials: "include" })).text(), href);
+  return { href, rows: csv.split("\n").filter(Boolean) };
+}
+
 /** Moves an issue from its page to another project through the More menu. */
 export async function moveIssue(page, issueKey, targetKey) {
   await goto(page, `/issues/${issueKey}`);

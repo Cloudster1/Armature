@@ -183,18 +183,18 @@ func (s *Service) Comments(ctx context.Context, key string, includeInternal bool
 // EditComment changes a comment's body. Only its author may do so; an
 // administrator can delete but not rewrite, because silently editing somebody
 // else's words is worse than removing them.
-func (s *Service) EditComment(ctx context.Context, commentID uuid.UUID, body json.RawMessage, actor Actor) (*Comment, db.LSN, error) {
+func (s *Service) EditComment(ctx context.Context, key string, commentID uuid.UUID, body json.RawMessage, actor Actor) (*Comment, db.LSN, error) {
 	if err := validateDoc(body); err != nil {
+		return nil, 0, err
+	}
+	projectKey, num, err := ParseKey(key)
+	if err != nil {
 		return nil, 0, err
 	}
 
 	var comment *Comment
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var authorID *uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT author_id FROM issue_comment WHERE id = $1`, commentID).Scan(&authorID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrCommentNotFound
-		}
+		authorID, err := commentAuthor(ctx, tx, projectKey, num, commentID)
 		if err != nil {
 			return err
 		}
@@ -211,9 +211,9 @@ func (s *Service) EditComment(ctx context.Context, commentID uuid.UUID, body jso
 		err = tx.QueryRow(ctx, `
 			UPDATE issue_comment SET body = $2, edited_at = now()
 			WHERE id = $1
-			RETURNING id, issue_id, body, created_at, edited_at, author_id`,
+			RETURNING id, issue_id, body, is_internal, created_at, edited_at, author_id`,
 			commentID, []byte(body),
-		).Scan(&c.ID, &c.IssueID, &c.Body, &c.CreatedAt, &c.EditedAt, &aID)
+		).Scan(&c.ID, &c.IssueID, &c.Body, &c.Internal, &c.CreatedAt, &c.EditedAt, &aID)
 		if err != nil {
 			return err
 		}
@@ -236,21 +236,13 @@ func (s *Service) EditComment(ctx context.Context, commentID uuid.UUID, body jso
 
 // DeleteComment removes a comment. Its author may always do so; whoever
 // administers the project may remove anybody's.
-func (s *Service) DeleteComment(ctx context.Context, commentID uuid.UUID, actor Actor) (db.LSN, error) {
+func (s *Service) DeleteComment(ctx context.Context, key string, commentID uuid.UUID, actor Actor) (db.LSN, error) {
+	projectKey, num, err := ParseKey(key)
+	if err != nil {
+		return 0, err
+	}
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var (
-			authorID   *uuid.UUID
-			projectKey string
-		)
-		err := tx.QueryRow(ctx, `
-			SELECT c.author_id, p.key
-			FROM issue_comment c
-			JOIN issue i ON i.id = c.issue_id
-			JOIN project p ON p.id = i.project_id
-			WHERE c.id = $1`, commentID).Scan(&authorID, &projectKey)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrCommentNotFound
-		}
+		authorID, err := commentAuthor(ctx, tx, projectKey, num, commentID)
 		if err != nil {
 			return err
 		}
@@ -263,6 +255,22 @@ func (s *Service) DeleteComment(ctx context.Context, commentID uuid.UUID, actor 
 		_, err = tx.Exec(ctx, `DELETE FROM issue_comment WHERE id = $1`, commentID)
 		return err
 	})
+}
+
+// commentAuthor finds who wrote a comment, looking only on the issue named, so
+// a comment is not reached through some other issue's key.
+func commentAuthor(ctx context.Context, tx db.DBTX, projectKey string, num int64, commentID uuid.UUID) (*uuid.UUID, error) {
+	var authorID *uuid.UUID
+	err := tx.QueryRow(ctx, `
+		SELECT c.author_id
+		FROM issue_comment c
+		JOIN issue i ON i.id = c.issue_id
+		JOIN project p ON p.id = i.project_id
+		WHERE c.id = $1 AND p.key = $2 AND i.key_num = $3`, commentID, projectKey, num).Scan(&authorID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrCommentNotFound
+	}
+	return authorID, err
 }
 
 // History returns the changelog, newest first.
