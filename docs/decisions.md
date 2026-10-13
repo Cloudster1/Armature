@@ -1036,9 +1036,11 @@ addressed to the inbox, remembers the rest by uid, and deletes on QUIT, so a
 connection that drops leaves the box as it was.
 
 A mail names a request by the key in its subject or the id of the mail it
-answers. A key alone is ambiguous across tenants, so the sender is part of the
-question: the reply is accepted only where the address belongs to the reporter,
-a follower or an agent, and in exactly one organization. Every consumed mail is
+answers, and the sender is part of the question: the reply is accepted only
+where the address belongs to the reporter, a follower or an agent. A key names
+one request in an installation, so there is no "ambiguous" outcome; while the
+integration harness still makes several organizations, the one the sender
+joined first is the one, as a session's is (#214). Every consumed mail is
 recorded by message id, so a redelivery is refused by the database however many
 workers are reading, and machines are never answered, so no loop can form.
 
@@ -1745,6 +1747,32 @@ another organization.
 
 **Reconsider if** an installation needs more than one identity provider, at
 which point the start takes the provider rather than an organization.
+
+### The desk's door is named by its desk
+
+A customer has never heard of an organization's slug, and an installation holds
+one organization (#208), so the door lives at `/desk?desk=KEY`. The API follows:
+`GET /desk?desk=KEY` says the installation's name and the desk's, and whether
+its door is open; `POST /desk/codes` and `POST /desk/sessions` take the desk in
+the body. Without a desk the door is the installation's, which is where mail
+links lead, since a code is the installation's whichever desk it was asked at.
+
+Nobody is signed in at the door, so the desk's key alone says where it leads. A
+key is unique per organization only, and until the tenant goes (#218) the
+integration harness makes several; a key two of them share is refused with
+`desk_ambiguous` rather than guessed at, and the door's tests use keys of their
+own. In an installation the refusal cannot happen. Taking the installation's
+organization for every key would have been simpler, but it would have sent
+every test's door to one organization.
+
+A code's digest binds the address and the code, no longer the organization, so
+codes issued before the upgrade stop working; they live ten minutes. The rows
+keep `org_id` until #218. The old `/desk/{orgSlug}` addresses answer 308 for
+one release, which sends the same request, body and all, and the web page at
+the old address sends the browser on with the desk it named.
+
+**Reconsider if** two desks need one key, which cannot happen while a key is a
+project's.
 
 ### A forgotten password is reset by mail, and the answer names nobody
 

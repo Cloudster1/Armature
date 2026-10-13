@@ -7,6 +7,16 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the service desk's door is named by the desk. Its address is
+  `/desk?desk=KEY`, or `/desk` for the installation's, and the API follows:
+  `GET /desk?desk=KEY` returns the installation's name and the desk with
+  whether its door is open, and `POST /desk/codes` and `POST /desk/sessions`
+  take `desk` in the body. The old `/desk/{orgSlug}` addresses answer 308 to
+  the new ones, and the web page sends the browser on, until the next release.
+  A portal code is no longer bound to the organization, so codes mailed before
+  the upgrade stop working; they lived ten minutes, and asking again is enough.
+  The code mail names the desk it was asked at, the rating page's `orgName` is
+  now `desk`, and a reply by mail no longer ends as `ambiguous` (#214).
 - Fixed: `make seed` runs to the end again. The demo's sprints belong to the
   Platform team, and since a sprint keeps to its own team's work the seed
   stopped at the first sprint; it now commits only Platform's work to them.
