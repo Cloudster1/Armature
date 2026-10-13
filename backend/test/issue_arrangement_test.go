@@ -92,7 +92,15 @@ func TestArrangementsOverTheAPI(t *testing.T) {
 		t.Errorf("arranging answered %s, want every type back", arranged.Raw)
 	}
 	want(t, owner.put("/api/v1/issue-arrangement", map[string]any{"places": places}), http.StatusOK, "arranging the organization")
-	want(t, owner.put("/api/v1/projects/"+key+"/issue-arrangement", map[string]any{"places": nil}), http.StatusOK, "handing the type back")
+	handed := want(t, owner.put("/api/v1/projects/"+key+"/issue-arrangement", map[string]any{"places": nil}), http.StatusOK, "handing the type back")
+	// What every project follows is said to be everyone's.
+	scopes := map[string]bool{}
+	for _, each := range list(t, handed, "arrangements") {
+		scopes[each.(map[string]any)["origin"].(map[string]any)["scope"].(string)] = true
+	}
+	if !scopes["everyone"] || scopes["organization"] {
+		t.Errorf("handed back, the arrangements come from %v, want everyone's", scopes)
+	}
 	want(t, owner.put("/api/v1/projects/"+key+"/issue-arrangement", map[string]any{
 		"places": []map[string]any{{"area": "people", "slot": "nonsense"}},
 	}), http.StatusUnprocessableEntity, "a field this tracker does not know")

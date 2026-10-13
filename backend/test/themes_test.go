@@ -185,12 +185,12 @@ func TestThemesOverTheAPI(t *testing.T) {
 		}
 		h.waitForPrimary(t)
 
-		// Somebody who chose nothing sees it, and is told it is the organization's.
+		// Somebody who chose nothing sees it, and is told it is everyone's.
 		want(t, other.put("/api/v1/themes/active", map[string]any{"themeId": nil}), http.StatusOK, "nothing chosen")
 		h.waitForPrimary(t)
 		seen := want(t, other.get("/api/v1/themes/active"), http.StatusOK, "what a member sees")
-		if obj(t, seen, "theme")["id"] != themeID || seen.Body["source"] != "organization" {
-			t.Fatalf("a member does not see the organization's default: %s", seen.Raw)
+		if obj(t, seen, "theme")["id"] != themeID || seen.Body["source"] != "everyone" {
+			t.Fatalf("a member does not see everyone's default: %s", seen.Raw)
 		}
 		// The built-in theme can be kept over it, and the default come back to.
 		want(t, other.put("/api/v1/themes/active", map[string]any{"themeId": nil, "builtIn": true}), http.StatusOK, "keep the built-in")
@@ -200,7 +200,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		}
 		want(t, other.put("/api/v1/themes/active", map[string]any{"themeId": nil}), http.StatusOK, "back to the default")
 		h.waitForPrimary(t)
-		if back := want(t, other.get("/api/v1/themes/active"), http.StatusOK, "default again"); back.Body["source"] != "organization" {
+		if back := want(t, other.get("/api/v1/themes/active"), http.StatusOK, "default again"); back.Body["source"] != "everyone" {
 			t.Fatalf("the default did not come back: %s", back.Raw)
 		}
 
