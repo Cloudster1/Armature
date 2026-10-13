@@ -739,6 +739,7 @@ func seedTeams(ctx context.Context, cluster *db.Cluster, issues *issue.Service, 
 			"Session expires without warning the user",
 			"Design the reset email",
 			"Expire reset tokens after an hour",
+			"Update the privacy policy link in the footer",
 		},
 		"Portal": {
 			"Portal is slow to load on mobile networks",
@@ -917,7 +918,7 @@ func seedSprints(ctx context.Context, cluster *db.Cluster, issues *issue.Service
 		"Sign-in rejects valid passwords containing a plus sign",
 		"Add password reset by email",
 		"Session expires without warning the user",
-		"Portal is slow to load on mobile networks",
+		"Design the reset email",
 	}
 	for _, summary := range committed {
 		if _, _, err := issues.SetSprint(ctx, keys[summary], &running.ID, actor); err != nil {
@@ -928,7 +929,7 @@ func seedSprints(ctx context.Context, cluster *db.Cluster, issues *issue.Service
 		return fmt.Errorf("start the running sprint: %w", err)
 	}
 
-	if _, _, err := issues.SetSprint(ctx, keys["Export invoices as CSV"], &next.ID, actor); err != nil {
+	if _, _, err := issues.SetSprint(ctx, keys["Expire reset tokens after an hour"], &next.ID, actor); err != nil {
 		return fmt.Errorf("commit the next sprint's work: %w", err)
 	}
 

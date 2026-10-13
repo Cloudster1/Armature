@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: `make seed` runs to the end again. The demo's sprints belong to the
+  Platform team, and since a sprint keeps to its own team's work the seed
+  stopped at the first sprint; it now commits only Platform's work to them.
 - Changed: signing in lands in the installation. Nobody is asked which
   organization, the sidebar shows the installation's name without a switcher,
   and the profile lists no organizations. `POST /auth/switch-org` is gone, and
