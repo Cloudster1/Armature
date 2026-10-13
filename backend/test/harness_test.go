@@ -20,9 +20,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/armature/armature/backend/internal/attachment"
+	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/board"
+	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/observability"
@@ -198,24 +200,66 @@ func (h *harness) authService() *auth.Service {
 // authServiceWithoutKey is the identity service of a server with no
 // ARMATURE_SECRET_KEY, which cannot set up a second factor.
 func (h *harness) authServiceWithoutKey() *auth.Service {
+	return auth.NewService(h.cluster, testPasswordParams(), time.Hour)
+}
+
+// testPasswordParams are the cheap argon2 costs every account here is made with.
+func testPasswordParams() auth.PasswordParams {
 	params := auth.DefaultPasswordParams()
 	params.MemoryKiB = 8 * 1024
 	params.Iterations = 1
-	return auth.NewService(h.cluster, params, time.Hour)
+	return params
 }
 
-// signup creates an account and its organization, returning the credentials.
-func (h *harness) signup(t *testing.T, svc *auth.Service, name string) *auth.Credentials {
+// foundOrganization makes an organization owned by a new account, straight
+// through the admin path. No product path makes a second one; tests keep apart
+// by them until #217.
+func (h *harness) foundOrganization(t *testing.T, name, orgName string) (email string) {
 	t.Helper()
-	creds, err := svc.Signup(context.Background(), auth.SignupInput{
-		Email:    h.email(t, name),
-		Password: testPassword,
-		Name:     name,
-		OrgName:  name + " Corp",
-		OrgSlug:  h.orgSlug(t, name),
+	ctx := context.Background()
+	email = h.email(t, name)
+	slug := h.orgSlug(t, name)
+	hash, err := auth.HashPassword(testPassword, testPasswordParams())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var userID, orgID uuid.UUID
+		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id`,
+			email, name, hash).Scan(&userID); err != nil {
+			return fmt.Errorf("make the owner: %w", err)
+		}
+		if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, slug, orgName).Scan(&orgID); err != nil {
+			return fmt.Errorf("make the organization: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, orgID, userID); err != nil {
+			return fmt.Errorf("make the membership: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `SELECT org_builtin_roles($1)`, orgID); err != nil {
+			return fmt.Errorf("give it its roles: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'global_administrator', $2)`, orgID, userID); err != nil {
+			return fmt.Errorf("grant the owner's role: %w", err)
+		}
+		if _, err := bootstrap.Org(ctx, tx, orgID); err != nil {
+			return fmt.Errorf("prepare the organization: %w", err)
+		}
+		return audit.Write(ctx, tx, orgID, audit.Entry{Action: "org.created", TargetType: "org", TargetID: &orgID, Actor: userID})
 	})
 	if err != nil {
-		t.Fatalf("signup %s: %v", name, err)
+		t.Fatalf("found an organization for %s: %v", name, err)
+	}
+	return email
+}
+
+// signup founds an organization for a new owner and signs them in with their
+// password, returning the credentials.
+func (h *harness) signup(t *testing.T, svc *auth.Service, name string) *auth.Credentials {
+	t.Helper()
+	email := h.foundOrganization(t, name, name+" Corp")
+	creds, err := svc.Login(context.Background(), email, testPassword, "", "")
+	if err != nil {
+		t.Fatalf("sign %s in: %v", name, err)
 	}
 	return creds
 }
@@ -265,8 +309,8 @@ type workspace struct {
 	teams    *team.Service
 }
 
-// newWorkspace signs a fresh owner up, which bootstraps the organization's
-// statuses, issue types and default workflow, then creates a project in it.
+// newWorkspace founds an organization for a fresh owner, with its statuses,
+// issue types and default workflow, then creates a project in it.
 func (h *harness) newWorkspace(t *testing.T, name string) *workspace {
 	t.Helper()
 

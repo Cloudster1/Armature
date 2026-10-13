@@ -36,7 +36,7 @@ vi.mock("@/api/invites", () => ({
 
 const { inviteRoute, readInviteToken, INVITE_TOKEN_KEY } = await import("./invite");
 const InvitePage = (inviteRoute as unknown as { component: () => ReactNode }).component;
-const invite = { orgName: "Acme", email: "grace@example.com", role: "member" };
+const invite = { installation: "Acme", email: "grace@example.com", role: "member" };
 
 beforeEach(() => {
   sessionStorage.clear();

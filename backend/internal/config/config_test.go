@@ -71,8 +71,8 @@ func TestSignupPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Auth.Signup != "open" {
-		t.Errorf("signup = %q, want open by default so development keeps its sign-up page", cfg.Auth.Signup)
+	if cfg.Auth.Signup != "first" {
+		t.Errorf("signup = %q, want first by default so a new installation is set up by its first account and closed after", cfg.Auth.Signup)
 	}
 
 	for _, policy := range []string{"open", "first", "closed"} {
@@ -86,6 +86,26 @@ func TestSignupPolicy(t *testing.T) {
 	t.Setenv("ARMATURE_SIGNUP", "disabled")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ARMATURE_SIGNUP") {
 		t.Errorf("an unknown policy should be refused and named, got %v", err)
+	}
+}
+
+func TestTheInstallationIsNamed(t *testing.T) {
+	t.Setenv("ARMATURE_DB_PRIMARY_URL", "postgres://x")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Auth.InstallationName != "Armature" {
+		t.Errorf("name = %q, want Armature by default", cfg.Auth.InstallationName)
+	}
+	t.Setenv("ARMATURE_NAME", "Acme Tracker")
+	if cfg, err := Load(); err != nil || cfg.Auth.InstallationName != "Acme Tracker" {
+		t.Errorf("name = %q (%v), want the one given", cfg.Auth.InstallationName, err)
+	}
+	// Blank would set an installation up with no name to show.
+	t.Setenv("ARMATURE_NAME", "  ")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ARMATURE_NAME") {
+		t.Errorf("a blank name should be refused and named, got %v", err)
 	}
 }
 

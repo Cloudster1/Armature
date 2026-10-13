@@ -256,24 +256,23 @@ describe("SignupForm", () => {
     vi.clearAllMocks();
   });
 
-  it("submits every field the API needs to create an organization", async () => {
+  it("asks only for the person, with no organization to name", async () => {
     const mutate = vi.fn();
     mockSignup({ mutate });
 
     wrap(<SignupForm />);
+    expect(screen.queryByLabelText(/organization/i)).toBeNull();
     await userEvent.type(screen.getByLabelText("Your name"), "Grace Hopper");
     await userEvent.type(screen.getByLabelText("Work email"), "grace@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "compiler pioneer 1952");
     await userEvent.type(screen.getByLabelText("Repeat password"), "compiler pioneer 1952");
-    await userEvent.type(screen.getByLabelText("Organization name"), "Remington Rand");
-    await userEvent.click(screen.getByRole("button", { name: "Create your organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create your account" }));
 
     await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
     expect(mutate.mock.calls[0]?.[0]).toEqual({
       name: "Grace Hopper",
       email: "grace@example.com",
       password: "compiler pioneer 1952",
-      orgName: "Remington Rand",
     });
   });
 
@@ -283,7 +282,7 @@ describe("SignupForm", () => {
 
     wrap(<SignupForm />);
     await userEvent.type(screen.getByLabelText("Your name"), "A");
-    await userEvent.click(screen.getByRole("button", { name: "Create your organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create your account" }));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
   });
@@ -297,14 +296,14 @@ describe("SignupForm", () => {
     await userEvent.type(screen.getByLabelText("Repeat password"), "compiler pioneer 1953");
     // Not said while the second copy is still being typed.
     expect(screen.queryByText(PASSWORD_MISMATCH)).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Create your organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create your account" }));
 
     expect(screen.getByText(PASSWORD_MISMATCH)).toBeTruthy();
     expect(mutate).not.toHaveBeenCalled();
 
     await userEvent.clear(screen.getByLabelText("Repeat password"));
     await userEvent.type(screen.getByLabelText("Repeat password"), "compiler pioneer 1952");
-    await userEvent.click(screen.getByRole("button", { name: "Create your organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create your account" }));
     await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
   });
 

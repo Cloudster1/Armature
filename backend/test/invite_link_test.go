@@ -32,16 +32,20 @@ func TestInvitationLinks(t *testing.T) {
 			t.Errorf("mailed = %v, want true with a mailer configured", created.Body["mailed"])
 		}
 
-		var body string
+		var body, subject string
 		api.mailer.mu.Lock()
 		for _, sent := range api.mailer.sent {
 			if sent.To == invitee {
-				body = sent.Body
+				body, subject = sent.Body, sent.Subject
 			}
 		}
 		api.mailer.mu.Unlock()
 		if !strings.Contains(body, link) {
 			t.Errorf("no mail to %s carried the link; got body %q", invitee, body)
+		}
+		// The installation is named, and no organization is.
+		if !strings.Contains(subject, "linkowner Company") || !strings.Contains(body, "invited you to linkowner Company") {
+			t.Errorf("the mail does not name the installation: %q %q", subject, body)
 		}
 	})
 
@@ -56,8 +60,8 @@ func TestInvitationLinks(t *testing.T) {
 			t.Fatalf("preview returned %d: %s", preview.Status, preview.Raw)
 		}
 		invite, _ := preview.Body["invite"].(map[string]any)
-		if invite["email"] != invitee || invite["role"] != "admin" || invite["orgName"] != "linkowner Company" {
-			t.Errorf("preview = %v, want the address, the role and the organization's name", invite)
+		if invite["email"] != invitee || invite["role"] != "admin" || invite["installation"] != "linkowner Company" {
+			t.Errorf("preview = %v, want the address, the role and the installation's name", invite)
 		}
 
 		accepted := stranger.post("/api/v1/auth/invites/accept", map[string]string{"token": token, "name": "Previewed Person", "password": testPassword})

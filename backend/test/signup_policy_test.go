@@ -4,103 +4,151 @@ package test
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"testing"
 
 	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/db"
 )
 
-func TestSignupPolicy(t *testing.T) {
+// emptyInstallation is a database of its own, migrated to the end with nobody
+// in it, and the api over it: what a new installation's first sign-up meets.
+func emptyInstallation(t *testing.T, h *harness, dbName string) (*apiServer, *harness) {
+	t.Helper()
+	ctx := context.Background()
+	provider, _ := ownerDatabase(t, dbName, dbName+"_owner")
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatalf("migrate %s: %v", dbName, err)
+	}
+	cfg := shared.cfg.DB
+	cfg.PrimaryURL = withDatabase(t, cfg.PrimaryURL, dbName, "", "")
+	cfg.AdminURL = withDatabase(t, cfg.AdminURL, dbName, "", "")
+	// The primary alone, so no read waits on a replica catching up with a new database.
+	cfg.ReplicaURLs = nil
+	cluster, err := db.Open(ctx, cfg, shared.log)
+	if err != nil {
+		t.Fatalf("open %s: %v", dbName, err)
+	}
+	t.Cleanup(cluster.Close)
+	empty := *h
+	empty.cluster = cluster
+	return newAPIServer(t, &empty), &empty
+}
+
+// The installation's first account sets it up and administers it; after that
+// ARMATURE_SIGNUP decides, and no sign-up makes a second organization.
+func TestTheFirstAccountSetsTheInstallationUp(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	api := newAPIServer(t, h)
+	api, empty := emptyInstallation(t, h, "armature_first_account_test")
 	ctx := context.Background()
-
-	t.Run("open, the default, says so and lets a signup through", func(t *testing.T) {
-		c := api.client(t)
-		if got := c.get("/api/v1/auth/signup"); got.Status != http.StatusOK || got.Body["open"] != true {
-			t.Fatalf("GET /auth/signup = %d %s, want open", got.Status, got.Raw)
+	with := func(policy auth.SignupPolicy) { api.api.Auth = empty.authService().Signups(policy) }
+	signUp := func(c *client, name string) response {
+		return c.post("/api/v1/auth/signup", map[string]string{"email": h.email(t, name), "password": testPassword, "name": name})
+	}
+	state := func(t *testing.T) map[string]any {
+		t.Helper()
+		return want(t, api.client(t).get("/api/v1/auth/signup"), http.StatusOK, "what a sign-up would do").Body
+	}
+	organizations := func(t *testing.T) int {
+		t.Helper()
+		var n int
+		if err := empty.cluster.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+			return tx.QueryRow(ctx, `SELECT count(*) FROM org`).Scan(&n)
+		}); err != nil {
+			t.Fatal(err)
 		}
-		c.signup(t, h, "opendoor")
-	})
+		return n
+	}
 
-	t.Run("closed refuses a signup and creates nothing", func(t *testing.T) {
-		api.api.Auth = h.authService().Signups(auth.SignupClosed)
-		t.Cleanup(func() { api.api.Auth = h.authService() })
-
-		c := api.client(t)
-		if got := c.get("/api/v1/auth/signup"); got.Status != http.StatusOK || got.Body["open"] != false {
-			t.Fatalf("GET /auth/signup = %d %s, want closed", got.Status, got.Raw)
+	t.Run("closed lets nobody in, not even the first", func(t *testing.T) {
+		with(auth.SignupClosed)
+		if got := state(t); got["open"] != false || got["first"] != false {
+			t.Errorf("closed says %v, want neither open nor first", got)
 		}
-
-		email := h.email(t, "shut")
-		slug := h.orgSlug(t, "shut")
-		refused := c.post("/api/v1/auth/signup", map[string]string{
-			"email": email, "password": testPassword, "name": "Shut Out", "orgName": "Shut Out", "orgSlug": slug,
-		})
+		refused := signUp(api.client(t), "shut")
 		if refused.Status != http.StatusForbidden || refused.ErrorCode() != "signup_closed" {
-			t.Fatalf("signup while closed = %d %s, want 403 signup_closed", refused.Status, refused.Raw)
+			t.Fatalf("a sign-up while closed = %d %s, want 403 signup_closed", refused.Status, refused.Raw)
 		}
-
-		var users, orgs int
-		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM app_user WHERE email = $1`, email).Scan(&users); err != nil {
-			t.Fatal(err)
-		}
-		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org WHERE slug = $1`, slug).Scan(&orgs); err != nil {
-			t.Fatal(err)
-		}
-		if users != 0 || orgs != 0 {
-			t.Errorf("a refused signup left %d accounts and %d organizations behind", users, orgs)
+		if n := organizations(t); n != 0 {
+			t.Errorf("a refused sign-up left %d organizations", n)
 		}
 	})
 
-	t.Run("first refuses once an organization exists", func(t *testing.T) {
-		svc := h.authService().Signups(auth.SignupFirst)
-		h.signup(t, h.authService(), "already")
+	var ownerOrg map[string]any
+	t.Run("the first account asks only for the person, and owns what it sets up", func(t *testing.T) {
+		with(auth.SignupFirst)
+		if got := state(t); got["open"] != true || got["first"] != true {
+			t.Fatalf("an empty installation says %v, want open and first", got)
+		}
+		first := api.client(t)
+		made := want(t, signUp(first, "founder"), http.StatusCreated, "the first sign-up")
+		if role := principalField(t, made, "principal", "role"); role != "owner" {
+			t.Errorf("the first account is %v, want owner", role)
+		}
+		ownerOrg = obj(t, made, "principal", "org")
+		if ownerOrg["name"] != "Armature" {
+			t.Errorf("the installation is called %v, want Armature, ARMATURE_NAME's default", ownerOrg["name"])
+		}
+		// It administers: inviting is an administrator's.
+		want(t, first.get("/api/v1/invites"), http.StatusOK, "the first account administers")
+		want(t, first.post("/api/v1/projects", map[string]any{"name": "First work", "key": "FIRST"}), http.StatusCreated, "and has what a project needs")
+		if n := organizations(t); n != 1 {
+			t.Errorf("the first sign-up left %d organizations, want 1", n)
+		}
+	})
 
-		open, err := svc.SignupAllowed(ctx)
-		if err != nil {
-			t.Fatal(err)
+	t.Run("first closes sign-up after it", func(t *testing.T) {
+		if got := state(t); got["open"] != false || got["first"] != false {
+			t.Errorf("a set up installation under first says %v, want closed", got)
 		}
-		if open {
-			t.Error("first-only reports open although organizations exist")
+		refused := signUp(api.client(t), "second")
+		if refused.Status != http.StatusForbidden || refused.ErrorCode() != "signup_closed" {
+			t.Fatalf("a second sign-up under first = %d %s, want 403 signup_closed", refused.Status, refused.Raw)
 		}
-		_, err = svc.Signup(ctx, auth.SignupInput{
-			Email: h.email(t, "second"), Password: testPassword, Name: "Second", OrgName: "Second", OrgSlug: h.orgSlug(t, "second"),
+	})
+
+	t.Run("open lets later people in as plain members of the same installation", func(t *testing.T) {
+		with(auth.SignupOpen)
+		if got := state(t); got["open"] != true || got["first"] != false {
+			t.Errorf("open on a set up installation says %v, want open and not first", got)
+		}
+		joiner := api.client(t)
+		joined := want(t, signUp(joiner, "joiner"), http.StatusCreated, "a later sign-up")
+		if role := principalField(t, joined, "principal", "role"); role != "member" {
+			t.Errorf("a later sign-up is %v, want member", role)
+		}
+		if org := obj(t, joined, "principal", "org"); org["id"] != ownerOrg["id"] {
+			t.Errorf("a later sign-up is in %v, want the installation %v", org, ownerOrg)
+		}
+		if got := joiner.get("/api/v1/invites"); got.Status != http.StatusForbidden {
+			t.Errorf("a member signed up administers: %d %s", got.Status, got.Raw)
+		}
+		if n := organizations(t); n != 1 {
+			t.Errorf("open sign-ups left %d organizations, want 1", n)
+		}
+		taken := signUp(api.client(t), "joiner")
+		if taken.Status != http.StatusConflict || taken.ErrorCode() != "email_taken" {
+			t.Errorf("signing up twice with one address = %d %s, want 409 email_taken", taken.Status, taken.Raw)
+		}
+	})
+
+	t.Run("a sign-up still checks what the person typed", func(t *testing.T) {
+		for what, body := range map[string]map[string]string{
+			"no address":     {"password": testPassword, "name": "A"},
+			"no name":        {"email": h.email(t, "nameless"), "password": testPassword},
+			"short password": {"email": h.email(t, "short"), "password": "short", "name": "A"},
+		} {
+			if got := api.client(t).post("/api/v1/auth/signup", body); got.Status != http.StatusUnprocessableEntity {
+				t.Errorf("%s: got %d %s, want 422", what, got.Status, got.Raw)
+			}
+		}
+		// An organization field is refused rather than quietly ignored.
+		named := api.client(t).post("/api/v1/auth/signup", map[string]string{
+			"email": h.email(t, "namer"), "password": testPassword, "name": "Namer", "orgName": "Mine",
 		})
-		if !errors.Is(err, auth.ErrSignupClosed) {
-			t.Errorf("second organization under first-only: err = %v, want ErrSignupClosed", err)
-		}
-	})
-
-	// The shared database always has organizations in it, so an empty
-	// installation is stood in for by a temporary table of the same name,
-	// which Postgres resolves before the real one for the rest of the
-	// transaction. The query under test is the real one.
-	t.Run("first lets the very first organization in", func(t *testing.T) {
-		tx, err := h.super.Begin(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() { _ = tx.Rollback(ctx) }()
-		if _, err := tx.Exec(ctx, `CREATE TEMP TABLE org (id uuid) ON COMMIT DROP`); err != nil {
-			t.Fatal(err)
-		}
-
-		open, err := auth.SignupAllowedIn(ctx, tx, auth.SignupFirst)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !open {
-			t.Error("first-only refuses an installation with no organization yet")
-		}
-
-		if _, err := tx.Exec(ctx, `INSERT INTO org (id) VALUES (gen_random_uuid())`); err != nil {
-			t.Fatal(err)
-		}
-		if open, err := auth.SignupAllowedIn(ctx, tx, auth.SignupFirst); err != nil || open {
-			t.Errorf("first-only after one organization: open = %v, err = %v, want refused", open, err)
+		if named.Status != http.StatusBadRequest {
+			t.Errorf("a sign-up naming an organization = %d %s, want 400", named.Status, named.Raw)
 		}
 	})
 }
