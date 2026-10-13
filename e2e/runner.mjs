@@ -78,6 +78,7 @@ function chosenBy(only, { name, file }) {
 const INSTALLATION_WIDE = [
   ["PUT", /^\/organization\/second-factor$/, "who must sign in with a second factor"],
   ["DELETE", /^\/organization$/, "the organization itself"],
+  ["PUT", /^\/installation$/, "the installation's name"],
   ["PUT", /^\/themes\/default$/, "the default theme"],
   ["PUT", /^\/oidc-provider$/, "the single sign-on provider"],
   ["POST|PATCH|DELETE", /^\/roles(\/|$)/, "the roles and what they grant"],
