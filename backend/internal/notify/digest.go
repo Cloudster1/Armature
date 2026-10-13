@@ -121,7 +121,7 @@ func due(digest string, last, now time.Time) bool {
 // what this pass read, so of two workers in one pass only one mails.
 const claimDigest = `
 	INSERT INTO notification_digest_sent (org_id, user_id, last_sent_at) VALUES ($1, $2, $3)
-	ON CONFLICT (org_id, user_id) DO UPDATE SET last_sent_at = EXCLUDED.last_sent_at
+	ON CONFLICT (user_id) DO UPDATE SET last_sent_at = EXCLUDED.last_sent_at
 	 WHERE notification_digest_sent.last_sent_at IS NOT DISTINCT FROM $4
 	RETURNING true`
 

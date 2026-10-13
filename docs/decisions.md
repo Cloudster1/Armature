@@ -107,6 +107,30 @@ must not see at all, where a forgotten filter would be a disclosure rather
 than a bug: a policy on that one wall, keyed on what a session can carry, is
 the shape that would take.
 
+### Keys are the installation's, without the organization in them
+
+A name or key that was unique in each organization is unique in the
+installation, and since an installation holds one, that is the same rule said
+without `org_id`. Migration `00933` builds every primary key, unique index,
+the absence overlap rule and the role assignment's foreign key again without
+it, so a project key, and with it an issue key, names one project in the
+installation (#218). The indexes that only led with `org_id` are built again
+without it, except two that an index already there covers. `oidc_provider`
+had nothing but the organization to key it by, so a column that can only be
+true keeps it to one row.
+
+The upgrade checks every new key before it builds one, and stops at rows that
+would share it, naming them. With one organization there are none, and
+`00929` refused several; the check is there for a database somebody wrote to
+by hand. Its way back puts `org_id` into each key again.
+
+An `ON CONFLICT` names the columns of the index it means, so the Go statements
+changed with the keys. A desk's key can no longer name two desks, so the
+`desk_ambiguous` refusal went, and so did the `ambiguous` outcome of a mail.
+A mail recorded so reached no request, so the upgrade records it as
+`unmatched`, which says that. The columns themselves stay until the last step
+of #218.
+
 ### One installation is one team's tracker
 
 Armature is self-hosted, and an installation serves one team. Organizations
@@ -1218,7 +1242,7 @@ Bulk edit is one transaction per issue, so a workflow that does not offer a
 transition refuses its own issue and names itself while the others are already
 done. A moved issue keeps its row and gets a new key, because history, comments
 and files hang off the row. Every key it leaves is kept beside it, one row each
-and unique in the organization, so every address that was mailed around still
+and unique in the installation, so every address that was mailed around still
 finds it however often it moves again, and a reply by mail under one still
 lands on the request.
 done. Every step on that issue runs in its transaction, through the `In`
@@ -1843,12 +1867,8 @@ the body. Without a desk the door is the installation's, which is where mail
 links lead, since a code is the installation's whichever desk it was asked at.
 
 Nobody is signed in at the door, so the desk's key alone says where it leads. A
-key is unique per organization only, and until #217 the integration harness made
-several; a key two of them share is refused with `desk_ambiguous` rather than
-guessed at, and the door's tests use keys of their own. In an installation the
-refusal cannot happen. Taking the installation's organization for every key
-would have been simpler, but it would have sent every test's door to one
-organization.
+project's key is unique in the installation since #218, so it names one desk or
+none, and the door's tests use keys of their own.
 
 A code's digest binds the address and the code, no longer the organization, so
 codes issued before the upgrade stop working; they live ten minutes. The rows

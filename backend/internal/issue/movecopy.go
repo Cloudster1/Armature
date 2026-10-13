@@ -255,7 +255,7 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 func keepOldKey(ctx context.Context, tx db.DBTX, issueID uuid.UUID, key string) error {
 	_, err := tx.Exec(ctx, `
 		INSERT INTO issue_old_key (org_id, issue_id, key) VALUES (current_org_id(), $1, $2)
-		ON CONFLICT (org_id, key) DO UPDATE SET issue_id = EXCLUDED.issue_id, created_at = now()`, issueID, key)
+		ON CONFLICT (key) DO UPDATE SET issue_id = EXCLUDED.issue_id, created_at = now()`, issueID, key)
 	if err != nil {
 		return fmt.Errorf("keep the old key %s: %w", key, err)
 	}

@@ -897,7 +897,7 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 		if err == nil {
 			t.Fatal("SQL let a second template take the name")
 		}
-		if !strings.Contains(err.Error(), "dashboard_template_org_name_idx") {
+		if !strings.Contains(err.Error(), "dashboard_template_name_idx") {
 			t.Errorf("error = %v, want the index's own name", err)
 		}
 	})

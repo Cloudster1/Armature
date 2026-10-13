@@ -519,7 +519,7 @@ func (h *harness) joinExisting(t *testing.T, ws *workspace, email, role string) 
 	}
 	if _, err := h.super.Exec(context.Background(), `
 		INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)
-		ON CONFLICT (org_id, user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
+		ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
 		ws.orgID, id, role); err != nil {
 		t.Fatalf("add them to the organization: %v", err)
 	}

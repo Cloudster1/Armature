@@ -7,6 +7,13 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: names and keys are unique in the installation rather than in each
+  organization: a project key, and so an issue key, names one project, and
+  the keys and indexes of the schema no longer carry `org_id`. The upgrade
+  checks first and stops at rows that would share a key, naming them; with
+  one organization there are none. A desk's address can no longer answer
+  `desk_ambiguous`, and a mail once recorded as `ambiguous` is now
+  `unmatched` (#218).
 - Changed: the database keeps no row level security. Its policies kept
   organizations apart, and an installation holds one; the walls inside it,
   projects, the desk's customers and the owners, stay in the api and in the

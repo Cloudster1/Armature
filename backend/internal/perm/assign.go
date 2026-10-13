@@ -146,7 +146,7 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 		err = tx.QueryRow(ctx, `
 			INSERT INTO role_assignment (org_id, role, project_id, user_id, group_id, created_by)
 			VALUES (current_org_id(), $1, $2, $3, $4, $5)
-			ON CONFLICT (org_id, role, project_id, user_id, group_id)
+			ON CONFLICT (role, project_id, user_id, group_id)
 			DO UPDATE SET created_by = EXCLUDED.created_by
 			RETURNING id`,
 			string(in.Role), projectID, in.UserID, in.GroupID, actor,

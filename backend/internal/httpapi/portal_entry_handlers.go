@@ -336,9 +336,6 @@ func portalEntryError(err error) *APIError {
 			Message: "This desk asks for a code by mail first. Ask for one with your address."}
 	case errors.Is(err, auth.ErrNoDesk):
 		return ErrNotFound("There is no service desk at that address. Check the link you were given.")
-	case errors.Is(err, auth.ErrDeskAmbiguous):
-		return &APIError{Status: http.StatusConflict, Code: "desk_ambiguous",
-			Message: "More than one desk answers to that key. Ask whoever gave you the address which desk it is for."}
 	}
 	return nil
 }

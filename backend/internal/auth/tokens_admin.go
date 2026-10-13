@@ -53,7 +53,7 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO org_invite (org_id, email, org_role, token_hash, invited_by, expires_at)
 			VALUES (current_org_id(), $1, $2, $3, $4, $5)
-			ON CONFLICT (org_id, email) WHERE accepted_at IS NULL
+			ON CONFLICT (email) WHERE accepted_at IS NULL
 			DO UPDATE SET org_role = EXCLUDED.org_role,
 			              token_hash = EXCLUDED.token_hash,
 			              invited_by = EXCLUDED.invited_by,
@@ -258,7 +258,7 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 		tag, err := tx.Exec(ctx, `
 			INSERT INTO org_member (org_id, user_id, org_role)
 			VALUES ($1, $2, $3)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET org_role = EXCLUDED.org_role
+			ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role
 			WHERE org_member.org_role = 'customer'`,
 			orgID, userID, string(role),
 		)

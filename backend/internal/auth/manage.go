@@ -252,7 +252,7 @@ func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in Creat
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO org_member (org_id, user_id, org_role)
 			VALUES ($1, $2, $3)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
+			ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
 			orgID, userID, string(in.Role)); err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}

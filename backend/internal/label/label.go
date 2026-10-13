@@ -290,7 +290,7 @@ func (s *Service) labelIssue(ctx context.Context, tx db.DBTX, key string, names 
 		}
 		// Coin the word unless it exists, then read it. Somebody coining the
 		// same word at once makes this wait for them and use theirs.
-		if _, err := tx.Exec(ctx, `INSERT INTO label (org_id, name, color) VALUES (current_org_id(), $1, $2) ON CONFLICT (org_id, lower(name)) DO NOTHING`,
+		if _, err := tx.Exec(ctx, `INSERT INTO label (org_id, name, color) VALUES (current_org_id(), $1, $2) ON CONFLICT (lower(name)) DO NOTHING`,
 			name, ColorFor(name)); err != nil {
 			return uuid.Nil, nil, nil, fmt.Errorf("label %q: %w", name, err)
 		}

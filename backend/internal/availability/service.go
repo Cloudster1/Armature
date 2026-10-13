@@ -398,7 +398,7 @@ func (s *Service) SaveWorkingWeek(ctx context.Context, userID uuid.UUID, in Week
 		_, err := tx.Exec(ctx, `
 			INSERT INTO member_schedule (org_id, user_id, calendar_id, minutes)
 			VALUES (current_org_id(), $1, $2, $3::jsonb)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET calendar_id = EXCLUDED.calendar_id, minutes = EXCLUDED.minutes`,
+			ON CONFLICT (user_id) DO UPDATE SET calendar_id = EXCLUDED.calendar_id, minutes = EXCLUDED.minutes`,
 			userID, in.CalendarID, string(body))
 		if err != nil {
 			return fmt.Errorf("save working week: %w", err)

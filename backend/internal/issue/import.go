@@ -343,7 +343,7 @@ func (s *Service) AddImportedComment(ctx context.Context, key string, body json.
 		_, err = tx.Exec(ctx, `
 			INSERT INTO issue_comment (org_id, issue_id, author_id, body, is_internal, external_key, created_at, updated_at)
 			VALUES (current_org_id(), $1, $2, $3, false, $4, $5, $5)
-			ON CONFLICT (org_id, external_key) DO NOTHING`,
+			ON CONFLICT (external_key) DO NOTHING`,
 			issueID, authorID, []byte(body), nullableText(externalKey), at)
 		if err != nil {
 			return fmt.Errorf("import comment: %w", err)
@@ -381,7 +381,7 @@ func (s *Service) LogImportedWork(ctx context.Context, key string, in WorklogInp
 		_, err = tx.Exec(ctx, `
 			INSERT INTO issue_worklog (org_id, issue_id, author_id, minutes, started_on, note, external_key)
 			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)
-			ON CONFLICT (org_id, external_key) DO NOTHING`,
+			ON CONFLICT (external_key) DO NOTHING`,
 			issueID, authorID, in.Minutes, *in.StartedOn, in.Note, nullableText(externalKey))
 		if err != nil {
 			return fmt.Errorf("import worklog: %w", err)

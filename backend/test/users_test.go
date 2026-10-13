@@ -169,7 +169,7 @@ func TestAnAccountTheProviderSignsInGetsNoPasswordHere(t *testing.T) {
 	if _, err := h.super.Exec(ctx, `
 		INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret)
 		VALUES ($1, 'https://idp.test', 'armature', 'secret')
-		ON CONFLICT (org_id) DO NOTHING`, orgID); err != nil {
+		ON CONFLICT (one_row) DO NOTHING`, orgID); err != nil {
 		t.Fatalf("configure a provider: %v", err)
 	}
 	var ssoID string
