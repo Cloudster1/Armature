@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: the browser suite's mention scenario names the person by the unique
+  word of their name. In the shared installation "ben" matched more people
+  than the picker lists, so the newest Ben was never offered.
+- Fixed: a key typed straight after picking a word in the search bar stays
+  where it was typed. The caret was put back after the picked word a frame
+  later, so typing "to" quickly could come out as "ot".
 - Fixed: `make seed` runs to the end again. The demo's sprints belong to the
   Platform team, and since a sprint keeps to its own team's work the seed
   stopped at the first sprint; it now commits only Platform's work to them.

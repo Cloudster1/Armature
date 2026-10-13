@@ -77,6 +77,25 @@ describe("the list under the bar", () => {
     expect((input as HTMLInputElement).value).toBe("status ");
   });
 
+  it("keeps the caret where the typing left it when a key lands before the pick settles", async () => {
+    state.suggestions = typed();
+    const frames: FrameRequestCallback[] = [];
+    const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => frames.push(cb));
+    try {
+      render(<QueryInput value="" onSubmit={() => {}} compact />);
+      const input = screen.getByRole("combobox", { name: "Query" }) as HTMLInputElement;
+      await userEvent.click(input);
+      await userEvent.type(input, "sta");
+      await userEvent.keyboard("{ArrowDown}{Enter}");
+      await userEvent.type(input, "=", { skipClick: true });
+      for (const frame of frames.splice(0)) frame(0);
+      await userEvent.type(input, " x", { skipClick: true });
+      expect(input.value).toBe("status = x");
+    } finally {
+      raf.mockRestore();
+    }
+  });
+
   it("opens an issue that is picked, and Enter with nothing picked runs the query", async () => {
     state.suggestions = typed();
     const onSubmit = vi.fn();
