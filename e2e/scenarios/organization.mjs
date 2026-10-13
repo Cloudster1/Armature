@@ -76,9 +76,34 @@ scenario("a due date is dragged to another day on the calendar", async ({ page }
   await page.waitForSelector(`[data-day="${at(15)}"] [data-calendar-item="${issueKey}"]`, { timeout: WAIT });
   expect.equal((await calendarDaysOf(page, issueKey)).join(","), [at(15), at(16), at(17)].join(","), "both ends moved by the days the pointer travelled");
 
+  expect.equal(await page.$("[data-issue-panel]"), null, "the drag opened nothing");
+
   await goto(page, `/issues/${issueKey}`);
   await page.waitForFunction((want) => document.querySelector("#issue-due")?.value === want, { timeout: WAIT }, at(17));
   expect.equal(await page.$eval("#issue-start", (el) => el.value), at(15), "the issue itself carries the new dates");
+});
+
+// Reported as entries that wear a pointer and do nothing when clicked.
+scenario("an issue on the calendar opens beside it on a click", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Clicked", { visit: false });
+  const first = await createIssue(page, key, "Paint the fence", "Task");
+  const second = await createIssue(page, key, "Mow the lawn", "Task");
+  const now = new Date();
+  const at = (d) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  await scheduleIssue(page, first, at(8), at(8));
+  await scheduleIssue(page, second, at(12), at(12));
+
+  await goto(page, `/projects/${key}/calendar`);
+  await page.waitForSelector(`[data-calendar-item="${first}"] a`, { timeout: WAIT });
+  await page.click(`[data-calendar-item="${first}"] a`);
+  await page.waitForSelector(`[data-issue-panel="${first}"]`, { timeout: WAIT });
+  expect.equal(new URL(page.url()).pathname, `/projects/${key}/calendar`, "the calendar stays where it was");
+  expect.equal(await calendarDaysOf(page, first).then((days) => days.join(",")), at(8), "and the click moved nothing");
+
+  // The drawer walks the month's issues in the order the calendar has them.
+  await page.click('[data-action="panel-next"]');
+  await page.waitForSelector(`[data-issue-panel="${second}"]`, { timeout: WAIT });
 });
 
 scenario("a project posts a status update and the projects table shows it", async ({ page }) => {
