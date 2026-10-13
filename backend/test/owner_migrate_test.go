@@ -32,9 +32,12 @@ func TestMigrationsRunAsPlainOwner(t *testing.T) {
 
 	// One organization from before the Initiative type and the automation
 	// account, one from before roles were rows and calendars existed.
+	// Two organizations are what the upgrade to one installation refuses, so
+	// this stops before it; TestTheUpgradeRefusesSeveralOrganizations goes on.
 	const (
-		beforeInitiative = 4
-		beforeRoles      = 902
+		beforeInitiative      = 4
+		beforeRoles           = 902
+		beforeOneInstallation = 928
 	)
 	insertOrg := func(slug string) uuid.UUID {
 		t.Helper()
@@ -53,16 +56,15 @@ func TestMigrationsRunAsPlainOwner(t *testing.T) {
 	}
 	orgs := map[string]uuid.UUID{"early": earliest, "acme": insertOrg("acme")}
 
-	if _, err := provider.Up(ctx); err != nil {
-		t.Fatalf("migrate the rest as the owner: %v", err)
+	if _, err := provider.UpTo(ctx, beforeOneInstallation); err != nil {
+		t.Fatalf("migrate to %d as the owner: %v", beforeOneInstallation, err)
 	}
 	current, err := provider.GetDBVersion(ctx)
 	if err != nil {
 		t.Fatalf("read version: %v", err)
 	}
-	all := provider.ListSources()
-	if latest := all[len(all)-1].Version; current != latest {
-		t.Fatalf("database is at %d, the migrations go to %d", current, latest)
+	if current != beforeOneInstallation {
+		t.Fatalf("database is at %d, want %d", current, beforeOneInstallation)
 	}
 
 	automation := map[string]uuid.UUID{}

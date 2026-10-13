@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Upgrade note: an installation now holds one organization, and the upgrade
+  refuses a database with several. The migration stops, names them (the first
+  ten by address and name, and how many more) and changes nothing. Delete the
+  extra ones with the previous release, under the organization's settings,
+  and upgrade again; nothing merges them, because their project keys,
+  statuses, roles and people would collide (#210).
 - Changed: the browser suite keeps its scenarios apart without an
   organization each. A run sets up one administrator, who makes the person
   each scenario signs in as; projects take unique keys and shared things
