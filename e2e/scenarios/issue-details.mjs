@@ -222,7 +222,7 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
   await page.type('[data-worklog-editor] input[id$="-duration"]', "45m");
   await page.click('[data-worklog-editor] [data-action="save-worklog"]');
   await page.waitForFunction(() => document.querySelector("[data-time-spent]")?.textContent.trim() === "45m", { timeout: WAIT });
-  expect.truthy(!(await page.$("[data-worklog-editor]")), "the row closes once saved");
+  await page.waitForFunction(() => !document.querySelector("[data-worklog-editor]"), { timeout: WAIT });
   expect.contains(await textOf(page, "[data-worklog]"), "read the spec", "the note stays with it");
 
   // A comment is the author's to correct, or to take back.
