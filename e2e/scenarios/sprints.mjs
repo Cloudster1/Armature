@@ -159,6 +159,11 @@ scenario("a project splits into teams and each gets a board of its own", async (
   await goto(page, `/projects/${key}/board`);
   await clickButton(page, "Give Platform a board");
   await page.waitForSelector('[data-board="Platform board"]', { timeout: WAIT });
+  // Every offer waits while one board is being made; a press before then is lost.
+  await page.waitForFunction(
+    () => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Give Portal a board" && !b.disabled),
+    { timeout: WAIT },
+  );
   await clickButton(page, "Give Portal a board");
   await page.waitForSelector('[data-board="Portal board"]', { timeout: WAIT });
 

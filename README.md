@@ -218,7 +218,7 @@ Four layers, each testing something the layer below cannot.
 | `make test` | Pure logic: argon2 hashing, token digests, slug shapes, LSN parsing, replica selection, freshness pinning, the query compiler, markup conversion |
 | `make test-integration` | The Go stack against real Postgres: row level security, streaming replication, the auth service, the HTTP API through its real router and middleware, the outbox relay |
 | `make npm ARGS="run test"` | The SPA: API client error handling, theme persistence, forms and UI primitives |
-| `make test-e2e` | A real Chromium against the running stack, 130 scenarios over every feature: signing in, roles, projects and issues, workflows, boards, sprints, the plan, git, the desk, dashboards, search, import and export |
+| `make test-e2e` | A real Chromium against the running stack, 186 scenarios over every feature: signing in, roles, projects and issues, workflows, boards, sprints, the plan, git, the desk, dashboards, search, import and export |
 
 Nothing is mocked below the layer under test. The integration suite talks to the
 actual primary and replica, pauses WAL replay to create deterministic lag, and
@@ -242,24 +242,47 @@ row read across organizations) stays sequential and is listed in
 first, before any parallel test starts, and `make test` refuses a test that is
 neither.
 
-The browser suite runs its scenarios four abreast: every scenario signs up an
-organization of its own, so none waits for another, and each worker keeps one
-Chromium for the whole run with a fresh incognito context per scenario.
-`WORKERS=<n>` sets the number of browsers and `ONLY=<words>` narrows the run to
-the scenarios whose names contain them, or to one file's, as `ONLY=board` runs
-every scenario in `e2e/scenarios/board.mjs`; `WORKERS=1` is the reference when
-the order of things matters. A page load is waited for by the page's own word,
-`data-settled` on the body, which the app writes from its in-flight queries and
-the router's state.
+The browser suite runs its scenarios in one installation, four abreast. A run
+sets up its administrator once, before any scenario starts: signed in with
+`E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` when both are set, otherwise signed
+up anew, which still founds an organization of its own and keeps one run apart
+from the next. `signUp` is a new person: the administrator makes the account
+with the role the scenario asks for, an administrator unless it says otherwise,
+and the scenario signs in as it. Scenarios keep apart by what they make rather
+than where: `createProject` gives every project a unique key, which scenarios
+read back rather than assume, and anything every scenario shares one list of,
+such as labels, statuses, workflows, schemes, groups, roles, fields, dashboard
+templates, webhooks and shared filters, takes a name from `uniqueName`.
 
-What a scenario only needs as a precondition, such as the organization, its
-projects and issues, or signing in as somebody else, is made through the API
-from the runner's side, and the session cookie is handed to the browser.
+A scenario that changes something every other scenario lives with, such as the
+second-factor rule, the default theme, workflow or calendar, the single sign-on
+provider, the roles, a field on every project or a webhook, is registered with
+`serialScenario`. The serial ones run after the parallel pool, one at a time on
+one browser, and each puts back what it changed before it ends. The runner keeps
+a reviewed list of the requests that change such things, in `e2e/runner.mjs`,
+along with the workflows and schemes the installation started with, and fails a
+scenario in the parallel pool that makes one, saying to make it serial. A run
+reports how many scenarios ran in parallel and how many serially.
+
+Each worker keeps one Chromium for the whole run with a fresh incognito context
+per scenario. `WORKERS=<n>` sets the number of browsers and `ONLY=<words>`
+narrows the run to the scenarios whose names contain them, or to one file's, as
+`ONLY=board` runs every scenario in `e2e/scenarios/board.mjs`; `WORKERS=1` is
+the reference when the order of things matters. `SHUFFLE=1` runs the parallel
+pool in a random order, to show that no scenario leans on another, and prints a
+seed that `SHUFFLE=<seed>` repeats. A page load is waited for by the page's own
+word, `data-settled` on the body, which the app writes from its in-flight
+queries and the router's state.
+
+What a scenario only needs as a precondition, such as the person it signs in
+as, its projects and issues, or signing in as somebody else, is made through the
+API from the runner's side, and the session cookie is handed to the browser.
 `signUp`, `signIn`, `signOut`, `createProject`, `createIssue` and
 `acceptInvite` take `{ visit: false }` when the next step loads a page anyway.
-The forms themselves are driven by `signUpThroughForm`, `signInThroughForm`,
-`createProjectThroughForm`, `createIssueThroughForm` and `joinThroughLink`, in
-the scenarios whose subject they are.
+The scenarios about several organizations sign one up with
+`signUpOwnOrganization`. The forms themselves are driven by `signUpThroughForm`,
+`signInThroughForm`, `createProjectThroughForm`, `createIssueThroughForm` and
+`joinThroughLink`, in the scenarios whose subject they are.
 
 The suite drives the production build: `make test-e2e` and `make screenshots`
 first build and start `web-e2e`, the production web image with its nginx and

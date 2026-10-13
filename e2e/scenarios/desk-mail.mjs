@@ -6,6 +6,7 @@ import {
   acceptInvite,
   articlesOffered,
   bodyText,
+  chooseDesk,
   clickButton,
   createProject,
   enterDesk,
@@ -40,7 +41,7 @@ const REPLY_WAIT = 40_000;
 
 scenario("a request is followed by somebody who was only named", async ({ page }) => {
   const agent = await signUp(page, unique("user"), { visit: false });
-  await createProject(page, "Helpdesk", "service-desk");
+  const key = await createProject(page, "Helpdesk", "service-desk");
   const slug = await orgSlug(page);
   await signOut(page);
 
@@ -49,6 +50,7 @@ scenario("a request is followed by somebody who was only named", async ({ page }
   const follower = unique("ben").email;
   await enterDesk(page, slug, address);
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
   await fill(page, "Summary", "The lift is stuck");
@@ -83,13 +85,14 @@ scenario("a request is followed by somebody who was only named", async ({ page }
 
 scenario("a reply by mail lands on the request", async ({ page }) => {
   const agent = await signUp(page, unique("user"), { visit: false });
-  await createProject(page, "Helpdesk", "service-desk");
+  const key = await createProject(page, "Helpdesk", "service-desk");
   const slug = await orgSlug(page);
   await signOut(page);
 
   const address = unique("ada").email;
   await enterDesk(page, slug, address);
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
   await fill(page, "Summary", "The coffee machine leaks");
@@ -193,6 +196,7 @@ scenario("a customer finds an article before raising a request", async ({ page }
   const customer = await inviteMember(page, "customer", "customer");
   await acceptInvite(page, customer, { visit: false });
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector("[data-article-search] [data-article]", { timeout: WAIT });
   const offered = await page.$$eval("[data-article-search] [data-article]", (els) => els.map((el) => el.getAttribute("data-article")));
   expect.truthy(offered.includes("Resetting your password"), "the published article is offered before the request types");
@@ -214,6 +218,7 @@ scenario("a resolved request is rated from the mail and the queue shows the scor
   const customer = await inviteMember(page, "customer", "customer");
   await acceptInvite(page, customer, { visit: false });
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
   await fill(page, "Summary", "The coffee machine leaks");

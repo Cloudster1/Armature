@@ -15,6 +15,7 @@ import {
   selectAllIssues,
   signUp,
   unique,
+  uniqueName,
   WAIT,
   waitForPath,
 } from "../helpers.mjs";
@@ -22,26 +23,30 @@ import {
 scenario("the search bar suggests what to type and what it finds", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Suggesting", { visit: false });
-  const issueKey = await createIssue(page, key, "The printer is on fire", { type: "Bug", visit: false });
+  // Every scenario's issues are searched together, so the words are this one's own.
+  const word = uniqueName("printer", "");
+  const issueKey = await createIssue(page, key, `The ${word} is on fire`, { type: "Bug", visit: false });
 
-  // A field, its operator, then a value, each picked from the list under the bar.
+  // A field, its operator, then a value, each picked from the list under the bar,
+  // after the project the search is about.
   await goto(page, "/search");
   await page.waitForSelector("[data-query]", { timeout: WAIT });
   await page.click("[data-query]");
-  await page.type("[data-query]", "sta");
+  const scope = `project = ${key} AND `;
+  await page.type("[data-query]", `${scope}sta`);
   await pickSuggestion(page, "status");
-  await page.waitForFunction(() => document.querySelector("[data-query]")?.value === "status ", { timeout: WAIT });
+  await page.waitForFunction((want) => document.querySelector("[data-query]")?.value === want, { timeout: WAIT }, `${scope}status `);
   await pickSuggestion(page, "=");
   await page.type("[data-query]", "to");
   await pickSuggestion(page, '"To Do"');
-  expect.equal(await page.$eval("[data-query]", (el) => el.value), 'status = "To Do" ', "the bar reads what was picked");
+  expect.equal(await page.$eval("[data-query]", (el) => el.value), `${scope}status = "To Do" `, "the bar reads what was picked");
   await page.keyboard.press("Enter");
   await page.waitForFunction((k) => [...document.querySelectorAll("[data-issue-row]")].some((r) => r.dataset.issueRow === k), { timeout: WAIT }, issueKey);
 
   // Words find issues, and Enter on one opens it.
   await page.click("[data-query]", { clickCount: 3 });
   await page.keyboard.press("Backspace");
-  await page.type("[data-query]", "printer");
+  await page.type("[data-query]", word);
   await page.waitForSelector(`[data-query-suggestions] [data-suggestion="issue"][data-suggestion-text="${issueKey}"]`, { timeout: WAIT });
   await pickSuggestion(page, issueKey);
   await waitForPath(page, `/issues/${issueKey}`);

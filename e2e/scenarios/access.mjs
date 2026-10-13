@@ -1,6 +1,6 @@
 // Roles, access and single sign-on.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   acceptInvite,
   bodyText,
@@ -8,10 +8,14 @@ import {
   createIssue,
   createProject,
   expect,
+  fill,
   goto,
   grantRole,
   inviteMember,
+  keepProvider,
+  press,
   reload,
+  removeRole,
   revokeAll,
   selectByLabel,
   signIn,
@@ -21,6 +25,7 @@ import {
   inviteFromMembersPage,
   joinThroughLink,
   unique,
+  uniqueName,
 } from "../helpers.mjs";
 
 scenario("a role in one project hides the others", async ({ page }) => {
@@ -92,19 +97,21 @@ scenario("roles are granted to people and to groups", async ({ page }) => {
   const key = await createProject(page, "Granting", { visit: false });
 
   const who = await inviteMember(page, "scrum");
+  // Groups are everybody's, so this one has a name nobody else took.
+  const managers = uniqueName("Release managers");
 
   await goto(page, "/settings/access");
   await page.click('[data-access-tab="Groups"]');
   await page.waitForSelector("#field-new-group", { timeout: WAIT });
-  await page.type("#field-new-group", "Release managers");
+  await page.type("#field-new-group", managers);
   await clickButton(page, "Create group");
-  await page.waitForSelector('[data-group="Release managers"]', { timeout: WAIT });
+  await page.waitForSelector(`[data-group="${managers}"]`, { timeout: WAIT });
 
   await page.click('[data-access-tab="Roles"]');
-  await grantRole(page, { who: "Release managers", role: "Scrum master", projectKey: key });
+  await grantRole(page, { who: managers, role: "Scrum master", projectKey: key });
 
   const table = await page.$eval('[data-testid="role-assignments"]', (el) => el.innerText);
-  expect.contains(table, "Release managers", "the group holds the role");
+  expect.contains(table, managers, "the group holds the role");
   expect.contains(table, "Scrum master", "and it is the one that was granted");
   expect.contains(table, key, "over the project it was granted on");
   expect.truthy(who.email.length > 0, "the invitation was issued");
@@ -145,33 +152,43 @@ scenario("the access page explains what each role grants", async ({ page }) => {
   );
 });
 
-scenario("single sign-on is configured per organization", async ({ page }) => {
+// Serial: there is one provider for everybody, and no taking it away again.
+serialScenario("single sign-on is configured per organization", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
-  await goto(page, "/settings/access");
-  await page.click('[data-access-tab="Sign-in"]');
-  await page.waitForSelector("#field-issuer", { timeout: WAIT });
+  const putBack = await keepProvider();
+  try {
+    await goto(page, "/settings/access");
+    await page.click('[data-access-tab="Sign-in"]');
+    await page.waitForSelector("#field-issuer", { timeout: WAIT });
 
-  await page.type("#field-issuer", "https://id.example.test");
-  await page.type("#field-client-id", "armature");
-  await page.type("#field-client-secret", "a-secret");
-  await clickButton(page, "Set up single sign-on");
+    await fill(page, "Issuer", "https://id.example.test");
+    await fill(page, "Client ID", "armature");
+    await fill(page, "Client secret", "a-secret");
+    // An installation an earlier run set one up in calls the button Save, and
+    // so does the two-step section above it: the provider's is the last one.
+    await page.evaluate(() =>
+      [...document.querySelectorAll("button")].filter((b) => ["Set up single sign-on", "Save"].includes(b.textContent.trim())).pop()?.click(),
+    );
 
-  await page.waitForFunction(
-    () => document.body.innerText.includes("People can sign in at"),
-    { timeout: WAIT },
-  );
+    await page.waitForFunction(
+      () => document.body.innerText.includes("People can sign in at"),
+      { timeout: WAIT },
+    );
 
-  // The secret is never sent back, only the fact that one is stored.
-  await goto(page, "/settings/access");
-  await page.click('[data-access-tab="Sign-in"]');
-  await page.waitForSelector("#field-client-secret", { timeout: WAIT });
+    // The secret is never sent back, only the fact that one is stored.
+    await goto(page, "/settings/access");
+    await page.click('[data-access-tab="Sign-in"]');
+    await page.waitForSelector("#field-client-secret", { timeout: WAIT });
 
-  const shown = await page.$eval("#field-client-secret", (el) => ({
-    value: el.value,
-    placeholder: el.placeholder,
-  }));
-  expect.equal(shown.value, "", "the stored secret was sent back to the browser");
-  expect.contains(shown.placeholder, "Stored", "the form does not say a secret is stored");
+    const shown = await page.$eval("#field-client-secret", (el) => ({
+      value: el.value,
+      placeholder: el.placeholder,
+    }));
+    expect.equal(shown.value, "", "the stored secret was sent back to the browser");
+    expect.contains(shown.placeholder, "Stored", "the form does not say a secret is stored");
+  } finally {
+    await putBack();
+  }
 });
 
 scenario("the sign-in page offers single sign-on", async ({ page }) => {
@@ -194,7 +211,7 @@ scenario("the sign-in page offers single sign-on", async ({ page }) => {
 scenario("every tab of the access page fits a phone", async ({ page }) => {
   const owner = await signUp(page);
   const who = unique("longname");
-  who.name = "Katherine Johnson with a rather long name";
+  who.name = uniqueName("Katherine Johnson with a rather long name");
   const { token } = await inviteFromMembersPage(page, who.email);
   await joinThroughLink(page, token, who);
   await signIn(page, owner.email);
@@ -237,36 +254,48 @@ scenario("a member granted global administration can author workflows", async ({
 });
 
 // The matrix: a role of the organization's own is added, given a permission
-// with one tick, and offered on the Roles tab with what it grants.
-scenario("the role matrix adds a role and decides what it grants", async ({ page }) => {
+// with one tick, and offered on the Roles tab with what it grants. Serial: the
+// roles are everybody's, and the role goes again at the end.
+serialScenario("the role matrix adds a role and decides what it grants", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
+  const planner = uniqueName("Sprint planner");
   await goto(page, "/settings/access");
   await page.click('[data-access-tab="Matrix"]');
   await page.waitForSelector("[data-role-matrix]", { timeout: WAIT });
   expect.truthy(await page.$('[data-role-column="global_administrator"]'), "the built-in roles are columns");
   const fixed = await page.$eval('[data-permission-cell="global_administrator:org.administer"]', (el) => el.disabled && el.checked);
   expect.truthy(fixed, "the global administrator's administration cannot be unticked");
+  const columns = () => page.$$eval("[data-role-column]", (els) => els.map((el) => el.getAttribute("data-role-column")));
+  const before = await columns();
 
-  await page.click('[data-action="new-role"]');
-  await page.waitForSelector("#field-role-name", { timeout: WAIT });
-  await page.type("#field-role-name", "Sprint planner");
-  await clickButton(page, "Add role");
-  await page.waitForSelector('[data-role-column="sprint_planner"]', { timeout: WAIT });
+  let roleKey = "";
+  try {
+    await page.click('[data-action="new-role"]');
+    await page.waitForSelector("#field-role-name", { timeout: WAIT });
+    await page.type("#field-role-name", planner);
+    await clickButton(page, "Add role");
+    await page.waitForFunction((n) => document.querySelectorAll("[data-role-column]").length > n, { timeout: WAIT }, before.length);
+    roleKey = (await columns()).find((key) => !before.includes(key));
+    expect.truthy(roleKey.startsWith("sprint_planner"), `the role's key comes from its name: ${roleKey}`);
 
-  const box = '[data-permission-cell="sprint_planner:sprint.manage"]';
-  await page.click(box);
-  await page.waitForFunction((s) => document.querySelector(s)?.checked === true, { timeout: WAIT }, box);
-  await reload(page);
-  await page.click('[data-access-tab="Matrix"]');
-  await page.waitForSelector(box, { timeout: WAIT });
-  expect.truthy(await page.$eval(box, (el) => el.checked), "the tick survived a reload");
+    // Pressed through the DOM: the dialog that made the role may still be leaving.
+    const box = `[data-permission-cell="${roleKey}:sprint.manage"]`;
+    await press(page, box);
+    await page.waitForFunction((s) => document.querySelector(s)?.checked === true, { timeout: WAIT }, box);
+    await reload(page);
+    await page.click('[data-access-tab="Matrix"]');
+    await page.waitForSelector(box, { timeout: WAIT });
+    expect.truthy(await page.$eval(box, (el) => el.checked), "the tick survived a reload");
 
-  await page.click('[data-access-tab="Roles"]');
-  await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
-  await selectByLabel(page, 'select[aria-label="Role"]', "Sprint planner");
-  await page.waitForFunction(() => document.body.innerText.includes("Sprint planner can see projects, plan sprints."), { timeout: WAIT });
+    await page.click('[data-access-tab="Roles"]');
+    await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
+    await selectByLabel(page, 'select[aria-label="Role"]', planner);
+    await page.waitForFunction((n) => document.body.innerText.includes(`${n} can see projects, plan sprints.`), { timeout: WAIT }, planner);
 
-  // And it is granted like any other, from the same form.
-  await grantRole(page, { who: owner.name, role: "Sprint planner" });
-  await page.waitForFunction(() => document.querySelector('[data-testid="role-assignments"]')?.innerText.includes("Sprint planner"), { timeout: WAIT });
+    // And it is granted like any other, from the same form.
+    await grantRole(page, { who: owner.name, role: planner });
+    await page.waitForFunction((n) => document.querySelector('[data-testid="role-assignments"]')?.innerText.includes(n), { timeout: WAIT }, planner);
+  } finally {
+    if (roleKey) await removeRole(roleKey);
+  }
 });

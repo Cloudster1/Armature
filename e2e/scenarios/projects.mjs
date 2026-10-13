@@ -24,6 +24,7 @@ import {
   signInThroughForm,
   signOut,
   signUp,
+  signUpOwnOrganization,
   textOf,
   unique,
   WAIT,
@@ -189,7 +190,8 @@ scenario("somebody let go of their only organization is told so when they sign i
 scenario("an invitation to an address with an account is that account's to accept", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   await signOut(page, { visit: false });
-  const invitee = await signUp(page, unique("invitee"), { visit: false });
+  // Somebody with an account of their own, elsewhere: an organization of their own.
+  const invitee = await signUpOwnOrganization(page, unique("invitee"), { visit: false });
   await signIn(page, owner.email);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -291,9 +293,9 @@ scenario("a project's counts follow its issues", async ({ page }) => {
   await createIssue(page, key, "two", { visit: false });
 
   await goto(page, "/projects");
-  const listing = await bodyText(page);
-  expect.contains(listing, "2 open", "open count");
-  expect.contains(listing, "2 total", "total count");
+  const row = await textOf(page, `[data-project="${key}"]`);
+  expect.contains(row, "2 open", "open count");
+  expect.contains(row, "2 total", "total count");
 });
 
 // A project points at its documentation elsewhere, and the sidebar offers it

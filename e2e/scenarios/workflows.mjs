@@ -28,6 +28,7 @@ import {
   signIn,
   signUp,
   unique,
+  uniqueName,
   WAIT,
   waitForApp,
   waitForPath,
@@ -46,22 +47,25 @@ scenario("a project follows the organization's workflows until it says otherwise
 
 scenario("a project overrides one issue type and inherits the rest", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
+  // Workflows and schemes are everybody's, so these have names nobody else took.
+  const triage = uniqueName("Bug triage");
+  const triageScheme = uniqueName("Triage scheme");
   const key = await createProject(page, "Overriding", { visit: false });
 
   await createWorkflow(page, {
-    name: "Bug triage",
+    name: triage,
     statuses: ["To Do", "Done"],
     opensIn: "To Do",
     transitions: [{ name: "Fixed", from: "To Do", to: "Done" }],
   });
   await createScheme(page, {
-    name: "Triage scheme",
+    name: triageScheme,
     issueType: "Bug",
-    workflow: "Bug triage",
+    workflow: triage,
   });
 
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", "Triage scheme");
+  await selectByLabel(page, "#project-scheme", triageScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(
     () => document.body.innerText.includes("This project uses its own scheme"),
@@ -69,7 +73,7 @@ scenario("a project overrides one issue type and inherits the rest", async ({ pa
   );
 
   const rows = await assignmentRows(page, key);
-  expect.contains(rows.Bug, "Bug triage", "bugs use the project's workflow");
+  expect.contains(rows.Bug, triage, "bugs use the project's workflow");
   expect.contains(rows.Bug, "This project", "and the project is named as the one that decided");
   expect.contains(rows.Task, "Organization", "tasks still follow the organization");
 
@@ -87,37 +91,42 @@ scenario("a project overrides one issue type and inherits the rest", async ({ pa
 
 scenario("the project's workflow page draws the workflow each issue type follows", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
+  // Workflows and schemes are everybody's, so these have names nobody else took.
+  const triage = uniqueName("Bug triage");
+  const drawnScheme = uniqueName("Drawn scheme");
   const key = await createProject(page, "Drawn", { visit: false });
 
   await createWorkflow(page, {
-    name: "Bug triage",
+    name: triage,
     statuses: ["To Do", "Done"],
     opensIn: "To Do",
     transitions: [{ name: "Fixed", from: "To Do", to: "Done" }],
   });
-  await createScheme(page, { name: "Drawn scheme", issueType: "Bug", workflow: "Bug triage" });
+  await createScheme(page, { name: drawnScheme, issueType: "Bug", workflow: triage });
 
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", "Drawn scheme");
+  await selectByLabel(page, "#project-scheme", drawnScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForSelector('[data-testid="workflow-assignments"] [data-assignment="Bug"]', { timeout: WAIT });
 
   // The picture follows the row that is clicked, and nothing on it can be grabbed.
   await page.click('[data-assignment="Bug"] td:first-child');
-  await page.waitForSelector('[data-workflow-graph="Bug triage"] [data-workflow-edge="Fixed"]', { timeout: WAIT });
+  await page.waitForSelector(`[data-workflow-graph="${triage}"] [data-workflow-edge="Fixed"]`, { timeout: WAIT });
   expect.equal(await page.$$eval('[data-workflow-graph] [role="button"]', (els) => els.length), 0, "the drawing has no buttons");
   expect.equal(await page.$$eval("[data-workflow-graph] [data-connect-handle]", (els) => els.length), 0, "and no rings to drag from");
 
   await page.click('[data-assignment="Task"] td:first-child');
   await page.waitForSelector('[data-workflow-graph="Default software workflow"] [data-workflow-node="In Progress"]', { timeout: WAIT });
-  expect.equal(await page.$('[data-workflow-graph="Bug triage"]'), null, "one drawing at a time");
+  expect.equal(await page.$(`[data-workflow-graph="${triage}"]`), null, "one drawing at a time");
 });
 
 scenario("a project administrator picks a workflow for one issue type without drawing one", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
+  // Workflows and schemes are everybody's, so these have names nobody else took.
+  const triage = uniqueName("Bug triage");
   const key = await createProject(page, "Mapped", { visit: false });
   await createWorkflow(page, {
-    name: "Bug triage",
+    name: triage,
     statuses: ["To Do", "Done"],
     opensIn: "To Do",
     transitions: [{ name: "Fixed", from: "To Do", to: "Done" }],
@@ -134,9 +143,9 @@ scenario("a project administrator picks a workflow for one issue type without dr
   await waitForApp(page);
 
   // One select per row, and no scheme to name: the scheme is the server's bookkeeping.
-  await assignWorkflow(page, key, "Bug", "Bug triage");
+  await assignWorkflow(page, key, "Bug", triage);
   const rows = await assignmentRows(page, key);
-  expect.contains(rows.Bug, "Bug triage", "bugs follow the workflow the row was given");
+  expect.contains(rows.Bug, triage, "bugs follow the workflow the row was given");
   expect.contains(rows.Bug, "This project", "and the project is named as the one that decided");
   expect.contains(rows.Task, "Organization", "tasks still follow the organization");
   expect.equal(await page.$("#project-scheme"), null, "the whole-scheme picker is the organization's, not theirs");
@@ -156,13 +165,16 @@ scenario("a project administrator picks a workflow for one issue type without dr
 
 scenario("a project can hand the decision back to the organization", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
+  // Workflows and schemes are everybody's, so these have names nobody else took.
+  const leanScheme = uniqueName("Lean scheme");
+  const lean = uniqueName("Lean");
   const key = await createProject(page, "Handing back", { visit: false });
 
-  await createWorkflow(page, { name: "Lean", statuses: ["To Do", "Done"], opensIn: "Done" });
-  await createScheme(page, { name: "Lean scheme", issueType: "Bug", workflow: "Lean" });
+  await createWorkflow(page, { name: lean, statuses: ["To Do", "Done"], opensIn: "Done" });
+  await createScheme(page, { name: leanScheme, issueType: "Bug", workflow: lean });
 
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", "Lean scheme");
+  await selectByLabel(page, "#project-scheme", leanScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(
     () => document.body.innerText.includes("This project uses its own scheme"),
@@ -203,12 +215,15 @@ scenario("a workflow that could not work is refused with a reason", async ({ pag
 
 scenario("a workflow drawn on the canvas comes back as it was left, rules included", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
+  // Workflows and schemes are everybody's, so these have names nobody else took.
+  const drawnScheme = uniqueName("Drawn scheme");
+  const drawn = uniqueName("Drawn");
   const key = await createProject(page, "Drawn up", { visit: false });
 
   await goto(page, "/settings/workflows");
   await clickButton(page, "New workflow");
   await page.waitForSelector("#field-name", { timeout: WAIT });
-  await page.type("#field-name", "Drawn");
+  await page.type("#field-name", drawn);
   for (const status of ["To Do", "In Progress", "Done"]) {
     await selectByLabel(page, "#field-add-status", status);
     await clickButton(page, "Add status");
@@ -239,7 +254,7 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   await waitForPath(page, "/settings/workflows");
 
   // Reopened, the picture is the one that was saved.
-  await openWorkflowDesign(page, "Drawn");
+  await openWorkflowDesign(page, drawn);
   await page.waitForSelector('[data-workflow-node="In Progress"]', { timeout: WAIT });
   const reopened = await nodePosition(page, "In Progress");
   expect.equal(reopened.x, after.x, "In Progress is where it was dropped, across");
@@ -252,9 +267,9 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
 
   // And the rule drawn there is the rule that holds: a bug on this workflow
   // cannot be started without a comment.
-  await createScheme(page, { name: "Drawn scheme", issueType: "Bug", workflow: "Drawn" });
+  await createScheme(page, { name: drawnScheme, issueType: "Bug", workflow: drawn });
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", "Drawn scheme");
+  await selectByLabel(page, "#project-scheme", drawnScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(
     () => document.body.innerText.includes("This project uses its own scheme"),
@@ -271,19 +286,22 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
 
 scenario("deleting a scheme a project uses is refused and says which", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
+  // Workflows and schemes are everybody's, so these have names nobody else took.
+  const leanScheme = uniqueName("Lean scheme");
+  const lean = uniqueName("Lean");
   const key = await createProject(page, "Still using", { visit: false });
 
-  await createWorkflow(page, { name: "Lean", statuses: ["To Do", "Done"], opensIn: "To Do" });
-  await createScheme(page, { name: "Lean scheme", issueType: "Bug", workflow: "Lean" });
+  await createWorkflow(page, { name: lean, statuses: ["To Do", "Done"], opensIn: "To Do" });
+  await createScheme(page, { name: leanScheme, issueType: "Bug", workflow: lean });
 
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", "Lean scheme");
+  await selectByLabel(page, "#project-scheme", leanScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(
     () => document.body.innerText.includes("This project uses its own scheme"),
     { timeout: WAIT },
   );
 
-  await deleteScheme(page, "Lean scheme");
+  await deleteScheme(page, leanScheme);
   await page.waitForFunction((k) => document.body.innerText.includes(`${k} still uses it`), { timeout: WAIT }, key);
 });

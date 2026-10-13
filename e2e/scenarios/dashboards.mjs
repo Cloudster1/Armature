@@ -1,6 +1,6 @@
 // Dashboards, their widgets, templates, shares and the PDF.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   addWidget,
   assignMilestone,
@@ -21,6 +21,7 @@ import {
   expect,
   expectCounted,
   goto,
+  keepWorkflow,
   milestoneDashboard,
   milestoneProgress,
   openWorkflowDesign,
@@ -35,46 +36,56 @@ import {
   signUp,
   textOf,
   unique,
+  uniqueName,
   WAIT,
   waitForApp,
   waitForButtonToGo,
 } from "../helpers.mjs";
 
-scenario("a status coined in the designer is drawn at once and the board grows a lane for it", async ({ page }) => {
+// Serial: the organization's own workflow is every project's.
+serialScenario("a status coined in the designer is drawn at once and the board grows a lane for it", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Reviewed", { visit: false });
   const issueKey = await createIssue(page, key, "something to review", { type: "Task", visit: false });
+  // Statuses are everybody's, so the coined one has a name nobody else took.
+  const reviewing = uniqueName("Reviewing");
+  const putBack = await keepWorkflow("Default software workflow");
 
-  // The organization's own workflow gains a status that did not exist a
-  // moment ago, from the same panel that adds existing ones.
-  await openWorkflowDesign(page, "Default software workflow");
-  await coinStatus(page, { name: "Reviewing", category: "In progress" });
-  await dragConnect(page, "To Do", "Reviewing");
-  await replaceValue(page, "#field-transition-name", "Review");
-  await clickButton(page, "Save workflow");
-  await waitForButtonToGo(page, "Save workflow");
+  try {
+    // The organization's own workflow gains a status that did not exist a
+    // moment ago, from the same panel that adds existing ones.
+    await openWorkflowDesign(page, "Default software workflow");
+    await coinStatus(page, { name: reviewing, category: "In progress" });
+    await dragConnect(page, "To Do", reviewing);
+    await replaceValue(page, "#field-transition-name", "Review");
+    await clickButton(page, "Save workflow");
+    await waitForButtonToGo(page, "Save workflow");
 
-  // The project's board followed: a lane for the new status, and a card can
-  // be moved into it.
-  await goto(page, `/projects/${key}/board`);
-  await page.waitForSelector('[data-swimlane="Reviewing"]', { timeout: WAIT });
-  const lanes = await page.$$eval("[data-swimlane]", (els) => els.map((el) => el.getAttribute("data-swimlane")));
-  expect.equal(lanes[lanes.length - 1], "Reviewing", `the new lane is last: ${lanes.join(", ")}`);
-  await dragCardTo(page, issueKey, "Reviewing");
-  await page.waitForFunction(
-    (k) => document.querySelector(`[data-swimlane="Reviewing"] [data-card="${k}"]`) !== null,
-    { timeout: WAIT },
-    issueKey,
-  );
-  const inReview = await cardsIn(page, "Reviewing");
-  expect.truthy(inReview.includes(issueKey), `the card sits in the new lane: ${inReview.join(", ")}`);
+    // The project's board followed: a lane for the new status, and a card can
+    // be moved into it.
+    await goto(page, `/projects/${key}/board`);
+    await page.waitForSelector(`[data-swimlane="${reviewing}"]`, { timeout: WAIT });
+    const lanes = await page.$$eval("[data-swimlane]", (els) => els.map((el) => el.getAttribute("data-swimlane")));
+    expect.equal(lanes[lanes.length - 1], reviewing, `the new lane is last: ${lanes.join(", ")}`);
+    await dragCardTo(page, issueKey, reviewing);
+    await page.waitForFunction(
+      (k, lane) => document.querySelector(`[data-swimlane="${lane}"] [data-card="${k}"]`) !== null,
+      { timeout: WAIT },
+      issueKey,
+      reviewing,
+    );
+    const inReview = await cardsIn(page, reviewing);
+    expect.truthy(inReview.includes(issueKey), `the card sits in the new lane: ${inReview.join(", ")}`);
 
-  // And every other workflow can be built from it from now on.
-  await goto(page, "/settings/workflows");
-  await clickButton(page, "New workflow");
-  await page.waitForSelector("#field-add-status", { timeout: WAIT });
-  const offered = await page.$$eval("#field-add-status option", (els) => els.map((el) => el.textContent.trim()));
-  expect.truthy(offered.includes("Reviewing"), `the picker offers the coined status: ${offered.join(", ")}`);
+    // And every other workflow can be built from it from now on.
+    await goto(page, "/settings/workflows");
+    await clickButton(page, "New workflow");
+    await page.waitForSelector("#field-add-status", { timeout: WAIT });
+    const offered = await page.$$eval("#field-add-status option", (els) => els.map((el) => el.textContent.trim()));
+    expect.truthy(offered.includes(reviewing), `the picker offers the coined status: ${offered.join(", ")}`);
+  } finally {
+    await putBack();
+  }
 });
 
 scenario("a project's dashboard counts its work and can be rearranged", async ({ page }) => {
@@ -223,23 +234,28 @@ scenario("a dashboard is saved as a template and another project starts from it"
   await page.waitForSelector('[data-widget="status_breakdown"]', { timeout: WAIT });
   await addWidget(page, "chart");
 
-  // Saved while arranging, under a name of its own.
-  await saveTemplate(page, "Mondays");
+  // Saved while arranging, under a name of its own: templates are everybody's.
+  const mondays = uniqueName("Mondays");
+  await saveTemplate(page, mondays);
 
   // Another project starts from it and gets the same widgets.
   const other = await createProject(page, "Elsewhere", { visit: false });
-  await createDashboard(page, other, "From Mondays", "Mondays");
+  await createDashboard(page, other, "From Mondays", mondays);
   await page.waitForSelector('[data-widget="chart"]', { timeout: WAIT });
   expect.equal((await page.$$('[data-widget="status_breakdown"]')).length, 1, "the status widget came along");
 
   // Removing the template takes it from the chooser and nothing from the dashboard.
   await clickButton(page, "New dashboard");
   await page.waitForSelector('[data-action="remove-template"]', { timeout: WAIT });
-  await page.click('[data-action="remove-template"]');
+  await page.evaluate((name) => {
+    const card = [...document.querySelectorAll("[data-dashboard-template]")].find((el) => el.innerText.includes(name));
+    card?.parentElement.querySelector('[data-action="remove-template"]')?.click();
+  }, mondays);
   await confirm(page);
   await page.waitForFunction(
-    () => ![...document.querySelectorAll("[data-dashboard-template]")].some((el) => el.innerText.includes("Mondays")),
+    (name) => ![...document.querySelectorAll("[data-dashboard-template]")].some((el) => el.innerText.includes(name)),
     { timeout: WAIT },
+    mondays,
   );
   await clickButton(page, "Cancel");
   expect.truthy(await page.$('[data-widget="chart"]'), "the dashboard made from it is untouched");

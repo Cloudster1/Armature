@@ -1,7 +1,7 @@
 // The running sprint's burndown and what an issue carries: fields, files, time and labels.
 
 import { writeFileSync } from "node:fs";
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
   clickButton,
@@ -28,6 +28,7 @@ import {
   startSprint,
   textOf,
   unique,
+  uniqueName,
   WAIT,
   withViewport,
   writeInEditor,
@@ -194,13 +195,16 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
   await page.waitForFunction((n) => document.body.innerText.includes(`assigned this to ${n}`), { timeout: WAIT }, who.name);
   await page.waitForSelector('select[aria-label="Reporter"]', { timeout: 10_000 });
 
-  // Labels are coined by typing them; the second one is offered back.
-  await page.type('input[aria-label="Add a label"]', "backend");
+  // Labels are coined by typing them; the second one is offered back. Labels
+  // are everybody's, so these are words no other scenario uses.
+  const backend = uniqueName("backend", "-");
+  const urgent = uniqueName("urgent", "-");
+  await page.type('input[aria-label="Add a label"]', backend);
   await page.keyboard.press("Enter");
-  await page.waitForSelector('[data-labels] [data-label="backend"]', { timeout: WAIT });
-  await page.type('input[aria-label="Add a label"]', "urgent,");
-  await page.waitForSelector('[data-labels] [data-label="urgent"]', { timeout: WAIT });
-  await page.waitForFunction(() => document.body.innerText.includes("labelled this backend, urgent"), { timeout: WAIT });
+  await page.waitForSelector(`[data-labels] [data-label="${backend}"]`, { timeout: WAIT });
+  await page.type('input[aria-label="Add a label"]', `${urgent},`);
+  await page.waitForSelector(`[data-labels] [data-label="${urgent}"]`, { timeout: WAIT });
+  await page.waitForFunction((words) => document.body.innerText.includes(`labelled this ${words}`), { timeout: WAIT }, `${backend}, ${urgent}`);
 
   // Time: an estimate written the way people write it, then work logged
   // against it, which brings the remaining time down.
@@ -250,25 +254,37 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
 
   // The label shows in the project's list, and the list filters by it.
   await goto(page, `/projects/${key}`);
-  await page.waitForSelector('[data-label="backend"]', { timeout: WAIT });
+  await page.waitForSelector(`[data-label="${backend}"]`, { timeout: WAIT });
   await openFilters(page);
-  await selectByLabel(page, 'select[aria-label="Filter by label"]', "urgent (1)");
+  await selectByLabel(page, 'select[aria-label="Filter by label"]', `${urgent} (1)`);
   await page.waitForFunction(() => document.body.innerText.includes("1 issue"), { timeout: WAIT });
+});
 
-  // And a label is the organization's: it is listed, and can be renamed everywhere.
-  await goto(page, "/settings/labels");
-  await page.waitForSelector('[data-label-row="urgent"]', { timeout: WAIT });
-  await page.evaluate(() => {
-    const row = document.querySelector('[data-label-row="urgent"]');
-    [...row.querySelectorAll("button")].find((b) => b.textContent.trim() === "Edit")?.click();
-  });
-  await page.waitForSelector("input#label-name-" + (await page.$eval('[data-label-row="urgent"] input', (el) => el.id.replace("label-name-", ""))), { timeout: 10_000 });
-  await page.click('[data-label-row="urgent"] input', { clickCount: 3 });
-  await page.type('[data-label-row="urgent"] input', "blocker");
-  await clickButton(page, "Save label");
-  await page.waitForSelector('[data-label-row="blocker"]', { timeout: WAIT });
+// Serial: a label is the organization's, and renaming one renames it for everybody.
+serialScenario("a label is listed for the organization and renamed everywhere", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Labelled", { visit: false });
+  const issueKey = await createIssue(page, key, "carries the word", { visit: false });
+  const urgent = uniqueName("urgent", "-");
+  const blocker = uniqueName("blocker", "-");
   await goto(page, `/issues/${issueKey}`);
-  await page.waitForSelector('[data-labels] [data-label="blocker"]', { timeout: WAIT });
+  await page.type('input[aria-label="Add a label"]', urgent);
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(`[data-labels] [data-label="${urgent}"]`, { timeout: WAIT });
+
+  await goto(page, "/settings/labels");
+  const row = `[data-label-row="${urgent}"]`;
+  await page.waitForSelector(row, { timeout: WAIT });
+  await page.evaluate((sel) => {
+    [...document.querySelector(sel).querySelectorAll("button")].find((b) => b.textContent.trim() === "Edit")?.click();
+  }, row);
+  await page.waitForSelector(`${row} input`, { timeout: 10_000 });
+  await page.click(`${row} input`, { clickCount: 3 });
+  await page.type(`${row} input`, blocker);
+  await clickButton(page, "Save label");
+  await page.waitForSelector(`[data-label-row="${blocker}"]`, { timeout: WAIT });
+  await goto(page, `/issues/${issueKey}`);
+  await page.waitForSelector(`[data-labels] [data-label="${blocker}"]`, { timeout: WAIT });
 });
 
 scenario("a page another application puts on an issue is listed under Pages", async ({ page }) => {

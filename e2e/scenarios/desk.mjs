@@ -6,6 +6,7 @@ import {
   acceptInvite,
   attachFile,
   bodyText,
+  chooseDesk,
   clickButton,
   confirm,
   createProject,
@@ -47,6 +48,7 @@ scenario("a customer raises a request and sees only what the desk says to them",
   expect.truthy(!(await bodyText(page)).includes("Workflows"), "the portal has none of the agents' chrome");
 
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
   await fill(page, "Summary", "The printer is on fire");
@@ -113,6 +115,7 @@ scenario("a customer attaches files to a request, sees the desk's, and takes bac
   const answer = "Hold the power button for ten seconds.\n";
   writeFileSync("/tmp/e2e-agent.txt", answer);
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
   await fill(page, "Summary", "The screen went black");
@@ -175,6 +178,7 @@ scenario("a request raised through a template lands with its team", async ({ pag
   const customer = await inviteMember(page, "customer", "customer");
   await acceptInvite(page, customer, { visit: false });
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector('[data-request-category="Hardware"] [data-request-type="Laptop replacement"]', { timeout: WAIT });
   await page.click('[data-request-type="Laptop replacement"]');
   await page.waitForFunction(() => document.querySelector("#portal-description")?.value === "Device:\nWhat happened:", { timeout: WAIT });
@@ -209,6 +213,7 @@ scenario("somebody with only a mail address raises a request and is mailed about
   expect.truthy(!(await bodyText(page)).includes("Workflows"), "a requester lands in the portal");
 
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
   await fill(page, "Summary", "The badge reader is dead");
@@ -310,6 +315,7 @@ scenario("a customer's reply to a resolved request brings it back to the agents'
   const customer = await inviteMember(page, "customer", "customer");
   await acceptInvite(page, customer, { visit: false });
   await goto(page, "/portal/new");
+  await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
   await page.click('[data-request-type="Report a problem"]');
   await fill(page, "Summary", "The scanner jams");
