@@ -10,8 +10,11 @@ const recorded = [
   "auth.session_ended",
   "auth.sessions_ended",
   "group.deleted",
+  "installation.renamed",
   "invite.created",
   "invite.revoked",
+  "org.created",
+  "org.second_factor_required",
   "role.defined",
   "role.redefined",
   "role.removed",
@@ -47,6 +50,17 @@ const signedOut: AuditEntry = {
   createdAt: "2026-10-11T09:00:00Z",
 };
 
+const ruled: AuditEntry = {
+  id: "a3",
+  action: "org.second_factor_required",
+  targetType: "org",
+  targetId: "o1",
+  actorId: "u1",
+  actorName: "Ada Admin",
+  data: { rule: "administrators" },
+  createdAt: "2026-10-12T09:00:00Z",
+};
+
 const asked: AuditFilter[] = [];
 
 vi.mock("@tanstack/react-router", () => ({ createRoute: (options: unknown) => options }));
@@ -56,7 +70,7 @@ vi.mock("@/api/audit", () => ({
   auditExportHref: () => "/api/v1/audit/export",
   useAuditLog: (filter: AuditFilter) => {
     asked.push(filter);
-    const entries = [rotated, signedOut].filter((e) => !filter.action || e.action === filter.action);
+    const entries = [rotated, signedOut, ruled].filter((e) => !filter.action || e.action === filter.action);
     return { data: { entries, actions: recorded }, isLoading: false, error: null };
   },
 }));
@@ -86,6 +100,21 @@ describe("the audit page", () => {
     expect(row.textContent).toContain("name: Elsewhere");
     expect(row.textContent).toContain("address: https://hooks.example");
     expect(row.textContent).not.toMatch(/secret:/);
+  });
+
+  // Stored rows and scripts keep the old keys; the page reads them as the installation's.
+  it("reads what was stored under the organization as the installation's, and filters by the stored key", async () => {
+    render(<AuditPage />);
+    const select = screen.getByLabelText("Action");
+    const words = within(select).getAllByRole("option").map((o) => o.textContent ?? "");
+    expect(words).toContain("installation.created");
+    expect(words).toContain("installation.second_factor_required");
+    expect(words.join(" ")).not.toMatch(/\borg\./);
+    await userEvent.selectOptions(select, "installation.second_factor_required");
+    expect(asked.at(-1)?.action).toBe("org.second_factor_required");
+    const row = document.querySelector('[data-audit-row="org.second_factor_required"]') as HTMLElement;
+    expect(row.textContent).toContain("installation.second_factor_required");
+    expect(row.textContent).not.toContain("org.");
   });
 
   it("names the device a session was signed out on, not its user agent", async () => {
