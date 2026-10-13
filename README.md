@@ -41,8 +41,8 @@ Then open <http://localhost:5173> and sign in as `ada@armature.test` with the
 password the seed prints. There is a demo project with issues spread across the
 workflow waiting for you.
 
-Or sign in the way a company would: on the sign-in page choose single sign-on
-and give the organization `armature`. The stack runs a Keycloak at
+Or sign in the way a company would: on the sign-in page choose Continue with
+single sign-on. The stack runs a Keycloak at
 <http://localhost:8180> (admin console: `admin` / `admin`) with the same
 people, the same password, and groups that grant their roles here. Grace is in
 `portal-owners` and `scrum-masters`, Alan in `developers`, Rita in `readers`;
@@ -98,8 +98,8 @@ administrator making their account, or, with `ARMATURE_SIGNUP=open`, by
 signing up as members. An administrator makes local accounts with a password,
 resets them and switches them off, which is also how somebody is let go, and
 somebody who forgot their password asks the sign-in page for a link by mail. A person can add two-step sign-in with an
-authenticator app, with recovery codes for a lost phone, and an organization
-can require it of its administrators or of everyone. A project is a wall: what a role does not reach is
+authenticator app, with recovery codes for a lost phone, and an administrator
+can require it for administrators or for everyone. A project is a wall: what a role does not reach is
 not found.
 
 **Planning.** Boards (scrum follows the running sprint, kanban shows
@@ -359,11 +359,10 @@ api and the worker with Jaeger as their endpoint; Jaeger is at
 `localhost:16686`, Prometheus at `localhost:9090`. `make observe-down` stops
 them again. Nothing of this runs unless asked.
 
-**Security at the edges.** A session reaches what its proof vouches for: a
-password reaches every organization the person belongs to, a mailed code and an
-open desk door reach only the organization that asked for them, single sign-on
-reaches the organizations that trust the same provider and the ones the person
-owns, and the database refuses any other switch as well. A person with two-step
+**Security at the edges.** A session acts in the installation and names no
+organization, which the database holds it to; it keeps the proof it was opened
+with. A session that came through an open desk door sees that desk alone, and
+cannot export or erase the account behind the address. A person with two-step
 sign-in gets no session for the password alone: the code step that follows takes
 five tries, the app's code works once, and a recovery code works once. The
 authenticator key is sealed with AES-GCM under `ARMATURE_SECRET_KEY`. A write carrying the session

@@ -7,6 +7,25 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: signing in lands in the installation. Nobody is asked which
+  organization, the sidebar shows the installation's name without a switcher,
+  and the profile lists no organizations. `POST /auth/switch-org` is gone, and
+  so are `organizations` on `/auth/me` and `orgName` on `/auth/sessions`. A
+  session names no organization and migration `00931` holds the database to
+  that; the `session_bound` refusal is gone. A session through an open desk
+  door may no longer export or erase the account behind the address (#212).
+- Changed: single sign-on starts at `/api/v1/auth/oidc/start`, at the
+  installation's one provider, and the sign-in page offers "Continue with
+  single sign-on" without asking for an organization. The old
+  `/auth/oidc/{orgSlug}/start` sends the browser to the new address until the
+  next release. The callback address is unchanged (#212).
+- Changed: the second-factor rule moved from `/organization/second-factor` to
+  `/settings/second-factor`, with no stand-in at the old address, and reads
+  off, for administrators or for everyone. A held session is offered setting
+  it up or signing out (#212).
+- Removed: "Create a demo organization" and `POST /organizations/demo`, which
+  moved the session into the organization it made; #213 brings the demo back
+  as a project in the installation (#212).
 - Changed: accounts belong to the installation. Sign-up asks for the person
   alone: on an installation with no organization yet, the first account sets
   it up, named by the new `ARMATURE_NAME` (`Armature` unless set), and
