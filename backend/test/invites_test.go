@@ -19,7 +19,7 @@ func TestInvites(t *testing.T) {
 	svc := h.authService()
 	ctx := context.Background()
 
-	owner := h.signup(t, svc, "inviter")
+	owner := h.signIn(t, svc, h.person(t, "inviter", auth.RoleOwner))
 	orgCtx := auth.ContextForOrg(ctx, owner.Principal)
 
 	t.Run("a new account can join through an invitation", func(t *testing.T) {
@@ -184,9 +184,8 @@ func TestInvites(t *testing.T) {
 	})
 
 	t.Run("pending invitations are listed, accepted ones are not", func(t *testing.T) {
-		// A fresh organization, so the listing is not polluted by the subtests
-		// above running in any order.
-		lister := h.signup(t, svc, "lister")
+		// Everybody's invitations are listed, so only these two are looked for.
+		lister := h.signIn(t, svc, h.person(t, "lister", auth.RoleOwner))
 		// Pinned to the primary: the accept below is read back at once, and
 		// a replica a beat behind would still list the accepted one.
 		listCtx := db.PinPrimary(auth.ContextForOrg(ctx, lister.Principal))
@@ -208,11 +207,12 @@ func TestInvites(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(invites) != 1 {
-			t.Fatalf("got %d pending invitations, want 1", len(invites))
+		listed := map[string]bool{}
+		for _, invite := range invites {
+			listed[invite.Email] = true
 		}
-		if invites[0].Email != pending {
-			t.Errorf("listed %q, want the still-pending %q", invites[0].Email, pending)
+		if !listed[pending] || listed[accepted] {
+			t.Errorf("pending listed %v, accepted listed %v; want only the still-pending one", listed[pending], listed[accepted])
 		}
 	})
 }
@@ -223,7 +223,7 @@ func TestAPITokens(t *testing.T) {
 	svc := h.authService()
 	ctx := context.Background()
 
-	owner := h.signup(t, svc, "tokenowner")
+	owner := h.signIn(t, svc, h.person(t, "tokenowner", auth.RoleOwner))
 	orgCtx := auth.ContextForOrg(ctx, owner.Principal)
 	userID := owner.Principal.User.ID
 
@@ -294,7 +294,7 @@ func TestAPITokens(t *testing.T) {
 	})
 
 	t.Run("a token stops working when its owner loses their membership", func(t *testing.T) {
-		member := h.signup(t, svc, "departing")
+		member := h.signIn(t, svc, h.person(t, "departing", auth.RoleOwner))
 		memberCtx := auth.ContextForOrg(ctx, member.Principal)
 		token, _, err := svc.CreateAPIToken(memberCtx, member.Principal.User.ID, "outlives membership", nil, nil, nil)
 		if err != nil {
@@ -313,7 +313,7 @@ func TestAPITokens(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		stranger := h.signup(t, svc, "stranger")
+		stranger := h.signIn(t, svc, h.person(t, "stranger", auth.RoleOwner))
 		if _, err := svc.RevokeAPIToken(orgCtx, stranger.Principal.User.ID, token.ID); err == nil {
 			t.Error("another user revoked a token that was not theirs")
 		}

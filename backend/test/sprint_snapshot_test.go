@@ -15,7 +15,7 @@ import (
 func TestASnapshotLeavesASprintCompletedInBetweenAlone(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "snapshot-late")
+	ws := h.newProject(t, "snapshot-late")
 	done := ws.newIssue(t, "three points done")
 	open := ws.newIssue(t, "five points still open")
 	sp := ws.planned(t, h, "Sprint L", "2026-09-07", "2026-09-18", nil)
@@ -89,7 +89,7 @@ func TestASnapshotLeavesASprintCompletedInBetweenAlone(t *testing.T) {
 func TestASnapshotWaitsForTheSprintToStart(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "snapshot-early")
+	ws := h.newProject(t, "snapshot-early")
 	sp := ws.planned(t, h, "Sprint E", "2026-09-07", "2026-09-18", nil)
 	ws.commit(t, ws.newIssue(t, "planned work").Key, &sp.ID, size(2))
 

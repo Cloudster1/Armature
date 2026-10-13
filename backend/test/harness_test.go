@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,11 +21,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/armature/armature/backend/internal/attachment"
-	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/board"
-	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/observability"
@@ -60,6 +59,18 @@ type harness struct {
 	tel   *observability.Telemetry
 	spans *spanSink
 	store attachment.Store
+	// made is what the test made in the installation, swept after everything
+	// else of the test, so nothing of its own still holds on to it.
+	made *madeThings
+}
+
+// madeThings collects what the test and its subtests alike made.
+type madeThings struct {
+	mu sync.Mutex
+	// keys and people are swept again in case their own cleanup was refused
+	// while something of the test still held them.
+	keys, emails, userIDs []string
+	names                 []string
 }
 
 // newHarness hands out what TestMain opened for the whole run. Each test gets
@@ -73,31 +84,50 @@ func newHarness(t *testing.T) *harness {
 	if shared.cluster == nil {
 		t.Fatal("the shared harness is not open; TestMain opens it")
 	}
-	return &harness{
+	h := &harness{
 		cluster: shared.cluster, super: shared.super, replica: shared.replica,
 		tel: shared.tel, spans: shared.spans, store: shared.store,
+		made: &madeThings{},
+	}
+	t.Cleanup(h.sweep)
+	return h
+}
+
+// sweep removes what is left of the test once its own cleanups have run: its
+// projects, its people and what was sent to them, then what it named.
+func (h *harness) sweep() {
+	h.made.mu.Lock()
+	defer h.made.mu.Unlock()
+	ctx := context.Background()
+	if len(h.made.keys) > 0 {
+		_, _ = h.super.Exec(ctx, `DELETE FROM project WHERE key = ANY($1)`, h.made.keys)
+	}
+	if len(h.made.emails)+len(h.made.userIDs) > 0 {
+		// A role somebody granted themselves is updated as its granter goes,
+		// and that update is refused once they are no member; so roles go first.
+		const people = `(SELECT id FROM app_user WHERE email = ANY($1) OR id::text = ANY($2))`
+		_, _ = h.super.Exec(ctx, `DELETE FROM role_assignment WHERE user_id IN `+people, h.made.emails, h.made.userIDs)
+		_, _ = h.super.Exec(ctx, `DELETE FROM app_user WHERE id IN `+people, h.made.emails, h.made.userIDs)
+	}
+	if len(h.made.emails) > 0 {
+		// Invitations and portal codes are kept by address, not by account.
+		_, _ = h.super.Exec(ctx, `DELETE FROM org_invite WHERE email = ANY($1)`, h.made.emails)
+		_, _ = h.super.Exec(ctx, `DELETE FROM portal_code WHERE email = ANY($1)`, h.made.emails)
+	}
+	// Table by table in sharedLists' order, so a scheme goes before the
+	// workflows it maps and a workflow before the statuses it holds.
+	for _, table := range sharedLists {
+		for _, name := range h.made.names {
+			_, _ = h.super.Exec(ctx, `DELETE FROM `+table+` WHERE lower(name) = lower($1)`, name)
+		}
 	}
 }
 
-// makeOrg creates an organization directly, bypassing the API, and returns a
-// context scoped to it. Cleanup removes it and everything that cascades.
-func (h *harness) makeOrg(t *testing.T, slug string) (uuid.UUID, context.Context) {
-	t.Helper()
-	ctx := context.Background()
-
-	// Unique per run so repeated test runs do not collide on the slug.
-	full := fmt.Sprintf("%s-%s", slug, uuid.New().String()[:8])
-
-	var id uuid.UUID
-	err := h.super.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, full, slug).Scan(&id)
-	if err != nil {
-		t.Fatalf("create org %s: %v", full, err)
-	}
-	t.Cleanup(func() {
-		_, _ = h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, id)
-	})
-
-	return id, tenant.WithOrg(ctx, tenant.Org{ID: id, Slug: full})
+// installation is the one organization every test works in, and a context
+// scoped to it for a test that writes below the services.
+func (h *harness) installation() (uuid.UUID, context.Context) {
+	org := shared.installation
+	return org.ID, tenant.WithOrg(context.Background(), tenant.Org{ID: org.ID, Slug: org.Slug})
 }
 
 // waitForReplica blocks until the replica has replayed up to lsn, or the
@@ -167,26 +197,75 @@ func unique(prefix string) string {
 func (h *harness) email(t *testing.T, prefix string) string {
 	t.Helper()
 	addr := unique(prefix) + "@armature.test"
+	h.made.mu.Lock()
+	h.made.emails = append(h.made.emails, addr)
+	h.made.mu.Unlock()
 	t.Cleanup(func() {
 		_, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE email = $1`, addr)
 	})
 	return addr
 }
 
-// orgSlug returns a unique slug and removes the organization afterwards.
-func (h *harness) orgSlug(t *testing.T, prefix string) string {
+// projectKey returns a project key no other test's project has, and removes
+// that project and everything in it at the end of the test.
+func (h *harness) projectKey(t *testing.T, prefix string) string {
 	t.Helper()
-	slug := unique(prefix)
+	key := uniqueKey(prefix)
+	h.made.mu.Lock()
+	h.made.keys = append(h.made.keys, key)
+	h.made.mu.Unlock()
 	t.Cleanup(func() {
-		_, _ = h.super.Exec(context.Background(), `DELETE FROM org WHERE slug = $1`, slug)
+		_, _ = h.super.Exec(context.Background(), `DELETE FROM project WHERE key = $1`, key)
 	})
-	return slug
+	return key
 }
 
-// deskKey returns a project key no other test's desk has: the public door finds
-// a desk by its key alone, so two tests' desks must not share one.
-func deskKey(prefix string) string {
-	return prefix + strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", "")[:6])
+// uniqueKey is up to four letters of prefix and six random ones: a project key
+// is at most ten, and every test's projects share one installation.
+func uniqueKey(prefix string) string {
+	letters := strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r
+		}
+		return -1
+	}, strings.ToUpper(prefix))
+	if letters == "" {
+		letters = "P"
+	}
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	random := uuid.New()
+	tail := make([]byte, 6)
+	for i := range tail {
+		tail[i] = alphabet[int(random[i])%len(alphabet)]
+	}
+	return letters[:min(len(letters), 4)] + string(tail)
+}
+
+// sharedLists are the tables that hold one list for everyone, by name: what a
+// test names in one must not be another test's, and goes when the test ends.
+var sharedLists = []string{
+	"automation_rule", "webhook_endpoint", "dashboard_template", "workflow_scheme", "workflow",
+	"issue_link_type", "custom_field", "label", "user_group", "org_role", "holiday_calendar",
+	"issue_type", "issue_status",
+}
+
+// name returns a name no other test uses for anything on a shared list, and
+// removes what the test named with it from those lists once its projects are gone.
+func (h *harness) name(t *testing.T, prefix string) string {
+	t.Helper()
+	name := unique(prefix)
+	h.made.mu.Lock()
+	h.made.names = append(h.made.names, name)
+	h.made.mu.Unlock()
+	return name
+}
+
+// erasable removes the account by its id when the test ends, for one the test
+// erases: erasing renames the address the account would be found by.
+func (h *harness) erasable(userID string) {
+	h.made.mu.Lock()
+	h.made.userIDs = append(h.made.userIDs, userID)
+	h.made.mu.Unlock()
 }
 
 // attachmentStore is the real bucket the stack runs with. Nothing is faked
@@ -217,55 +296,92 @@ func testPasswordParams() auth.PasswordParams {
 	return params
 }
 
-// foundOrganization makes an organization owned by a new account, straight
-// through the admin path. No product path makes a second one; tests keep apart
-// by them until #217.
-func (h *harness) foundOrganization(t *testing.T, name, orgName string) (email string) {
+// person makes an account in the installation at the standing given, with
+// the role that standing joins with, removed at the end of the test.
+func (h *harness) person(t *testing.T, name string, role auth.OrgRole) (email string) {
 	t.Helper()
-	ctx := context.Background()
 	email = h.email(t, name)
-	slug := h.orgSlug(t, name)
-	hash, err := auth.HashPassword(testPassword, testPasswordParams())
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = h.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var userID, orgID uuid.UUID
+	orgID := shared.installation.ID
+	_, err := h.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+		var userID uuid.UUID
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id`,
-			email, name, hash).Scan(&userID); err != nil {
-			return fmt.Errorf("make the owner: %w", err)
+			email, name, shared.passwordHash).Scan(&userID); err != nil {
+			return fmt.Errorf("make the account: %w", err)
 		}
-		if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, slug, orgName).Scan(&orgID); err != nil {
-			return fmt.Errorf("make the organization: %w", err)
-		}
-		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, orgID, userID); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, orgID, userID, role); err != nil {
 			return fmt.Errorf("make the membership: %w", err)
 		}
-		if _, err := tx.Exec(ctx, `SELECT org_builtin_roles($1)`, orgID); err != nil {
-			return fmt.Errorf("give it its roles: %w", err)
+		if role.AppRole() == "" {
+			return nil
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'global_administrator', $2)`, orgID, userID); err != nil {
-			return fmt.Errorf("grant the owner's role: %w", err)
-		}
-		if _, err := bootstrap.Org(ctx, tx, orgID); err != nil {
-			return fmt.Errorf("prepare the organization: %w", err)
-		}
-		return audit.Write(ctx, tx, orgID, audit.Entry{Action: "org.created", TargetType: "org", TargetID: &orgID, Actor: userID})
+		_, err := tx.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, $2, $3)`, orgID, role.AppRole(), userID)
+		return err
 	})
 	if err != nil {
-		t.Fatalf("found an organization for %s: %v", name, err)
+		t.Fatalf("make %s: %v", name, err)
 	}
 	return email
 }
 
-// signup founds an organization for a new owner and signs them in with their
-// password, returning the credentials.
-func (h *harness) signup(t *testing.T, svc *auth.Service, name string) *auth.Credentials {
+// outsider is a member who holds no role anywhere yet: somebody a project is
+// a wall to until they are granted one in it.
+func (h *harness) outsider(t *testing.T, name string) (email string) {
 	t.Helper()
-	email := h.foundOrganization(t, name, name+" Corp")
+	email = h.person(t, name, auth.RoleMember)
+	if _, err := h.super.Exec(context.Background(), `
+		DELETE FROM role_assignment WHERE user_id = (SELECT id FROM app_user WHERE email = $1)`, email); err != nil {
+		t.Fatalf("take %s's role away: %v", name, err)
+	}
+	return email
+}
+
+// keepProvider puts the installation's identity provider back as it was when
+// the test ends, or takes the test's away when there was none.
+func (h *harness) keepProvider(t *testing.T) {
+	t.Helper()
+	orgID, _ := h.installation()
+	var kept *string
+	if err := h.super.QueryRow(context.Background(), `
+		SELECT (SELECT row_to_json(p)::text FROM oidc_provider p WHERE p.org_id = $1)`, orgID).Scan(&kept); err != nil {
+		t.Fatalf("read the installation's provider: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx := context.Background()
+		if _, err := h.super.Exec(ctx, `DELETE FROM oidc_provider WHERE org_id = $1`, orgID); err != nil {
+			t.Errorf("take the test's provider away: %v", err)
+		}
+		if kept == nil {
+			return
+		}
+		if _, err := h.super.Exec(ctx, `
+			INSERT INTO oidc_provider SELECT * FROM json_populate_record(NULL::oidc_provider, $1::json)`, *kept); err != nil {
+			t.Errorf("put the installation's provider back: %v", err)
+		}
+	})
+}
+
+// keepSecondFactorRule puts the installation's rule back as it found it when
+// the test ends: every other test, and the browser suite, signs in under it.
+func (h *harness) keepSecondFactorRule(t *testing.T) {
+	t.Helper()
+	orgID, _ := h.installation()
+	var rule string
+	if err := h.super.QueryRow(context.Background(), `SELECT second_factor::text FROM org WHERE id = $1`, orgID).Scan(&rule); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := h.super.Exec(context.Background(), `UPDATE org SET second_factor = $2 WHERE id = $1`, orgID, rule); err != nil {
+			t.Errorf("put the second-factor rule back: %v", err)
+		}
+	})
+}
+
+// signIn signs somebody in with their password.
+func (h *harness) signIn(t *testing.T, svc *auth.Service, email string) *auth.Credentials {
+	t.Helper()
 	creds, err := svc.Login(context.Background(), email, testPassword, "", "")
 	if err != nil {
-		t.Fatalf("sign %s in: %v", name, err)
+		t.Fatalf("sign %s in: %v", email, err)
 	}
 	return creds
 }
@@ -296,8 +412,8 @@ func (h *harness) workflowAdmin() *workflow.Admin {
 	return workflow.NewAdmin(h.cluster, workflow.NewStore()).WithObserver(board.Follower{})
 }
 
-// workspace is an organization with an owner and a project, which is the
-// starting point for almost every issue test.
+// workspace is an owner and a project of theirs, which is the starting point
+// for almost every issue test.
 type workspace struct {
 	ctx      context.Context
 	orgID    uuid.UUID
@@ -315,13 +431,13 @@ type workspace struct {
 	teams    *team.Service
 }
 
-// newWorkspace founds an organization for a fresh owner, with its statuses,
-// issue types and default workflow, then creates a project in it.
-func (h *harness) newWorkspace(t *testing.T, name string) *workspace {
+// newProject makes an owner of the installation and a project of theirs under
+// a key no other test has, both removed at the end of the test.
+func (h *harness) newProject(t *testing.T, name string) *workspace {
 	t.Helper()
 
 	svc := h.authService()
-	creds := h.signup(t, svc, name)
+	creds := h.signIn(t, svc, h.person(t, name, auth.RoleOwner))
 
 	// Pinned to the primary on purpose. These tests write and immediately read
 	// back, which in production is handled by the middleware pinning the
@@ -337,15 +453,9 @@ func (h *harness) newWorkspace(t *testing.T, name string) *workspace {
 	plans.WithAvailability(availability.NewService(h.cluster))
 	actor := issue.Actor{UserID: creds.Principal.User.ID, OrgRole: creds.Principal.Role, Perms: perm.NewSet(nil).WithEverything()}
 
-	// The key must be unique per run and not merely derived from the name:
-	// two workspaces whose names share a prefix would otherwise get the same
-	// key, and a test that reads "the other tenant's project" would quietly be
-	// reading its own.
-	key := strings.ToUpper(name[:min(len(name), 3)] + uuid.New().String()[:3])
-
 	p, _, err := projects.Create(ctx, project.CreateInput{
 		Name: name + " project",
-		Key:  key,
+		Key:  h.projectKey(t, name),
 	}, actor.UserID)
 	if err != nil {
 		t.Fatalf("create project: %v", err)
@@ -393,16 +503,22 @@ func (h *harness) transitionID(t *testing.T, ws *workspace, key, name string) uu
 	return uuid.Nil
 }
 
-// joinExisting adds somebody to an organization by email, creating the account
-// if it does not exist, which is the state an invited person is in before they
-// have ever signed in.
+// nameOf is the part of an address before the at sign, which for the suite's
+// addresses is unique and so names one person whoever reads it.
+func nameOf(email string) string {
+	name, _, _ := strings.Cut(email, "@")
+	return name
+}
+
+// joinExisting adds somebody to the installation by email, creating the account
+// if it does not exist, named after the address so no other test's is named alike.
 func (h *harness) joinExisting(t *testing.T, ws *workspace, email, role string) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
 	if err := h.super.QueryRow(context.Background(), `
 		INSERT INTO app_user (email, name) VALUES ($1, $2)
 		ON CONFLICT (email) DO UPDATE SET name = app_user.name
-		RETURNING id`, email, "Invited Person").Scan(&id); err != nil {
+		RETURNING id`, email, nameOf(email)).Scan(&id); err != nil {
 		t.Fatalf("create the account: %v", err)
 	}
 	if _, err := h.super.Exec(context.Background(), `

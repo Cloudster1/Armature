@@ -21,7 +21,7 @@ import (
 func TestBulkEditRefusalLeavesTheIssueAsItWas(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "allornot")
+	ws := h.newProject(t, "allornot")
 	edits := bulk.NewService(h.cluster, ws.issues, label.NewService(h.cluster))
 
 	fresh := ws.newIssue(t, "Still to do, so Approve is not offered")
@@ -70,7 +70,7 @@ func TestBulkEditRefusalLeavesTheIssueAsItWas(t *testing.T) {
 
 	high := issue.PriorityHigh
 	result, _, err := edits.Edit(ws.ctx, []string{fresh.Key, ready.Key},
-		bulk.Input{Priority: &high, AddLabels: []string{"triaged"}, Transition: "Approve"}, ws.actor)
+		bulk.Input{Priority: &high, AddLabels: []string{h.name(t, "triaged")}, Transition: "Approve"}, ws.actor)
 	if err != nil {
 		t.Fatal(err)
 	}

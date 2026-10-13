@@ -40,7 +40,8 @@ func versionNames(t *testing.T, out any) []string {
 func TestATemplateLeavesItsProjectsVersionBehind(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "tplversion")
+	secKey := h.projectKey(t, "SEC")
+	ws := h.newProject(t, "tplversion")
 	r := ws.reports(h)
 	versions := version.NewService(h.cluster)
 
@@ -48,7 +49,7 @@ func TestATemplateLeavesItsProjectsVersionBehind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Second", Key: "SEC"}, ws.actor.UserID)
+	other, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Second", Key: secKey}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +95,7 @@ func TestATemplateLeavesItsProjectsVersionBehind(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		saved, _, err := r.SaveTemplate(ws.ctx, board.ID, "Release readiness", "", ws.actor.UserID)
+		saved, _, err := r.SaveTemplate(ws.ctx, board.ID, h.name(t, "Release readiness"), "", ws.actor.UserID)
 		if err != nil {
 			t.Fatalf("save template: %v", err)
 		}
@@ -128,8 +129,8 @@ func TestATemplateLeavesItsProjectsVersionBehind(t *testing.T) {
 		}
 		var id uuid.UUID
 		if err := h.super.QueryRow(context.Background(), `
-			INSERT INTO dashboard_template (org_id, name, widgets) VALUES ($1, 'Pinned long ago', $2) RETURNING id`,
-			ws.orgID, stored).Scan(&id); err != nil {
+			INSERT INTO dashboard_template (org_id, name, widgets) VALUES ($1, $2, $3) RETURNING id`,
+			ws.orgID, h.name(t, "Pinned long ago"), stored).Scan(&id); err != nil {
 			t.Fatal(err)
 		}
 

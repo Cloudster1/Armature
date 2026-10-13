@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // newerThanAPage is how many issues are filed after the old ones: more than
@@ -36,20 +38,21 @@ func holds(keys []string, key string) bool {
 func TestTheSprintsPageReadsEachSprintAndTheBacklogWhole(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	longKey := h.projectKey(t, "LONG")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "sprintreads")
+	owner.signIn(t, h.person(t, "sprintreads", auth.RoleOwner))
 
-	want(t, owner.post("/api/v1/projects", map[string]string{"name": "Long history", "key": "LONG"}), http.StatusCreated, "create project")
+	want(t, owner.post("/api/v1/projects", map[string]string{"name": "Long history", "key": longKey}), http.StatusCreated, "create project")
 	task := find(t, owner.get("/api/v1/issue-types").Body["issueTypes"], "name", "Task")["id"].(string)
 	file := func(summary string) string {
 		t.Helper()
-		created := want(t, owner.post("/api/v1/projects/LONG/issues", map[string]any{"summary": summary, "typeId": task}), http.StatusCreated, "file "+summary)
+		created := want(t, owner.post("/api/v1/projects/"+longKey+"/issues", map[string]any{"summary": summary, "typeId": task}), http.StatusCreated, "file "+summary)
 		return obj(t, created, "issue")["key"].(string)
 	}
 
-	sprintID := idOf(t, want(t, owner.post("/api/v1/projects/LONG/sprints", map[string]any{"name": "Sprint 3"}), http.StatusCreated, "plan a sprint"), "sprint")
-	teamID := idOf(t, want(t, owner.post("/api/v1/projects/LONG/teams", map[string]any{"name": "Platform"}), http.StatusCreated, "form a team"), "team")
+	sprintID := idOf(t, want(t, owner.post("/api/v1/projects/"+longKey+"/sprints", map[string]any{"name": "Sprint 3"}), http.StatusCreated, "plan a sprint"), "sprint")
+	teamID := idOf(t, want(t, owner.post("/api/v1/projects/"+longKey+"/teams", map[string]any{"name": "Platform"}), http.StatusCreated, "form a team"), "team")
 
 	committed := file("old committed work")
 	want(t, owner.put("/api/v1/issues/"+committed+"/sprint", map[string]any{"sprintId": sprintID}), http.StatusOK, "commit the old work")
@@ -68,14 +71,14 @@ func TestTheSprintsPageReadsEachSprintAndTheBacklogWhole(t *testing.T) {
 	}
 
 	t.Run("the newest page of the project does not hold the old work", func(t *testing.T) {
-		newest := keysIn(t, want(t, owner.get("/api/v1/projects/LONG/issues?limit=200"), http.StatusOK, "the newest page"))
+		newest := keysIn(t, want(t, owner.get("/api/v1/projects/"+longKey+"/issues?limit=200"), http.StatusOK, "the newest page"))
 		if holds(newest, committed) {
 			t.Fatalf("%s is on the newest page, so this test proves nothing", committed)
 		}
 	})
 
 	t.Run("a sprint's read finds its work however old", func(t *testing.T) {
-		read := want(t, owner.get("/api/v1/projects/LONG/issues?limit=200&sprint="+sprintID), http.StatusOK, "the sprint's read")
+		read := want(t, owner.get("/api/v1/projects/"+longKey+"/issues?limit=200&sprint="+sprintID), http.StatusOK, "the sprint's read")
 		if keys := keysIn(t, read); len(keys) != 1 || keys[0] != committed {
 			t.Errorf("sprint holds %v, want just %s", keys, committed)
 		}
@@ -85,14 +88,14 @@ func TestTheSprintsPageReadsEachSprintAndTheBacklogWhole(t *testing.T) {
 	})
 
 	t.Run("an empty sprint reads as empty", func(t *testing.T) {
-		empty := idOf(t, want(t, owner.post("/api/v1/projects/LONG/sprints", map[string]any{"name": "Sprint 4"}), http.StatusCreated, "plan another sprint"), "sprint")
-		read := want(t, owner.get("/api/v1/projects/LONG/issues?sprint="+empty), http.StatusOK, "the empty sprint's read")
+		empty := idOf(t, want(t, owner.post("/api/v1/projects/"+longKey+"/sprints", map[string]any{"name": "Sprint 4"}), http.StatusCreated, "plan another sprint"), "sprint")
+		read := want(t, owner.get("/api/v1/projects/"+longKey+"/issues?sprint="+empty), http.StatusOK, "the empty sprint's read")
 		if read.Body["total"] != float64(0) {
 			t.Errorf("total = %v, want 0", read.Body["total"])
 		}
 	})
 
-	backlog := "/api/v1/projects/LONG/issues?sprint=none&team=none&category=todo&category=in_progress&orderBy=rank&order=asc&limit=200"
+	backlog := "/api/v1/projects/" + longKey + "/issues?sprint=none&team=none&category=todo&category=in_progress&orderBy=rank&order=asc&limit=200"
 
 	t.Run("the backlog leaves out done work and what a sprint or a team holds", func(t *testing.T) {
 		first := want(t, owner.get(backlog), http.StatusOK, "the backlog")
@@ -119,7 +122,7 @@ func TestTheSprintsPageReadsEachSprintAndTheBacklogWhole(t *testing.T) {
 	})
 
 	t.Run("a team's backlog is the work it carries", func(t *testing.T) {
-		keys := keysIn(t, want(t, owner.get("/api/v1/projects/LONG/issues?sprint=none&team="+teamID), http.StatusOK, "the team's backlog"))
+		keys := keysIn(t, want(t, owner.get("/api/v1/projects/"+longKey+"/issues?sprint=none&team="+teamID), http.StatusOK, "the team's backlog"))
 		if len(keys) != 1 || keys[0] != theirs {
 			t.Errorf("the team's backlog holds %v, want just %s", keys, theirs)
 		}
@@ -127,7 +130,7 @@ func TestTheSprintsPageReadsEachSprintAndTheBacklogWhole(t *testing.T) {
 
 	t.Run("a sprint or team that is neither an id nor none is refused", func(t *testing.T) {
 		for _, query := range []string{"sprint=Sprint+3", "team=Platform"} {
-			refused := want(t, owner.get("/api/v1/projects/LONG/issues?"+query), http.StatusBadRequest, query)
+			refused := want(t, owner.get("/api/v1/projects/"+longKey+"/issues?"+query), http.StatusBadRequest, query)
 			wantCode(t, refused, "bad_request")
 		}
 	})

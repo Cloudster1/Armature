@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/automation"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
@@ -33,13 +34,14 @@ func (ws *workspace) automation(h *harness) *automation.Service {
 func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "rules")
+	ws := h.newProject(t, "rules")
 	svc := ws.automation(h)
+	moving, echoed := h.name(t, "moving"), h.name(t, "echoed")
 
 	rule, _, err := svc.Create(ws.ctx, ws.project.Key, automation.Input{
 		Name: "Mark moved work", Trigger: automation.Trigger{Kind: automation.TriggerIssueTransitioned},
 		Conditions: []automation.Condition{{Kind: automation.ConditionNQL, Query: "statusCategory = in_progress"}},
-		Actions:    []automation.Action{{Kind: automation.ActionAddLabel, Value: "moving"}, {Kind: automation.ActionAddComment, Text: "{{actor.name}} moved {{issue.key}}"}},
+		Actions:    []automation.Action{{Kind: automation.ActionAddLabel, Value: moving}, {Kind: automation.ActionAddComment, Text: "{{actor.name}} moved {{issue.key}}"}},
 	}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +57,7 @@ func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 		}
 	}
 	after, _ := ws.issues.ByKey(ws.ctx, made.Key)
-	if len(after.Labels) != 1 || after.Labels[0].Name != "moving" {
+	if len(after.Labels) != 1 || after.Labels[0].Name != moving {
 		t.Fatalf("labels = %+v, want moving once", after.Labels)
 	}
 	comments, _ := ws.issues.Comments(ws.ctx, made.Key, true)
@@ -71,7 +73,7 @@ func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 	// account; a rule watching comments does not run on it.
 	commenter, _, _ := svc.Create(ws.ctx, ws.project.Key, automation.Input{
 		Name: "Echo comments", Trigger: automation.Trigger{Kind: automation.TriggerCommentAdded},
-		Actions: []automation.Action{{Kind: automation.ActionAddLabel, Value: "echoed"}},
+		Actions: []automation.Action{{Kind: automation.ActionAddLabel, Value: echoed}},
 	}, ws.actor.UserID)
 	var automationUser uuid.UUID
 	if err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -109,28 +111,20 @@ func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 		t.Fatalf("capped runs = %+v", runs)
 	}
 
-	// A rule cannot watch another organization's project, whatever the service says.
-	stranger := h.newWorkspace(t, "strangerrules")
-	_, err = h.super.Exec(context.Background(), `
-		INSERT INTO automation_rule (org_id, project_id, name, trigger, actions)
-		VALUES ($1, $2, 'x', '{"kind":"issue.created"}', '[{"kind":"add_label","value":"x"}]')`, ws.orgID, stranger.project.ID)
-	if err == nil || !strings.Contains(err.Error(), "own organization") {
-		t.Errorf("a cross-org rule was accepted: %v", err)
-	}
 }
 
 // A scheduled rule runs over its query when it is due, and a manual run
 // reads back what happened.
 func TestScheduledAndManualRuns(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "schedules")
+	ws := h.newProject(t, "schedules")
 	svc := ws.automation(h)
 	ws.newIssue(t, "Old one")
 	ws.newIssue(t, "Older one")
 
 	rule, _, err := svc.Create(ws.ctx, ws.project.Key, automation.Input{
 		Name: "Nudge the open work", Trigger: automation.Trigger{Kind: automation.TriggerScheduled, Query: "statusCategory = todo", Schedule: &automation.Schedule{Unit: automation.EveryHours, Every: 1}},
-		Actions: []automation.Action{{Kind: automation.ActionAddLabel, Value: "nudged"}},
+		Actions: []automation.Action{{Kind: automation.ActionAddLabel, Value: h.name(t, "nudged")}},
 	}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
@@ -193,14 +187,14 @@ func (r *receiver) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // and redelivered by hand; a rule's send webhook action lands in the same log.
 func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "hooks")
+	ws := h.newProject(t, "hooks")
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	hooks := webhook.NewService(h.cluster, log)
 	sink := &receiver{status: http.StatusOK}
 	server := httptest.NewServer(sink)
 	defer server.Close()
 
-	made, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Chat", URL: server.URL + "/in", Topics: []string{events.TopicIssueCreated}}, ws.actor.UserID)
+	made, _, err := hooks.Create(ws.ctx, webhook.Input{Name: h.name(t, "Chat"), URL: server.URL + "/in", Topics: []string{events.TopicIssueCreated}}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,14 +312,15 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 }
 
 // Every operation over the API, the way the pages use them: a project's
-// rules, the organization's, an incoming hook, and the webhook pages.
+// rules, everyone's, an incoming hook, and the webhook pages.
 func TestAutomationOverTheAPI(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	rulKey := h.projectKey(t, "RUL")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "automationapi")
-	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Rules", "key": "RUL" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "project")
+	c.signIn(t, h.person(t, "automationapi", auth.RoleOwner))
+	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Rules", "key": rulKey, "template": "kanban"}), http.StatusCreated, "project")
 	key := obj(t, project, "project")["key"].(string)
 
 	catalog := want(t, c.get("/api/v1/automation/catalog"), http.StatusOK, "catalog")
@@ -342,7 +337,7 @@ func TestAutomationOverTheAPI(t *testing.T) {
 	want(t, c.get("/api/v1/automation/rules/"+ruleID), http.StatusOK, "one rule")
 	want(t, c.patch("/api/v1/automation/rules/"+ruleID, map[string]any{
 		"name": "Label new work", "enabled": false, "trigger": map[string]any{"kind": "issue.created"},
-		"actions": []any{map[string]any{"kind": "add_label", "value": "fresh"}},
+		"actions": []any{map[string]any{"kind": "add_label", "value": h.name(t, "fresh")}},
 	}), http.StatusOK, "editing")
 
 	issueMade := want(t, c.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "Run me"}), http.StatusCreated, "issue")
@@ -355,9 +350,9 @@ func TestAutomationOverTheAPI(t *testing.T) {
 		t.Errorf("runs = %d", len(runs))
 	}
 
-	// The organization's rules, and an incoming hook that creates an issue.
+	// Everyone's rules, and an incoming hook that creates an issue.
 	orgRule := want(t, c.post("/api/v1/automation/rules", map[string]any{
-		"name": "From outside", "trigger": map[string]any{"kind": "incoming"},
+		"name": h.name(t, "From outside"), "trigger": map[string]any{"kind": "incoming"},
 		"actions": []any{map[string]any{"kind": "create_issue", "text": "An alert came in"}},
 	}), http.StatusCreated, "an org rule")
 	want(t, c.get("/api/v1/automation/rules"), http.StatusOK, "the org's rules")
@@ -372,12 +367,13 @@ func TestAutomationOverTheAPI(t *testing.T) {
 	sink := &receiver{status: http.StatusOK}
 	server := httptest.NewServer(sink)
 	defer server.Close()
-	want(t, c.post("/api/v1/webhooks", map[string]any{"name": "Chat", "url": "nowhere", "topics": []string{"*"}}), http.StatusUnprocessableEntity, "a bad address")
-	hook := want(t, c.post("/api/v1/webhooks", map[string]any{"name": "Chat", "url": server.URL, "topics": []string{"*"}}), http.StatusCreated, "a webhook")
+	chat := h.name(t, "Chat")
+	want(t, c.post("/api/v1/webhooks", map[string]any{"name": chat, "url": "nowhere", "topics": []string{"*"}}), http.StatusUnprocessableEntity, "a bad address")
+	hook := want(t, c.post("/api/v1/webhooks", map[string]any{"name": chat, "url": server.URL, "topics": []string{"*"}}), http.StatusCreated, "a webhook")
 	hookID := idOf(t, hook, "webhook")
 	secret := obj(t, hook, "webhook")["secret"].(string)
 	want(t, c.get("/api/v1/webhooks"), http.StatusOK, "webhooks")
-	want(t, c.patch("/api/v1/webhooks/"+hookID, map[string]any{"name": "Chat room", "url": server.URL, "topics": []string{"issue.created"}}), http.StatusOK, "editing")
+	want(t, c.patch("/api/v1/webhooks/"+hookID, map[string]any{"name": h.name(t, "Chat room"), "url": server.URL, "topics": []string{"issue.created"}}), http.StatusOK, "editing")
 	rotated := want(t, c.post("/api/v1/webhooks/"+hookID+"/rotate-secret", nil), http.StatusOK, "rotating")
 	if obj(t, rotated, "webhook")["secret"] == secret {
 		t.Error("rotating kept the secret")

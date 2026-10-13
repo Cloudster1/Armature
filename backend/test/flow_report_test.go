@@ -5,12 +5,12 @@ package test
 import (
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/report"
 	"github.com/armature/armature/backend/internal/version"
@@ -22,7 +22,7 @@ import (
 func TestFlowIsSnapshottedAndRebuiltOnce(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "flows")
+	ws := h.newProject(t, "flows")
 	reports := ws.reports(h)
 	a := ws.newIssue(t, "One")
 	ws.newIssue(t, "Two")
@@ -77,17 +77,6 @@ func TestFlowIsSnapshottedAndRebuiltOnce(t *testing.T) {
 		t.Errorf("today's snapshot counts %d issues (%d rows rebuilt), want 3 written by the worker", rows, reconstructedToday)
 	}
 
-	// Another organization's rows are not this project's to see.
-	other := h.newWorkspace(t, "otherflow")
-	var theirs int
-	if err := h.cluster.Read(db.PinPrimary(other.ctx), func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT count(*) FROM project_flow_snapshot WHERE project_id = $1`, ws.project.ID).Scan(&theirs)
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if theirs != 0 {
-		t.Errorf("another organization sees %d snapshot rows", theirs)
-	}
 }
 
 // The control chart excludes the unresolved, the histogram sorts what took how
@@ -95,7 +84,7 @@ func TestFlowIsSnapshottedAndRebuiltOnce(t *testing.T) {
 func TestTheOtherFlowReports(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "flowreports")
+	ws := h.newProject(t, "flowreports")
 	reports := ws.reports(h)
 	done := ws.newIssue(t, "Done fast")
 	ws.newIssue(t, "Still open")
@@ -171,10 +160,11 @@ func TestTheOtherFlowReports(t *testing.T) {
 func TestFlowReportsOverTheAPI(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	flwKey := h.projectKey(t, "FLW")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "flowapi")
-	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Flowing", "key": "FLW" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "project")
+	c.signIn(t, h.person(t, "flowapi", auth.RoleOwner))
+	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Flowing", "key": flwKey, "template": "kanban"}), http.StatusCreated, "project")
 	key := obj(t, project, "project")["key"].(string)
 	want(t, c.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "Flowing work"}), http.StatusCreated, "issue")
 	for _, kind := range []string{"cumulative_flow", "control_chart", "created_vs_resolved", "avg_age", "resolution_histogram"} {
@@ -191,7 +181,7 @@ func TestFlowReportsOverTheAPI(t *testing.T) {
 func TestReleaseBurndownCountsIssuesFromTheirFilingDay(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "burnscope")
+	ws := h.newProject(t, "burnscope")
 	reports := ws.reports(h)
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	const (

@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bulk"
 	"github.com/armature/armature/backend/internal/csvio"
 	"github.com/armature/armature/backend/internal/field"
@@ -29,7 +30,7 @@ import (
 // so, starred by anyone who may see it, and mailed on a schedule.
 func TestASavedFilterIsAQueryWithAName(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "filters")
+	ws := h.newProject(t, "filters")
 	bob := h.joinExisting(t, ws, h.email(t, "bobfilter"), "member")
 	filters := filter.NewService(h.cluster)
 	me := ws.actor.UserID
@@ -46,14 +47,25 @@ func TestASavedFilterIsAQueryWithAName(t *testing.T) {
 	}
 
 	// Bob sees nothing of it until it is shared, and cannot change it then.
-	if seen, _ := filters.List(ws.ctx, bob); len(seen) != 0 {
+	// Everybody's shared filters are his to see, so only this owner's are counted.
+	ofMine := func() []filter.Filter {
+		all, _ := filters.List(ws.ctx, bob)
+		var out []filter.Filter
+		for _, f := range all {
+			if f.OwnerID == me {
+				out = append(out, f)
+			}
+		}
+		return out
+	}
+	if seen := ofMine(); len(seen) != 0 {
 		t.Errorf("bob sees %d filters before any is shared", len(seen))
 	}
 	if _, _, err := filters.Update(ws.ctx, mine.ID, me, filter.Input{Shared: ptr(true)}); err != nil {
 		t.Fatal(err)
 	}
-	seen, _ := filters.List(ws.ctx, bob)
-	if len(seen) != 1 || seen[0].OwnerID != me || seen[0].Starred {
+	seen := ofMine()
+	if len(seen) != 1 || seen[0].ID != mine.ID || seen[0].Starred {
 		t.Fatalf("bob sees %+v, want the shared filter, unstarred", seen)
 	}
 	if _, _, err := filters.Update(ws.ctx, mine.ID, bob, filter.Input{Name: ptr("Bob's now")}); err == nil {
@@ -116,7 +128,7 @@ func TestASavedFilterIsAQueryWithAName(t *testing.T) {
 func TestBulkEditAndCSV(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "bulks")
+	ws := h.newProject(t, "bulks")
 	labels := label.NewService(h.cluster)
 	edits := bulk.NewService(h.cluster, ws.issues, labels)
 
@@ -126,7 +138,8 @@ func TestBulkEditAndCSV(t *testing.T) {
 	ws.move(t, h, c.Key, "Start progress")
 
 	high := issue.PriorityHigh
-	result, _, err := edits.Edit(ws.ctx, []string{a.Key, b.Key, c.Key}, bulk.Input{Priority: &high, AddLabels: []string{"batch"}, Transition: "Start progress"}, ws.actor)
+	batch, fresh := h.name(t, "batch"), h.name(t, "fresh")
+	result, _, err := edits.Edit(ws.ctx, []string{a.Key, b.Key, c.Key}, bulk.Input{Priority: &high, AddLabels: []string{batch}, Transition: "Start progress"}, ws.actor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +161,7 @@ func TestBulkEditAndCSV(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 4 || lines[0] != "key,summary,labels,priority" || !strings.Contains(lines[3], `"Third, already going",,medium`) || !strings.Contains(out.String(), "First,batch,high") {
+	if len(lines) != 4 || lines[0] != "key,summary,labels,priority" || !strings.Contains(lines[3], `"Third, already going",,medium`) || !strings.Contains(out.String(), "First,"+batch+",high") {
 		t.Fatalf("export = %q", out.String())
 	}
 	if _, err := files.Export(ws.ctx, &out, issue.Filter{}, []string{"colour"}); err == nil {
@@ -157,7 +170,7 @@ func TestBulkEditAndCSV(t *testing.T) {
 
 	// Import: a dry run makes nothing; the real run makes a row an issue, and
 	// says which rows it could not.
-	csvText := "Title,Priority,Due,Tags,Who\nImported one,high,2026-10-01,fresh; batch,\nImported two,urgent,,,\nImported three,low,2026-10-02,,nobody@nowhere.test\n"
+	csvText := "Title,Priority,Due,Tags,Who\nImported one,high,2026-10-01," + fresh + "; " + batch + ",\nImported two,urgent,,,\nImported three,low,2026-10-02,,nobody@nowhere.test\n"
 	mapping := csvio.Guess(strings.Split(strings.Split(csvText, "\n")[0], ","))
 	mapping["assignee"] = []int{4}
 	before, _ := ws.issues.List(ws.ctx, issue.Filter{ProjectKey: ws.project.Key}, issue.Page{Limit: 50})
@@ -199,10 +212,11 @@ func TestBulkEditAndCSV(t *testing.T) {
 func TestCloneAndMove(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "movers")
+	tgtKey := h.projectKey(t, "TGT")
+	ws := h.newProject(t, "movers")
 	labels := label.NewService(h.cluster)
 	source := ws.newIssue(t, "Original")
-	if _, _, err := labels.SetIssueLabels(ws.ctx, source.Key, []string{"keep"}, ws.actor); err != nil {
+	if _, _, err := labels.SetIssueLabels(ws.ctx, source.Key, []string{h.name(t, "keep")}, ws.actor); err != nil {
 		t.Fatal(err)
 	}
 	other := ws.newIssue(t, "Blocked by the original")
@@ -229,7 +243,7 @@ func TestCloneAndMove(t *testing.T) {
 
 	// Move to a project whose workflow does not have In Progress: refused
 	// until a status is chosen; then the history stays and the old key finds it.
-	target, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Target", Key: "TGT" + strings.ToUpper(uuid.New().String()[:3])}, ws.actor.UserID)
+	target, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Target", Key: tgtKey}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,12 +275,14 @@ func TestCloneAndMove(t *testing.T) {
 func TestFiltersBulkAndFilesOverTheAPI(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	filKey := h.projectKey(t, "FIL")
+	elsKey := h.projectKey(t, "ELS")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "filtersapi")
-	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Files", "key": "FIL" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "project")
+	c.signIn(t, h.person(t, "filtersapi", auth.RoleOwner))
+	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Files", "key": filKey, "template": "kanban"}), http.StatusCreated, "project")
 	key := obj(t, project, "project")["key"].(string)
-	target := want(t, c.post("/api/v1/projects", map[string]any{"name": "Elsewhere", "key": "ELS" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "target project")
+	target := want(t, c.post("/api/v1/projects", map[string]any{"name": "Elsewhere", "key": elsKey, "template": "kanban"}), http.StatusCreated, "target project")
 	targetKey := obj(t, target, "project")["key"].(string)
 
 	want(t, c.post("/api/v1/filters", map[string]any{"name": "Bad", "query": "status = = x"}), http.StatusBadRequest, "a bad query")
@@ -294,7 +310,8 @@ func TestFiltersBulkAndFilesOverTheAPI(t *testing.T) {
 		t.Errorf("filter total = %v", ran.Body["total"])
 	}
 
-	bulked := want(t, c.post("/api/v1/issues/bulk", map[string]any{"keys": keys, "change": map[string]any{"priority": "high", "addLabels": []string{"batch"}}}), http.StatusOK, "bulk")
+	batch := h.name(t, "batch")
+	bulked := want(t, c.post("/api/v1/issues/bulk", map[string]any{"keys": keys, "change": map[string]any{"priority": "high", "addLabels": []string{batch}}}), http.StatusOK, "bulk")
 	if len(list(t, bulked, "applied")) != 3 {
 		t.Errorf("bulk = %s", bulked.Raw)
 	}
@@ -302,7 +319,7 @@ func TestFiltersBulkAndFilesOverTheAPI(t *testing.T) {
 	want(t, c.post("/api/v1/issues/bulk", map[string]any{"keys": []string{"not a key"}, "change": map[string]any{"priority": "high"}}), http.StatusBadRequest, "a bad key")
 
 	export, body := c.download("/api/v1/issues/export?project=" + key + "&columns=key,summary,labels")
-	if export.StatusCode != http.StatusOK || !strings.HasPrefix(string(body), "key,summary,labels\n") || !strings.Contains(string(body), "batch") {
+	if export.StatusCode != http.StatusOK || !strings.HasPrefix(string(body), "key,summary,labels\n") || !strings.Contains(string(body), batch) {
 		t.Errorf("export = %d %q", export.StatusCode, string(body))
 	}
 	if r, _ := c.download("/api/v1/issues/export?columns=colour"); r.StatusCode != http.StatusUnprocessableEntity {

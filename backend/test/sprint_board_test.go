@@ -23,7 +23,7 @@ func intPtr(n int) *int       { return &n }
 func TestEverySprintHasABoardOfItsOwn(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "sprintboard")
+	ws := h.newProject(t, "sprintboard")
 	task := h.issueTypeID(t, ws, bootstrap.TypeTask)
 
 	var keys []string
@@ -106,13 +106,4 @@ func TestEverySprintHasABoardOfItsOwn(t *testing.T) {
 		t.Errorf("the team sprint's board shows %v, want just %s", got, keys[1])
 	}
 
-	// Another organization's sprint does not exist here, whatever its id.
-	elsewhere := h.newWorkspace(t, "elsewhere")
-	theirs, _, err := elsewhere.sprints.Create(elsewhere.ctx, elsewhere.project.Key, sprint.CreateInput{Name: "Theirs"}, elsewhere.actor.UserID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ws.boards.ForSprint(ws.ctx, theirs.ID); !errors.Is(err, board.ErrSprintNotFound) {
-		t.Errorf("error = %v, want another tenant's sprint not found", err)
-	}
 }

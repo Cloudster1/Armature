@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/audit"
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/calendar"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/field"
@@ -27,12 +28,10 @@ import (
 )
 
 // The audit log takes a grant from the stream once however often it is
-// handed over, takes a token from the act itself, keeps a year, and shows
-// one organization nothing of another.
+// handed over, takes a token from the act itself, and keeps a year.
 func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "audited")
-	other := h.newWorkspace(t, "auditother")
+	ws := h.newProject(t, "audited")
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	reader := audit.NewService(h.cluster)
 
@@ -50,7 +49,9 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	rows, err := reader.List(ws.ctx, audit.Filter{Action: "role.granted"})
+	// Everybody's grants are in the one log; this test's actor made one.
+	ours := audit.Filter{Action: "role.granted", ActorID: &ws.actor.UserID}
+	rows, err := reader.List(ws.ctx, ours)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 	// A topic the log does not copy leaves nothing.
 	noise, _ := json.Marshal(map[string]any{"key": ws.project.Key + "-1", "actorId": ws.actor.UserID})
 	_ = consumer.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: noise})
-	if got, _ := reader.List(ws.ctx, audit.Filter{Action: events.TopicIssueTransitioned}); len(got) != 0 {
+	if got, _ := reader.List(ws.ctx, audit.Filter{Action: events.TopicIssueTransitioned, ActorID: &ws.actor.UserID}); len(got) != 0 {
 		t.Errorf("an issue transition was copied into the audit log: %+v", got)
 	}
 
@@ -83,15 +84,11 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 		t.Errorf("token actions = %v, want revoked then created, newest first", seen)
 	}
 	actions, _ := reader.Actions(ws.ctx)
-	if !contains(actions, "token.created") || !contains(actions, "role.granted") || !contains(actions, "org.created") {
+	if !contains(actions, "token.created") || !contains(actions, "role.granted") {
 		t.Errorf("actions = %v", actions)
 	}
 
-	// The other organization sees none of it, through the service and through SQL.
-	if theirs, _ := reader.List(other.ctx, audit.Filter{}); len(theirs) == 0 || hasAction(theirs, "role.granted") {
-		t.Errorf("the other organization's log = %+v", theirs)
-	}
-	csvOut, err := reader.CSV(ws.ctx, audit.Filter{Action: "role.granted"})
+	csvOut, err := reader.CSV(ws.ctx, ours)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,18 +98,19 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 	}
 
 	// Retention keeps a year and no more.
+	ancient := unique("ancient.thing")
 	if _, err := h.super.Exec(context.Background(), `
 		INSERT INTO audit_log (org_id, actor_user_id, action, target_type, created_at)
-		VALUES ($1, $2, 'ancient.thing', 'org', now() - interval '400 days')`, ws.orgID, ws.actor.UserID); err != nil {
+		VALUES ($1, $2, $3, 'org', now() - interval '400 days')`, ws.orgID, ws.actor.UserID, ancient); err != nil {
 		t.Fatal(err)
 	}
 	if counts, err := privacy.NewRetention(h.cluster, privacy.DefaultPolicy(), log).Once(context.Background()); err != nil || counts["audit"] < 1 {
 		t.Fatalf("retention removed %v rows, err %v", counts, err)
 	}
-	if old, _ := reader.List(ws.ctx, audit.Filter{Action: "ancient.thing"}); len(old) != 0 {
+	if old, _ := reader.List(ws.ctx, audit.Filter{Action: ancient}); len(old) != 0 {
 		t.Error("a row older than a year survived retention")
 	}
-	if fresh, _ := reader.List(ws.ctx, audit.Filter{Action: "role.granted"}); len(fresh) != 1 {
+	if fresh, _ := reader.List(ws.ctx, ours); len(fresh) != 1 {
 		t.Error("retention took a fresh row")
 	}
 	// A blank action is refused by the database, not only by the writer.
@@ -121,71 +119,52 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 	}
 }
 
-func hasAction(rows []audit.Row, action string) bool {
-	for _, r := range rows {
-		if r.Action == action {
-			return true
-		}
-	}
-	return false
-}
-
-// An organization field is on every project's issues; a project may not coin
-// a field by its name; promoting folds same-named fields and their answers
-// into one, and refuses when the kinds differ.
-func TestOrganizationFieldsAreSharedAndPromoted(t *testing.T) {
-	t.Parallel()
+// A field on every project is on every project's issues and no project may coin
+// its name; promoting folds same-named fields into one unless their kinds differ.
+func TestFieldsOnEveryProjectAreSharedAndPromoted(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "orgfields")
-	other := h.newWorkspace(t, "orgfieldsother")
+	ws := h.newProject(t, "orgfields")
 	fields := ws.fields(h)
 	second := ws.fromTemplate(t, h, "kanban", "Second")
+	costName, teamSize, regionName := h.name(t, "Cost"), h.name(t, "Team size"), h.name(t, "Region")
 
-	cost, _, err := fields.CreateOrg(ws.ctx, field.Input{Name: "Cost", Kind: field.Number})
+	cost, _, err := fields.CreateOrg(ws.ctx, field.Input{Name: costName, Kind: field.Number})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !cost.Org || cost.ProjectID != nil {
-		t.Fatalf("an organization field says %+v", cost)
+		t.Fatalf("a field on every project says %+v", cost)
 	}
 	for _, key := range []string{ws.project.Key, second.Key} {
 		listed, _ := fields.Fields(ws.ctx, key)
-		if len(listed) == 0 || listed[0].ID != cost.ID {
-			t.Errorf("%s lists %+v, want the organization field first", key, listed)
+		var found bool
+		for _, f := range listed {
+			found = found || f.ID == cost.ID
+		}
+		if !found {
+			t.Errorf("%s lists %+v, want the field on every project among them", key, listed)
 		}
 	}
 	inSecond := ws.issueIn(t, second.Key, "Priced work")
 	if _, _, err := fields.Set(ws.ctx, inSecond, cost.ID, json.RawMessage(`120`), ws.actor); err != nil {
-		t.Fatalf("an organization field refused a value on another project's issue: %v", err)
+		t.Fatalf("a field on every project refused a value on another project's issue: %v", err)
 	}
 	values, _ := fields.Values(ws.ctx, inSecond)
-	if len(values) == 0 || values[0].Field.ID != cost.ID || values[0].Display != "120" {
+	if v := valueOf(values, costName); v == nil || v.Field.ID != cost.ID || v.Display != "120" {
 		t.Errorf("values = %+v", values)
 	}
 
 	// Its name is taken everywhere, by the service and by the database.
-	if _, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: "cost", Kind: field.Text}); err == nil {
-		t.Error("a project field shadowing an organization field was accepted by the service")
+	if _, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: strings.ToLower(costName), Kind: field.Text}); err == nil {
+		t.Error("a project field shadowing a field on every project was accepted by the service")
 	}
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO custom_field (org_id, project_id, name, kind) VALUES ($1, $2, 'COST', 'text')`, ws.orgID, ws.project.ID); err == nil || !strings.Contains(err.Error(), "already has a field named") {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO custom_field (org_id, project_id, name, kind) VALUES ($1, $2, $3, 'text')`, ws.orgID, ws.project.ID, strings.ToUpper(costName)); err == nil || !strings.Contains(err.Error(), "already has a field named") {
 		t.Errorf("the database accepted a shadowing field: %v", err)
-	}
-	// Another organization's field fits none of these issues, whatever a
-	// direct write says.
-	theirs, _, err := fields.CreateOrg(other.ctx, field.Input{Name: "Theirs", Kind: field.Text})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO issue_field_value (org_id, issue_id, field_id, value)
-		SELECT $1, i.id, $2, '"x"' FROM issue i JOIN project p ON p.id = i.project_id WHERE p.key = $3 AND i.key_num = 1`,
-		ws.orgID, theirs.ID, second.Key); err == nil || !strings.Contains(err.Error(), "not a field of the project") {
-		t.Errorf("the database accepted another organization's field on an issue: %v", err)
 	}
 
 	// Two projects each have a Team size; promoting one folds the other in.
-	mine, _, _ := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: "Team size", Kind: field.Number})
-	twin, _, _ := fields.Create(ws.ctx, second.Key, field.Input{Name: "team size", Kind: field.Number})
+	mine, _, _ := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: teamSize, Kind: field.Number})
+	twin, _, _ := fields.Create(ws.ctx, second.Key, field.Input{Name: strings.ToLower(teamSize), Kind: field.Number})
 	if mine == nil || twin == nil {
 		t.Fatal("could not make the two fields")
 	}
@@ -214,8 +193,8 @@ func TestOrganizationFieldsAreSharedAndPromoted(t *testing.T) {
 	}
 
 	// Different kinds do not fold.
-	region, _, _ := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: "Region", Kind: field.Select, Options: []string{"EU", "US"}})
-	fields.Create(ws.ctx, second.Key, field.Input{Name: "Region", Kind: field.Text})
+	region, _, _ := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: regionName, Kind: field.Select, Options: []string{"EU", "US"}})
+	fields.Create(ws.ctx, second.Key, field.Input{Name: regionName, Kind: field.Text})
 	if _, _, err := fields.Promote(ws.ctx, region.ID); err == nil || !strings.Contains(err.Error(), "different kind") {
 		t.Errorf("promoting over a field of another kind: %v", err)
 	}
@@ -226,7 +205,7 @@ func TestOrganizationFieldsAreSharedAndPromoted(t *testing.T) {
 func TestStatusUpdatesAndTheCalendar(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "health")
+	ws := h.newProject(t, "health")
 
 	if _, _, err := ws.projects.PostUpdate(ws.ctx, ws.project.Key, project.StatusInput{Status: "fine"}, ws.actor.UserID); err == nil {
 		t.Error("a status outside the three words was accepted")
@@ -315,39 +294,40 @@ func TestStatusUpdatesAndTheCalendar(t *testing.T) {
 	}
 }
 
-// Every organization-level operation answers over the API, and refuses what
-// it should.
-func TestOrgLevelOverTheAPI(t *testing.T) {
-	t.Parallel()
+// Every operation over the whole installation answers over the API, and
+// refuses what it should.
+func TestInstallationLevelOverTheAPI(t *testing.T) {
 	h := newHarness(t)
+	olxKey := h.projectKey(t, "OLX")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "orglevel")
-	made := want(t, c.post("/api/v1/projects", map[string]any{"name": "Org level", "key": "OLX" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "project")
+	c.signIn(t, h.person(t, "orglevel", auth.RoleOwner))
+	made := want(t, c.post("/api/v1/projects", map[string]any{"name": "Org level", "key": olxKey, "template": "kanban"}), http.StatusCreated, "project")
 	key := obj(t, made, "project")["key"].(string)
 
 	log := want(t, c.get("/api/v1/audit?limit=5"), http.StatusOK, "the audit log")
 	if entries, _ := log.Body["entries"].([]any); len(entries) == 0 {
-		t.Error("a fresh organization's log is empty; signing up should be in it")
+		t.Error("the log is empty; signing in should be in it")
 	}
 	want(t, c.get("/api/v1/audit?from=yesterday"), http.StatusBadRequest, "a date that is not one")
 	want(t, c.get("/api/v1/audit?actor=nobody"), http.StatusBadRequest, "an actor that is not an id")
-	export, body := c.download("/api/v1/audit/export?action=org.created")
-	if export.StatusCode != http.StatusOK || !strings.HasPrefix(string(body), "time,action,actor") || !strings.Contains(string(body), "org.created") {
+	export, body := c.download("/api/v1/audit/export?action=auth.login")
+	if export.StatusCode != http.StatusOK || !strings.HasPrefix(string(body), "time,action,actor") || !strings.Contains(string(body), "auth.login") {
 		t.Errorf("export = %d %q", export.StatusCode, body)
 	}
 	if r, _ := c.download("/api/v1/audit/export?to=never"); r.StatusCode != http.StatusBadRequest {
 		t.Errorf("an export with a bad date answered %d", r.StatusCode)
 	}
 
-	want(t, c.post("/api/v1/fields", map[string]any{"name": "Cost", "kind": "money"}), http.StatusBadRequest, "a field of no kind")
-	orgField := want(t, c.post("/api/v1/fields", map[string]any{"name": "Cost", "kind": "number"}), http.StatusCreated, "an organization field")
-	want(t, c.get("/api/v1/fields"), http.StatusOK, "the organization's fields")
-	want(t, c.post("/api/v1/projects/"+key+"/fields", map[string]any{"name": "cost", "kind": "text"}), http.StatusConflict, "a project field shadowing it")
-	projectField := want(t, c.post("/api/v1/projects/"+key+"/fields", map[string]any{"name": "Team size", "kind": "number"}), http.StatusCreated, "a project field")
+	costName := h.name(t, "Cost")
+	want(t, c.post("/api/v1/fields", map[string]any{"name": costName, "kind": "money"}), http.StatusBadRequest, "a field of no kind")
+	orgField := want(t, c.post("/api/v1/fields", map[string]any{"name": costName, "kind": "number"}), http.StatusCreated, "a field on every project")
+	want(t, c.get("/api/v1/fields"), http.StatusOK, "the fields on every project")
+	want(t, c.post("/api/v1/projects/"+key+"/fields", map[string]any{"name": strings.ToLower(costName), "kind": "text"}), http.StatusConflict, "a project field shadowing it")
+	projectField := want(t, c.post("/api/v1/projects/"+key+"/fields", map[string]any{"name": h.name(t, "Team size"), "kind": "number"}), http.StatusCreated, "a project field")
 	want(t, c.post("/api/v1/fields/"+idOf(t, projectField, "field")+"/promote", nil), http.StatusOK, "promoting it")
 	want(t, c.post("/api/v1/fields/"+uuid.New().String()+"/promote", nil), http.StatusNotFound, "promoting nothing")
-	want(t, c.patch("/api/v1/fields/"+idOf(t, orgField, "field"), map[string]any{"name": "Price"}), http.StatusOK, "renaming an organization field")
+	want(t, c.patch("/api/v1/fields/"+idOf(t, orgField, "field"), map[string]any{"name": h.name(t, "Price")}), http.StatusOK, "renaming a field on every project")
 
 	want(t, c.post("/api/v1/projects/"+key+"/status-updates", map[string]any{"status": "fine"}), http.StatusUnprocessableEntity, "a status outside the words")
 	want(t, c.post("/api/v1/projects/"+key+"/status-updates", map[string]any{"status": "at_risk", "note": "Vendor late.", "targetOn": "2026-12-24"}), http.StatusCreated, "a status update")

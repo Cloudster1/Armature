@@ -20,7 +20,7 @@ import (
 func TestABlockCannotComeBackAround(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "circling")
+	ws := h.newProject(t, "circling")
 	a := h.buildTree(t, ws).story
 	b := h.buildTree(t, ws).story
 	c := h.buildTree(t, ws).story

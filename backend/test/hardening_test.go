@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/httpapi"
 )
 
@@ -14,14 +15,16 @@ import (
 // with an answer, how often it may guess, and what a spreadsheet reads.
 func TestTheEdgesRefuseWhatABrowserWouldNotSend(t *testing.T) {
 	h := newHarness(t)
+	edgKey := h.projectKey(t, "EDG")
+	frmKey := h.projectKey(t, "FRM")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signed := owner.signup(t, h, "edges")
+	signed := owner.signIn(t, h.person(t, "edges", auth.RoleOwner))
 	address := principalField(t, signed, "principal", "user", "email").(string)
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Edged", "key": "EDG"}), http.StatusCreated, "a project")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Edged", "key": edgKey}), http.StatusCreated, "a project")
 
 	t.Run("a form post carrying the session cookie is refused", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodPost, api.Server.URL+"/api/v1/projects", strings.NewReader(`{"name":"Formed","key":"FRM"}`))
+		req, err := http.NewRequest(http.MethodPost, api.Server.URL+"/api/v1/projects", strings.NewReader(`{"name":"Formed","key":"`+frmKey+`"}`))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -64,13 +67,13 @@ func TestTheEdgesRefuseWhatABrowserWouldNotSend(t *testing.T) {
 		}
 		// The brake is the address being guessed at, so somebody else signs in.
 		other := api.client(t)
-		other.signup(t, h, "unbraked")
+		other.signIn(t, h.person(t, "unbraked", auth.RoleOwner))
 	})
 
 	t.Run("an export is read as text, not as formulas", func(t *testing.T) {
-		want(t, owner.post("/api/v1/projects/EDG/issues", map[string]any{"summary": `=HYPERLINK("http://evil","Details")`}), http.StatusCreated, "a formula for a summary")
+		want(t, owner.post("/api/v1/projects/"+edgKey+"/issues", map[string]any{"summary": `=HYPERLINK("http://evil","Details")`}), http.StatusCreated, "a formula for a summary")
 		h.waitForPrimary(t)
-		resp, body := owner.download("/api/v1/issues/export?project=EDG")
+		resp, body := owner.download("/api/v1/issues/export?project=" + edgKey)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("export: %d", resp.StatusCode)
 		}

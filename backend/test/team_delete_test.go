@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/sprint"
@@ -48,9 +49,9 @@ func TestATeamRunningASprintBesideTheProjectIsRefusedWithASentence(t *testing.T)
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "twostreams")
+	owner.signIn(t, h.person(t, "twostreams", auth.RoleOwner))
 
-	key := "TWO" + strings.ToUpper(uuid.New().String()[:3])
+	key := h.projectKey(t, "TWO")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Two streams", "key": key, "template": "scrum"}), http.StatusCreated, "project")
 	alpha := idOf(t, want(t, owner.post("/api/v1/projects/"+key+"/teams", map[string]any{"name": "Alpha"}), http.StatusCreated, "team"), "team")
 
@@ -84,7 +85,7 @@ func TestATeamRunningASprintBesideTheProjectIsRefusedWithASentence(t *testing.T)
 func TestATeamsSprintsNeverBecomeTheProjects(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "keepsprints")
+	ws := h.newProject(t, "keepsprints")
 	alpha := ws.newTeam(t, "Alpha")
 
 	for _, name := range []string{"Alpha 1", "Alpha 2", "Alpha 3"} {
@@ -126,7 +127,7 @@ func TestATeamsSprintsNeverBecomeTheProjects(t *testing.T) {
 func TestATeamGoesOnceItsUnstartedSprintsDo(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "unstarted")
+	ws := h.newProject(t, "unstarted")
 	alpha := ws.newTeam(t, "Alpha")
 	first := ws.teamSprint(t, "Alpha 1", "2026-03-02", "2026-03-13", &alpha.ID)
 	second := ws.teamSprint(t, "Alpha 2", "2026-03-02", "2026-03-13", &alpha.ID)
@@ -154,7 +155,7 @@ func TestATeamGoesOnceItsUnstartedSprintsDo(t *testing.T) {
 func TestATeamRequestsAreRoutedToIsNotDeletedUnderThem(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "routedteam")
+	ws := h.newProject(t, "routedteam")
 	d, p := ws.aDesk(t, h, "Routed desk")
 	field, _, err := ws.teams.Create(ws.ctx, p.Key, team.CreateInput{Name: "Field support"}, ws.actor.UserID)
 	if err != nil {
@@ -193,7 +194,7 @@ func TestATeamRequestsAreRoutedToIsNotDeletedUnderThem(t *testing.T) {
 func TestTheDatabaseRefusesToDeleteATeamThatStillHasSprints(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "rawteam")
+	ws := h.newProject(t, "rawteam")
 	alpha := ws.newTeam(t, "Alpha")
 	ws.teamSprint(t, "Alpha 1", "2026-03-02", "2026-03-13", &alpha.ID)
 
@@ -237,14 +238,14 @@ func TestTheDatabaseRefusesToDeleteATeamThatStillHasSprints(t *testing.T) {
 		}
 	})
 
-	// The guard is checked once the statement is done, so an organization
-	// going with everything in it still takes its teams and their sprints.
-	t.Run("but the whole organization still goes", func(t *testing.T) {
-		if _, err := h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, ws.orgID); err != nil {
-			t.Fatalf("deleting the organization: %v", err)
+	// The guard is checked once the statement is done, so a project going
+	// with everything in it still takes its teams and their sprints.
+	t.Run("but the whole project still goes", func(t *testing.T) {
+		if _, err := h.super.Exec(context.Background(), `DELETE FROM project WHERE id = $1`, ws.project.ID); err != nil {
+			t.Fatalf("deleting the project: %v", err)
 		}
 		if teamExists(t, h, alpha.ID) {
-			t.Error("the team outlived its organization")
+			t.Error("the team outlived its project")
 		}
 	})
 }

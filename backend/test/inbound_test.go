@@ -14,7 +14,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/mailin"
@@ -53,7 +52,7 @@ const inboxAddress = "support@armature.test"
 func TestAReplyByMailBecomesAComment(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mailin")
+	ws := h.newProject(t, "mailin")
 	d, p := ws.aDesk(t, h, "Mail desk")
 	customer := ws.customerOf(t, h, "writer")
 	var customerEmail string
@@ -245,66 +244,6 @@ func TestAReplyByMailBecomesAComment(t *testing.T) {
 		}
 	})
 
-	t.Run("mail is the organization's, through SQL", func(t *testing.T) {
-		other := h.newWorkspace(t, "elsewhere")
-		var theirs int
-		err := h.cluster.Read(other.ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM inbound_mail`).Scan(&theirs)
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if theirs != 0 {
-			t.Errorf("another organization sees %d mails", theirs)
-		}
-	})
-}
-
-// A key names one request in an installation. Should the harness give a sender
-// the same key in two organizations, the reply lands where they joined first.
-func TestAReplyLandsWhereTheSenderBelongs(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	first, second := h.newWorkspace(t, "twinmail"), h.newWorkspace(t, "twinmail")
-	key := deskKey("TWN")
-	d1, p1 := first.aDeskKeyed(t, h, "Twin desk", key)
-	d2, p2 := second.aDeskKeyed(t, h, "Twin desk", key)
-	customer := first.customerOf(t, h, "twin")
-	var email string
-	if err := h.super.QueryRow(context.Background(), `SELECT email FROM app_user WHERE id = $1`, customer.UserID).Scan(&email); err != nil {
-		t.Fatal(err)
-	}
-	h.joinExisting(t, second, email, "customer")
-	raise := func(d *desk.Service, ws *workspace, projectKey string) *issue.Issue {
-		t.Helper()
-		types, _ := d.RequestTypes(ws.ctx, projectKey)
-		raised, _, err := d.Raise(ws.ctx, desk.RaiseInput{RequestTypeID: requestTypeNamed(t, types, "Ask a question").ID, Summary: "Which one?"}, customer)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return raised
-	}
-	mine, theirs := raise(d1, first, p1.Key), raise(d2, second, p2.Key)
-	if mine.Key != theirs.Key {
-		t.Fatalf("keys %s and %s, want the same key in both", mine.Key, theirs.Key)
-	}
-
-	id := "twin-" + uuid.NewString()[:8] + "@example.com"
-	reader := desk.NewInbound(h.cluster, d1, first.issues, &fakeMailer{}, &fakeInbox{mail: map[string]string{"t1": rawMail(email, inboxAddress, "Re: ["+mine.Key+"] replied", id, "This one.")}},
-		desk.InboundConfig{Address: inboxAddress, From: "Armature <no-reply@armature.test>", AppURL: "http://app.test"},
-		slog.New(slog.NewTextHandler(os.Stderr, nil)))
-	if err := reader.Once(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	var outcome string
-	if err := h.super.QueryRow(context.Background(), `SELECT outcome FROM inbound_mail WHERE message_id = $1`, id).Scan(&outcome); err != nil {
-		t.Fatal(err)
-	}
-	landed, _ := first.issues.Comments(first.ctx, mine.Key, true)
-	elsewhere, _ := second.issues.Comments(second.ctx, theirs.Key, true)
-	if outcome != string(desk.Commented) || len(landed) != 1 || len(elsewhere) != 0 {
-		t.Fatalf("outcome %s, %d comments where the sender joined first and %d in the other, want one there alone", outcome, len(landed), len(elsewhere))
-	}
 }
 
 // An out-of-office is not the customer's answer: it is recorded as a machine's
@@ -312,7 +251,7 @@ func TestAReplyLandsWhereTheSenderBelongs(t *testing.T) {
 func TestAnAutoReplyLeavesAWaitingRequestAlone(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "autoreply")
+	ws := h.newProject(t, "autoreply")
 	d, p := ws.aDesk(t, h, "Away desk")
 	customer := ws.customerOf(t, h, "traveller")
 	var customerEmail string

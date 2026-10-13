@@ -16,10 +16,9 @@ import (
 // author a workflow. Reported as failing on a deployment; tried here in
 // exactly that order.
 func TestAProviderAccountMadeGlobalAdministratorCanAuthorWorkflows(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
-	ws := h.newWorkspace(t, "oidcadmin")
+	ws := h.newProject(t, "oidcadmin")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 
@@ -34,7 +33,7 @@ func TestAProviderAccountMadeGlobalAdministratorCanAuthorWorkflows(t *testing.T)
 	}
 	h.waitForPrimary(t)
 	requests := list(t, want(t, owner.get("/api/v1/users/requests"), http.StatusOK, "requests"), "requests")
-	colleagueID := requests[0].(map[string]any)["userId"].(string)
+	colleagueID := find(t, requests, "email", email)["userId"].(string)
 	want(t, owner.post("/api/v1/users/requests/"+colleagueID+"/admit", map[string]string{"role": "member"}), http.StatusOK, "admit")
 
 	// The Access page: global administrator granted, the joining role revoked.
@@ -63,7 +62,7 @@ func TestAProviderAccountMadeGlobalAdministratorCanAuthorWorkflows(t *testing.T)
 	review := find(t, statuses.Body["statuses"], "name", "In Review")["id"].(string)
 	done := find(t, statuses.Body["statuses"], "name", "Done")["id"].(string)
 	made := colleague.post("/api/v1/workflows", map[string]any{
-		"name":        "Colleague's flow",
+		"name":        h.name(t, "Colleague's flow"),
 		"steps":       []map[string]any{{"statusId": review, "isInitial": true}, {"statusId": done}},
 		"transitions": []map[string]any{{"name": "Resolve", "fromStatusId": review, "toStatusId": done}},
 	})
@@ -72,7 +71,7 @@ func TestAProviderAccountMadeGlobalAdministratorCanAuthorWorkflows(t *testing.T)
 	}
 	workflowID := obj(t, made, "workflow")["id"].(string)
 	saved := colleague.put("/api/v1/workflows/"+workflowID, map[string]any{
-		"name":        "Colleague's flow, renamed",
+		"name":        h.name(t, "Colleague's flow, renamed"),
 		"steps":       []map[string]any{{"statusId": review, "isInitial": true}, {"statusId": done}},
 		"transitions": []map[string]any{{"name": "Resolve", "fromStatusId": review, "toStatusId": done}},
 	})

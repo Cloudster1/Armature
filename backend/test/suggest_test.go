@@ -7,6 +7,9 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // The search bar finishes the sentence: fields, operators and values the
@@ -14,12 +17,16 @@ import (
 func TestTheSearchBarSuggests(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	sugKey := h.projectKey(t, "SUG")
 	api := newAPIServer(t, h)
-	agent := api.client(t)
-	agent.signup(t, h, "suggesting")
-	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Suggest", "key": "SUG"}), http.StatusCreated, "project")
-	want(t, agent.post("/api/v1/projects/SUG/issues", map[string]any{"summary": "The printer is on fire"}), http.StatusCreated, "an issue")
-	want(t, agent.post("/api/v1/projects/SUG/milestones", map[string]any{"name": "Winter release"}), http.StatusCreated, "a milestone")
+	owner := api.client(t)
+	owner.signIn(t, h.person(t, "suggesting", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Suggest", "key": sugKey}), http.StatusCreated, "project")
+	want(t, owner.post("/api/v1/projects/"+sugKey+"/issues", map[string]any{"summary": "The printer is on fire"}), http.StatusCreated, "an issue")
+	want(t, owner.post("/api/v1/projects/"+sugKey+"/milestones", map[string]any{"name": "Winter release"}), http.StatusCreated, "a milestone")
+	// The bar suggests from what its user reads, and this one reads the one
+	// project: the installation holds every other test's printers too.
+	agent := api.asRole(t, h, owner, sugKey, perm.User)
 
 	suggest := func(q string, extra ...string) response {
 		params := url.Values{"q": {q}}
@@ -43,7 +50,7 @@ func TestTheSearchBarSuggests(t *testing.T) {
 		if got := strings.Join(words(suggest("status ")), " "); !strings.Contains(got, "IN") || strings.Contains(got, "<") {
 			t.Fatalf("operators for status = %s", got)
 		}
-		got := words(suggest("status = ", "project", "SUG"))
+		got := words(suggest("status = ", "project", sugKey))
 		if !hasAll(got, `"To Do"`, "Done") {
 			t.Fatalf("status names = %v", got)
 		}
@@ -54,11 +61,15 @@ func TestTheSearchBarSuggests(t *testing.T) {
 	})
 
 	t.Run("names come from the tables and are quoted when they need to be", func(t *testing.T) {
-		if got := words(suggest("milestone = w", "project", "SUG")); len(got) != 1 || got[0] != `"Winter release"` {
+		if got := words(suggest("milestone = w", "project", sugKey)); len(got) != 1 || got[0] != `"Winter release"` {
 			t.Fatalf("milestones = %v", got)
 		}
-		if got := words(suggest("assignee = ")); !hasAll(got, "currentUser()", "suggesting") {
+		// Everybody in the installation is somebody to suggest, so the name is typed.
+		if got := words(suggest("assignee = ")); !hasAll(got, "currentUser()") {
 			t.Fatalf("people = %v", got)
+		}
+		if got := words(suggest("assignee = suggesting")); !hasAll(got, "suggesting") {
+			t.Fatalf("people for suggesting = %v", got)
 		}
 		if got := words(suggest("statusCategory = d")); !hasAll(got, "done") || hasAll(got, "todo") {
 			t.Fatalf("categories for d = %v", got)

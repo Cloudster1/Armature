@@ -12,9 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/availability"
-	"github.com/armature/armature/backend/internal/bootstrap"
-	"github.com/armature/armature/backend/internal/db"
 )
 
 // holidayFile is an .ics as a calendar application exports it: folded lines,
@@ -31,40 +30,69 @@ func (s *apiServer) localMember(t *testing.T, h *harness, owner *client, role st
 	made := want(t, owner.post("/api/v1/users", map[string]string{
 		"email": email, "name": "Working Person", "role": role, "password": testPassword,
 	}), http.StatusCreated, "make a member")
+	id := obj(t, made, "user")["id"].(string)
+	h.erasable(id)
 	them := s.client(t)
 	want(t, them.post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), http.StatusOK, "sign the member in")
-	return them, obj(t, made, "user")["id"].(string)
+	return them, id
+}
+
+// defaultCalendar is the installation's default holiday calendar as the list shows it.
+func defaultCalendar(t *testing.T, c *client) map[string]any {
+	t.Helper()
+	for _, raw := range list(t, want(t, c.get("/api/v1/holiday-calendars"), http.StatusOK, "list calendars"), "calendars") {
+		if calendar := raw.(map[string]any); calendar["default"] == true {
+			return calendar
+		}
+	}
+	t.Fatal("no holiday calendar is the default")
+	return nil
+}
+
+// putBackTheDefaultCalendar makes the calendar the installation's default again.
+func putBackTheDefaultCalendar(t *testing.T, h *harness, calendarID string) {
+	t.Helper()
+	ctx := context.Background()
+	tx, err := h.super.Begin(ctx)
+	if err != nil {
+		t.Errorf("put the default calendar back: %v", err)
+		return
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `UPDATE holiday_calendar SET is_default = false WHERE is_default AND id <> $1`, calendarID); err != nil {
+		t.Errorf("put the default calendar back: %v", err)
+		return
+	}
+	if _, err := tx.Exec(ctx, `UPDATE holiday_calendar SET is_default = true WHERE id = $1`, calendarID); err != nil {
+		t.Errorf("put the default calendar back: %v", err)
+		return
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Errorf("put the default calendar back: %v", err)
+	}
 }
 
 func TestHolidayCalendarsAreTheAdministratorsToKeep(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "holidays")
+	owner.signIn(t, h.person(t, "holidays", auth.RoleOwner))
 	member, _ := api.localMember(t, h, owner, "member")
 
-	var standard map[string]any
-	t.Run("a new organization has an empty default calendar", func(t *testing.T) {
-		calendars := list(t, want(t, owner.get("/api/v1/holiday-calendars"), http.StatusOK, "list calendars"), "calendars")
-		if len(calendars) != 1 {
-			t.Fatalf("calendars = %v, want the one default", calendars)
-		}
-		standard = calendars[0].(map[string]any)
-		if standard["name"] != bootstrap.DefaultHolidayCalendarName || standard["default"] != true || standard["dayCount"] != float64(0) {
-			t.Errorf("the new organization's calendar = %v", standard)
-		}
-		want(t, api.client(t).get("/api/v1/holiday-calendars"), http.StatusUnauthorized, "nobody signed in")
-	})
+	// There is always a default; the test moves it for a moment and puts it back.
+	standard := defaultCalendar(t, owner)
+	t.Cleanup(func() { putBackTheDefaultCalendar(t, h, standard["id"].(string)) })
+	want(t, api.client(t).get("/api/v1/holiday-calendars"), http.StatusUnauthorized, "nobody signed in")
 
-	made := obj(t, want(t, owner.post("/api/v1/holiday-calendars", map[string]any{"name": " Germany "}), http.StatusCreated, "make a calendar"), "calendar")
+	name, renamed := h.name(t, "Germany"), h.name(t, "Deutschland")
+	made := obj(t, want(t, owner.post("/api/v1/holiday-calendars", map[string]any{"name": " " + name + " "}), http.StatusCreated, "make a calendar"), "calendar")
 	germany := made["id"].(string)
-	if made["name"] != "Germany" || made["default"] != false {
+	if made["name"] != name || made["default"] != false {
 		t.Fatalf("made = %v, want a trimmed calendar that is not the default", made)
 	}
 
-	t.Run("names are the organization's own and must be there", func(t *testing.T) {
-		want(t, owner.post("/api/v1/holiday-calendars", map[string]any{"name": "germany"}), http.StatusConflict, "the same name again")
+	t.Run("names are given once and must be there", func(t *testing.T) {
+		want(t, owner.post("/api/v1/holiday-calendars", map[string]any{"name": strings.ToUpper(name)}), http.StatusConflict, "the same name again")
 		refused := want(t, owner.post("/api/v1/holiday-calendars", map[string]any{"name": "  "}), http.StatusUnprocessableEntity, "a blank name")
 		if message, _ := refused.Error()["message"].(string); !strings.HasSuffix(message, ".") || !strings.Contains(message, "needs a name") {
 			t.Errorf("a blank name refused with %q", message)
@@ -74,7 +102,7 @@ func TestHolidayCalendarsAreTheAdministratorsToKeep(t *testing.T) {
 
 	t.Run("one calendar is read with its days, and a stranger's is not there", func(t *testing.T) {
 		read := obj(t, want(t, owner.get("/api/v1/holiday-calendars/"+germany), http.StatusOK, "read a calendar"), "calendar")
-		if read["name"] != "Germany" {
+		if read["name"] != name {
 			t.Errorf("read = %v", read)
 		}
 		want(t, owner.get("/api/v1/holiday-calendars/"+uuid.NewString()), http.StatusNotFound, "a calendar that is not there")
@@ -132,13 +160,18 @@ func TestHolidayCalendarsAreTheAdministratorsToKeep(t *testing.T) {
 	})
 
 	t.Run("the default moves to another calendar and is never left without one", func(t *testing.T) {
-		moved := obj(t, want(t, owner.patch("/api/v1/holiday-calendars/"+germany, map[string]any{"name": "Deutschland", "default": true}), http.StatusOK, "rename and make the default"), "calendar")
-		if moved["name"] != "Deutschland" || moved["default"] != true {
+		moved := obj(t, want(t, owner.patch("/api/v1/holiday-calendars/"+germany, map[string]any{"name": renamed, "default": true}), http.StatusOK, "rename and make the default"), "calendar")
+		if moved["name"] != renamed || moved["default"] != true {
 			t.Errorf("moved = %v", moved)
 		}
 		calendars := list(t, owner.get("/api/v1/holiday-calendars"), "calendars")
-		if first := calendars[0].(map[string]any); first["id"] != germany || calendars[1].(map[string]any)["default"] != false {
-			t.Errorf("calendars = %v, want the new default first and the old one no longer it", calendars)
+		if first := calendars[0].(map[string]any); first["id"] != germany {
+			t.Errorf("calendars = %v, want the new default first", calendars)
+		}
+		for _, raw := range calendars {
+			if c := raw.(map[string]any); c["id"] == standard["id"] && c["default"] != false {
+				t.Errorf("the old default is still it: %v", c)
+			}
 		}
 		want(t, owner.patch("/api/v1/holiday-calendars/"+germany, map[string]any{"default": false}), http.StatusConflict, "unmake the default")
 		want(t, owner.delete("/api/v1/holiday-calendars/"+germany), http.StatusConflict, "delete the default")
@@ -166,11 +199,12 @@ func TestAWorkingWeekIsAPersonsOwnToReadAndAnAdministratorsToSet(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "weeks")
+	signedUp := owner.signIn(t, h.person(t, "weeks", auth.RoleOwner))
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
 	member, memberID := api.localMember(t, h, owner, "member")
-	standardID := list(t, owner.get("/api/v1/holiday-calendars"), "calendars")[0].(map[string]any)["id"].(string)
-	abroad := idOf(t, want(t, owner.post("/api/v1/holiday-calendars", map[string]any{"name": "Portugal"}), http.StatusCreated, "make a calendar"), "calendar")
+	standardID := defaultCalendar(t, owner)["id"].(string)
+	portugal := h.name(t, "Portugal")
+	abroad := idOf(t, want(t, owner.post("/api/v1/holiday-calendars", map[string]any{"name": portugal}), http.StatusCreated, "make a calendar"), "calendar")
 
 	t.Run("nobody has set it, so it is the standard week on the default calendar", func(t *testing.T) {
 		week := obj(t, want(t, member.get("/api/v1/users/"+memberID+"/schedule"), http.StatusOK, "read my own week"), "week")
@@ -200,7 +234,9 @@ func TestAWorkingWeekIsAPersonsOwnToReadAndAnAdministratorsToSet(t *testing.T) {
 		if saved["saved"] != true || saved["calendarId"] != abroad || minutes["wed"] != float64(240) || minutes["thu"] != float64(0) || len(minutes) != len(availability.Weekdays) {
 			t.Errorf("saved = %v", saved)
 		}
-		if mine := obj(t, member.get("/api/v1/users/"+memberID+"/schedule"), "week"); mine["calendar"].(map[string]any)["name"] != "Portugal" {
+		// The owner's write pins the owner to the primary, not the member.
+		h.waitForPrimary(t)
+		if mine := obj(t, member.get("/api/v1/users/"+memberID+"/schedule"), "week"); mine["calendar"].(map[string]any)["name"] != portugal {
 			t.Errorf("the member reads %v", mine)
 		}
 
@@ -254,26 +290,21 @@ func TestAWorkingWeekIsAPersonsOwnToReadAndAnAdministratorsToSet(t *testing.T) {
 	})
 }
 
-// The service holding calendars and weeks to their organization is not the
-// proof; the same things are tried straight through SQL.
+// The service holding calendars and weeks to their rules is not the proof; the
+// same things are tried straight through SQL, on a calendar of the test's own.
 func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	home := h.newWorkspace(t, "calhome")
-	away := h.newWorkspace(t, "calaway")
+	home := h.newProject(t, "calhome")
 	calendars := availability.NewService(h.cluster)
 	ctx := context.Background()
 
-	defaultOf := func(t *testing.T, ws *workspace) uuid.UUID {
-		t.Helper()
-		var id uuid.UUID
-		if err := h.super.QueryRow(ctx, `SELECT id FROM holiday_calendar WHERE org_id = $1 AND is_default`, ws.orgID).Scan(&id); err != nil {
-			t.Fatalf("the default calendar: %v", err)
-		}
-		return id
+	name := h.name(t, "Calendar")
+	own, _, err := calendars.CreateCalendar(home.ctx, availability.CalendarInput{Name: ptr(name)}, home.actor.UserID)
+	if err != nil {
+		t.Fatal(err)
 	}
-	homeDefault, awayDefault := defaultOf(t, home), defaultOf(t, away)
-	if _, _, err := calendars.ReplaceDays(home.ctx, homeDefault, []availability.Holiday{{Day: "2026-12-25", Name: "Christmas Day"}}, home.actor.UserID); err != nil {
+	if _, _, err := calendars.ReplaceDays(home.ctx, own.ID, []availability.Holiday{{Day: "2026-12-25", Name: "Christmas Day"}}, home.actor.UserID); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := calendars.SaveWorkingWeek(home.ctx, home.actor.UserID, availability.WeekInput{}, home.actor.UserID); err != nil {
@@ -287,39 +318,6 @@ func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
 			t.Errorf("got %v, want SQLSTATE %s", err, code)
 		}
 	}
-
-	t.Run("another organization reads none of it", func(t *testing.T) {
-		for _, query := range []string{
-			`SELECT count(*) FROM holiday_calendar WHERE org_id = $1`,
-			`SELECT count(*) FROM holiday WHERE org_id = $1`,
-			`SELECT count(*) FROM member_schedule WHERE org_id = $1`,
-		} {
-			var seen int
-			err := h.cluster.ReadPrimary(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-				return tx.QueryRow(ctx, query, home.orgID).Scan(&seen)
-			})
-			if err != nil || seen != 0 {
-				t.Errorf("%s: another organization sees %d rows (%v)", query, seen, err)
-			}
-		}
-		if _, err := calendars.Calendar(away.ctx, homeDefault); !errors.Is(err, availability.ErrNotFound) {
-			t.Errorf("another organization reading the calendar: %v", err)
-		}
-	})
-
-	t.Run("a row planted in another organization is refused", func(t *testing.T) {
-		_, err := h.cluster.Write(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `INSERT INTO holiday (org_id, calendar_id, day, name) VALUES ($1, $2, '2026-01-01', 'Planted')`, home.orgID, homeDefault)
-			return err
-		})
-		if err == nil {
-			t.Error("a holiday went into another organization")
-		}
-		_, err = h.super.Exec(ctx, `INSERT INTO holiday (org_id, calendar_id, day, name) VALUES ($1, $2, '2026-01-01', 'Crossed')`, away.orgID, homeDefault)
-		refusedAs(t, err, "23514")
-		_, err = h.super.Exec(ctx, `UPDATE member_schedule SET calendar_id = $2 WHERE org_id = $1`, home.orgID, awayDefault)
-		refusedAs(t, err, "23514")
-	})
 
 	t.Run("only somebody who works here has a week", func(t *testing.T) {
 		var customerID uuid.UUID
@@ -335,8 +333,6 @@ func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
 		if err != nil && !strings.Contains(err.Error(), "only a member") {
 			t.Errorf("error = %v, want the guard's own words", err)
 		}
-		_, err = h.super.Exec(ctx, `INSERT INTO member_schedule (org_id, user_id) VALUES ($1, $2)`, home.orgID, away.actor.UserID)
-		refusedAs(t, err, "23514")
 	})
 
 	t.Run("a week the service would refuse is refused by the database", func(t *testing.T) {
@@ -348,7 +344,7 @@ func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
 			"words for a number": `{"thu": "eight hours"}`,
 			"a list, not a week": `[480, 480]`,
 		} {
-			_, err := h.super.Exec(ctx, `UPDATE member_schedule SET minutes = $2::jsonb WHERE org_id = $1`, home.orgID, minutes)
+			_, err := h.super.Exec(ctx, `UPDATE member_schedule SET minutes = $2::jsonb WHERE user_id = $1`, home.actor.UserID, minutes)
 			var pgErr *pgconn.PgError
 			if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 				t.Errorf("%s: got %v, want a check violation", name, err)
@@ -356,17 +352,14 @@ func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
 		}
 	})
 
-	t.Run("an organization has one default and its names once", func(t *testing.T) {
-		if _, _, err := calendars.CreateCalendar(home.ctx, availability.CalendarInput{Name: ptr("Second")}, home.actor.UserID); err != nil {
-			t.Fatal(err)
-		}
-		_, err := h.super.Exec(ctx, `UPDATE holiday_calendar SET is_default = true WHERE org_id = $1`, home.orgID)
+	t.Run("there is one default and a name once", func(t *testing.T) {
+		_, err := h.super.Exec(ctx, `UPDATE holiday_calendar SET is_default = true WHERE id = $1`, own.ID)
 		refusedAs(t, err, "23505")
-		_, err = h.super.Exec(ctx, `INSERT INTO holiday_calendar (org_id, name) VALUES ($1, 'SECOND')`, home.orgID)
+		_, err = h.super.Exec(ctx, `INSERT INTO holiday_calendar (org_id, name) VALUES ($1, $2)`, home.orgID, strings.ToUpper(name))
 		refusedAs(t, err, "23505")
 		_, err = h.super.Exec(ctx, `INSERT INTO holiday_calendar (org_id, name) VALUES ($1, '   ')`, home.orgID)
 		refusedAs(t, err, "23514")
-		_, err = h.super.Exec(ctx, `INSERT INTO holiday (org_id, calendar_id, day, name) VALUES ($1, $2, '2026-12-25', 'Twice')`, home.orgID, homeDefault)
+		_, err = h.super.Exec(ctx, `INSERT INTO holiday (org_id, calendar_id, day, name) VALUES ($1, $2, '2026-12-25', 'Twice')`, home.orgID, own.ID)
 		refusedAs(t, err, "23505")
 	})
 }

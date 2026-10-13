@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/board"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
@@ -22,14 +23,14 @@ import (
 	"github.com/armature/armature/backend/internal/template"
 )
 
-// fromTemplate makes a second project in the workspace's organization, the way
-// the template says.
+// fromTemplate makes a second project of the workspace's owner, the way the
+// template says.
 func (ws *workspace) fromTemplate(t *testing.T, h *harness, key, name string) *project.Project {
 	t.Helper()
 	templates := template.NewService(h.cluster, ws.projects, ws.admin)
 	created, _, err := templates.Create(ws.ctx, key, project.CreateInput{
 		Name: name,
-		Key:  strings.ToUpper(name[:min(len(name), 3)] + uuid.New().String()[:3]),
+		Key:  h.projectKey(t, name),
 	}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("create a project from the %q template: %v", key, err)
@@ -89,7 +90,7 @@ func laneNames(b *board.Board) string {
 func TestEachTemplateShapesTheProject(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "shaping")
+	ws := h.newProject(t, "shaping")
 
 	for _, tpl := range template.All() {
 		t.Run(tpl.Name, func(t *testing.T) {
@@ -150,7 +151,7 @@ func TestEachTemplateShapesTheProject(t *testing.T) {
 func TestATemplateBringsItsWorkflowOnce(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "reusing")
+	ws := h.newProject(t, "reusing")
 
 	first := ws.fromTemplate(t, h, "task-tracking", "Chores")
 	second := ws.fromTemplate(t, h, "task-tracking", "Errands")
@@ -177,7 +178,7 @@ func TestATemplateBringsItsWorkflowOnce(t *testing.T) {
 func TestAnUnknownTemplateIsRefused(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "unknown")
+	ws := h.newProject(t, "unknown")
 
 	templates := template.NewService(h.cluster, ws.projects, ws.admin)
 	_, _, err := templates.Create(ws.ctx, "waterfall", project.CreateInput{Name: "Never"}, ws.actor.UserID)
@@ -188,7 +189,7 @@ func TestAnUnknownTemplateIsRefused(t *testing.T) {
 	// And over the API it is the caller's mistake, not the server's.
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "templated")
+	c.signIn(t, h.person(t, "templated", auth.RoleOwner))
 	r := c.post("/api/v1/projects", map[string]any{"name": "Never", "template": "waterfall"})
 	if r.Status != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400: %s", r.Status, r.Raw)
@@ -208,7 +209,7 @@ func TestAnUnknownTemplateIsRefused(t *testing.T) {
 func TestAScrumBoardShowsTheRunningSprint(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "sprinting")
+	ws := h.newProject(t, "sprinting")
 	p := ws.fromTemplate(t, h, "scrum", "Sprinting")
 
 	a := ws.issueIn(t, p.Key, "committed a")
@@ -296,7 +297,7 @@ func TestAScrumBoardShowsTheRunningSprint(t *testing.T) {
 func TestATeamsScrumBoardFollowsTheTeamsSprint(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "streams")
+	ws := h.newProject(t, "streams")
 	p := ws.fromTemplate(t, h, "scrum", "Streams")
 
 	platform, _, err := ws.teams.Create(ws.ctx, p.Key, team.CreateInput{Name: "Platform"}, ws.actor.UserID)
@@ -349,7 +350,7 @@ func TestATeamsScrumBoardFollowsTheTeamsSprint(t *testing.T) {
 func TestABoardIsEitherScrumOrKanban(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "typed")
+	ws := h.newProject(t, "typed")
 
 	t.Run("a project made without a template opens on a kanban board", func(t *testing.T) {
 		if got := ws.boardOf(t, ws.project.Key).Type; got != board.TypeKanban {

@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
@@ -47,7 +45,7 @@ func (h *harness) buildTree(t *testing.T, ws *workspace) tree {
 func TestHierarchyLevels(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "levels")
+	ws := h.newProject(t, "levels")
 
 	t.Run("every level can hold the one below it", func(t *testing.T) {
 		tr := h.buildTree(t, ws)
@@ -113,7 +111,7 @@ func TestHierarchyLevels(t *testing.T) {
 
 		elsewhere, _, err := ws.projects.Create(ws.ctx, project.CreateInput{
 			Name: "somewhere else",
-			Key:  strings.ToUpper("OT" + uuid.New().String()[:3]),
+			Key:  h.projectKey(t, "OT"),
 		}, ws.actor.UserID)
 		if err != nil {
 			t.Fatal(err)
@@ -136,7 +134,7 @@ func TestHierarchyLevels(t *testing.T) {
 func TestHierarchyReparenting(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "reparent")
+	ws := h.newProject(t, "reparent")
 
 	t.Run("a story moves between epics and the change is recorded", func(t *testing.T) {
 		tr := h.buildTree(t, ws)
@@ -222,7 +220,7 @@ func TestHierarchyReparenting(t *testing.T) {
 func TestHierarchyReading(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "reading")
+	ws := h.newProject(t, "reading")
 
 	t.Run("ancestors read from the top down", func(t *testing.T) {
 		tr := h.buildTree(t, ws)
@@ -296,7 +294,7 @@ func TestHierarchyReading(t *testing.T) {
 	})
 
 	t.Run("a project's tree nests and rolls up", func(t *testing.T) {
-		ws := h.newWorkspace(t, "treeview")
+		ws := h.newProject(t, "treeview")
 		tr := h.buildTree(t, ws)
 
 		forest, err := ws.issues.Tree(ws.ctx, ws.project.Key)
@@ -326,7 +324,7 @@ func TestHierarchyReading(t *testing.T) {
 func TestHierarchyAndIssueType(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "typechange")
+	ws := h.newProject(t, "typechange")
 
 	t.Run("a type change that would strand the children is refused", func(t *testing.T) {
 		tr := h.buildTree(t, ws)
@@ -367,7 +365,7 @@ func TestHierarchyAndIssueType(t *testing.T) {
 func TestHierarchyIsEnforcedByTheDatabase(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "trigger")
+	ws := h.newProject(t, "trigger")
 	tr := h.buildTree(t, ws)
 
 	t.Run("a level cannot be skipped by writing the column directly", func(t *testing.T) {
@@ -413,11 +411,13 @@ func TestHierarchyIsEnforcedByTheDatabase(t *testing.T) {
 	})
 }
 
-func TestHierarchyStaysInsideTheTenant(t *testing.T) {
+// A tree stays inside its project: another project's issue is no parent, and
+// one project's tree holds none of another's.
+func TestHierarchyStaysInsideItsProject(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	alpha := h.newWorkspace(t, "halpha")
-	beta := h.newWorkspace(t, "hbeta")
+	alpha := h.newProject(t, "halpha")
+	beta := h.newProject(t, "hbeta")
 
 	alphaTree := h.buildTree(t, alpha)
 	betaStory, _, err := beta.issues.Create(beta.ctx, issue.CreateInput{
@@ -429,29 +429,26 @@ func TestHierarchyStaysInsideTheTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("another tenant's issue cannot become a parent", func(t *testing.T) {
-		_, _, err := beta.issues.SetParent(beta.ctx, betaStory.Key, &alphaTree.epic.Key, beta.actor)
-		// Not a level error and not a permission error: from beta's side that
-		// issue simply is not there.
-		if !errors.Is(err, issue.ErrNotFound) {
-			t.Errorf("error = %v, want ErrNotFound", err)
+	t.Run("another project's issue cannot become a parent", func(t *testing.T) {
+		if _, _, err := beta.issues.SetParent(beta.ctx, betaStory.Key, &alphaTree.epic.Key, beta.actor); !errors.Is(err, issue.ErrParentOtherProject) {
+			t.Errorf("error = %v, want ErrParentOtherProject", err)
 		}
 	})
 
-	t.Run("another tenant's tree is not readable", func(t *testing.T) {
-		forest, err := beta.issues.Tree(beta.ctx, alpha.project.Key)
-		if err == nil && len(forest) > 0 {
-			t.Errorf("beta read %d roots of alpha's project", len(forest))
-		}
-	})
-
-	t.Run("each tenant sees only its own tree", func(t *testing.T) {
+	t.Run("each project's tree holds only its own work", func(t *testing.T) {
 		forest, err := alpha.issues.Tree(alpha.ctx, alpha.project.Key)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(forest) != 1 || forest[0].Issue.Key != alphaTree.initiative.Key {
 			t.Errorf("alpha's roots = %v, want just its own initiative", forest)
+		}
+		theirs, err := beta.issues.Tree(beta.ctx, beta.project.Key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(theirs) != 1 || theirs[0].Issue.Key != betaStory.Key {
+			t.Errorf("beta's roots = %v, want just its own story", theirs)
 		}
 	})
 }
@@ -461,7 +458,7 @@ func TestHierarchyStaysInsideTheTenant(t *testing.T) {
 func TestBoardShowsIssuesInsideEpics(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "boardtree")
+	ws := h.newProject(t, "boardtree")
 	tr := h.buildTree(t, ws)
 
 	b, err := ws.boards.ForProject(ws.ctx, ws.project.Key)

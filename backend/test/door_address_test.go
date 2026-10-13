@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // The portal's door is named by the desk: its key in the address finds it, and
@@ -16,8 +18,8 @@ func TestTheDoorIsNamedByItsDesk(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	agent := api.client(t)
-	slug := principalField(t, agent.signup(t, h, "keydoor"), "principal", "org", "slug").(string)
-	front, code := deskKey("FRD"), deskKey("COD")
+	slug := principalField(t, agent.signIn(t, h.person(t, "keydoor", auth.RoleOwner)), "principal", "org", "slug").(string)
+	front, code := h.projectKey(t, "FRD"), h.projectKey(t, "COD")
 	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Front desk", "key": front, "template": "service-desk"}), http.StatusCreated, "a desk")
 	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Code", "key": code}), http.StatusCreated, "a software project")
 
@@ -26,15 +28,15 @@ func TestTheDoorIsNamedByItsDesk(t *testing.T) {
 	if desk := obj(t, door, "desk"); desk["key"] != front || desk["name"] != "Front desk" || desk["open"] != false {
 		t.Errorf("desk = %v, want the front desk, asking for a code", desk)
 	}
-	if door.Body["installation"] != "keydoor Company" {
+	if door.Body["installation"] != shared.installation.Name {
 		t.Errorf("installation = %v, want the name of the installation holding the desk", door.Body["installation"])
 	}
 	if _, named := want(t, visitor.get("/api/v1/desk"), http.StatusOK, "the installation's door").Body["desk"]; named {
 		t.Error("a door whose address names no desk answered with one")
 	}
-	want(t, visitor.get("/api/v1/desk?desk="+deskKey("NOB")), http.StatusNotFound, "no desk has that key")
+	want(t, visitor.get("/api/v1/desk?desk="+h.projectKey(t, "NOB")), http.StatusNotFound, "no desk has that key")
 	want(t, visitor.get("/api/v1/desk?desk="+code), http.StatusNotFound, "a software project has no door")
-	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": h.email(t, "nowhere"), "desk": deskKey("NOB")}), http.StatusNotFound, "no code for a desk that is not there")
+	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": h.email(t, "nowhere"), "desk": h.projectKey(t, "NOB")}), http.StatusNotFound, "no code for a desk that is not there")
 
 	address := h.email(t, "front")
 	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": front}), http.StatusAccepted, "a code")
@@ -74,12 +76,4 @@ func TestTheDoorIsNamedByItsDesk(t *testing.T) {
 		}
 	})
 
-	t.Run("a key two organizations share is refused rather than guessed at", func(t *testing.T) {
-		// Only this harness makes a second organization; an installation holds one.
-		twin := api.client(t)
-		twin.signup(t, h, "keytwin")
-		want(t, twin.post("/api/v1/projects", map[string]any{"name": "Twin desk", "key": front, "template": "service-desk"}), http.StatusCreated, "the same key elsewhere")
-		wantCode(t, want(t, visitor.get("/api/v1/desk?desk="+front), http.StatusConflict, "two desks answer to the key"), "desk_ambiguous")
-		wantCode(t, want(t, api.client(t).post("/api/v1/desk/codes", map[string]any{"email": h.email(t, "twin"), "desk": front}), http.StatusConflict, "nor is a code mailed"), "desk_ambiguous")
-	})
 }

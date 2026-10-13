@@ -105,6 +105,17 @@ func challengeFor(t *testing.T, c *client, email string) string {
 	return challenge
 }
 
+// auditCountBy counts what somebody did: the installation's log holds every
+// test's acts, and every earlier run's.
+func (h *harness) auditCountBy(t *testing.T, actorID any, action string) int {
+	t.Helper()
+	var n int
+	if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE actor_user_id = $1 AND action = $2`, actorID, action).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
 func (h *harness) auditCount(t *testing.T, orgID any, action string) int {
 	t.Helper()
 	var n int
@@ -132,10 +143,9 @@ func TestASecondFactorIsSetUpAndAskedForAtSignIn(t *testing.T) {
 	ctx := context.Background()
 
 	me := api.client(t)
-	signedUp := me.signup(t, h, "twostep")
+	signedUp := me.signIn(t, h.person(t, "twostep", auth.RoleOwner))
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	userID := principalField(t, signedUp, "principal", "user", "id").(string)
-	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 
 	status := obj(t, want(t, me.get("/api/v1/auth/me/second-factor"), http.StatusOK, "status before"), "secondFactor")
 	if status["enrolled"] != false || status["available"] != true {
@@ -189,7 +199,7 @@ func TestASecondFactorIsSetUpAndAskedForAtSignIn(t *testing.T) {
 	if strings.Contains(me.get("/api/v1/auth/me/second-factor").Raw, secret) {
 		t.Fatal("the status hands the secret back")
 	}
-	if h.auditCount(t, orgID, "auth.second_factor_enrolled") != 1 {
+	if h.auditCountBy(t, userID, "auth.second_factor_enrolled") != 1 {
 		t.Fatal("enrolling was not recorded")
 	}
 
@@ -237,6 +247,7 @@ func TestASecondFactorIsSetUpAndAskedForAtSignIn(t *testing.T) {
 		them := api.client(t)
 		joined := want(t, them.post("/api/v1/auth/invites/accept", map[string]any{"token": invited.Body["token"], "name": "Lee Ving", "password": testPassword}), http.StatusOK, "accept")
 		theirID := principalField(t, joined, "principal", "user", "id").(string)
+		h.erasable(theirID)
 		enrol(t, them)
 		challengeFor(t, api.client(t), leaving)
 		want(t, them.delete("/api/v1/auth/me"), http.StatusNoContent, "erase")
@@ -262,16 +273,15 @@ func TestARecoveryCodeWorksOnceAndTheDatabaseKeepsItSo(t *testing.T) {
 	ctx := context.Background()
 
 	me := api.client(t)
-	signedUp := me.signup(t, h, "recovery")
+	signedUp := me.signIn(t, h.person(t, "recovery", auth.RoleOwner))
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	userID := principalField(t, signedUp, "principal", "user", "id").(string)
-	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	factor := enrol(t, me)
 
 	first := api.client(t)
 	typed := strings.ToUpper(strings.ReplaceAll(factor.codes[0], "-", " "))
 	want(t, first.post("/api/v1/auth/login/second-factor", map[string]string{"challenge": challengeFor(t, first, email), "code": typed}), http.StatusOK, "a recovery code, however typed, signs in")
-	if h.auditCount(t, orgID, "auth.recovery_code_used") != 1 {
+	if h.auditCountBy(t, userID, "auth.recovery_code_used") != 1 {
 		t.Fatal("using a recovery code was not recorded")
 	}
 
@@ -308,7 +318,7 @@ func TestARecoveryCodeWorksOnceAndTheDatabaseKeepsItSo(t *testing.T) {
 			t.Fatalf("a code from the old set still works: %d", old.Status)
 		}
 		want(t, visitor.post("/api/v1/auth/login/second-factor", map[string]string{"challenge": challenge, "code": fresh[0].(string)}), http.StatusOK, "a new one does")
-		if h.auditCount(t, orgID, "auth.recovery_codes_renewed") != 1 {
+		if h.auditCountBy(t, userID, "auth.recovery_codes_renewed") != 1 {
 			t.Fatal("renewing was not recorded")
 		}
 	})
@@ -322,7 +332,7 @@ func TestASignInRunsOutOfCodeAttempts(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	me := api.client(t)
-	signedUp := me.signup(t, h, "attempts")
+	signedUp := me.signIn(t, h.person(t, "attempts", auth.RoleOwner))
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	userID := principalField(t, signedUp, "principal", "user", "id").(string)
 	factor := enrol(t, me)
@@ -360,10 +370,9 @@ func TestRemovingTheSecondFactorEndsOtherSessions(t *testing.T) {
 	ctx := context.Background()
 
 	me := api.client(t)
-	signedUp := me.signup(t, h, "remove")
+	signedUp := me.signIn(t, h.person(t, "remove", auth.RoleOwner))
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	userID := principalField(t, signedUp, "principal", "user", "id").(string)
-	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	token := want(t, me.post("/api/v1/tokens", map[string]any{"name": "ci", "scopes": []string{}, "projects": []string{}}), http.StatusCreated, "a token")
 	viaToken := api.client(t)
 	viaToken.bearer = obj(t, token, "token")["secret"].(string)
@@ -398,7 +407,7 @@ func TestRemovingTheSecondFactorEndsOtherSessions(t *testing.T) {
 	if gone := me.post("/api/v1/auth/me/second-factor/remove", map[string]string{"code": factor.codes[1]}); gone.Status != http.StatusConflict || gone.ErrorCode() != "no_second_factor" {
 		t.Fatalf("removing what is not there: %d %s", gone.Status, gone.Raw)
 	}
-	if h.auditCount(t, orgID, "auth.second_factor_removed") != 1 {
+	if h.auditCountBy(t, userID, "auth.second_factor_removed") != 1 {
 		t.Fatal("removing was not recorded")
 	}
 }
@@ -406,12 +415,12 @@ func TestRemovingTheSecondFactorEndsOtherSessions(t *testing.T) {
 // The installation can require a second factor, at its settings' address; a
 // session without one is held to setting it up or signing out, and let go once it has.
 func TestTheInstallationRequiresASecondFactor(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
+	h.keepSecondFactorRule(t)
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "requires")
+	signedUp := owner.signIn(t, h.person(t, "requires", auth.RoleOwner))
 	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	join := func(prefix, role string) *client {
 		t.Helper()
@@ -424,7 +433,7 @@ func TestTheInstallationRequiresASecondFactor(t *testing.T) {
 
 	rule := want(t, owner.get("/api/v1/settings/second-factor"), http.StatusOK, "the rule")
 	if rule.Body["require"] != "off" {
-		t.Fatalf("a new installation requires %v", rule.Body["require"])
+		t.Fatalf("the installation requires %v before the test, want off", rule.Body["require"])
 	}
 	if old := owner.get("/api/v1/organization/second-factor"); old.Status != http.StatusNotFound {
 		t.Fatalf("the rule still answers at the organization's address: %d %s", old.Status, old.Raw)
@@ -438,7 +447,7 @@ func TestTheInstallationRequiresASecondFactor(t *testing.T) {
 	}
 	enrol(t, owner)
 	want(t, owner.put("/api/v1/settings/second-factor", map[string]string{"require": "everyone"}), http.StatusOK, "require it of everyone")
-	if h.auditCount(t, orgID, "org.second_factor_required") != 1 {
+	if h.auditCountBy(t, principalField(t, signedUp, "principal", "user", "id"), "org.second_factor_required") != 1 {
 		t.Fatal("the rule was not recorded")
 	}
 	_, err := h.super.Exec(context.Background(), `UPDATE org SET second_factor = 'sometimes' WHERE id = $1`, orgID)
@@ -492,10 +501,11 @@ func TestTheInstallationRequiresASecondFactor(t *testing.T) {
 // A provider's sign-in brings the provider's own factor: the installation has
 // one provider, so its sessions are not held, while a password session is.
 func TestASingleSignOnSessionReliesOnItsProvider(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
+	h.keepSecondFactorRule(t)
+	h.keepProvider(t)
 	ctx := context.Background()
-	home := h.newWorkspace(t, "sfhome")
+	home := h.newProject(t, "sfhome")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, home, provider, false)
 
@@ -536,9 +546,8 @@ func TestAnAdministratorTakesAwayALostSecondFactor(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "lostphone")
+	signedUp := owner.signIn(t, h.person(t, "lostphone", auth.RoleOwner))
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
-	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	email := h.email(t, "lost")
 	made := want(t, owner.post("/api/v1/users", map[string]string{"email": email, "name": "Lost Phone", "role": "member", "password": testPassword}), http.StatusCreated, "a local user")
 	userID := obj(t, made, "user")["id"].(string)
@@ -566,7 +575,7 @@ func TestAnAdministratorTakesAwayALostSecondFactor(t *testing.T) {
 		t.Fatalf("taking away what is not there: %d %s", again.Status, again.Raw)
 	}
 	want(t, api.client(t).post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), http.StatusOK, "the password alone signs them in")
-	if h.auditCount(t, orgID, "member.second_factor_removed") != 1 {
+	if h.auditCountBy(t, ownerID, "member.second_factor_removed") != 1 {
 		t.Fatal("the removal was not recorded")
 	}
 }
@@ -580,7 +589,7 @@ func TestWithoutAKeyNoSecondFactorIsSetUp(t *testing.T) {
 	api.api.Auth = h.authServiceWithoutKey()
 
 	me := api.client(t)
-	me.signup(t, h, "nokey")
+	me.signIn(t, h.person(t, "nokey", auth.RoleOwner))
 	refused := me.post("/api/v1/auth/me/second-factor", nil)
 	if refused.Status != http.StatusServiceUnavailable || refused.ErrorCode() != "second_factor_unavailable" || !strings.Contains(refused.Raw, "ARMATURE_SECRET_KEY") {
 		t.Fatalf("enrolling without a key: %d %s", refused.Status, refused.Raw)

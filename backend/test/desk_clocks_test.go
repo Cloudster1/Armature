@@ -33,11 +33,13 @@ func passTime(t *testing.T, h *harness, ws *workspace, key string, minutes int) 
 	}
 }
 
-func breachEvents(t *testing.T, h *harness, ws *workspace) int {
+// breachEvents counts the breaches announced about one desk's requests; the
+// whole installation's land in the same outbox.
+func breachEvents(t *testing.T, h *harness, deskKey string) int {
 	t.Helper()
 	var n int
 	if err := h.super.QueryRow(context.Background(),
-		`SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2`, ws.orgID, events.TopicSLABreached).Scan(&n); err != nil {
+		`SELECT count(*) FROM outbox_event WHERE topic = $1 AND payload->>'issueKey' LIKE $2 || '-%'`, events.TopicSLABreached, deskKey).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	return n
@@ -62,7 +64,7 @@ func slaMetric(t *testing.T, r *report.Service, ws *workspace, projectKey, metri
 // sorted out, has nobody left to answer: its first response clock is done.
 func TestResolvingWithoutAReplyStopsTheFirstResponseClock(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "unanswered")
+	ws := h.newProject(t, "unanswered")
 	d, p := ws.aDesk(t, h, "Quiet desk")
 	customer := ws.customerOf(t, h, "duplicate")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -87,7 +89,7 @@ func TestResolvingWithoutAReplyStopsTheFirstResponseClock(t *testing.T) {
 	if first.Breached || first.BreachedAt != nil {
 		t.Errorf("first response clock of a resolved request = %+v, want no breach", first)
 	}
-	if n := breachEvents(t, h, ws); n != 0 {
+	if n := breachEvents(t, h, p.Key); n != 0 {
 		t.Errorf("%d breach events for a resolved request, want none", n)
 	}
 	if m := slaMetric(t, ws.reports(h), ws, p.Key, "first_response"); m.Met != 1 || m.Breached != 0 || m.Running != 0 {
@@ -110,7 +112,7 @@ func TestResolvingWithoutAReplyStopsTheFirstResponseClock(t *testing.T) {
 // on the record: closing a request is not a way to clean up a breach.
 func TestResolvingAfterABreachKeepsIt(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "toolate")
+	ws := h.newProject(t, "toolate")
 	d, p := ws.aDesk(t, h, "Late desk")
 	customer := ws.customerOf(t, h, "forgotten")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -138,7 +140,7 @@ func TestResolvingAfterABreachKeepsIt(t *testing.T) {
 	if !first.Breached || first.BreachedAt == nil || !first.BreachedAt.Equal(*breachedAt) {
 		t.Errorf("first response clock after resolving = %+v, want the breach at %v kept", first, *breachedAt)
 	}
-	if n := breachEvents(t, h, ws); n != 1 {
+	if n := breachEvents(t, h, p.Key); n != 1 {
 		t.Errorf("%d breach events, want the one", n)
 	}
 	if m := slaMetric(t, ws.reports(h), ws, p.Key, "first_response"); m.Breached != 1 || m.Met != 0 || m.Running != 0 {

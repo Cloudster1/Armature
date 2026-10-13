@@ -10,7 +10,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/perm"
+	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // perms builds the permission store over the harness's cluster.
@@ -26,8 +29,8 @@ func (h *harness) resolve(t *testing.T, ws *workspace, userID uuid.UUID, owner b
 	return set
 }
 
-// joinAs invites somebody into the workspace's organization at a standing and
-// returns their user id.
+// joinAs puts somebody in the installation at a standing, with no role yet,
+// and returns their user id.
 func (h *harness) joinAs(t *testing.T, ws *workspace, name, role string) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
@@ -48,8 +51,8 @@ func (h *harness) joinAs(t *testing.T, ws *workspace, name, role string) uuid.UU
 func TestARoleGrantedOverOneProjectStaysThere(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "scoped")
-	other := h.newWorkspace(t, "other")
+	ws := h.newProject(t, "scoped")
+	other := h.newProject(t, "other")
 	perms := h.perms()
 
 	member := h.joinAs(t, ws, "scrummy", "member")
@@ -76,11 +79,11 @@ func TestARoleGrantedOverOneProjectStaysThere(t *testing.T) {
 func TestARoleGrantedToAGroupReachesItsMembers(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "grouped")
+	ws := h.newProject(t, "grouped")
 	perms := h.perms()
 
 	member := h.joinAs(t, ws, "grouped", "member")
-	group, _, err := perms.CreateGroup(ws.ctx, perm.GroupInput{Name: "Release managers"}, ws.actor.UserID)
+	group, _, err := perms.CreateGroup(ws.ctx, perm.GroupInput{Name: h.name(t, "Release managers")}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("create the group: %v", err)
 	}
@@ -109,16 +112,22 @@ func TestARoleGrantedToAGroupReachesItsMembers(t *testing.T) {
 	}
 }
 
+// Somebody with an account but no membership is nobody here: no role reaches
+// them, through the service or straight through SQL.
 func TestAccessIsNeverGrantedToAStranger(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "strangers")
-	elsewhere := h.newWorkspace(t, "elsewhere")
+	ws := h.newProject(t, "strangers")
 	perms := h.perms()
+	var stranger uuid.UUID
+	if err := h.super.QueryRow(context.Background(), `
+		INSERT INTO app_user (email, name) VALUES ($1, 'Stranger') RETURNING id`, h.email(t, "stranger")).Scan(&stranger); err != nil {
+		t.Fatal(err)
+	}
 
-	t.Run("a role cannot be granted to somebody outside the organization", func(t *testing.T) {
+	t.Run("a role cannot be granted to somebody who is not a member", func(t *testing.T) {
 		_, _, err := perms.Grant(ws.ctx, perm.GrantInput{
-			Role: perm.User, UserID: &elsewhere.actor.UserID,
+			Role: perm.User, UserID: &stranger,
 		}, ws.actor.UserID)
 		if !errors.Is(err, perm.ErrNotAMember) {
 			t.Errorf("error = %v, want it refused", err)
@@ -128,28 +137,11 @@ func TestAccessIsNeverGrantedToAStranger(t *testing.T) {
 	t.Run("and SQL refuses it too", func(t *testing.T) {
 		_, err := h.super.Exec(context.Background(), `
 			INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'user', $2)`,
-			ws.orgID, elsewhere.actor.UserID)
+			ws.orgID, stranger)
 		if err == nil {
-			t.Fatal("SQL granted a role to somebody outside the organization")
+			t.Fatal("SQL granted a role to somebody who is not a member")
 		}
 		if !strings.Contains(err.Error(), "member of the organization") {
-			t.Errorf("error = %v, want the guard's own message", err)
-		}
-	})
-
-	t.Run("nor can a role be granted over another organization's project", func(t *testing.T) {
-		var projectID uuid.UUID
-		if err := h.super.QueryRow(context.Background(),
-			`SELECT id FROM project WHERE key = $1`, elsewhere.project.Key).Scan(&projectID); err != nil {
-			t.Fatal(err)
-		}
-		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO role_assignment (org_id, role, project_id, user_id)
-			VALUES ($1, 'reader', $2, $3)`, ws.orgID, projectID, ws.actor.UserID)
-		if err == nil {
-			t.Fatal("SQL granted a role over another organization's project")
-		}
-		if !strings.Contains(err.Error(), "another organization") {
 			t.Errorf("error = %v, want the guard's own message", err)
 		}
 	})
@@ -160,7 +152,7 @@ func TestAccessIsNeverGrantedToAStranger(t *testing.T) {
 func TestGlobalAdministrationCannotBeScopedToAProject(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "globalscope")
+	ws := h.newProject(t, "globalscope")
 
 	_, _, err := h.perms().Grant(ws.ctx, perm.GrantInput{
 		Role: perm.GlobalAdministrator, ProjectKey: ws.project.Key, UserID: &ws.actor.UserID,
@@ -170,15 +162,33 @@ func TestGlobalAdministrationCannotBeScopedToAProject(t *testing.T) {
 	}
 }
 
-// An organization nobody can administer is one where the fix is a database
-// console.
+// An installation nobody can administer is one where the fix is a database
+// console. It runs in one of its own: the shared one always has several.
 func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "lastadmin")
-	perms := h.perms()
+	_, own := emptyInstallation(t, h, "armature_last_administrator_revoke_test")
+	ctx := context.Background()
+	var orgID, ownerID uuid.UUID
+	if _, err := own.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ('lastadmin', 'Last Admin') RETURNING id`).Scan(&orgID); err != nil {
+			return err
+		}
+		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ('owner@lastadmin.test', 'Owner') RETURNING id`).Scan(&ownerID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, orgID, ownerID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'global_administrator', $2)`, orgID, ownerID)
+		return err
+	}); err != nil {
+		t.Fatalf("set the installation up: %v", err)
+	}
+	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID, Slug: "lastadmin"}))
+	perms := perm.NewStore(own.cluster)
 
-	held, err := perms.Assignments(ws.ctx, "")
+	held, err := perms.Assignments(ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +202,7 @@ func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 		t.Fatalf("administrators = %d, want the owner's own", len(administrators))
 	}
 
-	if _, err := perms.Revoke(ws.ctx, administrators[0], ws.actor.UserID); err == nil {
+	if _, err := perms.Revoke(ctx, administrators[0], ownerID); err == nil {
 		t.Fatal("the last global administrator was revoked")
 	} else if !strings.Contains(err.Error(), "last global administrator") {
 		t.Errorf("error = %q, want it to say why", err)
@@ -200,32 +210,41 @@ func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 
 	// With a second one in place it is allowed, which is what makes handing the
 	// role over possible.
-	another := h.joinAs(t, ws, "successor", "member")
-	if _, _, err := perms.Grant(ws.ctx, perm.GrantInput{
-		Role: perm.GlobalAdministrator, UserID: &another,
-	}, ws.actor.UserID); err != nil {
+	var another uuid.UUID
+	if _, err := own.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ('successor@lastadmin.test', 'Successor') RETURNING id`).Scan(&another); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, orgID, another)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := perms.Revoke(ws.ctx, administrators[0], ws.actor.UserID); err != nil {
+	if _, _, err := perms.Grant(ctx, perm.GrantInput{
+		Role: perm.GlobalAdministrator, UserID: &another,
+	}, ownerID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := perms.Revoke(ctx, administrators[0], ownerID); err != nil {
 		t.Errorf("revoking one of two administrators: %v", err)
 	}
 }
 
 // An owner who edits their own roles must not be able to lock themselves out of
-// the organization they own.
-func TestTheOwnerAlwaysAdministersTheirOwnOrganization(t *testing.T) {
+// the installation.
+func TestTheOwnerAlwaysAdministersTheInstallation(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "ownerlock")
+	ws := h.newProject(t, "ownerlock")
 
 	if _, err := h.super.Exec(context.Background(),
-		`DELETE FROM role_assignment WHERE org_id = $1`, ws.orgID); err != nil {
+		`DELETE FROM role_assignment WHERE user_id = $1`, ws.actor.UserID); err != nil {
 		t.Fatal(err)
 	}
 
 	set := h.resolve(t, ws, ws.actor.UserID, true)
 	if !set.CanInOrg(perm.OrgAdminister) {
-		t.Error("an owner with no assignments cannot administer their own organization")
+		t.Error("an owner with no assignments cannot administer the installation")
 	}
 	// And somebody who is not the owner holds nothing at all.
 	if h.resolve(t, ws, ws.actor.UserID, false).CanInOrg(perm.OrgAdminister) {
@@ -236,7 +255,7 @@ func TestTheOwnerAlwaysAdministersTheirOwnOrganization(t *testing.T) {
 func TestGrantingTheSameRoleTwiceIsTheSameGrant(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "twice")
+	ws := h.newProject(t, "twice")
 	perms := h.perms()
 
 	member := h.joinAs(t, ws, "twice", "member")
@@ -257,13 +276,13 @@ func TestGrantingTheSameRoleTwiceIsTheSameGrant(t *testing.T) {
 	}
 }
 
-func TestJoiningAnOrganizationGrantsARole(t *testing.T) {
+func TestJoiningTheInstallationGrantsARole(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	owner.signup(t, h, "joining")
+	owner.signIn(t, h.person(t, "joining", auth.RoleOwner))
 
 	invite := owner.post("/api/v1/invites", map[string]string{
 		"email": h.email(t, "newmember"), "role": "member",

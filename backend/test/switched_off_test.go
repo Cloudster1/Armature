@@ -6,6 +6,8 @@ import (
 	"context"
 	"net/http"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // The sentence somebody with no membership left is refused with at every door.
@@ -20,7 +22,7 @@ func TestSomebodyWithoutAMembershipIsSwitchedOff(t *testing.T) {
 	ctx := context.Background()
 
 	owner := api.client(t)
-	owner.signup(t, h, "keeps")
+	owner.signIn(t, h.person(t, "keeps", auth.RoleOwner))
 	join := func(prefix string) (*client, string) {
 		t.Helper()
 		email := h.email(t, prefix)

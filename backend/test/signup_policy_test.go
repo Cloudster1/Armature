@@ -40,6 +40,7 @@ func emptyInstallation(t *testing.T, h *harness, dbName string) (*apiServer, *ha
 func TestTheFirstAccountSetsTheInstallationUp(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	firstKey := h.projectKey(t, "FIRST")
 	api, empty := emptyInstallation(t, h, "armature_first_account_test")
 	ctx := context.Background()
 	with := func(policy auth.SignupPolicy) { api.api.Auth = empty.authService().Signups(policy) }
@@ -92,7 +93,7 @@ func TestTheFirstAccountSetsTheInstallationUp(t *testing.T) {
 		}
 		// It administers: inviting is an administrator's.
 		want(t, first.get("/api/v1/invites"), http.StatusOK, "the first account administers")
-		want(t, first.post("/api/v1/projects", map[string]any{"name": "First work", "key": "FIRST"}), http.StatusCreated, "and has what a project needs")
+		want(t, first.post("/api/v1/projects", map[string]any{"name": "First work", "key": firstKey}), http.StatusCreated, "and has what a project needs")
 		if n := organizations(t); n != 1 {
 			t.Errorf("the first sign-up left %d organizations, want 1", n)
 		}

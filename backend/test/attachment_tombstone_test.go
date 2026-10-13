@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/armature/armature/backend/internal/attachment"
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/workflow"
@@ -19,11 +20,12 @@ import (
 // in that subtree leaves a tombstone, or its bytes stay in the bucket for good.
 func TestDeletingAnEpicRemovesItsDescendantsFilesFromTheBucket(t *testing.T) {
 	h := newHarness(t)
+	sbtKey := h.projectKey(t, "SBT")
 	api := newAPIServer(t, h)
 	ctx := context.Background()
 	owner := api.client(t)
-	orgID := obj(t, owner.signup(t, h, "subtree"), "principal", "org")["id"].(string)
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Subtree", "key": "SBT"}), http.StatusCreated, "project")
+	orgID := obj(t, owner.signIn(t, h.person(t, "subtree", auth.RoleOwner)), "principal", "org")["id"].(string)
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Subtree", "key": sbtKey}), http.StatusCreated, "project")
 	typeID := map[string]string{}
 	for _, raw := range list(t, want(t, owner.get("/api/v1/issue-types"), http.StatusOK, "issue types"), "issueTypes") {
 		typ := raw.(map[string]any)
@@ -35,7 +37,7 @@ func TestDeletingAnEpicRemovesItsDescendantsFilesFromTheBucket(t *testing.T) {
 		if parentKey != "" {
 			body["parentKey"] = parentKey
 		}
-		return obj(t, want(t, owner.post("/api/v1/projects/SBT/issues", body), http.StatusCreated, typeName), "issue")["key"].(string)
+		return obj(t, want(t, owner.post("/api/v1/projects/"+sbtKey+"/issues", body), http.StatusCreated, typeName), "issue")["key"].(string)
 	}
 	epic := create("the epic", bootstrap.TypeEpic, "")
 	story := create("the story", bootstrap.TypeStory, epic)
@@ -84,8 +86,8 @@ func TestAnAttachmentRowNeverLeavesWithoutATombstone(t *testing.T) {
 
 	t.Run("an issue deleted in SQL", func(t *testing.T) {
 		c := api.client(t)
-		orgID := obj(t, c.signup(t, h, "rawissue"), "principal", "org")["id"].(string)
-		issueID, objectKey := withFile(c, "RWI")
+		orgID := obj(t, c.signIn(t, h.person(t, "rawissue", auth.RoleOwner)), "principal", "org")["id"].(string)
+		issueID, objectKey := withFile(c, h.projectKey(t, "RWI"))
 		if _, err := h.super.Exec(ctx, `DELETE FROM issue WHERE id = $1`, issueID); err != nil {
 			t.Fatal(err)
 		}
@@ -99,19 +101,20 @@ func TestAnAttachmentRowNeverLeavesWithoutATombstone(t *testing.T) {
 		reapUntilGone(t, h, store, objectKey)
 	})
 
-	t.Run("an organization deleted in SQL", func(t *testing.T) {
+	t.Run("a project deleted in SQL", func(t *testing.T) {
 		c := api.client(t)
-		orgID := obj(t, c.signup(t, h, "raworg"), "principal", "org")["id"].(string)
-		_, objectKey := withFile(c, "RWO")
-		if _, err := h.super.Exec(ctx, `DELETE FROM org WHERE id = $1`, orgID); err != nil {
-			t.Fatalf("deleting an organization with files in SQL: %v", err)
+		orgID := obj(t, c.signIn(t, h.person(t, "rawproject", auth.RoleOwner)), "principal", "org")["id"].(string)
+		key := h.projectKey(t, "RWP")
+		_, objectKey := withFile(c, key)
+		if _, err := h.super.Exec(ctx, `DELETE FROM project WHERE key = $1`, key); err != nil {
+			t.Fatalf("deleting a project with files in SQL: %v", err)
 		}
 		org, ok := tombstoneOrg(t, h, objectKey)
 		if !ok {
-			t.Fatal("deleting the organization in SQL left no tombstone for its file")
+			t.Fatal("deleting the project in SQL left no tombstone for its file")
 		}
-		if org != nil {
-			t.Errorf("the tombstone still names the deleted organization %s", *org)
+		if org == nil || *org != orgID {
+			t.Errorf("the tombstone names organization %v, want %s", org, orgID)
 		}
 		reapUntilGone(t, h, store, objectKey)
 	})

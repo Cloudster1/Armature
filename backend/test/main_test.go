@@ -4,6 +4,7 @@ package test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,12 +13,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/armature/armature/backend/internal/attachment"
+	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/observability"
@@ -38,6 +42,10 @@ var shared struct {
 	// sealer seals authenticator secrets with the stack's own key, so a row a
 	// failed test leaves behind does not stop the stack's api from starting.
 	sealer *seal.Sealer
+	// installation is the one organization every test works in, as people do.
+	installation auth.Org
+	// passwordHash is testPassword's, made once: hashing it per person cost a run seconds.
+	passwordHash string
 }
 
 func TestMain(m *testing.M) {
@@ -119,7 +127,41 @@ func openShared() error {
 		return fmt.Errorf("attachment bucket: %w", err)
 	}
 	shared.store = store
+
+	if shared.passwordHash, err = auth.HashPassword(testPassword, testPasswordParams()); err != nil {
+		return fmt.Errorf("hash the test password: %w", err)
+	}
+	if shared.installation, err = theInstallation(ctx, cfg.Auth.InstallationName); err != nil {
+		return err
+	}
 	return nil
+}
+
+// theInstallation is the database's organization, or one made as the first
+// sign-up would make it when the database has none yet.
+func theInstallation(ctx context.Context, name string) (auth.Org, error) {
+	var org auth.Org
+	_, err := shared.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('armature.test.installation'))`); err != nil {
+			return err
+		}
+		err := tx.QueryRow(ctx, `
+			SELECT id, slug, name FROM org WHERE archived_at IS NULL
+			ORDER BY created_at, id LIMIT 1`).Scan(&org.ID, &org.Slug, &org.Name)
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		org = auth.Org{Name: name, Slug: auth.Slugify(name)}
+		if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, org.Slug, org.Name).Scan(&org.ID); err != nil {
+			return fmt.Errorf("make the installation: %w", err)
+		}
+		_, err = bootstrap.Org(ctx, tx, org.ID)
+		return err
+	})
+	if err != nil {
+		return auth.Org{}, fmt.Errorf("find the installation: %w", err)
+	}
+	return org, nil
 }
 
 func closeShared() {

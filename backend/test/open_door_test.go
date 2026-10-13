@@ -10,6 +10,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // An address taken on trust at one desk's door is a customer of that desk and
@@ -18,11 +20,11 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "opendoor")
+	signedUp := owner.signIn(t, h.person(t, "opendoor", auth.RoleOwner))
 	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
 
 	// Two desks and a software project. Only a desk has a door.
-	itd, hrd, cod := deskKey("ITD"), deskKey("HRD"), deskKey("COD")
+	itd, hrd, cod := h.projectKey(t, "ITD"), h.projectKey(t, "HRD"), h.projectKey(t, "COD")
 	trusting := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "IT desk", "key": itd, "template": "service-desk"}), http.StatusCreated, "a desk"), "project")
 	careful := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "HR desk", "key": hrd, "template": "service-desk"}), http.StatusCreated, "another desk"), "project")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Code", "key": cod}), http.StatusCreated, "a software project")

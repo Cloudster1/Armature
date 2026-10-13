@@ -50,7 +50,7 @@ var (
 	// there: an unknown key, an archived desk and a software project alike.
 	ErrNoDesk = errors.New("there is no service desk at that address")
 	// ErrDeskAmbiguous is returned when organizations share the key a door
-	// names, which only a test harness with several of them can bring about.
+	// names, which an installation, holding one, never brings about.
 	ErrDeskAmbiguous = errors.New("more than one desk answers to that key")
 )
 

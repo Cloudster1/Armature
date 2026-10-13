@@ -5,7 +5,6 @@ package test
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -26,23 +25,24 @@ func changeOf(entry issue.HistoryEntry, name string) *issue.Change {
 	return nil
 }
 
-// An organization field applies in every project, so a move keeps its value;
-// only the old project's own fields are dropped, each named in the history.
-func TestAMoveKeepsOrganizationFieldsAndNamesTheValuesItDrops(t *testing.T) {
-	t.Parallel()
+// A field on every project applies wherever the issue goes, so a move keeps
+// its value; only the old project's own fields are dropped, each named in the history.
+func TestAMoveKeepsFieldsOnEveryProjectAndNamesTheValuesItDrops(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "movefields")
+	mvfKey := h.projectKey(t, "MVF")
+	ws := h.newProject(t, "movefields")
 	fields := ws.fields(h)
+	costName, platformName, customerName := h.name(t, "Cost"), h.name(t, "Platform"), h.name(t, "Customer")
 
-	cost, _, err := fields.CreateOrg(ws.ctx, field.Input{Name: "Cost", Kind: field.Number})
+	cost, _, err := fields.CreateOrg(ws.ctx, field.Input{Name: costName, Kind: field.Number})
 	if err != nil {
 		t.Fatal(err)
 	}
-	platform, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: "Platform", Kind: field.Select, Options: []string{"Web", "Mobile"}})
+	platform, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: platformName, Kind: field.Select, Options: []string{"Web", "Mobile"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: "Customer", Kind: field.Text}); err != nil {
+	if _, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: customerName, Kind: field.Text}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -68,7 +68,7 @@ func TestAMoveKeepsOrganizationFieldsAndNamesTheValuesItDrops(t *testing.T) {
 		}
 	}
 
-	target, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Target", Key: "MVF" + strings.ToUpper(uuid.New().String()[:3])}, ws.actor.UserID)
+	target, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Target", Key: mvfKey}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,16 +82,16 @@ func TestAMoveKeepsOrganizationFieldsAndNamesTheValuesItDrops(t *testing.T) {
 	}
 	movedChild := kids[0]
 
-	t.Run("the organization field keeps its value", func(t *testing.T) {
+	t.Run("the field on every project keeps its value", func(t *testing.T) {
 		for key, want := range map[string]string{moved.Key: "120", movedChild.Key: "30"} {
 			values, err := fields.Values(ws.ctx, key)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if v := valueOf(values, "Cost"); v == nil || v.Display != want {
+			if v := valueOf(values, costName); v == nil || v.Display != want {
 				t.Errorf("%s: Cost = %+v, want %s kept through the move", key, v, want)
 			}
-			if v := valueOf(values, "Platform"); v != nil {
+			if v := valueOf(values, platformName); v != nil {
 				t.Errorf("%s still lists the old project's field: %+v", key, v)
 			}
 		}
@@ -107,7 +107,7 @@ func TestAMoveKeepsOrganizationFieldsAndNamesTheValuesItDrops(t *testing.T) {
 			t.Fatal(err)
 		}
 		if orgValues != 2 || projectValues != 0 {
-			t.Errorf("rows left: %d organization, %d project; want 2 and 0", orgValues, projectValues)
+			t.Errorf("rows left: %d on every project's field, %d on the project's own; want 2 and 0", orgValues, projectValues)
 		}
 	})
 
@@ -121,10 +121,10 @@ func TestAMoveKeepsOrganizationFieldsAndNamesTheValuesItDrops(t *testing.T) {
 				t.Fatalf("%s has no history", key)
 			}
 			latest := history[0]
-			if c := changeOf(latest, "Platform"); c == nil || c.From != want || c.To != "" {
-				t.Errorf("%s: latest history %+v, want Platform cleared from %s", key, latest.Changes, want)
+			if c := changeOf(latest, platformName); c == nil || c.From != want || c.To != "" {
+				t.Errorf("%s: latest history %+v, want %s cleared from %s", key, latest.Changes, platformName, want)
 			}
-			for _, kept := range []string{"Cost", "Customer"} {
+			for _, kept := range []string{costName, customerName} {
 				if c := changeOf(latest, kept); c != nil {
 					t.Errorf("%s: the move records %s, which it did not clear: %+v", key, kept, c)
 				}

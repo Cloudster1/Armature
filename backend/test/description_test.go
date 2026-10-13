@@ -3,12 +3,11 @@
 package test
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A description is written, rewritten and cleared through the API. Clearing
@@ -17,10 +16,11 @@ import (
 func TestADescriptionCanBeWrittenAndCleared(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	dscKey := h.projectKey(t, "DSC")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "describer")
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Described", "key": "DSC"}); made.Status != http.StatusCreated {
+	owner.signIn(t, h.person(t, "describer", auth.RoleOwner))
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Described", "key": dscKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 	doc := func(text string) map[string]any {
@@ -29,7 +29,7 @@ func TestADescriptionCanBeWrittenAndCleared(t *testing.T) {
 		}}
 	}
 
-	issued := owner.post("/api/v1/projects/DSC/issues", map[string]any{"summary": "with words", "description": doc("first draft")})
+	issued := owner.post("/api/v1/projects/"+dscKey+"/issues", map[string]any{"summary": "with words", "description": doc("first draft")})
 	if issued.Status != http.StatusCreated {
 		t.Fatalf("create issue: %d %s", issued.Status, issued.Raw)
 	}
@@ -79,15 +79,11 @@ func TestADescriptionCanBeWrittenAndCleared(t *testing.T) {
 	}
 
 	// Naming somebody in the description brings them onto the issue.
-	slug := principalField(t, owner.get("/api/v1/auth/me"), "principal", "org", "slug").(string)
-	var orgID uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `SELECT id FROM org WHERE slug = $1`, slug).Scan(&orgID); err != nil {
-		t.Fatal(err)
-	}
-	colleague := h.joinExisting(t, &workspace{orgID: orgID}, h.email(t, "named"), "member")
+	colleagueEmail := h.email(t, "named")
+	colleague := h.joinExisting(t, &workspace{orgID: shared.installation.ID}, colleagueEmail, "member")
 	mention := map[string]any{"type": "doc", "content": []any{map[string]any{"type": "paragraph", "content": []any{
 		map[string]any{"type": "text", "text": "Ask "},
-		map[string]any{"type": "mention", "attrs": map[string]any{"id": colleague.String(), "label": "Invited Person"}},
+		map[string]any{"type": "mention", "attrs": map[string]any{"id": colleague.String(), "label": nameOf(colleagueEmail)}},
 	}}}}
 	want(t, owner.do(http.MethodPatch, "/api/v1/issues/"+key, map[string]any{"description": mention}), http.StatusOK, "a mention in the description")
 	watchers := want(t, owner.get("/api/v1/issues/"+key+"/watchers"), http.StatusOK, "watchers").Raw

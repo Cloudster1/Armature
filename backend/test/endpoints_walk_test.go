@@ -4,6 +4,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -17,20 +18,21 @@ import (
 // The stretches of TestEveryEndpointOverTheAPI that need nothing from the
 // rest of the walk but the client and a few keys.
 
-func walkWorkflows(t *testing.T, c *client, typeID map[string]string) {
+func walkWorkflows(t *testing.T, h *harness, c *client, key string, typeID map[string]string) {
 	t.Helper()
 	want(t, c.get("/api/v1/workflows/rule-types"), http.StatusOK, "rule types")
-	want(t, c.post("/api/v1/statuses", map[string]any{"name": "Reviewing", "category": "in_progress"}), http.StatusCreated, "coin status")
-	want(t, c.post("/api/v1/statuses", map[string]any{"name": "reviewing", "category": "todo"}), http.StatusBadRequest, "coin status twice")
+	reviewing := h.name(t, "Reviewing")
+	want(t, c.post("/api/v1/statuses", map[string]any{"name": reviewing, "category": "in_progress"}), http.StatusCreated, "coin status")
+	want(t, c.post("/api/v1/statuses", map[string]any{"name": strings.ToLower(reviewing), "category": "todo"}), http.StatusBadRequest, "coin status twice")
 	workflows := list(t, want(t, c.get("/api/v1/workflows"), http.StatusOK, "workflows"), "workflows")
 	workflowID := workflows[0].(map[string]any)["id"].(string)
 	got := want(t, c.get("/api/v1/workflows/"+workflowID), http.StatusOK, "get workflow")
 	graph := graphOf(t, got)
-	graph["name"] = "Copied by hand"
-	copied := want(t, c.post("/api/v1/workflows/"+workflowID+"/copy", map[string]any{"name": "Everything copy"}), http.StatusCreated, "copy workflow")
+	graph["name"] = h.name(t, "Copied by hand")
+	copied := want(t, c.post("/api/v1/workflows/"+workflowID+"/copy", map[string]any{"name": h.name(t, "Everything copy")}), http.StatusCreated, "copy workflow")
 	copyID := idOf(t, copied, "workflow")
 	want(t, c.put("/api/v1/workflows/"+copyID, graph), http.StatusOK, "save workflow")
-	graph["name"] = "Authored by hand"
+	graph["name"] = h.name(t, "Authored by hand")
 	authored := want(t, c.post("/api/v1/workflows", graph), http.StatusCreated, "author workflow")
 	authoredID := idOf(t, authored, "workflow")
 
@@ -41,16 +43,19 @@ func walkWorkflows(t *testing.T, c *client, typeID map[string]string) {
 			defaultSchemeID = s["id"].(string)
 		}
 	}
+	// Every inheriting project follows the default, so a failure halfway must not leave it moved.
+	t.Cleanup(func() { putBackTheDefaultScheme(t, h, defaultSchemeID) })
+	schemeName := h.name(t, "Everything scheme")
 	scheme := want(t, c.post("/api/v1/workflow-schemes", map[string]any{
-		"name": "Everything scheme", "items": []map[string]any{{"workflowId": copyID}},
+		"name": schemeName, "items": []map[string]any{{"workflowId": copyID}},
 	}), http.StatusCreated, "create scheme")
 	schemeID := idOf(t, scheme, "scheme")
 	want(t, c.put("/api/v1/workflow-schemes/"+schemeID, map[string]any{
-		"name": "Everything scheme", "items": []map[string]any{{"workflowId": copyID}, {"issueTypeId": typeID[bootstrap.TypeBug], "workflowId": authoredID}},
+		"name": schemeName, "items": []map[string]any{{"workflowId": copyID}, {"issueTypeId": typeID[bootstrap.TypeBug], "workflowId": authoredID}},
 	}), http.StatusOK, "save scheme")
-	want(t, c.put("/api/v1/projects/EVR/workflow-scheme", map[string]any{"schemeId": schemeID}), http.StatusOK, "override scheme")
-	want(t, c.get("/api/v1/projects/EVR/workflows"), http.StatusOK, "project workflows")
-	want(t, c.put("/api/v1/projects/EVR/workflow-scheme", map[string]any{"schemeId": nil}), http.StatusOK, "hand the scheme back")
+	want(t, c.put("/api/v1/projects/"+key+"/workflow-scheme", map[string]any{"schemeId": schemeID}), http.StatusOK, "override scheme")
+	want(t, c.get("/api/v1/projects/"+key+"/workflows"), http.StatusOK, "project workflows")
+	want(t, c.put("/api/v1/projects/"+key+"/workflow-scheme", map[string]any{"schemeId": nil}), http.StatusOK, "hand the scheme back")
 	want(t, c.put("/api/v1/workflow-schemes/"+schemeID+"/default", nil), http.StatusNoContent, "make default")
 	want(t, c.put("/api/v1/workflow-schemes/"+defaultSchemeID+"/default", nil), http.StatusNoContent, "restore default")
 	want(t, c.delete("/api/v1/workflow-schemes/"+schemeID), http.StatusNoContent, "delete scheme")
@@ -58,11 +63,11 @@ func walkWorkflows(t *testing.T, c *client, typeID map[string]string) {
 	want(t, c.delete("/api/v1/workflows/"+authoredID), http.StatusNoContent, "delete authored workflow")
 }
 
-func walkBoards(t *testing.T, c *client, storyKey string) {
+func walkBoards(t *testing.T, c *client, key, storyKey string) {
 	t.Helper()
-	want(t, c.get("/api/v1/projects/EVR/board"), http.StatusOK, "opening board")
-	list(t, want(t, c.get("/api/v1/projects/EVR/boards"), http.StatusOK, "boards"), "boards")
-	extra := want(t, c.post("/api/v1/projects/EVR/boards", map[string]any{"name": "Everything kanban", "type": "kanban"}), http.StatusCreated, "add board")
+	want(t, c.get("/api/v1/projects/"+key+"/board"), http.StatusOK, "opening board")
+	list(t, want(t, c.get("/api/v1/projects/"+key+"/boards"), http.StatusOK, "boards"), "boards")
+	extra := want(t, c.post("/api/v1/projects/"+key+"/boards", map[string]any{"name": "Everything kanban", "type": "kanban"}), http.StatusCreated, "add board")
 	extraID := idOf(t, extra, "board")
 	want(t, c.get("/api/v1/boards/"+extraID), http.StatusOK, "get board")
 	want(t, c.patch("/api/v1/boards/"+extraID, map[string]any{"name": "Everything kanban", "description": "all cards", "groupBy": "assignee"}), http.StatusOK, "edit board")
@@ -78,45 +83,46 @@ func walkBoards(t *testing.T, c *client, storyKey string) {
 	}
 	want(t, c.put("/api/v1/boards/"+extraID+"/swimlanes", map[string]any{"order": order}), http.StatusNoContent, "reorder swimlanes")
 	var inProgress any
-	for _, raw := range list(t, c.get("/api/v1/projects/EVR/board"), "board", "swimlanes") {
+	for _, raw := range list(t, c.get("/api/v1/projects/"+key+"/board"), "board", "swimlanes") {
 		if lane := raw.(map[string]any); strings.Contains(lane["name"].(string), "Progress") {
 			inProgress = lane["id"]
 		}
 	}
-	want(t, c.post("/api/v1/projects/EVR/board/move", map[string]any{"issueKey": storyKey, "swimlaneId": inProgress}), http.StatusOK, "move card")
+	want(t, c.post("/api/v1/projects/"+key+"/board/move", map[string]any{"issueKey": storyKey, "swimlaneId": inProgress}), http.StatusOK, "move card")
 	want(t, c.delete("/api/v1/boards/"+extraID+"/swimlanes/"+laneID), http.StatusNoContent, "delete swimlane")
 	want(t, c.delete("/api/v1/boards/"+extraID), http.StatusNoContent, "delete board")
 }
 
-func walkDashboards(t *testing.T, c *client, sprintID, milestoneID string) {
+func walkDashboards(t *testing.T, h *harness, c *client, key, sprintID, milestoneID string) {
 	t.Helper()
-	want(t, c.get("/api/v1/projects/EVR/dashboards"), http.StatusOK, "dashboards")
-	dashboard := want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "Second"}), http.StatusCreated, "add dashboard")
+	want(t, c.get("/api/v1/projects/"+key+"/dashboards"), http.StatusOK, "dashboards")
+	dashboard := want(t, c.post("/api/v1/projects/"+key+"/dashboards", map[string]any{"name": "Second"}), http.StatusCreated, "add dashboard")
 	dashboardID := idOf(t, dashboard, "dashboard")
-	want(t, c.get("/api/v1/dashboard-templates?project=EVR"), http.StatusOK, "dashboard templates")
+	want(t, c.get("/api/v1/dashboard-templates?project="+key), http.StatusOK, "dashboard templates")
 	want(t, c.get("/api/v1/dashboard-templates?project=NOPE"), http.StatusNotFound, "templates for a project that is not there")
-	template := want(t, c.post("/api/v1/dashboards/"+dashboardID+"/template", map[string]any{"name": "Mondays", "description": "What we look at."}), http.StatusCreated, "save a template")
+	mondays := h.name(t, "Mondays")
+	template := want(t, c.post("/api/v1/dashboards/"+dashboardID+"/template", map[string]any{"name": mondays, "description": "What we look at."}), http.StatusCreated, "save a template")
 	templateID := idOf(t, template, "template")
-	want(t, c.post("/api/v1/dashboards/"+dashboardID+"/template", map[string]any{"name": "Mondays"}), http.StatusConflict, "the same template name again")
-	fromTemplate := want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "From a template", "template": templateID}), http.StatusCreated, "a dashboard from a template")
-	want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "From nothing", "template": "nope"}), http.StatusBadRequest, "a template nobody has")
-	aimedAt := idOf(t, want(t, c.post("/api/v1/projects/EVR/milestones", map[string]any{"name": "Release 2"}), http.StatusCreated, "a milestone to aim a dashboard at"), "milestone")
-	forMilestone := want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "Release 2 dashboard", "template": "milestone", "milestoneId": aimedAt}), http.StatusCreated, "a milestone's dashboard")
+	want(t, c.post("/api/v1/dashboards/"+dashboardID+"/template", map[string]any{"name": mondays}), http.StatusConflict, "the same template name again")
+	fromTemplate := want(t, c.post("/api/v1/projects/"+key+"/dashboards", map[string]any{"name": "From a template", "template": templateID}), http.StatusCreated, "a dashboard from a template")
+	want(t, c.post("/api/v1/projects/"+key+"/dashboards", map[string]any{"name": "From nothing", "template": "nope"}), http.StatusBadRequest, "a template nobody has")
+	aimedAt := idOf(t, want(t, c.post("/api/v1/projects/"+key+"/milestones", map[string]any{"name": "Release 2"}), http.StatusCreated, "a milestone to aim a dashboard at"), "milestone")
+	forMilestone := want(t, c.post("/api/v1/projects/"+key+"/dashboards", map[string]any{"name": "Release 2 dashboard", "template": "milestone", "milestoneId": aimedAt}), http.StatusCreated, "a milestone's dashboard")
 	want(t, c.delete("/api/v1/dashboards/"+idOf(t, forMilestone, "dashboard")), http.StatusNoContent, "delete the milestone's dashboard")
-	want(t, c.post("/api/v1/projects/EVR/dashboards", map[string]any{"name": "Nobody's", "template": "milestone", "milestoneId": uuid.New().String()}), http.StatusNotFound, "a milestone that is not there")
+	want(t, c.post("/api/v1/projects/"+key+"/dashboards", map[string]any{"name": "Nobody's", "template": "milestone", "milestoneId": uuid.New().String()}), http.StatusNotFound, "a milestone that is not there")
 	want(t, c.delete("/api/v1/dashboards/"+idOf(t, fromTemplate, "dashboard")), http.StatusNoContent, "delete the templated dashboard")
 	want(t, c.delete("/api/v1/dashboard-templates/"+templateID), http.StatusNoContent, "delete the template")
 	want(t, c.delete("/api/v1/dashboard-templates/"+templateID), http.StatusNotFound, "delete it again")
 	want(t, c.patch("/api/v1/dashboards/"+dashboardID, map[string]any{"name": "Second look"}), http.StatusNoContent, "rename dashboard")
-	want(t, c.get("/api/v1/projects/EVR/report-kinds"), http.StatusOK, "report kinds")
+	want(t, c.get("/api/v1/projects/"+key+"/report-kinds"), http.StatusOK, "report kinds")
 	for _, kind := range []string{"status_breakdown", "throughput", "workload", "team_workload", "cycle_time", "epics", "sprint", "velocity", "burndown", "sprint_history", "priority_breakdown", "type_breakdown"} {
-		want(t, c.get("/api/v1/projects/EVR/reports/"+kind+"?days=30"), http.StatusOK, "report "+kind)
+		want(t, c.get("/api/v1/projects/"+key+"/reports/"+kind+"?days=30"), http.StatusOK, "report "+kind)
 	}
-	want(t, c.get("/api/v1/projects/EVR/reports/burndown?sprint="+sprintID), http.StatusOK, "one sprint's burndown")
-	want(t, c.get("/api/v1/projects/EVR/reports/chart?groupBy=type&shape=bar"), http.StatusOK, "a chart")
-	want(t, c.get("/api/v1/projects/EVR/reports/milestones"), http.StatusOK, "the milestones widget")
-	want(t, c.get("/api/v1/projects/EVR/reports/milestones?milestone="+milestoneID), http.StatusOK, "one milestone's progress")
-	want(t, c.get("/api/v1/projects/EVR/reports/milestones?milestone=nope"), http.StatusBadRequest, "a milestone id that is not one")
+	want(t, c.get("/api/v1/projects/"+key+"/reports/burndown?sprint="+sprintID), http.StatusOK, "one sprint's burndown")
+	want(t, c.get("/api/v1/projects/"+key+"/reports/chart?groupBy=type&shape=bar"), http.StatusOK, "a chart")
+	want(t, c.get("/api/v1/projects/"+key+"/reports/milestones"), http.StatusOK, "the milestones widget")
+	want(t, c.get("/api/v1/projects/"+key+"/reports/milestones?milestone="+milestoneID), http.StatusOK, "one milestone's progress")
+	want(t, c.get("/api/v1/projects/"+key+"/reports/milestones?milestone=nope"), http.StatusBadRequest, "a milestone id that is not one")
 	chart := want(t, c.post("/api/v1/dashboards/"+dashboardID+"/widgets", map[string]any{"kind": "chart", "config": map[string]any{"groupBy": "type", "shape": "donut"}}), http.StatusCreated, "add a chart")
 	want(t, c.delete("/api/v1/widgets/"+idOf(t, chart, "widget")), http.StatusNoContent, "remove the chart")
 	filter := want(t, c.post("/api/v1/dashboards/"+dashboardID+"/widgets", map[string]any{"kind": "filter", "config": map[string]any{"filter": map[string]any{"types": []string{"Bug"}}}}), http.StatusCreated, "add the filter tile")
@@ -129,24 +135,24 @@ func walkDashboards(t *testing.T, c *client, sprintID, milestoneID string) {
 	want(t, c.delete("/api/v1/dashboards/"+dashboardID), http.StatusNoContent, "delete dashboard")
 }
 
-func walkFieldsGroupsAndTokens(t *testing.T, api *apiServer, c *client, taskKey, myID string) {
+func walkFieldsGroupsAndTokens(t *testing.T, h *harness, api *apiServer, c *client, key, taskKey, myID string) {
 	t.Helper()
 	want(t, c.get("/api/v1/field-kinds"), http.StatusOK, "field kinds")
-	field := want(t, c.post("/api/v1/projects/EVR/fields", map[string]any{"name": "Customer", "kind": "select", "options": []string{"Acme", "Globex"}}), http.StatusCreated, "define field")
+	field := want(t, c.post("/api/v1/projects/"+key+"/fields", map[string]any{"name": "Customer", "kind": "select", "options": []string{"Acme", "Globex"}}), http.StatusCreated, "define field")
 	fieldID := idOf(t, field, "field")
-	want(t, c.get("/api/v1/projects/EVR/fields"), http.StatusOK, "fields")
+	want(t, c.get("/api/v1/projects/"+key+"/fields"), http.StatusOK, "fields")
 	want(t, c.patch("/api/v1/fields/"+fieldID, map[string]any{"options": []string{"Acme", "Globex", "Initech"}}), http.StatusOK, "edit field")
 	want(t, c.put("/api/v1/issues/"+taskKey+"/fields/"+fieldID, map[string]any{"value": "Globex"}), http.StatusOK, "answer field")
 	want(t, c.get("/api/v1/issues/"+taskKey+"/fields"), http.StatusOK, "issue fields")
 	want(t, c.delete("/api/v1/fields/"+fieldID), http.StatusNoContent, "delete field")
 
-	group := want(t, c.post("/api/v1/groups", map[string]any{"name": "Platform people"}), http.StatusCreated, "group")
+	group := want(t, c.post("/api/v1/groups", map[string]any{"name": h.name(t, "Platform people")}), http.StatusCreated, "group")
 	groupID := idOf(t, group, "group")
 	want(t, c.get("/api/v1/groups"), http.StatusOK, "groups")
 	want(t, c.post("/api/v1/groups/"+groupID+"/members", map[string]any{"userId": myID}), http.StatusOK, "join group")
 	want(t, c.get("/api/v1/groups/"+groupID), http.StatusOK, "get group")
-	grant := want(t, c.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": "EVR", "groupId": groupID}), http.StatusCreated, "grant")
-	want(t, c.get("/api/v1/role-assignments?project=EVR"), http.StatusOK, "assignments")
+	grant := want(t, c.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": key, "groupId": groupID}), http.StatusCreated, "grant")
+	want(t, c.get("/api/v1/role-assignments?project="+key), http.StatusOK, "assignments")
 	want(t, c.delete("/api/v1/role-assignments/"+idOf(t, grant, "assignment")), http.StatusNoContent, "revoke")
 	want(t, c.delete("/api/v1/groups/"+groupID+"/members/"+myID), http.StatusOK, "leave group")
 	want(t, c.delete("/api/v1/groups/"+groupID), http.StatusNoContent, "delete group")
@@ -162,15 +168,15 @@ func walkFieldsGroupsAndTokens(t *testing.T, api *apiServer, c *client, taskKey,
 
 // walkRepositories connects a repository, takes a signed push on its webhook
 // and makes a branch on the host.
-func walkRepositories(t *testing.T, api *apiServer, c *client, storyKey string) {
+func walkRepositories(t *testing.T, api *apiServer, c *client, key, storyKey string) {
 	t.Helper()
 	stub := newStubHost(t)
-	repo := want(t, c.post("/api/v1/projects/EVR/repositories", map[string]any{
+	repo := want(t, c.post("/api/v1/projects/"+key+"/repositories", map[string]any{
 		"host": "github", "name": "acme/everything", "apiBaseUrl": stub.URL, "accessToken": "ghp_test",
 	}), http.StatusCreated, "connect repository")
 	repoID := idOf(t, repo, "repository")
 	webhookSecret := obj(t, repo, "repository")["webhookSecret"].(string)
-	want(t, c.get("/api/v1/projects/EVR/repositories"), http.StatusOK, "repositories")
+	want(t, c.get("/api/v1/projects/"+key+"/repositories"), http.StatusOK, "repositories")
 	want(t, c.patch("/api/v1/repositories/"+repoID, map[string]any{"host": "github", "name": "acme/everything", "defaultBranch": "trunk"}), http.StatusOK, "edit repository")
 	body := push("trunk", "ab100002", storyKey+" wires it up", "nobody@example.test")
 	req, _ := http.NewRequest(http.MethodPost, api.URL+"/api/v1/git/webhooks/"+repoID, bytes.NewBufferString(body))
@@ -184,4 +190,57 @@ func walkRepositories(t *testing.T, api *apiServer, c *client, storyKey string) 
 	want(t, c.post("/api/v1/issues/"+storyKey+"/branches", map[string]any{"repositoryId": repoID}), http.StatusCreated, "branch")
 	want(t, c.post("/api/v1/repositories/"+repoID+"/rotate-secret", nil), http.StatusOK, "rotate secret")
 	want(t, c.delete("/api/v1/repositories/"+repoID), http.StatusNoContent, "disconnect")
+}
+
+// putBackTheDefaultScheme makes the scheme the installation's default again.
+func putBackTheDefaultScheme(t *testing.T, h *harness, schemeID string) {
+	t.Helper()
+	ctx := context.Background()
+	tx, err := h.super.Begin(ctx)
+	if err != nil {
+		t.Errorf("put the default scheme back: %v", err)
+		return
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `UPDATE workflow_scheme SET is_default = false WHERE is_default AND id <> $1`, schemeID); err != nil {
+		t.Errorf("put the default scheme back: %v", err)
+		return
+	}
+	if _, err := tx.Exec(ctx, `UPDATE workflow_scheme SET is_default = true WHERE id = $1`, schemeID); err != nil {
+		t.Errorf("put the default scheme back: %v", err)
+		return
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Errorf("put the default scheme back: %v", err)
+	}
+}
+
+// putBackAfter keeps the rows of table that match where as they are now, and
+// puts exactly those back when the test ends: for state the whole installation shares.
+func putBackAfter(t *testing.T, h *harness, table, where string, args ...any) {
+	t.Helper()
+	ctx := context.Background()
+	var saved string
+	if err := h.super.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(to_jsonb(r)), '[]')::text FROM `+table+` r WHERE `+where, args...).Scan(&saved); err != nil {
+		t.Fatalf("keep %s as it is: %v", table, err)
+	}
+	t.Cleanup(func() {
+		tx, err := h.super.Begin(ctx)
+		if err != nil {
+			t.Errorf("put %s back: %v", table, err)
+			return
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		if _, err := tx.Exec(ctx, `DELETE FROM `+table+` r WHERE `+where, args...); err != nil {
+			t.Errorf("put %s back: %v", table, err)
+			return
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO `+table+` SELECT * FROM jsonb_populate_recordset(NULL::`+table+`, $1::jsonb)`, saved); err != nil {
+			t.Errorf("put %s back: %v", table, err)
+			return
+		}
+		if err := tx.Commit(ctx); err != nil {
+			t.Errorf("put %s back: %v", table, err)
+		}
+	})
 }

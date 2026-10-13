@@ -11,18 +11,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // Each test here is a takeover that worked before sessions carried their proof:
-// a stranger uses a door of their own organization to reach the victim's.
+// a stranger uses a door of their own to reach the victim's account.
 
-// victim signs up an organization with a project in it and returns its
-// client and address.
+// victim signs in an administrator with a project of their own and returns
+// their client and address.
 func victim(t *testing.T, h *harness, api *apiServer) (*client, string) {
 	t.Helper()
 	c := api.client(t)
-	signed := c.signup(t, h, "victim")
-	want(t, c.post("/api/v1/projects", map[string]any{"name": "Secrets", "key": "SEC"}), http.StatusCreated, "the victim's project")
+	signed := c.signIn(t, h.person(t, "victim", auth.RoleOwner))
+	want(t, c.post("/api/v1/projects", map[string]any{"name": "Secrets", "key": h.projectKey(t, "SEC")}), http.StatusCreated, "the victim's project")
 	return c, principalField(t, signed, "principal", "user", "email").(string)
 }
 
@@ -37,10 +39,14 @@ func TestAnInvitationCannotHandOverAnAccount(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
-	victimClient, address := victim(t, h, api)
+	// Everybody on the team is already here; the account an invitation can
+	// still reach is a desk customer's, which it would lift onto the team.
+	address := h.person(t, "victim", auth.RoleCustomer)
+	victimClient := api.client(t)
+	victimClient.signIn(t, address)
 
 	attacker := api.client(t)
-	attacker.signup(t, h, "inviter")
+	attacker.signIn(t, h.person(t, "inviter", auth.RoleOwner))
 	invite := want(t, attacker.post("/api/v1/invites", map[string]string{"email": address, "role": "member"}), http.StatusCreated, "an invitation to the victim's address")
 	token := invite.Body["token"].(string)
 
@@ -50,7 +56,7 @@ func TestAnInvitationCannotHandOverAnAccount(t *testing.T) {
 	want(t, stranger.get("/api/v1/auth/me"), http.StatusUnauthorized, "no session came of it")
 
 	bystander := api.client(t)
-	bystander.signup(t, h, "bystander")
+	bystander.signIn(t, h.person(t, "bystander", auth.RoleOwner))
 	wantCode(t, want(t, bystander.post("/api/v1/auth/invites/accept", map[string]string{"token": token}),
 		http.StatusForbidden, "somebody else's invitation"), "invite_for_someone_else")
 
@@ -68,8 +74,8 @@ func TestAnOpenDoorCannotHandOverAnAccount(t *testing.T) {
 	victimClient, address := victim(t, h, api)
 
 	attacker := api.client(t)
-	slug := principalField(t, attacker.signup(t, h, "doorman"), "principal", "org", "slug").(string)
-	wlk, hlp := deskKey("WLK"), deskKey("HLP")
+	slug := principalField(t, attacker.signIn(t, h.person(t, "doorman", auth.RoleOwner)), "principal", "org", "slug").(string)
+	wlk, hlp := h.projectKey(t, "WLK"), h.projectKey(t, "HLP")
 	want(t, attacker.post("/api/v1/projects", map[string]any{"name": "Walk in", "key": wlk, "template": "service-desk"}), http.StatusCreated, "the attacker's desk")
 	want(t, attacker.patch("/api/v1/projects/"+wlk, map[string]any{"portalVerifies": false}), http.StatusOK, "an open door")
 
@@ -120,8 +126,8 @@ func TestAnOpenDoorCannotActForTheWholePerson(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	agent := api.client(t)
-	agent.signup(t, h, "walkin")
-	wli := deskKey("WLI")
+	agent.signIn(t, h.person(t, "walkin", auth.RoleOwner))
+	wli := h.projectKey(t, "WLI")
 	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Walk in", "key": wli, "template": "service-desk"}), http.StatusCreated, "a desk")
 	want(t, agent.patch("/api/v1/projects/"+wli, map[string]any{"portalVerifies": false}), http.StatusOK, "an open door")
 
@@ -147,8 +153,8 @@ func TestAPortalCodeCannotBeGuessedByAskingAgain(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	agent := api.client(t)
-	agent.signup(t, h, "guessdesk")
-	gsd := deskKey("GSD")
+	agent.signIn(t, h.person(t, "guessdesk", auth.RoleOwner))
+	gsd := h.projectKey(t, "GSD")
 	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Desk", "key": gsd, "template": "service-desk"}), http.StatusCreated, "a desk")
 
 	visitor := api.client(t)

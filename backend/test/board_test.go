@@ -53,7 +53,7 @@ func (h *harness) statusID(t *testing.T, ws *workspace, name string) uuid.UUID {
 func TestBoardCreatedWithProject(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "boarded")
+	ws := h.newProject(t, "boarded")
 
 	b, err := ws.boards.ForProject(ws.ctx, ws.project.Key)
 	if err != nil {
@@ -87,7 +87,7 @@ func TestBoardCreatedWithProject(t *testing.T) {
 func TestBoardPlacesCardsByStatus(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "placing")
+	ws := h.newProject(t, "placing")
 
 	waiting := ws.newIssue(t, "not started")
 	started := ws.newIssue(t, "under way")
@@ -120,7 +120,7 @@ func TestBoardPlacesCardsByStatus(t *testing.T) {
 func TestBoardMoveTakesAWorkflowTransition(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "dragging")
+	ws := h.newProject(t, "dragging")
 
 	t.Run("a legal drag moves the card and takes the transition", func(t *testing.T) {
 		card := ws.newIssue(t, "drag me forward")
@@ -236,7 +236,7 @@ func TestBoardMoveTakesAWorkflowTransition(t *testing.T) {
 func TestBoardReordering(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "ordering")
+	ws := h.newProject(t, "ordering")
 
 	first := ws.newIssue(t, "first")
 	second := ws.newIssue(t, "second")
@@ -310,7 +310,7 @@ func TestBoardReordering(t *testing.T) {
 func TestSwimlaneConfiguration(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "configuring")
+	ws := h.newProject(t, "configuring")
 
 	t.Run("a swimlane can hold several states at once", func(t *testing.T) {
 		// Merge In Progress and In Review into one "Doing" lane, which is the
@@ -354,7 +354,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	})
 
 	t.Run("a state cannot be in two swimlanes", func(t *testing.T) {
-		fresh := h.newWorkspace(t, "exclusive")
+		fresh := h.newProject(t, "exclusive")
 		todoStatus := h.statusID(t, fresh, bootstrap.StatusToDo)
 
 		_, _, err := fresh.boards.AddSwimlane(fresh.ctx, fresh.openingBoard(t), board.AddSwimlaneInput{
@@ -372,7 +372,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	// Cards whose state no swimlane covers must be surfaced, not silently
 	// dropped: a card that vanishes is the worst outcome of a misconfiguration.
 	t.Run("cards in unmapped states are surfaced", func(t *testing.T) {
-		fresh := h.newWorkspace(t, "unmapped")
+		fresh := h.newProject(t, "unmapped")
 		card := fresh.newIssue(t, "about to be orphaned")
 		fresh.move(t, h, card.Key, "Start progress")
 
@@ -391,7 +391,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	})
 
 	t.Run("a new swimlane can be added and reordered", func(t *testing.T) {
-		fresh := h.newWorkspace(t, "reordering")
+		fresh := h.newProject(t, "reordering")
 
 		lane, _, err := fresh.boards.AddSwimlane(fresh.ctx, fresh.openingBoard(t), board.AddSwimlaneInput{
 			Name:     "Blocked",
@@ -430,7 +430,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	})
 
 	t.Run("a partial reorder is refused", func(t *testing.T) {
-		fresh := h.newWorkspace(t, "partial")
+		fresh := h.newProject(t, "partial")
 		b, err := fresh.boards.ForProject(fresh.ctx, fresh.project.Key)
 		if err != nil {
 			t.Fatal(err)
@@ -444,7 +444,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	})
 
 	t.Run("the last swimlane cannot be deleted", func(t *testing.T) {
-		fresh := h.newWorkspace(t, "lastlane")
+		fresh := h.newProject(t, "lastlane")
 		b, err := fresh.boards.ForProject(fresh.ctx, fresh.project.Key)
 		if err != nil {
 			t.Fatal(err)
@@ -464,7 +464,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	})
 
 	t.Run("a work in progress limit is reported but not enforced", func(t *testing.T) {
-		fresh := h.newWorkspace(t, "wiplimit")
+		fresh := h.newProject(t, "wiplimit")
 		todo := fresh.swimlane(t, bootstrap.StatusToDo)
 		if _, err := fresh.boards.UpdateSwimlane(fresh.ctx, fresh.openingBoard(t), todo.ID,
 			board.UpdateSwimlaneInput{WIPLimit: intPtr(2)}); err != nil {
@@ -488,7 +488,7 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	})
 
 	t.Run("grouping changes how rows are labelled", func(t *testing.T) {
-		fresh := h.newWorkspace(t, "grouping")
+		fresh := h.newProject(t, "grouping")
 		card := fresh.newIssue(t, "grouped card")
 		fresh.move(t, h, card.Key, "Start progress")
 
@@ -516,42 +516,22 @@ func TestSwimlaneConfiguration(t *testing.T) {
 	})
 }
 
-func TestBoardTenantIsolation(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	alpha := h.newWorkspace(t, "boardalpha")
-	beta := h.newWorkspace(t, "boardbeta")
-
-	if _, err := alpha.boards.ForProject(alpha.ctx, beta.project.Key); !errors.Is(err, board.ErrNotFound) {
-		t.Errorf("alpha loaded beta's board: %v", err)
-	}
-
-	betaLane := beta.swimlane(t, bootstrap.StatusToDo)
-	if _, err := alpha.boards.DeleteSwimlane(alpha.ctx, alpha.openingBoard(t), betaLane.ID); !errors.Is(err, board.ErrSwimlaneNotFound) {
-		t.Errorf("error = %v, want ErrSwimlaneNotFound", err)
-	}
-
-	// And beta's board is untouched.
-	if lane := beta.swimlane(t, bootstrap.StatusToDo); lane.ID != betaLane.ID {
-		t.Error("beta's swimlane was affected by alpha's attempt")
-	}
-}
-
 // A board grows a lane when its workflow gains a status, so a card moved
 // there is never outside every lane.
 func TestABoardGainsASwimlaneWhenItsWorkflowGainsAStatus(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "lanes-follow")
-	own := h.straightThrough(t, ws, "Own flow", bootstrap.StatusToDo, bootstrap.StatusDone)
-	h.overrideWith(t, ws, "Own scheme", workflow.SchemeItemInput{WorkflowID: own.ID})
+	ws := h.newProject(t, "lanes-follow")
+	flow, review := h.name(t, "Own flow"), h.name(t, "Reviewing")
+	own := h.straightThrough(t, ws, flow, bootstrap.StatusToDo, bootstrap.StatusDone)
+	h.overrideWith(t, ws, h.name(t, "Own scheme"), workflow.SchemeItemInput{WorkflowID: own.ID})
 
-	reviewing, _, err := ws.admin.CreateStatus(ws.ctx, workflow.StatusInput{Name: "Reviewing", Category: workflow.CategoryInProgress}, ws.actor.UserID)
+	reviewing, _, err := ws.admin.CreateStatus(ws.ctx, workflow.StatusInput{Name: review, Category: workflow.CategoryInProgress}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	before := ws.boardOf(t, ws.project.Key)
-	if strings.Contains(laneNames(before), "Reviewing") {
+	if strings.Contains(laneNames(before), review) {
 		t.Fatalf("lanes = %s before the workflow knows the status", laneNames(before))
 	}
 
@@ -560,7 +540,7 @@ func TestABoardGainsASwimlaneWhenItsWorkflowGainsAStatus(t *testing.T) {
 	save := func() {
 		t.Helper()
 		if _, _, err := ws.admin.SaveWorkflow(ws.ctx, own.ID, workflow.GraphInput{
-			Name:  "Own flow",
+			Name:  flow,
 			Steps: []workflow.StepInput{{StatusID: todo, IsInitial: true}, {StatusID: reviewing.ID}, {StatusID: done}},
 			Transitions: []workflow.TransitionInput{
 				{Name: "Review", FromStatusID: &todo, ToStatusID: reviewing.ID},
@@ -574,7 +554,7 @@ func TestABoardGainsASwimlaneWhenItsWorkflowGainsAStatus(t *testing.T) {
 
 	after := ws.boardOf(t, ws.project.Key)
 	lanes := after.Swimlanes
-	if len(lanes) != len(before.Swimlanes)+1 || lanes[len(lanes)-1].Name != "Reviewing" {
+	if len(lanes) != len(before.Swimlanes)+1 || lanes[len(lanes)-1].Name != review {
 		t.Fatalf("lanes = %s, want Reviewing added last", laneNames(after))
 	}
 	last := lanes[len(lanes)-1]
@@ -590,12 +570,12 @@ func TestABoardGainsASwimlaneWhenItsWorkflowGainsAStatus(t *testing.T) {
 	})
 
 	t.Run("a project on another workflow is left alone", func(t *testing.T) {
-		other := h.newWorkspace(t, "lanes-elsewhere")
-		if strings.Contains(laneNames(other.boardOf(t, other.project.Key)), "Reviewing") {
-			t.Error("another organization's board grew a lane")
+		other := h.newProject(t, "lanes-elsewhere")
+		if strings.Contains(laneNames(other.boardOf(t, other.project.Key)), review) {
+			t.Error("another project's board grew a lane")
 		}
 		spare := ws.fromTemplate(t, h, "task-tracking", "SPRE")
-		if strings.Contains(laneNames(ws.boardOf(t, spare.Key)), "Reviewing") {
+		if strings.Contains(laneNames(ws.boardOf(t, spare.Key)), review) {
 			t.Error("a project following the default workflow grew a lane for a status it cannot reach")
 		}
 	})

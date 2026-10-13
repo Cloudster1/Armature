@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A comment is changed through the issue it was written on. One that is not
@@ -14,13 +16,14 @@ import (
 func TestACommentIsChangedOnlyThroughItsOwnIssue(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	cedKey := h.projectKey(t, "CED")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "commentedits")
-	want(t, owner.post("/api/v1/projects", map[string]string{"name": "Comment Edits", "key": "CED"}), http.StatusCreated, "project")
+	owner.signIn(t, h.person(t, "commentedits", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]string{"name": "Comment Edits", "key": cedKey}), http.StatusCreated, "project")
 	file := func(summary string) string {
 		t.Helper()
-		return obj(t, want(t, owner.post("/api/v1/issues", map[string]any{"projectKey": "CED", "summary": summary}), http.StatusCreated, summary), "issue")["key"].(string)
+		return obj(t, want(t, owner.post("/api/v1/issues", map[string]any{"projectKey": cedKey, "summary": summary}), http.StatusCreated, summary), "issue")["key"].(string)
 	}
 	onKey, otherKey := file("commented on"), file("not commented on")
 	commentID := idOf(t, want(t, owner.post("/api/v1/issues/"+onKey+"/comments", map[string]any{"text": "a remark"}), http.StatusCreated, "comment"), "comment")

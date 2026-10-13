@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A sign-in lands in the installation: the session acts in the person's
@@ -21,7 +23,7 @@ func TestASignInLandsInTheInstallation(t *testing.T) {
 	ctx := context.Background()
 
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "lands")
+	signedUp := owner.signIn(t, h.person(t, "lands", auth.RoleOwner))
 	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	userID := principalField(t, signedUp, "principal", "user", "id").(string)
@@ -56,25 +58,11 @@ func TestASignInLandsInTheInstallation(t *testing.T) {
 		refusedByCheck(t, err, "a session's proof tied to an organization")
 	})
 
-	t.Run("a membership made later moves no session, and there is no switching to it", func(t *testing.T) {
-		var elsewhere string
-		if err := h.super.QueryRow(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role)
-			SELECT m.org_id, $2, 'member' FROM org_member m JOIN app_user u ON u.id = m.user_id WHERE u.email = $1
-			RETURNING (SELECT slug FROM org WHERE id = org_id)`,
-			h.foundOrganization(t, "landsaway", "Elsewhere"), userID).Scan(&elsewhere); err != nil {
-			t.Fatal(err)
-		}
-		if got := owner.post("/api/v1/auth/switch-org", map[string]string{"slug": elsewhere}); got.Status != http.StatusNotFound {
-			t.Errorf("switching to the other organization answered %d %s, want 404: there is no switching", got.Status, got.Raw)
-		}
-		if got := in(t, owner); got != orgID {
-			t.Errorf("the open session moved to %v, want %v", got, orgID)
-		}
+	t.Run("a new sign-in lands in the installation too", func(t *testing.T) {
 		again := api.client(t)
 		want(t, again.post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), http.StatusOK, "sign in again")
-		if got := in(t, again); got != orgID {
-			t.Errorf("a new sign-in landed in %v, want the organization joined first, %v", got, orgID)
+		if got := in(t, again); got != shared.installation.ID.String() || got != orgID {
+			t.Errorf("a new sign-in landed in %v, want the installation, %v", got, shared.installation.ID)
 		}
 	})
 }

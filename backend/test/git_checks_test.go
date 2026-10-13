@@ -21,7 +21,7 @@ func checkRun(id int64, name, conclusion, sha, startedAt string) string {
 func TestAPullRequestsCIReadsFailedWhenAnyCheckFailed(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "checking")
+	ws := h.newProject(t, "checking")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "", "")
 	found := ws.newIssue(t, "make the checks honest")

@@ -4,13 +4,11 @@ package test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/desk"
-	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/template"
@@ -25,7 +23,7 @@ func (ws *workspace) deskBeside(t *testing.T, h *harness, d *desk.Service, name 
 	t.Helper()
 	templates := template.NewService(h.cluster, ws.projects, ws.admin).WithDesk(d)
 	p, _, err := templates.Create(ws.ctx, "service-desk", project.CreateInput{
-		Name: name, Key: strings.ToUpper(name[:min(len(name), 3)] + uuid.New().String()[:3]),
+		Name: name, Key: h.projectKey(t, name),
 	}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("create the second desk: %v", err)
@@ -77,7 +75,7 @@ func policyOf(t *testing.T, d *desk.Service, ws *workspace, projectKey string, m
 func TestAPriorityChangeMovesTheGoalAndKeepsTheTimeRun(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "reprioritised")
+	ws := h.newProject(t, "reprioritised")
 	d, p := ws.aDesk(t, h, "Priority desk")
 	customer := ws.customerOf(t, h, "urgent")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -114,11 +112,7 @@ func TestAPriorityChangeMovesTheGoalAndKeepsTheTimeRun(t *testing.T) {
 		if first.BreachedAt == nil || !first.Breached {
 			t.Errorf("first response clock = %+v, want 90 minutes against an hour recorded as breached", first)
 		}
-		var breaches int
-		if err := h.super.QueryRow(context.Background(),
-			`SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2`, ws.orgID, events.TopicSLABreached).Scan(&breaches); err != nil {
-			t.Fatal(err)
-		}
+		breaches := breachEvents(t, h, p.Key)
 		if breaches != 1 {
 			t.Errorf("%d breach events, want the one", breaches)
 		}
@@ -189,7 +183,7 @@ func TestAPriorityChangeMovesTheGoalAndKeepsTheTimeRun(t *testing.T) {
 func TestMovingARequestOutOfTheDeskStopsItsClocks(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "moved-out")
+	ws := h.newProject(t, "moved-out")
 	d, p := ws.aDesk(t, h, "Leaving desk")
 	customer := ws.customerOf(t, h, "leaver")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -227,7 +221,7 @@ func TestMovingARequestOutOfTheDeskStopsItsClocks(t *testing.T) {
 func TestMovingAnIssueIntoTheDeskStartsItsClocks(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "moved-in")
+	ws := h.newProject(t, "moved-in")
 	d, p := ws.aDesk(t, h, "Arrival desk")
 	waitingForSupport := h.statusID(t, ws, "Waiting for support")
 

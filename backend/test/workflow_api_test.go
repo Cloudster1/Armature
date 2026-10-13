@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/perm"
 )
 
@@ -31,12 +32,13 @@ func find(t *testing.T, list any, field, value string) map[string]any {
 func TestAPIWorkflowScopes(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	scopeKey := h.projectKey(t, "SCOPE")
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	owner.signup(t, h, "wfapi")
+	owner.signIn(t, h.person(t, "wfapi", auth.RoleOwner))
 
-	created := owner.post("/api/v1/projects", map[string]string{"name": "Scoped", "key": "SCOPE"})
+	created := owner.post("/api/v1/projects", map[string]string{"name": "Scoped", "key": scopeKey})
 	if created.Status != http.StatusCreated {
 		t.Fatalf("create project returned %d: %s", created.Status, created.Raw)
 	}
@@ -46,9 +48,10 @@ func TestAPIWorkflowScopes(t *testing.T) {
 	statuses := owner.get("/api/v1/statuses")
 	review := find(t, statuses.Body["statuses"], "name", "In Review")["id"].(string)
 	done := find(t, statuses.Body["statuses"], "name", "Done")["id"].(string)
+	triage, scoped := h.name(t, "Bug triage"), h.name(t, "Scoped bugs")
 
-	t.Run("a project starts out with the organization deciding everything", func(t *testing.T) {
-		resp := owner.get("/api/v1/projects/SCOPE/workflows")
+	t.Run("a project starts out with the default deciding everything", func(t *testing.T) {
+		resp := owner.get("/api/v1/projects/" + scopeKey + "/workflows")
 		if resp.Status != http.StatusOK {
 			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
 		}
@@ -66,7 +69,7 @@ func TestAPIWorkflowScopes(t *testing.T) {
 
 	t.Run("an administrator can author a workflow", func(t *testing.T) {
 		resp := owner.post("/api/v1/workflows", map[string]any{
-			"name": "Bug triage",
+			"name": triage,
 			"steps": []map[string]any{
 				{"statusId": review, "isInitial": true},
 				{"statusId": done},
@@ -97,7 +100,7 @@ func TestAPIWorkflowScopes(t *testing.T) {
 
 	t.Run("a scheme naming one issue type overrides only that type", func(t *testing.T) {
 		scheme := owner.post("/api/v1/workflow-schemes", map[string]any{
-			"name":  "Scoped bugs",
+			"name":  scoped,
 			"items": []map[string]any{{"issueTypeId": bug, "workflowId": workflowID}},
 		})
 		if scheme.Status != http.StatusCreated {
@@ -105,27 +108,27 @@ func TestAPIWorkflowScopes(t *testing.T) {
 		}
 		schemeID = scheme.Body["scheme"].(map[string]any)["id"].(string)
 
-		applied := owner.put("/api/v1/projects/SCOPE/workflow-scheme", map[string]any{"schemeId": schemeID})
+		applied := owner.put("/api/v1/projects/"+scopeKey+"/workflow-scheme", map[string]any{"schemeId": schemeID})
 		if applied.Status != http.StatusOK {
 			t.Fatalf("returned %d: %s", applied.Status, applied.Raw)
 		}
 
-		resolved := owner.get("/api/v1/projects/SCOPE/workflows")
+		resolved := owner.get("/api/v1/projects/" + scopeKey + "/workflows")
 		bugRow := find(t, resolved.Body["assignments"], "issueTypeName", "Bug")
-		if bugRow["workflowName"] != "Bug triage" {
-			t.Errorf("bug uses %v, want Bug triage", bugRow["workflowName"])
+		if bugRow["workflowName"] != triage {
+			t.Errorf("bug uses %v, want %s", bugRow["workflowName"], triage)
 		}
 		if origin := bugRow["origin"].(map[string]any); origin["scope"] != "project" || origin["named"] != true {
 			t.Errorf("bug origin = %v, want a named project mapping", origin)
 		}
 		taskRow := find(t, resolved.Body["assignments"], "issueTypeName", "Task")
 		if origin := taskRow["origin"].(map[string]any); origin["scope"] != "tenant" {
-			t.Errorf("task origin = %v, want the organization", origin)
+			t.Errorf("task origin = %v, want the default", origin)
 		}
 	})
 
 	t.Run("an issue of the overridden type opens where the override says", func(t *testing.T) {
-		resp := owner.post("/api/v1/projects/SCOPE/issues", map[string]any{
+		resp := owner.post("/api/v1/projects/"+scopeKey+"/issues", map[string]any{
 			"summary": "found by the override", "typeId": bug,
 		})
 		if resp.Status != http.StatusCreated {
@@ -137,27 +140,27 @@ func TestAPIWorkflowScopes(t *testing.T) {
 		}
 	})
 
-	t.Run("the listing says which scheme the organization answers with", func(t *testing.T) {
+	t.Run("the listing says which scheme is the default", func(t *testing.T) {
 		resp := owner.get("/api/v1/workflow-schemes")
 		mine := find(t, resp.Body["schemes"], "id", schemeID)
 		if mine["isDefault"] != false {
-			t.Errorf("the project's scheme is marked as the organization's own")
+			t.Errorf("the project's scheme is marked as the default")
 		}
 		keys, _ := mine["projectKeys"].([]any)
-		if len(keys) != 1 || keys[0] != "SCOPE" {
-			t.Errorf("projectKeys = %v, want just SCOPE", keys)
+		if len(keys) != 1 || keys[0] != scopeKey {
+			t.Errorf("projectKeys = %v, want just "+scopeKey, keys)
 		}
 	})
 
 	t.Run("handing the decision back is a null, not an omission", func(t *testing.T) {
-		resp := owner.put("/api/v1/projects/SCOPE/workflow-scheme", map[string]any{"schemeId": nil})
+		resp := owner.put("/api/v1/projects/"+scopeKey+"/workflow-scheme", map[string]any{"schemeId": nil})
 		if resp.Status != http.StatusOK {
 			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
 		}
-		resolved := owner.get("/api/v1/projects/SCOPE/workflows")
+		resolved := owner.get("/api/v1/projects/" + scopeKey + "/workflows")
 		bugRow := find(t, resolved.Body["assignments"], "issueTypeName", "Bug")
 		if origin := bugRow["origin"].(map[string]any); origin["scope"] != "tenant" {
-			t.Errorf("bug origin = %v, want the organization again", origin)
+			t.Errorf("bug origin = %v, want the default again", origin)
 		}
 	})
 }
@@ -165,11 +168,12 @@ func TestAPIWorkflowScopes(t *testing.T) {
 func TestAPIWorkflowAdministrationIsGuarded(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	guardKey := h.projectKey(t, "GUARD")
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	owner.signup(t, h, "wfguard")
-	owner.post("/api/v1/projects", map[string]string{"name": "Guarded", "key": "GUARD"})
+	owner.signIn(t, h.person(t, "wfguard", auth.RoleOwner))
+	owner.post("/api/v1/projects", map[string]string{"name": "Guarded", "key": guardKey})
 
 	invite := owner.post("/api/v1/invites", map[string]string{
 		"email": h.email(t, "wfmember"), "role": "member",
@@ -181,7 +185,7 @@ func TestAPIWorkflowAdministrationIsGuarded(t *testing.T) {
 
 	// Reading the configuration is ordinary work: it explains why a button is
 	// or is not there. Changing it is not.
-	for _, path := range []string{"/api/v1/workflows", "/api/v1/workflow-schemes", "/api/v1/projects/GUARD/workflows"} {
+	for _, path := range []string{"/api/v1/workflows", "/api/v1/workflow-schemes", "/api/v1/projects/" + guardKey + "/workflows"} {
 		if resp := member.get(path); resp.Status != http.StatusOK {
 			t.Errorf("GET %s as a member returned %d, want it readable", path, resp.Status)
 		}
@@ -190,8 +194,8 @@ func TestAPIWorkflowAdministrationIsGuarded(t *testing.T) {
 	for _, ep := range []struct{ method, path string }{
 		{http.MethodPost, "/api/v1/workflows"},
 		{http.MethodPost, "/api/v1/workflow-schemes"},
-		{http.MethodPut, "/api/v1/projects/GUARD/workflow-scheme"},
-		{http.MethodPut, "/api/v1/projects/GUARD/workflow-assignments/00000000-0000-0000-0000-000000000000"},
+		{http.MethodPut, "/api/v1/projects/" + guardKey + "/workflow-scheme"},
+		{http.MethodPut, "/api/v1/projects/" + guardKey + "/workflow-assignments/00000000-0000-0000-0000-000000000000"},
 		{http.MethodDelete, "/api/v1/workflow-schemes/00000000-0000-0000-0000-000000000000"},
 	} {
 		resp := member.do(ep.method, ep.path, map[string]any{"name": "Sneaky"})
@@ -208,11 +212,12 @@ func TestAPIWorkflowDesigner(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	owner.signup(t, h, "designer")
+	owner.signIn(t, h.person(t, "designer", auth.RoleOwner))
 
 	statuses := owner.get("/api/v1/statuses")
 	todo := find(t, statuses.Body["statuses"], "name", "To Do")["id"].(string)
 	done := find(t, statuses.Body["statuses"], "name", "Done")["id"].(string)
+	drawn := h.name(t, "Drawn")
 
 	t.Run("the rule catalogue says what each rule is called and needs", func(t *testing.T) {
 		resp := owner.get("/api/v1/workflows/rule-types")
@@ -233,7 +238,7 @@ func TestAPIWorkflowDesigner(t *testing.T) {
 
 	t.Run("a workflow is created with its layout and rules", func(t *testing.T) {
 		resp := owner.post("/api/v1/workflows", map[string]any{
-			"name": "Drawn",
+			"name": drawn,
 			"steps": []map[string]any{
 				{"statusId": todo, "isInitial": true, "layout": map[string]int{"x": 40, "y": 60}},
 				{"statusId": done, "layout": map[string]int{"x": 320, "y": 60}},
@@ -275,7 +280,7 @@ func TestAPIWorkflowDesigner(t *testing.T) {
 
 	t.Run("a save that leaves the rules out keeps them", func(t *testing.T) {
 		resp := owner.put("/api/v1/workflows/"+workflowID, map[string]any{
-			"name": "Drawn",
+			"name": drawn,
 			"steps": []map[string]any{
 				{"statusId": todo, "isInitial": true, "layout": map[string]int{"x": 40, "y": 60}},
 				{"statusId": done, "layout": map[string]int{"x": 400, "y": 60}},
@@ -295,7 +300,7 @@ func TestAPIWorkflowDesigner(t *testing.T) {
 
 	t.Run("a rule the engine does not have is refused with its name", func(t *testing.T) {
 		resp := owner.put("/api/v1/workflows/"+workflowID, map[string]any{
-			"name":  "Drawn",
+			"name":  drawn,
 			"steps": []map[string]any{{"statusId": todo, "isInitial": true}, {"statusId": done}},
 			"transitions": []map[string]any{
 				{"id": finishID, "name": "Finish", "fromStatusId": todo, "toStatusId": done, "rules": []map[string]any{
@@ -313,23 +318,25 @@ func TestAPIWorkflowDesigner(t *testing.T) {
 	})
 }
 
-// A project administrator is not an organization administrator: they may
+// A project administrator is not an administrator of everything: they may
 // decide one row on their own project and nothing wider.
 func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	rowKey := h.projectKey(t, "ROW")
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	owner.signup(t, h, "rowapi")
-	if created := owner.post("/api/v1/projects", map[string]string{"name": "Rowwise", "key": "ROW"}); created.Status != http.StatusCreated {
+	owner.signIn(t, h.person(t, "rowapi", auth.RoleOwner))
+	if created := owner.post("/api/v1/projects", map[string]string{"name": "Rowwise", "key": rowKey}); created.Status != http.StatusCreated {
 		t.Fatalf("create project returned %d: %s", created.Status, created.Raw)
 	}
 	statuses := owner.get("/api/v1/statuses")
 	review := find(t, statuses.Body["statuses"], "name", "In Review")["id"].(string)
 	done := find(t, statuses.Body["statuses"], "name", "Done")["id"].(string)
+	triage := h.name(t, "Bug triage")
 	built := owner.post("/api/v1/workflows", map[string]any{
-		"name":        "Bug triage",
+		"name":        triage,
 		"steps":       []map[string]any{{"statusId": review, "isInitial": true}, {"statusId": done}},
 		"transitions": []map[string]any{{"name": "Resolve", "fromStatusId": review, "toStatusId": done}},
 	})
@@ -337,10 +344,10 @@ func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
 	types := owner.get("/api/v1/issue-types")
 	bug := find(t, types.Body["issueTypes"], "name", "Bug")["id"].(string)
 
-	admin := api.asRole(t, h, owner, "ROW", perm.ProjectAdministrator)
+	admin := api.asRole(t, h, owner, rowKey, perm.ProjectAdministrator)
 
 	t.Run("mapping a type answers with the whole table", func(t *testing.T) {
-		resp := admin.put("/api/v1/projects/ROW/workflow-assignments/"+bug, map[string]any{"workflowId": workflowID})
+		resp := admin.put("/api/v1/projects/"+rowKey+"/workflow-assignments/"+bug, map[string]any{"workflowId": workflowID})
 		if resp.Status != http.StatusOK {
 			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
 		}
@@ -348,8 +355,8 @@ func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
 			t.Error("schemeId is null after mapping; the row has nowhere to live")
 		}
 		row := find(t, resp.Body["assignments"], "issueTypeName", "Bug")
-		if row["workflowName"] != "Bug triage" {
-			t.Errorf("bug uses %v, want Bug triage", row["workflowName"])
+		if row["workflowName"] != triage {
+			t.Errorf("bug uses %v, want %s", row["workflowName"], triage)
 		}
 		if origin := row["origin"].(map[string]any); origin["scope"] != "project" || origin["named"] != true {
 			t.Errorf("origin = %v, want the project naming it", origin)
@@ -357,7 +364,7 @@ func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
 	})
 
 	t.Run("a workflow that does not exist is refused with a sentence", func(t *testing.T) {
-		resp := admin.put("/api/v1/projects/ROW/workflow-assignments/"+bug, map[string]any{"workflowId": uuid.New().String()})
+		resp := admin.put("/api/v1/projects/"+rowKey+"/workflow-assignments/"+bug, map[string]any{"workflowId": uuid.New().String()})
 		if resp.Status != http.StatusBadRequest {
 			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
 		}
@@ -366,18 +373,18 @@ func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
 		}
 	})
 
-	t.Run("an issue type the organization does not have is refused", func(t *testing.T) {
-		resp := admin.put("/api/v1/projects/ROW/workflow-assignments/"+uuid.New().String(), map[string]any{"workflowId": workflowID})
+	t.Run("an issue type nobody has is refused", func(t *testing.T) {
+		resp := admin.put("/api/v1/projects/"+rowKey+"/workflow-assignments/"+uuid.New().String(), map[string]any{"workflowId": workflowID})
 		if resp.Status != http.StatusBadRequest {
 			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
 		}
-		if resp := admin.put("/api/v1/projects/ROW/workflow-assignments/not-a-uuid", map[string]any{"workflowId": workflowID}); resp.Status != http.StatusBadRequest {
+		if resp := admin.put("/api/v1/projects/"+rowKey+"/workflow-assignments/not-a-uuid", map[string]any{"workflowId": workflowID}); resp.Status != http.StatusBadRequest {
 			t.Errorf("a garbage id returned %d, want 400", resp.Status)
 		}
 	})
 
 	t.Run("null hands the type back and the scheme goes with it", func(t *testing.T) {
-		resp := admin.put("/api/v1/projects/ROW/workflow-assignments/"+bug, map[string]any{"workflowId": nil})
+		resp := admin.put("/api/v1/projects/"+rowKey+"/workflow-assignments/"+bug, map[string]any{"workflowId": nil})
 		if resp.Status != http.StatusOK {
 			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
 		}
@@ -386,7 +393,7 @@ func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
 		}
 		row := find(t, resp.Body["assignments"], "issueTypeName", "Bug")
 		if origin := row["origin"].(map[string]any); origin["scope"] != "tenant" {
-			t.Errorf("origin = %v, want the organization again", origin)
+			t.Errorf("origin = %v, want the default again", origin)
 		}
 	})
 

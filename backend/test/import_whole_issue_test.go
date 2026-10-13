@@ -3,11 +3,11 @@
 package test
 
 import (
+	"bytes"
+	"encoding/csv"
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/component"
 	"github.com/armature/armature/backend/internal/csvio"
@@ -18,20 +18,48 @@ import (
 	"github.com/armature/armature/backend/internal/version"
 )
 
+// jiraExport is the Jira export the import tests read, its labels renamed to
+// names of the test's own: labels are one list for the whole installation.
+func jiraExport(t *testing.T, h *harness) []byte {
+	t.Helper()
+	raw, err := os.ReadFile("testdata/jira-export.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(bytes.NewReader(raw)).ReadAll()
+	if err != nil {
+		t.Fatalf("read the export: %v", err)
+	}
+	renamed := map[string]string{}
+	for _, row := range rows[1:] {
+		for col, value := range row {
+			if rows[0][col] != "Labels" || value == "" {
+				continue
+			}
+			if renamed[value] == "" {
+				renamed[value] = h.name(t, value)
+			}
+			row[col] = renamed[value]
+		}
+	}
+	var out bytes.Buffer
+	if err := csv.NewWriter(&out).WriteAll(rows); err != nil {
+		t.Fatalf("write the export back: %v", err)
+	}
+	return out.Bytes()
+}
+
 // An issue is more than its own fields: the epic over it, the sprint and the
 // version it is in, what it blocks, and what was said and spent on it.
 func TestAnImportBringsTheWholeIssue(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "wholeissue")
+	ws := h.newProject(t, "wholeissue")
 	byrne := h.joinExisting(t, ws, h.email(t, "ada.byrne"), "member")
 	files := csvio.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster), h.authService()).
 		WithPlanning(ws.sprints, version.NewService(h.cluster), component.NewService(h.cluster), ws.teams)
 
-	data, err := os.ReadFile("testdata/jira-export.csv")
-	if err != nil {
-		t.Fatal(err)
-	}
+	data := jiraExport(t, h)
 	_, mapping, err := files.Preview(ws.ctx, ws.project.Key, data, nil)
 	if err != nil {
 		t.Fatalf("preview: %v", err)
@@ -161,15 +189,13 @@ func TestAnImportBringsTheWholeIssue(t *testing.T) {
 func TestTwoProjectsMayImportTheSameFile(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "twice")
+	twKey := h.projectKey(t, "TW")
+	ws := h.newProject(t, "twice")
 	files := csvio.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster), h.authService()).
 		WithPlanning(ws.sprints, version.NewService(h.cluster), component.NewService(h.cluster), ws.teams)
-	data, err := os.ReadFile("testdata/jira-export.csv")
-	if err != nil {
-		t.Fatal(err)
-	}
+	data := jiraExport(t, h)
 	elsewhere, _, err := ws.projects.Create(ws.ctx, project.CreateInput{
-		Name: "The same work again", Key: "TW" + strings.ToUpper(uuid.New().String()[:4]),
+		Name: "The same work again", Key: twKey,
 	}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("the second project: %v", err)

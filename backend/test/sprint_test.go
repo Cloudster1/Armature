@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/bootstrap"
-	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/plan"
 	"github.com/armature/armature/backend/internal/sprint"
@@ -67,7 +66,7 @@ func (ws *workspace) planOf(t *testing.T) *plan.Plan {
 func TestSprintStartsOnlyWhenItCan(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "starting")
+	ws := h.newProject(t, "starting")
 
 	t.Run("a sprint with no dates cannot start", func(t *testing.T) {
 		vague, _, err := ws.sprints.Create(ws.ctx, ws.project.Key,
@@ -129,7 +128,7 @@ func TestSprintStartsOnlyWhenItCan(t *testing.T) {
 func TestSprintCapacityCountsTheWorkInIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "capacity")
+	ws := h.newProject(t, "capacity")
 
 	running := ws.planned(t, h, "Sprint 1", "2026-03-02", "2026-03-13", size(10))
 	if _, _, err := ws.sprints.Start(ws.ctx, running.ID, ws.actor.UserID); err != nil {
@@ -201,7 +200,7 @@ func TestSprintCapacityCountsTheWorkInIt(t *testing.T) {
 func TestWorkInASprintIsCountedOnceEndToEnd(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "once")
+	ws := h.newProject(t, "once")
 
 	running := ws.planned(t, h, "Sprint 1", "2026-03-02", "2026-03-13", size(10))
 	story := ws.typed(t, h, bootstrap.TypeStory, "a story with parts")
@@ -232,7 +231,7 @@ func TestWorkInASprintIsCountedOnceEndToEnd(t *testing.T) {
 func TestAnEmptyProjectStillShowsItsSprints(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "empty")
+	ws := h.newProject(t, "empty")
 
 	ws.planned(t, h, "Sprint 1", "2026-03-02", "2026-03-13", size(10))
 
@@ -251,7 +250,7 @@ func TestAnEmptyProjectStillShowsItsSprints(t *testing.T) {
 func TestCompletingASprintCarriesTheUnfinishedWork(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "completing")
+	ws := h.newProject(t, "completing")
 
 	running := ws.planned(t, h, "Sprint 1", "2026-03-02", "2026-03-13", size(10))
 	next := ws.planned(t, h, "Sprint 2", "2026-03-16", "2026-03-27", size(10))
@@ -326,7 +325,7 @@ func TestCompletingASprintCarriesTheUnfinishedWork(t *testing.T) {
 func TestAClosedSprintsReportDoesNotDrift(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "record")
+	ws := h.newProject(t, "record")
 
 	running := ws.planned(t, h, "Sprint 1", "2026-03-02", "2026-03-13", size(10))
 	if _, _, err := ws.sprints.Start(ws.ctx, running.ID, ws.actor.UserID); err != nil {
@@ -360,7 +359,7 @@ func TestAClosedSprintsReportDoesNotDrift(t *testing.T) {
 func TestASprintOnlyMovesForwards(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "forwards")
+	ws := h.newProject(t, "forwards")
 
 	running := ws.planned(t, h, "Sprint 1", "2026-03-02", "2026-03-13", nil)
 	if _, _, err := ws.sprints.Start(ws.ctx, running.ID, ws.actor.UserID); err != nil {
@@ -415,7 +414,7 @@ func TestASprintOnlyMovesForwards(t *testing.T) {
 func TestDeletingAPlannedSprintReturnsItsWork(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "deleting")
+	ws := h.newProject(t, "deleting")
 
 	planned := ws.planned(t, h, "Sprint 1", "2026-03-02", "2026-03-13", nil)
 	task := ws.typed(t, h, bootstrap.TypeTask, "committed to a sprint that goes away")
@@ -440,8 +439,8 @@ func TestDeletingAPlannedSprintReturnsItsWork(t *testing.T) {
 func TestASprintCannotBeBorrowedFromAnotherProject(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	mine := h.newWorkspace(t, "mine")
-	theirs := h.newWorkspace(t, "theirs")
+	mine := h.newProject(t, "mine")
+	theirs := h.newProject(t, "theirs")
 
 	other := theirs.planned(t, h, "Their sprint", "2026-03-02", "2026-03-13", nil)
 	task := mine.typed(t, h, bootstrap.TypeTask, "stays where it belongs")
@@ -472,7 +471,7 @@ func TestASprintCannotBeBorrowedFromAnotherProject(t *testing.T) {
 func TestWorkScheduledOutsideItsSprintIsReportedOnThePlan(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "outside")
+	ws := h.newProject(t, "outside")
 
 	running := ws.planned(t, h, "Sprint 1", "2026-03-02", "2026-03-13", nil)
 	task := ws.typed(t, h, bootstrap.TypeTask, "runs past the sprint")
@@ -515,7 +514,7 @@ func ptrTo[T any](v T) *T { return &v }
 // day's last word: writing again replaces it.
 func TestASprintIsSnapshottedDayByDay(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "snapshots")
+	ws := h.newProject(t, "snapshots")
 	first := ws.newIssue(t, "five points of it")
 	second := ws.newIssue(t, "three points of it")
 	sp := ws.planned(t, h, "Sprint S", "2026-09-07", "2026-09-18", nil)
@@ -596,31 +595,15 @@ func TestASprintIsSnapshottedDayByDay(t *testing.T) {
 		if err == nil {
 			t.Error("a second row for the same day was accepted")
 		}
-
-		other := h.newWorkspace(t, "snapshots-other")
-		_, err = h.cluster.Write(other.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `
-				INSERT INTO sprint_snapshot (org_id, project_id, sprint_id, day, scope, done, issues, issues_done, unestimated)
-				VALUES ($1, $2, $3, '2020-01-01', 1, 0, 1, 0, 0)`, ws.orgID, projectID, sp.ID)
-			return err
-		})
-		if err == nil {
-			t.Error("another organization wrote a snapshot into this one")
-		}
-		theirs, err := other.sprints.Snapshots(other.ctx, sp.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(theirs) != 0 {
-			t.Errorf("another organization reads %d of this one's snapshots", len(theirs))
-		}
 	})
 }
 
-func TestTheWorkerSnapshotsEveryOrganizationsSprints(t *testing.T) {
+// One pass of the worker writes the standing of every running sprint, in
+// whichever project it runs.
+func TestTheWorkerSnapshotsEveryProjectsSprints(t *testing.T) {
 	h := newHarness(t)
-	a := h.newWorkspace(t, "snapshots-a")
-	b := h.newWorkspace(t, "snapshots-b")
+	a := h.newProject(t, "snapshots-a")
+	b := h.newProject(t, "snapshots-b")
 	for _, ws := range []*workspace{a, b} {
 		sp := ws.planned(t, h, "Sprint W", "2026-09-07", "2026-09-18", nil)
 		ws.commit(t, ws.newIssue(t, "work").Key, &sp.ID, size(2))

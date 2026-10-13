@@ -12,7 +12,7 @@ import (
 func TestAMergeMovesTheIssueOnce(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mergeonce")
+	ws := h.newProject(t, "mergeonce")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "", "Close")
 	found := ws.newIssue(t, "ship the export")

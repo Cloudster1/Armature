@@ -7,66 +7,35 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
-// TestCrossTenantAccessAtTheAPI is the isolation test that matters to a
-// customer. The database level test proves row level security works; this one
-// proves the API actually sits behind it, with real credentials from two
-// separate organizations.
-func TestCrossTenantAccessAtTheAPI(t *testing.T) {
+// A personal token is its owner's alone: another person neither lists it nor
+// revokes it, and it acts as the person who made it.
+func TestAPersonsTokensAreTheirOwn(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
 	alpha := api.client(t)
-	alphaSignup := alpha.signup(t, h, "alpha")
-	alphaSlug := principalField(t, alphaSignup, "principal", "org", "slug").(string)
-
+	alphaEmail := h.person(t, "alpha", auth.RoleMember)
+	alpha.signIn(t, alphaEmail)
 	beta := api.client(t)
-	beta.signup(t, h, "beta")
+	beta.signIn(t, h.person(t, "beta", auth.RoleMember))
 
-	// Each organization creates a token and an invitation to be probed for.
-	alphaToken := alpha.post("/api/v1/tokens", map[string]any{"name": "alpha secret"})
+	alphaToken := want(t, alpha.post("/api/v1/tokens", map[string]any{"name": "alpha secret"}), http.StatusCreated, "alpha's token")
 	alphaTokenID := principalField(t, alphaToken, "token", "id").(string)
 
-	betaInvite := beta.post("/api/v1/invites", map[string]string{
-		"email": h.email(t, "betaonly"), "role": "member",
-	})
-	if betaInvite.Status != http.StatusCreated {
-		t.Fatalf("beta invite returned %d: %s", betaInvite.Status, betaInvite.Raw)
-	}
-	betaInviteID := principalField(t, betaInvite, "invite", "id").(string)
-
-	t.Run("one organization's listings never include another's rows", func(t *testing.T) {
-		invites := alpha.get("/api/v1/invites")
-		if invites.Status != http.StatusOK {
-			t.Fatalf("status = %d", invites.Status)
-		}
-		if strings.Contains(invites.Raw, betaInviteID) {
-			t.Error("alpha can see beta's invitation")
-		}
-
-		tokens := beta.get("/api/v1/tokens")
-		if strings.Contains(tokens.Raw, alphaTokenID) {
+	t.Run("another person's list does not include it", func(t *testing.T) {
+		if tokens := want(t, beta.get("/api/v1/tokens"), http.StatusOK, "beta's tokens"); strings.Contains(tokens.Raw, alphaTokenID) {
 			t.Error("beta can see alpha's API token")
 		}
 	})
 
-	t.Run("addressing another organization's resource by id gives a not found", func(t *testing.T) {
+	t.Run("another person cannot revoke it", func(t *testing.T) {
 		// Not a 403: confirming that an id exists elsewhere is itself a leak.
-		resp := alpha.delete("/api/v1/invites/" + betaInviteID)
-		if resp.Status != http.StatusNotFound && resp.Status != http.StatusGone {
-			t.Errorf("deleting beta's invitation from alpha returned %d, want 404 or 410", resp.Status)
-		}
-
-		if still := beta.get("/api/v1/invites"); !strings.Contains(still.Raw, betaInviteID) {
-			t.Error("alpha's attempt actually deleted beta's invitation")
-		}
-	})
-
-	t.Run("another organization's token cannot be revoked", func(t *testing.T) {
-		resp := beta.delete("/api/v1/tokens/" + alphaTokenID)
-		if resp.Status != http.StatusNotFound {
+		if resp := beta.delete("/api/v1/tokens/" + alphaTokenID); resp.Status != http.StatusNotFound {
 			t.Errorf("status = %d, want 404", resp.Status)
 		}
 		if after := alpha.get("/api/v1/tokens"); !strings.Contains(after.Raw, alphaTokenID) {
@@ -74,17 +43,12 @@ func TestCrossTenantAccessAtTheAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("an API token is confined to its own organization", func(t *testing.T) {
-		secret := principalField(t, alphaToken, "token", "secret").(string)
+	t.Run("the token acts as the person who made it", func(t *testing.T) {
 		bearer := api.client(t)
-		bearer.bearer = secret
-
-		me := bearer.get("/api/v1/auth/me")
-		if got := principalField(t, me, "principal", "org", "slug"); got != alphaSlug {
-			t.Errorf("the token resolved to organization %v, want %q", got, alphaSlug)
-		}
-		if invites := bearer.get("/api/v1/invites"); strings.Contains(invites.Raw, betaInviteID) {
-			t.Error("alpha's token can read beta's invitations")
+		bearer.bearer = principalField(t, alphaToken, "token", "secret").(string)
+		me := want(t, bearer.get("/api/v1/auth/me"), http.StatusOK, "who the token is")
+		if got := principalField(t, me, "principal", "user", "email"); got != alphaEmail {
+			t.Errorf("the token acts as %v, want %s", got, alphaEmail)
 		}
 	})
 }
@@ -93,18 +57,20 @@ func TestCrossTenantAccessAtTheAPI(t *testing.T) {
 // actually withdraws it, rather than leaving already-issued credentials working
 // until they expire.
 func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	ctx := context.Background()
 
 	t.Run("a deleted session stops working on the next request", func(t *testing.T) {
 		c := api.client(t)
-		c.signup(t, h, "deleted")
+		email := h.person(t, "deleted", auth.RoleOwner)
+		c.signIn(t, email)
 		if resp := c.get("/api/v1/auth/me"); resp.Status != http.StatusOK {
 			t.Fatalf("setup: me returned %d", resp.Status)
 		}
 
-		if _, err := h.super.Exec(ctx, `DELETE FROM user_session`); err != nil {
+		if _, err := h.super.Exec(ctx, `DELETE FROM user_session WHERE user_id = (SELECT id FROM app_user WHERE email = $1)`, email); err != nil {
 			t.Fatal(err)
 		}
 		if resp := c.get("/api/v1/auth/me"); resp.Status != http.StatusUnauthorized {
@@ -114,8 +80,9 @@ func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
 
 	t.Run("a dead session cookie is cleared so the browser stops sending it", func(t *testing.T) {
 		c := api.client(t)
-		c.signup(t, h, "cleared")
-		if _, err := h.super.Exec(ctx, `DELETE FROM user_session`); err != nil {
+		email := h.person(t, "cleared", auth.RoleOwner)
+		c.signIn(t, email)
+		if _, err := h.super.Exec(ctx, `DELETE FROM user_session WHERE user_id = (SELECT id FROM app_user WHERE email = $1)`, email); err != nil {
 			t.Fatal(err)
 		}
 
@@ -133,14 +100,9 @@ func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
 
 	t.Run("a deactivated account is refused mid-session", func(t *testing.T) {
 		c := api.client(t)
-		signup := c.signup(t, h, "suspended")
+		signup := c.signIn(t, h.person(t, "suspended", auth.RoleMember))
 		userID := principalField(t, signup, "principal", "user", "id").(string)
 
-		// The last owner of an organization cannot be switched off, so they
-		// step down first.
-		if _, err := h.super.Exec(ctx, `UPDATE org_member SET org_role = 'member' WHERE user_id = $1`, userID); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := h.super.Exec(ctx, `UPDATE app_user SET is_active = false WHERE id = $1`, userID); err != nil {
 			t.Fatal(err)
 		}
@@ -152,14 +114,14 @@ func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
 
 	t.Run("losing membership ends an open session", func(t *testing.T) {
 		c := api.client(t)
-		signup := c.signup(t, h, "removed")
+		signup := c.signIn(t, h.person(t, "removed", auth.RoleOwner))
 		userID := principalField(t, signup, "principal", "user", "id").(string)
 
 		if _, err := h.super.Exec(ctx, `DELETE FROM org_member WHERE user_id = $1`, userID); err != nil {
 			t.Fatal(err)
 		}
 
-		// Nobody is signed in outside the organization, so nothing below
+		// Nobody is signed in outside the installation, so nothing below
 		// could be reached without a tenant scope.
 		for _, path := range []string{"/api/v1/auth/me", "/api/v1/tokens"} {
 			if got := c.get(path); got.Status != http.StatusUnauthorized {
@@ -177,7 +139,7 @@ func TestCredentialsAreNotLeakedInResponses(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	c := api.client(t)
-	signup := c.signup(t, h, "noleak")
+	signup := c.signIn(t, h.person(t, "noleak", auth.RoleOwner))
 
 	for _, forbidden := range []string{"password", "passwordHash", "password_hash", "tokenHash", "token_hash"} {
 		if strings.Contains(signup.Raw, forbidden) {
@@ -215,7 +177,7 @@ func TestInternalErrorsDoNotLeakDetail(t *testing.T) {
 	}
 
 	c := api.client(t)
-	c.signup(t, h, "baduuid")
+	c.signIn(t, h.person(t, "baduuid", auth.RoleOwner))
 	bad := c.delete("/api/v1/tokens/not-a-uuid")
 	if bad.Status != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400 for a malformed id", bad.Status)

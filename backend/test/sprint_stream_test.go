@@ -66,7 +66,7 @@ func (ws *workspace) leftSprint(t *testing.T, key, from string) bool {
 func TestHandingWorkToAnotherTeamTakesItOutOfItsSprint(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "handover")
+	ws := h.newProject(t, "handover")
 
 	alpha := ws.newTeam(t, "Alpha")
 	beta := ws.newTeam(t, "Beta")
@@ -166,7 +166,7 @@ func TestHandingWorkToAnotherTeamTakesItOutOfItsSprint(t *testing.T) {
 func TestASprintOnlyTakesItsOwnTeamsWork(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "streams")
+	ws := h.newProject(t, "streams")
 
 	alpha := ws.newTeam(t, "Alpha")
 	beta := ws.newTeam(t, "Beta")
@@ -238,17 +238,17 @@ func TestASprintOnlyTakesItsOwnTeamsWork(t *testing.T) {
 		}
 	})
 
-	// The guard must not stand in the way of an organization going away, where
-	// teams, sprints and issues are deleted together in no promised order.
-	t.Run("an organization with planned team work can still be deleted", func(t *testing.T) {
-		gone := h.newWorkspace(t, "streams-gone")
+	// The guard must not stand in the way of a project going away, where teams,
+	// sprints and issues are deleted together in no promised order.
+	t.Run("a project with planned team work can still be deleted", func(t *testing.T) {
+		gone := h.newProject(t, "streams-gone")
 		crew := gone.newTeam(t, "Crew")
 		window := gone.teamSprint(t, "Crew 1", "2026-03-02", "2026-03-13", &crew.ID)
 		task := gone.typed(t, h, bootstrap.TypeTask, "planned when the lights went out")
 		gone.hand(t, task.Key, &crew.ID)
 		gone.commit(t, task.Key, &window.ID, nil)
-		if _, err := h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, gone.orgID); err != nil {
-			t.Errorf("delete the organization: %v", err)
+		if _, err := h.super.Exec(context.Background(), `DELETE FROM project WHERE id = $1`, gone.project.ID); err != nil {
+			t.Errorf("delete the project: %v", err)
 		}
 	})
 }
@@ -258,7 +258,7 @@ func TestASprintOnlyTakesItsOwnTeamsWork(t *testing.T) {
 func TestUnfinishedWorkIsOnlyCarriedIntoItsOwnTeamsSprint(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "carrying")
+	ws := h.newProject(t, "carrying")
 
 	alpha := ws.newTeam(t, "Alpha")
 	beta := ws.newTeam(t, "Beta")
@@ -318,7 +318,7 @@ func TestUnfinishedWorkIsOnlyCarriedIntoItsOwnTeamsSprint(t *testing.T) {
 func TestAnImportedSprintBelongsToTheTeamOfItsRows(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "importstream")
+	ws := h.newProject(t, "importstream")
 	alpha := ws.newTeam(t, "Alpha")
 	files := csvio.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster), h.authService()).
 		WithPlanning(ws.sprints, version.NewService(h.cluster), component.NewService(h.cluster), ws.teams)

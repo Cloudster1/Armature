@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/tenant"
 )
@@ -22,12 +23,12 @@ func TestAWebhookTestReadsTheDeliveryItJustWrote(t *testing.T) {
 	h.ownCluster(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	orgID := uuid.MustParse(principalField(t, c.signup(t, h, "hooktest"), "principal", "org", "id").(string))
+	orgID := uuid.MustParse(principalField(t, c.signIn(t, h.person(t, "hooktest", auth.RoleOwner)), "principal", "org", "id").(string))
 
 	sink := &receiver{status: http.StatusOK}
 	server := httptest.NewServer(sink)
 	defer server.Close()
-	hook := want(t, c.post("/api/v1/webhooks", map[string]any{"name": "Pager", "url": server.URL, "topics": []string{"*"}}), http.StatusCreated, "a webhook")
+	hook := want(t, c.post("/api/v1/webhooks", map[string]any{"name": h.name(t, "Pager"), "url": server.URL, "topics": []string{"*"}}), http.StatusCreated, "a webhook")
 	hookID := idOf(t, hook, "webhook")
 
 	// The replica holds everything up to here, so the caller's reads may go

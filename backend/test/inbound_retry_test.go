@@ -50,7 +50,7 @@ func refuseComments(t *testing.T, h *harness, marker string) func() {
 // be is given up and shown to the agents. Nothing undecided is ever deleted.
 func TestAReplyThatFailsToPostIsReadAgain(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mailretry")
+	ws := h.newProject(t, "mailretry")
 	d, p := ws.aDesk(t, h, "Retry desk")
 	customer := ws.customerOf(t, h, "writer")
 	var customerEmail string

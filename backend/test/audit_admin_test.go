@@ -12,18 +12,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/armature/armature/backend/internal/audit"
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/events"
 )
 
-// copyToAudit hands every event the organization emitted to the audit
-// consumer, as the worker would, since no worker runs beside the suite.
-func (h *harness) copyToAudit(t *testing.T, orgID string) {
+// copyToAudit hands every event the person caused to the audit consumer, as
+// the worker would, since no worker runs beside the suite.
+func (h *harness) copyToAudit(t *testing.T, actorID string) {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
-		SELECT id, org_id, topic, payload FROM outbox_event WHERE org_id = $1 ORDER BY created_at`, orgID)
+		SELECT id, org_id, topic, payload FROM outbox_event WHERE payload->>'actorId' = $1 ORDER BY created_at`, actorID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,12 +48,12 @@ func (h *harness) copyToAudit(t *testing.T, orgID string) {
 func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	audKey := h.projectKey(t, "AUD")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "auditall")
-	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
+	signedUp := owner.signIn(t, h.person(t, "auditall", auth.RoleOwner))
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
-	project := want(t, owner.post("/api/v1/projects", map[string]any{"name": "Audited", "key": "AUD" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "project")
+	project := want(t, owner.post("/api/v1/projects", map[string]any{"name": "Audited", "key": audKey, "template": "kanban"}), http.StatusCreated, "project")
 	key := obj(t, project, "project")["key"].(string)
 
 	// The owner came in with a password sign-in, which is recorded too.
@@ -65,10 +64,11 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 	defer sink.Close()
 	const pathCredential = "T0AUDIT/B0AUDIT/hunter2hunter2hunter2"
 	hookURL := sink.URL + "/services/" + pathCredential
-	hook := want(t, owner.post("/api/v1/webhooks", map[string]any{"name": "Elsewhere", "url": hookURL, "topics": []string{"*"}}), http.StatusCreated, "a webhook")
+	hookName := h.name(t, "Elsewhere")
+	hook := want(t, owner.post("/api/v1/webhooks", map[string]any{"name": hookName, "url": hookURL, "topics": []string{"*"}}), http.StatusCreated, "a webhook")
 	hookID := idOf(t, hook, "webhook")
 	firstSecret := obj(t, hook, "webhook")["secret"].(string)
-	want(t, owner.patch("/api/v1/webhooks/"+hookID, map[string]any{"name": "Elsewhere", "url": hookURL, "topics": []string{events.TopicIssueCreated}}), http.StatusOK, "changing the webhook")
+	want(t, owner.patch("/api/v1/webhooks/"+hookID, map[string]any{"name": hookName, "url": hookURL, "topics": []string{events.TopicIssueCreated}}), http.StatusOK, "changing the webhook")
 	rotated := want(t, owner.post("/api/v1/webhooks/"+hookID+"/rotate-secret", nil), http.StatusOK, "rotating the secret")
 	secondSecret := obj(t, rotated, "webhook")["secret"].(string)
 	want(t, owner.delete("/api/v1/webhooks/"+hookID), http.StatusNoContent, "removing the webhook")
@@ -86,7 +86,7 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 	}), http.StatusOK, "changing the rule")
 	want(t, owner.delete("/api/v1/automation/rules/"+ruleID), http.StatusNoContent, "removing the rule")
 	incoming := want(t, owner.post("/api/v1/automation/rules", map[string]any{
-		"name": "From outside", "trigger": map[string]any{"kind": "incoming"},
+		"name": h.name(t, "From outside"), "trigger": map[string]any{"kind": "incoming"},
 		"actions": []any{map[string]any{"kind": "create_issue", "text": "An alert came in"}},
 	}), http.StatusCreated, "a rule with an incoming address")
 	incomingID := idOf(t, incoming, "rule")
@@ -99,17 +99,18 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 	want(t, owner.delete("/api/v1/invites/"+inviteID), http.StatusNoContent, "withdrawing the invitation")
 
 	// A role defined, redefined to administer, and removed; a group made and removed.
-	role := obj(t, want(t, owner.post("/api/v1/roles", map[string]any{"name": "Auditor", "permissions": []string{"read"}}), http.StatusCreated, "a role"), "role")["role"].(string)
+	role := obj(t, want(t, owner.post("/api/v1/roles", map[string]any{"name": h.name(t, "Auditor"), "permissions": []string{"read"}}), http.StatusCreated, "a role"), "role")["role"].(string)
 	want(t, owner.patch("/api/v1/roles/"+role, map[string]any{"permissions": []string{"read", "org.administer"}}), http.StatusOK, "redefining the role to administer")
 	want(t, owner.delete("/api/v1/roles/"+role), http.StatusNoContent, "removing the role")
-	group := want(t, owner.post("/api/v1/groups", map[string]any{"name": "Short lived"}), http.StatusCreated, "a group")
+	group := want(t, owner.post("/api/v1/groups", map[string]any{"name": h.name(t, "Short lived")}), http.StatusCreated, "a group")
 	groupID := idOf(t, group, "group")
 	want(t, owner.delete("/api/v1/groups/"+groupID), http.StatusNoContent, "removing the group")
 
-	h.copyToAudit(t, orgID)
+	h.copyToAudit(t, ownerID)
 
 	// One entry per act, naming the actor, the object and the time, found
-	// through the same filter the audit page uses.
+	// through the same filters the audit page uses; everybody's acts are in the log.
+	mine := "&actor=" + ownerID
 	type expectation struct {
 		action, targetType, targetID string
 	}
@@ -130,7 +131,7 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 		{"role.removed", "role", ""},
 		{"group.deleted", "group", groupID},
 	} {
-		page := want(t, owner.get("/api/v1/audit?action="+url.QueryEscape(e.action)), http.StatusOK, "the log filtered to "+e.action)
+		page := want(t, owner.get("/api/v1/audit?action="+url.QueryEscape(e.action)+mine), http.StatusOK, "the log filtered to "+e.action)
 		var entries []any
 		for _, entry := range list(t, page, "entries") {
 			if e.targetID == "" || entry.(map[string]any)["targetId"] == e.targetID {
@@ -164,13 +165,13 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 		}
 	}
 	// The role entries say which role, since a role has a key rather than an id.
-	if redefined := list(t, owner.get("/api/v1/audit?action=role.redefined"), "entries"); len(redefined) == 1 {
+	if redefined := list(t, owner.get("/api/v1/audit?action=role.redefined"+mine), "entries"); len(redefined) == 1 {
 		if data, _ := redefined[0].(map[string]any)["data"].(map[string]any); data["role"] != role {
 			t.Errorf("role.redefined data = %v, want it to name %s", data, role)
 		}
 	}
 	// The sign-in says where it came from, as the single sign-on entry does.
-	if logins := list(t, owner.get("/api/v1/audit?action=auth.login"), "entries"); len(logins) == 1 {
+	if logins := list(t, owner.get("/api/v1/audit?action=auth.login"+mine), "entries"); len(logins) == 1 {
 		if ip, _ := logins[0].(map[string]any)["ip"].(string); ip == "" {
 			t.Error("the password sign-in does not say where it came from")
 		}
@@ -180,10 +181,10 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 	// table and from the export a spreadsheet would keep.
 	var written string
 	if err := h.super.QueryRow(context.Background(), `
-		SELECT COALESCE(string_agg(action || ' ' || data::text, E'\n'), '') FROM audit_log WHERE org_id = $1`, orgID).Scan(&written); err != nil {
+		SELECT COALESCE(string_agg(action || ' ' || data::text, E'\n'), '') FROM audit_log WHERE actor_user_id = $1`, ownerID).Scan(&written); err != nil {
 		t.Fatal(err)
 	}
-	_, exported := owner.download("/api/v1/audit/export")
+	_, exported := owner.download("/api/v1/audit/export?actor=" + ownerID)
 	secrets := map[string]string{
 		"the webhook's first secret":    firstSecret,
 		"the webhook's rotated secret":  secondSecret,

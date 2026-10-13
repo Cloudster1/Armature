@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A request is one span named by its route, in the caller's trace when one
@@ -19,7 +21,7 @@ func TestARequestIsCountedAndTraced(t *testing.T) {
 	h.ownMetrics(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "watched")
+	owner.signIn(t, h.person(t, "watched", auth.RoleOwner))
 	h.listenToSpans(t)
 
 	const traceID = "4bf92f3577b34da6a3ce929d0e0e4736"

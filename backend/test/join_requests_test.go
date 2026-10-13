@@ -3,25 +3,20 @@
 package test
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/url"
 	"testing"
 
-	"github.com/google/uuid"
-
-	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/oidc"
 )
 
 // Somebody the provider vouches for is still refused, but the refusal is kept
 // where an administrator can turn it into a membership with one click.
 func TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
-	ws := h.newWorkspace(t, "letin")
+	ws := h.newProject(t, "letin")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 
@@ -41,11 +36,16 @@ func TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage(t *testing.T) {
 
 	h.waitForPrimary(t)
 	listed := want(t, owner.get("/api/v1/users/requests"), http.StatusOK, "list requests")
-	requests := list(t, listed, "requests")
-	if len(requests) != 1 {
-		t.Fatalf("requests = %s, want the one stranger", listed.Raw)
+	var theirs []map[string]any
+	for _, row := range list(t, listed, "requests") {
+		if r := row.(map[string]any); r["email"] == email {
+			theirs = append(theirs, r)
+		}
 	}
-	request := requests[0].(map[string]any)
+	if len(theirs) != 1 {
+		t.Fatalf("requests = %s, want the stranger's one", listed.Raw)
+	}
+	request := theirs[0]
 	if request["email"] != email || request["name"] != "A Stranger" {
 		t.Fatalf("request = %v", request)
 	}
@@ -64,8 +64,10 @@ func TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage(t *testing.T) {
 		want(t, owner.delete("/api/v1/users/requests/"+userID), http.StatusNoContent, "decline")
 		want(t, owner.delete("/api/v1/users/requests/"+userID), http.StatusNotFound, "decline twice")
 		h.waitForPrimary(t)
-		if got := list(t, want(t, owner.get("/api/v1/users/requests"), http.StatusOK, "list"), "requests"); len(got) != 0 {
-			t.Fatalf("a declined request is still listed: %v", got)
+		for _, row := range list(t, want(t, owner.get("/api/v1/users/requests"), http.StatusOK, "list"), "requests") {
+			if row.(map[string]any)["userId"] == userID {
+				t.Fatalf("a declined request is still listed: %v", row)
+			}
 		}
 		if _, err := signInWith(t, h, svc, ws, provider, clientID, claims); !errors.Is(err, oidc.ErrNotAMember) {
 			t.Fatalf("error = %v, want them refused", err)
@@ -92,62 +94,4 @@ func TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage(t *testing.T) {
 			t.Fatalf("session in %s, want %s", session.OrgID, ws.orgID)
 		}
 	})
-}
-
-// The requests are tenant rows like any other: one organization's
-// administrators never see, nor decide, who is waiting at another's door.
-// Tried straight through SQL, as the application role.
-func TestJoinRequestsStayWithinTheirTenant(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	orgA, ctxA := h.makeOrg(t, "door-a")
-	orgB, ctxB := h.makeOrg(t, "door-b")
-
-	var stranger uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `
-		INSERT INTO app_user (email, name) VALUES ($1, 'Stranger') RETURNING id`,
-		h.email(t, "stranger")).Scan(&stranger); err != nil {
-		t.Fatalf("make the stranger: %v", err)
-	}
-	if _, err := h.cluster.Write(ctxA, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, orgA, stranger)
-		return err
-	}); err != nil {
-		t.Fatalf("org A notes a request: %v", err)
-	}
-
-	count := func(ctx context.Context) int {
-		var n int
-		if err := h.cluster.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM org_join_request`).Scan(&n)
-		}); err != nil {
-			t.Fatalf("count: %v", err)
-		}
-		return n
-	}
-	if got := count(ctxA); got != 1 {
-		t.Errorf("org A sees %d requests, want its own 1", got)
-	}
-	if got := count(ctxB); got != 0 {
-		t.Errorf("org B sees %d of org A's requests, want none", got)
-	}
-
-	_, err := h.cluster.Write(ctxB, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, orgA, stranger)
-		return err
-	})
-	if err == nil {
-		t.Errorf("org B wrote a request into org A's door")
-	}
-	_, err = h.cluster.Write(ctxB, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE org_id = $1`, orgA)
-		if err == nil && tag.RowsAffected() != 0 {
-			return errors.New("org B deleted org A's request")
-		}
-		return err
-	})
-	if err != nil {
-		t.Errorf("%v", err)
-	}
-	_ = orgB
 }

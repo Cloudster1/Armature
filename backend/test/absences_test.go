@@ -15,8 +15,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/availability"
-	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/privacy"
 )
 
@@ -28,9 +28,11 @@ func (s *apiServer) namedMember(t *testing.T, h *harness, owner *client, name st
 	made := want(t, owner.post("/api/v1/users", map[string]string{
 		"email": email, "name": name, "role": "member", "password": testPassword,
 	}), http.StatusCreated, "make "+name)
+	id := obj(t, made, "user")["id"].(string)
+	h.erasable(id)
 	them := s.client(t)
 	want(t, them.post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), http.StatusOK, "sign "+name+" in")
-	return them, obj(t, made, "user")["id"].(string)
+	return them, id
 }
 
 // refusedWithASentence checks a refusal reads as one, naming what it is about.
@@ -45,11 +47,13 @@ func refusedWithASentence(t *testing.T, got response, about string) {
 func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	awyKey := h.projectKey(t, "AWY")
+	elwKey := h.projectKey(t, "ELW")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "absences")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Away", "key": "AWY", "template": "scrum"}), http.StatusCreated, "a project")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Elsewhere", "key": "ELW", "template": "scrum"}), http.StatusCreated, "another project")
+	owner.signIn(t, h.person(t, "absences", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Away", "key": awyKey, "template": "scrum"}), http.StatusCreated, "a project")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Elsewhere", "key": elwKey, "template": "scrum"}), http.StatusCreated, "another project")
 
 	ada, adaID := api.namedMember(t, h, owner, "Ada Away")
 	master, masterID := api.namedMember(t, h, owner, "Max Master")
@@ -57,11 +61,11 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 	plain, plainID := api.namedMember(t, h, owner, "Pat Plain")
 
 	// Max is scrum master where Ada is on a team; Stan is scrum master where she is not.
-	want(t, owner.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": "AWY", "userId": masterID}), http.StatusCreated, "a scrum master of Ada's project")
-	want(t, owner.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": "ELW", "userId": strangerID}), http.StatusCreated, "a scrum master elsewhere")
-	crew := idOf(t, want(t, owner.post("/api/v1/projects/AWY/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
+	want(t, owner.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": awyKey, "userId": masterID}), http.StatusCreated, "a scrum master of Ada's project")
+	want(t, owner.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": elwKey, "userId": strangerID}), http.StatusCreated, "a scrum master elsewhere")
+	crew := idOf(t, want(t, owner.post("/api/v1/projects/"+awyKey+"/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
 	want(t, owner.post("/api/v1/teams/"+crew+"/members", map[string]any{"userId": adaID}), http.StatusOK, "Ada joins the team")
-	other := idOf(t, want(t, owner.post("/api/v1/projects/ELW/teams", map[string]any{"name": "Others"}), http.StatusCreated, "another team"), "team")
+	other := idOf(t, want(t, owner.post("/api/v1/projects/"+elwKey+"/teams", map[string]any{"name": "Others"}), http.StatusCreated, "another team"), "team")
 	want(t, owner.post("/api/v1/teams/"+other+"/members", map[string]any{"userId": plainID}), http.StatusOK, "Pat joins the other team")
 
 	var mine string
@@ -76,8 +80,18 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 			t.Errorf("a day left without an end = %v, want one half day", half)
 		}
 
+		// Everybody in the installation is listed; Ada's and Pat's are this test's.
+		ours := func(listed []any) []any {
+			kept := []any{}
+			for _, a := range listed {
+				if who := a.(map[string]any)["userId"]; who == adaID || who == plainID {
+					kept = append(kept, a)
+				}
+			}
+			return kept
+		}
 		seen := want(t, plain.get("/api/v1/absences?from=2026-08-01&to=2026-12-31"), http.StatusOK, "a colleague lists absences")
-		absences := list(t, seen, "absences")
+		absences := ours(list(t, seen, "absences"))
 		if len(absences) != 2 || seen.Body["from"] != "2026-08-01" || seen.Body["to"] != "2026-12-31" {
 			t.Fatalf("a colleague sees %v", seen.Body)
 		}
@@ -89,10 +103,10 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 		if strings.Join(keys, ",") != "endsOn,halfDay,id,startsOn,userId,userName" {
 			t.Errorf("a colleague reads %v of an absence, want the days and the person only", keys)
 		}
-		if outside := list(t, plain.get("/api/v1/absences?from=2026-09-01&to=2026-12-23"), "absences"); len(outside) != 0 {
+		if outside := ours(list(t, plain.get("/api/v1/absences?from=2026-09-01&to=2026-12-23"), "absences")); len(outside) != 0 {
 			t.Errorf("a stretch with nobody away lists %v", outside)
 		}
-		if edge := list(t, plain.get("/api/v1/absences?from=2026-08-14&to=2026-08-14"), "absences"); len(edge) != 1 {
+		if edge := ours(list(t, plain.get("/api/v1/absences?from=2026-08-14&to=2026-08-14"), "absences")); len(edge) != 1 {
 			t.Errorf("the last day away lists %v, want it counted", edge)
 		}
 		if hers := list(t, owner.get("/api/v1/absences?from=2026-01-01&to=2026-12-31&userId="+adaID), "absences"); len(hers) != 2 {
@@ -196,7 +210,7 @@ func TestAnAbsenceListFromADayRunsOnAndSaysWhenItIsCut(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "absencelist")
+	owner.signIn(t, h.person(t, "absencelist", auth.RoleOwner))
 	ada, adaID := api.namedMember(t, h, owner, "Ada Ahead")
 
 	today := time.Now().UTC()
@@ -236,6 +250,8 @@ func TestAnAbsenceListFromADayRunsOnAndSaysWhenItIsCut(t *testing.T) {
 			LIMIT $2`, adaID, availability.MaxOpenAbsences, farAhead); err != nil {
 			t.Fatal(err)
 		}
+		// Written on the primary; Ada's reads may come from the replica.
+		h.waitForPrimary(t)
 		lastDay := today.AddDate(0, 0, availability.MaxAbsenceWindowDays-availability.AbsenceDaysBehind-1).Format(availability.DateLayout)
 		full := want(t, ada.get(editorList+"&to="+lastDay), http.StatusOK, "every one of them, with a last day")
 		every := startsOf(list(t, full, "absences"))
@@ -252,7 +268,7 @@ func TestAnAbsenceListFromADayRunsOnAndSaysWhenItIsCut(t *testing.T) {
 
 func TestAbsencesPastTheirWindowAreSwept(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "absenceretention")
+	ws := h.newProject(t, "absenceretention")
 	ctx := context.Background()
 	for _, q := range []string{
 		`INSERT INTO absence (org_id, user_id, starts_on, ends_on) VALUES ($1, $2, current_date - 500, current_date - 450)`,
@@ -271,7 +287,7 @@ func TestAbsencesPastTheirWindowAreSwept(t *testing.T) {
 		t.Fatalf("pruned = %v, want the absence that ended long ago", counts)
 	}
 	var left int
-	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM absence WHERE org_id = $1`, ws.orgID).Scan(&left); err != nil {
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM absence WHERE user_id = $1`, ws.actor.UserID).Scan(&left); err != nil {
 		t.Fatal(err)
 	}
 	if left != 2 {
@@ -283,8 +299,7 @@ func TestAbsencesPastTheirWindowAreSwept(t *testing.T) {
 func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	home := h.newWorkspace(t, "absencehome")
-	away := h.newWorkspace(t, "absenceaway")
+	home := h.newProject(t, "absencehome")
 	ctx := context.Background()
 	if _, _, err := availability.NewService(h.cluster).RecordAbsence(home.ctx, availability.Recorder{ID: home.actor.UserID}, home.actor.UserID,
 		availability.AbsenceInput{StartsOn: ptr("2026-08-03"), EndsOn: ptr("2026-08-14")}); err != nil {
@@ -330,28 +345,5 @@ func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
 		}
 		_, err = h.super.Exec(ctx, insert, home.orgID, customerID, "2026-11-02", "2026-11-02", false)
 		refusedAs(t, err, "23514")
-		_, err = h.super.Exec(ctx, insert, home.orgID, away.actor.UserID, "2026-11-02", "2026-11-02", false)
-		refusedAs(t, err, "23514")
-	})
-
-	t.Run("another organization reads none of it and writes none into it", func(t *testing.T) {
-		var seen int
-		err := h.cluster.ReadPrimary(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM absence WHERE org_id = $1`, home.orgID).Scan(&seen)
-		})
-		if err != nil || seen != 0 {
-			t.Errorf("another organization sees %d absences (%v)", seen, err)
-		}
-		listed, _, err := availability.NewService(h.cluster).Absences(away.ctx, *mustDate(t, "2026-01-01"), mustDate(t, "2026-12-31"), nil)
-		if err != nil || len(listed) != 0 {
-			t.Errorf("another organization lists %v (%v)", listed, err)
-		}
-		_, err = h.cluster.Write(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, insert, home.orgID, home.actor.UserID, "2026-12-01", "2026-12-01", false)
-			return err
-		})
-		if err == nil {
-			t.Error("an absence went into another organization")
-		}
 	})
 }

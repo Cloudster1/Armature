@@ -35,7 +35,7 @@ func (m mailers) Send(ctx context.Context, mail desk.Mail) error {
 // request and an agent watching it hear it is resolved, but cannot rate it.
 func TestOnlyTheReporterIsAskedToRate(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "rateasked")
+	ws := h.newProject(t, "rateasked")
 	d, p := ws.aDesk(t, h, "Asked desk")
 	customer := ws.customerOf(t, h, "asker")
 	var reporter string

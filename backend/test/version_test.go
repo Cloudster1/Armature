@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/component"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/version"
@@ -22,7 +23,7 @@ import (
 func TestAVersionCollectsWhatFixesItAndShips(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "versions")
+	ws := h.newProject(t, "versions")
 	versions := version.NewService(h.cluster)
 
 	release := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
@@ -56,7 +57,7 @@ func TestAVersionCollectsWhatFixesItAndShips(t *testing.T) {
 	}
 
 	// Another project's version is refused by the service and by the database.
-	other := h.newWorkspace(t, "otherversions")
+	other := h.newProject(t, "otherversions")
 	theirs, _, _ := versions.Create(other.ctx, other.project.Key, version.Input{Name: ptr("9.9")}, other.actor.UserID)
 	if _, _, err := ws.issues.SetVersions(ws.ctx, fixed.Key, []uuid.UUID{theirs.ID}, nil, ws.actor); err == nil {
 		t.Error("another project's version was accepted by the service")
@@ -106,7 +107,7 @@ func TestAVersionCollectsWhatFixesItAndShips(t *testing.T) {
 func TestAComponentTakesNewWork(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "components")
+	ws := h.newProject(t, "components")
 	bob := h.joinExisting(t, ws, h.email(t, "bobcomp"), "member")
 	components := component.NewService(h.cluster)
 
@@ -140,7 +141,7 @@ func TestAComponentTakesNewWork(t *testing.T) {
 	}
 
 	// Another project's component is refused by the service and by the database.
-	other := h.newWorkspace(t, "othercomp")
+	other := h.newProject(t, "othercomp")
 	theirs, _, _ := components.Create(other.ctx, other.project.Key, component.Input{Name: ptr("Theirs")})
 	if _, _, err := ws.issues.SetComponents(ws.ctx, taken.Key, []uuid.UUID{theirs.ID}, ws.actor); err == nil {
 		t.Error("another project's component was accepted by the service")
@@ -162,10 +163,11 @@ func TestAComponentTakesNewWork(t *testing.T) {
 func TestVersionsAndComponentsOverTheAPI(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	shpKey := h.projectKey(t, "SHP")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "versionsapi")
-	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Ships", "key": "SHP" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "project")
+	c.signIn(t, h.person(t, "versionsapi", auth.RoleOwner))
+	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Ships", "key": shpKey, "template": "kanban"}), http.StatusCreated, "project")
 	key := obj(t, project, "project")["key"].(string)
 
 	want(t, c.post("/api/v1/projects/"+key+"/versions", map[string]any{"name": ""}), http.StatusUnprocessableEntity, "a nameless version")

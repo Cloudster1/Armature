@@ -5,11 +5,10 @@ package test
 import (
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // Overlapping hours on one day are refused over the API, and a calendar saved
@@ -17,10 +16,11 @@ import (
 func TestADeskCalendarRefusesOverlappingHours(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	ovlKey := h.projectKey(t, "OVL")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "overlaps")
-	made := want(t, c.post("/api/v1/projects", map[string]any{"name": "Overlap", "key": "OVL" + strings.ToUpper(uuid.New().String()[:3]), "template": "service-desk"}), http.StatusCreated, "desk")
+	c.signIn(t, h.person(t, "overlaps", auth.RoleOwner))
+	made := want(t, c.post("/api/v1/projects", map[string]any{"name": "Overlap", "key": ovlKey, "template": "service-desk"}), http.StatusCreated, "desk")
 	key := obj(t, made, "project")["key"].(string)
 	path := "/api/v1/projects/" + key + "/business-calendar"
 
@@ -51,7 +51,7 @@ func TestADeskCalendarRefusesOverlappingHours(t *testing.T) {
 func TestAGoalOnOverlappingSavedHoursCountsThemOnce(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "overlap")
+	ws := h.newProject(t, "overlap")
 	d, p := ws.aDesk(t, h, "Overlap desk")
 	if _, err := h.super.Exec(context.Background(), `
 		INSERT INTO business_calendar (org_id, project_id, timezone, hours, holidays)

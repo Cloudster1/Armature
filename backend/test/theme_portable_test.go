@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/theme"
 )
 
@@ -19,7 +20,7 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "porter")
+	ownerID := principalField(t, owner.signIn(t, h.person(t, "porter", auth.RoleOwner)), "principal", "user", "id").(string)
 
 	made := want(t, owner.post("/api/v1/themes", map[string]any{"name": "Traveller", "spec": map[string]any{"colors": map[string]any{"light": map[string]string{"accent": "#123456"}}, "shape": map[string]any{"radiusControl": 0}}}), http.StatusCreated, "make a theme")
 	themeID := obj(t, made, "theme")["id"].(string)
@@ -49,11 +50,11 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 		t.Fatalf("package = %+v", pkg)
 	}
 
-	t.Run("a stranger cannot export it", func(t *testing.T) {
+	t.Run("somebody else cannot export it", func(t *testing.T) {
 		other := api.client(t)
-		other.signup(t, h, "porter-other")
+		other.signIn(t, h.person(t, "porter-other", auth.RoleMember))
 		if resp, _ := other.download("/api/v1/themes/" + themeID + "/export"); resp.StatusCode != http.StatusNotFound {
-			t.Fatalf("a private theme was exported by a stranger: %d", resp.StatusCode)
+			t.Fatalf("a private theme was exported by somebody else: %d", resp.StatusCode)
 		}
 	})
 
@@ -86,7 +87,17 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 	})
 
 	t.Run("what is not a theme file is refused, and leaves nothing behind", func(t *testing.T) {
-		before := len(list(t, want(t, owner.get("/api/v1/themes"), http.StatusOK, "themes"), "themes"))
+		// Only the owner's own count: other people share themes all the time.
+		mine := func() int {
+			n := 0
+			for _, row := range list(t, want(t, owner.get("/api/v1/themes"), http.StatusOK, "themes"), "themes") {
+				if row.(map[string]any)["ownerId"] == ownerID {
+					n++
+				}
+			}
+			return n
+		}
+		before := mine()
 		if got := owner.upload("/api/v1/themes/import", "file", "notes.json", "application/json", []byte(`{"hello": "world"}`)); got.Status != http.StatusUnprocessableEntity {
 			t.Fatalf("a stray file was imported: %d %s", got.Status, got.Raw)
 		}
@@ -95,7 +106,7 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 			t.Fatalf("a theme naming a file it does not carry was imported: %d %s", got.Status, got.Raw)
 		}
 		h.waitForPrimary(t)
-		if after := len(list(t, want(t, owner.get("/api/v1/themes"), http.StatusOK, "themes"), "themes")); after != before {
+		if after := mine(); after != before {
 			t.Fatalf("a refused import left a theme behind: %d -> %d", before, after)
 		}
 	})

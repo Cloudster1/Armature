@@ -112,10 +112,11 @@ func (r *streamRig) group(t *testing.T) string {
 	return name
 }
 
-// add appends events for an organization the way the relay does, and returns
+// add appends events for the installation the way the relay does, and returns
 // their ids in order.
-func (r *streamRig) add(t *testing.T, orgID uuid.UUID, n int) []uuid.UUID {
+func (r *streamRig) add(t *testing.T, n int) []uuid.UUID {
 	t.Helper()
+	orgID, _ := r.h.installation()
 	ids := make([]uuid.UUID, n)
 	for i := range n {
 		ids[i] = uuid.New()
@@ -180,15 +181,23 @@ func (r *streamRig) pending(t *testing.T, name string, ids []uuid.UUID) int64 {
 	return n
 }
 
-// deadLetters reads what the organization's administrator reads on the audit
-// page about the events that were set aside.
-func (r *streamRig) deadLetters(t *testing.T, orgCtx context.Context) []audit.Row {
+// deadLetters reads what an administrator reads on the audit page about the
+// events the group set aside; other groups' are other tests'.
+func (r *streamRig) deadLetters(t *testing.T, group string) []audit.Row {
 	t.Helper()
-	rows, err := audit.NewService(r.h.cluster).List(db.PinPrimary(orgCtx), audit.Filter{Action: events.ActionDeadLettered})
+	_, ctx := r.h.installation()
+	rows, err := audit.NewService(r.h.cluster).List(db.PinPrimary(ctx), audit.Filter{Action: events.ActionDeadLettered})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return rows
+	var ours []audit.Row
+	for _, row := range rows {
+		var data struct{ Group string }
+		if json.Unmarshal(row.Data, &data) == nil && data.Group == group {
+			ours = append(ours, row)
+		}
+	}
+	return ours
 }
 
 func eventually(t *testing.T, within time.Duration, what string, ok func() bool) {
@@ -218,8 +227,7 @@ func mine(ids []uuid.UUID) func(uuid.UUID) bool {
 func TestAConsumerRetriesAHandlerThatFailedOnce(t *testing.T) {
 	r := newStreamRig(t)
 	name := r.group(t)
-	orgID, orgCtx := r.h.makeOrg(t, "retried")
-	ids := r.add(t, orgID, 1)
+	ids := r.add(t, 1)
 	ours := mine(ids)
 	count := newTally()
 	r.run(t, name, func(ctx context.Context, e events.Event) error {
@@ -238,7 +246,7 @@ func TestAConsumerRetriesAHandlerThatFailedOnce(t *testing.T) {
 	if got := count.attempts(ids[0]); got != 2 {
 		t.Errorf("the event was handed over %d times, want twice: once failing, once succeeding", got)
 	}
-	if rows := r.deadLetters(t, orgCtx); len(rows) != 0 {
+	if rows := r.deadLetters(t, name); len(rows) != 0 {
 		t.Errorf("an event that succeeded on its second attempt was set aside: %+v", rows)
 	}
 }
@@ -248,8 +256,7 @@ func TestAConsumerRetriesAHandlerThatFailedOnce(t *testing.T) {
 func TestAStoppedConsumerFinishesTheEventInHandAndLeavesTheRest(t *testing.T) {
 	r := newStreamRig(t)
 	name := r.group(t)
-	orgID, _ := r.h.makeOrg(t, "stopped")
-	ids := r.add(t, orgID, 5)
+	ids := r.add(t, 5)
 	ours := mine(ids)
 	count := newTally()
 
@@ -318,8 +325,7 @@ func TestAStoppedConsumerFinishesTheEventInHandAndLeavesTheRest(t *testing.T) {
 func TestAKilledConsumersBatchIsHandledByTheNext(t *testing.T) {
 	r := newStreamRig(t)
 	name := r.group(t)
-	orgID, _ := r.h.makeOrg(t, "killed")
-	ids := r.add(t, orgID, 3)
+	ids := r.add(t, 3)
 	ours := mine(ids)
 
 	read, err := r.rdb.XReadGroup(context.Background(), &redis.XReadGroupArgs{
@@ -346,8 +352,7 @@ func TestAKilledConsumersBatchIsHandledByTheNext(t *testing.T) {
 func TestAnEventThatAlwaysFailsEndsInTheDeadLetterRecord(t *testing.T) {
 	r := newStreamRig(t)
 	name := r.group(t)
-	orgID, orgCtx := r.h.makeOrg(t, "deadletter")
-	ids := r.add(t, orgID, 1)
+	ids := r.add(t, 1)
 	ours := mine(ids)
 	count := newTally()
 	r.run(t, name, func(ctx context.Context, e events.Event) error {
@@ -358,13 +363,13 @@ func TestAnEventThatAlwaysFailsEndsInTheDeadLetterRecord(t *testing.T) {
 		return errors.New("the mail relay refuses everything")
 	})
 
-	eventually(t, 15*time.Second, "the dead letter", func() bool { return len(r.deadLetters(t, orgCtx)) == 1 })
+	eventually(t, 15*time.Second, "the dead letter", func() bool { return len(r.deadLetters(t, name)) == 1 })
 	eventually(t, 5*time.Second, "the acknowledgement", func() bool { return r.pending(t, name, ids) == 0 })
 	if got := count.attempts(ids[0]); got != int(quickly.MaxDeliveries) {
 		t.Errorf("the event was handed over %d times, want %d before it was set aside", got, quickly.MaxDeliveries)
 	}
 
-	row := r.deadLetters(t, orgCtx)[0]
+	row := r.deadLetters(t, name)[0]
 	if row.TargetID == nil || *row.TargetID != ids[0] || row.TargetType != "event" {
 		t.Errorf("dead letter targets %s %v, want the event %s", row.TargetType, row.TargetID, ids[0])
 	}
@@ -381,11 +386,6 @@ func TestAnEventThatAlwaysFailsEndsInTheDeadLetterRecord(t *testing.T) {
 	if got := count.attempts(ids[0]); got != int(quickly.MaxDeliveries) {
 		t.Errorf("the event was handed over again after it was set aside: %d attempts", got)
 	}
-
-	_, otherCtx := r.h.makeOrg(t, "bystander")
-	if rows := r.deadLetters(t, otherCtx); len(rows) != 0 {
-		t.Errorf("another organization sees %d dead letters", len(rows))
-	}
 }
 
 // A handler that knows a retry cannot help, or would repeat what already went
@@ -393,8 +393,7 @@ func TestAnEventThatAlwaysFailsEndsInTheDeadLetterRecord(t *testing.T) {
 func TestAPermanentFailureIsSetAsideAtOnce(t *testing.T) {
 	r := newStreamRig(t)
 	name := r.group(t)
-	orgID, orgCtx := r.h.makeOrg(t, "permanent")
-	ids := r.add(t, orgID, 1)
+	ids := r.add(t, 1)
 	ours := mine(ids)
 	count := newTally()
 	r.run(t, name, func(ctx context.Context, e events.Event) error {
@@ -405,7 +404,7 @@ func TestAPermanentFailureIsSetAsideAtOnce(t *testing.T) {
 		return events.Permanent(errors.New("one of two mails went out; a retry would send it again"))
 	})
 
-	eventually(t, 10*time.Second, "the dead letter", func() bool { return len(r.deadLetters(t, orgCtx)) == 1 })
+	eventually(t, 10*time.Second, "the dead letter", func() bool { return len(r.deadLetters(t, name)) == 1 })
 	eventually(t, 5*time.Second, "the acknowledgement", func() bool { return r.pending(t, name, ids) == 0 })
 	time.Sleep(3 * quickly.ClaimEvery)
 	if got := count.attempts(ids[0]); got != 1 {

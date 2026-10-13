@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/armature/armature/backend/internal/attachment"
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/workflow"
 )
@@ -76,14 +77,15 @@ func (c *client) download(path string) (*http.Response, []byte) {
 func TestAnAttachmentRoundTripsThroughTheBucket(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	attKey := h.projectKey(t, "ATT")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "attacher")
+	owner.signIn(t, h.person(t, "attacher", auth.RoleOwner))
 
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Attached", "key": "ATT"}); made.Status != http.StatusCreated {
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Attached", "key": attKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
-	issued := owner.post("/api/v1/projects/ATT/issues", map[string]any{"summary": "has a screenshot"})
+	issued := owner.post("/api/v1/projects/"+attKey+"/issues", map[string]any{"summary": "has a screenshot"})
 	if issued.Status != http.StatusCreated {
 		t.Fatalf("create issue: %d %s", issued.Status, issued.Raw)
 	}
@@ -136,7 +138,7 @@ func TestAnAttachmentRoundTripsThroughTheBucket(t *testing.T) {
 
 	t.Run("a stranger cannot reach it", func(t *testing.T) {
 		stranger := api.client(t)
-		stranger.signup(t, h, "attstranger")
+		stranger.signIn(t, h.outsider(t, "attstranger"))
 		resp, _ := stranger.download("/api/v1/attachments/" + id)
 		if resp.StatusCode != http.StatusNotFound {
 			t.Fatalf("want 404, got %d", resp.StatusCode)
@@ -172,14 +174,16 @@ func TestAnAttachmentRoundTripsThroughTheBucket(t *testing.T) {
 }
 
 func TestUploadsThatCannotBeTakenAreRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
+	rfsKey := h.projectKey(t, "RFS")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "refused")
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Refusing", "key": "RFS"}); made.Status != http.StatusCreated {
+	owner.signIn(t, h.person(t, "refused", auth.RoleOwner))
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Refusing", "key": rfsKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
-	issued := owner.post("/api/v1/projects/RFS/issues", map[string]any{"summary": "nothing fits"})
+	issued := owner.post("/api/v1/projects/"+rfsKey+"/issues", map[string]any{"summary": "nothing fits"})
 	key := issued.Body["issue"].(map[string]any)["key"].(string)
 
 	if resp := owner.upload("/api/v1/issues/"+key+"/attachments", "file", "big.bin", "application/octet-stream",
@@ -192,11 +196,11 @@ func TestUploadsThatCannotBeTakenAreRefused(t *testing.T) {
 	if resp := owner.upload("/api/v1/issues/"+key+"/attachments", "document", "a.txt", "text/plain", []byte("x")); resp.Status != http.StatusBadRequest {
 		t.Fatalf("a part with the wrong name should be refused with 400, got %d %s", resp.Status, resp.Raw)
 	}
-	if resp := owner.upload("/api/v1/issues/RFS-999/attachments", "file", "a.txt", "text/plain", []byte("x")); resp.Status != http.StatusNotFound {
+	if resp := owner.upload("/api/v1/issues/"+rfsKey+"-999/attachments", "file", "a.txt", "text/plain", []byte("x")); resp.Status != http.StatusNotFound {
 		t.Fatalf("an unknown issue should give 404, got %d %s", resp.Status, resp.Raw)
 	}
 	var rows int
-	_ = h.super.QueryRow(context.Background(), `SELECT count(*) FROM attachment a JOIN issue i ON i.id = a.issue_id JOIN project p ON p.id = i.project_id WHERE p.key = 'RFS'`).Scan(&rows)
+	_ = h.super.QueryRow(context.Background(), `SELECT count(*) FROM attachment a JOIN issue i ON i.id = a.issue_id JOIN project p ON p.id = i.project_id WHERE p.key = '`+rfsKey+`'`).Scan(&rows)
 	if rows != 0 {
 		t.Fatalf("%d attachment rows written for refused uploads", rows)
 	}
@@ -213,13 +217,14 @@ func principalOrg(t *testing.T, c *client) string {
 // is left per object, and the reaper removes the bytes from the bucket.
 func TestDeletingAnIssueRemovesItsFilesFromTheBucket(t *testing.T) {
 	h := newHarness(t)
+	rpdKey := h.projectKey(t, "RPD")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "reaped")
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Reaped", "key": "RPD"}); made.Status != http.StatusCreated {
+	owner.signIn(t, h.person(t, "reaped", auth.RoleOwner))
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Reaped", "key": rpdKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
-	issued := owner.post("/api/v1/projects/RPD/issues", map[string]any{"summary": "doomed"})
+	issued := owner.post("/api/v1/projects/"+rpdKey+"/issues", map[string]any{"summary": "doomed"})
 	key := issued.Body["issue"].(map[string]any)["key"].(string)
 	issueID := issued.Body["issue"].(map[string]any)["id"].(string)
 

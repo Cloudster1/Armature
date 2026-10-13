@@ -5,10 +5,11 @@ package test
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/auth"
 )
@@ -21,7 +22,7 @@ func TestAdministratorsManageLocalUsers(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "users-owner")
+	signedUp := owner.signIn(t, h.person(t, "users-owner", auth.RoleOwner))
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
 
 	email := h.email(t, "local")
@@ -64,7 +65,7 @@ func TestAdministratorsManageLocalUsers(t *testing.T) {
 		if u["name"] != "Renamed Person" || u["role"] != "admin" {
 			t.Fatalf("rename and role change did not land: %s", renamed.Raw)
 		}
-		// An administrator holds the organization; a member does not.
+		// An administrator administers the installation; a member does not.
 		h.waitForPrimary(t)
 		them := api.client(t)
 		want(t, them.post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), http.StatusOK, "sign in as the administrator")
@@ -129,25 +130,18 @@ func TestAdministratorsManageLocalUsers(t *testing.T) {
 		refuse("a member's key", api.client(t).get("/api/v1/users"), http.StatusUnauthorized)
 	})
 
-	t.Run("an administrator manages anybody here, whatever else they belong to", func(t *testing.T) {
+	t.Run("an administrator manages anybody here", func(t *testing.T) {
 		theirEmail := h.email(t, "twofold")
 		made := want(t, owner.post("/api/v1/users", map[string]string{
 			"email": theirEmail, "name": "Twofold", "role": "member", "password": testPassword,
 		}), http.StatusCreated, "make them")
 		theirID := obj(t, made, "user")["id"].(string)
-		// Somewhere else too, the way only this suite still makes.
-		away := h.foundOrganization(t, "twofold-away", "Twofold Away")
-		if _, err := h.super.Exec(context.Background(), `
-			INSERT INTO org_member (org_id, user_id, org_role)
-			SELECT m.org_id, $2, 'member' FROM org_member m JOIN app_user u ON u.id = m.user_id WHERE u.email = $1`, away, theirID); err != nil {
-			t.Fatalf("put them somewhere else too: %v", err)
-		}
 		h.waitForPrimary(t)
 
 		listed := want(t, owner.get("/api/v1/users"), http.StatusOK, "list")
 		for _, row := range list(t, listed, "users") {
 			if u := row.(map[string]any); u["id"] == theirID && u["managed"] != true {
-				t.Errorf("somebody who also belongs elsewhere is not offered as managed: %v", u)
+				t.Errorf("a member is not offered as managed: %v", u)
 			}
 		}
 		want(t, owner.patch("/api/v1/users/"+theirID, map[string]any{"name": "Ours too"}), http.StatusOK, "rename them")
@@ -160,82 +154,107 @@ func TestAdministratorsManageLocalUsers(t *testing.T) {
 			t.Errorf("an address with an account: %d %s, want 409 pointing at the list rather than an invitation", taken.Status, taken.Raw)
 		}
 	})
+}
 
-	t.Run("an account the provider signs in gets no password here", func(t *testing.T) {
-		orgID := principalField(t, signedUp, "principal", "org", "id").(string)
-		ctx := context.Background()
-		if _, err := h.super.Exec(ctx, `
-			INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret)
-			VALUES ($1, 'https://idp.test', 'armature', 'secret')`, orgID); err != nil {
-			t.Fatalf("configure a provider: %v", err)
-		}
-		var ssoID string
-		if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Provider Person') RETURNING id`, h.email(t, "sso")).Scan(&ssoID); err != nil {
-			t.Fatalf("make a provider account: %v", err)
-		}
-		if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, orgID, ssoID); err != nil {
-			t.Fatalf("add them: %v", err)
-		}
-		h.waitForPrimary(t)
-		listed := want(t, owner.get("/api/v1/users"), http.StatusOK, "list")
-		for _, row := range list(t, listed, "users") {
-			u := row.(map[string]any)
-			if u["id"] == ssoID && u["signsInWith"] != "provider" {
-				t.Errorf("a passwordless account under a provider signs in with %v", u["signsInWith"])
-			}
-		}
-		if got := owner.put("/api/v1/users/"+ssoID+"/password", map[string]string{"password": testPassword}); got.Status != http.StatusConflict {
-			t.Errorf("a provider account was given a password: %d %s", got.Status, got.Raw)
-		}
-		// Renaming them is still this organization's, as is switching them off.
-		want(t, owner.patch("/api/v1/users/"+ssoID, map[string]any{"name": "Provider Renamed"}), http.StatusOK, "rename a provider account")
-	})
+// An account the provider signs in gets no password here. The provider is the
+// installation's one, so this runs alone and leaves the one it found.
+func TestAnAccountTheProviderSignsInGetsNoPasswordHere(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	orgID := principalField(t, owner.signIn(t, h.person(t, "sso-owner", auth.RoleOwner)), "principal", "org", "id").(string)
+	ctx := context.Background()
 
-	t.Run("the last active administrator cannot be switched off, and SQL refuses it too", func(t *testing.T) {
-		ctx := context.Background()
-		sole := api.client(t)
-		soleUp := sole.signup(t, h, "sole")
-		soleID := principalField(t, soleUp, "principal", "user", "id").(string)
-		orgID := principalField(t, soleUp, "principal", "org", "id").(string)
-		switchOff := func(id string) error {
-			_, err := h.super.Exec(ctx, `UPDATE app_user SET is_active = false WHERE id = $1`, id)
-			return err
+	h.keepProvider(t)
+	if _, err := h.super.Exec(ctx, `
+		INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret)
+		VALUES ($1, 'https://idp.test', 'armature', 'secret')
+		ON CONFLICT (org_id) DO NOTHING`, orgID); err != nil {
+		t.Fatalf("configure a provider: %v", err)
+	}
+	var ssoID string
+	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Provider Person') RETURNING id`, h.email(t, "sso")).Scan(&ssoID); err != nil {
+		t.Fatalf("make a provider account: %v", err)
+	}
+	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, orgID, ssoID); err != nil {
+		t.Fatalf("add them: %v", err)
+	}
+	h.waitForPrimary(t)
+	listed := want(t, owner.get("/api/v1/users"), http.StatusOK, "list")
+	for _, row := range list(t, listed, "users") {
+		u := row.(map[string]any)
+		if u["id"] == ssoID && u["signsInWith"] != "provider" {
+			t.Errorf("a passwordless account under a provider signs in with %v", u["signsInWith"])
 		}
+	}
+	if got := owner.put("/api/v1/users/"+ssoID+"/password", map[string]string{"password": testPassword}); got.Status != http.StatusConflict {
+		t.Errorf("a provider account was given a password: %d %s", got.Status, got.Raw)
+	}
+	// Renaming them is still the installation's, as is switching them off.
+	want(t, owner.patch("/api/v1/users/"+ssoID, map[string]any{"name": "Provider Renamed"}), http.StatusOK, "rename a provider account")
+}
 
-		// An owner alone is the last administrator.
-		if err := switchOff(soleID); err == nil || !strings.Contains(err.Error(), "cannot be switched off") {
-			t.Fatalf("SQL switched off the only administrator: err = %v", err)
-		}
-		// An active administrator beside them frees the owner, who is no longer special.
-		adminID := h.joinExisting(t, &workspace{orgID: uuid.MustParse(orgID)}, h.email(t, "beside"), "admin")
-		if err := switchOff(soleID); err != nil {
-			t.Fatalf("with another active administrator the owner can be switched off: %v", err)
-		}
-		if err := switchOff(adminID.String()); err == nil || !strings.Contains(err.Error(), "the last active administrator") {
-			t.Fatalf("SQL switched off the last active administrator: err = %v", err)
-		}
+// The last active administrator stays on. Every installation the suite shares
+// has many, so this one is a database of its own, set up by its first account.
+func TestTheLastActiveAdministratorCannotBeSwitchedOff(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	const dbName = "armature_last_administrator_switch_test"
+	api, empty := emptyInstallation(t, h, dbName)
+	api.api.Auth = empty.authService().Signups(auth.SignupFirst)
+	ctx := context.Background()
+	super, err := pgx.Connect(ctx, withDatabase(t, os.Getenv(envSuperuser), dbName, "", ""))
+	if err != nil {
+		t.Fatalf("connect superuser to %s: %v", dbName, err)
+	}
+	t.Cleanup(func() { _ = super.Close(context.Background()) })
 
-		// The service refuses first, in words: asked by somebody granted the
-		// administrator's role without the standing.
-		grantedEmail := h.email(t, "granted")
-		hash, err := auth.HashPassword(testPassword, testPasswordParams())
-		if err != nil {
+	soleUp := want(t, api.client(t).post("/api/v1/auth/signup", map[string]string{"email": h.email(t, "sole"), "password": testPassword, "name": "Sole"}),
+		http.StatusCreated, "the first account")
+	soleID := principalField(t, soleUp, "principal", "user", "id").(string)
+	orgID := principalField(t, soleUp, "principal", "org", "id").(string)
+	switchOff := func(id string) error {
+		_, err := super.Exec(ctx, `UPDATE app_user SET is_active = false WHERE id = $1`, id)
+		return err
+	}
+	join := func(email, role string) string {
+		t.Helper()
+		var id string
+		if err := super.QueryRow(ctx, `INSERT INTO app_user (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id`, email, role, shared.passwordHash).Scan(&id); err != nil {
 			t.Fatal(err)
 		}
-		grantedID := h.joinExisting(t, &workspace{orgID: uuid.MustParse(orgID)}, grantedEmail, "member")
-		if _, err := h.super.Exec(ctx, `UPDATE app_user SET password_hash = $2 WHERE id = $1`, grantedID, hash); err != nil {
+		if _, err := super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, orgID, id, role); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.super.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'global_administrator', $2)`, orgID, grantedID); err != nil {
-			t.Fatal(err)
-		}
-		granted := api.client(t)
-		want(t, granted.post("/api/v1/auth/login", map[string]string{"email": grantedEmail, "password": testPassword}), http.StatusOK, "the granted one signs in")
-		refused := granted.patch("/api/v1/users/"+adminID.String(), map[string]any{"isActive": false})
-		if refused.Status != http.StatusConflict || refused.ErrorCode() != "last_administrator" || !strings.Contains(refused.Raw, "Make somebody else an administrator first") {
-			t.Fatalf("switching off the last active administrator = %d %s, want 409 last_administrator", refused.Status, refused.Raw)
-		}
-	})
+		return id
+	}
+
+	// An owner alone is the last administrator.
+	if err := switchOff(soleID); err == nil || !strings.Contains(err.Error(), "cannot be switched off") {
+		t.Fatalf("SQL switched off the only administrator: err = %v", err)
+	}
+	// An active administrator beside them frees the owner, who is no longer special.
+	adminID := join(h.email(t, "beside"), "admin")
+	if err := switchOff(soleID); err != nil {
+		t.Fatalf("with another active administrator the owner can be switched off: %v", err)
+	}
+	if err := switchOff(adminID); err == nil || !strings.Contains(err.Error(), "the last active administrator") {
+		t.Fatalf("SQL switched off the last active administrator: err = %v", err)
+	}
+
+	// The service refuses first, in words: asked by somebody granted the
+	// administrator's role without the standing.
+	grantedEmail := h.email(t, "granted")
+	grantedID := join(grantedEmail, "member")
+	if _, err := super.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'global_administrator', $2)`, orgID, grantedID); err != nil {
+		t.Fatal(err)
+	}
+	granted := api.client(t)
+	want(t, granted.post("/api/v1/auth/login", map[string]string{"email": grantedEmail, "password": testPassword}), http.StatusOK, "the granted one signs in")
+	refused := granted.patch("/api/v1/users/"+adminID, map[string]any{"isActive": false})
+	if refused.Status != http.StatusConflict || refused.ErrorCode() != "last_administrator" || !strings.Contains(refused.Raw, "Make somebody else an administrator first") {
+		t.Fatalf("switching off the last active administrator = %d %s, want 409 last_administrator", refused.Status, refused.Raw)
+	}
 }
 
 // A person changes their own password by proving the one they have, and every
@@ -246,7 +265,7 @@ func TestAPersonChangesTheirOwnPassword(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	me := api.client(t)
-	signedUp := me.signup(t, h, "own-password")
+	signedUp := me.signIn(t, h.person(t, "own-password", auth.RoleOwner))
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 
 	other := api.client(t)

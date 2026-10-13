@@ -15,7 +15,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/auth"
-	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
@@ -29,7 +28,7 @@ import (
 func TestAFollowerIsToldAndCanStop(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "following")
+	ws := h.newProject(t, "following")
 	d, p := ws.aDesk(t, h, "Follow desk")
 	customer := ws.customerOf(t, h, "reporter")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -141,23 +140,6 @@ func TestAFollowerIsToldAndCanStop(t *testing.T) {
 			t.Errorf("a used token got %v, want not watching", err)
 		}
 	})
-
-	t.Run("watchers are the organization's, through SQL", func(t *testing.T) {
-		if _, _, _, err := ws.issues.AddWatcher(ws.ctx, raised.Key, ben.ID, customer); err != nil {
-			t.Fatal(err)
-		}
-		other := h.newWorkspace(t, "elsewhere")
-		var theirs int
-		err := h.cluster.Read(other.ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM issue_watcher`).Scan(&theirs)
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if theirs != 0 {
-			t.Errorf("another organization sees %d watchers", theirs)
-		}
-	})
 }
 
 func contains(list []string, want string) bool {
@@ -172,12 +154,14 @@ func contains(list []string, want string) bool {
 // The same, over the API: the agents' panel, the requester's followers and the
 // way out a mail carries.
 func TestFollowersOverTheAPI(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
+	flwKey := h.projectKey(t, "FLW")
 	api := newAPIServer(t, h)
 	agent := api.client(t)
-	agent.signup(t, h, "followapi")
-	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Follow", "key": "FLW", "template": "service-desk"}), http.StatusCreated, "desk")
-	types := list(t, agent.get("/api/v1/projects/FLW/request-types"), "requestTypes")
+	agent.signIn(t, h.person(t, "followapi", auth.RoleOwner))
+	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Follow", "key": flwKey, "template": "service-desk"}), http.StatusCreated, "desk")
+	types := list(t, agent.get("/api/v1/projects/"+flwKey+"/request-types"), "requestTypes")
 
 	customerEmail := h.email(t, "customer")
 	invited := want(t, agent.post("/api/v1/invites", map[string]any{"email": customerEmail, "role": "customer"}), http.StatusCreated, "invite")
@@ -203,7 +187,7 @@ func TestFollowersOverTheAPI(t *testing.T) {
 
 	// The agents' side: the panel, oneself, a colleague by id, an address.
 	want(t, agent.get("/api/v1/issues/"+key+"/watchers"), http.StatusOK, "watchers")
-	want(t, agent.get("/api/v1/issues/FLW-999/watchers"), http.StatusNotFound, "no such issue")
+	want(t, agent.get("/api/v1/issues/"+flwKey+"-999/watchers"), http.StatusNotFound, "no such issue")
 	want(t, agent.post("/api/v1/issues/"+key+"/watchers", map[string]any{}), http.StatusCreated, "watch it myself")
 	want(t, agent.post("/api/v1/issues/"+key+"/watchers", map[string]any{"email": h.email(t, "carol")}), http.StatusCreated, "an address")
 	want(t, agent.delete("/api/v1/issues/"+key+"/watchers/"+benID), http.StatusNoContent, "remove ben")
@@ -234,7 +218,7 @@ func TestFollowersOverTheAPI(t *testing.T) {
 func TestWatchOwnDecidesWhoHearsOfTheirOwnIssues(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "watchown")
+	ws := h.newProject(t, "watchown")
 	inbox := notify.NewService(h.cluster)
 	member := func(prefix string) (uuid.UUID, issue.Actor) {
 		id := h.joinExisting(t, ws, h.email(t, prefix), "member")

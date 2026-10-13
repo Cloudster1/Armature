@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/privacy"
 )
 
@@ -18,16 +19,17 @@ import (
 // take their data and leave, and letting a member go switches them off.
 func TestPersonalDataHasALifetime(t *testing.T) {
 	h := newHarness(t)
+	recKey := h.projectKey(t, "REC")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "lifetime")
+	signedUp := owner.signIn(t, h.person(t, "lifetime", auth.RoleOwner))
 	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
 	var orgID uuid.UUID
 	if err := h.super.QueryRow(context.Background(), `SELECT id FROM org WHERE slug = $1`, slug).Scan(&orgID); err != nil {
 		t.Fatal(err)
 	}
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Records", "key": "REC"}), http.StatusCreated, "a project")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Records", "key": recKey}), http.StatusCreated, "a project")
 
 	// Somebody else joins by invitation and leaves a comment behind.
 	other := api.client(t)
@@ -35,7 +37,8 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 	invited := want(t, owner.post("/api/v1/invites", map[string]any{"email": otherEmail, "role": "member"}), http.StatusCreated, "invite")
 	want(t, other.post("/api/v1/auth/invites/accept", map[string]any{"token": invited.Body["token"], "name": "Lee Ving", "password": testPassword}), http.StatusOK, "accept")
 	otherID := principalField(t, other.get("/api/v1/auth/me"), "principal", "user", "id").(string)
-	made := want(t, other.post("/api/v1/projects/REC/issues", map[string]any{"summary": "Keep the lights on"}), http.StatusCreated, "an issue")
+	h.erasable(otherID)
+	made := want(t, other.post("/api/v1/projects/"+recKey+"/issues", map[string]any{"summary": "Keep the lights on"}), http.StatusCreated, "an issue")
 	key := obj(t, made, "issue")["key"].(string)
 	want(t, other.post("/api/v1/issues/"+key+"/comments", map[string]any{"text": "I will look at this on Monday."}), http.StatusCreated, "a comment")
 
@@ -52,7 +55,7 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 				t.Fatalf("%s: %v", q, err)
 			}
 		}
-		if _, err := h.super.Exec(context.Background(), `UPDATE outbox_event SET published_at = now() - interval '40 days' WHERE org_id = $1 AND published_at IS NOT NULL`, orgID); err != nil {
+		if _, err := h.super.Exec(context.Background(), `UPDATE outbox_event SET published_at = now() - interval '40 days' WHERE org_id = $1 AND payload->>'key' LIKE $2`, orgID, recKey+"-%"); err != nil {
 			t.Fatal(err)
 		}
 		counts, err := privacy.NewRetention(h.cluster, privacy.DefaultPolicy(), slog.New(slog.DiscardHandler)).Once(context.Background())
@@ -169,11 +172,20 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 			t.Fatalf("audit rows for the erasure = %d", audited)
 		}
 	})
+}
 
-	t.Run("the last active administrator cannot erase themselves", func(t *testing.T) {
-		refused := want(t, owner.delete("/api/v1/auth/me"), http.StatusConflict, "the last active administrator")
-		if refused.ErrorCode() != "last_administrator" || !strings.Contains(refused.Raw, "Make somebody else an administrator first") {
-			t.Fatalf("refusal = %s", refused.Raw)
-		}
-	})
+// The last active administrator cannot erase themselves. Only an installation
+// of its own has one administrator; the shared one has every test's.
+func TestTheLastActiveAdministratorCannotEraseThemselves(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api, empty := emptyInstallation(t, h, "armature_last_administrator_erase_test")
+	api.api.Auth = empty.authService().Signups(auth.SignupFirst)
+	founder := api.client(t)
+	want(t, founder.post("/api/v1/auth/signup", map[string]string{"email": h.email(t, "founder"), "password": testPassword, "name": "Founder"}), http.StatusCreated, "the first account")
+
+	refused := want(t, founder.delete("/api/v1/auth/me"), http.StatusConflict, "the last active administrator")
+	if refused.ErrorCode() != "last_administrator" || !strings.Contains(refused.Raw, "Make somebody else an administrator first") {
+		t.Fatalf("refusal = %s", refused.Raw)
+	}
 }

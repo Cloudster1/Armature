@@ -3,12 +3,13 @@
 package test
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // Time on an issue: an estimate, what remains, and the work logged against
@@ -16,11 +17,12 @@ import (
 func TestTimeIsEstimatedLoggedAndAccounted(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	tmdKey := h.projectKey(t, "TMD")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "timekeeper")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Timed", "key": "TMD"}), http.StatusCreated, "project")
-	issued := want(t, owner.post("/api/v1/projects/TMD/issues", map[string]any{"summary": "takes a while"}), http.StatusCreated, "issue")
+	owner.signIn(t, h.person(t, "timekeeper", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Timed", "key": tmdKey}), http.StatusCreated, "project")
+	issued := want(t, owner.post("/api/v1/projects/"+tmdKey+"/issues", map[string]any{"summary": "takes a while"}), http.StatusCreated, "issue")
 	key := obj(t, issued, "issue")["key"].(string)
 
 	estimated := want(t, owner.patch("/api/v1/issues/"+key, map[string]any{"timeEstimateMinutes": 480}), http.StatusOK, "estimate")
@@ -88,11 +90,11 @@ func TestTimeIsEstimatedLoggedAndAccounted(t *testing.T) {
 	t.Run("the reporter can be handed to another member and to nobody else", func(t *testing.T) {
 		// The colleague joined a moment ago on the primary; the members list
 		// is a replica read, so it may take a beat to see them.
-		me := principalField(t, owner.get("/api/v1/auth/me"), "principal", "user", "id").(string)
+		colleagueID := principalField(t, colleague.get("/api/v1/auth/me"), "principal", "user", "id").(string)
 		var other string
 		for attempt := 0; attempt < 50 && other == ""; attempt++ {
 			for _, raw := range list(t, owner.get("/api/v1/members"), "members") {
-				if id := raw.(map[string]any)["id"].(string); id != me {
+				if id := raw.(map[string]any)["id"].(string); id == colleagueID {
 					other = id
 				}
 			}
@@ -101,7 +103,7 @@ func TestTimeIsEstimatedLoggedAndAccounted(t *testing.T) {
 			}
 		}
 		if other == "" {
-			t.Fatalf("no second member to hand over to; owner sees %s; colleague is %s", owner.get("/api/v1/members").Raw, colleague.get("/api/v1/auth/me").Raw)
+			t.Fatalf("the colleague %s is not among the members to hand over to", colleagueID)
 		}
 		moved := want(t, owner.patch("/api/v1/issues/"+key, map[string]any{"reporterId": other}), http.StatusOK, "hand over")
 		if obj(t, moved, "issue", "reporter")["id"] != other {
@@ -111,29 +113,38 @@ func TestTimeIsEstimatedLoggedAndAccounted(t *testing.T) {
 	})
 }
 
-// Labels: coined by tagging, shared by the organization, filtered on, renamed
+// Labels: coined by tagging, shared by everyone, filtered on, renamed
 // everywhere, and gone everywhere when removed.
-func TestLabelsAreWordsTheOrganizationShares(t *testing.T) {
+func TestLabelsAreWordsEveryoneShares(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	tagKey := h.projectKey(t, "TAG")
+	otrKey := h.projectKey(t, "OTR")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "labeller")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Tagged", "key": "TAG"}), http.StatusCreated, "project")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Other", "key": "OTR"}), http.StatusCreated, "other project")
-	first := obj(t, owner.post("/api/v1/projects/TAG/issues", map[string]any{"summary": "one"}), "issue")["key"].(string)
-	second := obj(t, owner.post("/api/v1/projects/TAG/issues", map[string]any{"summary": "two"}), "issue")["key"].(string)
-	elsewhere := obj(t, owner.post("/api/v1/projects/OTR/issues", map[string]any{"summary": "three"}), "issue")["key"].(string)
+	owner.signIn(t, h.person(t, "labeller", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Tagged", "key": tagKey}), http.StatusCreated, "project")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Other", "key": otrKey}), http.StatusCreated, "other project")
+	first := obj(t, owner.post("/api/v1/projects/"+tagKey+"/issues", map[string]any{"summary": "one"}), "issue")["key"].(string)
+	second := obj(t, owner.post("/api/v1/projects/"+tagKey+"/issues", map[string]any{"summary": "two"}), "issue")["key"].(string)
+	elsewhere := obj(t, owner.post("/api/v1/projects/"+otrKey+"/issues", map[string]any{"summary": "three"}), "issue")["key"].(string)
+	backend, urgent, server, design := h.name(t, "backend"), h.name(t, "Urgent"), h.name(t, "server"), h.name(t, "design")
 
-	set := want(t, owner.put("/api/v1/issues/"+first+"/labels", map[string]any{"labels": []string{"backend", "Urgent"}}), http.StatusOK, "tag")
-	if names := labelNames(t, set, "labels"); names != "backend, Urgent" {
+	set := want(t, owner.put("/api/v1/issues/"+first+"/labels", map[string]any{"labels": []string{backend, urgent}}), http.StatusOK, "tag")
+	if names := labelNames(t, set, "labels"); names != backend+", "+urgent {
 		t.Fatalf("labels = %q", names)
 	}
 	// The same word again, in another case, is the same label.
-	want(t, owner.put("/api/v1/issues/"+second+"/labels", map[string]any{"labels": []string{"BACKEND"}}), http.StatusOK, "tag again")
-	want(t, owner.put("/api/v1/issues/"+elsewhere+"/labels", map[string]any{"labels": []string{"backend"}}), http.StatusOK, "tag elsewhere")
+	want(t, owner.put("/api/v1/issues/"+second+"/labels", map[string]any{"labels": []string{strings.ToUpper(backend)}}), http.StatusOK, "tag again")
+	want(t, owner.put("/api/v1/issues/"+elsewhere+"/labels", map[string]any{"labels": []string{backend}}), http.StatusOK, "tag elsewhere")
 
-	labels := list(t, want(t, owner.get("/api/v1/labels"), http.StatusOK, "labels"), "labels")
+	// Everybody's labels are on the list; these two are the test's own.
+	var labels []any
+	for _, raw := range list(t, want(t, owner.get("/api/v1/labels"), http.StatusOK, "labels"), "labels") {
+		if name := strings.ToLower(raw.(map[string]any)["name"].(string)); name == strings.ToLower(backend) || name == strings.ToLower(urgent) {
+			labels = append(labels, raw)
+		}
+	}
 	if len(labels) != 2 {
 		t.Fatalf("want 2 labels, got %d: %v", len(labels), labels)
 	}
@@ -141,17 +152,17 @@ func TestLabelsAreWordsTheOrganizationShares(t *testing.T) {
 	for _, raw := range labels {
 		l := raw.(map[string]any)
 		switch l["name"] {
-		case "backend":
+		case backend:
 			backendID = l["id"].(string)
 			if l["issueCount"] != float64(3) {
 				t.Errorf("backend is on %v issues, want 3", l["issueCount"])
 			}
-		case "Urgent":
+		case urgent:
 			urgentID = l["id"].(string)
 		}
 	}
 
-	filtered := want(t, owner.get("/api/v1/projects/TAG/issues?label="+urgentID), http.StatusOK, "filter")
+	filtered := want(t, owner.get("/api/v1/projects/"+tagKey+"/issues?label="+urgentID), http.StatusOK, "filter")
 	if filtered.Body["total"] != float64(1) {
 		t.Fatalf("filtering by Urgent should find one issue, got %v", filtered.Body["total"])
 	}
@@ -160,11 +171,11 @@ func TestLabelsAreWordsTheOrganizationShares(t *testing.T) {
 		t.Fatalf("the issue should carry two labels: %v", shown["labels"])
 	}
 
-	renamed := want(t, owner.patch("/api/v1/labels/"+backendID, map[string]any{"name": "server", "color": "blue"}), http.StatusOK, "rename")
-	if obj(t, renamed, "label")["name"] != "server" {
+	renamed := want(t, owner.patch("/api/v1/labels/"+backendID, map[string]any{"name": server, "color": "blue"}), http.StatusOK, "rename")
+	if obj(t, renamed, "label")["name"] != server {
 		t.Fatalf("rename: %s", renamed.Raw)
 	}
-	if names := labelNames(t, owner.get("/api/v1/issues/"+second), "issue", "labels"); names != "server" {
+	if names := labelNames(t, owner.get("/api/v1/issues/"+second), "issue", "labels"); names != server {
 		t.Fatalf("the rename should show on the issue, got %q", names)
 	}
 
@@ -173,7 +184,7 @@ func TestLabelsAreWordsTheOrganizationShares(t *testing.T) {
 		t.Fatalf("untagged issue still has %q", names)
 	}
 	history := owner.get("/api/v1/issues/" + first + "/history")
-	if !strings.Contains(history.Raw, `"field":"labels"`) || !strings.Contains(history.Raw, `"from":"Urgent, server"`) {
+	if !strings.Contains(history.Raw, `"field":"labels"`) || !strings.Contains(history.Raw, `"from":"`+urgent+`, `+server+`"`) {
 		var entries []string
 		for _, raw := range list(t, history, "history") {
 			for _, c := range raw.(map[string]any)["changes"].([]any) {
@@ -184,34 +195,21 @@ func TestLabelsAreWordsTheOrganizationShares(t *testing.T) {
 		t.Errorf("the changelog should record the labels that came and went:\n%s", strings.Join(entries, "\n"))
 	}
 
-	coined := want(t, owner.post("/api/v1/labels", map[string]any{"name": "design", "color": "pink"}), http.StatusCreated, "coin a label directly")
+	coined := want(t, owner.post("/api/v1/labels", map[string]any{"name": design, "color": "pink"}), http.StatusCreated, "coin a label directly")
 	if obj(t, coined, "label")["color"] != "pink" {
 		t.Fatalf("coined: %s", coined.Raw)
 	}
 
 	t.Run("bad words are refused", func(t *testing.T) {
 		want(t, owner.put("/api/v1/issues/"+first+"/labels", map[string]any{"labels": []string{"two words"}}), http.StatusBadRequest, "spaces")
-		want(t, owner.post("/api/v1/labels", map[string]any{"name": "Urgent"}), http.StatusConflict, "duplicate")
-		want(t, owner.post("/api/v1/labels", map[string]any{"name": "fine", "color": "mauve"}), http.StatusBadRequest, "colour outside the palette")
+		want(t, owner.post("/api/v1/labels", map[string]any{"name": urgent}), http.StatusConflict, "duplicate")
+		want(t, owner.post("/api/v1/labels", map[string]any{"name": h.name(t, "fine"), "color": "mauve"}), http.StatusBadRequest, "colour outside the palette")
 	})
 
 	t.Run("deleting a label takes it off every issue", func(t *testing.T) {
 		want(t, owner.delete("/api/v1/labels/"+backendID), http.StatusNoContent, "delete")
 		if names := labelNames(t, owner.get("/api/v1/issues/"+elsewhere), "issue", "labels"); names != "" {
 			t.Fatalf("the deleted label is still on an issue: %q", names)
-		}
-	})
-
-	t.Run("another tenant has words of its own", func(t *testing.T) {
-		stranger := api.client(t)
-		stranger.signup(t, h, "labelstranger")
-		if got := list(t, stranger.get("/api/v1/labels"), "labels"); len(got) != 0 {
-			t.Fatalf("a new organization should see no labels, got %v", got)
-		}
-		want(t, stranger.patch("/api/v1/labels/"+urgentID, map[string]any{"name": "mine"}), http.StatusNotFound, "rename another tenant's label")
-		var seen int
-		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM label WHERE id = $1`, urgentID).Scan(&seen); err != nil || seen != 1 {
-			t.Fatalf("the label should still exist for its owner: %d %v", seen, err)
 		}
 	})
 }

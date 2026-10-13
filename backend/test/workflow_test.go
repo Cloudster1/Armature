@@ -47,7 +47,7 @@ func (ws *workspace) move(t *testing.T, h *harness, key, transition string, in .
 func TestTransitions(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "flowing")
+	ws := h.newProject(t, "flowing")
 
 	t.Run("only the transitions leaving the current status are offered", func(t *testing.T) {
 		created := ws.newIssue(t, "walk the graph")
@@ -82,8 +82,9 @@ func TestTransitions(t *testing.T) {
 		// Approve leaves In Review, so it must not be usable from To Do even
 		// when its id is known.
 		var approveID uuid.UUID
+		flow := h.assignmentFor(t, ws, created.Type.Name).WorkflowID
 		err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT id FROM workflow_transition WHERE name = 'Approve'`).Scan(&approveID)
+			return tx.QueryRow(ctx, `SELECT id FROM workflow_transition WHERE name = 'Approve' AND workflow_id = $1`, flow).Scan(&approveID)
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -242,7 +243,7 @@ func TestTransitions(t *testing.T) {
 func TestTransitionAtomicity(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "atomic")
+	ws := h.newProject(t, "atomic")
 	created := ws.newIssue(t, "all or nothing")
 
 	ws.move(t, h, created.Key, "Start progress")
@@ -299,19 +300,25 @@ func TestTransitionAtomicity(t *testing.T) {
 	}
 }
 
-// TestConditionHidesTransition attaches a role condition to a live workflow and
-// checks that it takes effect for a real user.
+// A role condition on a live workflow takes effect for a real user. The workflow
+// is the project's own copy of the default, since the default is everyone's.
 func TestConditionHidesTransition(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "gated")
+	ws := h.newProject(t, "gated")
+	source := h.assignmentFor(t, ws, bootstrap.TypeTask).WorkflowID
+	gated, _, err := ws.admin.CopyWorkflow(ws.ctx, source, h.name(t, "Gated"), ws.actor.UserID)
+	if err != nil {
+		t.Fatalf("copy the default workflow: %v", err)
+	}
+	h.overrideWith(t, ws, "Gated scheme", workflow.SchemeItemInput{WorkflowID: gated.ID})
 	created := ws.newIssue(t, "restricted")
 
 	// Restrict "Start progress" to owners and admins.
-	_, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
+	_, err = h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 		var transitionID uuid.UUID
 		if err := tx.QueryRow(ctx,
-			`SELECT id FROM workflow_transition WHERE name = 'Start progress'`).Scan(&transitionID); err != nil {
+			`SELECT id FROM workflow_transition WHERE name = 'Start progress' AND workflow_id = $1`, gated.ID).Scan(&transitionID); err != nil {
 			return err
 		}
 		_, err := tx.Exec(ctx, `

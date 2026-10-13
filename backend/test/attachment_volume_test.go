@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/armature/armature/backend/internal/attachment"
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A deployment without a bucket keeps its files on a volume, and moves them
@@ -21,6 +22,7 @@ import (
 func TestAttachmentsLiveOnAVolumeAndMoveToTheBucket(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	dskKey := h.projectKey(t, "DSK")
 	api := newAPIServer(t, h)
 	dir := filepath.Join(t.TempDir(), "attachments")
 	volume, err := attachment.NewFS(dir)
@@ -32,9 +34,9 @@ func TestAttachmentsLiveOnAVolumeAndMoveToTheBucket(t *testing.T) {
 	api.api.Attachments = attachment.NewService(h.cluster, volume, issues)
 
 	owner := api.client(t)
-	owner.signup(t, h, "volume")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "On disk", "key": "DSK"}), http.StatusCreated, "create project")
-	issued := want(t, owner.post("/api/v1/projects/DSK/issues", map[string]any{"summary": "has a file on disk"}), http.StatusCreated, "create issue")
+	owner.signIn(t, h.person(t, "volume", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "On disk", "key": dskKey}), http.StatusCreated, "create project")
+	issued := want(t, owner.post("/api/v1/projects/"+dskKey+"/issues", map[string]any{"summary": "has a file on disk"}), http.StatusCreated, "create issue")
 	key := obj(t, issued, "issue")["key"].(string)
 
 	content := []byte("%PDF-1.4\n%fake but sniffable\n")
