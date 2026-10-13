@@ -46,6 +46,11 @@ reads become the problem they were meant to solve.
 
 ### Row level security in addition to tenant filters in queries
 
+**Narrowed** by [One installation is one team's tracker](#one-installation-is-one-teams-tracker)
+(#216): an installation holds one organization, so the policies keep apart
+the organizations only the integration suite still makes. They stay, with
+`org_id`, until the schema drops the tenant (#218).
+
 Application-level scoping alone means every query is one forgotten `WHERE`
 clause away from a cross-tenant disclosure, forever, in code nobody is reviewing
 that closely any more. RLS turns that class of bug into an empty result set. The
@@ -67,6 +72,52 @@ written before the rule were rerun that way by `00926`.
 `TestBackfillsReadingOrgLiftItsRowSecurity` refuses a migration that reads
 `org` without the lift, and `TestMigrationsRunAsPlainOwner` migrates as such
 an owner and checks an older organization comes out like a new one.
+
+### One installation is one team's tracker
+
+Armature is self-hosted, and an installation serves one team. Organizations
+were a layer such an installation never used: founding one at sign-up,
+choosing and switching between them, slugs in sign-in and desk addresses,
+rules for a person in several, and one copy per organization of settings
+there is really one of. They are gone from everything people and the API see
+(#208). The first account sets the installation up, a sign-in lands in it,
+the desk's door is named by its desk, and the product says "the
+installation", "everyone" or "all projects" where it said "the
+organization". People who must not see each other's work run an
+installation each.
+
+Several organizations in one database are refused at the upgrade rather than
+merged, as [One installation holds one organization, and an upgrade with
+several stops](#one-installation-holds-one-organization-and-an-upgrade-with-several-stops)
+says. Their project keys, statuses, workflows, roles and people would
+collide, every rule for which one wins would be wrong for somebody, and a
+migration would be choosing for them with nobody watching. Refusing leaves
+the choice with the operator, who can delete what they no longer need with
+the release that still knows how.
+
+Inside, the product went first and the schema follows. The one organization
+row still holds the installation's name and settings, the tables still carry
+`org_id`, and forced row level security on `current_org_id()` still scopes
+every query, now to the one organization there is. That kept each step
+shippable with all four test layers green. The integration suite keeps its
+tests apart by organization until it isolates them another way (#217), and
+the columns and policies go with the schema ticket (#218). Until then the
+entries on row security stand for the code as written, while the separation
+they argued for, between teams, is now between installations.
+
+This supersedes the entries that described organizations as part of the
+product. Three were marked by the step that changed them: [The owner always
+administers their own organization](#the-owner-always-administers-their-own-organization),
+[A sign-in reaches what its proof vouches for](#a-sign-in-reaches-what-its-proof-vouches-for)
+and [An administrator makes a local user, and manages only what is
+theirs](#an-administrator-makes-a-local-user-and-manages-only-what-is-theirs).
+The rest are marked here. An entry that calls labels, fields, workflows,
+roles or themes "the organization's" was written while that was the
+installation's name, and its argument stands.
+
+**Reconsider if** one installation routinely needs a group inside it that the
+others must not see at all: that is a wall around people and settings, the
+way a project is a wall around work, not organizations coming back.
 
 ### One installation holds one organization, and an upgrade with several stops
 
@@ -1776,6 +1827,11 @@ project's.
 
 ### A forgotten password is reset by mail, and the answer names nobody
 
+**Superseded in part** by [An administrator manages every account, and letting go is switching off](#an-administrator-manages-every-account-and-letting-go-is-switching-off)
+(#211): an administrator now resets any account but their own, only an owner
+another owner's, and a request or a reset is recorded once rather than in
+every organization of the person's. The link by mail stands as written.
+
 Somebody who forgot their password had no way back but an administrator, and
 an administrator resets only a person whose one organization is theirs: an
 owner, or anybody in two organizations, was locked out. The sign-in page now
@@ -1806,6 +1862,11 @@ log of every organization the person belongs to, as an erasure is.
 lost, which wants a second proof rather than a mail.
 
 ### A password is one proof; an organization may ask for a second
+
+**Superseded in part** by [A sign-in lands in the installation, with one provider and one rule](#a-sign-in-lands-in-the-installation-with-one-provider-and-one-rule)
+(#212) and [One installation is one team's tracker](#one-installation-is-one-teams-tracker): the rule is the installation's, a held session switches
+nowhere, and a session the provider opened is held by no rule. The factor,
+its recovery codes, the sealed key and the code step stand as written.
 
 A password that leaked opened the whole organization, and for an owner every
 organization they own. A person can now add an authenticator app: the server
@@ -1894,6 +1955,11 @@ not chosen, at which point the organization's settings column is where it goes.
 
 ### A project is a wall inside the organization
 
+**Narrowed** by [One installation is one team's tracker](#one-installation-is-one-teams-tracker)
+(#216): the database wall it starts from was between organizations, and an
+installation holds one, so the project is the wall inside an installation.
+The guard stands as written.
+
 The database wall between organizations was solid, and there was no wall at all
 between projects inside one: `perm.Read` was defined and never checked, sixteen
 routes addressed by an object's id asked only whether the caller held the
@@ -1963,6 +2029,12 @@ because nothing proves it and agents answer in the app.
 point the allow list wants to be per organization rather than per process.
 
 ### A person is erased, their work is not
+
+**Superseded in part** by [The installation keeps an active administrator](#the-installation-keeps-an-active-administrator)
+and [An administrator manages every account, and letting go is switching off](#an-administrator-manages-every-account-and-letting-go-is-switching-off)
+(#211): the last active administrator is refused rather than the last owner,
+and letting somebody go switches their account off rather than removing the
+membership. Erasure itself stands as written.
 
 Erasure replaces the account with a tombstone and keeps the work attributed to
 it, because the record belongs to the team: a comment with no author is a worse
