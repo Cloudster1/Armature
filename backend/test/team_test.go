@@ -100,7 +100,7 @@ func TestATeamIsMadeOfPeopleWhoAreAlreadyHere(t *testing.T) {
 		if err == nil {
 			t.Fatal("SQL put a customer on a team")
 		}
-		if !strings.Contains(err.Error(), "member of the organization") {
+		if !strings.Contains(err.Error(), "member here") {
 			t.Errorf("error = %v, want the guard's own message", err)
 		}
 	})

@@ -36,6 +36,7 @@ var sequentialTests = map[string]string{
 	"TestTheDropStopsAtAPolicyItDidNotMake":                      "creates databases and roles",
 	"TestKeysAreTheInstallations":                                "creates databases and roles",
 	"TestTheUpgradeRefusesKeysThatCollide":                       "creates databases and roles",
+	"TestTriggersKeepTheirRulesWithoutTheOrganization":           "creates databases and roles",
 	"TestOutboxRelay":                                            "relays the whole installation's outbox into the shared stream",
 	"TestOutboxRelayWaitsForTheSlowestGroup":                     "relays the whole installation's outbox into the shared stream",
 	"TestAConsumerRetriesAHandlerThatFailedOnce":                 "consumes the shared Redis stream",

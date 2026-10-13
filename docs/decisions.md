@@ -131,6 +131,28 @@ A mail recorded so reached no request, so the upgrade records it as
 `unmatched`, which says that. The columns themselves stay until the last step
 of #218.
 
+### Triggers keep their rules without the organization
+
+A trigger that held a row to its organization said nothing once an
+installation holds one, so migration `00934` takes that part out of each
+(#218). What a trigger holds a row to is kept: an issue's milestone, sprint,
+team, versions, components and fields are its own project's, an article or a
+rating belongs to a service desk, a customer joins no team and shares no
+filter or theme, a role over a project is not one that answers for the whole
+installation, and the installation keeps an active administrator and a default
+workflow scheme. The membership checks read `org_member` by person, as its key
+already does. Nine triggers held a row to its organization and nothing else;
+they are gone, and the foreign keys keep what they also said, that the row
+pointed at exists.
+
+No trigger fires on `org_id` changing any more, so dropping the column later
+takes none of them with it, and only the functions of the organization's own
+table still read it. The role assignment's trigger fires on the role, its scope
+and its subject, not on `created_by`: forgetting a granter as their account
+goes grants nothing, and an account that granted itself a role could not be
+deleted where the foreign keys happened to act in that order. Tombstones no
+longer name an organization, which nothing read.
+
 ### One installation is one team's tracker
 
 Armature is self-hosted, and an installation serves one team. Organizations
