@@ -41,6 +41,10 @@ Then open <http://localhost:5173> and sign in as `ada@armature.test` with the
 password the seed prints. There is a demo project with issues spread across the
 workflow waiting for you.
 
+An installation set up without the seed can be shown with something in it too:
+an administrator adds a made-up plant, two projects with their issues, teams,
+boards and sprints, with "Add the demo project" under Settings, Installation.
+
 Or sign in the way a company would: on the sign-in page choose Continue with
 single sign-on. The stack runs a Keycloak at
 <http://localhost:8180> (admin console: `admin` / `admin`) with the same

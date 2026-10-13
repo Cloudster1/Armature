@@ -12,6 +12,20 @@ here in the branch that makes it.
   stopped at the first sprint; it now commits only Platform's work to them.
   The browser suite's holiday scenarios also pass on a seeded installation:
   they empty the default calendar first and put its days back afterwards.
+- Changed: the organization settings page is now Installation, at
+  `/settings/installation`. Administrators rename the installation there,
+  and the sidebar's head shows the new name at once; members read it.
+  `/settings/organization` leads there until the next release (#213).
+- Added: "Add the demo project" on the Installation page and `POST
+  /installation/demo-project`, for administrators. It fills the installation
+  with a made-up plant, a production line (`LINE`) and its maintenance
+  (`MAINT`), and records `installation.demo_added`. It runs once: a second
+  time, or with a project of the installation's own under either key, it is
+  refused with 409 before anything is made. Unlike the demo organization it
+  replaces, it leaves the holiday calendars alone (#213).
+- Removed: deleting the organization, with `DELETE /organization` and its
+  dialog, and the `org.created` event. A webhook subscribed to `org.created`
+  keeps working, but has to drop it before it is saved again (#213).
 - Changed: signing in lands in the installation. Nobody is asked which
   organization, the sidebar shows the installation's name without a switcher,
   and the profile lists no organizations. `POST /auth/switch-org` is gone, and

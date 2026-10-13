@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"net/http"
+
+	"github.com/armature/armature/backend/internal/demo"
 )
 
 type renameInstallationRequest struct {
@@ -30,4 +32,17 @@ func (s *Server) handleRenameInstallation(w http.ResponseWriter, r *http.Request
 	}
 	NoteWrite(r.Context(), lsn)
 	respondJSON(w, r, http.StatusOK, map[string]any{"installation": out})
+}
+
+// handleAddDemoProject fills the installation with the demo, so an
+// administrator can show the product with something in it.
+func (s *Server) handleAddDemoProject(w http.ResponseWriter, r *http.Request) {
+	p := PrincipalFrom(r.Context())
+	made, lsn, err := demo.Add(r.Context(), s.DB, p, clientIP(r), s.Log)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusCreated, map[string]any{"project": made})
 }

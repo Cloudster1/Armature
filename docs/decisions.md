@@ -92,6 +92,29 @@ owner a cluster migrates as.
 that is better than deleting: an export of one organization's projects into
 another installation is the shape that would take.
 
+### The demo is two projects an administrator adds, once
+
+The demo was an organization of its own, made and switched into with one
+press, and went with switching (#212). An installation holds one team, so the
+demo now comes into it: "Add the demo project" runs `demo.Factory` for an
+administrator and leaves a production line and its maintenance beside the
+installation's own projects, under `LINE` and `MAINT`. It goes through the
+same services a person would, so it is not one transaction; both keys are
+checked first, and a taken one refuses the whole demo with a sentence before
+anything is made. That makes it once only, since a project is archived rather
+than deleted and its key is never free again. The maintenance workflow, its
+scheme and its waiting status are used where the installation has them by
+name. The holiday calendars are left alone: days off are the installation's,
+and the seed fills its own.
+
+Nothing inside deletes the installation. `DELETE /organization` went with
+the organizations it chose between; taking an installation down is its
+operator's, with its database.
+
+**Reconsider if** people want the demo out again: archiving its two projects
+hides it, and removing it would have to take its statuses and workflow along
+only where nothing else uses them.
+
 ### A transactional outbox rather than publishing events directly
 
 Publishing to Redis inside a request means the event can be sent for a

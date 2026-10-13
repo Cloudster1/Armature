@@ -1,6 +1,6 @@
-// Package demo fills a fresh organization with a made-up but plausible
-// operation, so somebody can show the product with something in it rather
-// than explain an empty state.
+// Package demo fills an installation with a made-up but plausible operation,
+// so somebody can show the product with something in it rather than explain
+// an empty state.
 package demo
 
 import (
@@ -32,10 +32,13 @@ import (
 // FactoryKey is the demo project's key, so a caller can send the reader there.
 const FactoryKey = "LINE"
 
-// Factory fills the organization the principal is in with a production line:
+// FactoryName is what the demo project is called, for telling somebody where it is.
+const FactoryName = "Production line 3"
+
+// Factory fills the installation the principal is in with a production line:
 // a changeover under way, machines that stop, a scrap rate to bring down, the
 // shift that owns the work, its maintenance windows and the milestones the
-// plant is aiming at. It runs once per organization; the key is taken after.
+// plant is aiming at. It runs once per installation; the key is taken after.
 func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *slog.Logger) (*project.Project, error) {
 	orgCtx := db.PinPrimary(auth.ContextForOrg(ctx, p))
 	engine := workflow.NewEngine(workflow.NewDefaultRegistry())
@@ -46,7 +49,7 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 
 	created, _, err := templates.Create(orgCtx, "scrum", project.CreateInput{
 		Key:         FactoryKey,
-		Name:        "Production line 3",
+		Name:        FactoryName,
 		Description: "The line that builds the housings: six stations, two robots, one paint cell, two shifts.",
 		LeadID:      &actor.UserID,
 	}, actor.UserID)
@@ -200,9 +203,6 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 	if err := plant(orgCtx, cluster, templates, issues, actor, plantInput{
 		line: created.Key, types: types, keys: keys, shift: shift.ID, sprints: sprints, day: day, pts: pts,
 	}); err != nil {
-		return nil, err
-	}
-	if err := Holidays(orgCtx, cluster, actor.UserID, today); err != nil {
 		return nil, err
 	}
 	log.Info("filled a demo factory", "project", created.Key, "issues", len(work))

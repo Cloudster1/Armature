@@ -132,7 +132,6 @@ export function useEraseMe() {
   });
 }
 
-/** Lets a member go from the organization; their account stays theirs elsewhere. */
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -143,15 +142,6 @@ export function useLogout() {
       cacheCustomTheme(null);
       queryClient.clear();
     },
-  });
-}
-
-/** Deletes the current organization; its address typed back is the confirmation. */
-export function useDeleteOrganization() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (confirm: string) => request<void>(`/organization?confirm=${encodeURIComponent(confirm)}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
