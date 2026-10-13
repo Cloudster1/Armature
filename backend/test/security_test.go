@@ -164,7 +164,7 @@ func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
 		}
 	})
 
-	t.Run("losing membership drops the organization from an open session", func(t *testing.T) {
+	t.Run("losing membership ends an open session", func(t *testing.T) {
 		c := api.client(t)
 		signup := c.signup(t, h, "removed")
 		userID := principalField(t, signup, "principal", "user", "id").(string)
@@ -173,20 +173,12 @@ func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Still authenticated as a person, but no longer inside the tenant, so
-		// tenant scoped endpoints must refuse rather than query unscoped.
-		me := c.get("/api/v1/auth/me")
-		if me.Status != http.StatusOK {
-			t.Fatalf("me returned %d, want the user to still be signed in", me.Status)
-		}
-		if org := principalField(t, me, "principal", "org"); org != nil {
-			t.Errorf("principal still carries organization %v", org)
-		}
-
-		tokens := c.get("/api/v1/tokens")
-		if tokens.Status != http.StatusBadRequest || tokens.ErrorCode() != "no_organization" {
-			t.Errorf("tenant scoped endpoint returned %d/%q, want 400/no_organization",
-				tokens.Status, tokens.ErrorCode())
+		// Nobody is signed in outside the organization, so nothing below
+		// could be reached without a tenant scope.
+		for _, path := range []string{"/api/v1/auth/me", "/api/v1/tokens"} {
+			if got := c.get(path); got.Status != http.StatusUnauthorized {
+				t.Errorf("%s answered %d %s, want 401 for a session with no membership behind it", path, got.Status, got.Raw)
+			}
 		}
 	})
 }
