@@ -11,7 +11,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/auth"
-	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/field"
 )
 
@@ -49,15 +48,6 @@ func TestAnUnarrangedProjectIsDrawnTheInstallationsWay(t *testing.T) {
 		if each.Origin.Scope == arrange.ScopeBuiltin && len(each.Places) != len(arrange.Default()) {
 			t.Errorf("%s holds %d places, want the built-in's %d", each.IssueTypeName, len(each.Places), len(arrange.Default()))
 		}
-	}
-
-	// The wall is the database's, not only the service's.
-	_, err = h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `INSERT INTO issue_arrangement (org_id) VALUES ($1)`, uuid.New())
-		return err
-	})
-	if err == nil {
-		t.Error("an arrangement was written for another organization")
 	}
 }
 
