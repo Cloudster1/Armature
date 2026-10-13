@@ -25,6 +25,9 @@ vi.mock("@/api/auth", () => ({
   useRemoveAvatar: () => idle,
   useChangeMyPassword: () => idle,
   useEraseMe: () => idle,
+  useSessions: () => ({ data: { sessions: [] } }),
+  useEndSession: () => idle,
+  useEndOtherSessions: () => idle,
 }));
 vi.mock("@/api/availability", () => ({
   useWorkingWeek: () => ({ data: undefined }),

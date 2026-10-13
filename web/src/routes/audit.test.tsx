@@ -7,6 +7,8 @@ import type { AuditEntry, AuditFilter } from "@/api/audit";
 // The administrative changes that reach the log by the act itself or off the stream.
 const recorded = [
   "auth.login",
+  "auth.session_ended",
+  "auth.sessions_ended",
   "group.deleted",
   "invite.created",
   "invite.revoked",
@@ -33,6 +35,18 @@ const rotated: AuditEntry = {
   createdAt: "2026-10-10T09:00:00Z",
 };
 
+const signedOut: AuditEntry = {
+  id: "a2",
+  action: "auth.session_ended",
+  targetType: "session",
+  targetId: "s2",
+  actorId: "u1",
+  actorName: "Ada Admin",
+  data: { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36" },
+  ip: "192.0.2.1",
+  createdAt: "2026-10-11T09:00:00Z",
+};
+
 const asked: AuditFilter[] = [];
 
 vi.mock("@tanstack/react-router", () => ({ createRoute: (options: unknown) => options }));
@@ -42,7 +56,7 @@ vi.mock("@/api/audit", () => ({
   auditExportHref: () => "/api/v1/audit/export",
   useAuditLog: (filter: AuditFilter) => {
     asked.push(filter);
-    const entries = filter.action && filter.action !== rotated.action ? [] : [rotated];
+    const entries = [rotated, signedOut].filter((e) => !filter.action || e.action === filter.action);
     return { data: { entries, actions: recorded }, isLoading: false, error: null };
   },
 }));
@@ -72,5 +86,13 @@ describe("the audit page", () => {
     expect(row.textContent).toContain("name: Elsewhere");
     expect(row.textContent).toContain("address: https://hooks.example");
     expect(row.textContent).not.toMatch(/secret:/);
+  });
+
+  it("names the device a session was signed out on, not its user agent", async () => {
+    render(<AuditPage />);
+    await userEvent.selectOptions(screen.getByLabelText("Action"), "auth.session_ended");
+    const row = document.querySelector('[data-audit-row="auth.session_ended"]') as HTMLElement;
+    expect(row.textContent).toContain("device: Chrome on Windows · from 192.0.2.1");
+    expect(row.textContent).not.toContain("Mozilla");
   });
 });

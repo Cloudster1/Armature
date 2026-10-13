@@ -103,6 +103,42 @@ scenario("a person changes their own password from the profile", async ({ page }
   await waitForApp(page);
 });
 
+scenario("a session ended from the profile sends that browser to sign in on its next action", async ({ page, context }) => {
+  const who = await signUp(page, unique("user"), { visit: false });
+
+  // The same person signs in on another device, a browser with its own cookies.
+  const elsewhere = await context.browser().createBrowserContext();
+  try {
+    const other = await elsewhere.newPage();
+    await other.setViewport(page.viewport());
+    await signInThroughForm(other, who.email);
+    await waitForPath(other, "/");
+    await waitForApp(other);
+    await goto(other, "/settings/tokens");
+
+    await goto(page, "/settings/profile");
+    await page.waitForSelector('[data-session="current"]', { timeout: WAIT });
+    expect.contains(await textOf(page, '[data-session="current"]'), "This device", "this browser is marked");
+    await page.waitForSelector('[data-action="end-session"]', { timeout: WAIT });
+    await page.click('[data-action="end-session"]');
+    await confirm(page);
+    await page.waitForFunction(() => !document.querySelector('[data-action="end-session"]'), { timeout: WAIT });
+
+    // The other browser believes in its session until it next asks for something.
+    await fill(other, "New token name", "Made after being signed out");
+    await submit(other);
+    await waitForPath(other, "/login");
+    expect.equal(new URL(other.url()).searchParams.get("next"), "/settings/tokens", "the sign-in keeps where they were");
+  } finally {
+    await elsewhere.close();
+  }
+
+  // This browser stays signed in.
+  await reload(page);
+  await page.waitForSelector('[data-session="current"]', { timeout: WAIT });
+  expect.equal(new URL(page.url()).pathname, "/settings/profile", "still on the profile");
+});
+
 scenario("a wrong password is refused without saying whether the account exists", async ({ page }) => {
   const who = await signUp(page);
   await page.click('[data-action="sign-out"]');
