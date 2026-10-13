@@ -277,8 +277,8 @@ one named helper so each scenario moves by a line.
   `[data-audit-row=<action>]` rows; `[data-action="export-audit"]` is the CSV,
   `[data-action="audit-older"]` the next page.
 - Fields carry `[data-field-scope=org|project]`; `[data-action="promote-field"]`
-  on a project field asks the confirm dialog and makes it the organization's.
-  The organization's own list is at `/settings/fields` with the same form.
+  on a project field asks the confirm dialog and makes it every project's.
+  The list of those is at `/settings/fields` with the same form.
 - `calendarDaysOf(page, key)` reads which `[data-day=<YYYY-MM-DD>]` cells hold
   `[data-calendar-item=<key>]` (kind in `[data-calendar-kind]`);
   `dragCalendarItem(page, key, fromDay, toDay)` drags the bar by pointer from

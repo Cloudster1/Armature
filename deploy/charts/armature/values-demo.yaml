@@ -5,7 +5,7 @@
 #   helm install demo deploy/charts/armature -f deploy/charts/armature/values-demo.yaml
 #
 # Not for real work: one database pod with a password in a values file, no
-# backups, no TLS, and the seeded demo organization.
+# backups, no TLS, and an installation seeded with demo people and projects.
 
 env: development
 

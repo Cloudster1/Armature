@@ -270,7 +270,7 @@ stack-stats: ## What each container costs right now, and how much Redis holds
 	@docker compose -f deploy/docker-compose.yml exec -T redis redis-cli info memory | grep -E '^used_memory_(rss_)?human'
 
 .PHONY: seed
-seed: ## Load the demo organization into the running stack
+seed: ## Fill the running stack's installation with demo people and projects
 	docker compose -f deploy/docker-compose.yml run --rm --build seed
 
 .PHONY: psql

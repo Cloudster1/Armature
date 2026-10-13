@@ -7,6 +7,26 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Upgrade note, for an installation that had organizations (#208): the
+  upgrade refuses a database with several and names them, so delete the
+  extra ones with the previous release first (#210). Bookmarks and links to
+  `/api/v1/auth/oidc/{slug}/start`, `/desk/{slug}?desk=KEY` and
+  `/settings/organization` lead to `/api/v1/auth/oidc/start`,
+  `/desk?desk=KEY` and `/settings/installation` until the next release, which
+  removes them; point them at the new addresses before then. What the
+  identity provider has registered stays right. `ARMATURE_NAME` names an
+  installation only when its first account sets it up, so an upgraded one
+  keeps its organization's name until an administrator renames it under
+  Settings, Installation. `ARMATURE_SIGNUP` now defaults to `first`; set
+  `open` to keep sign-up open after the first account (#216).
+- Changed: the README, SECURITY.md, the privacy record, the design notes and
+  the chart describe one installation. The seed's messages speak of the
+  installation it fills, the chart's notes say what was seeded or that the
+  first person to sign up sets the installation up, and the compose stack
+  hands `ARMATURE_NAME` to the seed as well as the api, since either may make
+  the first account.
+  `docs/decisions.md` adds "One installation is one team's tracker" and marks
+  the entries it supersedes (#216).
 - Changed: Armature says "everyone" or "all projects" where it said "the
   organization", on screen, in the guide, in error messages and in the API
   document; only the Installation page names the installation. The settings

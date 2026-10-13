@@ -21,8 +21,8 @@ installation does.
   change or remove any of them; a scrum master or project administrator
   only the ones they recorded. Whenever somebody else records, changes or
   removes one, the person is told in their inbox, and by mail if they want
-  it, who did it but not the days. Every colleague who works in the
-  organization sees the days; a portal customer never does. The events and
+  it, who did it but not the days. Every colleague who works here sees the
+  days; a portal customer never does. The events and
   the audit log say that an absence was recorded, never for which days.
   A share of the week says how much of somebody's week a project counts on,
   so a person on two projects is not counted whole in both. A project
@@ -32,8 +32,8 @@ installation does.
   people on it; a person chooses, per reason, whether to be told.
 - **Running a service desk.** A customer's address is how a request finds
   its way back to them; one-time codes let them in without a password.
-- **Keeping the organization's record.** The audit log says who changed the
-  organization's configuration, for the organization's own review.
+- **Keeping the installation's record.** The audit log says who changed the
+  installation's configuration, for its administrators' own review.
 - **Keeping the service working.** Access logs, metrics and traces exist to
   find faults. They carry request ids, user ids and route patterns, never
   addresses, names or bound query values.
@@ -43,10 +43,10 @@ installation does.
 | Category | Where | Personal columns | Kept | Goes when |
 |---|---|---|---|---|
 | Account | `app_user` | address, name, password hash, picture, time zone, language | while the account exists | erased on request: the row becomes a tombstone ("Former user", a reserved address, no password, no picture) |
-| Membership | `org_member`, `role_assignment`, `group_member`, `team_member` | who belongs where and holds what | while the membership exists | an administrator removes the member, or the person erases their account |
-| Working week | `member_schedule` | the minutes a person works on each weekday, and the holiday calendar they keep | while the membership exists | an administrator removes the member, or the person erases their account |
-| Shares of the week | `project_allocation` | the percent of a person's week a project has | while the membership and the project exist | set back to the whole week, with the membership, with the project, and by erasure |
-| Absences | `absence` | the first and last day away, whether it is half a day, who wrote it down | `ARMATURE_RETAIN_ABSENCES` (400 days) after the last day | swept; removed by the person, an administrator, or the manager who recorded it, with the membership, and by erasure |
+| Membership | `org_member`, `role_assignment`, `group_member`, `team_member` | who belongs where and holds what | while the account exists | the person erases their account; an administrator switching it off keeps it, so switching on brings it back |
+| Working week | `member_schedule` | the minutes a person works on each weekday, and the holiday calendar they keep | while the account exists | the person erases their account |
+| Shares of the week | `project_allocation` | the percent of a person's week a project has | while the account and the project exist | set back to the whole week, with the project, and by erasure |
+| Absences | `absence` | the first and last day away, whether it is half a day, who wrote it down | `ARMATURE_RETAIN_ABSENCES` (400 days) after the last day | swept; removed by the person, an administrator, or the manager who recorded it, and by erasure |
 | Sessions | `user_session` | token hash, user agent, address, last seen | `ARMATURE_SESSION_TTL` (30 days) | signed out, erased, or swept `ARMATURE_RETAIN_SESSIONS` (1 day) past expiry |
 | API tokens | `api_token`, `api_token_project` | name, token hash, last used, the projects it is confined to | until revoked or expired | revoked, erased, or swept `ARMATURE_RETAIN_API_TOKENS` (30 days) past expiry |
 | Invitations | `org_invite` | address | until accepted or expired | swept `ARMATURE_RETAIN_INVITES` (30 days) past expiry; deleted by erasure |
@@ -55,14 +55,14 @@ installation does.
 | Two-step sign-in | `user_second_factor`, `recovery_code` | the authenticator key, sealed with `ARMATURE_SECRET_KEY`; the last step used; digests of the recovery codes and when each was used | while it is on | turned off by the person or an administrator, and by erasure; the export says whether it is on and never holds the key |
 | Work | `issue`, `issue_comment`, `issue_worklog`, `issue_history`, `issue_watcher`, `attachment` | reporter, assignee, author, uploader, the text itself | while the issue exists | with the issue; after erasure the author reads "Former user", and the person's watches are deleted |
 | Notifications | `notification`, `notification_preference` | recipient, a title naming the actor | `ARMATURE_RETAIN_NOTIFICATIONS` (180 days) | swept; deleted by erasure |
-| Digests sent | `notification_digest_sent` | when each organization last mailed a person their digest | while the membership exists | with the membership, and by erasure |
+| Digests sent | `notification_digest_sent` | when a person was last mailed their digest | while the account exists | by erasure |
 | Events | `outbox_event` | actor ids, issue summaries in payloads | until published, then `ARMATURE_RETAIN_OUTBOX` (30 days) | swept; the Redis stream is capped at 10 000 entries |
 | Webhook deliveries | `webhook_delivery` | the event as posted | `ARMATURE_RETAIN_WEBHOOK_DELIVERIES` (30 days) | swept; with the endpoint |
 | Automation runs | `automation_run` | what a rule did | `ARMATURE_RETAIN_AUTOMATION_RUNS` (90 days) | swept; with the rule |
 | Inbound mail | `inbound_mail` | sender address, subject, outcome and why it failed; never the body | `ARMATURE_RETAIN_INBOUND_MAIL` (90 days) | swept; sender pseudonymised by erasure |
 | Outbound mail | nowhere | | not stored | a counter is the only record |
 | Imports | `import_job` | file name, a report that may echo rows | `ARMATURE_RETAIN_IMPORT_JOBS` (90 days) | swept |
-| Audit log | `audit_log` | actor id, action, target, address; an invitation's email address | `ARMATURE_RETAIN_AUDIT` (365 days) | swept per organization; exportable by its administrators |
+| Audit log | `audit_log` | actor id, action, target, address; an invitation's email address | `ARMATURE_RETAIN_AUDIT` (365 days) | swept; exportable by administrators |
 | Commits and pull requests | `git_commit`, `pull_request` | author name and address as the repository gave them | while the repository is connected | disconnected; pseudonymised when the address belongs to an erased account |
 | Pictures | the bucket, `user/<id>/avatar` | the picture | while chosen | removed on request or by erasure |
 | Themes | `theme`, `theme_asset`, `user_theme`, the bucket under `theme/<theme>/<file>` | the maker, the files they uploaded, who chose what | while the theme exists | deleted by the maker or an administrator, and by the maker's erasure, files included |
@@ -75,15 +75,15 @@ none here: no password, not active, a member so the work has somebody to point
 at, and only ever at an address nobody already holds.
 
 An administrator may also make an account outright, typing its first
-password, and may reset or switch off an account whose only organization is
-theirs. A reset or a switch-off ends every session and token the person holds.
+password, and may reset or switch off any account but their own; only an
+owner touches another owner. A reset or a switch-off ends every session and token the person holds.
 The person is asked to change a password an administrator typed, from their
 profile, which ends every other session of theirs.
 
 Every retention window is a duration read from the environment
 (`ARMATURE_RETAIN_*`, Go duration syntax such as `720h`); zero keeps a kind
 forever, which nothing here recommends. The worker sweeps on start and every
-24 hours, inside each organization for the organization's tables and as the
+24 hours, under row security for the installation's tables and as the
 administrator for the tables that belong to nobody in particular.
 
 ## Where it lives and where it goes
@@ -96,13 +96,14 @@ administrator for the tables that belong to nobody in particular.
 - **Redis** holds the event stream, capped, and the read-your-writes marks,
   which expire.
 - **Logs** go to standard output as JSON: request id, trace id, method,
-  route, status, duration, user id, organization slug. Where they go from
-  there, and for how long, is the operator's policy.
+  route, status, duration, user id, and the installation's internal slug as
+  `org`. Where they go from there, and for how long, is the operator's
+  policy.
 - **Traces and metrics** are on only when asked (`make observe`), held in
   memory by Jaeger and Prometheus with no volume, and carry no addresses,
   names or bound values.
 - **Leaving the system:** mail through the configured SMTP relay; webhooks to
-  the endpoints an organization's administrator named; the identity
+  the endpoints an administrator named; the identity
   provider, when configured, learns that somebody signed in; a model
   provider, when configured, sees the question a person asked and what the
   tools returned for them.

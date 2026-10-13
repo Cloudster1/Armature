@@ -11,7 +11,8 @@ make helm-deps
 helm install demo deploy/charts/armature -f deploy/charts/armature/values-demo.yaml
 ```
 
-One database pod, no TLS and the demo organization seeded. Not for real work.
+One database pod, no TLS and an installation seeded with demo people and
+projects. Not for real work.
 
 Attachments go to the bundled SeaweedFS, whose S3 gateway the api is pointed
 at. Its admin credentials and `secrets.s3AccessKey` / `secrets.s3SecretKey`
@@ -223,7 +224,7 @@ first's. The digest is not the reason: what it has sent is kept in the database.
 
 What the one replica does side by side is set instead. `worker.webhookConcurrency`
 (8) is how many webhook deliveries it posts at once, at most two to any one
-endpoint, so an organization whose endpoint hangs does not hold up the others.
+endpoint, so an endpoint that hangs does not hold up the others.
 
 ## Verifying a change
 

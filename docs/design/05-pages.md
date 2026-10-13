@@ -50,7 +50,7 @@ Filters popover: Label [select]  Milestone [select]  Type [chips]  Assignee [sel
 ```
 Projects / Alpha
 Workflow scheme
-[ This project follows the organization. ... [Choose a scheme v] [Use this scheme] ]
+[ This project follows the default. ... [Choose a scheme v] [Use this scheme] ]
 + Bug triage                        2 statuses, 1 transition  Open in the designer +
 | Bug issues follow this workflow here.                                          |
 |   [START]                                                                       |
@@ -58,7 +58,7 @@ Workflow scheme
 +---------------------------------------------------------------------------------+
 | Issue type | Workflow                 | Decided by                    | Decide                   |
 | > Bug      | Bug triage               | This project  Mapped scheme.. | [Bug triage           v] |
-|   Task     | Default software workflow| Organization  ...catches...   | [Follow the organization v]|
+|   Task     | Default software workflow| All projects  ...catches...   | [Follow the default v]   |
 ```
 
 The drawing is the designer's canvas in read-only mode: the same cards
@@ -67,15 +67,15 @@ the description or the category's word, `[data-workflow-subtitle]`), the same
 arrows with their names in pills (`[data-workflow-edge-label=<name>]`), the
 same stored positions, nothing to grab. It follows the selected row
 (`data-assignment-shown`), the first by default; a click anywhere on a row
-that is not a link or a control selects it. Organization administrators get a
+that is not a link or a control selects it. Global administrators get a
 link into the designer; nobody draws here.
 
 The Decide column appears for anybody with `project.administer` on the
 project: `select[aria-label="Workflow for <type>"]` in its own cell
-(`data-assignment-control`), listing the organization's workflows plus
-"Follow the organization". A change is saved at once and the table redraws
-from the response. The whole-scheme picker (`#project-scheme`) stays as the
-organization administrator's secondary control.
+(`data-assignment-control`), listing every workflow plus "Follow the
+default". A change is saved at once and the table redraws from the response.
+The whole-scheme picker (`#project-scheme`) stays as the global
+administrator's secondary control.
 
 ## Workflow library (content)
 
@@ -85,7 +85,7 @@ Workflows
 [Workflows] Statuses  Schemes                                  <- in the strip
                                                         [New workflow]
 +------------------------------------------------------------------+
-| Default software workflow [The organization's]      STATUSES  TRANSITIONS  SCHEMES   [✎][⧉]
+| Default software workflow [In the default]          STATUSES  TRANSITIONS  SCHEMES   [✎][⧉]
 | Used by every project that has not named one of its own.   4 ===  7          all
 | To Do, In Progress, In Review and Done, with a review loop.
 +------------------------------------------------------------------+
@@ -95,13 +95,13 @@ Workflows
 "Workflows"|"Statuses"|"Schemes"]`) over `/settings/workflows`,
 `/settings/workflows/statuses` and `/settings/workflows/schemes`. Every row
 is an elevated Card. A workflow (`[data-workflow-card=<name>]`): name, the
-organization's Tag, "Used by ...", its description, Stats for statuses (a
-share of the organization's), transitions and schemes, and icon actions
+In the default Tag when the default scheme uses it, "Used by ...", its
+description, Stats for statuses (a share of all of them), transitions and schemes, and icon actions
 "Edit <name>", "Duplicate <name>" (the copy endpoint) and, when nothing
 uses it, "Delete <name>" (`[data-action="edit"|"duplicate"|"delete"]`). A
 scheme (`[data-scheme-card=<name>]`): name, Tag, "Used by CP, HELP.", what
 each type uses, Stats for projects and types, Edit and Delete icons, and
-"Make it the organization's" as a text button; "New scheme" opens the
+"Make it the default" as a text button; "New scheme" opens the
 SchemeEditor inline. A status (`[data-status-card=<name>]`): its badge and
 description; "New status" opens the designer's NewStatusForm inline with
 "Create status". No status edit or delete: there is no endpoint.
@@ -231,7 +231,7 @@ Two columns of widgets, a filter tile across the top when the dashboard has
 one. The open dashboard is named in the address (`d`, its id) so a link opens
 that one. New dashboard is a name and a Start from chooser: Blank, the built-ins
 that suit the project (Overview, Milestone, Team health, Delivery), then the
-organization's own, each a card (`data-dashboard-template=<key|id>`) with a
+ones saved here for everyone, each a card (`data-dashboard-template=<key|id>`) with a
 Remove beside the saved ones. While arranging, "Save as a template"
 (`data-action="save-template"`) keeps the arrangement under a name
 (`#field-template-name`). A chart widget draws issues grouped by a field as bars, a stack, a donut
@@ -276,9 +276,9 @@ project.
 
 ```
 Settings
-YOU             Profile · API tokens
-ORGANIZATION    Access · Workflows · Labels · Fields · Automation · Webhooks
-                Audit log
+YOU             Profile · API tokens · Themes
+EVERYONE        Installation · Access · Users · Holidays · Workflows · Labels
+                Automation · Webhooks · Fields · Audit log
 
 Settings / Profile
 [ (TK) ]  [Upload picture] [Remove]        PNG or JPEG, up to 2 MB.
@@ -286,7 +286,6 @@ Name       [Ada Lovelace              ]
 Email      ada@armature.test   (read-only; sign-in uses it)
 Time zone  [Europe/Berlin           v]   Language [English (United Kingdom) v]
            Dates are shown as 5 Sep 2026, 14:30.               [Save changes]
-ORGANIZATIONS   Acme (Owner) · Beta Corp (Member)
 ```
 
 API tokens: a name and a "Can only read" checkbox (`#field-can-only-read`)
@@ -298,13 +297,12 @@ checkboxes (`data-pref-inapp`, `data-pref-mail`), a "Mail arrives" select
 (`#field-digest`: as it happens, bundled hourly, bundled daily) and a save
 button. Unticked is off; everything starts on.
 
-Under the profile's organizations, "Your data": "Download my data"
+Further down the profile, "Your data": "Download my data"
 (`[data-action="export-me"]`, an anchor that downloads the JSON file) and
 "Delete my account" (`[data-action="erase-me"]`, a danger Button behind a
-confirm whose noun is "account"). Access gains a Members tab: one row per
-member (`[data-member=<name>]`) with their address, role and an IconButton
-"Remove <name>" (`[data-action="remove-member"]`, behind a confirm), disabled
-on your own row. The portal's foot puts the customer's name on a Menu
+confirm whose noun is "account"). Access has a Members tab: the invitation
+form, then one row per member (`[data-member=<name>]`) with their address and
+role. Letting somebody go is switching their account off, on Users. The portal's foot puts the customer's name on a Menu
 (`[data-action="customer-menu"]`) with the same two actions.
 
 
@@ -327,7 +325,7 @@ NAME          EMAIL              SIGNS IN WITH   ROLE           STATE
 Ada Lovelace  ada@armature.test  Password        Owner          Active   ...
 ```
 
-The organization's own accounts. The form (`[data-new-user]`) takes
+Every account that signs in here. The form (`[data-new-user]`) takes
 `#field-email`, `#field-name`, `#field-role` (Member, Administrator) and
 `#field-password`, and "Create user" toasts. Each row is `data-user=<email>`
 with `data-user-active` and `data-user-managed`; its Menu
@@ -337,8 +335,8 @@ with `data-user-active` and `data-user-managed`; its Menu
 password (`set-password`, `[data-set-password=<email>]` with
 `#field-new-password`) and Deactivate (`deactivate-user`, a danger item behind
 a confirm whose noun is "account") or Reactivate (`reactivate-user`). Every
-item is disabled on your own row and on anybody who also belongs to another
-organization (`data-user-managed="false"`). Somebody who is not a global
+item is disabled on your own row, and on an owner's row unless you are an
+owner (`data-user-managed="false"`). Somebody who is not a global
 administrator sees an empty state. The profile gains a Password card
 (`[data-change-password]`): `#field-current-password`, `#field-new-password`
 and "Change password" (`[data-action="change-password"]`), toasting
@@ -355,15 +353,15 @@ Plan, start and complete...   sprint  [x]           [x]              [ ]
 Administer Armature           org.a.  [x] fixed     [ ]              [ ]
 ```
 
-Roles are the organization's own: the five it starts with are rows in
-`org_role`, and it may add more. The Matrix tab (`[data-role-matrix]`) lists
+Roles are the installation's own: the five it starts with are rows in
+`org_role`, and administrators may add more. The Matrix tab (`[data-role-matrix]`) lists
 every permission the code checks for (`GET /permissions`, `data-permission-row`)
 against every role (`GET /roles`, `data-role-column=<key>`), a checkbox at
 each crossing (`data-permission-cell="<key>:<permission>"`) saved the moment
 it is ticked (`PATCH /roles/<key>`); the global administrator's
 `org.administer` box is ticked and disabled, and the database refuses the
 same. New role (`[data-action="new-role"]`, `#field-role-name`,
-`#field-role-description`, a Switch for org-wide only) posts `POST /roles` and
+`#field-role-description`, a Switch "Only over all projects at once") posts `POST /roles` and
 starts the role with `read`; a column's menu (`role-menu`) renames or
 describes it (`rename-role`, `[data-rename-role=<key>]`) or deletes it
 (`delete-role`, disabled on a built-in, behind a confirm naming how many
@@ -384,15 +382,15 @@ Magenta  Shared    you      2 people                     ...
 `data-theme-row=<name>` with `data-theme-active` and `data-theme-default`,
 and the Menu
 (`[data-action="theme-menu"]`) holds Use this theme (`use-theme`) or Stop
-using (`stop-theme`), Edit (`edit-theme`), Share with the organization or
+using (`stop-theme`), Edit (`edit-theme`), Share with everyone or
 Stop sharing (`share-theme`) and Delete (`delete-theme`, behind a confirm
 whose noun is "theme" and whose body says how many people go back to the
-built-in theme). An organization administrator's menu on a shared theme adds
-Make it the organization's default (`default-theme`) or No longer the
-organization's default (`undefault-theme`): the default is what everybody
-sees until they choose, `GET /themes/active` says whether what they see is
-`chosen` or the `organization`'s, and the header offers Use the built-in theme
-(`[data-action="built-in-theme"]`) over the default, or Use the organization's
+built-in theme). A global administrator's menu on a shared theme adds
+Make it everyone's default (`default-theme`) or No longer everyone's default
+(`undefault-theme`): the default is what everybody sees until they choose,
+`GET /themes/active` says whether what they see is `chosen` or `everyone`'s,
+and the header offers Use the built-in theme
+(`[data-action="built-in-theme"]`) over the default, or Use everyone's
 default (`[data-action="org-default-theme"]`) to come back to it. `[data-themes-view="mine"|"shared"]` switch the list;
 `[data-action="new-theme"]` opens the editor. Import theme
 (`[data-action="import-theme"]`, a hidden file input `[data-theme-file]`)
@@ -417,8 +415,8 @@ the Backdrop tab, `[data-theme-effect]`; the shell mounts
 covers the column, still under reduced motion; `"confetti"` instead draws a
 burst of colour wherever the page is clicked, and nothing under reduced
 motion) and the rail and sidebar in dark slate whatever the palette. The seed
-installs both, shared, in the demo organization. Then `#field-theme-name`, a Switch "Shared with
-the organization" (`[data-theme-shared]`), a Switch "Preview on this page"
+installs both, shared with everyone. Then `#field-theme-name`, a Switch "Shared with
+everyone" (`[data-theme-shared]`), a Switch "Preview on this page"
 (`[data-action="preview-theme"]`) that shows the draft on the page it is on,
 "Save theme" (`[data-action="save-theme"]`) and, once saved, "Use this theme"
 (`[data-action="use-theme"]`). Tabs (`data-theme-tab`): Colours (a
@@ -503,7 +501,7 @@ three parts, When (`#field-trigger` and the trigger's own fields), If
 `data-rule-action`, at least one), plus the hourly cap and whether the rule
 runs on the automation's own changes. An incoming rule shows its address
 (`data-incoming-address`) once it exists. The same panel serves
-`/settings/automation` for the organization's rules.
+`/settings/automation` for the rules that watch every project.
 
 Webhooks: a table of endpoints (`data-webhook=<name>`) with a menu for
 Deliveries (drawer `data-webhook-log`, rows `data-delivery=<topic>` with
@@ -541,17 +539,17 @@ is grabbed with the pointer and dropped on another day; the cell under the
 pointer wears a ring while it is over it, and both dates move together. A
 double click on a bar opens the issue.
 
-## Audit log (content) and organization fields (content)
+## Audit log (content) and fields for every project (content)
 
 The audit log is a Table under a row of three controls: an action Select
 listing the actions the log holds, and From and To date Fields. Each row is
 when, the action as a Tag, who, and the payload's readable words. Older and
 Newer walk pages by time; Export CSV in the header downloads the same filter.
-The organization's fields page reuses the project fields list without a
-project: the same New field form and Table, every row tagged Organization. On
-a project's fields page the organization's fields come first, read-only,
-tagged, and a project's own field has a Promote button for an organization
-administrator.
+The fields page under Settings reuses the project fields list without a
+project: the same New field form and Table, every row tagged All projects. On
+a project's fields page the fields every project shares come first,
+read-only, tagged, and a project's own field has a Promote button for a
+global administrator.
 
 ## Project status strip
 

@@ -22,8 +22,8 @@ The interesting surfaces, and what each is supposed to guarantee:
 
 | Area | The claim to try to break |
 |---|---|
-| Tenancy | No request reaches another organization's rows. Every tenant table has forced row level security on `current_org_id()`, and the API connects as a role that is neither owner nor superuser |
-| Session provenance | A session keeps the proof it was opened with and names no organization, and the database refuses either changing. A session that came through an open desk door sees that one desk and cannot export or erase the account behind the address |
+| Database roles | The api and the worker connect as a role that is neither owner nor superuser, and outside development refuse one that has `rolsuper` or `rolbypassrls`. The tables of the work keep forced row level security on `current_org_id()`, set per transaction, so a query with none set reads nothing |
+| Session provenance | A session keeps the proof it was opened with, and the database refuses rewriting it. A session that came through an open desk door sees that one desk and cannot export or erase the account behind the address |
 | Roles | A project is a wall. What a role does not reach is not found, rather than refused |
 | The desk portal | A customer sees their own requests and never an internal note |
 | Outbound requests | Webhooks, git hosts and OIDC issuers are resolved first and dialled as the address that was checked, so nothing inside the network answers by accident. `ARMATURE_OUTBOUND_ALLOW` is the only way in |
@@ -47,6 +47,10 @@ The interesting surfaces, and what each is supposed to guarantee:
   by asking for a lot of work is expected of any self-hosted application.
 - **Missing hardening headers on a page that carries nothing**, absent a way
   to reach data with it.
+- **People in one installation seeing each other.** An installation serves
+  one team: everybody in it sees who else is, and what they see of the work
+  is decided by project roles, which are in scope above. Companies that must
+  not see each other at all run an installation each.
 - **Anything requiring a global administrator.** That role can already
   configure automation, webhooks and the assistant. It is the trust boundary,
   not a target inside it.
