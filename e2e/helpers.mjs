@@ -2092,13 +2092,16 @@ export async function setEditorMode(page, mode) {
 
 /**
  * Posts a comment on an issue that names somebody through the mention picker:
- * an at sign and the first letters of the name, then the offered option.
+ * an at sign and the name's longest word, then the offered option.
  */
 export async function mentionInComment(page, issueKey, words, personName) {
   await goto(page, `/issues/${issueKey}`);
   await page.waitForSelector("#new-comment", { timeout: WAIT });
   await page.click("#new-comment");
-  await page.type("#new-comment", `${words} @${personName.slice(0, 3)}`);
+  // The installation is shared, so a common first name matches more people than
+  // the picker lists; the unique word names only this person.
+  const word = personName.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a));
+  await page.type("#new-comment", `${words} @${word}`);
   await page.waitForSelector(`[data-mention-option="${personName}"]`, { timeout: WAIT });
   await page.click(`[data-mention-option="${personName}"]`);
   await page.waitForFunction(
