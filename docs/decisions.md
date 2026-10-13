@@ -1614,6 +1614,60 @@ log of every organization the person belongs to, as an erasure is.
 **Reconsider if** somebody needs back into an account whose mailbox they have
 lost, which wants a second proof rather than a mail.
 
+### A password is one proof; an organization may ask for a second
+
+A password that leaked opened the whole organization, and for an owner every
+organization they own. A person can now add an authenticator app: the server
+makes a key, shows it once as a QR code and as text, and turns it on only when
+the app answers with a code. Ten recovery codes come with it, shown once and
+kept as digests salted with the person's id. From then on a password sign-in
+opens no session: it answers with a challenge, and the session opens when the
+app's code or an unused recovery code is given for it. Whether an account has
+a factor is read in the same query as its password, after the password is
+checked, so a caller without the password learns nothing they would not learn
+from any wrong password.
+
+What the factor applies to is the password. Every password session, wherever
+it reaches, is opened through it. An invitation that makes an account and a
+signup make a person with no factor yet, and are unaffected. A mailed code and
+an open door are the portal's doors and prove an address, not a person;
+customers are never asked. A reset by mail ends every session but leaves the
+factor on, so a mailbox alone is not a way past it.
+
+An organization may require a second factor of its owners and administrators,
+or of every agent. A session without one, on an account without one, is not
+refused at the door but held: it may say who it is, set the factor up, switch
+to another organization or sign out, and is answered 403
+`second_factor_required` for everything else. API tokens are not held, since
+only a session can make one. An administrator cannot require what they do not
+have themselves, so a requirement never locks out the person setting it.
+
+Single sign-on relies on the provider's factor, but only where the provider is
+trusted. A session the provider opened is exempt in the organization it was
+opened for and in those that trust the same issuer, which is where that
+provider's policy is the organization's policy. Anywhere else it reaches, such
+as an organization the person owns, it is held like any other session, because
+nobody there chose that provider's rules.
+
+The key is sealed with AES-GCM under `ARMATURE_SECRET_KEY`, bound to the
+person's id, with the key's id in the sealed value so a later rotation can keep
+the old key around to open what it sealed. Without a key, setting a factor up
+answers 503 rather than storing a secret in clear, and once anybody has one the
+api refuses to start without the key that sealed it. Each step's code works
+once: the step used is kept and the database refuses a step that does not move
+forward, as it refuses a used recovery code being made unused. A sign-in's code
+step takes five wrong codes, kept in the database, and wrong codes count
+against the account's password brake as well, so a new challenge does not buy
+new guesses.
+
+An administrator may turn somebody's factor off, for a lost phone and lost
+codes, within the reach they have over that person's password, and it is
+written to the log. An owner who loses both, with no other owner, has nobody to
+ask: that is a known limit, and the way back is the operator removing the row.
+
+**Reconsider if** people ask for security keys or passkeys: WebAuthn is the
+later work, and fits beside the authenticator as a second kind of factor.
+
 ### A theme is a saved redefinition of the tokens, compiled in the browser
 
 Every colour in the interface is one of forty-three names, and the dark theme

@@ -7,6 +7,16 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: two-step sign-in. A person sets up an authenticator app from their
+  profile, by QR code or by typing the key, confirms it with a code and gets
+  ten single-use recovery codes, shown once; from then on a password sign-in
+  asks for the app's code or a recovery code, with five tries per sign-in and
+  a brake of its own. An organization can require it of its administrators or
+  of everyone under Access, Sign-in, and a session without it is held to
+  setting it up; single sign-on relies on the provider's own second step where
+  the organization trusts that provider. An administrator can turn it off for
+  somebody who lost both phone and codes. The key is sealed with the new
+  `ARMATURE_SECRET_KEY`; without one, setting it up is refused (#105).
 - Fixed: swimlanes reordered under Configure swimlanes stay where they were
   put. A project whose oldest board had gone to a team opened on that board
   while the panel edited the project-wide one, and a second arrow press
