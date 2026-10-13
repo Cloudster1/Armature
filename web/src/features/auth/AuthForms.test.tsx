@@ -21,14 +21,12 @@ vi.mock("@tanstack/react-router", () => ({
 
 const login = vi.fn();
 const signup = vi.fn();
-const switchOrg = vi.fn(() => Promise.resolve({}));
 vi.mock("@/api/auth", async () => {
   const actual = await vi.importActual<typeof import("@/api/auth")>("@/api/auth");
   return {
     ...actual,
     useLogin: () => login(),
     useSignup: () => signup(),
-    useSwitchOrg: () => ({ mutateAsync: switchOrg, isPending: false, error: null }),
   };
 });
 
@@ -66,7 +64,6 @@ describe("LoginForm", () => {
   it("goes back where it was sent from after signing in, and only within the app", async () => {
     const mutate = vi.fn((_input, options) => options?.onSuccess?.());
     mockLogin({ mutate });
-    me.mockResolvedValue({ principal: { user: { id: "u1" }, org: { slug: "only" } }, organizations: [{ orgId: "o1", orgSlug: "only", orgName: "Only", role: "owner" }] });
     wrap(<LoginForm next="/invite" />);
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ href: "/invite" }));
@@ -93,28 +90,8 @@ describe("LoginForm", () => {
     window.history.replaceState({}, "", "/login");
   });
 
-  it("asks somebody in several organizations which one they came for", async () => {
-    const mutate = vi.fn((_input, options) => options?.onSuccess?.());
-    mockLogin({ mutate });
-    me.mockResolvedValue({
-      principal: { user: { id: "u1" }, org: { slug: "first" } },
-      organizations: [
-        { orgId: "o1", orgSlug: "first", orgName: "First Corp", role: "member" },
-        { orgId: "o2", orgSlug: "second", orgName: "Second Corp", role: "admin" },
-      ],
-    });
-
-    wrap(<LoginForm />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    await screen.findByText("Which organization?");
-    expect(navigate).not.toHaveBeenCalled();
-
-    await userEvent.click(screen.getByRole("button", { name: /Second Corp/ }));
-    expect(switchOrg).toHaveBeenCalledWith("second");
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
-  });
-
-  it("asks which organization even when a page sent them", async () => {
+  // One installation: whatever an older server listed, there is nothing to choose.
+  it("goes straight in without asking which organization", async () => {
     const mutate = vi.fn((_input, options) => options?.onSuccess?.());
     mockLogin({ mutate });
     me.mockResolvedValue({
@@ -127,21 +104,16 @@ describe("LoginForm", () => {
 
     wrap(<LoginForm next="/issues/SEC-1" />);
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    await screen.findByText("Which organization?");
-    await userEvent.click(screen.getByRole("button", { name: /Second Corp/ }));
-    expect(switchOrg).toHaveBeenCalledWith("second");
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ href: "/issues/SEC-1" }));
+    expect(screen.queryByText("Which organization?")).toBeNull();
   });
 
-  it("goes straight in with only one organization", async () => {
-    const mutate = vi.fn((_input, options) => options?.onSuccess?.());
-    mockLogin({ mutate });
-    me.mockResolvedValue({ principal: { user: { id: "u1" }, org: { slug: "only" } }, organizations: [{ orgId: "o1", orgSlug: "only", orgName: "Only", role: "owner" }] });
-
-    wrap(<LoginForm />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
-    expect(screen.queryByText("Which organization?")).toBeNull();
+  it("offers single sign-on as one link, with no organization to name", () => {
+    mockLogin();
+    wrap(<LoginForm next="/issues/SEC-1" />);
+    const sso = screen.getByRole("link", { name: "Continue with single sign-on" });
+    expect(sso.getAttribute("href")).toBe("/api/v1/auth/oidc/start?next=%2Fissues%2FSEC-1");
+    expect(screen.queryByLabelText("Organization")).toBeNull();
   });
 
   // A password alone opens nothing for somebody with two-step sign-in: the
@@ -150,7 +122,6 @@ describe("LoginForm", () => {
     mockLogin({ mutate: vi.fn((_input, options) => options?.onSuccess?.({ challenge: "c1", expiresInSeconds: 300 })) });
     const finishing = vi.fn((_input, options) => options?.onSuccess?.());
     finish.mockReturnValue({ ...baseLogin(), mutate: finishing, reset: vi.fn() });
-    me.mockResolvedValue({ principal: { user: { id: "u1" }, org: { slug: "only" } }, organizations: [] });
 
     wrap(<LoginForm />);
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));

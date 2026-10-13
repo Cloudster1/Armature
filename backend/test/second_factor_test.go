@@ -403,9 +403,9 @@ func TestRemovingTheSecondFactorEndsOtherSessions(t *testing.T) {
 	}
 }
 
-// An organization can require a second factor; a session without one is held
-// to setting it up, and let go once it has.
-func TestAnOrganizationRequiresASecondFactor(t *testing.T) {
+// The installation can require a second factor, at its settings' address; a
+// session without one is held to setting it up or signing out, and let go once it has.
+func TestTheInstallationRequiresASecondFactor(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -422,19 +422,22 @@ func TestAnOrganizationRequiresASecondFactor(t *testing.T) {
 	}
 	member := join("held", "member")
 
-	rule := want(t, owner.get("/api/v1/organization/second-factor"), http.StatusOK, "the rule")
+	rule := want(t, owner.get("/api/v1/settings/second-factor"), http.StatusOK, "the rule")
 	if rule.Body["require"] != "off" {
-		t.Fatalf("a new organization requires %v", rule.Body["require"])
+		t.Fatalf("a new installation requires %v", rule.Body["require"])
 	}
-	want(t, member.get("/api/v1/organization/second-factor"), http.StatusForbidden, "a member does not set the rule")
-	if bad := owner.put("/api/v1/organization/second-factor", map[string]string{"require": "sometimes"}); bad.Status != http.StatusUnprocessableEntity {
+	if old := owner.get("/api/v1/organization/second-factor"); old.Status != http.StatusNotFound {
+		t.Fatalf("the rule still answers at the organization's address: %d %s", old.Status, old.Raw)
+	}
+	want(t, member.get("/api/v1/settings/second-factor"), http.StatusForbidden, "a member does not set the rule")
+	if bad := owner.put("/api/v1/settings/second-factor", map[string]string{"require": "sometimes"}); bad.Status != http.StatusUnprocessableEntity {
 		t.Fatalf("an unknown rule: %d %s", bad.Status, bad.Raw)
 	}
-	if early := owner.put("/api/v1/organization/second-factor", map[string]string{"require": "everyone"}); early.Status != http.StatusConflict || early.ErrorCode() != "enrol_first" {
+	if early := owner.put("/api/v1/settings/second-factor", map[string]string{"require": "everyone"}); early.Status != http.StatusConflict || early.ErrorCode() != "enrol_first" {
 		t.Fatalf("an owner without a factor required one of everyone: %d %s", early.Status, early.Raw)
 	}
 	enrol(t, owner)
-	want(t, owner.put("/api/v1/organization/second-factor", map[string]string{"require": "everyone"}), http.StatusOK, "require it of everyone")
+	want(t, owner.put("/api/v1/settings/second-factor", map[string]string{"require": "everyone"}), http.StatusOK, "require it of everyone")
 	if h.auditCount(t, orgID, "org.second_factor_required") != 1 {
 		t.Fatal("the rule was not recorded")
 	}
@@ -449,6 +452,9 @@ func TestAnOrganizationRequiresASecondFactor(t *testing.T) {
 	if held.Status != http.StatusForbidden || held.ErrorCode() != "second_factor_required" {
 		t.Fatalf("a held session read projects: %d %s", held.Status, held.Raw)
 	}
+	if words := held.Error()["message"].(string); strings.Contains(words, "organization") {
+		t.Errorf("a held session is told about organizations: %q", words)
+	}
 	if renamed := member.patch("/api/v1/auth/me", map[string]string{"name": "Not Yet"}); renamed.Status != http.StatusForbidden {
 		t.Fatalf("a held session changed the profile: %d", renamed.Status)
 	}
@@ -462,36 +468,41 @@ func TestAnOrganizationRequiresASecondFactor(t *testing.T) {
 	}
 
 	t.Run("requiring it of administrators leaves members be", func(t *testing.T) {
-		want(t, owner.put("/api/v1/organization/second-factor", map[string]string{"require": "admins"}), http.StatusOK, "administrators only")
+		want(t, owner.put("/api/v1/settings/second-factor", map[string]string{"require": "admins"}), http.StatusOK, "administrators only")
 		newcomer := join("free", "member")
 		want(t, newcomer.get("/api/v1/projects"), http.StatusOK, "a member without a factor works on")
 		admin := join("admin", "admin")
 		if got := admin.get("/api/v1/projects"); got.Status != http.StatusForbidden {
 			t.Fatalf("an administrator without a factor was not held: %d", got.Status)
 		}
-		want(t, owner.put("/api/v1/organization/second-factor", map[string]string{"require": "off"}), http.StatusOK, "off again")
+		want(t, owner.put("/api/v1/settings/second-factor", map[string]string{"require": "off"}), http.StatusOK, "off again")
 		want(t, admin.get("/api/v1/projects"), http.StatusOK, "and nobody is held")
+	})
+
+	t.Run("a held session can still sign out", func(t *testing.T) {
+		want(t, owner.put("/api/v1/settings/second-factor", map[string]string{"require": "admins"}), http.StatusOK, "administrators only")
+		admin := join("leaving", "admin")
+		want(t, admin.get("/api/v1/auth/me/second-factor"), http.StatusOK, "a held session looks at its factor")
+		want(t, admin.post("/api/v1/auth/logout", nil), http.StatusNoContent, "a held session signs out")
+		want(t, admin.get("/api/v1/auth/me"), http.StatusUnauthorized, "and is gone")
+		want(t, owner.put("/api/v1/settings/second-factor", map[string]string{"require": "off"}), http.StatusOK, "off again")
 	})
 }
 
-// A provider's sign-in brings the provider's own factor, where the provider is
-// trusted; anywhere else its session is held like any other.
+// A provider's sign-in brings the provider's own factor: the installation has
+// one provider, so its sessions are not held, while a password session is.
 func TestASingleSignOnSessionReliesOnItsProvider(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	ctx := context.Background()
 	home := h.newWorkspace(t, "sfhome")
-	own := h.newWorkspace(t, "sfown")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, home, provider, false)
 
 	email := h.email(t, "ssofactor")
-	h.joinExisting(t, home, email, "member")
-	h.joinExisting(t, own, email, "owner")
-	for _, ws := range []*workspace{home, own} {
-		if _, err := h.super.Exec(ctx, `UPDATE org SET second_factor = 'everyone' WHERE id = $1`, ws.orgID); err != nil {
-			t.Fatal(err)
-		}
+	h.joinExisting(t, home, email, "admin")
+	if _, err := h.super.Exec(ctx, `UPDATE org SET second_factor = 'everyone' WHERE id = $1`, home.orgID); err != nil {
+		t.Fatal(err)
 	}
 
 	session, err := signInWith(t, h, svc, home, provider, clientID, map[string]any{"email": email, "email_verified": true})
@@ -504,25 +515,10 @@ func TestASingleSignOnSessionReliesOnItsProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	if principal.Org == nil || principal.Org.ID != home.orgID || principal.MustEnrol {
-		t.Fatalf("the provider's sign-in was held in the organization that trusts it: %+v", principal)
+		t.Fatalf("the provider's sign-in was held: %+v", principal)
 	}
 
-	var ownSlug string
-	if err := h.super.QueryRow(ctx, `SELECT slug FROM org WHERE id = $1`, own.orgID).Scan(&ownSlug); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, ownSlug); err != nil {
-		t.Fatalf("an owner's own organization is reachable: %v", err)
-	}
-	elsewhere, err := accounts.Authenticate(ctx, session.Secret)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !elsewhere.MustEnrol {
-		t.Fatal("the provider's sign-in went unheld where the provider is not trusted")
-	}
-
-	// The owner of home signed up with a password and has no factor: held.
+	// The owner signed up with a password and has no factor: held.
 	byPassword, err := accounts.Authenticate(ctx, home.owner.SessionSecret)
 	if err != nil {
 		t.Fatal(err)

@@ -168,12 +168,12 @@ func TestInvites(t *testing.T) {
 		if creds.Principal.User.ID != customerID || creds.Principal.Role != auth.RoleMember {
 			t.Errorf("accepting gave %v as %q, want the customer's own account lifted to member", creds.Principal.User.ID, creds.Principal.Role)
 		}
-		memberships, err := svc.Memberships(ctx, customerID)
-		if err != nil {
+		var roles []string
+		if err := h.super.QueryRow(ctx, `SELECT array_agg(org_role::text) FROM org_member WHERE user_id = $1`, customerID).Scan(&roles); err != nil {
 			t.Fatal(err)
 		}
-		if len(memberships) != 1 || memberships[0].Role != auth.RoleMember {
-			t.Errorf("memberships = %v, want the one, now a member's", memberships)
+		if len(roles) != 1 || roles[0] != string(auth.RoleMember) {
+			t.Errorf("memberships = %v, want the one, now a member's", roles)
 		}
 	})
 

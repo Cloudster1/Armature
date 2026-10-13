@@ -57,14 +57,19 @@ func TestSomebodyWithoutAMembershipIsSwitchedOff(t *testing.T) {
 	t.Run("a password sign-in is refused", func(t *testing.T) {
 		_, email := join("password")
 		letGo(email)
+		sessions := func() int {
+			t.Helper()
+			var n int
+			if err := h.super.QueryRow(ctx, `SELECT count(*) FROM user_session s JOIN app_user u ON u.id = s.user_id WHERE u.email = $1`, email).Scan(&n); err != nil {
+				t.Fatal(err)
+			}
+			return n
+		}
+		before := sessions()
 		visitor := api.client(t)
 		refused(t, visitor.post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), "password sign-in")
-		var sessions int
-		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM user_session s JOIN app_user u ON u.id = s.user_id WHERE u.email = $1 AND s.current_org_id IS NULL`, email).Scan(&sessions); err != nil {
-			t.Fatal(err)
-		}
-		if sessions != 0 {
-			t.Errorf("%d sessions with no organization were opened", sessions)
+		if opened := sessions() - before; opened != 0 {
+			t.Errorf("%d sessions were opened for somebody with no membership", opened)
 		}
 	})
 

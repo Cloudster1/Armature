@@ -6,13 +6,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-
-	"github.com/armature/armature/backend/internal/auth"
-	"github.com/armature/armature/backend/internal/oidc"
 )
 
 // Each test here is a takeover that worked before sessions carried their proof:
@@ -89,34 +87,58 @@ func TestAnOpenDoorCannotHandOverAnAccount(t *testing.T) {
 
 	walkIn := api.client(t)
 	want(t, walkIn.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": customerAddress, "desk": "WLK"}), http.StatusOK, "the customer's address at the open door")
-	wantCode(t, want(t, walkIn.post("/api/v1/auth/switch-org", map[string]string{"slug": victimSlug}), http.StatusConflict, "switching out of the door's organization"), "session_bound")
-	wantCode(t, want(t, walkIn.get("/api/v1/auth/me/export"), http.StatusForbidden, "exporting the whole person"), "session_bound")
-	wantCode(t, want(t, walkIn.delete("/api/v1/auth/me"), http.StatusForbidden, "erasing the whole person"), "session_bound")
+	at := want(t, walkIn.get("/api/v1/auth/me"), http.StatusOK, "where the walk-in is")
+	if principalField(t, at, "principal", "org", "slug") != slug || principalField(t, at, "principal", "portalDesk") != "WLK" {
+		t.Fatalf("the walk-in left the door's desk: %s", at.Raw)
+	}
+	want(t, walkIn.get("/api/v1/auth/me/export"), http.StatusForbidden, "exporting the whole person through an open door")
+	want(t, walkIn.delete("/api/v1/auth/me"), http.StatusForbidden, "erasing the whole person through an open door")
 	want(t, customer.get("/api/v1/portal/requests"), http.StatusOK, "and the real customer is untouched")
 
-	t.Run("a session stays where its proof holds, through SQL", func(t *testing.T) {
+	t.Run("a session keeps its proof, through SQL", func(t *testing.T) {
 		ctx := context.Background()
-		var victimOrg, customerID uuid.UUID
-		if err := h.super.QueryRow(ctx, `SELECT id FROM org WHERE slug = $1`, victimSlug).Scan(&victimOrg); err != nil {
-			t.Fatal(err)
-		}
+		var customerID uuid.UUID
 		if err := h.super.QueryRow(ctx, `SELECT id FROM app_user WHERE email = $1`, customerAddress).Scan(&customerID); err != nil {
 			t.Fatal(err)
 		}
 		var pgErr *pgconn.PgError
-		_, err := h.super.Exec(ctx, `UPDATE user_session SET current_org_id = $2, portal_project_id = NULL WHERE user_id = $1 AND proof = 'open_door'`, customerID, victimOrg)
-		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
-			t.Fatalf("an open door session was moved to another organization: %v", err)
-		}
-		_, err = h.super.Exec(ctx, `UPDATE user_session SET proof = 'password' WHERE user_id = $1 AND proof = 'portal_code'`, customerID)
+		_, err := h.super.Exec(ctx, `UPDATE user_session SET proof = 'password' WHERE user_id = $1 AND proof = 'portal_code'`, customerID)
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 			t.Fatalf("a session's proof was rewritten: %v", err)
 		}
-		_, err = h.super.Exec(ctx, `UPDATE user_session SET current_org_id = NULL, portal_project_id = NULL WHERE user_id = $1 AND proof = 'open_door'`, customerID)
+		_, err = h.super.Exec(ctx, `UPDATE user_session SET portal_project_id = NULL WHERE user_id = $1 AND proof = 'open_door'`, customerID)
 		if err != nil {
-			t.Fatalf("leaving an organization is always allowed: %v", err)
+			t.Fatalf("an open door session could not leave its desk: %v", err)
 		}
 	})
+}
+
+// A desk entered without a code takes the address on trust, so its session may
+// not take or erase the account behind it, even in an installation of one desk.
+func TestAnOpenDoorCannotActForTheWholePerson(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	agent := api.client(t)
+	slug := principalField(t, agent.signup(t, h, "walkin"), "principal", "org", "slug").(string)
+	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Walk in", "key": "WLI", "template": "service-desk"}), http.StatusCreated, "a desk")
+	want(t, agent.patch("/api/v1/projects/WLI", map[string]any{"portalVerifies": false}), http.StatusOK, "an open door")
+
+	address := h.email(t, "trusted")
+	walkIn := api.client(t)
+	want(t, walkIn.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "desk": "WLI"}), http.StatusOK, "in through the open door")
+	for what, got := range map[string]response{
+		"export": walkIn.get("/api/v1/auth/me/export"),
+		"erase":  walkIn.delete("/api/v1/auth/me"),
+	} {
+		if got.Status != http.StatusForbidden || !strings.Contains(got.Error()["message"].(string), "code") {
+			t.Errorf("%s through an open door answered %d %s, want 403 pointing at a mailed code", what, got.Status, got.Raw)
+		}
+	}
+
+	byCode := api.client(t)
+	want(t, byCode.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code")
+	want(t, byCode.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusOK, "in with the code")
+	want(t, byCode.get("/api/v1/auth/me/export"), http.StatusOK, "a proven mailbox takes its data")
 }
 
 func TestAPortalCodeCannotBeGuessedByAskingAgain(t *testing.T) {
@@ -152,77 +174,4 @@ func TestAPortalCodeCannotBeGuessedByAskingAgain(t *testing.T) {
 	nudge(`UPDATE portal_code SET requested_at = requested_at - interval '2 minutes', window_started = window_started - interval '2 hours' WHERE email = $1`)
 	want(t, visitor.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code an hour on")
 	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusOK, "the right code works again")
-}
-
-// A provider's sign-in vouches for the person wherever that provider is
-// trusted, and in an organization of their own; nowhere else.
-func TestASingleSignOnReachesItsProviderAndItsOwn(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	home := h.newWorkspace(t, "ssohome")
-	away := h.newWorkspace(t, "ssoaway")
-	twin := h.newWorkspace(t, "ssotwin")
-	provider := newIDP(t)
-	svc, clientID := configured(t, h, home, provider, false)
-	configured(t, h, twin, provider, false)
-
-	email := h.email(t, "traveller")
-	h.joinExisting(t, home, email, "member")
-	h.joinExisting(t, away, email, "member")
-	h.joinExisting(t, twin, email, "member")
-
-	if _, err := signInWith(t, h, svc, home, provider, clientID, map[string]any{"email": email, "email_verified": false}); !errors.Is(err, oidc.ErrEmailUnverified) {
-		t.Fatalf("an address the provider never verified signed in: %v", err)
-	}
-	session, err := signInWith(t, h, svc, home, provider, clientID, map[string]any{"email": email, "email_verified": true})
-	if err != nil {
-		t.Fatalf("sign in: %v", err)
-	}
-
-	ctx := context.Background()
-	accounts := h.authService()
-	principal, err := accounts.Authenticate(ctx, session.Secret)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if principal.Proof != auth.ProofOIDC {
-		t.Fatalf("proof = %q, want oidc", principal.Proof)
-	}
-	var awaySlug string
-	if err := h.super.QueryRow(ctx, `SELECT slug FROM org WHERE id = $1`, away.orgID).Scan(&awaySlug); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, awaySlug); !errors.Is(err, auth.ErrSessionStaysHome) {
-		t.Fatalf("a provider's sign-in switched into an organization with another provider: %v", err)
-	}
-	if _, err := h.super.Exec(ctx, `UPDATE user_session SET current_org_id = $2 WHERE id = $1`, *principal.SessionID, away.orgID); err == nil {
-		t.Fatal("the database let a provider's session into an organization with another provider")
-	}
-
-	slugOf := func(orgID uuid.UUID) string {
-		var slug string
-		if err := h.super.QueryRow(ctx, `SELECT slug FROM org WHERE id = $1`, orgID).Scan(&slug); err != nil {
-			t.Fatal(err)
-		}
-		return slug
-	}
-	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, slugOf(twin.orgID)); err != nil {
-		t.Fatalf("a provider's sign-in did not reach an organization trusting the same provider: %v", err)
-	}
-	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, slugOf(home.orgID)); err != nil {
-		t.Fatalf("a provider's sign-in could not come home: %v", err)
-	}
-
-	own, _, err := accounts.CreateOrganization(ctx, principal.User.ID, "Traveller's own", "ssoown-"+uuid.NewString()[:8], "")
-	if err != nil {
-		t.Fatalf("make an organization of their own: %v", err)
-	}
-	t.Cleanup(func() { _, _ = h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, own.ID) })
-	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, own.Slug); err != nil {
-		t.Fatalf("a provider's sign-in did not reach the organization the person owns: %v", err)
-	}
-	if _, _, err := accounts.SwitchOrg(ctx, *principal.SessionID, principal.User.ID, slugOf(home.orgID)); err != nil {
-		t.Fatalf("a provider's sign-in could not come home from its own organization: %v", err)
-	}
-
 }

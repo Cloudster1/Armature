@@ -23,8 +23,7 @@ func TestCrossTenantAccessAtTheAPI(t *testing.T) {
 	alphaSlug := principalField(t, alphaSignup, "principal", "org", "slug").(string)
 
 	beta := api.client(t)
-	betaSignup := beta.signup(t, h, "beta")
-	betaSlug := principalField(t, betaSignup, "principal", "org", "slug").(string)
+	beta.signup(t, h, "beta")
 
 	// Each organization creates a token and an invitation to be probed for.
 	alphaToken := alpha.post("/api/v1/tokens", map[string]any{"name": "alpha secret"})
@@ -72,19 +71,6 @@ func TestCrossTenantAccessAtTheAPI(t *testing.T) {
 		}
 		if after := alpha.get("/api/v1/tokens"); !strings.Contains(after.Raw, alphaTokenID) {
 			t.Error("beta revoked alpha's token")
-		}
-	})
-
-	t.Run("switching into an organization you do not belong to is refused", func(t *testing.T) {
-		resp := alpha.post("/api/v1/auth/switch-org", map[string]string{"slug": betaSlug})
-		if resp.Status != http.StatusNotFound {
-			t.Errorf("status = %d, want 404", resp.Status)
-		}
-
-		// And the session must not have moved.
-		me := alpha.get("/api/v1/auth/me")
-		if got := principalField(t, me, "principal", "org", "slug"); got != alphaSlug {
-			t.Errorf("alpha's session is now in %v", got)
 		}
 	})
 
