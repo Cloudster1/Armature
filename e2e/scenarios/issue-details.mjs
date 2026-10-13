@@ -215,6 +215,33 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
   expect.equal(await textOf(page, "[data-time-spent]"), "2h 30m", "the spent time is the log");
   expect.equal(await page.$eval('input[aria-label="Remaining"]', (el) => el.value), "5h 30m", "what remains came down");
 
+  // An entry logged wrong is corrected in place, and the time spent with it.
+  await page.click('[data-worklog] [data-action="edit-worklog"]');
+  await page.waitForSelector("[data-worklog-editor]", { timeout: WAIT });
+  await page.click('[data-worklog-editor] input[id$="-duration"]', { clickCount: 3 });
+  await page.type('[data-worklog-editor] input[id$="-duration"]', "45m");
+  await page.click('[data-worklog-editor] [data-action="save-worklog"]');
+  await page.waitForFunction(() => document.querySelector("[data-time-spent]")?.textContent.trim() === "45m", { timeout: WAIT });
+  await page.waitForFunction(() => !document.querySelector("[data-worklog-editor]"), { timeout: WAIT });
+  expect.contains(await textOf(page, "[data-worklog]"), "read the spec", "the note stays with it");
+
+  // A comment is the author's to correct, or to take back.
+  await page.type("#new-comment", "Teh spec is clear.");
+  await clickButton(page, "Comment");
+  await page.waitForFunction(() => document.querySelector("[data-comment]")?.textContent.includes("Teh spec"), { timeout: WAIT });
+  await page.click('[data-comment] [data-action="edit-comment"]');
+  await writeInEditor(page, '[data-comment] [id^="comment-"]', "The spec is clear.");
+  await page.click('[data-comment] [data-action="save-comment"]');
+  await page.waitForSelector("[data-comment] [data-comment-edited]", { timeout: WAIT });
+  expect.contains(await textOf(page, "[data-comment]"), "The spec is clear.", "the comment says what was meant");
+  await page.type("#new-comment", "Posted on the wrong issue.");
+  await clickButton(page, "Comment");
+  await page.waitForFunction(() => document.querySelectorAll("[data-comment]").length === 2, { timeout: WAIT });
+  await page.click('[data-activity="comments"] li:last-child [data-action="delete-comment"]');
+  await confirm(page);
+  await page.waitForFunction(() => !document.body.innerText.includes("Posted on the wrong issue."), { timeout: WAIT });
+  expect.equal((await page.$$("[data-comment]")).length, 1, "only the comment taken back is gone");
+
   // Words that are not time are refused with the field named, not saved.
   await page.click('input[aria-label="Remaining"]', { clickCount: 3 });
   await page.type('input[aria-label="Remaining"]', "a while");

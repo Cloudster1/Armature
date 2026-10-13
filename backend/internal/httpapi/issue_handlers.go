@@ -416,7 +416,7 @@ func (s *Server) handleUpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, lsn, err := s.Issues.EditComment(r.Context(), id, body, actorFrom(r))
+	comment, lsn, err := s.Issues.EditComment(r.Context(), r.PathValue("issueKey"), id, body, actorFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -431,7 +431,7 @@ func (s *Server) handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("Invalid comment id."))
 		return
 	}
-	lsn, err := s.Issues.DeleteComment(r.Context(), id, actorFrom(r))
+	lsn, err := s.Issues.DeleteComment(r.Context(), r.PathValue("issueKey"), id, actorFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return

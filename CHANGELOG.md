@@ -16,6 +16,11 @@ here in the branch that makes it.
   rows exports them, before any change is chosen and past the bulk limit;
   and a project's issue list exports every page of what it shows. All open
   the same column choice as search's Export (#121).
+- Added: a comment's author edits it in place or deletes it, and whoever
+  administers the project may delete anybody's; a work log entry is
+  corrected in place, its duration, day and note together. An edited
+  internal note answers as one again, a comment is found only on the issue
+  its address names, and a missing one answers 404 instead of 422 (#113).
 - Fixed: swimlanes reordered under Configure swimlanes stay where they were
   put. A project whose oldest board had gone to a team opened on that board
   while the panel edited the project-wide one, and a second arrow press

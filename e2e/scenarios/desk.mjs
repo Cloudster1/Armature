@@ -31,6 +31,7 @@ import {
   WAIT,
   waitForApp,
   waitForPath,
+  writeInEditor,
 } from "../helpers.mjs";
 
 scenario("a customer raises a request and sees only what the desk says to them", async ({ page }) => {
@@ -74,6 +75,12 @@ scenario("a customer raises a request and sees only what the desk says to them",
   await page.type("#new-comment", "Fire brigade called, ETA five minutes");
   await clickButton(page, "Add note");
   await page.waitForFunction(() => document.body.innerText.includes("internal note"), { timeout: WAIT });
+  // Corrected in place, the note is still one.
+  await page.click('[data-comment] [data-action="edit-comment"]');
+  await writeInEditor(page, '[data-comment] [id^="comment-"]', "Fire brigade called, ETA three minutes");
+  await page.click('[data-comment] [data-action="save-comment"]');
+  await page.waitForSelector("[data-comment] [data-comment-edited]", { timeout: WAIT });
+  expect.truthy(await page.$("[data-comment] [data-internal-note]"), "an edited note keeps its tag");
   await page.click('[data-action="internal-note"]');
   await page.type("#new-comment", "Help is on the way, stay clear of the printer.");
   await clickButton(page, "Comment");

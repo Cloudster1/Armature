@@ -407,6 +407,24 @@ export function useAddComment() {
   });
 }
 
+export function useUpdateComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, id, body }: { key: string; id: string; body: Doc }) =>
+      request<{ comment: Comment }>(`/issues/${key}/comments/${id}`, { method: "PATCH", body: { body } }),
+    onSuccess: (_, { key }) => queryClient.invalidateQueries({ queryKey: [...issuesQueryKey, "comments", key] }),
+  });
+}
+
+/** A comment gone changes the issue's count of them as well as the conversation. */
+export function useDeleteComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, id }: { key: string; id: string }) => request<void>(`/issues/${key}/comments/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesQueryKey }),
+  });
+}
+
 export function useWorklogs(key: string) {
   return useQuery({
     queryKey: [...issuesQueryKey, "worklogs", key],
