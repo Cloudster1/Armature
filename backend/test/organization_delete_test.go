@@ -133,14 +133,11 @@ func TestDeletingAnOrganization(t *testing.T) {
 			t.Error("the tombstone still names a deleted organization")
 		}
 
-		// The accounts stay; their sessions simply have no organization now.
+		// The accounts stay; their sessions end, since nobody is signed in
+		// without an organization.
 		for who, c := range map[string]*client{"owner": owner, "admin": admin} {
-			me := c.get("/api/v1/auth/me")
-			if me.Status != http.StatusOK {
-				t.Fatalf("%s: me after deletion = %d %s", who, me.Status, me.Raw)
-			}
-			if principal := me.Body["principal"].(map[string]any); principal["org"] != nil {
-				t.Errorf("%s's session still points at %v", who, principal["org"])
+			if me := c.get("/api/v1/auth/me"); me.Status != http.StatusUnauthorized {
+				t.Errorf("%s: me after deletion = %d %s, want 401", who, me.Status, me.Raw)
 			}
 		}
 

@@ -1314,6 +1314,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/installation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the installation is called. */
+        get: operations["installation"];
+        /** Rename the installation; administrators only, and written to the audit log. */
+        put: operations["renameInstallation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invites": {
         parameters: {
             query?: never;
@@ -5356,6 +5374,9 @@ export interface components {
             shared?: boolean;
             spec?: components["schemas"]["Spec"];
         };
+        Installation: {
+            name: string;
+        };
         Invite: {
             /** Format: date-time */
             createdAt: string;
@@ -6068,6 +6089,9 @@ export interface components {
             url: string;
         };
         RenameDashboardRequest: {
+            name: string;
+        };
+        RenameInstallationRequest: {
             name: string;
         };
         RenderRequest: {
@@ -10870,6 +10894,72 @@ export interface operations {
                     "application/json": {
                         calendar: components["schemas"]["HolidayCalendar"];
                         imported: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    installation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        installation: components["schemas"]["Installation"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    renameInstallation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameInstallationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        installation: components["schemas"]["Installation"];
                     };
                 };
             };

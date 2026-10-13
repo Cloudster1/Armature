@@ -168,7 +168,7 @@ scenario("an administrator lets a member go", async ({ page }) => {
 
 // Reported as "can't log in": the X beside the Member tag was taken for
 // revoking a role, and the person it removed signed in to an empty shell.
-scenario("somebody let go of their only organization is told so when they sign in", async ({ page }) => {
+scenario("somebody let go is told at sign-in that their account is switched off", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   const member = await inviteMember(page, "letgo");
   await acceptInvite(page, member, { visit: false });
@@ -178,13 +178,10 @@ scenario("somebody let go of their only organization is told so when they sign i
   await grantRole(page, { who: member.name, role: "Global administrator" });
   await removeMember(page, member.name);
 
-  await signIn(page, member.email);
-  await page.waitForSelector("[data-no-organization]", { timeout: WAIT });
-  expect.contains(await bodyText(page), "invite you again", "the page says what to do");
-  expect.equal(await page.$('a[href="/settings/tokens"]'), null, "the empty shell is not shown");
-
-  await page.click('[data-no-organization] [data-action="sign-out"]');
-  await waitForPath(page, "/login");
+  await signInThroughForm(page, member.email);
+  await page.waitForSelector("[role=alert]", { timeout: WAIT });
+  expect.contains(await textOf(page, "[role=alert]"), "Your account has been switched off. Ask an administrator.", "the sign-in page says what to do");
+  expect.equal(new URL(page.url()).pathname, "/login", "nobody is signed in to an empty shell");
 });
 
 scenario("an invitation to an address with an account is that account's to accept", async ({ page }) => {

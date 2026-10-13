@@ -22,6 +22,9 @@ func (s *Server) organizationRoutes(r chi.Router) {
 		r.Put("/issue-arrangement", s.handleSetOrgArrangement)
 	})
 	r.Get("/fields", s.handleListOrgFields)
+	// What the installation is called; its administrators rename it.
+	r.Get("/installation", s.handleInstallation)
+	r.With(requirePerm(perm.OrgAdminister)).Put("/installation", s.handleRenameInstallation)
 	// How a project says it is doing, and its month.
 	r.Get("/projects/{projectKey}/status-updates", s.handleListStatusUpdates)
 	r.With(requireProjectPerm(perm.ProjectAdminister)).Post("/projects/{projectKey}/status-updates", s.handlePostStatusUpdate)

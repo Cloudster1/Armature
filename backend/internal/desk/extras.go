@@ -13,6 +13,7 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/tenant"
 )
@@ -457,10 +458,15 @@ func (s *Service) RatingPage(ctx context.Context, token string) (*RatingPage, er
 	}
 	var out RatingPage
 	err = s.db.Read(db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID})), func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `
-			SELECT p.key || '-' || i.key_num, i.summary, o.name, r.rated_at IS NOT NULL
-			FROM csat_rating r JOIN issue i ON i.id = r.issue_id JOIN project p ON p.id = i.project_id JOIN org o ON o.id = p.org_id
-			WHERE r.token_hash = $1`, digest).Scan(&out.IssueKey, &out.Summary, &out.OrgName, &out.Rated)
+		err := tx.QueryRow(ctx, `
+			SELECT p.key || '-' || i.key_num, i.summary, r.rated_at IS NOT NULL
+			FROM csat_rating r JOIN issue i ON i.id = r.issue_id JOIN project p ON p.id = i.project_id
+			WHERE r.token_hash = $1`, digest).Scan(&out.IssueKey, &out.Summary, &out.Rated)
+		if err != nil {
+			return err
+		}
+		out.OrgName, err = installation.Name(ctx, tx)
+		return err
 	})
 	return &out, err
 }

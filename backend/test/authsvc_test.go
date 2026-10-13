@@ -270,18 +270,14 @@ func TestSessionLifecycle(t *testing.T) {
 		}
 	})
 
-	t.Run("revoking a membership locks an open session out of the organization", func(t *testing.T) {
+	t.Run("revoking a membership ends an open session", func(t *testing.T) {
 		creds := h.signup(t, svc, "revoked")
 		if _, err := h.super.Exec(ctx, `DELETE FROM org_member WHERE user_id = $1`, creds.Principal.User.ID); err != nil {
 			t.Fatal(err)
 		}
 
-		principal, err := svc.Authenticate(ctx, creds.SessionSecret)
-		if err != nil {
-			t.Fatalf("authenticate: %v", err)
-		}
-		if principal.InOrg() {
-			t.Error("a user whose membership was revoked still has an organization on their session")
+		if principal, err := svc.Authenticate(ctx, creds.SessionSecret); !errors.Is(err, auth.ErrInvalidToken) {
+			t.Fatalf("a session whose membership was revoked authenticated as %+v, %v; want ErrInvalidToken", principal, err)
 		}
 	})
 }

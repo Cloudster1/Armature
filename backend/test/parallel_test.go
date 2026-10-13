@@ -32,6 +32,7 @@ var sequentialTests = map[string]string{
 	"TestAReplyThatFailsToPostIsReadAgain":                       "puts a trigger on issue_comment, which every test writes",
 	"TestOldKeysComeOverFromTheColumnThatKeptOne":                "creates databases and roles",
 	"TestMigrationsRunAsPlainOwner":                              "creates databases and roles",
+	"TestTheUpgradeRefusesSeveralOrganizations":                  "creates databases and roles",
 	"TestOutboxRelay":                                            "relays every organization's outbox into the shared stream",
 	"TestOutboxRelayWaitsForTheSlowestGroup":                     "relays every organization's outbox into the shared stream",
 	"TestAConsumerRetriesAHandlerThatFailedOnce":                 "consumes the shared Redis stream",

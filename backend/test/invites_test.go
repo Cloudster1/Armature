@@ -303,8 +303,8 @@ func TestAPITokens(t *testing.T) {
 		if _, err := h.super.Exec(ctx, `DELETE FROM org_member WHERE user_id = $1`, member.Principal.User.ID); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := svc.Authenticate(ctx, token.Secret); !errors.Is(err, auth.ErrInvalidToken) {
-			t.Errorf("a token still works after its owner left the organization: %v", err)
+		if _, err := svc.Authenticate(ctx, token.Secret); !errors.Is(err, auth.ErrSwitchedOff) {
+			t.Errorf("a token whose owner left the organization answered %v, want ErrSwitchedOff", err)
 		}
 	})
 

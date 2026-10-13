@@ -33,15 +33,6 @@ beforeEach(() => {
 });
 
 describe("NoOrganization", () => {
-  it("says why the app is empty and offers only the way out when nothing is left", async () => {
-    me.organizations = [];
-    render(<NoOrganization />);
-    expect(screen.getByText("You are not in an organization")).toBeTruthy();
-    expect(screen.getByText(/invite you again/)).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
-    expect(logout).toHaveBeenCalled();
-  });
-
   it("offers the organizations the person still belongs to", async () => {
     me.organizations = [
       { orgId: "o2", orgSlug: "other", orgName: "Other Corp", role: "member" },
@@ -50,5 +41,7 @@ describe("NoOrganization", () => {
     expect(screen.getByText("Choose an organization")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Other Corp" }));
     expect(switchOrg).toHaveBeenCalledWith("other");
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(logout).toHaveBeenCalled();
   });
 });

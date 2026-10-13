@@ -390,9 +390,7 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	if p := PrincipalFrom(r.Context()); p != nil {
 		in.UserID = &p.User.ID
 		in.Proof = p.Proof
-		if p.Org != nil {
-			in.SessionOrg = &p.Org.ID
-		}
+		in.SessionOrg = &p.Org.ID
 	}
 
 	creds, err := s.Auth.AcceptInvite(r.Context(), in)

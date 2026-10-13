@@ -15,6 +15,7 @@ import (
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/mail"
@@ -351,8 +352,8 @@ func (s *Service) ByToken(ctx context.Context, token string) (*Rule, uuid.UUID, 
 
 // automationActor is who a rule acts as: the organization's automation account.
 func (s *Service) automationActor(ctx context.Context, tx db.DBTX) (issue.Actor, error) {
-	var id *uuid.UUID
-	if err := tx.QueryRow(ctx, `SELECT automation_user_id FROM org WHERE id = current_org_id()`).Scan(&id); err != nil {
+	id, err := installation.AutomationUser(ctx, tx)
+	if err != nil {
 		return issue.Actor{}, err
 	}
 	if id == nil {

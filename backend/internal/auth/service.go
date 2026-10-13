@@ -15,6 +15,7 @@ import (
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/seal"
 	"github.com/armature/armature/backend/internal/tenant"
 )
@@ -219,14 +220,12 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	return s.authenticateSession(ctx, secret)
 }
 
-// principalQuery resolves a credential all the way to the caller's role in
-// their current organization in one round trip. The joins are left joins
-// because a user may be logged in without having selected an organization yet.
+// sessionPrincipalSQL resolves a session to the caller's role in its
+// organization; the joins are left so a lost membership can be told apart.
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
        u.id, u.email, u.name, u.timezone, u.locale, u.is_active, COALESCE(u.avatar_url, ''),
        o.id, o.slug, o.name, m.org_role, pp.id, pp.key,
-       COALESCE(o.second_factor, 'off'),
        EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL),
        s.proof = 'oidc' AND (s.proof_org_id = o.id OR EXISTS (
            SELECT 1 FROM oidc_provider home
@@ -255,12 +254,19 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 		vouched    bool
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
+		err := tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
 			&sessionID, &lastSeen, &p.Proof,
 			&p.User.ID, &p.User.Email, &p.User.Name, &p.User.Timezone, &p.User.Locale, &p.User.IsActive, &p.User.AvatarURL,
 			&orgID, &orgSlug, &orgName, &memberRole, &deskID, &deskKey,
-			&rule, &enrolled, &vouched,
+			&enrolled, &vouched,
 		)
+		// Somebody with a factor, or vouched for, is held by no rule.
+		if err != nil || orgID == nil || enrolled || vouched {
+			return err
+		}
+		read, err := installation.SecondFactor(tenant.WithOrg(ctx, tenant.Org{ID: *orgID}), tx)
+		rule = SecondFactorRule(read)
+		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrInvalidToken
@@ -272,17 +278,18 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 		return nil, ErrUserInactive
 	}
 
-	p.SessionID = &sessionID
 	// A membership row is required, not merely an org row: revoking someone's
-	// membership must lock them out of an already open session immediately.
-	if orgID != nil && memberRole != nil {
-		p.Org = &Org{ID: *orgID, Slug: derefString(orgSlug), Name: derefString(orgName)}
-		p.Role = OrgRole(*memberRole)
-		// A provider that signed the session in and is trusted here vouched
-		// for the person with whatever factor it asks for.
-		p.SecondFactor = enrolled || vouched
-		p.MustEnrol = rule.Covers(p.Role) && !p.SecondFactor
+	// membership ends an already open session at once.
+	if orgID == nil || memberRole == nil {
+		return nil, ErrInvalidToken
 	}
+	p.SessionID = &sessionID
+	p.Org = &Org{ID: *orgID, Slug: derefString(orgSlug), Name: derefString(orgName)}
+	p.Role = OrgRole(*memberRole)
+	// A provider that signed the session in and is trusted here vouched
+	// for the person with whatever factor it asks for.
+	p.SecondFactor = enrolled || vouched
+	p.MustEnrol = rule.Covers(p.Role) && !p.SecondFactor
 	if deskID != nil {
 		p.PortalDeskID = deskID
 		p.PortalDesk = derefString(deskKey)
@@ -339,7 +346,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 	}
 	if memberRole == nil {
 		// The token outlived its owner's membership.
-		return nil, ErrInvalidToken
+		return nil, ErrSwitchedOff
 	}
 
 	p.TokenID = &tokenID
@@ -551,7 +558,7 @@ func derefString(s *string) string {
 // the seam between authentication and data access: handlers get this from the
 // middleware, and command line tools build it directly.
 func ContextForOrg(ctx context.Context, p *Principal) context.Context {
-	if p == nil || p.Org == nil {
+	if p == nil {
 		return ctx
 	}
 	return tenant.WithOrg(ctx, tenant.Org{ID: p.Org.ID, Slug: p.Org.Slug})

@@ -32,6 +32,7 @@ import (
 	"github.com/armature/armature/backend/internal/freshness"
 	"github.com/armature/armature/backend/internal/git"
 	"github.com/armature/armature/backend/internal/httpapi"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
@@ -95,21 +96,22 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	accounts := h.authService()
 	themes := theme.NewService(h.cluster, h.attachmentStore(t))
 	srv := &httpapi.Server{
-		Mailer:     mailer,
-		Profiles:   profile.NewService(h.attachmentStore(t), accounts),
-		Privacy:    privacy.NewService(h.cluster).WithAvatars(profile.NewService(h.attachmentStore(t), accounts)).WithThemes(themes),
-		Themes:     themes,
-		Auth:       accounts,
-		Fields:     field.NewService(h.cluster),
-		Arrange:    arrange.NewService(h.cluster),
-		Labels:     labels,
-		Notify:     notify.NewService(h.cluster),
-		Automation: automation.NewService(h.cluster, issues, labels, testLog).WithMailer(mailer).WithWebhooks(webhooks),
-		Webhooks:   webhooks,
-		Filters:    filter.NewService(h.cluster),
-		Audit:      audit.NewService(h.cluster),
-		Calendar:   calendar.NewService(h.cluster),
-		Bulk:       bulk.NewService(h.cluster, issues, labels),
+		Mailer:       mailer,
+		Profiles:     profile.NewService(h.attachmentStore(t), accounts),
+		Privacy:      privacy.NewService(h.cluster).WithAvatars(profile.NewService(h.attachmentStore(t), accounts)).WithThemes(themes),
+		Themes:       themes,
+		Installation: installation.NewService(h.cluster),
+		Auth:         accounts,
+		Fields:       field.NewService(h.cluster),
+		Arrange:      arrange.NewService(h.cluster),
+		Labels:       labels,
+		Notify:       notify.NewService(h.cluster),
+		Automation:   automation.NewService(h.cluster, issues, labels, testLog).WithMailer(mailer).WithWebhooks(webhooks),
+		Webhooks:     webhooks,
+		Filters:      filter.NewService(h.cluster),
+		Audit:        audit.NewService(h.cluster),
+		Calendar:     calendar.NewService(h.cluster),
+		Bulk:         bulk.NewService(h.cluster, issues, labels),
 		CSV: csvio.NewService(h.cluster, issues, labels, field.NewService(h.cluster), accounts).
 			WithPlanning(sprints, version.NewService(h.cluster), component.NewService(h.cluster), team.NewService(h.cluster)),
 		Attachments:  attachments,

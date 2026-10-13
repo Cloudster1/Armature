@@ -21,6 +21,7 @@ import (
 	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/filter"
 	"github.com/armature/armature/backend/internal/git"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
@@ -181,6 +182,9 @@ var operations = []operation{
 	{method: "POST", path: "/notifications/read", handler: "handleMarkRead", tag: "notifications", summary: "Mark some, or all, read.", request: markReadRequest{}, responses: none()},
 	{method: "GET", path: "/notification-preferences", handler: "handleNotificationPreferences", tag: "notifications", summary: "How the caller wants to be told.", responses: ok(env{"preferences": notify.Preferences{}})},
 	{method: "PUT", path: "/notification-preferences", handler: "handleSaveNotificationPreferences", tag: "notifications", summary: "Change how the caller is told.", request: notify.Preferences{}, responses: ok(env{"preferences": notify.Preferences{}})},
+	{method: "GET", path: "/installation", handler: "handleInstallation", tag: "organization", summary: "What the installation is called.", responses: ok(env{"installation": installation.Installation{}})},
+	{method: "PUT", path: "/installation", handler: "handleRenameInstallation", tag: "organization", summary: "Rename the installation; administrators only, and written to the audit log.",
+		request: renameInstallationRequest{}, responses: ok(env{"installation": installation.Installation{}})},
 	{method: "DELETE", path: "/organization", handler: "handleDeleteOrganization", tag: "organization", summary: "Delete the organization and everything in it; owners only, with its address typed back.",
 		query: []param{{name: "confirm", description: "The organization's address, typed back."}}, responses: none()},
 	{method: "DELETE", path: "/members/{userID}", handler: "handleRemoveMember", tag: "organization", summary: "Let a member go: their membership, grants, groups, teams and tokens here.", responses: none()},

@@ -68,6 +68,30 @@ written before the rule were rerun that way by `00926`.
 `org` without the lift, and `TestMigrationsRunAsPlainOwner` migrates as such
 an owner and checks an older organization comes out like a new one.
 
+### One installation holds one organization, and an upgrade with several stops
+
+Armature is self-hosted, and an installation serves one team; running more
+than one team takes more than one installation (#208). The organization row
+stays inside for now, so `org_id` and row security keep working, and the
+`installation` package is the one way to its name and to the settings there is
+one of: the default theme, the second-factor rule and the automation account.
+Moving them off `org` later changes that package and nothing that calls it.
+
+A database that already holds several organizations is not merged. Their
+project keys, statuses, workflows, roles and people would collide, and no
+rule for which one wins would be right for everybody. Migration `00929`
+counts the organizations and, with more than one, stops: it names the first
+ten by address and name, says how many more there are, and tells the operator
+to delete the extra ones with the previous release before upgrading. It
+changes no schema, so a refusal leaves the database as it was. It lifts
+forced row security on `org` to count, as every migration reading `org` does,
+and `TestTheUpgradeRefusesSeveralOrganizations` refuses eleven as the plain
+owner a cluster migrates as.
+
+**Reconsider if** operators with several organizations ask for a way across
+that is better than deleting: an export of one organization's projects into
+another installation is the shape that would take.
+
 ### A transactional outbox rather than publishing events directly
 
 Publishing to Redis inside a request means the event can be sent for a
@@ -1533,6 +1557,19 @@ the person's.
 
 **Reconsider if** a key needs to act for something other than a person, at which
 point it wants an identity of its own rather than a narrowing of somebody's.
+
+### Nobody is signed in outside the organization
+
+Somebody signed in with no organization saw a shell of empty tables, and
+every guard had to ask whether there was a tenant at all; a forgotten check
+was a query with no tenant scope. Now every principal carries the
+organization. A password sign-in, its code step and an API token of somebody
+with no membership left are refused with "Your account has been switched
+off. Ask an administrator.", the same words whether they were let go or the
+organization went. An open session whose membership is gone ends rather than
+being refused, so the browser goes back to sign in and hears it there.
+Single sign-on already opened no session without a membership: it notes a
+request to join instead, which an administrator can admit.
 
 ### A sign-in reaches what its proof vouches for
 

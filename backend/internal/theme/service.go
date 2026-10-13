@@ -16,6 +16,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/attachment"
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/installation"
 )
 
 var (
@@ -74,8 +75,7 @@ func NewService(cluster *db.Cluster, store attachment.Store) *Service {
 const selectThemes = `
 SELECT t.id, t.owner_id, COALESCE(u.name, ''), t.name, t.shared, t.spec, t.created_at, t.updated_at,
        (SELECT count(*) FROM user_theme ut WHERE ut.theme_id = t.id),
-       EXISTS (SELECT 1 FROM user_theme ut WHERE ut.theme_id = t.id AND ut.user_id = $1),
-       EXISTS (SELECT 1 FROM org o WHERE o.id = t.org_id AND o.default_theme_id = t.id)
+       EXISTS (SELECT 1 FROM user_theme ut WHERE ut.theme_id = t.id AND ut.user_id = $1)
 FROM theme t
 LEFT JOIN app_user u ON u.id = t.owner_id`
 
@@ -87,7 +87,7 @@ func scan(row pgx.Row) (*Theme, error) {
 		t   Theme
 		raw []byte
 	)
-	err := row.Scan(&t.ID, &t.OwnerID, &t.OwnerName, &t.Name, &t.Shared, &raw, &t.CreatedAt, &t.UpdatedAt, &t.InUse, &t.Active, &t.Default)
+	err := row.Scan(&t.ID, &t.OwnerID, &t.OwnerName, &t.Name, &t.Shared, &raw, &t.CreatedAt, &t.UpdatedAt, &t.InUse, &t.Active)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -102,10 +102,17 @@ func scan(row pgx.Row) (*Theme, error) {
 	return &t, nil
 }
 
-// withAssets fills in the files of every theme listed.
+// withAssets fills in the files of every theme listed, and marks the default.
 func withAssets(ctx context.Context, tx db.DBTX, themes []*Theme) error {
 	if len(themes) == 0 {
 		return nil
+	}
+	fallback, err := installation.DefaultTheme(ctx, tx)
+	if err != nil {
+		return err
+	}
+	for _, t := range themes {
+		t.Default = fallback != nil && *fallback == t.ID
 	}
 	ids := make([]uuid.UUID, 0, len(themes))
 	byID := map[uuid.UUID]*Theme{}
@@ -222,8 +229,8 @@ func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, Source,
 		err := tx.QueryRow(ctx, `SELECT theme_id FROM user_theme WHERE user_id = $1`, reader).Scan(&chosen)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			var fallback *uuid.UUID
-			if err := tx.QueryRow(ctx, `SELECT default_theme_id FROM org WHERE id = current_org_id()`).Scan(&fallback); err != nil {
+			fallback, err := installation.DefaultTheme(ctx, tx)
+			if err != nil {
 				return err
 			}
 			if fallback == nil {
@@ -279,7 +286,7 @@ func (s *Service) Choose(ctx context.Context, reader uuid.UUID, id *uuid.UUID, b
 func (s *Service) SetDefault(ctx context.Context, reader uuid.UUID, id *uuid.UUID) (*Theme, db.LSN, error) {
 	var out *Theme
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, err := tx.Exec(ctx, `UPDATE org SET default_theme_id = $1 WHERE id = current_org_id()`, id); err != nil {
+		if err := installation.SetDefaultTheme(ctx, tx, id); err != nil {
 			if isCheck(err) {
 				return ErrDefaultNotShared
 			}

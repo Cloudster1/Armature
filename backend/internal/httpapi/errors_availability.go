@@ -8,7 +8,6 @@ import (
 	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/plan"
 	"github.com/armature/armature/backend/internal/project"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // availabilityAPIError continues moreAPIError's mapping: calendars, weeks, absences
@@ -48,12 +47,6 @@ func availabilityAPIError(err error) *APIError {
 		return ErrConflict("That person is already away on some of those days. Change that absence instead of adding another.")
 	case errors.Is(err, availability.ErrMayNotRecord):
 		return ErrForbidden("Only the person, an administrator, or a scrum master or project administrator of one of their teams records their absences. Ask one of them instead.")
-	case errors.Is(err, tenant.ErrNoTenant):
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Code:    "no_organization",
-			Message: "Select an organization first.",
-		}
 	default:
 		return sprintAPIError(err)
 	}

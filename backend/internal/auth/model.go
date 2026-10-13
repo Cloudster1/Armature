@@ -77,7 +77,8 @@ type Membership struct {
 // Principal is the authenticated caller of a request: who they are, which
 // organization they are currently acting in, and what that lets them do.
 type Principal struct {
-	User User    `json:"user"`
+	User User `json:"user"`
+	// Org is never nil: nobody is signed in outside the installation's organization.
 	Org  *Org    `json:"org,omitempty"`
 	Role OrgRole `json:"role,omitempty"`
 
@@ -145,9 +146,6 @@ type Org struct {
 	Name string    `json:"name"`
 }
 
-// InOrg reports whether the principal has selected an organization.
-func (p *Principal) InOrg() bool { return p != nil && p.Org != nil }
-
 // Invite is a pending invitation to join an organization.
 type Invite struct {
 	ID        uuid.UUID `json:"id"`
@@ -187,6 +185,8 @@ var (
 	ErrInviteInvalid = errors.New("invitation is invalid or has expired")
 	// ErrUserInactive is returned when a deactivated account tries to log in.
 	ErrUserInactive = errors.New("account is deactivated")
+	// ErrSwitchedOff is somebody with no membership left, at any door.
+	ErrSwitchedOff = errors.New("your account has been switched off")
 	// ErrSignInToAccept is returned when an invitation is opened anonymously for
 	// an address that already has an account: only that account may take it.
 	ErrSignInToAccept = errors.New("an account already uses that address")
