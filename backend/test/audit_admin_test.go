@@ -207,3 +207,29 @@ func TestEveryAdministrativeChangeIsAudited(t *testing.T) {
 		t.Error("the rotation is not recorded as a rotation")
 	}
 }
+
+// The worker copies an act into the log after the fact, by which time its
+// actor may be gone; the act is recorded without them, as it is when they go later.
+func TestAnActIsRecordedWhoseActorIsGoneByTheTimeItIsCopied(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	ownerID := principalField(t, owner.signIn(t, h.person(t, "goneby", auth.RoleOwner)), "principal", "user", "id").(string)
+	groupID := idOf(t, want(t, owner.post("/api/v1/groups", map[string]any{"name": h.name(t, "Left behind")}), http.StatusCreated, "a group"), "group")
+
+	ctx := context.Background()
+	if _, err := h.super.Exec(ctx, `DELETE FROM app_user WHERE id = $1`, ownerID); err != nil {
+		t.Fatalf("remove the actor: %v", err)
+	}
+	h.copyToAudit(t, ownerID)
+
+	var actor *string
+	if err := h.super.QueryRow(ctx, `
+		SELECT actor_user_id::text FROM audit_log WHERE action = 'group.created' AND target_id = $1`, groupID).Scan(&actor); err != nil {
+		t.Fatalf("the group's making was not recorded: %v", err)
+	}
+	if actor != nil {
+		t.Errorf("the act names %s, an actor who is gone", *actor)
+	}
+}
