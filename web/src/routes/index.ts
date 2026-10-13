@@ -41,7 +41,7 @@ import { sprintsRoute } from "./sprints";
 import { milestonesRoute } from "./milestones";
 import { teamsRoute } from "./teams";
 import { accessRoute } from "./access";
-import { organizationRoute } from "./organization";
+import { installationRoute, organizationSettingsRoute } from "./installation";
 import { repositoriesRoute } from "./repositories";
 import { fieldsRoute } from "./fields";
 import { issueArrangementRoute } from "./issue-arrangement";
@@ -115,7 +115,8 @@ const routeTree = rootRoute.addChildren([
     workflowNewRoute,
     workflowDesignRoute,
     accessRoute,
-    organizationRoute,
+    installationRoute,
+    organizationSettingsRoute,
     labelsRoute,
     holidaysRoute,
     usersRoute,

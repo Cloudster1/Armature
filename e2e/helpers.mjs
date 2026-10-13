@@ -14,6 +14,9 @@ export const WAIT = 15_000;
 /** A full load from the dev server (E2E_WEB=dev) fetches every module, slower with several browsers at it. */
 export const LOAD_WAIT = process.env.E2E_WEB === "dev" ? 30_000 : WAIT;
 
+/** The key of the demo's first project, which an administrator adds from the Installation page. */
+export const DEMO_PROJECT_KEY = "LINE";
+
 /** A day in milliseconds, for the dates the scenarios ask for by offset. */
 const DAY_MS = 86_400_000;
 
@@ -2439,6 +2442,17 @@ export async function keepDefaultTheme() {
   const { themes } = await administer("GET", "/themes");
   const was = themes.find((theme) => theme.default)?.id ?? null;
   return () => administer("PUT", "/themes/default", { themeId: was });
+}
+
+/** Notes what the installation is called and returns what names it so again. */
+export async function keepInstallationName() {
+  const { installation } = await administer("GET", "/installation");
+  return () => administer("PUT", "/installation", { name: installation.name });
+}
+
+/** Whether the demo is here already: an earlier run on this database added it, and its key stays taken. */
+export async function demoProjectAdded() {
+  return administer("GET", `/projects/${DEMO_PROJECT_KEY}`).then(() => true, () => false);
 }
 
 /** Notes a workflow's whole graph, by name, and returns what saves it back. */

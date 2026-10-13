@@ -19,8 +19,6 @@ var (
 	// ErrLastAdministrator is returned when erasing somebody would leave the
 	// installation with nobody active to administer it.
 	ErrLastAdministrator = errors.New("the last active administrator cannot go")
-	// ErrNotAMember is returned when the person is not in the organization.
-	ErrNotAMember = errors.New("that person is not a member here")
 	// ErrNotFound is returned for a person who does not exist or is already gone.
 	ErrNotFound = errors.New("no such person")
 )

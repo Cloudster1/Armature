@@ -3,6 +3,7 @@ package demo
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +26,10 @@ const MaintenanceKey = "MAINT"
 
 // nightCapacity is what the night shift takes on in a window, in points.
 const nightCapacity = 12
+
+// waitingForParts is the status maintenance work stops in; an installation that
+// has one by that name lends it.
+const waitingForParts = "Waiting for parts"
 
 // plantInput is what the rest of the plant builds on: the line, its issues by
 // summary, the day shift, and the service that plans the night shift's windows.
@@ -93,46 +98,15 @@ func plant(ctx context.Context, cluster *db.Cluster, templates *template.Service
 	}
 
 	// Maintenance work waits for parts, which the software workflow has no
-	// word for, so the project gets a workflow and a scheme of its own.
+	// word for, so the project gets a workflow and a scheme of its own. What
+	// the installation already has under their names is used, not refused.
 	admin := workflow.NewAdmin(cluster, workflow.NewStore())
-	statuses := map[string]uuid.UUID{}
-	if err := cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		all, err := workflow.NewStore().ListStatuses(ctx, tx)
-		for _, s := range all {
-			statuses[s.Name] = s.ID
-		}
+	var schemeID uuid.UUID
+	if _, err := cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		schemeID, err = maintenanceScheme(ctx, tx, admin)
 		return err
 	}); err != nil {
-		return fmt.Errorf("read the statuses: %w", err)
-	}
-	waiting, _, err := admin.CreateStatus(ctx, workflow.StatusInput{Name: "Waiting for parts", Category: workflow.CategoryInProgress, Description: "Started, and stopped until a part arrives."}, actor.UserID)
-	if err != nil {
-		return fmt.Errorf("add the waiting status: %w", err)
-	}
-	statuses[waiting.Name] = waiting.ID
-	todo, doing, done := statuses[bootstrap.StatusToDo], statuses[bootstrap.StatusInProgress], statuses[bootstrap.StatusDone]
-	flow, _, err := admin.CreateWorkflow(ctx, workflow.GraphInput{
-		Name:        "Maintenance workflow",
-		Description: "Work on the plant: started, waiting for a part, or finished.",
-		Steps: []workflow.StepInput{
-			{StatusID: todo, IsInitial: true, Layout: &workflow.Point{X: 80, Y: 160}},
-			{StatusID: doing, Layout: &workflow.Point{X: 340, Y: 160}},
-			{StatusID: waiting.ID, Layout: &workflow.Point{X: 340, Y: 340}},
-			{StatusID: done, Layout: &workflow.Point{X: 600, Y: 160}},
-		},
-		Transitions: []workflow.TransitionInput{
-			{Name: "Start work", FromStatusID: &todo, ToStatusID: doing},
-			{Name: "Wait for parts", Description: "The part is on order; nothing moves until it lands.", FromStatusID: &doing, ToStatusID: waiting.ID},
-			{Name: "Parts arrived", FromStatusID: &waiting.ID, ToStatusID: doing},
-			{Name: "Close", Description: "Fixed, tested, signed off.", ToStatusID: done},
-			{Name: "Reopen", FromStatusID: &done, ToStatusID: todo},
-		},
-	}, actor.UserID)
-	if err != nil {
-		return fmt.Errorf("draw the maintenance workflow: %w", err)
-	}
-	scheme, _, err := admin.CreateScheme(ctx, workflow.SchemeInput{Name: "Maintenance scheme", Items: []workflow.SchemeItemInput{{WorkflowID: flow.ID}}}, actor.UserID)
-	if err != nil {
 		return fmt.Errorf("make the maintenance scheme: %w", err)
 	}
 	maint, _, err := templates.Create(ctx, "task-tracking", project.CreateInput{
@@ -140,7 +114,7 @@ func plant(ctx context.Context, cluster *db.Cluster, templates *template.Service
 		Name:        "Plant maintenance",
 		Description: "Everything that keeps the plant running: presses, compressors, cranes, the paint supply, and the parts they wait for.",
 		LeadID:      &actor.UserID,
-		SchemeID:    scheme.ID,
+		SchemeID:    schemeID,
 	}, actor.UserID)
 	if err != nil {
 		return fmt.Errorf("create the maintenance project: %w", err)
@@ -181,6 +155,47 @@ func plant(ctx context.Context, cluster *db.Cluster, templates *template.Service
 		return fmt.Errorf("add the maintenance comment: %w", err)
 	}
 	return nil
+}
+
+// maintenanceScheme is the scheme handing every issue type the maintenance
+// workflow, with the status that workflow waits in.
+func maintenanceScheme(ctx context.Context, tx db.DBTX, admin *workflow.Admin) (uuid.UUID, error) {
+	all, err := workflow.NewStore().ListStatuses(ctx, tx)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("read the statuses: %w", err)
+	}
+	statuses := map[string]uuid.UUID{}
+	for _, s := range all {
+		statuses[strings.ToLower(s.Name)] = s.ID
+	}
+	waiting, ok := statuses[strings.ToLower(waitingForParts)]
+	if !ok {
+		if waiting, err = workflow.InsertStatus(ctx, tx, workflow.StatusInput{Name: waitingForParts, Category: workflow.CategoryInProgress, Description: "Started, and stopped until a part arrives."}); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	todo, doing, done := statuses[strings.ToLower(bootstrap.StatusToDo)], statuses[strings.ToLower(bootstrap.StatusInProgress)], statuses[strings.ToLower(bootstrap.StatusDone)]
+	flow, err := admin.EnsureWorkflow(ctx, tx, workflow.GraphInput{
+		Name:        "Maintenance workflow",
+		Description: "Work on the plant: started, waiting for a part, or finished.",
+		Steps: []workflow.StepInput{
+			{StatusID: todo, IsInitial: true, Layout: &workflow.Point{X: 80, Y: 160}},
+			{StatusID: doing, Layout: &workflow.Point{X: 340, Y: 160}},
+			{StatusID: waiting, Layout: &workflow.Point{X: 340, Y: 340}},
+			{StatusID: done, Layout: &workflow.Point{X: 600, Y: 160}},
+		},
+		Transitions: []workflow.TransitionInput{
+			{Name: "Start work", FromStatusID: &todo, ToStatusID: doing},
+			{Name: "Wait for parts", Description: "The part is on order; nothing moves until it lands.", FromStatusID: &doing, ToStatusID: waiting},
+			{Name: "Parts arrived", FromStatusID: &waiting, ToStatusID: doing},
+			{Name: "Close", Description: "Fixed, tested, signed off.", ToStatusID: done},
+			{Name: "Reopen", FromStatusID: &done, ToStatusID: todo},
+		},
+	})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("draw the maintenance workflow: %w", err)
+	}
+	return admin.EnsureScheme(ctx, tx, workflow.SchemeInput{Name: "Maintenance scheme", Items: []workflow.SchemeItemInput{{WorkflowID: flow}}})
 }
 
 // plantIssue is one issue of the plant, and where it goes.

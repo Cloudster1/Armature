@@ -18,7 +18,7 @@ const you: Array<{ to: string; label: string; detail: string; icon: IconName }> 
 ];
 
 const organization: Array<{ to: string; label: string; detail: string; icon: IconName }> = [
-  { to: "/settings/organization", label: "Organization", detail: "Its name and address, and deleting it with everything in it.", icon: "Settings" },
+  { to: "/settings/installation", label: "Installation", detail: "What everybody sees it called, and the demo project to show it with.", icon: "Settings" },
   { to: "/settings/access", label: "Access", detail: "Who holds which role, the groups, and the identity provider.", icon: "Key" },
   { to: "/settings/users", label: "Users", detail: "Accounts that sign in with a password here: make one, reset it, switch it off.", icon: "Users" },
   { to: "/settings/holidays", label: "Holidays", detail: "Calendars of days off, and which one everybody keeps by default.", icon: "Calendar" },

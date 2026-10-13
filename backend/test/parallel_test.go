@@ -49,7 +49,6 @@ var sequentialTests = map[string]string{
 	"TestDeletingAnIssueRemovesItsFilesFromTheBucket":           "runs the attachment reaper over every organization",
 	"TestDeletingAnEpicRemovesItsDescendantsFilesFromTheBucket": "runs the attachment reaper over every organization",
 	"TestAnAttachmentRowNeverLeavesWithoutATombstone":           "runs the attachment reaper over every organization",
-	"TestDeletingAnOrganization":                                "runs the attachment reaper over every organization",
 	"TestScheduledAndManualRuns":                                "runs the automation scheduler over every organization",
 	"TestAWebhookIsSignedRetriedAndRedelivered":                 "sends every organization's due webhook deliveries",
 	"TestEveryIssueThatComesOrGoesIsAnnounced":                  "sends every organization's due webhook deliveries",

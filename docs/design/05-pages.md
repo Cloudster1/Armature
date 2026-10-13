@@ -308,10 +308,14 @@ on your own row. The portal's foot puts the customer's name on a Menu
 (`[data-action="customer-menu"]`) with the same two actions.
 
 
-## Organization (narrow)
+## Installation (narrow)
 
-The organization's name and address, then Delete the organization, for an
-owner.
+The installation's name: for an administrator a form, `#field-installation-name`
+and Rename, which toasts; for anybody else a line of text. Then Demo, for an
+administrator: a sentence on what the demo is and "Add the demo project"
+(`[data-action="add-demo-project"]`), which opens the line's project, or shows
+why not in an ErrorBanner. Nothing makes or deletes an installation.
+`/settings/organization` redirects here.
 
 ## Users (narrow)
 

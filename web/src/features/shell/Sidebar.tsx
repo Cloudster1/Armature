@@ -54,7 +54,7 @@ export const projectSetupPages: PageLink[] = [
 ];
 
 const settingsPages: Array<{ to: string; label: string; icon: IconName }> = [
-  { to: "/settings/organization", label: "Organization", icon: "Settings" },
+  { to: "/settings/installation", label: "Installation", icon: "Settings" },
   { to: "/settings/access", label: "Access", icon: "Key" },
   { to: "/settings/users", label: "Users", icon: "Users" },
   { to: "/settings/holidays", label: "Holidays", icon: "Calendar" },

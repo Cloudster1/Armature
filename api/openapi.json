@@ -5539,6 +5539,45 @@
         }
       }
     },
+    "/installation/demo-project": {
+      "post": {
+        "operationId": "addDemoProject",
+        "summary": "Fill the installation with the demo: a production line and its maintenance, under the keys LINE and MAINT; administrators only, once, and written to the audit log.",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "project": {
+                      "$ref": "#/components/schemas/Project"
+                    }
+                  },
+                  "required": [
+                    "project"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invites": {
       "get": {
         "operationId": "listInvites",
@@ -9460,40 +9499,6 @@
                 }
               }
             }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/organization": {
-      "delete": {
-        "operationId": "deleteOrganization",
-        "summary": "Delete the organization and everything in it; owners only, with its address typed back.",
-        "tags": [
-          "organization"
-        ],
-        "parameters": [
-          {
-            "name": "confirm",
-            "in": "query",
-            "description": "The organization's address, typed back.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
