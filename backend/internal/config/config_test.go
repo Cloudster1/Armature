@@ -154,3 +154,28 @@ func TestWebhookConcurrencyHasADefaultAndIsNeverNone(t *testing.T) {
 		}
 	}
 }
+
+// A key typed wrong would surface only when somebody first enrols, so it is
+// refused at startup; no key at all is allowed and turns enrolment off.
+func TestTheSecretKeyIsThirtyTwoBytesOfBase64OrNothing(t *testing.T) {
+	t.Setenv("ARMATURE_DB_PRIMARY_URL", "postgres://x")
+
+	t.Setenv("ARMATURE_SECRET_KEY", "")
+	if _, err := Load(); err != nil {
+		t.Fatalf("no key should load, with two-step sign-in off: %v", err)
+	}
+	for _, bad := range []string{"not base64!", "c2hvcnQ="} {
+		t.Setenv("ARMATURE_SECRET_KEY", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ARMATURE_SECRET_KEY") {
+			t.Errorf("key %q should be refused and named, got %v", bad, err)
+		}
+	}
+	t.Setenv("ARMATURE_SECRET_KEY", "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("a 32 byte key should load: %v", err)
+	}
+	if cfg.Auth.SecretKey == "" {
+		t.Fatal("the key was not kept")
+	}
+}

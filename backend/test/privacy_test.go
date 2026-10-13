@@ -46,6 +46,7 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 			`INSERT INTO notification (org_id, user_id, kind, title, event_id, created_at) VALUES ($2, $1, 'assigned', 'ancient', gen_random_uuid(), now() - interval '200 days')`,
 			`INSERT INTO notification (org_id, user_id, kind, title, event_id, created_at) VALUES ($2, $1, 'assigned', 'recent', gen_random_uuid(), now() - interval '2 days')`,
 			`INSERT INTO inbound_mail (message_id, from_email, subject, outcome, received_at) VALUES ('<old@' || $2::text || $1::text || '>', 'someone@elsewhere.test', 'old', 'unmatched', now() - interval '100 days')`,
+			`INSERT INTO login_challenge (user_id, token_hash, expires_at) SELECT $1, decode(md5(random()::text), 'hex'), now() - interval '3 days' WHERE $2::uuid IS NOT NULL`,
 		} {
 			if _, err := h.super.Exec(context.Background(), q, ownerID, orgID); err != nil {
 				t.Fatalf("%s: %v", q, err)
@@ -58,7 +59,7 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if counts["sessions"] < 1 || counts["notifications"] < 1 || counts["inbound-mail"] < 1 {
+		if counts["sessions"] < 1 || counts["notifications"] < 1 || counts["inbound-mail"] < 1 || counts["login-challenges"] < 1 {
 			t.Fatalf("pruned = %v", counts)
 		}
 		var sessions, notes int

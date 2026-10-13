@@ -139,6 +139,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	creds, err := s.Auth.Login(r.Context(), req.Email, req.Password, r.UserAgent(), clientIP(r))
+	// The password was right, so it is no miss; the code is asked for next.
+	var challenge *auth.ChallengeIssued
+	if errors.As(err, &challenge) {
+		respondJSON(w, r, http.StatusAccepted, map[string]any{
+			"challenge": challenge.Secret, "expiresInSeconds": int(auth.ChallengeTTL.Seconds()),
+		})
+		return
+	}
 	if err != nil {
 		credentialTries.record(guessing)
 		respondError(w, r, err)

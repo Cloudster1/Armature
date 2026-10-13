@@ -42,12 +42,19 @@ const (
 	// ResetAddressRequestsPerWindow brakes asking for links to one mailbox:
 	// its owner needs one or two, and anybody else is filling it.
 	ResetAddressRequestsPerWindow = 3
+	// SecondFactorTriesPerWindow brakes wrong sign-in codes from one caller's
+	// address: plenty for mistyping, nowhere near what six digits need.
+	SecondFactorTriesPerWindow = 30
 	// throttleMaxKeys bounds what a brake remembers at once.
 	throttleMaxKeys = 10000
 )
 
 // credentialTries brakes password and invitation guessing, by address.
 var credentialTries = newThrottle(CredentialTriesPerWindow, DoorWindow)
+
+// secondFactorTries brakes guessing at codes, by the caller's address at
+// sign-in and by the account on the routes of somebody signed in.
+var secondFactorTries = newThrottle(SecondFactorTriesPerWindow, DoorWindow)
 
 // resetRequests and resetAddresses brake mailing password links, by caller
 // and by mailbox, so the form cannot be used to flood either.
@@ -80,7 +87,7 @@ func SetDoorWindow(d time.Duration) {
 	if d <= 0 {
 		return
 	}
-	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries, resetRequests, resetAddresses} {
+	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries, resetRequests, resetAddresses, secondFactorTries} {
 		t.mu.Lock()
 		t.window = d
 		t.mu.Unlock()
@@ -96,6 +103,7 @@ func ResetThrottles() {
 	credentialTries.reset()
 	resetRequests.reset()
 	resetAddresses.reset()
+	secondFactorTries.reset()
 }
 
 // allow records one request from a key and says whether it was inside the limit.

@@ -38,6 +38,9 @@ type ManagedUser struct {
 	// touch them (only an owner touches an owner).
 	Managed   bool      `json:"managed"`
 	CreatedAt time.Time `json:"createdAt"`
+	// SecondFactor says two-step sign-in is on, so an administrator can see who
+	// a requirement would hold and whose lost phone they may be asked about.
+	SecondFactor bool `json:"secondFactor"`
 }
 
 // CreateLocalUserInput is what an administrator types to make an account.
@@ -102,7 +105,8 @@ SELECT u.id, u.email::text, u.name, m.org_role, u.is_active, u.created_at,
        u.password_hash IS NOT NULL,
        NOT EXISTS (SELECT 1 FROM org_member x JOIN org xo ON xo.id = x.org_id
                    WHERE x.user_id = u.id AND x.org_id <> m.org_id AND xo.archived_at IS NULL),
-       EXISTS (SELECT 1 FROM oidc_provider p WHERE p.org_id = m.org_id)
+       EXISTS (SELECT 1 FROM oidc_provider p WHERE p.org_id = m.org_id),
+       EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)
 FROM org_member m
 JOIN app_user u ON u.id = m.user_id
 JOIN org o ON o.id = m.org_id
@@ -111,7 +115,7 @@ WHERE m.org_id = $1 AND u.erased_at IS NULL AND u.id IS DISTINCT FROM o.automati
 func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	var r managedRow
 	err := row.Scan(&r.user.ID, &r.user.Email, &r.user.Name, &r.user.Role, &r.user.IsActive, &r.user.CreatedAt,
-		&r.hasPassword, &r.onlyHere, &r.hasProvider)
+		&r.hasPassword, &r.onlyHere, &r.hasProvider, &r.user.SecondFactor)
 	if err != nil {
 		return r, err
 	}

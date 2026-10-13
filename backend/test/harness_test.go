@@ -192,6 +192,12 @@ func (h *harness) attachmentStore(t *testing.T) attachment.Store {
 // that a suite full of signups still runs in seconds. The production cost is
 // covered by the unit tests in internal/auth.
 func (h *harness) authService() *auth.Service {
+	return h.authServiceWithoutKey().SecondFactor(shared.sealer)
+}
+
+// authServiceWithoutKey is the identity service of a server with no
+// ARMATURE_SECRET_KEY, which cannot set up a second factor.
+func (h *harness) authServiceWithoutKey() *auth.Service {
 	params := auth.DefaultPasswordParams()
 	params.MemoryKiB = 8 * 1024
 	params.Iterations = 1

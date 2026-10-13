@@ -46,6 +46,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Get("/auth/signup", s.handleSignupOpen)
 		r.Post("/auth/signup", s.handleSignup)
 		r.Post("/auth/login", s.handleLogin)
+		r.Post("/auth/login/second-factor", s.handleLoginSecondFactor)
 		r.Post("/auth/invites/accept", s.handleAcceptInvite)
 		r.Post("/auth/invites/preview", s.handlePreviewInvite)
 		r.Post("/auth/password-reset", s.handleRequestPasswordReset)
@@ -83,6 +84,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// Anything below here needs a signed-in caller.
 		r.Group(func(r chi.Router) {
 			r.Use(requireAuth)
+			// A session its organization holds to enrolment reaches little else.
+			r.Use(requireSecondFactor)
 
 			r.Post("/auth/logout", s.handleLogout)
 			r.Get("/auth/me", s.handleMe)
@@ -99,6 +102,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/auth/me/export", s.handleExportMe)
 			r.Delete("/auth/me", s.handleEraseMe)
 			r.Post("/auth/switch-org", s.handleSwitchOrg)
+			s.secondFactorRoutes(r)
 			// A whole organization with an operation in it, for showing the product.
 			r.With(requireSession).Post("/organizations/demo", s.handleCreateDemoOrganization)
 

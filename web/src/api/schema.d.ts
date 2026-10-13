@@ -204,8 +204,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in with email and password. */
+        /** Sign in with email and password; an account with a second factor is answered with a challenge to finish with a code instead of a session. */
         post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login/second-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish a password sign-in with the code from the authenticator app or a recovery code, and open the session. */
+        post: operations["loginSecondFactor"];
         delete?: never;
         options?: never;
         head?: never;
@@ -294,6 +311,75 @@ export interface paths {
         /** Change your password; every other session of yours ends. From a browser session only. */
         put: operations["changePassword"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me/second-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether your two-step sign-in is on and how many recovery codes are left. From a browser session only. */
+        get: operations["secondFactorStatus"];
+        put?: never;
+        /** Start setting up an authenticator app: its secret, shown this once, and the address its QR code carries. From a browser session only. */
+        post: operations["startSecondFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me/second-factor/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn two-step sign-in on with a code from the app; answers with ten recovery codes, shown this once. From a browser session only. */
+        post: operations["confirmSecondFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me/second-factor/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace your recovery codes with ten new ones, proven by a code. From a browser session only. */
+        post: operations["renewRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me/second-factor/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn two-step sign-in off, proven by a code; every other session of yours ends. From a browser session only. */
+        post: operations["removeSecondFactor"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2180,6 +2266,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organization/second-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who must have two-step sign-in here: off, admins or everyone. */
+        get: operations["orgSecondFactor"];
+        /** Require two-step sign-in of nobody, the administrators or everyone; a session without one is held until it is set up. */
+        put: operations["requireSecondFactor"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/demo": {
         parameters: {
             query?: never;
@@ -3768,6 +3872,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{userID}/second-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Turn off somebody's two-step sign-in, for a lost phone and lost recovery codes. */
+        delete: operations["removeMembersSecondFactor"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/versions/{versionID}": {
         parameters: {
             query?: never;
@@ -4977,6 +5098,10 @@ export interface components {
             updatedAt: string;
             url: string;
         };
+        Enrolment: {
+            secret: string;
+            uri: string;
+        };
         EpicProgress: {
             category: string;
             done: number;
@@ -5410,6 +5535,7 @@ export interface components {
             name: string;
             /** @enum {string} */
             role: "owner" | "admin" | "member" | "customer";
+            secondFactor: boolean;
             /** @enum {string} */
             signsInWith: "password" | "provider" | "none";
         };
@@ -5748,6 +5874,7 @@ export interface components {
             token: string;
         };
         Principal: {
+            mustEnrol?: boolean;
             org?: components["schemas"]["Org"];
             portalDesk?: string;
             /** @enum {string} */
@@ -6241,6 +6368,24 @@ export interface components {
                 workflowId: string;
             }[];
             name: string;
+        };
+        SecondFactorCodeRequest: {
+            code: string;
+        };
+        SecondFactorLoginRequest: {
+            challenge: string;
+            code: string;
+        };
+        SecondFactorRuleRequest: {
+            /** @enum {string} */
+            require: "off" | "admins" | "everyone";
+        };
+        SecondFactorStatus: {
+            available: boolean;
+            enrolled: boolean;
+            /** Format: date-time */
+            enrolledAt?: string;
+            recoveryCodesLeft: number;
         };
         SecurityScheme: {
             description?: string;
@@ -7558,6 +7703,53 @@ export interface operations {
                     };
                 };
             };
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        challenge: string;
+                        expiresInSeconds: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    loginSecondFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecondFactorLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        principal: components["schemas"]["Principal"];
+                    };
+                };
+            };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
                 headers: {
@@ -7796,6 +7988,169 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    secondFactorStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        secondFactor: components["schemas"]["SecondFactorStatus"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startSecondFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enrolment: components["schemas"]["Enrolment"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    confirmSecondFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecondFactorCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        recoveryCodes: string[];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    renewRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecondFactorCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        recoveryCodes: string[];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeSecondFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecondFactorCodeRequest"];
             };
         };
         responses: {
@@ -12978,6 +13333,74 @@ export interface operations {
             };
         };
     };
+    orgSecondFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        require: "off" | "admins" | "everyone";
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    requireSecondFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecondFactorRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        require: "off" | "admins" | "everyone";
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     createDemoOrganization: {
         parameters: {
             query?: never;
@@ -17512,6 +17935,35 @@ export interface operations {
                         week: components["schemas"]["WorkingWeek"];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeMembersSecondFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

@@ -50,6 +50,7 @@ import (
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/render"
 	"github.com/armature/armature/backend/internal/report"
+	"github.com/armature/armature/backend/internal/seal"
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
@@ -172,6 +173,18 @@ func run() error {
 	accounts := auth.NewService(cluster, passwordParams, cfg.Auth.SessionTTL).
 		PortalCodeCooldown(cfg.Auth.PortalCodeCooldown).
 		Signups(auth.SignupPolicy(cfg.Auth.Signup))
+	if cfg.Auth.SecretKey != "" {
+		sealer, err := seal.Parse(cfg.Auth.SecretKey)
+		if err != nil {
+			return fmt.Errorf("ARMATURE_SECRET_KEY: %w", err)
+		}
+		accounts.SecondFactor(sealer)
+	} else {
+		log.Warn("two-step sign-in is off: ARMATURE_SECRET_KEY is not set")
+	}
+	if err := accounts.CheckSecondFactorKey(ctx); err != nil {
+		return err
+	}
 	httpapi.SetDoorWindow(cfg.Auth.DoorWindow)
 	themes := theme.NewService(cluster, store)
 	labels := label.NewService(cluster)
