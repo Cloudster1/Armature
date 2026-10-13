@@ -43,7 +43,7 @@ function isRead(node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral | ts.T
 
 /** The words a person would read that use the refused one, each with its line. */
 function offences(source: string, fileName = "words.tsx"): string[] {
-  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const found: string[] = [];
   const visit = (node: ts.Node) => {
     let text: string | undefined;
