@@ -54,12 +54,16 @@ export function applyCompletion(
 	return { text: next, caret: completion.from + Array.from(inserted).length };
 }
 
+/** Puts the caret after a picked word, unless a key typed since moved it on. */
+function settleCaret(input: HTMLInputElement | null, text: string, caret: number) {
+	if (!input) return;
+	input.focus();
+	if (input.value === text) input.setSelectionRange(caret, caret);
+}
+
 /**
- * Where a query is typed. Enter applies it; the text is kept as typed, and an
- * error is shown under it with a caret at the character the server named.
- * As it is typed, a list under it offers the words the query takes at the
- * caret and the issues the words so far find; an empty bar offers what was
- * searched before.
+ * Where a query is typed: an error points at the character the server named, and
+ * the list under it offers words at the caret, issues found, or past searches.
  */
 export function QueryInput({
 	value,
@@ -161,10 +165,9 @@ export function QueryInput({
 				setDraft(next.text);
 				setCaret(next.caret);
 				setActive(-1);
-				requestAnimationFrame(() => {
-					ref.current?.focus();
-					ref.current?.setSelectionRange(next.caret, next.caret);
-				});
+				requestAnimationFrame(() =>
+					settleCaret(ref.current, next.text, next.caret),
+				);
 				break;
 			}
 			case "issue":
