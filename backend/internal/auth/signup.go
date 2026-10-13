@@ -258,11 +258,7 @@ func (s *Service) setUpInstallation(ctx context.Context, tx db.DBTX, ownerID uui
 	if err := writeAudit(ctx, tx, org.ID, ownerID, "org.created", "org", &org.ID, ip); err != nil {
 		return nil, err
 	}
-	// In the same transaction as the rows it describes, so it cannot go missing or
-	// exist for an installation that failed to be made.
-	return &org, events.Emit(ctx, tx, org.ID, events.TopicOrgCreated, map[string]any{
-		"orgId": org.ID, "orgSlug": org.Slug, "orgName": org.Name, "ownerId": ownerID,
-	})
+	return &org, nil
 }
 
 // joinInstallation makes somebody who signed up a plain member.

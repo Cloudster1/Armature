@@ -22,7 +22,6 @@ import (
 // Topics are dotted names, coarse enough to subscribe to and specific enough to
 // route on.
 const (
-	TopicOrgCreated        = "org.created"
 	TopicMemberJoined      = "member.joined"
 	TopicIssueCreated      = "issue.created"
 	TopicIssueUpdated      = "issue.updated"
@@ -59,7 +58,7 @@ const (
 
 // Topics lists every topic, in the order a subscription picker shows them.
 var Topics = []string{
-	TopicOrgCreated, TopicMemberJoined, TopicIssueCreated, TopicIssueUpdated, TopicIssueTransitioned, TopicIssueDeleted,
+	TopicMemberJoined, TopicIssueCreated, TopicIssueUpdated, TopicIssueTransitioned, TopicIssueDeleted,
 	TopicCommentAdded, TopicPullRequestLinked, TopicCommitLinked, TopicCIRunRecorded, TopicDeploymentSucceeded,
 	TopicSLABreached, TopicAttachmentAdded, TopicWorkLogged, TopicWatcherAdded,
 	TopicRemoteLinkAdded, TopicRemoteLinkRemoved,

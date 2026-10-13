@@ -31,7 +31,6 @@ const SCENARIO_FILES = [
   "sprints",
   "access",
   "invitations",
-  "organization-delete",
   "users",
   "holidays",
   "absences",

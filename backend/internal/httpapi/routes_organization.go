@@ -25,6 +25,7 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	// What the installation is called; its administrators rename it.
 	r.Get("/installation", s.handleInstallation)
 	r.With(requirePerm(perm.OrgAdminister)).Put("/installation", s.handleRenameInstallation)
+	r.With(requirePerm(perm.OrgAdminister)).Post("/installation/demo-project", s.handleAddDemoProject)
 	// How a project says it is doing, and its month.
 	r.Get("/projects/{projectKey}/status-updates", s.handleListStatusUpdates)
 	r.With(requireProjectPerm(perm.ProjectAdminister)).Post("/projects/{projectKey}/status-updates", s.handlePostStatusUpdate)
@@ -63,9 +64,6 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	// Metadata behind the client's pickers.
 	r.Get("/members", s.handleListMembers)
 	r.With(requirePerm(perm.OrgAdminister)).Delete("/members/{userID}", s.handleRemoveMember)
-	// The whole organization. Owners only, which the service decides, since
-	// ownership is standing in the organization rather than a granted role.
-	r.Delete("/organization", s.handleDeleteOrganization)
 	r.Get("/users/{userID}/avatar", s.handleAvatar)
 	// The organization's own accounts are its administrators' to make and manage.
 	r.Group(func(r chi.Router) {

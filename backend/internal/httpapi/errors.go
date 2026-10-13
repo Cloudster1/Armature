@@ -15,6 +15,7 @@ import (
 	"github.com/armature/armature/backend/internal/automation"
 	"github.com/armature/armature/backend/internal/board"
 	"github.com/armature/armature/backend/internal/component"
+	"github.com/armature/armature/backend/internal/demo"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/filter"
@@ -142,6 +143,7 @@ func toAPIError(err error) *APIError {
 		return apiErr
 	}
 
+	var demoKey *demo.KeyTakenError
 	var queryErr *nql.Error
 	if errors.As(err, &queryErr) {
 		pos := queryErr.Pos
@@ -159,6 +161,9 @@ func toAPIError(err error) *APIError {
 		return ErrValidation(map[string]string{"name": "Give the installation a name."})
 	case errors.Is(err, installation.ErrNotFound):
 		return ErrNotFound("The installation was not found. Sign in again.")
+	case errors.As(err, &demoKey):
+		return ErrConflict(fmt.Sprintf("The project key %s is taken already, so the demo cannot be added: it needs %s. If it was added before, it is under Projects as %s.",
+			demoKey.Key, strings.Join(demo.Keys, " and "), demo.FactoryName))
 	case errors.Is(err, auth.ErrEmailTaken):
 		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: auth.ErrEmailTaken.Error()}
 	case errors.Is(err, auth.ErrSignupClosed):
@@ -235,12 +240,6 @@ func toAPIError(err error) *APIError {
 		return domainNotTrusted(err)
 	case errors.Is(err, privacy.ErrLastAdministrator):
 		return &APIError{Status: http.StatusConflict, Code: "last_administrator", Message: lastAdministrator(err)}
-	case errors.Is(err, privacy.ErrNotOwner):
-		return ErrForbidden("Only an owner can delete the organization.")
-	case errors.Is(err, privacy.ErrConfirmation):
-		return ErrValidation(map[string]string{"confirm": "Type the organization's address exactly as shown to confirm."})
-	case errors.Is(err, privacy.ErrNotAMember):
-		return ErrNotFound("That person is not a member of this organization.")
 	case errors.Is(err, privacy.ErrNotFound):
 		return ErrNotFound("That person was not found.")
 	case errors.Is(err, project.ErrBadDocsURL):
