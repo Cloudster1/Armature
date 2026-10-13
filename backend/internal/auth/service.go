@@ -32,8 +32,10 @@ type Service struct {
 	// portalCooldown is how long an address waits between portal codes; zero
 	// means the default minute.
 	portalCooldown time.Duration
-	// signup is who may create an organization; empty means open.
+	// signup is who may sign up; empty means first.
 	signup SignupPolicy
+	// installationName is what the first account's installation is called.
+	installationName string
 	// sealer seals authenticator secrets; nil turns enrolment off.
 	sealer *seal.Sealer
 }
@@ -57,155 +59,6 @@ type Credentials struct {
 	SessionSecret string
 	ExpiresAt     time.Time
 	LSN           db.LSN
-}
-
-// SignupInput creates a person and their first organization together. A signup
-// with neither is meaningless, and creating them in one transaction is what
-// stops a failure halfway through leaving an account with nowhere to go.
-type SignupInput struct {
-	Email     string
-	Password  string
-	Name      string
-	OrgName   string
-	OrgSlug   string // optional; derived from OrgName when empty
-	UserAgent string
-	IP        string
-}
-
-// Signup creates the user, the organization and the owner membership in one
-// transaction, then logs the user straight in.
-func (s *Service) Signup(ctx context.Context, in SignupInput) (*Credentials, error) {
-	// Refused before the password is hashed, which is the expensive part.
-	if s.signupPolicy() == SignupClosed {
-		return nil, ErrSignupClosed
-	}
-	email := NormalizeEmail(in.Email)
-	if email == "" {
-		return nil, errors.New("email is required")
-	}
-	if strings.TrimSpace(in.Name) == "" {
-		return nil, errors.New("name is required")
-	}
-	if err := ValidatePassword(in.Password); err != nil {
-		return nil, err
-	}
-	orgName := strings.TrimSpace(in.OrgName)
-	if orgName == "" {
-		return nil, errors.New("organization name is required")
-	}
-
-	slug := strings.ToLower(strings.TrimSpace(in.OrgSlug))
-	if slug == "" {
-		slug = Slugify(orgName)
-	}
-	if !ValidSlug(slug) {
-		return nil, fmt.Errorf("%q is not a usable organization address: use 3 to 40 lowercase letters, digits or hyphens", slug)
-	}
-
-	hash, err := HashPassword(in.Password, s.params)
-	if err != nil {
-		return nil, err
-	}
-
-	var (
-		principal Principal
-		secret    string
-		expiresAt = s.now().Add(s.sessionTTL)
-	)
-
-	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if policy := s.signupPolicy(); policy != SignupOpen {
-			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, signupLock); err != nil {
-				return fmt.Errorf("wait for other signups: %w", err)
-			}
-			allowed, err := SignupAllowedIn(ctx, tx, policy)
-			if err != nil {
-				return err
-			}
-			if !allowed {
-				return ErrSignupClosed
-			}
-		}
-
-		var userID uuid.UUID
-		err := tx.QueryRow(ctx, `
-			INSERT INTO app_user (email, name, password_hash)
-			VALUES ($1, $2, $3)
-			RETURNING id`,
-			email, strings.TrimSpace(in.Name), hash,
-		).Scan(&userID)
-		if isUniqueViolation(err, "app_user_email_key") {
-			return ErrEmailTaken
-		}
-		if err != nil {
-			return fmt.Errorf("create user: %w", err)
-		}
-
-		var orgID uuid.UUID
-		err = tx.QueryRow(ctx, `
-			INSERT INTO org (slug, name)
-			VALUES ($1, $2)
-			RETURNING id`,
-			slug, orgName,
-		).Scan(&orgID)
-		if isUniqueViolation(err, "org_slug_key") {
-			return ErrSlugTaken
-		}
-		if err != nil {
-			return fmt.Errorf("create organization: %w", err)
-		}
-
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role)
-			VALUES ($1, $2, 'owner')`,
-			orgID, userID,
-		); err != nil {
-			return fmt.Errorf("create membership: %w", err)
-		}
-
-		if err := grantJoiningRole(ctx, tx, orgID, userID, RoleOwner); err != nil {
-			return err
-		}
-
-		// Statuses, issue types and a default workflow, in this same
-		// transaction. Without them the new organization could not create a
-		// project, which is the very next thing anybody does.
-		if _, err := bootstrap.Org(ctx, tx, orgID); err != nil {
-			return fmt.Errorf("prepare organization: %w", err)
-		}
-
-		sessionID, sessionSecret, err := insertSession(ctx, tx, userID, &orgID, ProofPassword, expiresAt, in.UserAgent, in.IP)
-		if err != nil {
-			return err
-		}
-		secret = sessionSecret
-
-		principal = Principal{
-			User:      User{ID: userID, Email: email, Name: strings.TrimSpace(in.Name), Timezone: "UTC", Locale: "en", IsActive: true},
-			Org:       &Org{ID: orgID, Slug: slug, Name: orgName},
-			Role:      RoleOwner,
-			SessionID: &sessionID,
-			Proof:     ProofPassword,
-		}
-
-		if err := writeAudit(ctx, tx, orgID, userID, "org.created", "org", &orgID, in.IP); err != nil {
-			return err
-		}
-		// Emitted in the same transaction as the rows it describes, so the
-		// event cannot exist for an organization that failed to be created,
-		// nor go missing for one that was.
-		return events.Emit(ctx, tx, orgID, events.TopicOrgCreated, map[string]any{
-			"orgId":   orgID,
-			"orgSlug": slug,
-			"orgName": orgName,
-			"ownerId": userID,
-		})
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &Credentials{Principal: &principal, SessionSecret: secret, ExpiresAt: expiresAt, LSN: lsn}, nil
 }
 
 // Authenticate resolves a presented secret to a principal. It accepts both a

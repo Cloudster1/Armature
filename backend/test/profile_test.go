@@ -83,7 +83,7 @@ func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
 		want(t, me.upload("/api/v1/auth/me/avatar", "file", "wall.png", "image/png", pictureOf(t, 2100)), http.StatusBadRequest, "too wide")
 	})
 
-	t.Run("a colleague sees it, a stranger does not", func(t *testing.T) {
+	t.Run("everybody signed in sees it, nobody signed out does", func(t *testing.T) {
 		colleagueEmail := h.email(t, "colleague")
 		invited := want(t, me.post("/api/v1/invites", map[string]any{"email": colleagueEmail, "role": "member"}), http.StatusCreated, "invite")
 		colleague := api.client(t)
@@ -101,10 +101,14 @@ func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
 		if !found {
 			t.Errorf("the member list does not carry the picture: %v", members)
 		}
-		stranger := api.client(t)
-		stranger.signup(t, h, "stranger")
-		if got, _ := stranger.download(pictureURL); got.StatusCode != http.StatusNotFound {
-			t.Errorf("a stranger got %d", got.StatusCode)
+		// Even from an organization of its own, which only this suite still makes.
+		elsewhere := api.client(t)
+		elsewhere.signup(t, h, "elsewhere")
+		if got, _ := elsewhere.download(pictureURL); got.StatusCode != http.StatusOK {
+			t.Errorf("somebody signed in elsewhere got %d", got.StatusCode)
+		}
+		if got, _ := api.client(t).download(pictureURL); got.StatusCode != http.StatusUnauthorized {
+			t.Errorf("nobody signed in got %d", got.StatusCode)
 		}
 	})
 

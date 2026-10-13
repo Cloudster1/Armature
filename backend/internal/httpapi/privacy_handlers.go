@@ -94,7 +94,6 @@ func (s *Server) handleEraseMe(w http.ResponseWriter, r *http.Request) {
 	respondNoContent(w)
 }
 
-// handleRemoveMember lets an organization go of a member.
 func (s *Server) handleDeleteOrganization(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
 	if p.SessionID == nil {
@@ -111,6 +110,8 @@ func (s *Server) handleDeleteOrganization(w http.ResponseWriter, r *http.Request
 	respondNoContent(w)
 }
 
+// handleRemoveMember lets somebody go by switching their account off, the
+// same as the users page does, so they can be switched on again.
 func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
 	userID, err := uuid.Parse(chi.URLParam(r, "userID"))
@@ -118,7 +119,8 @@ func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrNotFound("That person was not found."))
 		return
 	}
-	lsn, err := s.Privacy.RemoveMember(r.Context(), p.Org.ID, userID, p.User.ID)
+	off := false
+	_, lsn, err := s.Auth.UpdateManagedUser(r.Context(), p.Org.ID, userID, auth.ManagedUserInput{IsActive: &off}, p.User.ID, p.Role, clientIP(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

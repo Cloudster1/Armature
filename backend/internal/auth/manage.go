@@ -16,8 +16,8 @@ import (
 	"github.com/armature/armature/backend/internal/tenant"
 )
 
-// An organization manages only the accounts that belong nowhere else; anybody
-// else is let go, not changed. app_user has no tenant, so this is the admin path.
+// Administrators manage every account of the installation. app_user has no
+// tenant, so this is the admin path.
 
 // SignInMethod is how an account gets in.
 type SignInMethod string
@@ -36,8 +36,7 @@ type ManagedUser struct {
 	Role        OrgRole      `json:"role"`
 	IsActive    bool         `json:"isActive"`
 	SignsInWith SignInMethod `json:"signsInWith"`
-	// Managed: this is the one place the person belongs, and the caller may
-	// touch them (only an owner touches an owner).
+	// Managed: the caller may touch them, since only an owner touches an owner.
 	Managed   bool      `json:"managed"`
 	CreatedAt time.Time `json:"createdAt"`
 	// SecondFactor says two-step sign-in is on, so an administrator can see who
@@ -62,22 +61,19 @@ type ManagedUserInput struct {
 
 var (
 	// ErrAddressInUse is returned when making an account at an address
-	// somebody already signs in with, here or elsewhere.
-	ErrAddressInUse = errors.New("that address already has an account. Invite them instead")
+	// somebody already signs in with.
+	ErrAddressInUse = errors.New("that address already has an account. Find the person in the list and change them there")
 	// ErrNoSuchUser is returned for a person who is not a member here.
 	ErrNoSuchUser = errors.New("that person is not a member here")
-	// ErrManagedElsewhere is returned for a person who also belongs to another
-	// organization, whose account is therefore not this one's to change.
-	ErrManagedElsewhere = errors.New("that person also belongs to another organization, so only they can change their account. You can let them go instead")
 	// ErrOwnAccount is returned when an administrator turns these tools on themselves.
 	ErrOwnAccount = errors.New("that is your own account. Change it from your profile")
 	// ErrOwnerOnly is returned when somebody who is not an owner changes an owner.
 	ErrOwnerOnly = errors.New("only an owner can change another owner")
 	// ErrOwnerStanding is returned when an owner's role is changed here.
 	ErrOwnerStanding = errors.New("an owner's standing is not changed here")
-	// ErrLastActiveOwner is returned when switching somebody off would leave
-	// an organization with nobody who owns it.
-	ErrLastActiveOwner = errors.New("the last owner of an organization cannot be switched off")
+	// ErrLastAdministrator is returned when switching somebody off would leave
+	// the installation with nobody active to administer it.
+	ErrLastAdministrator = errors.New("the last active administrator cannot be switched off. Make somebody else an administrator first")
 	// ErrProviderAccount is returned when a password is set on an account the
 	// identity provider signs in.
 	ErrProviderAccount = errors.New("that account signs in through the identity provider and has no password here")
@@ -96,7 +92,6 @@ var (
 type managedRow struct {
 	user        ManagedUser
 	hasPassword bool
-	onlyHere    bool
 	hasProvider bool
 }
 
@@ -105,8 +100,6 @@ type managedRow struct {
 const managedSelectSQL = `
 SELECT u.id, u.email::text, u.name, m.org_role, u.is_active, u.created_at,
        u.password_hash IS NOT NULL,
-       NOT EXISTS (SELECT 1 FROM org_member x JOIN org xo ON xo.id = x.org_id
-                   WHERE x.user_id = u.id AND x.org_id <> m.org_id AND xo.archived_at IS NULL),
        EXISTS (SELECT 1 FROM oidc_provider p WHERE p.org_id = m.org_id),
        EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)
 FROM org_member m
@@ -116,7 +109,7 @@ WHERE m.org_id = $1 AND u.erased_at IS NULL AND u.id IS DISTINCT FROM $2`
 func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	var r managedRow
 	err := row.Scan(&r.user.ID, &r.user.Email, &r.user.Name, &r.user.Role, &r.user.IsActive, &r.user.CreatedAt,
-		&r.hasPassword, &r.onlyHere, &r.hasProvider, &r.user.SecondFactor)
+		&r.hasPassword, &r.hasProvider, &r.user.SecondFactor)
 	if err != nil {
 		return r, err
 	}
@@ -128,7 +121,7 @@ func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	default:
 		r.user.SignsInWith = SignInNone
 	}
-	r.user.Managed = r.onlyHere && (r.user.Role != RoleOwner || actorRole == RoleOwner)
+	r.user.Managed = r.user.Role != RoleOwner || actorRole == RoleOwner
 	return r, nil
 }
 
@@ -184,9 +177,6 @@ func guardManaged(ctx context.Context, tx db.DBTX, orgID, userID, actor uuid.UUI
 	if err != nil {
 		return r, err
 	}
-	if !r.onlyHere {
-		return r, ErrManagedElsewhere
-	}
 	if r.user.Role == RoleOwner && actorRole != RoleOwner {
 		return r, ErrOwnerOnly
 	}
@@ -201,8 +191,8 @@ func cleanUserName(name string) (string, error) {
 	return name, nil
 }
 
-// CreateLocalUser makes a password account here. An address that signs in
-// elsewhere is refused; a passwordless row of this organization is claimed.
+// CreateLocalUser makes a password account here. An address that signs in is
+// refused; a passwordless row, such as a desk's customer, is claimed.
 func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in CreateLocalUserInput, actor uuid.UUID, ip string) (*ManagedUser, db.LSN, error) {
 	email, err := ParseAddress(in.Email)
 	if err != nil {
@@ -232,8 +222,7 @@ func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in Creat
 		err := tx.QueryRow(ctx, `
 			SELECT u.id,
 			       u.password_hash IS NOT NULL OR u.erased_at IS NOT NULL
-			           OR EXISTS (SELECT 1 FROM org_member x WHERE x.user_id = u.id AND x.org_id <> $2)
-			FROM app_user u WHERE u.email = $1`, email, orgID).Scan(&userID, &taken)
+			FROM app_user u WHERE u.email = $1`, email).Scan(&userID, &taken)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
 			err = tx.QueryRow(ctx, `
@@ -348,10 +337,10 @@ func (s *Service) UpdateManagedUser(ctx context.Context, orgID, userID uuid.UUID
 
 		if in.IsActive != nil && *in.IsActive != r.user.IsActive {
 			if !*in.IsActive {
-				if orphan, err := soleActiveOwnerOf(ctx, tx, userID); err != nil {
+				if orphan, err := SoleActiveAdministratorOf(ctx, tx, userID); err != nil {
 					return err
 				} else if orphan != "" {
-					return ErrLastActiveOwner
+					return ErrLastAdministrator
 				}
 			}
 			if _, err := tx.Exec(ctx, `UPDATE app_user SET is_active = $2 WHERE id = $1`, userID, *in.IsActive); err != nil {
@@ -458,15 +447,16 @@ func endEverySession(ctx context.Context, tx db.DBTX, userID uuid.UUID, keep *uu
 	return nil
 }
 
-// soleActiveOwnerOf names an organization with no other active owner, or "".
-// A trigger asks the same, so a write that forgets to ask is refused there.
-func soleActiveOwnerOf(ctx context.Context, tx db.DBTX, userID uuid.UUID) (string, error) {
+// SoleActiveAdministratorOf names an organization the person alone administers
+// while active, or "". A trigger asks the same, so a write that forgets is refused.
+func SoleActiveAdministratorOf(ctx context.Context, tx db.DBTX, userID uuid.UUID) (string, error) {
 	var name string
 	err := tx.QueryRow(ctx, `
 		SELECT o.name FROM org_member m JOIN org o ON o.id = m.org_id
-		WHERE m.user_id = $1 AND m.org_role = 'owner' AND o.archived_at IS NULL
+		WHERE m.user_id = $1 AND m.org_role IN ('owner', 'admin') AND o.archived_at IS NULL
 		  AND NOT EXISTS (SELECT 1 FROM org_member x JOIN app_user xu ON xu.id = x.user_id
-		                  WHERE x.org_id = m.org_id AND x.org_role = 'owner' AND x.user_id <> $1 AND xu.is_active)
+		                  WHERE x.org_id = m.org_id AND x.org_role IN ('owner', 'admin')
+		                    AND x.user_id <> $1 AND xu.is_active)
 		ORDER BY o.name LIMIT 1`, userID).Scan(&name)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil

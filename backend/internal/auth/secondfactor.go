@@ -227,7 +227,7 @@ func (s *Service) ConfirmSecondFactor(ctx context.Context, userID uuid.UUID, cod
 		if codes, err = replaceRecoveryCodes(ctx, tx, userID); err != nil {
 			return err
 		}
-		return auditEveryOrg(ctx, tx, userID, audit.Entry{
+		return AuditAccount(ctx, tx, userID, audit.Entry{
 			Action: "auth.second_factor_enrolled", TargetType: "user", TargetID: &userID, Actor: userID, IP: ip,
 		})
 	})
@@ -249,7 +249,7 @@ func (s *Service) RenewRecoveryCodes(ctx context.Context, userID uuid.UUID, code
 		if codes, err = replaceRecoveryCodes(ctx, tx, userID); err != nil {
 			return err
 		}
-		return auditEveryOrg(ctx, tx, userID, audit.Entry{
+		return AuditAccount(ctx, tx, userID, audit.Entry{
 			Action: "auth.recovery_codes_renewed", TargetType: "user", TargetID: &userID, Actor: userID, IP: ip,
 		})
 	})
@@ -272,7 +272,7 @@ func (s *Service) RemoveSecondFactor(ctx context.Context, userID uuid.UUID, keep
 		if err := endEverySession(ctx, tx, userID, keep); err != nil {
 			return err
 		}
-		return auditEveryOrg(ctx, tx, userID, audit.Entry{
+		return AuditAccount(ctx, tx, userID, audit.Entry{
 			Action: "auth.second_factor_removed", TargetType: "user", TargetID: &userID, Actor: userID, IP: ip,
 		})
 	})
@@ -402,7 +402,7 @@ func (s *Service) CompleteLogin(ctx context.Context, challenge, code, userAgent,
 			return fmt.Errorf("use the sign-in's code step: %w", err)
 		}
 		if how == codeRecovery {
-			if err := auditEveryOrg(ctx, tx, userID, audit.Entry{
+			if err := AuditAccount(ctx, tx, userID, audit.Entry{
 				Action: "auth.recovery_code_used", TargetType: "user", TargetID: &userID, Actor: userID, IP: ip,
 			}); err != nil {
 				return err

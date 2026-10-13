@@ -88,20 +88,21 @@ func run() error {
 	params := auth.DefaultPasswordParams()
 	params.MemoryKiB = 16 * 1024
 	params.Iterations = 1
-	svc := auth.NewService(cluster, params, cfg.Auth.SessionTTL)
+	svc := auth.NewService(cluster, params, cfg.Auth.SessionTTL).NamedInstallation(cfg.Auth.InstallationName)
 
 	owner := demoUser{email: "ada@armature.test", name: "Ada Lovelace", role: auth.RoleOwner}
 
+	// Ada is the first account, so she sets the installation up and owns it.
 	creds, err := svc.Signup(ctx, auth.SignupInput{
 		Email:    owner.email,
 		Password: demoPassword,
 		Name:     owner.name,
-		OrgName:  "Demo Company",
-		OrgSlug:  "demo",
 	})
 	switch {
-	case errors.Is(err, auth.ErrEmailTaken), errors.Is(err, auth.ErrSlugTaken):
-		// The organization survives from an earlier run. Sign in instead and
+	case errors.Is(err, auth.ErrSignupClosed):
+		return errors.New("this installation was set up by somebody other than the demo's Ada; seed an empty one, after make clean and make up")
+	case errors.Is(err, auth.ErrEmailTaken):
+		// The installation survives from an earlier run. Sign in instead and
 		// top up whatever is missing, so that seeding after an upgrade adds the
 		// newer demo data rather than silently doing nothing.
 		log.Info("demo organization already exists, topping it up")

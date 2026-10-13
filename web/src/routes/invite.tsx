@@ -64,7 +64,7 @@ function InvitePage() {
   }
 
   return (
-    <AuthLayout title={`Join ${invite.orgName}`} subtitle={`You are invited as ${roleWords[invite.role]}, as ${invite.email}.`} footer={<SignInLink />}>
+    <AuthLayout title={`Join ${invite.installation}`} subtitle={`You are invited as ${roleWords[invite.role]}, as ${invite.email}.`} footer={<SignInLink />}>
       <Accept token={token} invite={invite} />
     </AuthLayout>
   );
@@ -119,7 +119,7 @@ function Accept({ token, invite }: { token: string; invite: InvitePreview }) {
       <div className="space-y-4">
         {accept.error && <ErrorBanner>{(accept.error as Error).message}</ErrorBanner>}
         <Button className="w-full" loading={accept.isPending} data-action="accept-invite" onClick={() => join(accept.mutateAsync({ token }), done)}>
-          Join {invite.orgName}
+          Join {invite.installation}
         </Button>
       </div>
     );
@@ -149,7 +149,7 @@ function NewAccount({ token, invite, onDone }: { token: string; invite: InvitePr
     return (
       <div className="space-y-4" data-invite-sign-in>
         <p className="text-sm text-ink-muted">
-          {invite.email} already has an account. Sign in with it, and you come back here to join {invite.orgName}.
+          {invite.email} already has an account here. Sign in with it, and you come back to join {invite.installation}.
         </p>
         <Link to="/login" search={{ next: "/invite" }} className="block">
           <Button className="w-full">Sign in to accept</Button>
@@ -165,7 +165,7 @@ function NewAccount({ token, invite, onDone }: { token: string; invite: InvitePr
       <Field label="Your name" required value={name} onChange={(event) => setName(event.target.value)} error={fields.name} />
       <NewPasswordFields password={password} repeat={repeat} onPassword={setPassword} onRepeat={setRepeat} checked={checked} error={fields.password} />
       <Button type="submit" loading={accept.isPending} className="w-full">
-        Join {invite.orgName}
+        Join {invite.installation}
       </Button>
     </form>
   );

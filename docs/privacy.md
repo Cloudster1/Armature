@@ -126,16 +126,17 @@ administrator for the tables that belong to nobody in particular.
   account becomes a tombstone;
   commits and inbound mail carrying the address are pseudonymised. What the
   person wrote stays, attributed to "Former user": the record belongs to the
-  team. The last owner of an organization is refused until ownership is
-  handed on.
+  team. The last active administrator is refused until somebody else
+  administers the installation.
 - **Who may ask for the whole person:** export and erasure reach every
   organization the person belongs to, so they take a session opened with the
   person's password. A session opened by a mailed code, an open door or single
   sign-on vouches for one organization and may ask only when the person
   belongs to no other.
-- **An organization letting a member go:** `DELETE /api/v1/members/{id}` by
-  an organization administrator removes the membership and what hung off it
-  here; the account stays the person's for their other organizations.
+- **Letting a member go:** `DELETE /api/v1/members/{id}`, or switching the
+  account off on the users page, by an administrator: every session and token
+  ends and the address no longer signs in. The account and what hung off it
+  stay, so the person can be switched on again; erasure is what takes them out.
 - **Objection to being told:** notification preferences, per reason, in the
   inbox and by mail, and whether the issues a person reports or is assigned
   tell them anything they do not watch on purpose.

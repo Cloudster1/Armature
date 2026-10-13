@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -163,7 +162,6 @@ func TestASingleSignOnReachesItsProviderAndItsOwn(t *testing.T) {
 	home := h.newWorkspace(t, "ssohome")
 	away := h.newWorkspace(t, "ssoaway")
 	twin := h.newWorkspace(t, "ssotwin")
-	elsewhere := h.newWorkspace(t, "ssoelse")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, home, provider, false)
 	configured(t, h, twin, provider, false)
@@ -227,12 +225,4 @@ func TestASingleSignOnReachesItsProviderAndItsOwn(t *testing.T) {
 		t.Fatalf("a provider's sign-in could not come home from its own organization: %v", err)
 	}
 
-	_, token, _, err := accounts.CreateInvite(elsewhere.ctx, email, auth.RoleMember, elsewhere.actor.UserID, time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = accounts.AcceptInvite(ctx, auth.AcceptInviteInput{Secret: token, UserID: &principal.User.ID, Proof: principal.Proof, SessionOrg: &principal.Org.ID})
-	if !errors.Is(err, auth.ErrSessionStaysHome) {
-		t.Fatalf("a provider's sign-in took an invitation to another organization: %v", err)
-	}
 }

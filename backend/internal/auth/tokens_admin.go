@@ -98,12 +98,12 @@ func (s *Service) ListInvites(ctx context.Context) ([]Invite, error) {
 }
 
 // InvitePreview is what an invitation link tells whoever opened it, before
-// they accept: where it leads and for whom. Holding the link is the whole of
-// the authorization, and accepting would tell them the same.
+// they accept: which installation and for whom. Holding the link is the whole
+// of the authorization, and accepting would tell them the same.
 type InvitePreview struct {
-	OrgName string  `json:"orgName"`
-	Email   string  `json:"email"`
-	Role    OrgRole `json:"role"`
+	Installation string  `json:"installation"`
+	Email        string  `json:"email"`
+	Role         OrgRole `json:"role"`
 }
 
 // PreviewInvite reads a pending invitation by its secret. It runs before
@@ -116,7 +116,7 @@ func (s *Service) PreviewInvite(ctx context.Context, secret string) (*InvitePrev
 			FROM org_invite i
 			JOIN org o ON o.id = i.org_id AND o.archived_at IS NULL
 			WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.expires_at > now()`,
-			HashToken(secret)).Scan(&out.OrgName, &out.Email, &out.Role)
+			HashToken(secret)).Scan(&out.Installation, &out.Email, &out.Role)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrInviteInvalid
@@ -154,12 +154,10 @@ func recordInvite(ctx context.Context, tx db.DBTX, action string, id uuid.UUID, 
 // needed to create one on the spot.
 type AcceptInviteInput struct {
 	Secret string
-	// UserID is set when an already signed-in user accepts an invitation.
+	// UserID is set when an already signed-in user accepts an invitation,
+	// such as a desk's customer joining the team; Proof is how they signed in.
 	UserID *uuid.UUID
-	// Proof and SessionOrg describe the signed-in acceptor's session: one
-	// proven for a single organization may only take an invitation to it.
-	Proof      Proof
-	SessionOrg *uuid.UUID
+	Proof  Proof
 	// Name and Password create a new account when UserID is nil.
 	Name      string
 	Password  string
@@ -218,9 +216,6 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 			}
 			if NormalizeEmail(own) != NormalizeEmail(email) {
 				return ErrInviteForSomeoneElse
-			}
-			if !in.Proof.ReachesEverywhere() && (in.SessionOrg == nil || *in.SessionOrg != orgID) {
-				return ErrSessionStaysHome
 			}
 			proof = in.Proof
 		} else {
@@ -314,8 +309,8 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 // see. Naming one would not widen the token, but it would read as if it had.
 var ErrNoSuchProject = errors.New("a token can only name projects you can already reach")
 
-// CreateAPIToken issues a personal access token for the caller in the current
-// organization. The secret is returned once and never stored.
+// CreateAPIToken issues a personal access token for the caller. The secret is
+// returned once and never stored.
 func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, name string, scopes, projects []string, expiresAt *time.Time) (*APIToken, db.LSN, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -383,8 +378,7 @@ func scanAPIToken(row pgx.Row) (APIToken, error) {
 	return t, err
 }
 
-// ListAPITokens returns the caller's tokens in the current organization,
-// without their secrets.
+// ListAPITokens returns the caller's tokens, without their secrets.
 func (s *Service) ListAPITokens(ctx context.Context, userID uuid.UUID) ([]APIToken, error) {
 	var out []APIToken
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {

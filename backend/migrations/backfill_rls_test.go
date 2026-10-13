@@ -28,6 +28,7 @@ var readsOrgUnlifted = map[string]string{
 	"00049_local_users.sql":                  "",
 	"00909_holiday_calendars.sql":            ownerBackfillsRepair,
 	"00921_attachment_tombstone_trigger.sql": "",
+	"00930_last_administrator.sql":           "",
 }
 
 // upSection is the migration's Up half with its comments taken out, the part

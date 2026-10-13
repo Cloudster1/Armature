@@ -10,30 +10,28 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/audit"
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
 )
 
 var (
-	// ErrLastOwner is returned when erasing or removing somebody would leave
-	// an organization with nobody who owns it.
-	ErrLastOwner = errors.New("the last owner of an organization cannot go")
+	// ErrLastAdministrator is returned when erasing somebody would leave the
+	// installation with nobody active to administer it.
+	ErrLastAdministrator = errors.New("the last active administrator cannot go")
 	// ErrNotAMember is returned when the person is not in the organization.
 	ErrNotAMember = errors.New("that person is not a member here")
 	// ErrNotFound is returned for a person who does not exist or is already gone.
 	ErrNotFound = errors.New("no such person")
-	// ErrOwnerRemovesOwner is returned when somebody who is not an owner tries
-	// to let an owner go.
-	ErrOwnerRemovesOwner = errors.New("only an owner can let another owner go")
 )
 
-// LastOwnerError names the organization that would be left without an owner.
-type LastOwnerError struct{ Org string }
+// LastAdministratorError names what would be left without an active administrator.
+type LastAdministratorError struct{ Org string }
 
-func (e *LastOwnerError) Error() string {
-	return fmt.Sprintf("%s would be left without an owner", e.Org)
+func (e *LastAdministratorError) Error() string {
+	return fmt.Sprintf("%s would be left without an active administrator", e.Org)
 }
-func (e *LastOwnerError) Is(target error) bool { return target == ErrLastOwner }
+func (e *LastAdministratorError) Is(target error) bool { return target == ErrLastAdministrator }
 
 // Avatars is the one thing outside the database an erasure has to reach.
 type Avatars interface {
@@ -355,21 +353,6 @@ func collect[T any](ctx context.Context, tx db.DBTX, query string, arg any, fn f
 	return out, rows.Err()
 }
 
-// soleOwnerOf names an organization the person alone owns, or "" when none.
-func soleOwnerOf(ctx context.Context, tx db.DBTX, userID uuid.UUID, orgID *uuid.UUID) (string, error) {
-	var name string
-	err := tx.QueryRow(ctx, `
-		SELECT o.name FROM org_member m JOIN org o ON o.id = m.org_id
-		WHERE m.user_id = $1 AND m.org_role = 'owner' AND ($2::uuid IS NULL OR m.org_id = $2)
-		  AND NOT EXISTS (SELECT 1 FROM org_member x JOIN app_user xu ON xu.id = x.user_id
-		                  WHERE x.org_id = m.org_id AND x.org_role = 'owner' AND x.user_id <> $1 AND xu.is_active)
-		ORDER BY o.name LIMIT 1`, userID, orgID).Scan(&name)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
-	}
-	return name, err
-}
-
 // Erase takes a person's identity out and leaves their work in: the account
 // becomes a tombstone that every join reads as "Former user", what only they
 // could use goes, and what the team wrote together stays attributed to the
@@ -384,25 +367,14 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 		if err != nil {
 			return err
 		}
-		if org, err := soleOwnerOf(ctx, tx, userID, nil); err != nil {
+		if org, err := auth.SoleActiveAdministratorOf(ctx, tx, userID); err != nil {
 			return err
 		} else if org != "" {
-			return &LastOwnerError{Org: org}
+			return &LastAdministratorError{Org: org}
 		}
-		// The record of the erasure goes to every organization the person
-		// was in, before the membership that would have named them goes.
-		orgs, err := collect(ctx, tx, `SELECT org_id FROM org_member WHERE user_id = $1`, userID, func(row pgx.Rows) (uuid.UUID, error) {
-			var id uuid.UUID
-			err := row.Scan(&id)
-			return id, err
-		})
-		if err != nil {
+		// Recorded once, before the membership that would have named them goes.
+		if err := auth.AuditAccount(ctx, tx, userID, audit.Entry{Action: "user.erased", TargetType: "user", TargetID: &userID, Actor: actor}); err != nil {
 			return err
-		}
-		for _, org := range orgs {
-			if err := audit.Write(ctx, tx, org, audit.Entry{Action: "user.erased", TargetType: "user", TargetID: &userID, Actor: actor}); err != nil {
-				return err
-			}
 		}
 		for _, q := range []string{
 			`DELETE FROM user_session WHERE user_id = $1`,
@@ -465,57 +437,4 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 		}
 	}
 	return nil
-}
-
-// RemoveMember lets an organization go of a person: the membership and what
-// hung off it go, the account stays theirs for their other organizations.
-func (s *Service) RemoveMember(ctx context.Context, orgID, userID, actor uuid.UUID) (db.LSN, error) {
-	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `SELECT 1 FROM org_member WHERE org_id = $1 AND user_id = $2`, orgID, userID)
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() == 0 {
-			return ErrNotAMember
-		}
-		if org, err := soleOwnerOf(ctx, tx, userID, &orgID); err != nil {
-			return err
-		} else if org != "" {
-			return &LastOwnerError{Org: org}
-		}
-		// An owner answers for the organization, so only an owner lets one go.
-		var theirs, mine string
-		if err := tx.QueryRow(ctx, `
-			SELECT max(org_role) FILTER (WHERE user_id = $2), max(org_role) FILTER (WHERE user_id = $3)
-			FROM org_member WHERE org_id = $1 AND user_id IN ($2, $3)`, orgID, userID, actor).Scan(&theirs, &mine); err != nil {
-			return err
-		}
-		if theirs == "owner" && mine != "owner" {
-			return ErrOwnerRemovesOwner
-		}
-		if err := audit.Write(ctx, tx, orgID, audit.Entry{Action: "member.removed", TargetType: "user", TargetID: &userID, Actor: actor}); err != nil {
-			return err
-		}
-		for _, q := range []string{
-			`DELETE FROM api_token WHERE org_id = $1 AND user_id = $2`,
-			`UPDATE user_session SET current_org_id = NULL, portal_project_id = NULL WHERE user_id = $2 AND current_org_id = $1`,
-			`DELETE FROM role_assignment WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM group_member WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM team_member WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM member_schedule WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM absence WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM project_allocation WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM notification WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM notification_digest_sent WHERE org_id = $1 AND user_id = $2`,
-			// What would keep telling them about work here once they are gone.
-			`DELETE FROM saved_filter_subscription WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM issue_watcher WHERE org_id = $1 AND user_id = $2`,
-			`DELETE FROM org_member WHERE org_id = $1 AND user_id = $2`,
-		} {
-			if _, err := tx.Exec(ctx, q, orgID, userID); err != nil {
-				return fmt.Errorf("remove member: %w", err)
-			}
-		}
-		return nil
-	})
 }

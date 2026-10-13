@@ -153,9 +153,7 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusUnauthorized, Code: "invalid_credentials", Message: auth.ErrInvalidCredentials.Error()}
 	case errors.Is(err, auth.ErrInvalidToken):
 		return ErrUnauthorized("Your session has expired. Sign in again.")
-	case errors.Is(err, auth.ErrUserInactive):
-		return ErrForbidden("This account has been deactivated.")
-	case errors.Is(err, auth.ErrSwitchedOff):
+	case errors.Is(err, auth.ErrUserInactive), errors.Is(err, auth.ErrSwitchedOff):
 		return &APIError{Status: http.StatusForbidden, Code: "switched_off", Message: "Your account has been switched off. Ask an administrator."}
 	case errors.Is(err, installation.ErrNameRequired):
 		return ErrValidation(map[string]string{"name": "Give the installation a name."})
@@ -165,7 +163,7 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: auth.ErrEmailTaken.Error()}
 	case errors.Is(err, auth.ErrSignupClosed):
 		return &APIError{Status: http.StatusForbidden, Code: "signup_closed",
-			Message: "New organizations cannot be created here. Ask an administrator of your organization to invite you."}
+			Message: "Sign-up is closed here. Ask an administrator to invite you."}
 	case errors.Is(err, auth.ErrSlugTaken):
 		return &APIError{Status: http.StatusConflict, Code: "slug_taken", Message: auth.ErrSlugTaken.Error()}
 	case errors.Is(err, auth.ErrNotAMember):
@@ -195,11 +193,11 @@ func toAPIError(err error) *APIError {
 		return ErrConflict(capitalize(auth.ErrCurrentSession.Error()) + ".")
 	case errors.Is(err, auth.ErrNoSuchRequest):
 		return ErrNotFound(capitalize(auth.ErrNoSuchRequest.Error()) + ".")
-	case errors.Is(err, auth.ErrManagedElsewhere), errors.Is(err, auth.ErrOwnAccount),
+	case errors.Is(err, auth.ErrOwnAccount),
 		errors.Is(err, auth.ErrOwnerStanding), errors.Is(err, auth.ErrProviderAccount):
 		return ErrConflict(capitalize(err.Error()) + ".")
-	case errors.Is(err, auth.ErrLastActiveOwner):
-		return &APIError{Status: http.StatusConflict, Code: "last_owner", Message: capitalize(auth.ErrLastActiveOwner.Error()) + "."}
+	case errors.Is(err, auth.ErrLastAdministrator):
+		return &APIError{Status: http.StatusConflict, Code: "last_administrator", Message: capitalize(auth.ErrLastAdministrator.Error()) + "."}
 	case errors.Is(err, auth.ErrOwnerOnly):
 		return ErrForbidden(capitalize(auth.ErrOwnerOnly.Error()) + ".")
 	case errors.Is(err, auth.ErrSecondFactorCode):
@@ -239,8 +237,8 @@ func toAPIError(err error) *APIError {
 		return ErrValidation(map[string]string{"trustedDomains": "Write a domain such as acme.test, without the @."})
 	case errors.Is(err, project.ErrDomainNotTrusted):
 		return domainNotTrusted(err)
-	case errors.Is(err, privacy.ErrLastOwner):
-		return &APIError{Status: http.StatusConflict, Code: "last_owner", Message: lastOwner(err)}
+	case errors.Is(err, privacy.ErrLastAdministrator):
+		return &APIError{Status: http.StatusConflict, Code: "last_administrator", Message: lastAdministrator(err)}
 	case errors.Is(err, privacy.ErrNotOwner):
 		return ErrForbidden("Only an owner can delete the organization.")
 	case errors.Is(err, privacy.ErrConfirmation):
@@ -261,8 +259,6 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That board was not found.")
 	case errors.Is(err, board.ErrNotOnThisBoard):
 		return ErrNotFound("That card is not on this board.")
-	case errors.Is(err, privacy.ErrOwnerRemovesOwner):
-		return ErrForbidden(capitalize(privacy.ErrOwnerRemovesOwner.Error()) + ".")
 	case errors.Is(err, perm.ErrNotFound):
 		return ErrNotFound("That was not found.")
 	case errors.Is(err, perm.ErrRoleNotFound):
@@ -563,13 +559,13 @@ var _ = slog.Default
 
 // domainNotTrusted names the domains a desk takes, since the refusal is a
 // policy the desk publishes, not a fact about a person.
-// lastOwner names the organization that would be left with nobody.
-func lastOwner(err error) string {
-	var last *privacy.LastOwnerError
+// lastAdministrator names what would be left with nobody to administer it.
+func lastAdministrator(err error) string {
+	var last *privacy.LastAdministratorError
 	if errors.As(err, &last) {
-		return fmt.Sprintf("%s would be left without an owner. Make somebody else an owner first, under Access.", last.Org)
+		return fmt.Sprintf("%s would be left without an active administrator. Make somebody else an administrator first, under Users.", last.Org)
 	}
-	return "An organization would be left without an owner. Make somebody else an owner first, under Access."
+	return "Nobody active would be left to administer this. Make somebody else an administrator first, under Users."
 }
 
 // featureOff names the page and where to turn it on.

@@ -37,12 +37,16 @@ import {
   waitForPath,
 } from "../helpers.mjs";
 
-scenario("a new organization can be created and lands in the app", async ({ page }) => {
-  const who = await signUpThroughForm(page);
+// Serial: the development stack keeps sign-up open, and somebody signing up
+// joins everybody's installation.
+serialScenario("somebody signs up through the form and joins the installation as a member", async ({ page }) => {
+  await goto(page, "/signup");
+  await page.waitForFunction(() => document.body.innerText.includes("Create your account"), { timeout: WAIT });
+  expect.notContains((await bodyText(page)).toLowerCase(), "organization", "the form asks for no organization");
 
+  const who = await signUpThroughForm(page);
   expect.contains(await textOf(page, "h1"), who.name.split(" ")[0], "welcome heading");
-  expect.contains(await bodyText(page), who.org, "the organization name is shown");
-  expect.contains(await bodyText(page), "Owner", "the first member is the owner");
+  expect.contains(await bodyText(page), "Member", "somebody who signs up later is a member");
 });
 
 scenario("signing out ends the session and protects the app", async ({ page }) => {

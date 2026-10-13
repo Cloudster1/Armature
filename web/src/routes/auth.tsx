@@ -2,7 +2,7 @@ import { Link, createRoute, redirect } from "@tanstack/react-router";
 import { rootRoute } from "./root";
 import { LoginForm, SignupForm } from "@/features/auth/AuthForms";
 import { Card, Wordmark } from "@/components/ui";
-import { meQueryKey, useSignupOpen } from "@/api/auth";
+import { meQueryKey, useSignupOpen, type SignupState } from "@/api/auth";
 import { request } from "@/api/client";
 import { useEffect, type ReactNode } from "react";
 import { applyCustomTheme } from "@/lib/theme";
@@ -80,7 +80,7 @@ function LoginPage() {
 export function SignupOffer() {
   const { data } = useSignupOpen();
   if (!data) return null;
-  if (!data.open) return <>No account yet? Ask an administrator of your organization to invite you.</>;
+  if (!data.open) return <>No account yet? Ask an administrator to invite you.</>;
   return (
     <>
       No account yet?{" "}
@@ -91,13 +91,21 @@ export function SignupOffer() {
   );
 }
 
+/** What the sign-up page is headed with: setting the installation up, joining it, or neither. */
+function signupHeading(state: SignupState | undefined): { title: string; subtitle?: string } {
+  if (state?.open === false) return { title: "Sign-up is closed" };
+  if (state?.first) return { title: "Set up Armature", subtitle: "Yours is the first account, and it will administer everything here." };
+  return { title: "Create your account", subtitle: "You join as a member; an administrator can give you more." };
+}
+
 function SignupPage() {
   const { data } = useSignupOpen();
   const closed = data?.open === false;
+  const { title, subtitle } = signupHeading(data);
   return (
     <AuthLayout
-      title={closed ? "Sign-up is closed" : "Create your organization"}
-      subtitle={closed ? undefined : "You will be its first member and owner."}
+      title={title}
+      subtitle={subtitle}
       footer={
         <>
           Already have an account?{" "}
@@ -109,7 +117,7 @@ function SignupPage() {
     >
       {closed ? (
         <p className="text-sm text-ink-muted" data-signup-closed>
-          New organizations cannot be created here. To join one, ask one of its administrators to invite you.
+          Nobody signs up here. Ask an administrator to invite you.
         </p>
       ) : (
         <SignupForm />

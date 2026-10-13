@@ -185,13 +185,15 @@ before it runs post-install hooks, and the api cannot be ready until the roles
 Job has made the role it connects as. Install without `--wait` and let the api
 settle, which takes a minute of restarts on a first install.
 
-## Who can create an organization
+## Who can sign up
 
 `auth.signup` decides what the sign-up page does. `first`, the default, lets
-the first organization be created there, which is how a new installation is
-set up, and closes the page after it. `closed` never offers it; `open` offers
-it to anybody who can reach the application. Joining an existing organization
-is by invitation in every case.
+the first account sign up, which sets the installation up under
+`auth.installationName` and makes that account its administrator, and closes
+the page after it. `open` keeps the page open after the first, and whoever
+signs up later joins as a member. `closed` never offers it. Invitations,
+single sign-on and administrators making accounts bring people in whatever it
+says.
 
 ## What is optional
 

@@ -166,7 +166,7 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 		want(t, customer.post("/api/v1/absences", map[string]any{"startsOn": "2026-11-16"}), http.StatusForbidden, "a customer records one")
 	})
 
-	t.Run("the person takes their absences with their data, and they go when the person does", func(t *testing.T) {
+	t.Run("the person takes their absences with their data, and they go when the person is erased", func(t *testing.T) {
 		exported := want(t, ada.get("/api/v1/auth/me/export"), http.StatusOK, "Ada exports her data")
 		absences := list(t, exported, "absences")
 		if len(absences) != 2 || absences[0].(map[string]any)["recordedBy"] != "Ada Away" {
@@ -178,10 +178,6 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 				t.Fatal(err)
 			}
 			return n
-		}
-		want(t, owner.delete("/api/v1/members/"+adaID), http.StatusNoContent, "let Ada go")
-		if left := count(adaID); left != 0 {
-			t.Errorf("%d of Ada's absences stayed after she left", left)
 		}
 		want(t, stranger.delete("/api/v1/auth/me"), http.StatusNoContent, "Stan erases his account")
 		if left := count(strangerID); left != 0 {

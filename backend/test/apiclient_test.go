@@ -279,19 +279,14 @@ func (c *client) post(path string, body any) response { return c.do(http.MethodP
 func (c *client) put(path string, body any) response  { return c.do(http.MethodPut, path, body) }
 func (c *client) delete(path string) response         { return c.do(http.MethodDelete, path, nil) }
 
-// signup registers a new account through the API and leaves the client signed
-// in, exactly as a browser would be.
+// signup founds an organization for a new owner and signs the client in with
+// their password through the API, exactly as a browser would be.
 func (c *client) signup(t *testing.T, h *harness, name string) response {
 	t.Helper()
-	resp := c.post("/api/v1/auth/signup", map[string]string{
-		"email":    h.email(t, name),
-		"password": testPassword,
-		"name":     name,
-		"orgName":  name + " Company",
-		"orgSlug":  h.orgSlug(t, name),
-	})
-	if resp.Status != http.StatusCreated {
-		t.Fatalf("signup returned %d: %s", resp.Status, resp.Raw)
+	email := h.foundOrganization(t, name, name+" Company")
+	resp := c.post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword})
+	if resp.Status != http.StatusOK {
+		t.Fatalf("signing %s in returned %d: %s", name, resp.Status, resp.Raw)
 	}
 	return resp
 }

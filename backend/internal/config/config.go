@@ -153,8 +153,10 @@ type Auth struct {
 	// DoorWindow is how long the brakes on codes, entries and guesses remember
 	// an address.
 	DoorWindow time.Duration
-	// Signup is open, first or closed: who may create an organization.
+	// Signup is open, first or closed: who may sign up.
 	Signup string
+	// InstallationName is what the first account's installation is called.
+	InstallationName string
 	// OIDCRedirectURL is what the identity provider sends people back to; it
 	// must match what is registered there exactly.
 	OIDCRedirectURL string
@@ -268,7 +270,8 @@ func Load() (Config, error) {
 			ReadYourWritesTTL:  envDur("ARMATURE_READ_YOUR_WRITES_TTL", 30*time.Second),
 			PortalCodeCooldown: envDur("ARMATURE_PORTAL_CODE_COOLDOWN", time.Minute),
 			DoorWindow:         envDur("ARMATURE_DOOR_WINDOW", 10*time.Minute),
-			Signup:             env("ARMATURE_SIGNUP", "open"),
+			Signup:             env("ARMATURE_SIGNUP", "first"),
+			InstallationName:   env("ARMATURE_NAME", "Armature"),
 			OIDCRedirectURL:    env("ARMATURE_OIDC_REDIRECT_URL", DevOIDCRedirectURL),
 			SecretKey:          env("ARMATURE_SECRET_KEY", ""),
 		},
@@ -306,6 +309,9 @@ func Load() (Config, error) {
 	if c.Env != "development" {
 		problems = append(problems, refuseLoopback("ARMATURE_APP_URL", c.Mail.AppBaseURL, "the address people open Armature at")...)
 		problems = append(problems, refuseLoopback("ARMATURE_OIDC_REDIRECT_URL", c.Auth.OIDCRedirectURL, "the callback registered with the identity provider")...)
+	}
+	if strings.TrimSpace(c.Auth.InstallationName) == "" {
+		problems = append(problems, "ARMATURE_NAME must name the installation, such as Armature")
 	}
 	switch c.Auth.Signup {
 	case "open", "first", "closed":

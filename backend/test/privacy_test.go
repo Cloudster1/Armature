@@ -15,7 +15,7 @@ import (
 )
 
 // Personal data has a lifetime: rows past their use are pruned, a person can
-// take their data and leave, and an organization can let a member go.
+// take their data and leave, and letting a member go switches them off.
 func TestPersonalDataHasALifetime(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -85,15 +85,34 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 		}
 	})
 
-	t.Run("an organization lets a member go, but never its last owner", func(t *testing.T) {
-		refused := want(t, owner.delete("/api/v1/members/"+ownerID), http.StatusConflict, "the last owner")
-		if refused.ErrorCode() != "last_owner" || !strings.Contains(refused.Raw, "another") && !strings.Contains(refused.Raw, "somebody else") {
-			t.Fatalf("refusal = %s", refused.Raw)
+	t.Run("letting a member go switches their account off, and switching on brings them back", func(t *testing.T) {
+		want(t, owner.delete("/api/v1/members/"+ownerID), http.StatusConflict, "letting yourself go")
+		want(t, other.delete("/api/v1/members/"+ownerID), http.StatusForbidden, "a member cannot let anyone go")
+		goerEmail := h.email(t, "goer")
+		goer := api.client(t)
+		invited := want(t, owner.post("/api/v1/invites", map[string]any{"email": goerEmail, "role": "member"}), http.StatusCreated, "invite")
+		goerID := principalField(t, want(t, goer.post("/api/v1/auth/invites/accept", map[string]any{"token": invited.Body["token"], "name": "Goer", "password": testPassword}), http.StatusOK, "accept"), "principal", "user", "id").(string)
+
+		want(t, owner.delete("/api/v1/members/"+goerID), http.StatusNoContent, "let them go")
+		if got := goer.get("/api/v1/auth/me"); got.Status != http.StatusUnauthorized {
+			t.Errorf("their open session survived: %d", got.Status)
 		}
-		want(t, other.delete("/api/v1/members/"+ownerID), http.StatusForbidden, "a member cannot remove anyone")
-		bystander := h.joinExisting(t, &workspace{orgID: orgID}, h.email(t, "bystander"), "member")
-		want(t, owner.delete("/api/v1/members/"+bystander.String()), http.StatusNoContent, "remove a member")
-		want(t, owner.delete("/api/v1/members/"+bystander.String()), http.StatusNotFound, "and they are no longer here")
+		refused := api.client(t).post("/api/v1/auth/login", map[string]string{"email": goerEmail, "password": testPassword})
+		if refused.Status != http.StatusForbidden || refused.ErrorCode() != "switched_off" {
+			t.Errorf("signing in after being let go = %d %s, want 403 switched_off", refused.Status, refused.Raw)
+		}
+		var active bool
+		var members int
+		if err := h.super.QueryRow(context.Background(), `
+			SELECT u.is_active, (SELECT count(*) FROM org_member m WHERE m.user_id = u.id AND m.org_id = $2)
+			FROM app_user u WHERE u.id = $1`, goerID, orgID).Scan(&active, &members); err != nil {
+			t.Fatal(err)
+		}
+		if active || members != 1 {
+			t.Errorf("after being let go: active = %v, memberships here = %d; want switched off and still here", active, members)
+		}
+		want(t, owner.patch("/api/v1/users/"+goerID, map[string]any{"isActive": true}), http.StatusOK, "switch them on")
+		want(t, api.client(t).post("/api/v1/auth/login", map[string]string{"email": goerEmail, "password": testPassword}), http.StatusOK, "and they sign in again")
 		want(t, owner.delete("/api/v1/members/"+uuid.NewString()), http.StatusNotFound, "nobody by that id")
 	})
 
@@ -151,10 +170,10 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 		}
 	})
 
-	t.Run("the last owner cannot erase themselves either", func(t *testing.T) {
-		refused := want(t, owner.delete("/api/v1/auth/me"), http.StatusConflict, "the last owner")
-		if refused.ErrorCode() != "last_owner" {
-			t.Fatalf("code = %q", refused.ErrorCode())
+	t.Run("the last active administrator cannot erase themselves", func(t *testing.T) {
+		refused := want(t, owner.delete("/api/v1/auth/me"), http.StatusConflict, "the last active administrator")
+		if refused.ErrorCode() != "last_administrator" || !strings.Contains(refused.Raw, "Make somebody else an administrator first") {
+			t.Fatalf("refusal = %s", refused.Raw)
 		}
 	})
 }

@@ -193,8 +193,8 @@ func absencesOf(ctx context.Context, tx db.DBTX, ids []uuid.UUID, from, to time.
 	})
 }
 
-// Members names those of ids who work in the organization now: somebody who has
-// left, or a portal customer, keeps what is assigned to them but has no week here.
+// Members names those of ids who work in the organization now: somebody switched
+// off, or a portal customer, keeps what is assigned to them but has no week here.
 func (s *Service) Members(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
 	out := map[uuid.UUID]string{}
 	if len(ids) == 0 {
@@ -204,7 +204,7 @@ func (s *Service) Members(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]s
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.name FROM app_user u
 			JOIN org_member o ON o.user_id = u.id AND o.org_id = current_org_id() AND o.org_role <> 'customer'
-			WHERE u.id = ANY($1)`, ids)
+			WHERE u.id = ANY($1) AND u.is_active`, ids)
 		if err != nil {
 			return fmt.Errorf("read who works here: %w", err)
 		}
@@ -239,7 +239,7 @@ func (s *Service) ProjectPeople(ctx context.Context, projectKey string, from, to
 			JOIN team_member m ON m.team_id = t.id
 			JOIN app_user u ON u.id = m.user_id
 			JOIN org_member o ON o.user_id = m.user_id AND o.org_id = current_org_id() AND o.org_role <> 'customer'
-			WHERE p.key = $1
+			WHERE p.key = $1 AND u.is_active
 			ORDER BY t.position, lower(u.name)`, projectKey)
 		if err != nil {
 			return fmt.Errorf("read the project's teams: %w", err)
@@ -267,7 +267,7 @@ func (s *Service) ProjectPeople(ctx context.Context, projectKey string, from, to
 			JOIN project p ON p.id = i.project_id
 			JOIN app_user u ON u.id = i.assignee_id
 			JOIN org_member o ON o.user_id = i.assignee_id AND o.org_id = current_org_id() AND o.org_role <> 'customer'
-			WHERE p.key = $1
+			WHERE p.key = $1 AND u.is_active
 			  AND COALESCE(i.start_date, i.due_date) <= $3::date
 			  AND COALESCE(i.due_date, i.start_date) >= $2::date`, projectKey, from, to)
 		if err != nil {

@@ -169,7 +169,8 @@ export async function run({ launch, open, prepare, artifacts, workers = DEFAULT_
 
   const started = Date.now();
   try {
-    await prepare?.();
+    // A browser too, for a setup an empty installation asks of its sign-up page.
+    await prepare?.({ launch, open });
   } catch (error) {
     process.stdout.write(`  the run could not be set up: ${error.message}\n`);
     return false;

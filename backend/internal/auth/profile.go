@@ -88,16 +88,3 @@ func (s *Service) SetAvatarURL(ctx context.Context, userID uuid.UUID, url *strin
 	})
 	return err
 }
-
-// SharesOrganization reports whether two people are members of the same
-// organization, which is what lets one see the other's picture.
-func (s *Service) SharesOrganization(ctx context.Context, a, b uuid.UUID) (bool, error) {
-	var shared bool
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `
-			SELECT EXISTS (
-				SELECT 1 FROM org_member x JOIN org_member y ON y.org_id = x.org_id
-				WHERE x.user_id = $1 AND y.user_id = $2)`, a, b).Scan(&shared)
-	})
-	return shared, err
-}

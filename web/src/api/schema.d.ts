@@ -170,7 +170,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Join an organization with an invitation token. */
+        /** Join the installation with an invitation token. */
         post: operations["acceptInvite"];
         delete?: never;
         options?: never;
@@ -496,10 +496,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether a new organization may be created by signing up. */
+        /** Whether signing up would work now, and whether it would set the installation up. */
         get: operations["signupOpen"];
         put?: never;
-        /** Create an account and its organization, and sign in. */
+        /** Create an account and sign in: the first one sets the installation up and administers it, a later one joins it as a member where sign-up is open. */
         post: operations["signup"];
         delete?: never;
         options?: never;
@@ -2139,7 +2139,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Let a member go: their membership, grants, groups, teams and tokens here. */
+        /** Let a member go by switching their account off: their sessions and tokens end, and what they did stays theirs. */
         delete: operations["removeMember"];
         options?: never;
         head?: never;
@@ -3880,7 +3880,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Somebody's picture, for anyone in an organization with them. */
+        /** Somebody's picture, for anyone signed in. */
         get: operations["avatar"];
         put?: never;
         post?: never;
@@ -5392,7 +5392,7 @@ export interface components {
         };
         InvitePreview: {
             email: string;
-            orgName: string;
+            installation: string;
             /** @enum {string} */
             role: "owner" | "admin" | "member" | "customer";
         };
@@ -6539,9 +6539,11 @@ export interface components {
         SignupRequest: {
             email: string;
             name: string;
-            orgName: string;
-            orgSlug?: string;
             password: string;
+        };
+        SignupState: {
+            first: boolean;
+            open: boolean;
         };
         Span: {
             from: string;
@@ -8476,9 +8478,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        open: boolean;
-                    };
+                    "application/json": components["schemas"]["SignupState"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

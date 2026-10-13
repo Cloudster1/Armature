@@ -139,9 +139,10 @@ test-integration: ## Run the integration suite against the running stack
 # WORKERS=<n> sets how many browsers run scenarios side by side; ONLY=<words>
 # narrows the run to the scenarios whose names contain them, or to one file's
 # (ONLY=board). SHUFFLE=1 runs the parallel pool in a random order and prints
-# the seed, which SHUFFLE=<seed> repeats. E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD,
-# from the environment, name an existing administrator to run as instead of
-# signing one up. Each run writes .cache/e2e/timings.json and lists its slowest.
+# the seed, which SHUFFLE=<seed> repeats. E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD
+# name the administrator the run acts as, the seed's Ada unless said otherwise;
+# on an installation nobody has set up, the run signs them up through the
+# sign-up page first. Each run writes .cache/e2e/timings.json and lists its slowest.
 #
 # The suite runs against the production build behind the production nginx,
 # compose's web-e2e, which is built first; with web/ unchanged every layer is
@@ -149,6 +150,8 @@ test-integration: ## Run the integration suite against the running stack
 # E2E_WEB=dev runs against the Vite dev server instead, with no build, for
 # debugging a scenario with hot reload.
 E2E_IMAGE ?= zenika/alpine-chrome:with-puppeteer
+E2E_ADMIN_EMAIL    ?= ada@armature.test
+E2E_ADMIN_PASSWORD ?= demo password please
 E2E_WEB   ?= production
 ifeq ($(E2E_WEB),dev)
 E2E_BASE_URL := http://web:5173
@@ -175,8 +178,8 @@ test-e2e: ## Run the browser end-to-end suite against the running stack
 		-e E2E_ONLY='$(ONLY)' \
 		-e E2E_WORKERS='$(WORKERS)' \
 		-e E2E_SHUFFLE='$(SHUFFLE)' \
-		-e E2E_ADMIN_EMAIL \
-		-e E2E_ADMIN_PASSWORD \
+		-e E2E_ADMIN_EMAIL='$(E2E_ADMIN_EMAIL)' \
+		-e E2E_ADMIN_PASSWORD='$(E2E_ADMIN_PASSWORD)' \
 		-w /usr/src/app \
 		--entrypoint node $(E2E_IMAGE) /usr/src/app/e2e/suite.mjs
 

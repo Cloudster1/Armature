@@ -206,11 +206,14 @@ mail:
     interval: 30s
 
 auth:
-  # Who may create an organization on the sign-up page. open: anybody who
-  # reaches it. first: the first one, which is how a new installation is set
-  # up, and nothing after. closed: nobody. People join an existing
-  # organization by invitation whatever this says.
+  # Who may sign up. first: the first account, which sets the installation up
+  # and administers it, and nobody after. open: later people too, as members.
+  # closed: nobody. Invitations, single sign-on and administrators bring
+  # people in whatever this says.
   signup: first
+  # What the installation is called when its first account sets it up;
+  # administrators rename it afterwards.
+  installationName: Armature
   sessionTTL: 720h
   sessionCookie: armature_session
   # Must be true unless env is development. The worker shares the same

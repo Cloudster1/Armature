@@ -22,7 +22,8 @@ export interface CreatedInvite {
 }
 
 export interface InvitePreview {
-  orgName: string;
+  /** What the installation the invitation leads into is called. */
+  installation: string;
   email: string;
   role: InvitableRole;
 }

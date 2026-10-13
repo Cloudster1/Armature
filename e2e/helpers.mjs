@@ -289,24 +289,54 @@ async function administer(method, path, body) {
 }
 
 /**
- * Signs in as E2E_ADMIN_EMAIL when it is given, or signs one up: a sign-up
- * still founds an organization of its own, which keeps one run from the next.
+ * Signs in as E2E_ADMIN_EMAIL. On an installation nobody has set up yet, that
+ * account is signed up through the sign-up page instead, which sets it up.
  */
-export async function setUpAdministrator() {
+export async function setUpAdministrator({ launch, open } = {}) {
   const email = process.env.E2E_ADMIN_EMAIL ?? "";
   const password = process.env.E2E_ADMIN_PASSWORD ?? "";
-  if (email && password) {
-    await administer("POST", "/auth/login", { email, password }).catch((error) => {
-      throw new Error(`E2E_ADMIN_EMAIL did not sign in (${error.message}); name an administrator of this installation, or leave both unset to sign one up.`);
-    });
-  } else {
-    const who = unique("e2e-admin");
-    await administer("POST", "/auth/signup", { name: who.name, email: who.email, password: PASSWORD, orgName: who.org });
+  if (!email || !password) {
+    throw new Error("E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD are not set; name an administrator of this installation, as make test-e2e does with the seed's Ada.");
+  }
+  const refused = await administer("POST", "/auth/login", { email, password }).then(() => null, (error) => error);
+  let setUpHere = false;
+  if (refused) {
+    const { answer: signup } = await sendJSON("GET", "/auth/signup");
+    if (!signup.first || !launch) {
+      throw new Error(`${email} did not sign in (${refused.message}), and the installation is set up already. Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to one of its administrators, or run make seed for Ada.`);
+    }
+    await setUpThroughForm({ launch, open }, email, password);
+    setUpHere = true;
   }
   const { principal } = await administer("GET", "/auth/me");
   administrator.org = principal.org;
   await guardSharedWorkflows();
-  process.stdout.write(`  the run's administrator is ${principal.user.email}, in ${principal.org.name}\n\n`);
+  const how = setUpHere ? ", who set it up through the sign-up page" : "";
+  process.stdout.write(`  the run's administrator is ${principal.user.email}${how}, in ${principal.org.name}\n\n`);
+}
+
+/**
+ * Signs the run's administrator up through the page an empty installation
+ * offers, in a browser of its own, and keeps the session it opened.
+ */
+async function setUpThroughForm({ launch, open }, email, password) {
+  const browser = await launch();
+  try {
+    const { page, check } = await open(browser);
+    await goto(page, "/signup");
+    await page.waitForFunction(() => document.body.innerText.includes("Set up Armature"), { timeout: WAIT });
+    await fill(page, "Your name", email.split("@")[0]);
+    await fill(page, "Work email", email);
+    await fill(page, "Password", password);
+    await fill(page, "Repeat password", password);
+    await submit(page);
+    await waitForPath(page, "/");
+    await waitForApp(page);
+    await check();
+    for (const { name, value } of await page.cookies(BASE_URL)) administrator.jar.set(name, value);
+  } finally {
+    await browser.close().catch(() => {});
+  }
 }
 
 /**
@@ -336,32 +366,15 @@ export async function signUp(page, who = unique("user"), { visit = true, role = 
 }
 
 /**
- * Registers a new organization of its own, for the scenarios about several
- * organizations and nothing else; with visit, lands in the app.
+ * Signs somebody up through the sign-up form, which the development stack
+ * keeps open, so they join as a member; lands in the app.
  */
-export async function signUpOwnOrganization(page, who = unique("user"), { visit = true } = {}) {
-  await callAPI(
-    page,
-    "POST",
-    "/auth/signup",
-    { name: who.name, email: who.email, password: PASSWORD, orgName: who.org },
-    { asNobody: true },
-  );
-  if (visit) {
-    await goto(page, "/");
-    await waitForApp(page);
-  }
-  return who;
-}
-
-/** Registers a new organization through the sign-up form and lands in the app. */
 export async function signUpThroughForm(page, who = unique("user")) {
   await goto(page, "/signup");
   await fill(page, "Your name", who.name);
   await fill(page, "Work email", who.email);
   await fill(page, "Password", PASSWORD);
   await fill(page, "Repeat password", PASSWORD);
-  await fill(page, "Organization name", who.org);
   await submit(page);
   await waitForPath(page, "/");
   await waitForApp(page);
@@ -1320,29 +1333,6 @@ export async function inviteAddress(page, email, role = "member") {
 }
 
 /**
- * Offers an invitation from this browser as it is, signed in or not, and
- * returns the refusal's error code, or an empty string when it was taken.
- */
-export async function tryAcceptInvite(page, { token, name = "Invited Person", password = PASSWORD }) {
-  return page.evaluate(
-    async (token, name, password) => {
-      const response = await fetch("/api/v1/auth/invites/accept", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, name, password }),
-      });
-      if (response.ok) return "";
-      const body = await response.json().catch(() => ({}));
-      return body.error?.code ?? String(response.status);
-    },
-    token,
-    name,
-    password,
-  );
-}
-
-/**
  * Accepts an invitation, which leaves this browser signed in as them; with
  * visit, on whatever "/" shows them. joinThroughLink drives the form instead.
  */
@@ -1713,14 +1703,19 @@ export async function joinThroughLink(page, token, who) {
   await waitForApp(page);
 }
 
-/** Removes a member by name on the Access page's Members tab and waits for the row to go. */
-export async function removeMember(page, name) {
-  await goto(page, "/settings/access");
-  await page.click('[data-access-tab="Members"]');
-  const row = `[data-member="${name}"]`;
-  await press(page, `${row} [data-action="remove-member"]`);
+/** Lets somebody go by switching their account off on the users page, and waits for it to say so. */
+export async function switchOff(page, email) {
+  await goto(page, "/settings/users");
+  const menu = `[data-user="${email}"] [data-action="user-menu"]`;
+  await page.waitForSelector(menu, { timeout: WAIT });
+  await press(page, menu);
+  await press(page, '[data-action="deactivate-user"]');
   await confirm(page);
-  await page.waitForFunction((sel) => !document.querySelector(sel), { timeout: WAIT }, row);
+  await page.waitForFunction(
+    (e) => document.querySelector(`[data-user="${e}"]`)?.getAttribute("data-user-active") === "false",
+    { timeout: WAIT },
+    email,
+  );
 }
 
 /** Flips one of the project's features on its settings page and waits for the switch to agree. */

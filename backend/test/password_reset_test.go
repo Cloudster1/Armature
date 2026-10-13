@@ -7,7 +7,6 @@ import (
 	"context"
 	"net/http"
 	"regexp"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -180,7 +179,7 @@ func TestAForgottenPasswordIsResetByMail(t *testing.T) {
 		want(t, api.client(t).post("/api/v1/auth/password-reset/confirm", map[string]string{"token": second, "password": newPassword}), http.StatusNoContent, "the latest link")
 	})
 
-	t.Run("each organization the person is in records the request and the reset", func(t *testing.T) {
+	t.Run("the request and the reset are recorded once, in the person's organization", func(t *testing.T) {
 		httpapi.ResetThrottles()
 		signedUp := api.client(t).signup(t, h, "two-orgs")
 		email := principalField(t, signedUp, "principal", "user", "email").(string)
@@ -194,8 +193,7 @@ func TestAForgottenPasswordIsResetByMail(t *testing.T) {
 		secret := api.askForReset(t, email)
 		want(t, api.client(t).post("/api/v1/auth/password-reset/confirm", map[string]string{"token": secret, "password": newPassword}), http.StatusNoContent, "reset")
 
-		wantOrgs := []string{home, away}
-		sort.Strings(wantOrgs)
+		wantOrgs := []string{home}
 		for _, action := range []string{"auth.password_reset_requested", "auth.password_reset"} {
 			rows, err := h.super.Query(context.Background(), `
 				SELECT org_id::text FROM audit_log
@@ -214,7 +212,7 @@ func TestAForgottenPasswordIsResetByMail(t *testing.T) {
 			}
 			rows.Close()
 			if strings.Join(orgs, ",") != strings.Join(wantOrgs, ",") {
-				t.Errorf("%s is recorded in %v, want once in each of %v", action, orgs, wantOrgs)
+				t.Errorf("%s is recorded in %v, want once, in %v", action, orgs, wantOrgs)
 			}
 		}
 	})
