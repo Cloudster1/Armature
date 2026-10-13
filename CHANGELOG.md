@@ -11,6 +11,11 @@ here in the branch that makes it.
   drawer beside the calendar, whose arrows walk the month's issues, while a
   drag still only moves its dates; a sprint opens its board, a milestone the
   milestones and a version the releases (#120).
+- Added: issues are exported from where they are. An issue's More button
+  has Export as CSV for that issue, readers included; the bar over ticked
+  rows exports them, before any change is chosen and past the bulk limit;
+  and a project's issue list exports every page of what it shows. All open
+  the same column choice as search's Export (#121).
 - Fixed: swimlanes reordered under Configure swimlanes stay where they were
   put. A project whose oldest board had gone to a team opened on that board
   while the panel edited the project-wide one, and a second arrow press

@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useBulkEdit, type BulkChange, type BulkResult } from "@/api/filters";
 import { useMembers } from "@/api/issues";
 import { Button, Dialog, ErrorBanner, Field, Select, Toolbar } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { BULK_MAX_SELECTION } from "@/config";
+import { ExportDialog, keysQuery } from "./ExportDialog";
 
 /** Whether a change asks for anything; the Apply button waits until it does. */
 export function changeIsEmpty(change: BulkChange): boolean {
@@ -10,13 +12,14 @@ export function changeIsEmpty(change: BulkChange): boolean {
 }
 
 // The bar that appears over a list when rows are ticked: what to change on all
-// of them, one Apply, and a dialog that lists what could not be changed and why.
+// of them, one Apply, a dialog that lists what was refused, and an Export.
 export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (result: BulkResult) => void; onClear: () => void }) {
   const edit = useBulkEdit();
   const { data: members } = useMembers();
   const [change, setChange] = useState<BulkChange>({});
   const [labels, setLabels] = useState("");
   const [result, setResult] = useState<BulkResult | null>(null);
+  const [exporting, setExporting] = useState(false);
   const tooMany = keys.length > BULK_MAX_SELECTION;
 
   function apply() {
@@ -68,12 +71,17 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
             <Button variant="ghost" size="sm" onClick={onClear}>
               Clear
             </Button>
+            {/* Reading changes nothing, so neither a chosen change nor the bulk limit stands in its way. */}
+            <Button variant="secondary" size="sm" icon={<Icon.Download />} onClick={() => setExporting(true)} data-action="export-selected">
+              Export {keys.length} selected
+            </Button>
             <Button size="sm" onClick={apply} loading={edit.isPending} disabled={tooMany || changeIsEmpty({ ...change, addLabels: labels.trim() ? [labels] : [] })} data-action="bulk-apply">
               Apply to {keys.length}
             </Button>
           </div>
         }
       />
+      <ExportDialog query={keysQuery(keys)} open={exporting} onClose={() => setExporting(false)} description={`The ${keys.length} selected issues, as a file with the columns you tick.`} />
       {edit.error && <ErrorBanner>{(edit.error as Error).message}</ErrorBanner>}
       <Dialog
         open={result !== null}

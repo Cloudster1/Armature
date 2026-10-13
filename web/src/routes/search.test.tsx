@@ -19,7 +19,8 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("./app", () => ({ appRoute: {} }));
 vi.mock("@/lib/format", () => ({ useFormat: () => ({ relative: () => "just now" }) }));
 vi.mock("@/api/auth", () => ({ useMe: () => ({ data: undefined }) }));
-vi.mock("@/api/filters", () => ({
+vi.mock("@/api/filters", async () => ({
+  exportHref: (await vi.importActual<typeof import("@/api/filters")>("@/api/filters")).exportHref,
   useSavedFilters: () => ({ data: { filters: [] } }),
   useBulkEdit: () => ({ mutate: vi.fn(), isPending: false, error: null }),
 }));

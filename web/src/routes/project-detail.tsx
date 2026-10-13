@@ -9,6 +9,8 @@ import { useMilestones } from "@/api/milestones";
 import { IssueTable } from "@/features/issues/IssueTable";
 import { QueryInput } from "@/features/search/QueryInput";
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
+import { ExportDialog } from "@/features/filters/ExportDialog";
+import { quote } from "@/features/dashboard/filter";
 import { Button, EmptyState, ErrorBanner, Input, Page, PageHeader, Pager, Popover, Segmented, Select, Skeleton, Tag, Toolbar, clampOffset, isPageOffset, shownOf } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { StatusStrip } from "@/features/projects/StatusStrip";
@@ -22,7 +24,7 @@ export const projectDetailRoute = createRoute({
   component: ProjectDetail,
 });
 
-type Scope = "open" | "all" | "mine";
+export type Scope = "open" | "all" | "mine";
 
 /** Words match the summary; a query is NQL, and can say anything. */
 type SearchMode = "words" | "query";
@@ -32,6 +34,24 @@ const scopeFilters: Record<Scope, { category?: StatusCategory[]; assignee?: stri
   all: {},
   mine: { assignee: "me" },
 };
+
+const scopeClauses: Record<Scope, string> = {
+  open: "statusCategory in (todo, in_progress)",
+  all: "",
+  mine: "assignee = currentUser()",
+};
+
+/** The list's narrowing in the search language, so Export writes every page of it. Labels and milestones match by name there. */
+export function listQuery({ scope, words, query, label, milestone }: { scope: Scope; words: string; query: string; label?: string; milestone?: string }): string {
+  const parts = [scopeClauses[scope]];
+  if (words.trim()) parts.push(`summary ~ ${quote(words.trim())}`);
+  if (label) parts.push(`labels = ${quote(label)}`);
+  if (milestone) parts.push(`milestone = ${quote(milestone)}`);
+  const given = parts.filter(Boolean);
+  // Alone, a query keeps its ORDER BY; beside other clauses it is bracketed.
+  if (query.trim()) given.push(given.length ? `(${query.trim()})` : query.trim());
+  return given.join(" AND ");
+}
 
 function ProjectDetail() {
   const { projectKey } = projectDetailRoute.useParams();
@@ -47,6 +67,7 @@ function ProjectDetail() {
   const [milestoneId, setMilestoneId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const { data: labelData } = useLabels();
   const { data: milestoneData } = useMilestones(projectKey, true);
 
@@ -89,6 +110,13 @@ function ProjectDetail() {
   const asQuery = [`project = ${projectKey}`, mode === "query" && query ? `(${query})` : ""].filter(Boolean).join(" AND ");
   const labels = labelData?.labels ?? [];
   const milestones = milestoneData?.milestones ?? [];
+  const exported = listQuery({
+    scope,
+    words: mode === "words" ? text : "",
+    query: mode === "query" ? query : "",
+    label: labels.find((l) => l.id === labelId)?.name,
+    milestone: milestones.find((m) => m.id === milestoneId)?.name,
+  });
 
   return (
     <Page width="content">
@@ -200,9 +228,14 @@ function ProjectDetail() {
                 Open in search
               </Link>
             )}
+            <Button variant="secondary" size="sm" icon={<Icon.Download />} onClick={() => setExporting(true)} data-action="export-list">
+              Export
+            </Button>
           </>
         }
       />
+
+      <ExportDialog query={exported} project={projectKey} open={exporting} onClose={() => setExporting(false)} description="Every issue this list shows, on all its pages, as a file with the columns you tick." />
 
       {loadingIssues ? (
         <Skeleton rows={6} />
