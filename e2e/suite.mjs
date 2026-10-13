@@ -20,6 +20,7 @@ const SCENARIO_FILES = [
   "dashboards",
   "issue-details",
   "organization",
+  "installation",
   "board",
   "hierarchy",
   "plan",
