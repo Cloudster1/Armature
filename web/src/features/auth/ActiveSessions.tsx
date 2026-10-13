@@ -50,7 +50,7 @@ export function ActiveSessions() {
                 {session.current && <Tag>This device</Tag>}
               </div>
               <p className="truncate text-ink-subtle">
-                {[session.ip, session.orgName, session.current ? "active now" : `last active ${format.relative(session.lastSeenAt)}`].filter(Boolean).join(" · ")}
+                {[session.ip, session.current ? "active now" : `last active ${format.relative(session.lastSeenAt)}`].filter(Boolean).join(" · ")}
               </p>
             </div>
             {!session.current && (

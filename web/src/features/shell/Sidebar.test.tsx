@@ -28,7 +28,6 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/api/auth", () => ({
   useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada Lovelace" }, org: { name: "Acme" }, role: "owner" }, organizations: state.organizations } }),
-  useSwitchOrg: () => ({ mutate: vi.fn() }),
   useLogout: () => ({ mutate: vi.fn(), isPending: false }),
   useEraseMe: () => ({ mutate: vi.fn(), isPending: false }),
   MY_DATA_HREF: "/api/v1/auth/me/export",

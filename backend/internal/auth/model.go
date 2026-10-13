@@ -66,16 +66,8 @@ type User struct {
 	AvatarURL string `json:"avatarUrl,omitempty"`
 }
 
-// Membership is a user's place in one organization.
-type Membership struct {
-	OrgID   uuid.UUID `json:"orgId"`
-	OrgSlug string    `json:"orgSlug"`
-	OrgName string    `json:"orgName"`
-	Role    OrgRole   `json:"role"`
-}
-
-// Principal is the authenticated caller of a request: who they are, which
-// organization they are currently acting in, and what that lets them do.
+// Principal is the authenticated caller of a request: who they are, the
+// installation's organization they act in, and what that lets them do.
 type Principal struct {
 	User User `json:"user"`
 	// Org is never nil: nobody is signed in outside the installation's organization.
@@ -97,18 +89,12 @@ type Principal struct {
 	TokenProjects []string `json:"-"`
 	// Proof is how a browser session was opened; empty for an API token.
 	Proof Proof `json:"-"`
-	// MustEnrol holds a session to setting up a second factor, which its
-	// organization requires of the person and they do not have.
+	// MustEnrol holds a session to setting up a second factor, which the
+	// installation requires of the person and they do not have.
 	MustEnrol bool `json:"mustEnrol,omitempty"`
-	// SecondFactor says the person has one here: their own, or the identity
-	// provider's that signed this session in and that the organization trusts.
+	// SecondFactor says the person has one: their own, or that of the
+	// identity provider that signed this session in.
 	SecondFactor bool `json:"-"`
-}
-
-// ReachesEverywhere reports whether the caller may act beyond the organization
-// the session was opened for. A token is not a session, and is the person's.
-func (p *Principal) ReachesEverywhere() bool {
-	return p != nil && p.SessionID != nil && p.Proof.ReachesEverywhere()
 }
 
 // ScopeRead marks a token that may read everything its owner can and change
@@ -176,8 +162,6 @@ var (
 	// ErrEmailTaken is returned when signing up with an address that already
 	// has an account.
 	ErrEmailTaken = errors.New("an account with that email already exists")
-	// ErrSlugTaken is returned when an organization slug is already in use.
-	ErrSlugTaken = errors.New("that organization address is already taken")
 	// ErrNotAMember is returned when a user tries to act in an organization
 	// they do not belong to.
 	ErrNotAMember = errors.New("not a member of that organization")
@@ -195,12 +179,9 @@ var (
 	ErrInviteForSomeoneElse = errors.New("that invitation is for somebody else")
 	// ErrAlreadyMember is returned when inviting somebody who already works here.
 	ErrAlreadyMember = errors.New("that person is already a member")
-	// ErrSessionStaysHome is returned when a session proven for one organization
-	// tries to act beyond what that proof vouches for.
-	ErrSessionStaysHome = errors.New("this sign-in does not reach that organization")
 )
 
-// Proof is how a session was opened, which decides how far it reaches.
+// Proof is how a session was opened; an open door proves nothing about the person.
 type Proof string
 
 const (
@@ -210,10 +191,3 @@ const (
 	ProofOpenDoor   Proof = "open_door"
 	ProofOIDC       Proof = "oidc"
 )
-
-// ReachesEverywhere reports whether a session proven this way may act in every
-// organization the person belongs to. A mailed code and an open door vouch for
-// one; a provider's sign-in also reaches the organizations that trust the same
-// provider, and the ones the person owns, which session_reaches in the
-// database decides.
-func (p Proof) ReachesEverywhere() bool { return p == ProofPassword || p == ProofInvite }

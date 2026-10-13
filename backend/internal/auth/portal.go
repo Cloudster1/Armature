@@ -245,7 +245,7 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 			return ErrHasAccount
 		}
 
-		sessionID, sessionSecret, err := insertSession(ctx, tx, user.ID, &org.ID, ProofPortalCode, expiresAt, in.UserAgent, in.IP)
+		sessionID, sessionSecret, err := insertSession(ctx, tx, user.ID, ProofPortalCode, expiresAt, in.UserAgent, in.IP)
 		if err != nil {
 			return err
 		}
@@ -370,7 +370,7 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 			return ErrDoorAsksForCode
 		}
 
-		sessionID, sessionSecret, err := insertSessionFor(ctx, tx, user.ID, &org.ID, &deskID, ProofOpenDoor, expiresAt, in.UserAgent, in.IP)
+		sessionID, sessionSecret, err := insertSessionFor(ctx, tx, user.ID, &deskID, ProofOpenDoor, expiresAt, in.UserAgent, in.IP)
 		if err != nil {
 			return err
 		}

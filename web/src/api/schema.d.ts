@@ -253,7 +253,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Who is signed in, which organizations they belong to, and the token they called with; null for a browser session. */
+        /** Who is signed in, and the token they called with; null for a browser session. */
         get: operations["me"];
         put?: never;
         post?: never;
@@ -403,6 +403,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/oidc/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Begin signing in through the installation's identity provider. */
+        get: operations["oIDCStart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/oidc/{orgSlug}/start": {
         parameters: {
             query?: never;
@@ -410,8 +427,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Begin signing in through the organization's identity provider. */
-        get: operations["oIDCStart"];
+        /** Deprecated: sends the browser to /auth/oidc/start, whatever organization it names. Goes in the next release. */
+        get: operations["oIDCStartForOrganization"];
         put?: never;
         post?: never;
         delete?: never;
@@ -501,23 +518,6 @@ export interface paths {
         put?: never;
         /** Create an account and sign in: the first one sets the installation up and administers it, a later one joins it as a member where sign-up is open. */
         post: operations["signup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/switch-org": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Move the session to another organization. */
-        post: operations["switchOrg"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2274,7 +2274,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's identity provider, if one is configured. */
+        /** The installation's identity provider, if one is configured. */
         get: operations["getOIDCProvider"];
         /** Configure the identity provider. */
         put: operations["saveOIDCProvider"];
@@ -2314,41 +2314,6 @@ export interface paths {
         post?: never;
         /** Delete the organization and everything in it; owners only, with its address typed back. */
         delete: operations["deleteOrganization"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/organization/second-factor": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Who must have two-step sign-in here: off, admins or everyone. */
-        get: operations["orgSecondFactor"];
-        /** Require two-step sign-in of nobody, the administrators or everyone; a session without one is held until it is set up. */
-        put: operations["requireSecondFactor"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/organizations/demo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Make a demo organization with a production line in it, owned by the caller, and move the session there. From a browser session only. */
-        post: operations["createDemoOrganization"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3367,6 +3332,24 @@ export interface paths {
         head?: never;
         /** Rename a role or change what it grants; every grant of it follows. */
         patch: operations["updateRole"];
+        trace?: never;
+    };
+    "/settings/second-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who must have two-step sign-in: off, admins or everyone. */
+        get: operations["secondFactorRule"];
+        /** Require two-step sign-in of nobody, the administrators or everyone; a session without one is held until it is set up. */
+        put: operations["requireSecondFactor"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/shared/{token}": {
@@ -5616,14 +5599,6 @@ export interface components {
             name: string;
             role: string;
         };
-        Membership: {
-            /** Format: uuid */
-            orgId: string;
-            orgName: string;
-            orgSlug: string;
-            /** @enum {string} */
-            role: "owner" | "admin" | "member" | "customer";
-        };
         Milestone: {
             /** Format: date-time */
             closedAt?: string;
@@ -6466,7 +6441,6 @@ export interface components {
             ip: string;
             /** Format: date-time */
             lastSeenAt: string;
-            orgName: string;
             /** @enum {string} */
             proof: "password" | "invite" | "portal_code" | "open_door" | "oidc";
             userAgent: string;
@@ -6758,9 +6732,6 @@ export interface components {
             name: string;
             statusIds?: string[];
             wipLimit?: number;
-        };
-        SwitchOrgRequest: {
-            slug: string;
         };
         Tag: {
             description?: string;
@@ -7880,7 +7851,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         limits: components["schemas"]["Limits"];
-                        organizations: components["schemas"]["Membership"][];
                         principal: components["schemas"]["Principal"];
                         token: components["schemas"]["APIToken"] | null;
                     };
@@ -8285,6 +8255,36 @@ export interface operations {
                 next?: string;
             };
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found: the browser is sent on. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    oIDCStartForOrganization: {
+        parameters: {
+            query?: {
+                /** @description Where to land afterwards. */
+                next?: string;
+            };
+            header?: never;
             path: {
                 orgSlug: string;
             };
@@ -8513,41 +8513,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         principal: components["schemas"]["Principal"];
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    switchOrg: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SwitchOrgRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        organization: components["schemas"]["Org"];
                     };
                 };
             };
@@ -13559,106 +13524,6 @@ export interface operations {
             };
         };
     };
-    orgSecondFactor: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        require: "off" | "admins" | "everyone";
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    requireSecondFactor: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SecondFactorRuleRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        require: "off" | "admins" | "everyone";
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    createDemoOrganization: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        organization: components["schemas"]["Org"];
-                        projectKey: string;
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
     listPermissions: {
         parameters: {
             query?: never;
@@ -16712,6 +16577,74 @@ export interface operations {
                 content: {
                     "application/json": {
                         role: components["schemas"]["Definition"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    secondFactorRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        require: "off" | "admins" | "everyone";
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    requireSecondFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecondFactorRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        require: "off" | "admins" | "everyone";
                     };
                 };
             };

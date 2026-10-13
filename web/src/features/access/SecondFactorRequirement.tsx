@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useRequireSecondFactor, useSecondFactorRule, type SecondFactorRule } from "@/api/secondFactor";
 import { Button, Card, ErrorBanner, SectionTitle, Select, useToast } from "@/components/ui";
 
-const ruleWords: Record<SecondFactorRule, string> = { off: "Nobody", admins: "Owners and administrators", everyone: "Everyone" };
+const ruleWords: Record<SecondFactorRule, string> = { off: "Off", admins: "For administrators", everyone: "For everyone" };
 
 /**
- * Who must have two-step sign-in here. Somebody without it is held to setting
- * it up; a sign-in through a provider this organization trusts brings its own.
+ * Who must have two-step sign-in. Somebody without it is held to setting it up;
+ * a sign-in through the identity provider brings its own.
  */
 export function SecondFactorRequirement() {
   const { data, error } = useSecondFactorRule();
@@ -26,7 +26,7 @@ export function SecondFactorRequirement() {
         {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
         {current && (
           <>
-            <Select label="Require it of" value={draft ?? current} onChange={(e) => setDraft(e.target.value as SecondFactorRule)}>
+            <Select label="Require two-step sign-in" value={draft ?? current} onChange={(e) => setDraft(e.target.value as SecondFactorRule)}>
               {(Object.keys(ruleWords) as SecondFactorRule[]).map((rule) => (
                 <option key={rule} value={rule}>
                   {ruleWords[rule]}

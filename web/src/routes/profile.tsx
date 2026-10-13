@@ -3,7 +3,7 @@ import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { LOCALES, MY_DATA_HREF, useChangeMyPassword, useEraseMe, useMe, useRemoveAvatar, useUpdateProfile, useUploadAvatar } from "@/api/auth";
 import { NOTIFICATION_KINDS, useNotificationPreferences, useSaveNotificationPreferences, type NotificationPreferences } from "@/api/notifications";
-import { Avatar, Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Page, PageHeader, SectionTitle, Select, Tag, useToast } from "@/components/ui";
+import { Avatar, Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Page, PageHeader, SectionTitle, Select, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Icon } from "@/components/icons";
 import { AVATAR_MAX_BYTES } from "@/config";
@@ -163,18 +163,6 @@ function ProfilePage() {
       <YourWeek userId={user.id} />
 
       <YourAbsences userId={user.id} />
-
-      <section className="mt-8">
-        <SectionTitle className="mb-2">Organizations</SectionTitle>
-        <Card className="divide-y divide-border">
-          {(data?.organizations ?? []).map((org) => (
-            <div key={org.orgId} className="flex items-center gap-3 px-4 py-2.5 text-sm" data-membership={org.orgSlug}>
-              <span className="min-w-0 flex-1 truncate text-ink">{org.orgName}</span>
-              <Tag className="capitalize">{org.role}</Tag>
-            </div>
-          ))}
-        </Card>
-      </section>
 
       <YourData name={user.name} />
     </Page>

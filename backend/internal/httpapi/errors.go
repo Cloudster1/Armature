@@ -164,8 +164,6 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, auth.ErrSignupClosed):
 		return &APIError{Status: http.StatusForbidden, Code: "signup_closed",
 			Message: "Sign-up is closed here. Ask an administrator to invite you."}
-	case errors.Is(err, auth.ErrSlugTaken):
-		return &APIError{Status: http.StatusConflict, Code: "slug_taken", Message: auth.ErrSlugTaken.Error()}
 	case errors.Is(err, auth.ErrNotAMember):
 		return ErrNotFound("That organization was not found.")
 	case errors.Is(err, auth.ErrInviteInvalid):
@@ -181,8 +179,6 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, auth.ErrAlreadyMember):
 		return &APIError{Status: http.StatusConflict, Code: "already_member",
 			Message: "That person is already a member here. Change what they may do under Access instead."}
-	case errors.Is(err, auth.ErrSessionStaysHome):
-		return sessionBound(http.StatusConflict)
 	case errors.Is(err, auth.ErrAddressInUse):
 		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: capitalize(auth.ErrAddressInUse.Error()) + "."}
 	case errors.Is(err, auth.ErrNoSuchUser):
@@ -402,9 +398,7 @@ func moreAPIError(err error) *APIError {
 	case errors.Is(err, attachment.ErrNoObject):
 		return &APIError{Status: http.StatusBadGateway, Code: "object_missing", Message: capitalize(attachment.ErrNoObject.Error()) + "."}
 	case errors.Is(err, oidc.ErrNotConfigured):
-		// One answer for "no such organization" and "no provider", so the
-		// sign-in page cannot be used to enumerate slugs.
-		return ErrNotFound("Single sign-on is not set up for that organization.")
+		return ErrNotFound("Single sign-on is not set up here. Sign in with your password, or ask an administrator to set it up.")
 	case errors.Is(err, git.ErrNotFound):
 		return ErrNotFound("That repository was not found.")
 	case errors.Is(err, git.ErrNameTaken):

@@ -7,7 +7,7 @@ import { createQueryClient } from "./queryClient";
 // A session can end behind the page's back: signed out in another tab, or
 // expired. The next request that is refused must take the person to sign in.
 
-const signedIn = { principal: { user: { id: "u1", name: "Ada" } }, organizations: [] };
+const signedIn = { principal: { user: { id: "u1", name: "Ada" } } };
 
 // The codes the API answers with: "unauthorized" is a request with no session.
 function refused(status: number, code = status === 401 ? "unauthorized" : "forbidden") {

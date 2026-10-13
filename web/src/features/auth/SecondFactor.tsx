@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { encode } from "uqr";
 import { ApiError } from "@/api/client";
-import { useLogout, useMe, useSwitchOrg } from "@/api/auth";
+import { useLogout, useMe } from "@/api/auth";
 import {
   CHALLENGE_INVALID_CODE,
   useConfirmSecondFactor,
@@ -293,16 +293,13 @@ function Enrolled({ status }: { status: SecondFactorStatus }) {
 }
 
 /**
- * The whole screen for a session its organization holds until two-step sign-in
- * is set up: the setup itself, another organization, or the way out.
+ * The whole screen for a session the installation holds until two-step sign-in
+ * is set up: the setup itself, or the way out.
  */
 export function EnrolmentRequired() {
   const { data } = useMe();
-  const switchOrg = useSwitchOrg();
   const logout = useLogout();
   const navigate = useNavigate();
-  const here = data?.principal?.org?.slug;
-  const elsewhere = (data?.organizations ?? []).filter((org) => org.orgSlug !== here);
 
   return (
     <div className="flex min-h-full items-center justify-center px-4 py-12" data-enrolment-required>
@@ -310,24 +307,12 @@ export function EnrolmentRequired() {
         <Wordmark />
         <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">Set up two-step sign-in</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {data?.principal?.org?.name ?? "This organization"} asks everybody in your role to sign in with a code from an app on their phone as well as a password. Set it up to carry on.
+          {data?.principal?.org?.name ?? "Armature"} asks everybody in your role to sign in with a code from an app on their phone as well as a password. Set it up to carry on.
         </p>
         <Card className="mt-6 space-y-4 p-5">
           <Enrolment onDone={() => {}} />
         </Card>
         <div className="mt-4 flex flex-wrap gap-2">
-          {switchOrg.error && <ErrorBanner>{(switchOrg.error as Error).message}</ErrorBanner>}
-          {elsewhere.map((org) => (
-            <Button
-              key={org.orgId}
-              variant="secondary"
-              loading={switchOrg.isPending && switchOrg.variables === org.orgSlug}
-              data-org-choice={org.orgSlug}
-              onClick={() => switchOrg.mutate(org.orgSlug)}
-            >
-              Go to {org.orgName}
-            </Button>
-          ))}
           <Button variant="ghost" loading={logout.isPending} data-action="sign-out" onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}>
             Sign out
           </Button>

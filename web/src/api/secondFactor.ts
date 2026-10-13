@@ -113,7 +113,7 @@ export function useLoginSecondFactor() {
 export function useSecondFactorRule() {
   return useQuery({
     queryKey: ruleQueryKey,
-    queryFn: () => request<{ require: SecondFactorRule }>("/organization/second-factor"),
+    queryFn: () => request<{ require: SecondFactorRule }>("/settings/second-factor"),
   });
 }
 
@@ -121,7 +121,7 @@ export function useRequireSecondFactor() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (require: SecondFactorRule) =>
-      request<{ require: SecondFactorRule }>("/organization/second-factor", { method: "PUT", body: { require } }),
+      request<{ require: SecondFactorRule }>("/settings/second-factor", { method: "PUT", body: { require } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ruleQueryKey });
       void queryClient.invalidateQueries({ queryKey: meQueryKey });

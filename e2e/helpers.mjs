@@ -2499,8 +2499,8 @@ export async function keepProvider() {
  * back. It is put back by this page's person, who has one: the rule holds anybody else.
  */
 export async function keepSecondFactorRule(page) {
-  const { require: was } = await callAPI(page, "GET", "/organization/second-factor");
-  return () => callAPI(page, "PUT", "/organization/second-factor", { require: was });
+  const { require: was } = await callAPI(page, "GET", "/settings/second-factor");
+  return () => callAPI(page, "PUT", "/settings/second-factor", { require: was });
 }
 
 /** Takes a role and every grant of it away again, by the key the matrix shows. */

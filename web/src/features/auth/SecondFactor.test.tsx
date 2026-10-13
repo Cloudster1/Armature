@@ -26,7 +26,6 @@ vi.mock("@/api/secondFactor", async () => {
   };
 });
 
-const switchOrg = vi.fn();
 const logout = vi.fn();
 vi.mock("@/api/auth", async () => {
   const actual = await vi.importActual<typeof import("@/api/auth")>("@/api/auth");
@@ -41,7 +40,6 @@ vi.mock("@/api/auth", async () => {
         ],
       },
     }),
-    useSwitchOrg: () => ({ ...idle, mutate: switchOrg }),
     useLogout: () => ({ ...idle, mutate: logout }),
   };
 });

@@ -91,7 +91,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 }
 
 // passwordPrincipal is who a password sign-in opens a session for, in the
-// organization they joined first; with none left there is nobody to sign in.
+// person's organization; with none left there is nobody to sign in.
 func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Principal, error) {
 	var p Principal
 	err := tx.QueryRow(ctx, `
@@ -101,29 +101,28 @@ func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Prin
 	if err != nil {
 		return nil, fmt.Errorf("read the account: %w", err)
 	}
-	var m Membership
+	var org Org
 	err = tx.QueryRow(ctx, `
 		SELECT o.id, o.slug, o.name, m.org_role
 		FROM org_member m
 		JOIN org o ON o.id = m.org_id
 		WHERE m.user_id = $1 AND o.archived_at IS NULL
-		ORDER BY m.created_at LIMIT 1`, userID,
-	).Scan(&m.OrgID, &m.OrgSlug, &m.OrgName, &m.Role)
+		`+firstJoined, userID,
+	).Scan(&org.ID, &org.Slug, &org.Name, &p.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrSwitchedOff
 	}
 	if err != nil {
-		return nil, fmt.Errorf("read the first organization: %w", err)
+		return nil, fmt.Errorf("read the person's organization: %w", err)
 	}
-	p.Org = &Org{ID: m.OrgID, Slug: m.OrgSlug, Name: m.OrgName}
-	p.Role = m.Role
+	p.Org = &org
 	return &p, nil
 }
 
 // openPasswordSession opens the session a proven password sign-in gets and
 // records the sign-in.
 func openPasswordSession(ctx context.Context, tx db.DBTX, p *Principal, expiresAt time.Time, userAgent, ip string) (string, error) {
-	sessionID, secret, err := insertSession(ctx, tx, p.User.ID, &p.Org.ID, ProofPassword, expiresAt, userAgent, ip)
+	sessionID, secret, err := insertSession(ctx, tx, p.User.ID, ProofPassword, expiresAt, userAgent, ip)
 	if err != nil {
 		return "", err
 	}

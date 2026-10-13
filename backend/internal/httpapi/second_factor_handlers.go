@@ -12,7 +12,7 @@ import (
 )
 
 // A second factor for password sign-in: an authenticator app, recovery codes
-// for when the phone is gone, and an organization's rule about who needs one.
+// for when the phone is gone, and the installation's rule about who needs one.
 
 // secondFactorRoutes registers a person's own second factor. Session only: a
 // token cannot add or take away what guards the password.
@@ -28,8 +28,8 @@ func (s *Server) secondFactorRoutes(r chi.Router) {
 	})
 }
 
-// requireSecondFactor holds a session whose organization requires a second
-// factor of somebody without one: it may enrol, look, switch or leave.
+// requireSecondFactor holds a session the installation requires a second
+// factor of, for somebody without one: it may enrol, look or leave.
 func requireSecondFactor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := PrincipalFrom(r.Context())
@@ -38,7 +38,7 @@ func requireSecondFactor(next http.Handler) http.Handler {
 			return
 		}
 		respondError(w, r, &APIError{Status: http.StatusForbidden, Code: "second_factor_required",
-			Message: "This organization requires two-step sign-in. Set it up from the page you are shown, or switch to another organization."})
+			Message: "Two-step sign-in is required for your account. Set it up from the page you are shown, or sign out."})
 	})
 }
 
@@ -47,7 +47,7 @@ func reachableWhileHeld(r *http.Request) bool {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1")
 	switch {
 	case path == "/auth/me" && r.Method == http.MethodGet,
-		path == "/auth/logout", path == "/auth/switch-org", path == "/build",
+		path == "/auth/logout", path == "/build",
 		path == "/auth/me/second-factor", strings.HasPrefix(path, "/auth/me/second-factor/"),
 		// Somebody held may still end a session that is not theirs to keep.
 		path == "/auth/sessions", strings.HasPrefix(path, "/auth/sessions/"):
@@ -209,8 +209,8 @@ type secondFactorRuleRequest struct {
 	Require auth.SecondFactorRule `json:"require"`
 }
 
-func (s *Server) handleOrgSecondFactor(w http.ResponseWriter, r *http.Request) {
-	rule, err := s.Auth.OrgSecondFactor(r.Context())
+func (s *Server) handleSecondFactorRule(w http.ResponseWriter, r *http.Request) {
+	rule, err := s.Auth.SecondFactorRequirement(r.Context())
 	if err != nil {
 		respondError(w, r, err)
 		return

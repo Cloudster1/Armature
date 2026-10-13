@@ -22,11 +22,9 @@ var (
 
 // Session is one place a person is signed in, as they see it on their profile.
 type Session struct {
-	ID        uuid.UUID `json:"id"`
-	UserAgent string    `json:"userAgent"`
-	IP        string    `json:"ip"`
-	// OrgName is the organization the session acts in, empty before one is chosen.
-	OrgName    string    `json:"orgName"`
+	ID         uuid.UUID `json:"id"`
+	UserAgent  string    `json:"userAgent"`
+	IP         string    `json:"ip"`
 	Proof      Proof     `json:"proof"`
 	CreatedAt  time.Time `json:"createdAt"`
 	LastSeenAt time.Time `json:"lastSeenAt"`
@@ -39,10 +37,9 @@ func (s *Service) Sessions(ctx context.Context, userID, current uuid.UUID) ([]Se
 	var out []Session
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT s.id, COALESCE(s.user_agent, ''), COALESCE(host(s.ip), ''), COALESCE(o.name, ''),
+			SELECT s.id, COALESCE(s.user_agent, ''), COALESCE(host(s.ip), ''),
 			       s.proof, s.created_at, s.last_seen_at, s.id = $2
 			FROM user_session s
-			LEFT JOIN org o ON o.id = s.current_org_id AND o.archived_at IS NULL
 			WHERE s.user_id = $1 AND s.expires_at > now()
 			ORDER BY s.created_at DESC, s.id DESC`, userID, current)
 		if err != nil {
@@ -50,7 +47,7 @@ func (s *Service) Sessions(ctx context.Context, userID, current uuid.UUID) ([]Se
 		}
 		out, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Session, error) {
 			var x Session
-			err := row.Scan(&x.ID, &x.UserAgent, &x.IP, &x.OrgName, &x.Proof, &x.CreatedAt, &x.LastSeenAt, &x.Current)
+			err := row.Scan(&x.ID, &x.UserAgent, &x.IP, &x.Proof, &x.CreatedAt, &x.LastSeenAt, &x.Current)
 			return x, err
 		})
 		return err

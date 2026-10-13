@@ -29,20 +29,12 @@ export interface Principal {
   role?: OrgRole;
   /** The one desk a session that came in without a code may see. */
   portalDesk?: string;
-  /** The organization requires two-step sign-in of this person, who has not set it up yet. */
+  /** The installation requires two-step sign-in of this person, who has not set it up yet. */
   mustEnrol?: boolean;
-}
-
-export interface Membership {
-  orgId: string;
-  orgSlug: string;
-  orgName: string;
-  role: OrgRole;
 }
 
 interface MeResponse {
   principal: Principal;
-  organizations: Membership[] | null;
   /** What the server allows, so a file can be refused before it is sent. */
   limits?: { uploadBytes: number };
 }
@@ -59,18 +51,6 @@ export function useMe() {
     queryFn: () => request<MeResponse>("/auth/me"),
     retry: false,
     staleTime: 30_000,
-  });
-}
-
-/** Makes a demo organization with a production line in it and moves the session there. */
-export function useCreateDemoOrganization() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => request<{ organization: Org; projectKey: string }>("/organizations/demo", { method: "POST" }),
-    onSuccess: () => {
-      cacheCustomTheme(null);
-      queryClient.clear();
-    },
   });
 }
 
@@ -115,6 +95,9 @@ export function useLogin() {
     },
   });
 }
+
+/** Where single sign-on starts: the browser goes there itself, to follow the provider's redirects. */
+export const SSO_START = "/auth/oidc/start";
 
 /** Asks for a link to set a new password; the answer is the same for every address. */
 export function useRequestPasswordReset() {
@@ -172,15 +155,6 @@ export function useDeleteOrganization() {
   });
 }
 
-export function useSwitchOrg() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (slug: string) =>
-      request<{ organization: Org }>("/auth/switch-org", { method: "POST", body: { slug } }),
-    onSuccess: () => queryClient.invalidateQueries(),
-  });
-}
-
 export interface ApiToken {
   id: string;
   name: string;
@@ -224,8 +198,6 @@ export interface ActiveSession {
   id: string;
   userAgent: string;
   ip: string;
-  /** The organization the session acts in; empty before one is chosen. */
-  orgName: string;
   proof: string;
   createdAt: string;
   lastSeenAt: string;

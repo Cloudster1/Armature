@@ -12,9 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/armature/armature/backend/internal/audit"
-	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
-	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/seal"
 	"github.com/armature/armature/backend/internal/tenant"
@@ -73,22 +71,26 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	return s.authenticateSession(ctx, secret)
 }
 
-// sessionPrincipalSQL resolves a session to the caller's role in its
-// organization; the joins are left so a lost membership can be told apart.
+// firstJoined orders a person's memberships so the one a session acts in comes
+// first: an installation gives each person one, the integration harness several.
+const firstJoined = `ORDER BY m.created_at, m.org_id LIMIT 1`
+
+// sessionPrincipalSQL resolves a session to the caller's role in the person's
+// organization, or the desk's for an open door; left joins tell a lost membership apart.
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
        u.id, u.email, u.name, u.timezone, u.locale, u.is_active, COALESCE(u.avatar_url, ''),
        o.id, o.slug, o.name, m.org_role, pp.id, pp.key,
-       EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL),
-       s.proof = 'oidc' AND (s.proof_org_id = o.id OR EXISTS (
-           SELECT 1 FROM oidc_provider home
-           JOIN oidc_provider here ON here.issuer = home.issuer
-           WHERE home.org_id = s.proof_org_id AND here.org_id = o.id AND home.enabled AND here.enabled))
+       EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)
 FROM user_session s
 JOIN app_user u ON u.id = s.user_id
-LEFT JOIN org o ON o.id = s.current_org_id AND o.archived_at IS NULL
-LEFT JOIN org_member m ON m.org_id = o.id AND m.user_id = u.id
 LEFT JOIN project pp ON pp.id = s.portal_project_id
+LEFT JOIN LATERAL (
+    SELECT m.org_id, m.org_role FROM org_member m
+    JOIN org mo ON mo.id = m.org_id AND mo.archived_at IS NULL
+    WHERE m.user_id = u.id AND (pp.id IS NULL OR m.org_id = pp.org_id)
+    ` + firstJoined + `) m ON true
+LEFT JOIN org o ON o.id = m.org_id
 WHERE s.token_hash = $1 AND s.expires_at > now()`
 
 func (s *Service) authenticateSession(ctx context.Context, secret string) (*Principal, error) {
@@ -104,17 +106,16 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 		deskKey    *string
 		rule       SecondFactorRule
 		enrolled   bool
-		vouched    bool
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
 			&sessionID, &lastSeen, &p.Proof,
 			&p.User.ID, &p.User.Email, &p.User.Name, &p.User.Timezone, &p.User.Locale, &p.User.IsActive, &p.User.AvatarURL,
 			&orgID, &orgSlug, &orgName, &memberRole, &deskID, &deskKey,
-			&enrolled, &vouched,
+			&enrolled,
 		)
-		// Somebody with a factor, or vouched for, is held by no rule.
-		if err != nil || orgID == nil || enrolled || vouched {
+		// Somebody with a factor, or signed in by the provider, is held by no rule.
+		if err != nil || orgID == nil || enrolled || p.Proof == ProofOIDC {
 			return err
 		}
 		read, err := installation.SecondFactor(tenant.WithOrg(ctx, tenant.Org{ID: *orgID}), tx)
@@ -139,9 +140,9 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 	p.SessionID = &sessionID
 	p.Org = &Org{ID: *orgID, Slug: derefString(orgSlug), Name: derefString(orgName)}
 	p.Role = OrgRole(*memberRole)
-	// A provider that signed the session in and is trusted here vouched
-	// for the person with whatever factor it asks for.
-	p.SecondFactor = enrolled || vouched
+	// The installation's one provider vouched for the person with whatever
+	// factor it asks for.
+	p.SecondFactor = enrolled || p.Proof == ProofOIDC
 	p.MustEnrol = rule.Covers(p.Role) && !p.SecondFactor
 	if deskID != nil {
 		p.PortalDeskID = deskID
@@ -222,115 +223,6 @@ func (s *Service) Logout(ctx context.Context, sessionID uuid.UUID) error {
 	return err
 }
 
-// Memberships lists the organizations a user belongs to, most recently joined
-// last, so that the first entry is a stable default organization.
-func (s *Service) Memberships(ctx context.Context, userID uuid.UUID) ([]Membership, error) {
-	var out []Membership
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `
-			SELECT o.id, o.slug, o.name, m.org_role
-			FROM org_member m
-			JOIN org o ON o.id = m.org_id
-			WHERE m.user_id = $1 AND o.archived_at IS NULL
-			ORDER BY m.created_at`, userID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var m Membership
-			if err := rows.Scan(&m.OrgID, &m.OrgSlug, &m.OrgName, &m.Role); err != nil {
-				return err
-			}
-			out = append(out, m)
-		}
-		return rows.Err()
-	})
-	return out, err
-}
-
-// CreateOrganization makes a second organization for somebody who already has
-// an account, owned by them, ready for a project, under the same policy that
-// decides whether anybody may sign up at all.
-func (s *Service) CreateOrganization(ctx context.Context, userID uuid.UUID, name, slug, ip string) (*Org, db.LSN, error) {
-	if s.signupPolicy() == SignupClosed {
-		return nil, 0, ErrSignupClosed
-	}
-	name = strings.TrimSpace(name)
-	slug = strings.TrimSpace(strings.ToLower(slug))
-	if name == "" || slug == "" {
-		return nil, 0, errors.New("an organization needs a name and an address")
-	}
-	var org Org
-	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var orgID uuid.UUID
-		err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, slug, name).Scan(&orgID)
-		if isUniqueViolation(err, "org_slug_key") {
-			return ErrSlugTaken
-		}
-		if err != nil {
-			return fmt.Errorf("create organization: %w", err)
-		}
-		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, orgID, userID); err != nil {
-			return fmt.Errorf("create membership: %w", err)
-		}
-		if err := grantJoiningRole(ctx, tx, orgID, userID, RoleOwner); err != nil {
-			return err
-		}
-		if _, err := bootstrap.Org(ctx, tx, orgID); err != nil {
-			return fmt.Errorf("prepare organization: %w", err)
-		}
-		org = Org{ID: orgID, Slug: slug, Name: name}
-		if err := writeAudit(ctx, tx, orgID, userID, "org.created", "org", &orgID, ip); err != nil {
-			return err
-		}
-		return events.Emit(ctx, tx, orgID, events.TopicOrgCreated, map[string]any{
-			"orgId": orgID, "orgSlug": slug, "orgName": name, "ownerId": userID,
-		})
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	return &org, lsn, nil
-}
-
-// SwitchOrg points a session at another organization of the person's, when its
-// proof vouches for them there. The database decides that with the same
-// function its trigger applies, so the two cannot drift apart.
-func (s *Service) SwitchOrg(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, slug string) (*Org, db.LSN, error) {
-	var org Org
-	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		err := tx.QueryRow(ctx, `
-			SELECT o.id, o.slug, o.name
-			FROM org o
-			JOIN org_member m ON m.org_id = o.id AND m.user_id = $2
-			WHERE o.slug = $1 AND o.archived_at IS NULL`,
-			slug, userID,
-		).Scan(&org.ID, &org.Slug, &org.Name)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotAMember
-		}
-		if err != nil {
-			return err
-		}
-		var reaches bool
-		if err := tx.QueryRow(ctx, `
-			SELECT session_reaches(proof, proof_org_id, user_id, $2) FROM user_session WHERE id = $1`,
-			sessionID, org.ID).Scan(&reaches); err != nil {
-			return err
-		}
-		if !reaches {
-			return ErrSessionStaysHome
-		}
-		_, err = tx.Exec(ctx, `UPDATE user_session SET current_org_id = $2 WHERE id = $1`, sessionID, org.ID)
-		return err
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	return &org, lsn, nil
-}
-
 // grantJoiningRole gives somebody the role their standing implies as they join.
 //
 // It runs in the same transaction as the membership, so there is never a moment
@@ -358,23 +250,23 @@ func grantJoiningRole(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, 
 // insertSession creates a session row and returns its id and secret. The secret
 // exists only in this return value and the user's cookie; the database stores
 // nothing but its digest.
-func insertSession(ctx context.Context, tx db.DBTX, userID uuid.UUID, orgID *uuid.UUID, proof Proof, expiresAt time.Time, userAgent, ip string) (uuid.UUID, string, error) {
-	return insertSessionFor(ctx, tx, userID, orgID, nil, proof, expiresAt, userAgent, ip)
+func insertSession(ctx context.Context, tx db.DBTX, userID uuid.UUID, proof Proof, expiresAt time.Time, userAgent, ip string) (uuid.UUID, string, error) {
+	return insertSessionFor(ctx, tx, userID, nil, proof, expiresAt, userAgent, ip)
 }
 
 // insertSessionFor is insertSession with a desk: a session that came through
 // an open door belongs to that desk and sees nothing else.
-func insertSessionFor(ctx context.Context, tx db.DBTX, userID uuid.UUID, orgID, portalProject *uuid.UUID, proof Proof, expiresAt time.Time, userAgent, ip string) (uuid.UUID, string, error) {
+func insertSessionFor(ctx context.Context, tx db.DBTX, userID uuid.UUID, portalProject *uuid.UUID, proof Proof, expiresAt time.Time, userAgent, ip string) (uuid.UUID, string, error) {
 	secret, digest, err := GenerateToken()
 	if err != nil {
 		return uuid.Nil, "", err
 	}
 	var id uuid.UUID
 	err = tx.QueryRow(ctx, `
-		INSERT INTO user_session (user_id, token_hash, current_org_id, proof_org_id, user_agent, ip, expires_at, portal_project_id, proof)
-		VALUES ($1, $2, $3, $3, NULLIF($4, ''), NULLIF($5, '')::inet, $6, $7, $8)
+		INSERT INTO user_session (user_id, token_hash, user_agent, ip, expires_at, portal_project_id, proof)
+		VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, '')::inet, $5, $6, $7)
 		RETURNING id`,
-		userID, digest, orgID, userAgent, ip, expiresAt, portalProject, string(proof),
+		userID, digest, userAgent, ip, expiresAt, portalProject, string(proof),
 	).Scan(&id)
 	if err != nil {
 		return uuid.Nil, "", fmt.Errorf("create session: %w", err)

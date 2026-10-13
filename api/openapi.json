@@ -1105,7 +1105,7 @@
       },
       "get": {
         "operationId": "me",
-        "summary": "Who is signed in, which organizations they belong to, and the token they called with; null for a browser session.",
+        "summary": "Who is signed in, and the token they called with; null for a browser session.",
         "tags": [
           "auth"
         ],
@@ -1119,12 +1119,6 @@
                   "properties": {
                     "limits": {
                       "$ref": "#/components/schemas/Limits"
-                    },
-                    "organizations": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Membership"
-                      }
                     },
                     "principal": {
                       "$ref": "#/components/schemas/Principal"
@@ -1142,7 +1136,6 @@
                   },
                   "required": [
                     "limits",
-                    "organizations",
                     "principal",
                     "token"
                   ]
@@ -1617,10 +1610,44 @@
         }
       }
     },
-    "/auth/oidc/{orgSlug}/start": {
+    "/auth/oidc/start": {
       "get": {
         "operationId": "oIDCStart",
-        "summary": "Begin signing in through the organization's identity provider.",
+        "summary": "Begin signing in through the installation's identity provider.",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "next",
+            "in": "query",
+            "description": "Where to land afterwards.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found: the browser is sent on."
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/oidc/{orgSlug}/start": {
+      "get": {
+        "operationId": "oIDCStartForOrganization",
+        "summary": "Deprecated: sends the browser to /auth/oidc/start, whatever organization it names. Goes in the next release.",
         "tags": [
           "auth"
         ],
@@ -1901,55 +1928,6 @@
                   },
                   "required": [
                     "principal"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/switch-org": {
-      "post": {
-        "operationId": "switchOrg",
-        "summary": "Move the session to another organization.",
-        "tags": [
-          "auth"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SwitchOrgRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "organization": {
-                      "$ref": "#/components/schemas/Org"
-                    }
-                  },
-                  "required": [
-                    "organization"
                   ]
                 }
               }
@@ -9312,7 +9290,7 @@
     "/oidc-provider": {
       "get": {
         "operationId": "getOIDCProvider",
-        "summary": "The organization's identity provider, if one is configured.",
+        "summary": "The installation's identity provider, if one is configured.",
         "tags": [
           "access"
         ],
@@ -9453,145 +9431,6 @@
         "responses": {
           "204": {
             "description": "No Content"
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/organization/second-factor": {
-      "get": {
-        "operationId": "orgSecondFactor",
-        "summary": "Who must have two-step sign-in here: off, admins or everyone.",
-        "tags": [
-          "users"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "require": {
-                      "type": "string",
-                      "enum": [
-                        "off",
-                        "admins",
-                        "everyone"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "require"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "requireSecondFactor",
-        "summary": "Require two-step sign-in of nobody, the administrators or everyone; a session without one is held until it is set up.",
-        "tags": [
-          "users"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SecondFactorRuleRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "require": {
-                      "type": "string",
-                      "enum": [
-                        "off",
-                        "admins",
-                        "everyone"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "require"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/organizations/demo": {
-      "post": {
-        "operationId": "createDemoOrganization",
-        "summary": "Make a demo organization with a production line in it, owned by the caller, and move the session there. From a browser session only.",
-        "tags": [
-          "auth"
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "organization": {
-                      "$ref": "#/components/schemas/Org"
-                    },
-                    "projectKey": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "organization",
-                    "projectKey"
-                  ]
-                }
-              }
-            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -14579,6 +14418,102 @@
                   },
                   "required": [
                     "role"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/second-factor": {
+      "get": {
+        "operationId": "secondFactorRule",
+        "summary": "Who must have two-step sign-in: off, admins or everyone.",
+        "tags": [
+          "users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "require": {
+                      "type": "string",
+                      "enum": [
+                        "off",
+                        "admins",
+                        "everyone"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "require"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "requireSecondFactor",
+        "summary": "Require two-step sign-in of nobody, the administrators or everyone; a session without one is held until it is set up.",
+        "tags": [
+          "users"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorRuleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "require": {
+                      "type": "string",
+                      "enum": [
+                        "off",
+                        "admins",
+                        "everyone"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "require"
                   ]
                 }
               }
@@ -22897,36 +22832,6 @@
           "role"
         ]
       },
-      "Membership": {
-        "type": "object",
-        "properties": {
-          "orgId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "orgName": {
-            "type": "string"
-          },
-          "orgSlug": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "owner",
-              "admin",
-              "member",
-              "customer"
-            ]
-          }
-        },
-        "required": [
-          "orgId",
-          "orgSlug",
-          "orgName",
-          "role"
-        ]
-      },
       "Milestone": {
         "type": "object",
         "properties": {
@@ -26006,9 +25911,6 @@
             "type": "string",
             "format": "date-time"
           },
-          "orgName": {
-            "type": "string"
-          },
           "proof": {
             "type": "string",
             "enum": [
@@ -26027,7 +25929,6 @@
           "id",
           "userAgent",
           "ip",
-          "orgName",
           "proof",
           "createdAt",
           "lastSeenAt",
@@ -27052,17 +26953,6 @@
         },
         "required": [
           "name"
-        ]
-      },
-      "SwitchOrgRequest": {
-        "type": "object",
-        "properties": {
-          "slug": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "slug"
         ]
       },
       "Tag": {

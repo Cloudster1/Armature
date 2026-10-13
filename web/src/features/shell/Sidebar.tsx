@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
-import { MY_DATA_HREF, useEraseMe, useLogout, useMe, useSwitchOrg } from "@/api/auth";
+import { MY_DATA_HREF, useEraseMe, useLogout, useMe } from "@/api/auth";
 import { useProject, useProjects, type Feature, type Project } from "@/api/projects";
 import { hasFeature } from "@/features/projects/features";
 import { Avatar, Button, IconButton, Input, Menu, Tooltip } from "@/components/ui";
@@ -85,8 +85,6 @@ export function currentProjectKey(): string | undefined {
 export function Sidebar({ onNewIssue, onAsk }: { onNewIssue: () => void; onAsk?: () => void }) {
   const { data } = useMe();
   const principal = data?.principal;
-  const organizations = data?.organizations ?? [];
-  const switchOrg = useSwitchOrg();
   const [mode, toggleMode] = useSidebarMode();
   const open = mode === "open";
   const projectKey = useLastProject(currentProjectKey());
@@ -99,27 +97,9 @@ export function Sidebar({ onNewIssue, onAsk }: { onNewIssue: () => void; onAsk?:
       {open && (
         <nav className="flex shrink-0 flex-col border-r border-border bg-surface" style={{ width: SIDEBAR_WIDTH }} data-sidebar={mode} aria-label="Where you are">
           <div className="flex h-12 items-center gap-1 border-b border-border px-3">
-            {organizations.length > 1 ? (
-              <Menu
-                label="Organization"
-                trigger={(props) => (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={props.toggle}
-                    aria-haspopup={props["aria-haspopup"]}
-                    aria-expanded={props["aria-expanded"]}
-                    className="min-w-0 flex-1 justify-start px-1! font-semibold"
-                    iconRight={<Icon.ChevronDown className="shrink-0 text-ink-subtle" />}
-                  >
-                    <span className="truncate text-ink">{principal?.org?.name ?? "No organization"}</span>
-                  </Button>
-                )}
-                items={organizations.map((org) => ({ label: org.orgName, onSelect: () => switchOrg.mutate(org.orgSlug) }))}
-              />
-            ) : (
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{principal?.org?.name ?? "No organization"}</span>
-            )}
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
+              {principal?.org?.name}
+            </span>
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 py-3">

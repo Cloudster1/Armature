@@ -25,7 +25,6 @@ function signedInAsGerman(): QueryClient {
     principal: {
       user: { id: "u1", email: "greta@example.com", name: "Greta", timezone: "Europe/Berlin", locale: "de-DE", isActive: true },
     },
-    organizations: [],
   });
   return client;
 }

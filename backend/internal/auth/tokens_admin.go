@@ -278,7 +278,7 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 			return err
 		}
 
-		sessionID, sessionSecret, err := insertSession(ctx, tx, userID, &orgID, proof, expiresAt, in.UserAgent, in.IP)
+		sessionID, sessionSecret, err := insertSession(ctx, tx, userID, proof, expiresAt, in.UserAgent, in.IP)
 		if err != nil {
 			return err
 		}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/armature/armature/backend/internal/auth"
-	"github.com/armature/armature/backend/internal/demo"
 	"github.com/armature/armature/backend/internal/mail"
 )
 
@@ -168,28 +166,19 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	respondNoContent(w)
 }
 
-// handleMe returns the caller plus every organization they can switch to, which
-// is what the client needs to render the account menu in one request.
+// handleMe returns the caller and what the client needs beside them to render
+// the shell in one request.
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
-	memberships, err := s.Auth.Memberships(r.Context(), p.User.ID)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	if memberships == nil {
-		memberships = []auth.Membership{}
-	}
 	token, err := s.Auth.CallingToken(r.Context(), p)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{
-		"principal":     p,
-		"organizations": memberships,
-		"limits":        limits{UploadBytes: s.Attachments.MaxSize},
-		"token":         token,
+		"principal": p,
+		"limits":    limits{UploadBytes: s.Attachments.MaxSize},
+		"token":     token,
 	})
 }
 
@@ -197,68 +186,6 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 // file before sending it rather than after.
 type limits struct {
 	UploadBytes int64 `json:"uploadBytes"`
-}
-
-type switchOrgRequest struct {
-	Slug string `json:"slug"`
-}
-
-func (s *Server) handleSwitchOrg(w http.ResponseWriter, r *http.Request) {
-	p := PrincipalFrom(r.Context())
-	if p.SessionID == nil {
-		respondError(w, r, ErrBadRequest("Switching organizations is done from a browser session, not with an API token."))
-		return
-	}
-
-	var req switchOrgRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		respondError(w, r, err)
-		return
-	}
-
-	org, lsn, err := s.Auth.SwitchOrg(r.Context(), *p.SessionID, p.User.ID, req.Slug)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	NoteWrite(r.Context(), lsn)
-	respondJSON(w, r, http.StatusOK, map[string]any{"organization": org})
-}
-
-// handleCreateDemoOrganization makes a fresh organization for the caller,
-// fills it with the production line demo, and moves the session there, so
-// one press shows the product with an operation in it.
-func (s *Server) handleCreateDemoOrganization(w http.ResponseWriter, r *http.Request) {
-	p := PrincipalFrom(r.Context())
-	if p.SessionID == nil {
-		respondError(w, r, ErrBadRequest("A demo organization is made from a browser session, not with an API token."))
-		return
-	}
-	if !p.Role.IsAgent() {
-		respondError(w, r, ErrForbidden("The demo is for the people who run projects, not for the portal."))
-		return
-	}
-	suffix := strings.ToLower(uuid.NewString()[:8])
-	org, _, err := s.Auth.CreateOrganization(r.Context(), p.User.ID, "Demo factory", "demo-factory-"+suffix, clientIP(r))
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	inside := *p
-	inside.Org = &auth.Org{ID: org.ID, Slug: org.Slug, Name: org.Name}
-	inside.Role = auth.RoleOwner
-	made, err := demo.Factory(r.Context(), s.DB, &inside, s.Log)
-	if err != nil {
-		respondError(w, r, fmt.Errorf("fill the demo: %w", err))
-		return
-	}
-	switched, lsn, err := s.Auth.SwitchOrg(r.Context(), *p.SessionID, p.User.ID, org.Slug)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	NoteWrite(r.Context(), lsn)
-	respondJSON(w, r, http.StatusCreated, map[string]any{"organization": switched, "projectKey": made.Key})
 }
 
 type inviteRequest struct {

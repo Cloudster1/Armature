@@ -76,9 +76,9 @@ func (s *Server) organizationRoutes(r chi.Router) {
 		r.Put("/users/{userID}/password", s.handleSetUserPassword)
 		// For somebody who lost both the phone and the recovery codes.
 		r.Delete("/users/{userID}/second-factor", s.handleRemoveMembersSecondFactor)
-		// Who must have a second factor here.
-		r.Get("/organization/second-factor", s.handleOrgSecondFactor)
-		r.Put("/organization/second-factor", s.handleRequireSecondFactor)
+		// Who must have a second factor.
+		r.Get("/settings/second-factor", s.handleSecondFactorRule)
+		r.Put("/settings/second-factor", s.handleRequireSecondFactor)
 		// People the identity provider vouched for who are waiting to be let in.
 		r.Get("/users/requests", s.handleListJoinRequests)
 		r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)
