@@ -41,34 +41,35 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 	agent := api.client(t)
 	signedUp := agent.signup(t, h, "deskdoor")
 	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
-	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Door", "key": "DOR", "template": "service-desk"}), http.StatusCreated, "desk")
+	dor := deskKey("DOR")
+	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Door", "key": dor, "template": "service-desk"}), http.StatusCreated, "desk")
 
 	visitor := api.client(t)
 	address := h.email(t, "ada")
-	want(t, visitor.get("/api/v1/desk/"+slug), http.StatusOK, "the desk's door")
-	want(t, visitor.get("/api/v1/desk/nobody-here-"+uuid.NewString()[:8]), http.StatusNotFound, "no desk there")
-	want(t, visitor.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": "not an address"}), http.StatusUnprocessableEntity, "not an address")
+	want(t, visitor.get("/api/v1/desk?desk="+dor), http.StatusOK, "the desk's door")
+	want(t, visitor.get("/api/v1/desk?desk="+deskKey("NOB")), http.StatusNotFound, "no desk there")
+	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": "not an address", "desk": dor}), http.StatusUnprocessableEntity, "not an address")
 
-	want(t, visitor.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code is mailed")
-	want(t, visitor.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusTooManyRequests, "not another one straight away")
+	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": dor}), http.StatusAccepted, "a code is mailed")
+	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": dor}), http.StatusTooManyRequests, "not another one straight away")
 	code := api.mailer.lastCode(t)
 
 	for i := 0; i < 5; i++ {
-		want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": "000000"}), http.StatusUnauthorized, "a wrong code")
+		want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": "000000", "desk": dor}), http.StatusUnauthorized, "a wrong code")
 	}
-	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": code}), http.StatusUnauthorized, "the right code after five wrong ones is used up")
+	want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": code, "desk": dor}), http.StatusUnauthorized, "the right code after five wrong ones is used up")
 
 	// The cooldown is nudged aside through SQL, the way a minute passing would.
 	if _, err := h.super.Exec(context.Background(), `UPDATE portal_code SET requested_at = requested_at - interval '2 minutes' WHERE email = $1`, address); err != nil {
 		t.Fatal(err)
 	}
-	want(t, visitor.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a fresh code")
-	entered := want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusOK, "the code lets them in")
+	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": dor}), http.StatusAccepted, "a fresh code")
+	entered := want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t), "desk": dor}), http.StatusOK, "the code lets them in")
 	if role := principalField(t, entered, "principal", "role"); role != "customer" {
 		t.Errorf("role = %v, want customer", role)
 	}
 	requesterID := principalField(t, entered, "principal", "user", "id").(string)
-	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": code}), http.StatusUnauthorized, "a code is single use")
+	want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": code, "desk": dor}), http.StatusUnauthorized, "a code is single use")
 
 	// In: the portal works, the agents' side does not.
 	desks := list(t, want(t, visitor.get("/api/v1/portal/desks"), http.StatusOK, "desks"), "desks")
@@ -93,7 +94,7 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 	if len(api.mailer.sent) != before+1 {
 		t.Fatalf("the receipt was not mailed: %+v", api.mailer.sent)
 	}
-	if receipt := api.mailer.sent[len(api.mailer.sent)-1]; receipt.To != address || !strings.Contains(receipt.Subject, key) || !strings.Contains(receipt.Body, "/desk/"+slug+"?next=") {
+	if receipt := api.mailer.sent[len(api.mailer.sent)-1]; receipt.To != address || !strings.Contains(receipt.Subject, key) || !strings.Contains(receipt.Body, "/desk?next=") {
 		t.Errorf("receipt = %+v, want it addressed to the requester, naming the key, linking to the door", receipt)
 	}
 
@@ -102,8 +103,8 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 		if _, err := h.super.Exec(context.Background(), `DELETE FROM portal_code WHERE email = $1`, address); err != nil {
 			t.Fatal(err)
 		}
-		want(t, again.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code")
-		entered := want(t, again.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusOK, "in again")
+		want(t, again.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": dor}), http.StatusAccepted, "a code")
+		entered := want(t, again.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t), "desk": dor}), http.StatusOK, "in again")
 		if id := principalField(t, entered, "principal", "user", "id"); id != requesterID {
 			t.Errorf("a second entry made a second person: %v and %v", id, requesterID)
 		}
@@ -113,8 +114,8 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 	t.Run("an agent's address is refused after the mailbox is proven", func(t *testing.T) {
 		owner := principalField(t, signedUp, "principal", "user", "email").(string)
 		stranger := api.client(t)
-		want(t, stranger.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": owner}), http.StatusAccepted, "asking says nothing")
-		want(t, stranger.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": owner, "code": api.mailer.lastCode(t)}), http.StatusForbidden, "but the code is refused")
+		want(t, stranger.post("/api/v1/desk/codes", map[string]any{"email": owner, "desk": dor}), http.StatusAccepted, "asking says nothing")
+		want(t, stranger.post("/api/v1/desk/sessions", map[string]any{"email": owner, "code": api.mailer.lastCode(t), "desk": dor}), http.StatusForbidden, "but the code is refused")
 	})
 
 	t.Run("a deactivated person stays out", func(t *testing.T) {
@@ -128,8 +129,8 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 			t.Fatal(err)
 		}
 		gone := api.client(t)
-		want(t, gone.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code")
-		want(t, gone.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusForbidden, "refused")
+		want(t, gone.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": dor}), http.StatusAccepted, "a code")
+		want(t, gone.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t), "desk": dor}), http.StatusForbidden, "refused")
 	})
 
 	t.Run("codes are the organization's, through SQL", func(t *testing.T) {

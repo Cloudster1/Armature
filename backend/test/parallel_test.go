@@ -81,6 +81,7 @@ var sequentialTests = map[string]string{
 	"TestAnOpenDoorCannotHandOverAnAccount":                        "counts against the portal door brakes",
 	"TestAnOpenDoorCannotActForTheWholePerson":                     "counts against the portal door brakes",
 	"TestAPortalCodeCannotBeGuessedByAskingAgain":                  "counts against the portal door brakes",
+	"TestTheDoorIsNamedByItsDesk":                                  "counts against the portal door brakes",
 	"TestADeskTrustsDomainsNotAddresses":                           "counts against the portal door brakes and removes every @elsewhere.test account",
 	"TestDeskExtrasOverTheAPI":                                     "counts against the rating brake",
 	"TestADashboardIsPrintedAsAPDF":                                "counts against the PDF and shared link brakes",

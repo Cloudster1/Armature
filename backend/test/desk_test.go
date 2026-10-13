@@ -30,11 +30,15 @@ import (
 // service that observes its issues.
 func (ws *workspace) aDesk(t *testing.T, h *harness, name string) (*desk.Service, *project.Project) {
 	t.Helper()
+	return ws.aDeskKeyed(t, h, name, strings.ToUpper(name[:min(len(name), 3)]+uuid.New().String()[:3]))
+}
+
+// aDeskKeyed is aDesk under a key the test chooses.
+func (ws *workspace) aDeskKeyed(t *testing.T, h *harness, name, key string) (*desk.Service, *project.Project) {
+	t.Helper()
 	d := desk.NewService(h.cluster, ws.issues)
 	templates := template.NewService(h.cluster, ws.projects, ws.admin).WithDesk(d)
-	p, _, err := templates.Create(ws.ctx, "service-desk", project.CreateInput{
-		Name: name, Key: strings.ToUpper(name[:min(len(name), 3)] + uuid.New().String()[:3]),
-	}, ws.actor.UserID)
+	p, _, err := templates.Create(ws.ctx, "service-desk", project.CreateInput{Name: name, Key: key}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("create the desk: %v", err)
 	}
@@ -371,7 +375,7 @@ func TestACustomerIsMailedAboutTheirRequest(t *testing.T) {
 	if !strings.HasSuffix(mail.To, "@armature.test") && !strings.Contains(mail.To, "mailed") {
 		t.Errorf("mailed %q, want the customer", mail.To)
 	}
-	if !strings.Contains(mail.Subject, raised.Key) || !strings.Contains(mail.Body, "under Billing") || !strings.Contains(mail.Body, "http://app.test/desk/") || !strings.Contains(mail.Body, "next=%2Fportal%2Frequests%2F"+raised.Key) {
+	if !strings.Contains(mail.Subject, raised.Key) || !strings.Contains(mail.Body, "under Billing") || !strings.Contains(mail.Body, "http://app.test/desk?next=") || !strings.Contains(mail.Body, "next=%2Fportal%2Frequests%2F"+raised.Key) {
 		t.Errorf("mail = %+v, want the key, the words and a link to the request", mail)
 	}
 

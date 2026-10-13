@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanDomain, defaultCalendar, describeCalendar } from "./DeskExtras";
+import { cleanDomain, defaultCalendar, describeCalendar, doorAddress } from "./DeskExtras";
 
 describe("business hours", () => {
   it("start as nine to five on weekdays", () => {
@@ -17,5 +17,11 @@ describe("a trusted domain", () => {
   it("is written the way the server keeps it", () => {
     expect(cleanDomain(" @Acme.TEST ")).toBe("acme.test");
     expect(cleanDomain("")).toBe("");
+  });
+});
+
+describe("the door's address", () => {
+  it("names the desk and no organization", () => {
+    expect(doorAddress("https://desk.example", "ITD")).toBe("https://desk.example/desk?desk=ITD");
   });
 });

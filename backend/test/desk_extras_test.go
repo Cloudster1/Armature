@@ -282,7 +282,10 @@ func TestDeskExtrasOverTheAPI(t *testing.T) {
 	if err != nil || token == "" {
 		t.Fatalf("mint a rating token: %q %v", token, err)
 	}
-	want(t, anonymous.get("/api/v1/csat/"+token), http.StatusOK, "the rating page")
+	// The page names the desk the customer dealt with, not the organization.
+	if page := obj(t, want(t, anonymous.get("/api/v1/csat/"+token), http.StatusOK, "the rating page"), "rating"); page["desk"] != "Help" || page["orgName"] != nil {
+		t.Errorf("rating page = %v, want it to name the Help desk", page)
+	}
 	want(t, anonymous.post("/api/v1/csat/"+token, map[string]any{"score": 5, "comment": "Great"}), http.StatusOK, "rating")
 	want(t, anonymous.post("/api/v1/csat/"+token, map[string]any{"score": 1}), http.StatusConflict, "rating twice")
 	want(t, c.get("/api/v1/issues/"+issueKey+"/csat"), http.StatusOK, "the rating on the request")

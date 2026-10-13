@@ -1,10 +1,6 @@
 package auth
 
-import (
-	"testing"
-
-	"github.com/google/uuid"
-)
+import "testing"
 
 func TestParseAddressTidiesAndRefuses(t *testing.T) {
 	if got, err := ParseAddress("  Ada@Example.COM "); err != nil || got != "ada@example.com" {
@@ -18,16 +14,15 @@ func TestParseAddressTidiesAndRefuses(t *testing.T) {
 }
 
 func TestCodeDigestIsBoundToTheAddress(t *testing.T) {
-	org := uuid.New()
-	a := codeDigest(org, "ada@example.com", "123456")
-	if !EqualDigest(a, codeDigest(org, "ada@example.com", "123456")) {
+	a := codeDigest("ada@example.com", "123456")
+	if !EqualDigest(a, codeDigest("ada@example.com", "123456")) {
 		t.Error("the same code for the same address should digest the same")
 	}
-	if EqualDigest(a, codeDigest(org, "ben@example.com", "123456")) {
+	if EqualDigest(a, codeDigest("ben@example.com", "123456")) {
 		t.Error("the same code for another address should not")
 	}
-	if EqualDigest(a, codeDigest(uuid.New(), "ada@example.com", "123456")) {
-		t.Error("nor for another organization")
+	if EqualDigest(a, codeDigest("ada@example.com", "654321")) {
+		t.Error("nor another code for the same address")
 	}
 }
 

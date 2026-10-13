@@ -15,7 +15,6 @@ import {
   goto,
   inviteMember,
   mailFor,
-  orgSlug,
   rateRequest,
   ratingLinkFor,
   selectByLabel,
@@ -42,13 +41,12 @@ const REPLY_WAIT = 40_000;
 scenario("a request is followed by somebody who was only named", async ({ page }) => {
   const agent = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Helpdesk", "service-desk");
-  const slug = await orgSlug(page);
   await signOut(page);
 
   // The requester names a follower by address on their request.
   const address = unique("ada").email;
   const follower = unique("ben").email;
-  await enterDesk(page, slug, address);
+  await enterDesk(page, address, { desk: key });
   await goto(page, "/portal/new");
   await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
@@ -86,11 +84,10 @@ scenario("a request is followed by somebody who was only named", async ({ page }
 scenario("a reply by mail lands on the request", async ({ page }) => {
   const agent = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Helpdesk", "service-desk");
-  const slug = await orgSlug(page);
   await signOut(page);
 
   const address = unique("ada").email;
-  await enterDesk(page, slug, address);
+  await enterDesk(page, address, { desk: key });
   await goto(page, "/portal/new");
   await chooseDesk(page, key);
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
