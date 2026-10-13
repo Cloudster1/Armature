@@ -49,9 +49,6 @@ var (
 	// ErrNoDesk is returned for a door whose address names no desk that is
 	// there: an unknown key, an archived desk and a software project alike.
 	ErrNoDesk = errors.New("there is no service desk at that address")
-	// ErrDeskAmbiguous is returned when organizations share the key a door
-	// names, which an installation, holding one, never brings about.
-	ErrDeskAmbiguous = errors.New("more than one desk answers to that key")
 )
 
 // PortalCodeCooldown sets how long an address waits between codes. Development
@@ -121,8 +118,8 @@ func (s *Service) PortalDoor(ctx context.Context, deskKey string) (*Door, error)
 	return door, err
 }
 
-// findDoor resolves a door. A key is unique per organization only, so a key
-// two of them use is refused rather than guessed at.
+// findDoor resolves a door. A desk's key is a project's, which is unique in
+// the installation, so it names one desk or none.
 func findDoor(ctx context.Context, tx db.DBTX, deskKey string) (*Door, error) {
 	key := project.NormalizeKey(deskKey)
 	if key == "" {
@@ -135,34 +132,19 @@ func findDoor(ctx context.Context, tx db.DBTX, deskKey string) (*Door, error) {
 		}
 		return &Door{Installation: org.Name, orgID: org.ID}, nil
 	}
-	rows, err := tx.Query(ctx, `
+	d := Door{Desk: &DoorDesk{}}
+	err := tx.QueryRow(ctx, `
 		SELECT o.id, o.name, p.key, p.name, NOT p.portal_verifies
 		FROM project p JOIN org o ON o.id = p.org_id
-		WHERE p.key = $1 AND p.kind = 'service' AND p.archived_at IS NULL AND o.archived_at IS NULL
-		LIMIT 2`, key)
+		WHERE p.key = $1 AND p.kind = 'service' AND p.archived_at IS NULL AND o.archived_at IS NULL`, key,
+	).Scan(&d.orgID, &d.Installation, &d.Desk.Key, &d.Desk.Name, &d.Desk.Open)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNoDesk
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var found []Door
-	for rows.Next() {
-		d := Door{Desk: &DoorDesk{}}
-		if err := rows.Scan(&d.orgID, &d.Installation, &d.Desk.Key, &d.Desk.Name, &d.Desk.Open); err != nil {
-			return nil, err
-		}
-		found = append(found, d)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	switch len(found) {
-	case 0:
-		return nil, ErrNoDesk
-	case 1:
-		return &found[0], nil
-	default:
-		return nil, ErrDeskAmbiguous
-	}
+	return &d, nil
 }
 
 // IssuePortalCode makes a code for an address and returns it once, for the
@@ -201,7 +183,7 @@ func (s *Service) IssuePortalCode(ctx context.Context, door *Door, rawEmail stri
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO portal_code (org_id, email, code_hash, attempts, requested_at, expires_at, window_attempts, window_started)
 			VALUES ($1, $2, $3, 0, $4, $5, 0, $4)
-			ON CONFLICT (org_id, email) DO UPDATE
+			ON CONFLICT (email) DO UPDATE
 			SET code_hash = EXCLUDED.code_hash, attempts = 0, requested_at = EXCLUDED.requested_at, expires_at = EXCLUDED.expires_at,
 			    window_attempts = CASE WHEN portal_code.window_started < $6 THEN 0 ELSE portal_code.window_attempts END,
 			    window_started = CASE WHEN portal_code.window_started < $6 THEN EXCLUDED.window_started ELSE portal_code.window_started END`,

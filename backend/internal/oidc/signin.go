@@ -155,7 +155,7 @@ func syncGroups(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claime
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO user_group (org_id, name, source, external_ref)
 				VALUES ($1, $2, 'oidc', $2)
-				ON CONFLICT (org_id, external_ref) WHERE external_ref IS NOT NULL DO NOTHING`,
+				ON CONFLICT (external_ref) WHERE external_ref IS NOT NULL DO NOTHING`,
 				orgID, ref); err != nil {
 				return fmt.Errorf("create the group %q the provider named: %w", ref, err)
 			}

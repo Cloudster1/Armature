@@ -56,7 +56,7 @@ func save(ctx context.Context, tx db.DBTX, projectID, issueTypeID *uuid.UUID, pl
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO issue_arrangement (org_id, project_id, issue_type_id)
 		VALUES (current_org_id(), $1, $2)
-		ON CONFLICT (org_id, project_id, issue_type_id) DO UPDATE SET updated_at = now()
+		ON CONFLICT (project_id, issue_type_id) DO UPDATE SET updated_at = now()
 		RETURNING id`, projectID, issueTypeID).Scan(&id); err != nil {
 		return fmt.Errorf("keep the arrangement: %w", err)
 	}

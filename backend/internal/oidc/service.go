@@ -86,7 +86,7 @@ func (s *Service) Save(ctx context.Context, orgID uuid.UUID, in Provider, actor 
 			INSERT INTO oidc_provider
 			    (org_id, issuer, client_id, client_secret, groups_claim, scopes, create_groups, enabled)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (org_id) DO UPDATE SET
+			ON CONFLICT (one_row) DO UPDATE SET
 			    issuer = EXCLUDED.issuer,
 			    client_id = EXCLUDED.client_id,
 			    client_secret = CASE WHEN EXCLUDED.client_secret = ''

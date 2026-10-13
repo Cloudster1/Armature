@@ -67,7 +67,7 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID,
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO org_member (org_id, user_id, org_role)
 			VALUES ($1, $2, $3)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
+			ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
 			orgID, userID, string(role)); err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}
