@@ -31,9 +31,6 @@ const (
 	Refused Outcome = "refused"
 	// Unmatched is a mail that names no request.
 	Unmatched Outcome = "unmatched"
-	// Ambiguous is a key that fits a request in more than one organization
-	// the sender belongs to.
-	Ambiguous Outcome = "ambiguous"
 	// Empty is a reply with nothing left once the quotes went.
 	Empty Outcome = "empty"
 	// Skipped is a mail that was not for the desk at all: its own outbound,
@@ -203,14 +200,10 @@ func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, 
 	if err != nil {
 		return "", err
 	}
-	switch len(where) {
-	case 0:
+	if where == nil {
 		return n.finish(ctx, messageID, nil, Refused, "sender not on "+key, m, notYoursMessage(key, n.appURL))
-	case 1:
-	default:
-		return n.finish(ctx, messageID, nil, Ambiguous, key+" is a request in more than one organization", m, unmatchedMessage(n.appURL))
 	}
-	p := where[0]
+	p := *where
 	*out = &p
 	// A From header is a claim. When the receiving server checked it and found
 	// it false, the mail is nobody's word, least of all this sender's.
@@ -277,16 +270,15 @@ type placement struct {
 	commentID      *uuid.UUID
 }
 
-// place finds every organization in which the key is a request the sender may
-// reply to: as its reporter, as a follower, or as an agent. A key alone is
-// ambiguous across tenants, so the sender is part of the question.
-func (n *Inbound) place(ctx context.Context, key, from string) ([]placement, error) {
+// place finds the request the key names that the sender may reply to: as its
+// reporter, as a follower, or as an agent. Nil means there is none.
+func (n *Inbound) place(ctx context.Context, key, from string) (*placement, error) {
 	projectKey, num, err := issue.ParseKey(key)
 	if err != nil {
 		return nil, nil
 	}
 	out, err := n.placeWhere(ctx, `p.key = $2 AND i.key_num = $3`, from, projectKey, num)
-	if err != nil || len(out) > 0 {
+	if err != nil || out != nil {
 		return out, err
 	}
 	// A key the request had before it moved, as the subject of a mail sent
@@ -295,9 +287,10 @@ func (n *Inbound) place(ctx context.Context, key, from string) ([]placement, err
 		from, issue.FormatKey(projectKey, num))
 }
 
-// placeWhere asks place's question of the requests the condition names.
-func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...any) ([]placement, error) {
-	var out []placement
+// placeWhere asks place's question of the requests the condition names. A key
+// is one request in an installation; were it in two, the sender's first wins.
+func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...any) (*placement, error) {
+	var out *placement
 	err := n.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT p.org_id, i.id, p.key || '-' || i.key_num, u.id, m.org_role,
@@ -308,7 +301,8 @@ func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...an
 			JOIN issue i ON i.project_id = p.id
 			JOIN app_user u ON u.email = $1 AND u.is_active
 			JOIN org_member m ON m.org_id = p.org_id AND m.user_id = u.id
-			WHERE p.kind = 'service' AND i.request_type_id IS NOT NULL AND `+which, append([]any{from}, args...)...)
+			WHERE p.kind = 'service' AND i.request_type_id IS NOT NULL AND `+which+`
+			ORDER BY m.created_at, m.org_id`, append([]any{from}, args...)...)
 		if err != nil {
 			return err
 		}
@@ -321,8 +315,8 @@ func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...an
 			if err := rows.Scan(&p.orgID, &p.issueID, &p.key, &p.userID, &p.role, &p.reporter, &watching, &p.trustedDomains); err != nil {
 				return err
 			}
-			if p.reporter || watching || p.role.IsAgent() {
-				out = append(out, p)
+			if out == nil && (p.reporter || watching || p.role.IsAgent()) {
+				out = &p
 			}
 		}
 		return rows.Err()

@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
-import { useEnterOpenDoor, useEnterWithCode, useRequestCode, type OpenDoor } from "@/api/desk";
+import { useEnterOpenDoor, useEnterWithCode, useRequestCode, type DoorDesk } from "@/api/desk";
 import { Button, ErrorBanner, Field } from "@/components/ui";
 
 // A desk whose door is open takes a name and an address on trust; whoever
 // gives them is a customer of that desk alone and sent on to where they were going.
-export function OpenDoorForm({ slug, door, onEntered }: { slug: string; door: OpenDoor; onEntered: () => void }) {
+export function OpenDoorForm({ door, onEntered }: { door: DoorDesk; onEntered: () => void }) {
   const enter = useEnterOpenDoor();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -13,14 +13,14 @@ export function OpenDoorForm({ slug, door, onEntered }: { slug: string; door: Op
   function walkIn(event: FormEvent) {
     event.preventDefault();
     if (!email.trim()) return;
-    enter.mutate({ slug, desk: door.key, email: email.trim(), name: name.trim() }, { onSuccess: onEntered });
+    enter.mutate({ desk: door.key, email: email.trim(), name: name.trim() }, { onSuccess: onEntered });
   }
 
   const error = enter.error as Error | null;
   const fieldError = error instanceof ApiError ? error.fields.email : undefined;
 
   return (
-    <form onSubmit={walkIn} className="space-y-4" noValidate data-desk-entry={slug} data-open-door={door.key}>
+    <form onSubmit={walkIn} className="space-y-4" noValidate data-desk-entry={door.key} data-open-door={door.key}>
       <p className="text-sm text-ink-muted">{door.name} answers requests here. Say who you are and where to reach you; no code and no account are needed.</p>
       {error && !fieldError && <ErrorBanner>{error.message}</ErrorBanner>}
       <Field label="Your name" autoComplete="name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
@@ -37,7 +37,7 @@ export function OpenDoorForm({ slug, door, onEntered }: { slug: string; door: Op
  * code that was mailed to it. Whoever types the code is let in as a customer
  * of the desk and sent on to where they were going.
  */
-export function DeskEntryForm({ slug, deskName, onEntered }: { slug: string; deskName: string; onEntered: () => void }) {
+export function DeskEntryForm({ desk, deskName, onEntered }: { desk?: string; deskName: string; onEntered: () => void }) {
   const requestCode = useRequestCode();
   const enter = useEnterWithCode();
   const [email, setEmail] = useState("");
@@ -47,13 +47,13 @@ export function DeskEntryForm({ slug, deskName, onEntered }: { slug: string; des
   function sendCode(event: FormEvent) {
     event.preventDefault();
     if (!email.trim()) return;
-    requestCode.mutate({ slug, email: email.trim() }, { onSuccess: () => setSentTo(email.trim()) });
+    requestCode.mutate({ ...(desk ? { desk } : {}), email: email.trim() }, { onSuccess: () => setSentTo(email.trim()) });
   }
 
   function enterWithCode(event: FormEvent) {
     event.preventDefault();
     if (!code.trim()) return;
-    enter.mutate({ slug, email: sentTo, code: code.trim() }, { onSuccess: onEntered });
+    enter.mutate({ ...(desk ? { desk } : {}), email: sentTo, code: code.trim() }, { onSuccess: onEntered });
   }
 
   const error = (enter.error ?? requestCode.error) as Error | null;
@@ -61,7 +61,7 @@ export function DeskEntryForm({ slug, deskName, onEntered }: { slug: string; des
 
   if (!sentTo) {
     return (
-      <form onSubmit={sendCode} className="space-y-4" noValidate data-desk-entry={slug}>
+      <form onSubmit={sendCode} className="space-y-4" noValidate data-desk-entry={desk ?? ""}>
         <p className="text-sm text-ink-muted">
           {deskName} answers requests here. Say where to reach you and a code arrives by mail; no account is needed.
         </p>
@@ -84,7 +84,7 @@ export function DeskEntryForm({ slug, deskName, onEntered }: { slug: string; des
   }
 
   return (
-    <form onSubmit={enterWithCode} className="space-y-4" noValidate data-desk-entry={slug}>
+    <form onSubmit={enterWithCode} className="space-y-4" noValidate data-desk-entry={desk ?? ""}>
       <p className="text-sm text-ink-muted">
         A code is on its way to <span className="font-medium text-ink">{sentTo}</span>. It works for ten minutes.
       </p>

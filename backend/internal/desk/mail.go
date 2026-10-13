@@ -34,25 +34,26 @@ type Message struct {
 	Body    string
 }
 
-// requestLink is where a mail sends its reader: the desk's door, with the
-// request behind it. A reader with a session walks straight through.
-func requestLink(appURL, orgSlug, key string) string {
-	return fmt.Sprintf("%s/desk/%s?next=%s", strings.TrimRight(appURL, "/"), orgSlug, url.QueryEscape("/portal/requests/"+key))
+// requestLink is where a mail sends its reader: the installation's door, with
+// the request behind it. A reader with a session walks straight through.
+func requestLink(appURL, key string) string {
+	return fmt.Sprintf("%s/desk?next=%s", strings.TrimRight(appURL, "/"), url.QueryEscape("/portal/requests/"+key))
 }
 
-// codeMessage words the mail that carries a portal code.
-func codeMessage(orgName, code string) Message {
+// codeMessage words the mail that carries a portal code, named for the door
+// it was asked at: the desk, or the installation.
+func codeMessage(door, code string) Message {
 	return Message{
-		Subject: fmt.Sprintf("Your code for %s is %s", orgName, code),
+		Subject: fmt.Sprintf("Your code for %s is %s", door, code),
 		Body: fmt.Sprintf("Your code for %s is %s. It works for ten minutes.\n\nIf you did not ask for it, nobody can use it without this mail; you can ignore it.\n",
-			orgName, code),
+			door, code),
 	}
 }
 
 // CodeMail is the code, addressed. The API sends it in the request, since the
 // person is waiting for it and a one-time code has no business in the stream.
-func CodeMail(to, orgName, code string) Mail {
-	m := codeMessage(orgName, code)
+func CodeMail(to, door, code string) Mail {
+	m := codeMessage(door, code)
 	return Mail{To: to, Subject: m.Subject, Body: m.Body}
 }
 
@@ -139,7 +140,6 @@ type about struct {
 	id       uuid.UUID
 	key      string
 	summary  string
-	slug     string
 	reporter *uuid.UUID
 }
 
@@ -147,12 +147,11 @@ func (n *Notifier) lookup(ctx context.Context, key string) (*about, error) {
 	a := about{key: key}
 	err := n.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT i.id, i.summary, o.slug, i.reporter_id
+			SELECT i.id, i.summary, i.reporter_id
 			FROM issue i
 			JOIN project p ON p.id = i.project_id
-			JOIN org o ON o.id = p.org_id
 			WHERE p.key || '-' || i.key_num = $1 AND p.kind = 'service' AND i.request_type_id IS NOT NULL`, key).
-			Scan(&a.id, &a.summary, &a.slug, &a.reporter)
+			Scan(&a.id, &a.summary, &a.reporter)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -365,7 +364,7 @@ func (n *Notifier) Handle(ctx context.Context, e events.Event) error {
 	return nil
 }
 
-func (n *Notifier) link(a *about) string { return requestLink(n.appURL, a.slug, a.key) }
+func (n *Notifier) link(a *about) string { return requestLink(n.appURL, a.key) }
 
 // tell mails everyone on a request but the actor. Every address is tried; the
 // first failure comes back, and is final once anybody was mailed.

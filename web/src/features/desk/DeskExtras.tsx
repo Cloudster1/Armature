@@ -19,7 +19,6 @@ import {
 import { Button, Card, Checkbox, ErrorBanner, Field, IconButton, Input, SectionTitle, Switch, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
-import { useMe } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useProject, useUpdateProject } from "@/api/projects";
 
@@ -280,19 +279,22 @@ export function cleanDomain(raw: string): string {
   return raw.trim().replace(/^@/, "").toLowerCase();
 }
 
+/** Where people without an account come in: the desk's key, and no organization. */
+export function doorAddress(origin: string, projectKey: string): string {
+  return `${origin}/desk?${new URLSearchParams({ desk: projectKey })}`;
+}
+
 // The desk's public address, whether the door asks for a code, and the
 // domains it trusts. Off, an address is taken on trust, so whoever gives one
 // is a customer of this desk alone; the list narrows that to their domains.
 export function Door({ projectKey, editable }: { projectKey: string; editable: boolean }) {
   const { data } = useProject(projectKey);
-  const { data: session } = useMe();
   const update = useUpdateProject();
   const toast = useToast();
   const [draft, setDraft] = useState("");
   const project = data?.project;
-  const slug = session?.principal?.org?.slug;
-  if (!project || !slug) return null;
-  const address = `${window.location.origin}/desk/${slug}?desk=${project.key}`;
+  if (!project) return null;
+  const address = doorAddress(window.location.origin, project.key);
   const verifies = project.portalVerifies;
   const domains = project.trustedDomains ?? [];
   const domainError = update.error instanceof ApiError ? update.error.fields?.trustedDomains : undefined;

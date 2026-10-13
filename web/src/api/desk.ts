@@ -269,7 +269,8 @@ export interface Rating {
 export interface RatingPage {
   issueKey: string;
   summary: string;
-  orgName: string;
+  /** The desk's name, which is who the customer dealt with. */
+  desk: string;
   rated: boolean;
 }
 
@@ -369,41 +370,47 @@ export function useUnfollow() {
   );
 }
 
-// The door: a desk named by its organization, for people without an account.
+// The door for people without an account: the installation's, or a desk's
+// when its key is in the address.
 
-export interface DeskEntry {
-  name: string;
-  slug: string;
-  /** The desks that let people in without a code. */
-  open: OpenDoor[];
+export interface PortalDoor {
+  installation: string;
+  /** The desk the address names, if it names one. */
+  desk?: DoorDesk;
 }
 
-export interface OpenDoor {
+export interface DoorDesk {
   key: string;
   name: string;
+  /** Whether it lets people in without a code. */
+  open: boolean;
 }
 
-export function useDeskEntry(slug: string) {
+/** The query that names a desk's door, or nothing for the installation's. */
+function deskQuery(desk?: string): string {
+  return desk ? `?${new URLSearchParams({ desk })}` : "";
+}
+
+export function useDeskEntry(desk?: string) {
   return useQuery({
-    queryKey: [...deskQueryKey, "entry", slug],
-    queryFn: () => request<DeskEntry>(`/desk/${slug}`),
-    enabled: Boolean(slug),
+    queryKey: [...deskQueryKey, "entry", desk ?? ""],
+    queryFn: () => request<PortalDoor>(`/desk${deskQuery(desk)}`),
     retry: false,
   });
 }
 
 export function useRequestCode() {
   return useMutation({
-    mutationFn: ({ slug, email }: { slug: string; email: string }) =>
-      request<{ expiresInSeconds: number }>(`/desk/${slug}/codes`, { method: "POST", body: { email } }),
+    mutationFn: ({ desk, email }: { desk?: string; email: string }) =>
+      request<{ expiresInSeconds: number }>("/desk/codes", { method: "POST", body: { email, ...(desk ? { desk } : {}) } }),
   });
 }
 
 export function useEnterWithCode() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ slug, email, code }: { slug: string; email: string; code: string }) =>
-      request<{ principal: unknown }>(`/desk/${slug}/sessions`, { method: "POST", body: { email, code } }),
+    mutationFn: ({ desk, email, code }: { desk?: string; email: string; code: string }) =>
+      request<{ principal: unknown }>("/desk/sessions", { method: "POST", body: { email, code, ...(desk ? { desk } : {}) } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: meQueryKey }),
   });
 }
@@ -412,8 +419,8 @@ export function useEnterWithCode() {
 export function useEnterOpenDoor() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ slug, desk, email, name }: { slug: string; desk: string; email: string; name: string }) =>
-      request<{ principal: unknown }>(`/desk/${slug}/sessions`, { method: "POST", body: { email, name, desk } }),
+    mutationFn: ({ desk, email, name }: { desk: string; email: string; name: string }) =>
+      request<{ principal: unknown }>("/desk/sessions", { method: "POST", body: { email, name, desk } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: meQueryKey }),
   });
 }

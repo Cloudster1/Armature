@@ -928,6 +928,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/desk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The door a public address names: the installation, and the desk with whether it lets people in without a code. */
+        get: operations["deskEntry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desk/codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mail a one-time code to an address, at a desk's door or the installation's. */
+        post: operations["portalCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desk/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enter the portal with a mailed code, or with a name and address at a desk whose door is open. */
+        post: operations["portalSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/desk/{orgSlug}": {
         parameters: {
             query?: never;
@@ -935,8 +986,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The desk behind a public address, and which of its desks let people in without a code. */
-        get: operations["deskEntry"];
+        /** Deprecated: sends the caller to /desk, whatever organization it names. Goes in the next release. */
+        get: operations["deskEntryMoved"];
         put?: never;
         post?: never;
         delete?: never;
@@ -954,8 +1005,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Mail a one-time code to an address. */
-        post: operations["portalCode"];
+        /** Deprecated: sends the same request to /desk/codes, whatever organization it names. Goes in the next release. */
+        post: operations["portalCodeMoved"];
         delete?: never;
         options?: never;
         head?: never;
@@ -971,8 +1022,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Enter the portal with a mailed code, or with a name and address at a desk whose door is open. */
-        post: operations["portalSession"];
+        /** Deprecated: sends the same request to /desk/sessions, whatever organization it names. Goes in the next release. */
+        post: operations["portalSessionMoved"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5110,6 +5161,15 @@ export interface components {
             servers?: components["schemas"]["Server"][];
             tags?: components["schemas"]["Tag"][];
         };
+        Door: {
+            desk?: components["schemas"]["DoorDesk"];
+            installation: string;
+        };
+        DoorDesk: {
+            key: string;
+            name: string;
+            open: boolean;
+        };
         EdgeRequest: {
             description: string;
             /** Format: uuid */
@@ -5707,10 +5767,6 @@ export interface components {
             readAt?: string;
             title: string;
         };
-        OpenDoor: {
-            key: string;
-            name: string;
-        };
         Operation: {
             description?: string;
             operationId: string;
@@ -5865,6 +5921,7 @@ export interface components {
             useCalendar: boolean;
         };
         PortalCodeRequest: {
+            desk?: string;
             email: string;
         };
         PortalFollowRequest: {
@@ -6014,8 +6071,8 @@ export interface components {
             sentAt: string;
         };
         RatingPage: {
+            desk: string;
             issueKey: string;
-            orgName: string;
             rated: boolean;
             summary: string;
         };
@@ -9726,11 +9783,12 @@ export interface operations {
     };
     deskEntry: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgSlug: string;
+            query?: {
+                /** @description The desk's key. Without it, the installation's door. */
+                desk?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -9741,11 +9799,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        name: string;
-                        open: components["schemas"]["OpenDoor"][];
-                        slug: string;
-                    };
+                    "application/json": components["schemas"]["Door"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -9763,9 +9817,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                orgSlug: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -9800,9 +9852,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                orgSlug: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -9821,6 +9871,93 @@ export interface operations {
                         principal: components["schemas"]["Principal"];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deskEntryMoved: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Permanent Redirect: send the same request to the address in Location. */
+            308: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    portalCodeMoved: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Permanent Redirect: send the same request to the address in Location. */
+            308: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    portalSessionMoved: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Permanent Redirect: send the same request to the address in Location. */
+            308: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

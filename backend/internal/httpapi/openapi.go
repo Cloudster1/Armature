@@ -68,8 +68,9 @@ type operation struct {
 	// public routes need no session; binary ones answer with a file.
 	public bool
 	binary bool
-	// redirect routes answer with a Location header rather than a body.
-	redirect bool
+	// redirect routes answer with a Location header rather than a body; moved
+	// ones answer 308, so the same request, body and all, goes to the new address.
+	redirect, moved bool
 	// tool names the operation for an assistant and toolHelp is the sentence
 	// the model reads; empty means the operation is not offered as a tool.
 	tool, toolHelp string
@@ -163,6 +164,9 @@ func Spec() *openapi.Document {
 		}
 		if op.redirect {
 			o.Responses["302"] = &openapi.Response{Description: "Found: the browser is sent on."}
+		}
+		if op.moved {
+			o.Responses["308"] = &openapi.Response{Description: "Permanent Redirect: send the same request to the address in Location."}
 		}
 		o.Responses["default"] = &openapi.Response{Description: "An error, in the one shape every endpoint uses.",
 			Content: map[string]openapi.MediaType{"application/json": {Schema: errorSchema}}}
@@ -413,7 +417,7 @@ type Route struct {
 func Catalog() []Route {
 	out := make([]Route, 0, len(operations))
 	for _, op := range operations {
-		r := Route{Method: op.method, Path: op.path, Public: op.public, Binary: op.binary, Redirect: op.redirect}
+		r := Route{Method: op.method, Path: op.path, Public: op.public, Binary: op.binary, Redirect: op.redirect || op.moved}
 		r.ID = op.operationID()
 		for status := range op.responses {
 			r.Statuses = append(r.Statuses, status)

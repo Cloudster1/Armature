@@ -125,8 +125,8 @@ function AgentShell() {
 }
 
 /**
- * The portal's chrome: the organization, the two things a customer does, and
- * a way out. Nothing about projects, boards or settings, which are not theirs.
+ * The portal's chrome: the installation's name, the two things a customer
+ * does, and a way out. Nothing about projects, boards or settings, which are not theirs.
  */
 function PortalShell() {
   const { data } = useMe();

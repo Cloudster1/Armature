@@ -290,7 +290,8 @@ func toAPIError(err error) *APIError {
 		return ErrBadRequest("A board is either scrum or kanban.")
 	case errors.Is(err, template.ErrUnknown):
 		return ErrBadRequest("There is no project template by that name.")
-	case errors.Is(err, auth.ErrBadAddress), errors.Is(err, auth.ErrCodeTooSoon), errors.Is(err, auth.ErrCodeInvalid), errors.Is(err, auth.ErrHasAccount), errors.Is(err, auth.ErrDoorAsksForCode):
+	case errors.Is(err, auth.ErrBadAddress), errors.Is(err, auth.ErrCodeTooSoon), errors.Is(err, auth.ErrCodeInvalid), errors.Is(err, auth.ErrHasAccount), errors.Is(err, auth.ErrDoorAsksForCode),
+		errors.Is(err, auth.ErrNoDesk), errors.Is(err, auth.ErrDeskAmbiguous):
 		return portalEntryError(err)
 	case errors.Is(err, issue.ErrLinkNotFound):
 		return ErrNotFound("That link was not found.")

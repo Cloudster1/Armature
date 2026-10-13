@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { Link, createRoute, redirect } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { rootRoute } from "./root";
 import { AuthLayout } from "./auth";
@@ -9,36 +9,49 @@ import { EmptyState } from "@/components/ui";
 import { DeskEntryForm, OpenDoorForm } from "@/features/desk/DeskEntryForm";
 import { safePath } from "@/lib/path";
 
+type DoorSearch = { next?: string; desk?: string };
+
+function doorSearch(search: Record<string, unknown>): DoorSearch {
+  // Only a path of this application is followed; a mail must not be able to
+  // send a reader elsewhere.
+  const next = safePath(search.next);
+  const desk = typeof search.desk === "string" && search.desk ? search.desk : undefined;
+  return { ...(next ? { next } : {}), ...(desk ? { desk } : {}) };
+}
+
 /**
- * A desk's public door, named by its organization because nobody is signed in
- * to say which one. A visitor with a session is sent on at once; anyone else
- * proves a mail address and becomes a customer of the desk.
+ * The portal's public door, named by the desk in its address, or the
+ * installation's when it names none. A visitor with a session is sent on at
+ * once; anyone else proves a mail address and becomes a customer.
  */
 export const deskEntryRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/desk/$orgSlug",
-  validateSearch: (search: Record<string, unknown>): { next?: string; desk?: string } => {
-    // Only a path of this application is followed; a mail must not be able to
-    // send a reader elsewhere.
-    const next = safePath(search.next);
-    const desk = typeof search.desk === "string" && search.desk ? search.desk : undefined;
-    return { ...(next ? { next } : {}), ...(desk ? { desk } : {}) };
-  },
+  path: "/desk",
+  validateSearch: doorSearch,
   component: DeskEntryPage,
 });
 
+/** The address that named an organization, sent on to the desk's own until the next release. */
+export const deskEntryMovedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/desk/$orgSlug",
+  validateSearch: doorSearch,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/desk", search, replace: true });
+  },
+});
+
 function DeskEntryPage() {
-  const { orgSlug } = deskEntryRoute.useParams();
   const { next, desk: deskKey } = deskEntryRoute.useSearch();
   const queryClient = useQueryClient();
   const me = useMe();
-  const desk = useDeskEntry(orgSlug);
+  const door = useDeskEntry(deskKey);
   const destination = next ?? "/portal";
 
   if (me.data?.principal) return <Forward to={destination} />;
-  if (me.isLoading || desk.isLoading) return null;
+  if (me.isLoading || door.isLoading) return null;
 
-  if (desk.error || !desk.data) {
+  if (door.error || !door.data) {
     return (
       <AuthLayout
         title="No desk here"
@@ -55,7 +68,8 @@ function DeskEntryPage() {
 
   // A desk named in the address whose door is open takes a name and an
   // address; every other way in is the code.
-  const door = desk.data.open.find((d) => d.key === deskKey?.toUpperCase());
+  const desk = door.data.desk;
+  const name = desk?.name ?? door.data.installation;
   const onEntered = async () => {
     await queryClient.invalidateQueries({ queryKey: meQueryKey });
     window.location.assign(destination);
@@ -63,7 +77,7 @@ function DeskEntryPage() {
 
   return (
     <AuthLayout
-      title={desk.data.name}
+      title={name}
       subtitle="Raise a request, or follow one you raised."
       footer={
         <>
@@ -74,7 +88,7 @@ function DeskEntryPage() {
         </>
       }
     >
-      {door ? <OpenDoorForm slug={orgSlug} door={door} onEntered={onEntered} /> : <DeskEntryForm slug={orgSlug} deskName={desk.data.name} onEntered={onEntered} />}
+      {desk?.open ? <OpenDoorForm door={desk} onEntered={onEntered} /> : <DeskEntryForm desk={desk?.key} deskName={name} onEntered={onEntered} />}
     </AuthLayout>
   );
 }
