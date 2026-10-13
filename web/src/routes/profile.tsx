@@ -13,6 +13,7 @@ import { useAbsences, useWorkingWeek } from "@/api/availability";
 import { WorkingWeekTable } from "@/features/availability/WorkingWeek";
 import { AbsenceEditor } from "@/features/availability/Absences";
 import { SecondFactorSettings } from "@/features/auth/SecondFactor";
+import { ActiveSessions } from "@/features/auth/ActiveSessions";
 
 /** Also reachable as /me, which is where a person guesses their own page is. */
 export const profileRoute = createRoute({
@@ -154,6 +155,8 @@ function ProfilePage() {
       <ChangePassword />
 
       <SecondFactorSettings />
+
+      <ActiveSessions />
 
       <NotificationSettings />
 

@@ -223,6 +223,47 @@ export function useRevokeApiToken() {
   });
 }
 
+/** One place the person is signed in. */
+export interface ActiveSession {
+  id: string;
+  userAgent: string;
+  ip: string;
+  /** The organization the session acts in; empty before one is chosen. */
+  orgName: string;
+  proof: string;
+  createdAt: string;
+  lastSeenAt: string;
+  /** The session this browser is calling with. */
+  current: boolean;
+}
+
+export const sessionsQueryKey = ["auth", "sessions"] as const;
+
+export function useSessions() {
+  return useQuery({
+    queryKey: sessionsQueryKey,
+    queryFn: () => request<{ sessions: ActiveSession[] }>("/auth/sessions"),
+  });
+}
+
+/** Signs one of the person's other sessions out. */
+export function useEndSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => request<void>(`/auth/sessions/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: sessionsQueryKey }),
+  });
+}
+
+/** Signs the person out everywhere but here. */
+export function useEndOtherSessions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => request<void>("/auth/sessions", { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: sessionsQueryKey }),
+  });
+}
+
 export interface ProfileInput {
   name?: string;
   timezone?: string;
@@ -239,9 +280,11 @@ export function useUpdateProfile() {
 
 /** Changes the caller's own password; every other session of theirs ends. */
 export function useChangeMyPassword() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { currentPassword: string; newPassword: string }) =>
       request<void>("/auth/me/password", { method: "PUT", body: input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: sessionsQueryKey }),
   });
 }
 

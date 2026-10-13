@@ -148,14 +148,6 @@ type Org struct {
 // InOrg reports whether the principal has selected an organization.
 func (p *Principal) InOrg() bool { return p != nil && p.Org != nil }
 
-// Session is a browser login.
-type Session struct {
-	ID           uuid.UUID
-	UserID       uuid.UUID
-	CurrentOrgID *uuid.UUID
-	ExpiresAt    time.Time
-}
-
 // Invite is a pending invitation to join an organization.
 type Invite struct {
 	ID        uuid.UUID `json:"id"`

@@ -4,27 +4,33 @@ import { useCloneIssue, useMoveIssue } from "@/api/filters";
 import { useIssueFields, type FieldValue } from "@/api/fields";
 import { useStatuses, type Issue } from "@/api/issues";
 import { useProjects } from "@/api/projects";
-import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Menu, Select, useToast } from "@/components/ui";
+import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Menu, Select, useToast, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { ExportDialog, keysQuery } from "./ExportDialog";
 
-// Copy and move, behind one More button on the issue's head. A copy opens; a
-// move stays on the issue, which now has another key.
-export function CloneMoveMenu({ issue }: { issue: Issue }) {
+// Copy, move and export behind one More button on the issue's head; a reader
+// is offered only the export. A copy opens; a moved issue gets another key.
+export function CloneMoveMenu({ issue, editable }: { issue: Issue; editable: boolean }) {
   const [cloning, setCloning] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const changes: MenuItem[] = editable
+    ? [
+        { label: "Clone", icon: <Icon.Copy />, onSelect: () => setCloning(true), attrs: { "data-action": "clone" } },
+        { label: "Move to another project", icon: <Icon.External />, onSelect: () => setMoving(true), attrs: { "data-action": "move" } },
+      ]
+    : [];
   return (
     <>
       <Menu
         label="More about this issue"
         align="end"
         trigger={(props) => <IconButton icon={<Icon.More />} label="More about this issue" size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-action="issue-more" />}
-        items={[
-          { label: "Clone", icon: <Icon.Copy />, onSelect: () => setCloning(true), attrs: { "data-action": "clone" } },
-          { label: "Move to another project", icon: <Icon.External />, onSelect: () => setMoving(true), attrs: { "data-action": "move" } },
-        ]}
+        items={[...changes, { label: "Export as CSV", icon: <Icon.Download />, onSelect: () => setExporting(true), attrs: { "data-action": "export-issue" } }]}
       />
       {cloning && <CloneDialog issue={issue} onClose={() => setCloning(false)} />}
       {moving && <MoveDialog issue={issue} onClose={() => setMoving(false)} />}
+      <ExportDialog query={keysQuery([issue.key])} open={exporting} onClose={() => setExporting(false)} description={`${issue.key} alone, as a file with the columns you tick.`} />
     </>
   );
 }

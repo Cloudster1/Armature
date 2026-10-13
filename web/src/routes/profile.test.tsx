@@ -25,6 +25,9 @@ vi.mock("@/api/auth", () => ({
   useRemoveAvatar: () => idle,
   useChangeMyPassword: () => idle,
   useEraseMe: () => idle,
+  useSessions: () => ({ data: { sessions: [] } }),
+  useEndSession: () => idle,
+  useEndOtherSessions: () => idle,
 }));
 // Two-step sign-in has tests of its own, beside it.
 vi.mock("@/features/auth/SecondFactor", () => ({ SecondFactorSettings: () => null }));

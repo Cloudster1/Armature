@@ -288,6 +288,8 @@ export const AUDIT_PAGE_SIZE = 50;
 export const CALENDAR_MAX_ITEMS_PER_DAY = 4;
 /** Six weeks of days a month grid draws; the server reads days off over the same span. */
 export const CALENDAR_GRID_DAYS = 42;
+/** A calendar entry the pointer carries less far than this and drops on its own day was clicked, not dragged. */
+export const CALENDAR_DRAG_THRESHOLD_PX = 8;
 
 /** How long a dependency arrow stays hot after the pointer leaves it, so the control on it can be reached. */
 export const EDGE_LINGER_MS = 250;

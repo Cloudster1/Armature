@@ -5,6 +5,7 @@ import { auditExportHref, useAuditLog, type AuditEntry, type AuditFilter } from 
 import { Button, ButtonLink, EmptyState, ErrorBanner, Field, Page, PageHeader, Select, Table, Tag, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useFormat } from "@/lib/format";
+import { deviceName } from "@/lib/device";
 import { AUDIT_PAGE_SIZE } from "@/config";
 
 /** Who did what to the organization, newest first, for its administrators. */
@@ -103,6 +104,11 @@ function describe(entry: AuditEntry): string {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(entry.data)) {
     if (key === "actorId" || /Id$/.test(key) || value === null || value === undefined || value === "") continue;
+    // A signed out session names its device the way the profile listed it.
+    if (key === "userAgent") {
+      parts.push(`device: ${deviceName(String(value))}`);
+      continue;
+    }
     parts.push(`${key}: ${Array.isArray(value) ? value.join(", ") : String(value)}`);
   }
   if (entry.ip) parts.push(`from ${entry.ip}`);

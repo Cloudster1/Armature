@@ -442,6 +442,10 @@ func TestCustomersAreKeptToThePortal(t *testing.T) {
 	if note.Status != http.StatusCreated {
 		t.Fatalf("note: %d %s", note.Status, note.Raw)
 	}
+	edited := want(t, owner.patch("/api/v1/issues/"+key+"/comments/"+idOf(t, note, "comment"), map[string]any{"text": "call the fire brigade, twice"}), http.StatusOK, "edit the note")
+	if obj(t, edited, "comment")["internal"] != true {
+		t.Errorf("an edited note came back as a reply: %s", edited.Raw)
+	}
 	reply := owner.post("/api/v1/issues/"+key+"/comments", map[string]any{"text": "Help is on the way."})
 	if reply.Status != http.StatusCreated {
 		t.Fatalf("reply: %d %s", reply.Status, reply.Raw)

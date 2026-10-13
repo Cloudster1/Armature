@@ -24,7 +24,7 @@ export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; edita
         <span className="font-mono text-sm text-ink-muted">{issue.key}</span>
         <StatusBadge name={issue.status.name} category={issue.status.category} />
         <span className="flex-1" />
-        {editable && <CloneMoveMenu issue={issue} />}
+        <CloneMoveMenu issue={issue} editable={editable} />
         {inDrawer && (
           <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="inline-flex items-center gap-1 text-sm text-accent hover:underline" data-open-page>
             Open the page <Icon.External />
