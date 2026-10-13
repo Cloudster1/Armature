@@ -178,6 +178,32 @@ func TestOutboxRelay(t *testing.T) {
 		}
 	})
 
+	// An installation is one organization, so an event names none on its way
+	// through the stream; a webhook's envelope names the installation (#218).
+	t.Run("the stream carries no organization", func(t *testing.T) {
+		before := mark(t)
+		topic := emit(t, "unnamed", 1)
+		drain(t, topic, 10*time.Second)
+
+		entries, err := rdb.XRange(ctx, events.StreamKey, "("+before, "+").Result()
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := 0
+		for _, entry := range entries {
+			if entry.Values["topic"] != topic {
+				continue
+			}
+			found++
+			if _, named := entry.Values["org_id"]; named {
+				t.Errorf("the stream's message names an organization: %v", entry.Values)
+			}
+		}
+		if found != 1 {
+			t.Errorf("found %d messages of %s on the stream, want 1", found, topic)
+		}
+	})
+
 	t.Run("a second pass does not republish what it already sent", func(t *testing.T) {
 		topic := emit(t, "once", 2)
 		drain(t, topic, 10*time.Second)
