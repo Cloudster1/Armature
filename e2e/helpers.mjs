@@ -2461,13 +2461,17 @@ export async function keepWorkflow(name) {
   return () => administer("PUT", `/workflows/${found.id}`, graph);
 }
 
-/** Notes the default holiday calendar's days, and returns what puts them back. */
+/**
+ * Notes the default holiday calendar's days and empties it, so a seeded
+ * installation counts the same as a new one; returns what puts them back.
+ */
 export async function keepHolidays() {
   const { calendars } = await administer("GET", "/holiday-calendars");
   const chosen = calendars.find((each) => each.default);
   if (!chosen) return async () => {};
   const { calendar } = await administer("GET", `/holiday-calendars/${chosen.id}`);
   const days = calendar.days ?? [];
+  await administer("PUT", `/holiday-calendars/${chosen.id}/days`, { days: [] });
   return () => administer("PUT", `/holiday-calendars/${chosen.id}/days`, { days });
 }
 
