@@ -4,9 +4,10 @@ import { appRoute } from "./app";
 import { GroupList } from "@/features/access/GroupList";
 import { MemberList } from "@/features/access/MemberList";
 import { ProviderSettings } from "@/features/access/ProviderSettings";
+import { SecondFactorRequirement } from "@/features/access/SecondFactorRequirement";
 import { RoleMatrix } from "@/features/access/RoleMatrix";
 import { RoleTable } from "@/features/access/RoleTable";
-import { Page, PageHeader, Tabs } from "@/components/ui";
+import { Page, PageHeader, SectionTitle, Tabs } from "@/components/ui";
 
 export const accessRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -19,7 +20,7 @@ const tabs = [
   { id: "matrix", label: "Matrix" },
   { id: "members", label: "Members" },
   { id: "groups", label: "Groups" },
-  { id: "sso", label: "Single sign-on" },
+  { id: "sign-in", label: "Sign-in" },
 ] as const;
 
 function AccessPage() {
@@ -41,7 +42,15 @@ function AccessPage() {
       {tab === "matrix" && <RoleMatrix />}
       {tab === "members" && <MemberList />}
       {tab === "groups" && <GroupList />}
-      {tab === "sso" && <ProviderSettings />}
+      {tab === "sign-in" && (
+        <div className="space-y-4">
+          <SecondFactorRequirement />
+          <section>
+            <SectionTitle className="mb-2">Single sign-on</SectionTitle>
+            <ProviderSettings />
+          </section>
+        </div>
+      )}
     </Page>
   );
 }

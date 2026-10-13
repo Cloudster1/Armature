@@ -26,6 +26,8 @@ vi.mock("@/api/auth", () => ({
   useChangeMyPassword: () => idle,
   useEraseMe: () => idle,
 }));
+// Two-step sign-in has tests of its own, beside it.
+vi.mock("@/features/auth/SecondFactor", () => ({ SecondFactorSettings: () => null }));
 vi.mock("@/api/availability", () => ({
   useWorkingWeek: () => ({ data: undefined }),
   useAbsences: () => ({ data: undefined }),

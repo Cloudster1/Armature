@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request, upload } from "./client";
 import { cacheCustomTheme } from "@/lib/theme";
+import type { LoginAnswer } from "./secondFactor";
 
 export type OrgRole = "owner" | "admin" | "member" | "customer";
 
@@ -28,6 +29,8 @@ export interface Principal {
   role?: OrgRole;
   /** The one desk a session that came in without a code may see. */
   portalDesk?: string;
+  /** The organization requires two-step sign-in of this person, who has not set it up yet. */
+  mustEnrol?: boolean;
 }
 
 export interface Membership {
@@ -97,12 +100,15 @@ export function useSignup() {
   });
 }
 
+/** Signs in with a password; somebody with two-step sign-in gets a challenge to answer with a code instead. */
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { email: string; password: string }) =>
-      request<{ principal: Principal }>("/auth/login", { method: "POST", body: input }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: meQueryKey }),
+      request<LoginAnswer>("/auth/login", { method: "POST", body: input }),
+    onSuccess: (answer) => {
+      if (!("challenge" in answer)) void queryClient.invalidateQueries({ queryKey: meQueryKey });
+    },
   });
 }
 

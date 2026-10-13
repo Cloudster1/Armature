@@ -148,7 +148,7 @@ scenario("the access page explains what each role grants", async ({ page }) => {
 scenario("single sign-on is configured per organization", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/access");
-  await page.click('[data-access-tab="Single sign-on"]');
+  await page.click('[data-access-tab="Sign-in"]');
   await page.waitForSelector("#field-issuer", { timeout: WAIT });
 
   await page.type("#field-issuer", "https://id.example.test");
@@ -163,7 +163,7 @@ scenario("single sign-on is configured per organization", async ({ page }) => {
 
   // The secret is never sent back, only the fact that one is stored.
   await goto(page, "/settings/access");
-  await page.click('[data-access-tab="Single sign-on"]');
+  await page.click('[data-access-tab="Sign-in"]');
   await page.waitForSelector("#field-client-secret", { timeout: WAIT });
 
   const shown = await page.$eval("#field-client-secret", (el) => ({
@@ -202,7 +202,7 @@ scenario("every tab of the access page fits a phone", async ({ page }) => {
 
   await page.setViewport({ width: 400, height: 860 });
   await goto(page, "/settings/access");
-  for (const tab of ["Roles", "Members", "Groups", "Single sign-on"]) {
+  for (const tab of ["Roles", "Members", "Groups", "Sign-in"]) {
     await page.waitForSelector(`[data-access-tab="${tab}"]`, { timeout: WAIT });
     await page.click(`[data-access-tab="${tab}"]`);
     await page.waitForFunction((t) => document.querySelector(`[data-access-tab="${t}"]`)?.getAttribute("aria-selected") === "true", { timeout: WAIT }, tab);

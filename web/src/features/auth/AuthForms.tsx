@@ -2,7 +2,9 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError, BASE, request } from "@/api/client";
 import { useLogin, useSignup, useSwitchOrg, type Membership, type Principal } from "@/api/auth";
+import { isChallenge } from "@/api/secondFactor";
 import { Button, ErrorBanner, Field } from "@/components/ui";
+import { SecondFactorStep } from "./SecondFactor";
 
 /** Pulls per-field messages out of the API's validation envelope. */
 export function fieldErrors(error: unknown): Record<string, string> {
@@ -31,6 +33,7 @@ export function LoginForm({ next }: { next?: string } = {}) {
   const [org, setOrg] = useState("");
   const [sso, setSSO] = useState(false);
   const [choice, setChoice] = useState<{ organizations: Membership[]; current?: string } | null>(null);
+  const [challenge, setChallenge] = useState<string | null>(null);
   const target = safeNext(next);
 
   function proceed() {
@@ -38,25 +41,38 @@ export function LoginForm({ next }: { next?: string } = {}) {
     else navigate({ to: "/" });
   }
 
+  // Somebody in more than one organization says which one they came for,
+  // rather than landing in whichever they joined first. A page that sent
+  // them here names a path, not an organization, so the question stands.
+  async function signedIn() {
+    const me = await request<{ principal: Principal; organizations: Membership[] | null }>("/auth/me").catch(() => null);
+    const organizations = me?.organizations ?? [];
+    if (organizations.length > 1) setChoice({ organizations, current: me?.principal.org?.slug });
+    else proceed();
+  }
+
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     login.mutate(
       { email, password },
-      {
-        // Somebody in more than one organization says which one they came for,
-        // rather than landing in whichever they joined first. A page that sent
-        // them here names a path, not an organization, so the question stands.
-        onSuccess: async () => {
-          const me = await request<{ principal: Principal; organizations: Membership[] | null }>("/auth/me").catch(() => null);
-          const organizations = me?.organizations ?? [];
-          if (organizations.length > 1) setChoice({ organizations, current: me?.principal.org?.slug });
-          else proceed();
-        },
-      },
+      { onSuccess: (answer) => (isChallenge(answer) ? setChallenge(answer.challenge) : signedIn()) },
     );
   }
 
   if (choice) return <OrganizationChoice {...choice} onChosen={proceed} />;
+  if (challenge) {
+    return (
+      <SecondFactorStep
+        challenge={challenge}
+        onSignedIn={() => void signedIn()}
+        onStartAgain={() => {
+          setChallenge(null);
+          setPassword("");
+          login.reset();
+        }}
+      />
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
