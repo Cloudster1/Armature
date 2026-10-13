@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: nobody is signed in without the organization. A password
+  sign-in, its code step or an API token of somebody with no membership left
+  is refused with "Your account has been switched off. Ask an
+  administrator.", and an open session ends with the membership instead of
+  showing a page that says there is no organization. The `no_organization`
+  error is gone (#210).
 - Added: `GET /installation` tells anybody signed in what the installation is
   called, and `PUT /installation` lets its administrators rename it, in the
   audit log. Its name and the settings there is one of, the default theme,

@@ -14,6 +14,7 @@ import {
   signOut,
   signUp,
   signUpOwnOrganization,
+  textOf,
   unique,
   WAIT,
   waitForApp,
@@ -32,7 +33,7 @@ async function deleteOrganization(page) {
 }
 
 // Serial, like every deletion of an organization: this one is the scenario's own.
-serialScenario("an owner deletes the organization, and the people in it are told it is gone", async ({ page }) => {
+serialScenario("an owner deletes the organization, and the people in it are switched off", async ({ page }) => {
   const owner = await signUpOwnOrganization(page);
   const member = unique("stranded");
   const { token } = await inviteFromMembersPage(page, member.email);
@@ -41,12 +42,12 @@ serialScenario("an owner deletes the organization, and the people in it are told
   await signIn(page, owner.email);
   await waitForApp(page);
   await deleteOrganization(page);
-  await page.waitForSelector("[data-no-organization]", { timeout: WAIT });
-  expect.contains(await bodyText(page), "You are not in an organization", "the owner has none left");
+  // Nobody is signed in without an organization, so the session ends.
+  await waitForPath(page, "/login");
 
-  await signIn(page, member.email);
-  await page.waitForSelector("[data-no-organization]", { timeout: WAIT });
-  expect.contains(await bodyText(page), "no longer exists", "the member is told why the app is empty");
+  await signInThroughForm(page, member.email);
+  await page.waitForSelector("[role=alert]", { timeout: WAIT });
+  expect.contains(await textOf(page, "[role=alert]"), "Your account has been switched off. Ask an administrator.", "the member is told what to do");
 });
 
 scenario("an administrator who does not own the organization is not offered deleting it", async ({ page }) => {
@@ -58,7 +59,7 @@ scenario("an administrator who does not own the organization is not offered dele
   expect.equal(await page.$('[data-action="delete-organization"]'), null, "no delete button");
 });
 
-serialScenario("deleting one of two organizations leaves the other to choose", async ({ page }) => {
+serialScenario("deleting one of two organizations leaves its owner the other", async ({ page }) => {
   const first = await signUpOwnOrganization(page, unique("user"), { visit: false });
   await signOut(page, { visit: false });
   const second = await signUpOwnOrganization(page, unique("survivor"), { visit: false });
@@ -78,8 +79,8 @@ serialScenario("deleting one of two organizations leaves the other to choose", a
   await waitForApp(page);
 
   await deleteOrganization(page);
-  await page.waitForSelector("[data-no-organization] [data-org-choice]", { timeout: WAIT });
-  expect.contains(await bodyText(page), first.org, "the organization still there is offered");
-  await page.click("[data-no-organization] [data-org-choice]");
+  await waitForPath(page, "/login");
+  await signInThroughForm(page, second.email);
   await waitForApp(page);
+  expect.contains(await bodyText(page), first.org, "signing in again lands in the organization still there");
 });

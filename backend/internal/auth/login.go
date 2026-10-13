@@ -91,7 +91,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 }
 
 // passwordPrincipal is who a password sign-in opens a session for, in the
-// organization they joined first.
+// organization they joined first; with none left there is nobody to sign in.
 func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Principal, error) {
 	var p Principal
 	err := tx.QueryRow(ctx, `
@@ -110,7 +110,7 @@ func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Prin
 		ORDER BY m.created_at LIMIT 1`, userID,
 	).Scan(&m.OrgID, &m.OrgSlug, &m.OrgName, &m.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return &p, nil
+		return nil, ErrSwitchedOff
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read the first organization: %w", err)
@@ -123,22 +123,15 @@ func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Prin
 // openPasswordSession opens the session a proven password sign-in gets and
 // records the sign-in.
 func openPasswordSession(ctx context.Context, tx db.DBTX, p *Principal, expiresAt time.Time, userAgent, ip string) (string, error) {
-	var orgID *uuid.UUID
-	if p.Org != nil {
-		orgID = &p.Org.ID
-	}
-	sessionID, secret, err := insertSession(ctx, tx, p.User.ID, orgID, ProofPassword, expiresAt, userAgent, ip)
+	sessionID, secret, err := insertSession(ctx, tx, p.User.ID, &p.Org.ID, ProofPassword, expiresAt, userAgent, ip)
 	if err != nil {
 		return "", err
 	}
 	p.SessionID = &sessionID
 	p.Proof = ProofPassword
 	// Recorded in the organization the session opens in, as single sign-on
-	// records its own; somebody with no organization has no log to be in.
-	if orgID == nil {
-		return secret, nil
-	}
-	return secret, writeAudit(ctx, tx, *orgID, p.User.ID, "auth.login", "user", &p.User.ID, ip)
+	// records its own.
+	return secret, writeAudit(ctx, tx, p.Org.ID, p.User.ID, "auth.login", "user", &p.User.ID, ip)
 }
 
 // decoyHash is a real argon2id hash of an unguessable value, verified against

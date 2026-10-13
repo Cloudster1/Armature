@@ -111,10 +111,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			// A whole organization with an operation in it, for showing the product.
 			r.With(requireSession).Post("/organizations/demo", s.handleCreateDemoOrganization)
 
-			// And below here, one they have chosen an organization for, so
-			// every query underneath carries a tenant scope.
+			// Below here, the work itself.
 			r.Group(func(r chi.Router) {
-				r.Use(requireOrg)
 				// Customers get the portal and nothing else; the check lets
 				// portal paths through and refuses the rest for them.
 				r.Use(requireAgent)

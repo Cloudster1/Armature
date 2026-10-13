@@ -40,7 +40,7 @@ func (s *Server) actsForTheWholePerson(r *http.Request, p *auth.Principal) (bool
 		return false, err
 	}
 	for _, m := range memberships {
-		if p.Org == nil || m.OrgID != p.Org.ID {
+		if m.OrgID != p.Org.ID {
 			return false, nil
 		}
 	}

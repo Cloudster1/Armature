@@ -155,6 +155,8 @@ func toAPIError(err error) *APIError {
 		return ErrUnauthorized("Your session has expired. Sign in again.")
 	case errors.Is(err, auth.ErrUserInactive):
 		return ErrForbidden("This account has been deactivated.")
+	case errors.Is(err, auth.ErrSwitchedOff):
+		return &APIError{Status: http.StatusForbidden, Code: "switched_off", Message: "Your account has been switched off. Ask an administrator."}
 	case errors.Is(err, installation.ErrNameRequired):
 		return ErrValidation(map[string]string{"name": "Give the installation a name."})
 	case errors.Is(err, installation.ErrNotFound):

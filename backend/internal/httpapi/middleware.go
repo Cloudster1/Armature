@@ -162,10 +162,7 @@ func logging(base *slog.Logger) func(http.Handler) http.Handler {
 				"bytes", rec.bytes,
 			}
 			if p := PrincipalFrom(ctx); p != nil {
-				attrs = append(attrs, "user_id", p.User.ID)
-				if p.Org != nil {
-					attrs = append(attrs, "org", p.Org.Slug)
-				}
+				attrs = append(attrs, "user_id", p.User.ID, "org", p.Org.Slug)
 			}
 			log.Info("request", attrs...)
 		})
@@ -350,27 +347,25 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			switch {
 			case err == nil:
 				ctx = context.WithValue(ctx, ctxPrincipal, principal)
-				if principal.Org != nil {
-					ctx = tenant.WithOrg(ctx, tenant.Org{ID: principal.Org.ID, Slug: principal.Org.Slug})
+				ctx = tenant.WithOrg(ctx, tenant.Org{ID: principal.Org.ID, Slug: principal.Org.Slug})
 
-					// One more round trip per authenticated request, so that
-					// every later check is a question of memory. Asking the
-					// database inside each handler instead would be a query per
-					// guard, and there are several on some routes.
-					set, err := s.Perms.ResolveFor(ctx, principal.Org.ID,
-						principal.User.ID, principal.Role == auth.RoleOwner)
-					if err != nil {
-						respondError(w, r, err)
-						return
-					}
-					// A key holds less than the person who made it, and the
-					// narrowing happens here so that every guard below reads
-					// it without knowing a key was involved.
-					if principal.TokenID != nil {
-						set = set.AsKey(principal.TokenProjects)
-					}
-					ctx = context.WithValue(ctx, ctxPerms, set)
+				// One more round trip per authenticated request, so that
+				// every later check is a question of memory. Asking the
+				// database inside each handler instead would be a query per
+				// guard, and there are several on some routes.
+				set, err := s.Perms.ResolveFor(ctx, principal.Org.ID,
+					principal.User.ID, principal.Role == auth.RoleOwner)
+				if err != nil {
+					respondError(w, r, err)
+					return
 				}
+				// A key holds less than the person who made it, and the
+				// narrowing happens here so that every guard below reads
+				// it without knowing a key was involved.
+				if principal.TokenID != nil {
+					set = set.AsKey(principal.TokenProjects)
+				}
+				ctx = context.WithValue(ctx, ctxPerms, set)
 				// A session that came through an open door sees one desk.
 				if principal.PortalDeskID != nil {
 					ctx = desk.WithScope(ctx, desk.Scope{ProjectID: *principal.PortalDeskID, ProjectKey: principal.PortalDesk})
@@ -438,30 +433,13 @@ func requireAuth(next http.Handler) http.Handler {
 	})
 }
 
-// requireOrg rejects a caller who is authenticated but has not selected an
-// organization, which would otherwise reach the database with no tenant scope.
-func requireOrg(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := PrincipalFrom(r.Context())
-		if p == nil {
-			respondError(w, r, ErrUnauthorized(""))
-			return
-		}
-		if !p.InOrg() {
-			respondError(w, r, toAPIError(tenant.ErrNoTenant))
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 // requirePerm gates a route on a permission held over the whole organization.
 // It is the right guard for anything that is not about one project.
 func requirePerm(required perm.Permission) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p := PrincipalFrom(r.Context())
-			if p == nil || !p.InOrg() {
+			if p == nil {
 				respondError(w, r, ErrUnauthorized(""))
 				return
 			}
@@ -481,7 +459,7 @@ func requireProjectPerm(required perm.Permission) func(http.Handler) http.Handle
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p := PrincipalFrom(r.Context())
-			if p == nil || !p.InOrg() {
+			if p == nil {
 				respondError(w, r, ErrUnauthorized(""))
 				return
 			}
@@ -502,7 +480,7 @@ func requireSomewhere(required perm.Permission) func(http.Handler) http.Handler 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p := PrincipalFrom(r.Context())
-			if p == nil || !p.InOrg() {
+			if p == nil {
 				respondError(w, r, ErrUnauthorized(""))
 				return
 			}
@@ -521,7 +499,7 @@ func requireIssuePerm(required perm.Permission) func(http.Handler) http.Handler 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p := PrincipalFrom(r.Context())
-			if p == nil || !p.InOrg() {
+			if p == nil {
 				respondError(w, r, ErrUnauthorized(""))
 				return
 			}
