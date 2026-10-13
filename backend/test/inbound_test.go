@@ -194,7 +194,7 @@ func TestAReplyByMailBecomesAComment(t *testing.T) {
 		}
 		// Taken back so the counts the later subtests expect still hold.
 		all := comments(t)
-		if _, err := ws.issues.DeleteComment(ws.ctx, all[len(all)-1].ID, ws.actor); err != nil {
+		if _, err := ws.issues.DeleteComment(ws.ctx, raised.Key, all[len(all)-1].ID, ws.actor); err != nil {
 			t.Fatal(err)
 		}
 	})
