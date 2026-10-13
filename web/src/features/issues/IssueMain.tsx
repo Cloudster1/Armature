@@ -42,7 +42,7 @@ export function IssueMain({ issue, editable, me, isDesk, places }: { issue: Issu
         </Card>
       )}
       <Section id="activity" title="Activity">
-        <Activity issueKey={issue.key} />
+        <Activity issueKey={issue.key} me={me} />
       </Section>
       <Section id="attachments" hidden>
         <AttachmentPanel issueKey={issue.key} editable={editable} note={isDesk ? "The customer sees these files on their request." : undefined} />
