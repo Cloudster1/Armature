@@ -11,6 +11,7 @@ import {
   confirm,
   createProject,
   createTeam,
+  deskDoor,
   enterDesk,
   enterOpenDesk,
   expect,
@@ -18,7 +19,6 @@ import {
   goto,
   inviteMember,
   mailFor,
-  orgSlug,
   queueFiles,
   selectByLabel,
   signIn,
@@ -203,12 +203,13 @@ scenario("a request raised through a template lands with its team", async ({ pag
 scenario("somebody with only a mail address raises a request and is mailed about it", async ({ page }) => {
   const agent = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Helpdesk", "service-desk");
-  const slug = await orgSlug(page);
   await signOut(page);
 
-  // The door: an address, a code, and in.
+  // The door: an address, a code, and in. The page and the code name the desk.
   const address = unique("ada").email;
-  await enterDesk(page, slug, address);
+  const since = Date.now() - 1000;
+  await enterDesk(page, address, { desk: key });
+  expect.contains((await mailFor(address, "Your code", { since })).subject, "Helpdesk", "the code mail names the desk");
   await page.waitForFunction(() => document.body.innerText.includes("Your requests"), { timeout: WAIT });
   expect.truthy(!(await bodyText(page)).includes("Workflows"), "a requester lands in the portal");
 
@@ -225,12 +226,12 @@ scenario("somebody with only a mail address raises a request and is mailed about
   // The receipt names the request and carries the way back.
   const receipt = await mailFor(address, requestKey);
   expect.contains(receipt.subject, "we have your request", "the receipt says so");
-  const back = receipt.text.match(/(\/desk\/[^\s]+)/)?.[1];
-  expect.truthy(back && back.includes(`/desk/${slug}?next=`), "and links to the door with the request behind it");
+  const back = receipt.text.match(/(\/desk\?[^\s]+)/)?.[1];
+  expect.truthy(back && back.startsWith("/desk?next="), "and links to the door with the request behind it");
 
   // Following the link later means another code, then the request itself.
   await signOut(page);
-  await enterDesk(page, slug, address, `/portal/requests/${requestKey}`);
+  await enterDesk(page, address, { next: `/portal/requests/${requestKey}` });
   await page.waitForFunction(() => document.body.innerText.includes("The badge reader is dead"), { timeout: WAIT });
 
   // An agent's reply is mailed too.
@@ -250,16 +251,15 @@ scenario("a desk that trusts its callers lets one in without a code, and only in
   const owner = await signUp(page, unique("user"), { visit: false });
   const trusting = await createProject(page, "IT desk", { template: "service-desk", visit: false });
   const careful = await createProject(page, "HR desk", "service-desk");
-  const slug = await orgSlug(page);
 
   // The door starts asking for a code; the owner opens it and reads the address.
   const address = await toggleDoor(page, trusting);
-  expect.contains(address, `/desk/${slug}?desk=${trusting}`, "the address names the desk");
+  expect.truthy(address.endsWith(`/desk?desk=${trusting}`), "the address names the desk and nothing else");
   await signOut(page);
 
   // In with a name and an address, and the portal is this desk alone.
   const who = unique("walkin");
-  await enterOpenDesk(page, slug, trusting, who);
+  await enterOpenDesk(page, trusting, who);
   await page.waitForFunction((k) => document.body.innerText.includes(`Your requests at ${k}`), { timeout: WAIT }, trusting);
   await goto(page, "/portal/new");
   await page.waitForSelector('[data-request-type="Report a problem"]', { timeout: WAIT });
@@ -272,10 +272,14 @@ scenario("a desk that trusts its callers lets one in without a code, and only in
   expect.truthy(requestKey.startsWith(trusting + "-"), "the request is the trusting desk's");
   expect.truthy(!requestKey.startsWith(careful + "-"), "and not the careful one's");
 
-  // The careful desk's door still asks for a code.
+  // The careful desk's door still asks for a code, under the desk's name. An
+  // address from before, which named the organization, leads there too.
   await signOut(page, { visit: false });
-  await goto(page, `/desk/${slug}?desk=${careful}`);
+  await goto(page, `/desk/acme?desk=${careful}`);
+  await waitForPath(page, "/desk");
+  expect.equal(await page.evaluate(() => location.search), `?desk=${careful}`, "the old address keeps the desk");
   await page.waitForFunction(() => document.body.innerText.includes("Send me a code"), { timeout: WAIT });
+  expect.contains(await bodyText(page), "HR desk", "the door names the desk");
 
   // Turning the code back on closes the trusting desk's door too.
   await signIn(page, owner.email);
@@ -283,29 +287,28 @@ scenario("a desk that trusts its callers lets one in without a code, and only in
   await waitForApp(page);
   await toggleDoor(page, trusting);
   await signOut(page, { visit: false });
-  await goto(page, `/desk/${slug}?desk=${trusting}`);
+  await goto(page, deskDoor({ desk: trusting }));
   await page.waitForFunction(() => document.body.innerText.includes("Send me a code"), { timeout: WAIT });
 });
 
 scenario("a desk that trusts a domain turns other addresses away at the door", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "IT desk", "service-desk");
-  const slug = await orgSlug(page);
   await toggleDoor(page, key);
   await trustDomain(page, key, "armature.test");
   expect.contains(await bodyText(page), "Empty means any address", "the card says what the list does");
   await signOut(page, { visit: false });
 
   // Somebody who works here is sent to the code, however open the door.
-  const agentRefusal = await turnedAwayAtOpenDesk(page, slug, key, { name: owner.name, email: owner.email });
+  const agentRefusal = await turnedAwayAtOpenDesk(page, key, { name: owner.name, email: owner.email });
   expect.contains(agentRefusal, "asks for a code", "an agent's address is asked for a code");
 
   // An address at another domain is told which domains the desk takes.
-  const refusal = await turnedAwayAtOpenDesk(page, slug, key, { name: "Else Where", email: `else-${Date.now().toString(36)}@elsewhere.test` });
+  const refusal = await turnedAwayAtOpenDesk(page, key, { name: "Else Where", email: `else-${Date.now().toString(36)}@elsewhere.test` });
   expect.contains(refusal, "armature.test", "the refusal names the trusted domain");
 
   // One at the trusted domain walks in as before.
-  await enterOpenDesk(page, slug, key, unique("walkin"));
+  await enterOpenDesk(page, key, unique("walkin"));
   await page.waitForFunction((k) => document.body.innerText.includes(`Your requests at ${k}`), { timeout: WAIT }, key);
 });
 

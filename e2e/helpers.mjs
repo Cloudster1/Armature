@@ -1625,19 +1625,22 @@ export function codeIn(text) {
   return match[0];
 }
 
-/** The organization's slug, which the portal's door is named by. */
-export async function orgSlug(page) {
-  return page.evaluate(async () => {
-    const response = await fetch("/api/v1/auth/me", { credentials: "include" });
-    const body = await response.json();
-    return body.principal.org.slug;
-  });
+/**
+ * The portal's door: the installation's, or the desk's when a key is given.
+ * Search parameters are left out when they are not wanted, as a shared link would.
+ */
+export function deskDoor({ desk, next } = {}) {
+  const search = new URLSearchParams();
+  if (desk) search.set("desk", desk);
+  if (next) search.set("next", next);
+  const query = search.toString();
+  return query ? `/desk?${query}` : "/desk";
 }
 
-/** Enters a desk's door with a mailed code, as somebody without an account. */
-export async function enterDesk(page, slug, address, next) {
+/** Enters the portal's door with a mailed code, as somebody without an account. */
+export async function enterDesk(page, address, { desk, next } = {}) {
   const since = Date.now() - 1000;
-  await goto(page, `/desk/${slug}${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+  await goto(page, deskDoor({ desk, next }));
   await fill(page, "Email", address);
   await clickButton(page, "Send me a code");
   await page.waitForSelector("[data-desk-code]", { timeout: WAIT });
@@ -1648,8 +1651,8 @@ export async function enterDesk(page, slug, address, next) {
 }
 
 /** Walks into a desk whose door is open: a name and an address, no code. */
-export async function enterOpenDesk(page, slug, deskKey, who, next) {
-  await goto(page, `/desk/${slug}?desk=${deskKey}${next ? `&next=${encodeURIComponent(next)}` : ""}`);
+export async function enterOpenDesk(page, deskKey, who, next) {
+  await goto(page, deskDoor({ desk: deskKey, next }));
   await page.waitForSelector(`[data-open-door="${deskKey}"]`, { timeout: WAIT });
   await fill(page, "Your name", who.name);
   await fill(page, "Email", who.email);
@@ -1742,8 +1745,8 @@ export async function trustDomain(page, projectKey, domain) {
 }
 
 /** Tries an open door with a name and an address and returns the refusal it shows. */
-export async function turnedAwayAtOpenDesk(page, slug, deskKey, who) {
-  await goto(page, `/desk/${slug}?desk=${deskKey}`);
+export async function turnedAwayAtOpenDesk(page, deskKey, who) {
+  await goto(page, deskDoor({ desk: deskKey }));
   await page.waitForSelector(`[data-open-door="${deskKey}"]`, { timeout: WAIT });
   await fill(page, "Your name", who.name);
   await fill(page, "Email", who.email);

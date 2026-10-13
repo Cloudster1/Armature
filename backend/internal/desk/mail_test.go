@@ -10,8 +10,8 @@ import (
 )
 
 func TestMailWordsTheReplyAndTheResolution(t *testing.T) {
-	link := requestLink("http://app.test/", "acme", "HELP-1")
-	if link != "http://app.test/desk/acme?next=%2Fportal%2Frequests%2FHELP-1" {
+	link := requestLink("http://app.test/", "HELP-1")
+	if link != "http://app.test/desk?next=%2Fportal%2Frequests%2FHELP-1" {
 		t.Errorf("link = %q", link)
 	}
 
@@ -45,8 +45,8 @@ func TestMailWordsTheReplyAndTheResolution(t *testing.T) {
 		t.Errorf("a mail without a token offered a stop link: %+v", later)
 	}
 
-	code := codeMessage("Acme", "123456")
-	if !strings.Contains(code.Subject, "123456") || !strings.Contains(code.Body, "ten minutes") {
+	code := codeMessage("IT desk", "123456")
+	if !strings.Contains(code.Subject, "IT desk") || !strings.Contains(code.Subject, "123456") || !strings.Contains(code.Body, "ten minutes") {
 		t.Errorf("code = %+v", code)
 	}
 }
@@ -66,7 +66,7 @@ func TestMessageIDBeginsWithTheKey(t *testing.T) {
 func TestMailsAboutOneRequestShareAThread(t *testing.T) {
 	n := &Notifier{inbox: "support@armature.test"}
 	a := &about{id: uuid.New(), key: "HELP-1", summary: "Cannot print"}
-	link := requestLink("http://app.test", "acme", a.key)
+	link := requestLink("http://app.test", a.key)
 	first := n.mail(a, "ann@example.test", raisedMessage(a.key, a.summary, link))
 	second := n.mail(a, "ann@example.test", replyMessage(a.key, a.summary, "Grace", "Try again.", link))
 

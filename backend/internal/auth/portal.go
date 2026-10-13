@@ -19,7 +19,7 @@ import (
 
 // A portal code is a sign-in for somebody with a mail address and no account:
 // six digits, mailed, typed once. Whoever proves the address becomes a customer
-// of the organization with an ordinary session, so the portal needs no second
+// of the installation with an ordinary session, so the portal needs no second
 // kind of principal.
 const (
 	portalCodeDigits   = 6
@@ -46,6 +46,12 @@ var (
 	// ErrDoorAsksForCode is returned when somebody tries to walk into a desk
 	// that wants the mailbox proven first.
 	ErrDoorAsksForCode = errors.New("this desk asks for a code by mail first")
+	// ErrNoDesk is returned for a door whose address names no desk that is
+	// there: an unknown key, an archived desk and a software project alike.
+	ErrNoDesk = errors.New("there is no service desk at that address")
+	// ErrDeskAmbiguous is returned when organizations share the key a door
+	// names, which only a test harness with several of them can bring about.
+	ErrDeskAmbiguous = errors.New("more than one desk answers to that key")
 )
 
 // PortalCodeCooldown sets how long an address waits between codes. Development
@@ -72,16 +78,97 @@ func ParseAddress(raw string) (string, error) {
 	return email, nil
 }
 
-// codeDigest binds a code to its organization and address, so equal codes in
-// different rows never share a digest.
-func codeDigest(orgID uuid.UUID, email, code string) []byte {
-	return HashToken(orgID.String() + ":" + email + ":" + code)
+// codeDigest binds a code to its address, so equal codes for two people never
+// share a digest. The installation is one, so it is not part of it.
+func codeDigest(email, code string) []byte {
+	return HashToken(email + ":" + code)
+}
+
+// Door is the portal's public way in as its address names it: the
+// installation, and the desk when the address names one.
+type Door struct {
+	Installation string    `json:"installation"`
+	Desk         *DoorDesk `json:"desk,omitempty"`
+	// orgID is where the door leads; the address no longer says, so it stays
+	// on this side of the API.
+	orgID uuid.UUID
+}
+
+// DoorDesk is the desk a door names, and whether it lets people in without a code.
+type DoorDesk struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	Open bool   `json:"open"`
+}
+
+// Name is what the door calls itself to whoever arrives: the desk, else the installation.
+func (d *Door) Name() string {
+	if d.Desk != nil {
+		return d.Desk.Name
+	}
+	return d.Installation
+}
+
+// PortalDoor finds the door an address names. Nobody is signed in there, so
+// the desk's key, or the installation when there is none, says where it leads.
+func (s *Service) PortalDoor(ctx context.Context, deskKey string) (*Door, error) {
+	var door *Door
+	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		door, err = findDoor(ctx, tx, deskKey)
+		return err
+	})
+	return door, err
+}
+
+// findDoor resolves a door. A key is unique per organization only, so a key
+// two of them use is refused rather than guessed at.
+func findDoor(ctx context.Context, tx db.DBTX, deskKey string) (*Door, error) {
+	key := project.NormalizeKey(deskKey)
+	if key == "" {
+		org, err := installationOrg(ctx, tx)
+		if err != nil {
+			return nil, err
+		}
+		if org == nil {
+			return nil, ErrNoDesk
+		}
+		return &Door{Installation: org.Name, orgID: org.ID}, nil
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT o.id, o.name, p.key, p.name, NOT p.portal_verifies
+		FROM project p JOIN org o ON o.id = p.org_id
+		WHERE p.key = $1 AND p.kind = 'service' AND p.archived_at IS NULL AND o.archived_at IS NULL
+		LIMIT 2`, key)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var found []Door
+	for rows.Next() {
+		d := Door{Desk: &DoorDesk{}}
+		if err := rows.Scan(&d.orgID, &d.Installation, &d.Desk.Key, &d.Desk.Name, &d.Desk.Open); err != nil {
+			return nil, err
+		}
+		found = append(found, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	switch len(found) {
+	case 0:
+		return nil, ErrNoDesk
+	case 1:
+		return &found[0], nil
+	default:
+		return nil, ErrDeskAmbiguous
+	}
 }
 
 // IssuePortalCode makes a code for an address and returns it once, for the
 // caller to mail. Only its digest is kept. The answer is the same whether or
 // not the address is known, so asking reveals nothing about who works here.
-func (s *Service) IssuePortalCode(ctx context.Context, orgID uuid.UUID, rawEmail string) (code string, expiresAt time.Time, err error) {
+func (s *Service) IssuePortalCode(ctx context.Context, door *Door, rawEmail string) (code string, expiresAt time.Time, err error) {
 	email, err := ParseAddress(rawEmail)
 	if err != nil {
 		return "", time.Time{}, err
@@ -94,9 +181,10 @@ func (s *Service) IssuePortalCode(ctx context.Context, orgID uuid.UUID, rawEmail
 	now := s.now()
 	expiresAt = now.Add(portalCodeTTL)
 
+	orgID := door.orgID
 	_, err = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		// The code is the organization's, so it is refused only when no desk
-		// here would take the address; a refused domain burns no code row.
+		// The code is the installation's, whichever desk it was asked at, so it is
+		// refused only when no desk would take the address; that burns no row.
 		if err := desksTrust(ctx, tx, orgID, email); err != nil {
 			return err
 		}
@@ -117,7 +205,7 @@ func (s *Service) IssuePortalCode(ctx context.Context, orgID uuid.UUID, rawEmail
 			SET code_hash = EXCLUDED.code_hash, attempts = 0, requested_at = EXCLUDED.requested_at, expires_at = EXCLUDED.expires_at,
 			    window_attempts = CASE WHEN portal_code.window_started < $6 THEN 0 ELSE portal_code.window_attempts END,
 			    window_started = CASE WHEN portal_code.window_started < $6 THEN EXCLUDED.window_started ELSE portal_code.window_started END`,
-			orgID, email, codeDigest(orgID, email, code), now, expiresAt, now.Add(-portalCodeWindow)); err != nil {
+			orgID, email, codeDigest(email, code), now, expiresAt, now.Add(-portalCodeWindow)); err != nil {
 			return fmt.Errorf("issue portal code: %w", err)
 		}
 		// Rows nobody redeemed are cleared as a side effect of the next request
@@ -131,7 +219,7 @@ func (s *Service) IssuePortalCode(ctx context.Context, orgID uuid.UUID, rawEmail
 	return code, expiresAt, nil
 }
 
-// desksTrust refuses an address at a domain none of the organization's desks
+// desksTrust refuses an address at a domain none of the installation's desks
 // takes, naming the domains they do. With no desk, or none that names any
 // domain, everyone is taken, as before there were lists.
 func desksTrust(ctx context.Context, tx db.DBTX, orgID uuid.UUID, email string) error {
@@ -155,9 +243,9 @@ func desksTrust(ctx context.Context, tx db.DBTX, orgID uuid.UUID, email string) 
 	return nil
 }
 
-// PortalSessionInput is a code presented for an address.
+// PortalSessionInput is a code presented for an address at a door.
 type PortalSessionInput struct {
-	OrgID     uuid.UUID
+	Door      *Door
 	Email     string
 	Code      string
 	UserAgent string
@@ -174,6 +262,7 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		return nil, err
 	}
 	code := strings.TrimSpace(in.Code)
+	orgID := in.Door.orgID
 	var (
 		principal Principal
 		secret    string
@@ -192,7 +281,7 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		)
 		err := tx.QueryRow(ctx, `
 			SELECT code_hash, attempts, expires_at, window_attempts, window_started FROM portal_code
-			WHERE org_id = $1 AND email = $2 FOR UPDATE`, in.OrgID, email).Scan(&digest, &attempts, &codeEnds, &windowAttempts, &windowStarted)
+			WHERE org_id = $1 AND email = $2 FOR UPDATE`, orgID, email).Scan(&digest, &attempts, &codeEnds, &windowAttempts, &windowStarted)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrCodeInvalid
 		}
@@ -205,19 +294,19 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		if !codeEnds.After(s.now()) || attempts >= portalCodeAttempts || windowFull {
 			return ErrCodeInvalid
 		}
-		if !EqualDigest(digest, codeDigest(in.OrgID, email, code)) {
+		if !EqualDigest(digest, codeDigest(email, code)) {
 			missed = true
 			_, err := tx.Exec(ctx, `
 				UPDATE portal_code SET attempts = attempts + 1, window_attempts = window_attempts + 1
-				WHERE org_id = $1 AND email = $2`, in.OrgID, email)
+				WHERE org_id = $1 AND email = $2`, orgID, email)
 			return err
 		}
-		if _, err := tx.Exec(ctx, `DELETE FROM portal_code WHERE org_id = $1 AND email = $2`, in.OrgID, email); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM portal_code WHERE org_id = $1 AND email = $2`, orgID, email); err != nil {
 			return err
 		}
 
 		var org Org
-		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE id = $1 AND archived_at IS NULL`, in.OrgID).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE id = $1 AND archived_at IS NULL`, orgID).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
 			return err
 		}
 
@@ -292,14 +381,13 @@ func doorAccount(ctx context.Context, tx db.DBTX, email string) (User, error) {
 	return user, nil
 }
 
-// OpenSessionInput is who walks into a desk whose door is open.
+// OpenSessionInput is who walks through a desk's door that is open.
 type OpenSessionInput struct {
-	OrgID      uuid.UUID
-	ProjectKey string
-	Email      string
-	Name       string
-	UserAgent  string
-	IP         string
+	Door      *Door
+	Email     string
+	Name      string
+	UserAgent string
+	IP        string
 }
 
 // OpenPortalSession lets an unproven address into one desk. The address is
@@ -310,6 +398,10 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 		return nil, err
 	}
 	name := strings.TrimSpace(in.Name)
+	// The installation's door has no desk to walk into; it is the code's.
+	if in.Door.Desk == nil {
+		return nil, ErrDoorAsksForCode
+	}
 	var (
 		principal Principal
 		secret    string
@@ -317,7 +409,7 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 	)
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var org Org
-		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE id = $1 AND archived_at IS NULL`, in.OrgID).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE id = $1 AND archived_at IS NULL`, in.Door.orgID).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
 			return err
 		}
 		var (
@@ -329,7 +421,7 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 		err := tx.QueryRow(ctx, `
 			SELECT id, key, portal_verifies, trusted_domains FROM project
 			WHERE org_id = $1 AND key = $2 AND kind = 'service' AND archived_at IS NULL`,
-			org.ID, strings.ToUpper(strings.TrimSpace(in.ProjectKey))).Scan(&deskID, &deskKey, &verifies, &domains)
+			org.ID, in.Door.Desk.Key).Scan(&deskID, &deskKey, &verifies, &domains)
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && verifies) {
 			return ErrDoorAsksForCode
 		}

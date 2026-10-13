@@ -17,13 +17,13 @@ import (
 // a stranger uses a door of their own organization to reach the victim's.
 
 // victim signs up an organization with a project in it and returns its
-// client, address and slug.
-func victim(t *testing.T, h *harness, api *apiServer) (*client, string, string) {
+// client and address.
+func victim(t *testing.T, h *harness, api *apiServer) (*client, string) {
 	t.Helper()
 	c := api.client(t)
 	signed := c.signup(t, h, "victim")
 	want(t, c.post("/api/v1/projects", map[string]any{"name": "Secrets", "key": "SEC"}), http.StatusCreated, "the victim's project")
-	return c, principalField(t, signed, "principal", "user", "email").(string), principalField(t, signed, "principal", "org", "slug").(string)
+	return c, principalField(t, signed, "principal", "user", "email").(string)
 }
 
 func wantCode(t *testing.T, r response, code string) {
@@ -37,7 +37,7 @@ func TestAnInvitationCannotHandOverAnAccount(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
-	victimClient, address, _ := victim(t, h, api)
+	victimClient, address := victim(t, h, api)
 
 	attacker := api.client(t)
 	attacker.signup(t, h, "inviter")
@@ -65,30 +65,31 @@ func TestAnInvitationCannotHandOverAnAccount(t *testing.T) {
 func TestAnOpenDoorCannotHandOverAnAccount(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
-	victimClient, address, victimSlug := victim(t, h, api)
+	victimClient, address := victim(t, h, api)
 
 	attacker := api.client(t)
 	slug := principalField(t, attacker.signup(t, h, "doorman"), "principal", "org", "slug").(string)
-	want(t, attacker.post("/api/v1/projects", map[string]any{"name": "Walk in", "key": "WLK", "template": "service-desk"}), http.StatusCreated, "the attacker's desk")
-	want(t, attacker.patch("/api/v1/projects/WLK", map[string]any{"portalVerifies": false}), http.StatusOK, "an open door")
+	wlk, hlp := deskKey("WLK"), deskKey("HLP")
+	want(t, attacker.post("/api/v1/projects", map[string]any{"name": "Walk in", "key": wlk, "template": "service-desk"}), http.StatusCreated, "the attacker's desk")
+	want(t, attacker.patch("/api/v1/projects/"+wlk, map[string]any{"portalVerifies": false}), http.StatusOK, "an open door")
 
 	stranger := api.client(t)
-	wantCode(t, want(t, stranger.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "desk": "WLK", "name": "Victim"}),
+	wantCode(t, want(t, stranger.post("/api/v1/desk/sessions", map[string]any{"email": address, "desk": wlk, "name": "Victim"}),
 		http.StatusForbidden, "an address with a password at an open door"), "door_asks_for_code")
 	want(t, stranger.get("/api/v1/auth/me"), http.StatusUnauthorized, "no session came of it")
 
 	// A customer of the victim's desk has no password, so the door lets their
 	// address in, but the session stays at the attacker's desk.
-	want(t, victimClient.post("/api/v1/projects", map[string]any{"name": "Help", "key": "HLP", "template": "service-desk"}), http.StatusCreated, "the victim's desk")
+	want(t, victimClient.post("/api/v1/projects", map[string]any{"name": "Help", "key": hlp, "template": "service-desk"}), http.StatusCreated, "the victim's desk")
 	customerAddress := h.email(t, "customer")
 	customer := api.client(t)
-	want(t, customer.post("/api/v1/desk/"+victimSlug+"/codes", map[string]any{"email": customerAddress}), http.StatusAccepted, "a code at the victim's desk")
-	want(t, customer.post("/api/v1/desk/"+victimSlug+"/sessions", map[string]any{"email": customerAddress, "code": api.mailer.lastCode(t)}), http.StatusOK, "the customer is in")
+	want(t, customer.post("/api/v1/desk/codes", map[string]any{"email": customerAddress, "desk": hlp}), http.StatusAccepted, "a code at the victim's desk")
+	want(t, customer.post("/api/v1/desk/sessions", map[string]any{"email": customerAddress, "code": api.mailer.lastCode(t), "desk": hlp}), http.StatusOK, "the customer is in")
 
 	walkIn := api.client(t)
-	want(t, walkIn.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": customerAddress, "desk": "WLK"}), http.StatusOK, "the customer's address at the open door")
+	want(t, walkIn.post("/api/v1/desk/sessions", map[string]any{"email": customerAddress, "desk": wlk}), http.StatusOK, "the customer's address at the open door")
 	at := want(t, walkIn.get("/api/v1/auth/me"), http.StatusOK, "where the walk-in is")
-	if principalField(t, at, "principal", "org", "slug") != slug || principalField(t, at, "principal", "portalDesk") != "WLK" {
+	if principalField(t, at, "principal", "org", "slug") != slug || principalField(t, at, "principal", "portalDesk") != wlk {
 		t.Fatalf("the walk-in left the door's desk: %s", at.Raw)
 	}
 	want(t, walkIn.get("/api/v1/auth/me/export"), http.StatusForbidden, "exporting the whole person through an open door")
@@ -119,13 +120,14 @@ func TestAnOpenDoorCannotActForTheWholePerson(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	agent := api.client(t)
-	slug := principalField(t, agent.signup(t, h, "walkin"), "principal", "org", "slug").(string)
-	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Walk in", "key": "WLI", "template": "service-desk"}), http.StatusCreated, "a desk")
-	want(t, agent.patch("/api/v1/projects/WLI", map[string]any{"portalVerifies": false}), http.StatusOK, "an open door")
+	agent.signup(t, h, "walkin")
+	wli := deskKey("WLI")
+	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Walk in", "key": wli, "template": "service-desk"}), http.StatusCreated, "a desk")
+	want(t, agent.patch("/api/v1/projects/"+wli, map[string]any{"portalVerifies": false}), http.StatusOK, "an open door")
 
 	address := h.email(t, "trusted")
 	walkIn := api.client(t)
-	want(t, walkIn.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "desk": "WLI"}), http.StatusOK, "in through the open door")
+	want(t, walkIn.post("/api/v1/desk/sessions", map[string]any{"email": address, "desk": wli}), http.StatusOK, "in through the open door")
 	for what, got := range map[string]response{
 		"export": walkIn.get("/api/v1/auth/me/export"),
 		"erase":  walkIn.delete("/api/v1/auth/me"),
@@ -136,8 +138,8 @@ func TestAnOpenDoorCannotActForTheWholePerson(t *testing.T) {
 	}
 
 	byCode := api.client(t)
-	want(t, byCode.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code")
-	want(t, byCode.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusOK, "in with the code")
+	want(t, byCode.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": wli}), http.StatusAccepted, "a code")
+	want(t, byCode.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t), "desk": wli}), http.StatusOK, "in with the code")
 	want(t, byCode.get("/api/v1/auth/me/export"), http.StatusOK, "a proven mailbox takes its data")
 }
 
@@ -145,8 +147,9 @@ func TestAPortalCodeCannotBeGuessedByAskingAgain(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	agent := api.client(t)
-	slug := principalField(t, agent.signup(t, h, "guessdesk"), "principal", "org", "slug").(string)
-	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Desk", "key": "GSD", "template": "service-desk"}), http.StatusCreated, "a desk")
+	agent.signup(t, h, "guessdesk")
+	gsd := deskKey("GSD")
+	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Desk", "key": gsd, "template": "service-desk"}), http.StatusCreated, "a desk")
 
 	visitor := api.client(t)
 	address := h.email(t, "guessed")
@@ -160,18 +163,18 @@ func TestAPortalCodeCannotBeGuessedByAskingAgain(t *testing.T) {
 		if round > 0 {
 			nudge(`UPDATE portal_code SET requested_at = requested_at - interval '2 minutes' WHERE email = $1`)
 		}
-		want(t, visitor.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code")
+		want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": gsd}), http.StatusAccepted, "a code")
 		for i := 0; i < 5; i++ {
-			want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": "000000"}), http.StatusUnauthorized, "a wrong code")
+			want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": "000000", "desk": gsd}), http.StatusUnauthorized, "a wrong code")
 		}
 	}
 	nudge(`UPDATE portal_code SET requested_at = requested_at - interval '2 minutes' WHERE email = $1`)
-	want(t, visitor.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a third code")
-	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}),
+	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": gsd}), http.StatusAccepted, "a third code")
+	want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t), "desk": gsd}),
 		http.StatusUnauthorized, "ten wrong guesses in the hour spend the right code too")
 
 	// An hour later the address starts afresh.
 	nudge(`UPDATE portal_code SET requested_at = requested_at - interval '2 minutes', window_started = window_started - interval '2 hours' WHERE email = $1`)
-	want(t, visitor.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code an hour on")
-	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusOK, "the right code works again")
+	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": gsd}), http.StatusAccepted, "a code an hour on")
+	want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t), "desk": gsd}), http.StatusOK, "the right code works again")
 }

@@ -183,6 +183,12 @@ func (h *harness) orgSlug(t *testing.T, prefix string) string {
 	return slug
 }
 
+// deskKey returns a project key no other test's desk has: the public door finds
+// a desk by its key alone, so two tests' desks must not share one.
+func deskKey(prefix string) string {
+	return prefix + strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", "")[:6])
+}
+
 // attachmentStore is the real bucket the stack runs with. Nothing is faked
 // below the layer under test: an upload in these tests lands in the stack's object store.
 func (h *harness) attachmentStore(t *testing.T) attachment.Store {

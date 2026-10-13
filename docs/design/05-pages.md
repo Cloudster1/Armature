@@ -583,7 +583,8 @@ sprints") and, for an administrator, a link to these settings.
 
 ## Portal (content)
 
-The door at /desk/$orgSlug (narrow, no shell) is the code form, or, when the
+The door at /desk?desk=<key> (narrow, no shell) is titled with the desk's
+name, or the installation's at /desk, and is the code form, or, when the
 address names a desk whose door is open, a Name and Email form with one
 Continue Button. The header keeps Your requests and Raise a request; for a
 session that came in without a code, Your requests names its desk. The request page reuses

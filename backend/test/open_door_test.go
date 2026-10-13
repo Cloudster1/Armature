@@ -22,45 +22,48 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
 
 	// Two desks and a software project. Only a desk has a door.
-	trusting := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "IT desk", "key": "ITD", "template": "service-desk"}), http.StatusCreated, "a desk"), "project")
-	careful := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "HR desk", "key": "HRD", "template": "service-desk"}), http.StatusCreated, "another desk"), "project")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Code", "key": "COD"}), http.StatusCreated, "a software project")
+	itd, hrd, cod := deskKey("ITD"), deskKey("HRD"), deskKey("COD")
+	trusting := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "IT desk", "key": itd, "template": "service-desk"}), http.StatusCreated, "a desk"), "project")
+	careful := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "HR desk", "key": hrd, "template": "service-desk"}), http.StatusCreated, "another desk"), "project")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Code", "key": cod}), http.StatusCreated, "a software project")
 	if trusting["portalVerifies"] != true || careful["portalVerifies"] != true {
 		t.Fatalf("a new desk asks for a code by default: %v %v", trusting["portalVerifies"], careful["portalVerifies"])
 	}
-	want(t, owner.patch("/api/v1/projects/COD", map[string]any{"portalVerifies": false}), http.StatusConflict, "a software project has no door")
+	want(t, owner.patch("/api/v1/projects/"+cod, map[string]any{"portalVerifies": false}), http.StatusConflict, "a software project has no door")
 
 	// A member who does not administer the desk cannot open its door.
 	invite := want(t, owner.post("/api/v1/invites", map[string]string{"email": h.email(t, "plain"), "role": "member"}), http.StatusCreated, "invite")
 	member := api.client(t)
 	want(t, member.post("/api/v1/auth/invites/accept", map[string]string{"token": invite.Body["token"].(string), "name": "Plain", "password": testPassword}), http.StatusOK, "accept")
-	want(t, member.patch("/api/v1/projects/ITD", map[string]any{"portalVerifies": false}), http.StatusForbidden, "not theirs to open")
+	want(t, member.patch("/api/v1/projects/"+itd, map[string]any{"portalVerifies": false}), http.StatusForbidden, "not theirs to open")
 
 	// Before the door is opened, walking in is refused, and the door page says nothing is open.
 	visitor := api.client(t)
 	address := h.email(t, "walkin")
-	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "name": "Walk In", "desk": "ITD"}), http.StatusForbidden, "the door asks for a code")
-	if open := list(t, want(t, visitor.get("/api/v1/desk/"+slug), http.StatusOK, "the door"), "open"); len(open) != 0 {
-		t.Fatalf("open doors before any was opened: %v", open)
+	want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "name": "Walk In", "desk": itd}), http.StatusForbidden, "the door asks for a code")
+	if door := obj(t, want(t, visitor.get("/api/v1/desk?desk="+itd), http.StatusOK, "the door"), "desk"); door["open"] != false {
+		t.Fatalf("the door is open before anybody opened it: %v", door)
 	}
 
-	opened := obj(t, want(t, owner.patch("/api/v1/projects/ITD", map[string]any{"portalVerifies": false}), http.StatusOK, "open the door"), "project")
+	opened := obj(t, want(t, owner.patch("/api/v1/projects/"+itd, map[string]any{"portalVerifies": false}), http.StatusOK, "open the door"), "project")
 	if opened["portalVerifies"] != false {
 		t.Fatalf("portalVerifies after opening = %v", opened["portalVerifies"])
 	}
-	open := list(t, want(t, visitor.get("/api/v1/desk/"+slug), http.StatusOK, "the door"), "open")
-	if len(open) != 1 || open[0].(map[string]any)["key"] != "ITD" {
-		t.Fatalf("open doors = %v, want the IT desk alone", open)
+	if door := obj(t, want(t, visitor.get("/api/v1/desk?desk="+itd), http.StatusOK, "the door"), "desk"); door["open"] != true || door["key"] != itd {
+		t.Fatalf("door = %v, want the IT desk open", door)
+	}
+	if door := obj(t, want(t, visitor.get("/api/v1/desk?desk="+hrd), http.StatusOK, "the other door"), "desk"); door["open"] != false {
+		t.Fatalf("the HR desk opened with the IT desk: %v", door)
 	}
 
-	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": "123456", "desk": "ITD"}), http.StatusBadRequest, "a code and a desk at once")
-	want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": "not an address", "desk": "ITD"}), http.StatusUnprocessableEntity, "not an address")
-	entered := want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "name": "Walk In", "desk": "ITD"}), http.StatusOK, "in without a code")
+	want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": "123456", "desk": itd}), http.StatusUnauthorized, "a code given at an open door is still checked")
+	want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": "not an address", "desk": itd}), http.StatusUnprocessableEntity, "not an address")
+	entered := want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "name": "Walk In", "desk": itd}), http.StatusOK, "in without a code")
 	if role := principalField(t, entered, "principal", "role"); role != "customer" {
 		t.Errorf("role = %v, want customer", role)
 	}
-	if desk := principalField(t, entered, "principal", "portalDesk"); desk != "ITD" {
-		t.Errorf("portalDesk = %v, want ITD", desk)
+	if desk := principalField(t, entered, "principal", "portalDesk"); desk != itd {
+		t.Errorf("portalDesk = %v, want %s", desk, itd)
 	}
 	if name := principalField(t, entered, "principal", "user", "name"); name != "Walk In" {
 		t.Errorf("name = %v, want the one given at the door", name)
@@ -69,7 +72,7 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 
 	// The session is the desk's: one desk listed, requests raised there only.
 	desks := list(t, want(t, visitor.get("/api/v1/portal/desks"), http.StatusOK, "desks"), "desks")
-	if len(desks) != 1 || desks[0].(map[string]any)["projectKey"] != "ITD" {
+	if len(desks) != 1 || desks[0].(map[string]any)["projectKey"] != itd {
 		t.Fatalf("a walk-in sees %d desks, want the one they walked into", len(desks))
 	}
 	itTypes := desks[0].(map[string]any)["requestTypes"].([]any)
@@ -79,8 +82,8 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 
 	// The same address, having proven itself at the HR desk earlier, has a
 	// request there. The walk-in must not see it, nor raise one there.
-	hrTypes := list(t, want(t, owner.get("/api/v1/projects/HRD/request-types"), http.StatusOK, "HR request types"), "requestTypes")
-	hrKey, _ := raiseAsCustomer(t, h, api, slug, address, hrTypes[0].(map[string]any)["id"].(string))
+	hrTypes := list(t, want(t, owner.get("/api/v1/projects/"+hrd+"/request-types"), http.StatusOK, "HR request types"), "requestTypes")
+	hrKey, _ := raiseAsCustomer(t, h, api, hrd, address, hrTypes[0].(map[string]any)["id"].(string))
 	want(t, visitor.get("/api/v1/portal/requests/"+hrKey), http.StatusNotFound, "the HR request is not there for a walk-in")
 	want(t, visitor.post("/api/v1/portal/requests", map[string]any{"requestTypeId": hrTypes[0].(map[string]any)["id"], "summary": "Sneaking in"}), http.StatusNotFound, "nor is the HR request type")
 	mine := list(t, want(t, visitor.get("/api/v1/portal/requests"), http.StatusOK, "my requests"), "requests")
@@ -95,12 +98,12 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 
 	t.Run("an agent's address is refused at an open door too", func(t *testing.T) {
 		ownerAddress := principalField(t, signedUp, "principal", "user", "email").(string)
-		want(t, api.client(t).post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": ownerAddress, "desk": "ITD"}), http.StatusForbidden, "sign in instead")
+		want(t, api.client(t).post("/api/v1/desk/sessions", map[string]any{"email": ownerAddress, "desk": itd}), http.StatusForbidden, "sign in instead")
 	})
 
 	t.Run("a session without a code belongs to an open desk, through SQL", func(t *testing.T) {
 		var hrID uuid.UUID
-		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = 'HRD' AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug).Scan(&hrID); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = $2 AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug, hrd).Scan(&hrID); err != nil {
 			t.Fatal(err)
 		}
 		_, err := h.super.Exec(context.Background(), `
@@ -110,29 +113,29 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 			t.Fatalf("a code-less session for a desk that asks for a code was accepted: %v", err)
 		}
-		_, err = h.super.Exec(context.Background(), `UPDATE project SET portal_verifies = false WHERE key = 'COD' AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug)
+		_, err = h.super.Exec(context.Background(), `UPDATE project SET portal_verifies = false WHERE key = $2 AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug, cod)
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 			t.Fatalf("a software project was allowed a door: %v", err)
 		}
 	})
 
 	t.Run("turning the code back on ends the sessions that skipped it", func(t *testing.T) {
-		want(t, owner.patch("/api/v1/projects/ITD", map[string]any{"portalVerifies": true}), http.StatusOK, "close the door")
+		want(t, owner.patch("/api/v1/projects/"+itd, map[string]any{"portalVerifies": true}), http.StatusOK, "close the door")
 		want(t, visitor.get("/api/v1/auth/me"), http.StatusUnauthorized, "the walk-in is out")
-		want(t, visitor.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "desk": "ITD"}), http.StatusForbidden, "and cannot walk back in")
+		want(t, visitor.post("/api/v1/desk/sessions", map[string]any{"email": address, "desk": itd}), http.StatusForbidden, "and cannot walk back in")
 	})
 }
 
-// raiseAsCustomer proves an address with a code and raises a request through
-// a request type, returning its key and the customer's client.
-func raiseAsCustomer(t *testing.T, h *harness, api *apiServer, slug, address, requestTypeID string) (string, *client) {
+// raiseAsCustomer proves an address with a code at a desk's door and raises a
+// request through a request type, returning its key and the customer's client.
+func raiseAsCustomer(t *testing.T, h *harness, api *apiServer, desk, address, requestTypeID string) (string, *client) {
 	t.Helper()
 	c := api.client(t)
 	if _, err := h.super.Exec(context.Background(), `DELETE FROM portal_code WHERE email = $1`, address); err != nil {
 		t.Fatal(err)
 	}
-	want(t, c.post("/api/v1/desk/"+slug+"/codes", map[string]any{"email": address}), http.StatusAccepted, "a code")
-	want(t, c.post("/api/v1/desk/"+slug+"/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t)}), http.StatusOK, "in with the code")
+	want(t, c.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": desk}), http.StatusAccepted, "a code")
+	want(t, c.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t), "desk": desk}), http.StatusOK, "in with the code")
 	raised := want(t, c.post("/api/v1/portal/requests", map[string]any{"requestTypeId": requestTypeID, "summary": "A proven request"}), http.StatusCreated, "raise")
 	return obj(t, raised, "request")["key"].(string), c
 }

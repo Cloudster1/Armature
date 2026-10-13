@@ -13,7 +13,6 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
-	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/tenant"
 )
@@ -79,11 +78,12 @@ type Rating struct {
 	RatedAt  *time.Time `json:"ratedAt,omitempty"`
 }
 
-// RatingPage is what the rating link shows before the customer answers.
+// RatingPage is what the rating link shows before the customer answers. Desk
+// is the desk's name, which is who the customer dealt with.
 type RatingPage struct {
 	IssueKey string `json:"issueKey"`
 	Summary  string `json:"summary"`
-	OrgName  string `json:"orgName"`
+	Desk     string `json:"desk"`
 	Rated    bool   `json:"rated"`
 }
 
@@ -443,7 +443,7 @@ func (s *Service) InviteRating(ctx context.Context, issueID uuid.UUID) (string, 
 }
 
 // RatingPage is what the rating link shows. Nobody is signed in, so the token
-// names the organization first.
+// says where the request is first.
 func (s *Service) RatingPage(ctx context.Context, token string) (*RatingPage, error) {
 	digest := auth.HashToken(token)
 	var orgID uuid.UUID
@@ -458,15 +458,10 @@ func (s *Service) RatingPage(ctx context.Context, token string) (*RatingPage, er
 	}
 	var out RatingPage
 	err = s.db.Read(db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID})), func(ctx context.Context, tx db.DBTX) error {
-		err := tx.QueryRow(ctx, `
-			SELECT p.key || '-' || i.key_num, i.summary, r.rated_at IS NOT NULL
+		return tx.QueryRow(ctx, `
+			SELECT p.key || '-' || i.key_num, i.summary, p.name, r.rated_at IS NOT NULL
 			FROM csat_rating r JOIN issue i ON i.id = r.issue_id JOIN project p ON p.id = i.project_id
-			WHERE r.token_hash = $1`, digest).Scan(&out.IssueKey, &out.Summary, &out.Rated)
-		if err != nil {
-			return err
-		}
-		out.OrgName, err = installation.Name(ctx, tx)
-		return err
+			WHERE r.token_hash = $1`, digest).Scan(&out.IssueKey, &out.Summary, &out.Desk, &out.Rated)
 	})
 	return &out, err
 }

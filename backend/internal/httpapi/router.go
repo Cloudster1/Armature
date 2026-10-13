@@ -60,10 +60,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Get("/auth/oidc/{orgSlug}/start", s.handleOIDCStartForOrganization)
 
 		// The portal's door for people without an account: the desk is named
-		// by its organization, since nobody is signed in to say which one.
-		r.Get("/desk/{orgSlug}", s.handleDeskEntry)
-		r.Post("/desk/{orgSlug}/codes", s.handlePortalCode)
-		r.Post("/desk/{orgSlug}/sessions", s.handlePortalSession)
+		// by its key, since nobody is signed in to say which one.
+		r.Get("/desk", s.handleDeskEntry)
+		r.Post("/desk/codes", s.handlePortalCode)
+		r.Post("/desk/sessions", s.handlePortalSession)
+		// Until the next release, for addresses that named an organization.
+		r.Get("/desk/{orgSlug}", s.handleDeskEntryMoved)
+		r.Post("/desk/{orgSlug}/codes", s.handlePortalCodeMoved)
+		r.Post("/desk/{orgSlug}/sessions", s.handlePortalSessionMoved)
 		// The way out of following that a mail carries; the token is the
 		// whole of the authorization.
 		r.Post("/unwatch", s.handleUnwatch)

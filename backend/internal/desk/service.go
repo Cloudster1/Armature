@@ -737,37 +737,6 @@ type RaiseInput struct {
 	Description   string
 }
 
-// OpenDoor is a desk whose door does not ask for a code, as the door page
-// names it to whoever arrives.
-type OpenDoor struct {
-	Key  string `json:"key"`
-	Name string `json:"name"`
-}
-
-// OpenDoors lists an organization's desks that let people in without a code.
-// It runs as the system: nobody is signed in at the door.
-func (s *Service) OpenDoors(ctx context.Context, orgID uuid.UUID) ([]OpenDoor, error) {
-	out := []OpenDoor{}
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `
-			SELECT key, name FROM project
-			WHERE org_id = $1 AND kind = 'service' AND NOT portal_verifies AND archived_at IS NULL ORDER BY name`, orgID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var d OpenDoor
-			if err := rows.Scan(&d.Key, &d.Name); err != nil {
-				return err
-			}
-			out = append(out, d)
-		}
-		return rows.Err()
-	})
-	return out, err
-}
-
 // Raise files a request through a request type, as the customer.
 func (s *Service) Raise(ctx context.Context, in RaiseInput, customer issue.Actor) (*issue.Issue, db.LSN, error) {
 	var rt *RequestType

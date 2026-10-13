@@ -2,7 +2,7 @@ import { createRouter } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { rootRoute } from "./root";
 import { loginRoute, signupRoute } from "./auth";
-import { deskEntryRoute } from "./desk-entry";
+import { deskEntryMovedRoute, deskEntryRoute } from "./desk-entry";
 import { unwatchRoute } from "./unwatch";
 import { inviteRoute } from "./invite";
 import { forgotPasswordRoute, resetPasswordRoute } from "./password-reset";
@@ -64,6 +64,7 @@ const routeTree = rootRoute.addChildren([
   forgotPasswordRoute,
   resetPasswordRoute,
   deskEntryRoute,
+  deskEntryMovedRoute,
   unwatchRoute,
   rateRoute,
   sharedRoute,

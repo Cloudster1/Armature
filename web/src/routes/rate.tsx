@@ -30,7 +30,7 @@ function RatePage() {
         {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
         {page && (
           <>
-            <p className="text-xs text-ink-subtle">{page.orgName}</p>
+            <p className="text-xs text-ink-subtle">{page.desk}</p>
             <h1 className="mt-1 text-lg font-semibold text-ink">How did we do with {page.issueKey}?</h1>
             <p className="mt-1 text-sm text-ink-muted">{page.summary}</p>
             {done ? (

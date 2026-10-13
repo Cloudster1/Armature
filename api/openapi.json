@@ -3700,18 +3700,18 @@
         }
       }
     },
-    "/desk/{orgSlug}": {
+    "/desk": {
       "get": {
         "operationId": "deskEntry",
-        "summary": "The desk behind a public address, and which of its desks let people in without a code.",
+        "summary": "The door a public address names: the installation, and the desk with whether it lets people in without a code.",
         "tags": [
           "portal"
         ],
         "parameters": [
           {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
+            "name": "desk",
+            "in": "query",
+            "description": "The desk's key. Without it, the installation's door.",
             "schema": {
               "type": "string"
             }
@@ -3723,26 +3723,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "open": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/OpenDoor"
-                      }
-                    },
-                    "slug": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "open",
-                    "slug"
-                  ]
+                  "$ref": "#/components/schemas/Door"
                 }
               }
             }
@@ -3760,22 +3741,12 @@
         }
       }
     },
-    "/desk/{orgSlug}/codes": {
+    "/desk/codes": {
       "post": {
         "operationId": "portalCode",
-        "summary": "Mail a one-time code to an address.",
+        "summary": "Mail a one-time code to an address, at a desk's door or the installation's.",
         "tags": [
           "portal"
-        ],
-        "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "requestBody": {
           "required": true,
@@ -3819,22 +3790,12 @@
         }
       }
     },
-    "/desk/{orgSlug}/sessions": {
+    "/desk/sessions": {
       "post": {
         "operationId": "portalSession",
         "summary": "Enter the portal with a mailed code, or with a name and address at a desk whose door is open.",
         "tags": [
           "portal"
-        ],
-        "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "requestBody": {
           "required": true,
@@ -3864,6 +3825,108 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/desk/{orgSlug}": {
+      "get": {
+        "operationId": "deskEntryMoved",
+        "summary": "Deprecated: sends the caller to /desk, whatever organization it names. Goes in the next release.",
+        "tags": [
+          "portal"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: send the same request to the address in Location."
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/desk/{orgSlug}/codes": {
+      "post": {
+        "operationId": "portalCodeMoved",
+        "summary": "Deprecated: sends the same request to /desk/codes, whatever organization it names. Goes in the next release.",
+        "tags": [
+          "portal"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: send the same request to the address in Location."
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/desk/{orgSlug}/sessions": {
+      "post": {
+        "operationId": "portalSessionMoved",
+        "summary": "Deprecated: sends the same request to /desk/sessions, whatever organization it names. Goes in the next release.",
+        "tags": [
+          "portal"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: send the same request to the address in Location."
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -21100,6 +21163,39 @@
           "components"
         ]
       },
+      "Door": {
+        "type": "object",
+        "properties": {
+          "desk": {
+            "$ref": "#/components/schemas/DoorDesk"
+          },
+          "installation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "installation"
+        ]
+      },
+      "DoorDesk": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "open": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "open"
+        ]
+      },
       "EdgeRequest": {
         "type": "object",
         "properties": {
@@ -23205,21 +23301,6 @@
           "createdAt"
         ]
       },
-      "OpenDoor": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "key",
-          "name"
-        ]
-      },
       "Operation": {
         "type": "object",
         "properties": {
@@ -23815,6 +23896,9 @@
       "PortalCodeRequest": {
         "type": "object",
         "properties": {
+          "desk": {
+            "type": "string"
+          },
           "email": {
             "type": "string"
           }
@@ -24352,10 +24436,10 @@
       "RatingPage": {
         "type": "object",
         "properties": {
-          "issueKey": {
+          "desk": {
             "type": "string"
           },
-          "orgName": {
+          "issueKey": {
             "type": "string"
           },
           "rated": {
@@ -24368,7 +24452,7 @@
         "required": [
           "issueKey",
           "summary",
-          "orgName",
+          "desk",
           "rated"
         ]
       },

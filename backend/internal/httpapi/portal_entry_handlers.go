@@ -12,7 +12,7 @@ import (
 
 // The portal's door for people without an account: the desk's name, a code by
 // mail, and a session for the code. Nobody is signed in on these routes, so the
-// organization comes from the address in the URL.
+// desk the address names, or the installation, says where they lead.
 
 // codeRequests is the brake on mailing codes from one address: enough for a
 // person, too little for a flood. It is per process, which is what a brake
@@ -182,45 +182,41 @@ func (t *throttle) gateKey(w http.ResponseWriter, r *http.Request, key, message 
 	return false
 }
 
-// deskBySlug names the organization behind a portal address, or says there is
-// no desk there; an unknown slug and an archived one are the same answer.
-func (s *Server) deskBySlug(r *http.Request) (*auth.Org, *APIError) {
-	org, err := s.Auth.OrgBySlug(r.Context(), r.PathValue("orgSlug"))
+// door finds the door a request names, answering the caller when there is none.
+func (s *Server) door(w http.ResponseWriter, r *http.Request, deskKey string) (*auth.Door, bool) {
+	door, err := s.Auth.PortalDoor(r.Context(), deskKey)
 	if err != nil {
-		return nil, ErrNotFound("There is no service desk at that address.")
+		respondError(w, r, err)
+		return nil, false
 	}
-	return org, nil
+	return door, true
 }
 
 func (s *Server) handleDeskEntry(w http.ResponseWriter, r *http.Request) {
-	org, apiErr := s.deskBySlug(r)
-	if apiErr != nil {
-		respondError(w, r, apiErr)
+	door, ok := s.door(w, r, r.URL.Query().Get("desk"))
+	if !ok {
 		return
 	}
-	open, err := s.Desk.OpenDoors(r.Context(), org.ID)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"name": org.Name, "slug": org.Slug, "open": open})
+	respondJSON(w, r, http.StatusOK, door)
 }
 
 type portalCodeRequest struct {
 	Email string `json:"email"`
+	// Desk is the key of the desk whose door the code was asked at; without
+	// it, the code is asked at the installation's.
+	Desk string `json:"desk,omitempty"`
 }
 
 // handlePortalCode mails a code. The answer is the same for every well-formed
 // address, known or not, so nothing can be learned by asking.
 func (s *Server) handlePortalCode(w http.ResponseWriter, r *http.Request) {
-	org, apiErr := s.deskBySlug(r)
-	if apiErr != nil {
-		respondError(w, r, apiErr)
-		return
-	}
 	var req portalCodeRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		respondError(w, r, err)
+		return
+	}
+	door, ok := s.door(w, r, req.Desk)
+	if !ok {
 		return
 	}
 	if s.Mailer == nil {
@@ -231,12 +227,12 @@ func (s *Server) handlePortalCode(w http.ResponseWriter, r *http.Request) {
 	if !codeRequests.gate(w, r, "Too many codes were asked for from here. Wait a few minutes and try again.") {
 		return
 	}
-	code, expiresAt, err := s.Auth.IssuePortalCode(r.Context(), org.ID, req.Email)
+	code, expiresAt, err := s.Auth.IssuePortalCode(r.Context(), door, req.Email)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	if err := s.Mailer.Send(r.Context(), desk.CodeMail(req.Email, org.Name, code)); err != nil {
+	if err := s.Mailer.Send(r.Context(), desk.CodeMail(req.Email, door.Name(), code)); err != nil {
 		s.Log.Warn("portal code could not be mailed", "error", err)
 		respondError(w, r, &APIError{Status: http.StatusBadGateway, Code: "mail_failed",
 			Message: "The code could not be sent. Try again in a minute."})
@@ -247,8 +243,8 @@ func (s *Server) handlePortalCode(w http.ResponseWriter, r *http.Request) {
 
 type portalSessionRequest struct {
 	Email string `json:"email"`
-	// Code is the mailed code; with Desk instead, the desk's open door is
-	// walked through with Name and no code.
+	// Code is the mailed code. Without one, Desk names a desk whose door is
+	// open and Name is who walks through it.
 	Code string `json:"code,omitempty"`
 	Desk string `json:"desk,omitempty"`
 	Name string `json:"name,omitempty"`
@@ -257,37 +253,32 @@ type portalSessionRequest struct {
 // handlePortalSession trades a code for a session, the way a login does, or
 // lets somebody straight into a desk whose door is open.
 func (s *Server) handlePortalSession(w http.ResponseWriter, r *http.Request) {
-	org, apiErr := s.deskBySlug(r)
-	if apiErr != nil {
-		respondError(w, r, apiErr)
-		return
-	}
 	var req portalSessionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		respondError(w, r, err)
+		return
+	}
+	door, ok := s.door(w, r, req.Desk)
+	if !ok {
 		return
 	}
 	var (
 		creds *auth.Credentials
 		err   error
 	)
-	switch {
-	case req.Desk != "" && req.Code != "":
-		respondError(w, r, ErrBadRequest("Give either a code or a desk, not both."))
-		return
-	case req.Desk != "":
+	if req.Code == "" && req.Desk != "" {
 		if !openEntries.gate(w, r, "Too many people came in from here. Wait a few minutes and try again.") {
 			return
 		}
 		creds, err = s.Auth.OpenPortalSession(r.Context(), auth.OpenSessionInput{
-			OrgID: org.ID, ProjectKey: req.Desk, Email: req.Email, Name: req.Name, UserAgent: r.UserAgent(), IP: clientIP(r),
+			Door: door, Email: req.Email, Name: req.Name, UserAgent: r.UserAgent(), IP: clientIP(r),
 		})
-	default:
+	} else {
 		if !codeRedemptions.gate(w, r, "Too many codes were tried from here. Wait a few minutes and try again.") {
 			return
 		}
 		creds, err = s.Auth.RedeemPortalCode(r.Context(), auth.PortalSessionInput{
-			OrgID: org.ID, Email: req.Email, Code: req.Code, UserAgent: r.UserAgent(), IP: clientIP(r),
+			Door: door, Email: req.Email, Code: req.Code, UserAgent: r.UserAgent(), IP: clientIP(r),
 		})
 	}
 	if err != nil {
@@ -297,6 +288,33 @@ func (s *Server) handlePortalSession(w http.ResponseWriter, r *http.Request) {
 	s.setSessionCookie(w, creds.SessionSecret, creds.ExpiresAt)
 	s.Fresh.Note(r.Context(), "s:"+creds.Principal.SessionID.String(), creds.LSN)
 	respondJSON(w, r, http.StatusOK, map[string]any{"principal": creds.Principal})
+}
+
+// deskPath is where the door's routes live, for the addresses that named an
+// organization to send their callers on to.
+const deskPath = "/api/v1/desk"
+
+// The door's addresses that named an organization keep working for a release.
+// 308 sends the same request, body and all, to the desk's own address.
+func (s *Server) handleDeskEntryMoved(w http.ResponseWriter, r *http.Request) {
+	deskMoved(w, r, deskPath)
+}
+
+func (s *Server) handlePortalCodeMoved(w http.ResponseWriter, r *http.Request) {
+	deskMoved(w, r, deskPath+"/codes")
+}
+
+func (s *Server) handlePortalSessionMoved(w http.ResponseWriter, r *http.Request) {
+	deskMoved(w, r, deskPath+"/sessions")
+}
+
+// deskMoved answers with the new address, keeping the query, whatever
+// organization the old one named: an installation holds one.
+func deskMoved(w http.ResponseWriter, r *http.Request, target string) {
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	http.Redirect(w, r, target, http.StatusPermanentRedirect)
 }
 
 // portalEntryError maps the code path's refusals; it is called from toAPIError.
@@ -316,6 +334,11 @@ func portalEntryError(err error) *APIError {
 	case errors.Is(err, auth.ErrDoorAsksForCode):
 		return &APIError{Status: http.StatusForbidden, Code: "door_asks_for_code",
 			Message: "This desk asks for a code by mail first. Ask for one with your address."}
+	case errors.Is(err, auth.ErrNoDesk):
+		return ErrNotFound("There is no service desk at that address. Check the link you were given.")
+	case errors.Is(err, auth.ErrDeskAmbiguous):
+		return &APIError{Status: http.StatusConflict, Code: "desk_ambiguous",
+			Message: "More than one desk answers to that key. Ask whoever gave you the address which desk it is for."}
 	}
 	return nil
 }

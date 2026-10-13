@@ -311,10 +311,11 @@ one named helper so each scenario moves by a line.
 - The issue page's changelog is its last section, `[data-issue-history]`
   with `[data-activity="history"]`; comments are `[data-activity="comments"]`
   under the Activity title. There are no Activity tabs.
-- `enterDesk(page, slug, address, next)` goes through the door with a mailed
+- `deskDoor({ desk, next })` is the door's address, `/desk?desk=<key>`.
+  `enterDesk(page, address, { desk, next })` goes through the door with a mailed
   code (`#field-email`, "Send me a code", `[data-desk-code]`, "Enter").
-  `enterOpenDesk(page, slug, deskKey, who, next)` walks into a desk whose door
-  is open: the page `/desk/<slug>?desk=<key>` shows `[data-open-door=<key>]`
+  `enterOpenDesk(page, deskKey, who, next)` walks into a desk whose door
+  is open: the page `/desk?desk=<key>` shows `[data-open-door=<key>]`
   with `#field-your-name`, `#field-email` and `[data-action="enter-open"]`
   ("Continue"). `toggleDoor(page, projectKey)` flips `[data-action="toggle-door"]`
   on the service desk page, waits for its `data-door-verifies` to change and
@@ -322,7 +323,7 @@ one named helper so each scenario moves by a line.
   copies it. The door section is `[data-guide="desk-door"]`.
   `trustDomain(page, projectKey, domain)` types into `#field-trusted-domain`,
   presses `[data-action="add-domain"]` and waits for
-  `[data-trusted-domain=<domain>]`; `turnedAwayAtOpenDesk(page, slug, deskKey, who)`
+  `[data-trusted-domain=<domain>]`; `turnedAwayAtOpenDesk(page, deskKey, who)`
   fills the open door's form, presses Continue and returns the `[role=alert]`
   text the refusal shows. An open door answers an address with a password or
   a place on a team the way a careful desk does, asking for a code.
