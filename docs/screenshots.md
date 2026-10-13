@@ -1,6 +1,6 @@
 # The product, in pictures
 
-Taken from the seeded demo organization by `make screenshots`, which drives the
+Taken from a seeded installation by `make screenshots`, which drives the
 browser suite's own image against the running stack's production build, as the
 suite does, and copies the files here.
 They are regenerated, not edited: if one of these is wrong, the page changed.
@@ -21,7 +21,7 @@ place under the same name.
 
 ![Starting a project from a template](project-templates.png)
 ![A project's scheme, and the designer it opens](project-workflows.png)
-![The organization's workflows](workflow-settings.png)
+![The workflows every project follows](workflow-settings.png)
 ![Workflow schemes](workflow-schemes.png)
 
 ## Planning

@@ -14,8 +14,8 @@ agile planning, bidirectional git and CI integration, and a service desk.
 
 ![Armature](docs/ui-home.png)
 
-Go API and worker, React SPA, PostgreSQL with read replicas, multi-tenant from
-the first table. Pre-1.0: it runs, it is tested four ways, and releases are
+Go API and worker, React SPA, PostgreSQL with read replicas. One installation
+is one team's tracker; another team runs an installation of its own. Pre-1.0: it runs, it is tested four ways, and releases are
 tagged by [semantic version](#releasing) with what changed in
 [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -34,7 +34,7 @@ install; Docker is the only requirement.
 git clone https://github.com/armature/armature.git && cd armature
 make up      # postgres primary and replica, valkey, seaweedfs, mailpit,
              # keycloak, gitea, the api, the worker, the SPA and the renderer
-make seed    # demo people and a project to sign in to
+make seed    # demo people and projects to sign in to
 ```
 
 Then open <http://localhost:5173> and sign in as `ada@armature.test` with the
@@ -76,24 +76,24 @@ the reference for why.
 **Projects and issues.** A project starts from a template that decides its kind,
 its first board, its workflows and which pages it has. Issues carry a summary, a
 rich text description, a type, a priority, an assignee and a reporter, labels
-shared across the organization, files, the fields the project defined, a time
+shared by every project, files, the fields the project defined, a time
 estimate with work logged against it, and a changelog of everything that
 happened. The hierarchy is strict: a parent is exactly one level above its
 child, initiative over epic over story over subtask, enforced by a trigger. A
 project administrator decides which fields an issue shows and where, per issue
-type, over an organization default.
+type, over a default every project shares.
 
 ![An issue](docs/ui-issue.png)
 
 **Workflows.** A state machine per issue type, drawn on a canvas where the
 statuses stay where they were left and the conditions, validators and
-post-functions hang on the arrows. The organization keeps a library of
+post-functions hang on the arrows. The installation keeps a library of
 workflows and schemes; a project maps a type to one of them and inherits the
 rest.
 
 ![A project's workflow](docs/project-workflows.png)
 
-**Roles.** Five of them, granted to people or to groups, over the organization
+**Roles.** Five of them, granted to people or to groups, over all projects
 or over one project: global administrator, project administrator, scrum master,
 user, reader. Groups can come from the identity provider, replaced at every
 sign-in. The first account to sign up sets the installation up and administers
@@ -147,8 +147,8 @@ account of their own, once per event.
 **Themes.** The interface is drawn from named tokens, and a theme is a saved
 redefinition of them: colours for light and dark, the faces, the corners, the
 shadows, the cursors, any glyph, the backdrop, and a block of CSS for the
-rest, from files the theme owns. A theme is its maker's, shared with the
-organization when they say so, and chosen per person.
+rest, from files the theme owns. A theme is its maker's, shared with
+everyone when they say so, and chosen per person.
 
 **The API.** Everything the SPA does is the documented API, and the same table
 of operations is offered to a model over MCP. The assistant answers from an
@@ -171,9 +171,11 @@ browser ──> web (Vite SPA, Tailwind)
 
 Writes go to the primary and return the write ahead log position they committed
 at; a reader who just wrote is pinned to a replica caught up past it, or to the
-primary. Every tenant table carries a forced row level security policy on
-`current_org_id()`, set transaction-locally, and the API connects as a role that
-is neither owner nor superuser. Events are written to an outbox table in the
+primary. The API connects as a role that is neither owner nor superuser. The
+tables that kept organizations apart still carry `org_id` and a forced row
+level security policy on `current_org_id()`, set transaction-locally; an
+installation holds one organization now, kept inside until the schema drops
+both. Events are written to an outbox table in the
 same transaction as the change and relayed to Redis, so an event never describes
 a transaction that rolled back.
 
@@ -210,7 +212,7 @@ at length, because each is a way to get it wrong:
 - **The worker runs once.** `worker.replicas` may only be 1 and the chart
   refuses anything else. There is no leader election, the Redis consumers all
   identify themselves as the literal `worker`. The digest alone would cope with
-  two: what it has sent is kept per organization and person in the database.
+  two: what it has sent is kept per person in the database.
 
 `make helm-lint` lints both values files and `make helm-check` fails if the
 rendered manifests differ from the golden files committed under `tests/`, which
@@ -228,9 +230,9 @@ Four layers, each testing something the layer below cannot.
 | `make test-e2e` | A real Chromium against the running stack, 186 scenarios over every feature: signing in, roles, projects and issues, workflows, boards, sprints, the plan, git, the desk, dashboards, search, import and export |
 
 Nothing is mocked below the layer under test. The integration suite talks to the
-actual primary and replica, pauses WAL replay to create deterministic lag, and
-asserts tenant isolation with two organizations holding real credentials. The
-browser suite drives the same UI a person would. A guard is not proven by the
+actual primary and replica, pauses WAL replay to create deterministic lag, and,
+while the schema still has organizations, asserts row level security with two
+of them holding real credentials. The browser suite drives the same UI a person would. A guard is not proven by the
 service refusing: the same thing is tried straight through SQL and the database
 refuses it too.
 
@@ -240,8 +242,8 @@ background worker draining the same outbox would race them. It is restarted
 afterwards, including on failure.
 
 The integration suite opens one cluster, the superuser pools and the attachment
-bucket in `TestMain`, and `newHarness` hands them to every test. A new test
-works in organizations of its own, which the harness founds with their owner
+bucket in `TestMain`, and `newHarness` hands them to every test. For now a new
+test works in organizations of its own, which the harness founds with their owner
 straight through the database since no product path makes a second one, and
 calls `t.Parallel()` first thing. The tests of sign-up itself run against a
 database of their own, migrated from nothing, the one place an installation
@@ -363,9 +365,8 @@ api and the worker with Jaeger as their endpoint; Jaeger is at
 `localhost:16686`, Prometheus at `localhost:9090`. `make observe-down` stops
 them again. Nothing of this runs unless asked.
 
-**Security at the edges.** A session acts in the installation and names no
-organization, which the database holds it to; it keeps the proof it was opened
-with. A session that came through an open desk door sees that desk alone, and
+**Security at the edges.** A session acts in the installation and keeps the
+proof it was opened with, which the database refuses to rewrite. A session that came through an open desk door sees that desk alone, and
 cannot export or erase the account behind the address. A person with two-step
 sign-in gets no session for the password alone: the code step that follows takes
 five tries, the app's code works once, and a recovery code works once. The
@@ -470,7 +471,7 @@ Zero keeps a kind forever, which nothing here recommends.
 | `backend/internal/report/` | dashboards and the reports their widgets show |
 | `backend/internal/field/` | custom fields per project and each issue's answers |
 | `backend/internal/arrange/` | which fields an issue shows, where, per project and issue type |
-| `backend/internal/label/` | the organization's labels |
+| `backend/internal/label/` | labels, shared by every project |
 | `backend/internal/attachment/` | files on issues and the S3 client the bytes go through |
 | `backend/internal/issue/` | issues, transitions, comments, the changelog, the hierarchy, and the import path |
 | `backend/internal/csvio/` | issues out as CSV, and a file in: mapping, words, people |
@@ -480,7 +481,7 @@ Zero keeps a kind forever, which nothing here recommends.
 | `backend/internal/plan/` | the timeline: roll-up, dependencies, capacity, warnings |
 | `backend/internal/sprint/` | sprints, their state machine and the report one leaves |
 | `backend/internal/rank/` | the sortable strings that order cards |
-| `backend/internal/bootstrap/` | the defaults every new organization gets |
+| `backend/internal/bootstrap/` | the statuses, types, workflow and calendar an installation starts with |
 | `backend/internal/httpapi/` | router, middleware, handlers, errors, and the operation table |
 | `backend/internal/openapi/` | the document model, schema builder and validator |
 | `backend/internal/netguard/` | the guarded client every outbound call goes through |
