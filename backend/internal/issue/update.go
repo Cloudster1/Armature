@@ -260,7 +260,7 @@ func (s *Service) applyAssignee(ctx context.Context, tx db.DBTX, before *Issue, 
 			WHERE u.id = $1`, *assignee).Scan(&toName); errors.Is(err, pgx.ErrNoRows) {
 			// Assigning to somebody outside the organization would leak the
 			// issue to them the moment they were added.
-			return nil, errors.New("that person is not a member of this organization")
+			return nil, errors.New("that person is not a member here")
 		} else if err != nil {
 			return nil, err
 		}
@@ -287,7 +287,7 @@ func (s *Service) applyReporter(ctx context.Context, tx db.DBTX, before *Issue, 
 		SELECT u.name FROM app_user u
 		JOIN org_member m ON m.user_id = u.id AND m.org_id = current_org_id()
 		WHERE u.id = $1`, reporter).Scan(&name); errors.Is(err, pgx.ErrNoRows) {
-		return nil, errors.New("that person is not a member of this organization")
+		return nil, errors.New("that person is not a member here")
 	} else if err != nil {
 		return nil, err
 	}

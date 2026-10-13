@@ -121,7 +121,7 @@ describe("ProjectWorkflows", () => {
     expect(setAssignment).toHaveBeenCalledWith({ projectKey: "PR", issueTypeId: "Bug", workflowId: "Bug triage" });
   });
 
-  it("sends null when a row is handed back to the organization", async () => {
+  it("sends null when a row is handed back to the default", async () => {
     state.schemeId = "s2";
     state.schemes = [organisation, ownScheme];
     state.assignments = [
@@ -132,7 +132,7 @@ describe("ProjectWorkflows", () => {
     render(<ProjectWorkflows projectKey="PR" />);
     const bug = screen.getByLabelText("Workflow for Bug") as HTMLSelectElement;
     expect(bug.value).toBe("Bug triage");
-    await userEvent.selectOptions(bug, "Follow the organization");
+    await userEvent.selectOptions(bug, "Follow the default");
     expect(setAssignment).toHaveBeenCalledWith({ projectKey: "PR", issueTypeId: "Bug", workflowId: null });
   });
 
@@ -146,7 +146,7 @@ describe("ProjectWorkflows", () => {
     render(<ProjectWorkflows projectKey="PR" />);
     const task = screen.getByLabelText("Workflow for Task") as HTMLSelectElement;
     expect(task.value).toBe("Bug triage");
-    expect(within(task).queryByText("Follow the organization")).toBeNull();
+    expect(within(task).queryByText("Follow the default")).toBeNull();
   });
 
   it("shows no controls to somebody who may only look", () => {
@@ -161,13 +161,13 @@ describe("ProjectWorkflows", () => {
     expect(screen.queryByLabelText("Workflow scheme")).toBeNull();
   });
 
-  it("says the project follows the organization when it has named no scheme", () => {
+  it("says the project follows the default when it has named no scheme", () => {
     state.schemeId = undefined;
     state.schemes = [organisation];
     state.assignments = [assignment("Task", "Default software workflow")];
 
     render(<ProjectWorkflows projectKey="PR" />);
-    expect(screen.getByText("This project follows the organization.")).toBeInTheDocument();
+    expect(screen.getByText("This project follows the default.")).toBeInTheDocument();
     // It names the scheme rather than saying "the default", which is not a name.
     expect(
       screen.getByText(/Every issue type uses Default workflow scheme/),
@@ -190,7 +190,7 @@ describe("ProjectWorkflows", () => {
     expect(within(bug).getByText(/Support workflows names this issue type/)).toBeInTheDocument();
 
     const task = screen.getByRole("row", { name: /Task/ });
-    expect(within(task).getByText("Organization")).toBeInTheDocument();
+    expect(within(task).getByText("All projects")).toBeInTheDocument();
     // The fallback is the interesting half: it is why the row is inherited.
     expect(
       within(task).getByText(/catches everything it does not name/),
@@ -217,25 +217,25 @@ describe("ProjectWorkflows", () => {
   });
 
   // Handing the decision back is a deliberate null, not the absence of a value.
-  it("hands the decision back to the organization when asked to", async () => {
+  it("hands the decision back to the default when asked to", async () => {
     state.schemeId = "s2";
     state.schemes = [organisation, ownScheme];
     state.assignments = [];
     setProjectScheme.mockClear();
 
     render(<ProjectWorkflows projectKey="PR" />);
-    await userEvent.click(screen.getByRole("button", { name: "Follow the organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Follow the default" }));
 
     expect(setProjectScheme).toHaveBeenCalledWith({ projectKey: "PR", schemeId: null });
   });
 
-  it("offers no way back when the project is already following the organization", () => {
+  it("offers no way back when the project is already following the default", () => {
     state.schemeId = undefined;
     state.schemes = [organisation, ownScheme];
     state.assignments = [];
 
     render(<ProjectWorkflows projectKey="PR" />);
-    expect(screen.queryByRole("button", { name: "Follow the organization" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Follow the default" })).toBeNull();
   });
 
   it("will not offer a scheme the project is already using", () => {

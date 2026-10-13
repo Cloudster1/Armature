@@ -41,7 +41,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
       {!isLoading && assignments.length === 0 ? (
         <EmptyState
           title="Nobody has been given anything yet"
-          description="Roles can be given to a person or to a group, over this project or over the whole organization."
+          description="Roles can be given to a person or to a group, over this project or over all projects."
         />
       ) : (
         <Table data-testid="role-assignments">

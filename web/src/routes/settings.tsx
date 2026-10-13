@@ -4,7 +4,7 @@ import { useMe } from "@/api/auth";
 import { Card, Page, PageHeader, SectionTitle } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 
-/** One door to everything that is set up rather than worked on: yours, then the organization's. */
+/** One door to everything that is set up rather than worked on: yours, then everyone's. */
 export const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings",
@@ -17,17 +17,17 @@ const you: Array<{ to: string; label: string; detail: string; icon: IconName }> 
   { to: "/settings/themes", label: "Themes", detail: "Colours, type, cursors and icons, yours or shared with everyone.", icon: "Palette" },
 ];
 
-const organization: Array<{ to: string; label: string; detail: string; icon: IconName }> = [
+const everyone: Array<{ to: string; label: string; detail: string; icon: IconName }> = [
   { to: "/settings/installation", label: "Installation", detail: "What everybody sees it called, and the demo project to show it with.", icon: "Settings" },
   { to: "/settings/access", label: "Access", detail: "Who holds which role, the groups, and the identity provider.", icon: "Key" },
   { to: "/settings/users", label: "Users", detail: "Accounts that sign in with a password here: make one, reset it, switch it off.", icon: "Users" },
   { to: "/settings/holidays", label: "Holidays", detail: "Calendars of days off, and which one everybody keeps by default.", icon: "Calendar" },
-  { to: "/settings/workflows", label: "Workflows", detail: "The organization's workflows and the schemes that hand them to issue types.", icon: "Workflow" },
+  { to: "/settings/workflows", label: "Workflows", detail: "The workflows every project follows and the schemes that hand them to issue types.", icon: "Workflow" },
   { to: "/settings/labels", label: "Labels", detail: "Words shared by every project.", icon: "Tag" },
   { to: "/settings/automation", label: "Automation", detail: "Rules that watch every project: when something happens, check it, do things.", icon: "Bolt" },
   { to: "/settings/webhooks", label: "Webhooks", detail: "Where events are posted, signed, with a log of every try.", icon: "Hook" },
   { to: "/settings/fields", label: "Fields", detail: "What every project records about an issue beyond the standard fields.", icon: "Field" },
-  { to: "/settings/audit", label: "Audit log", detail: "Who did what to the organization, kept for a year.", icon: "Shield" },
+  { to: "/settings/audit", label: "Audit log", detail: "Who did what, and when, kept for a year.", icon: "Shield" },
 ];
 
 function SettingsHub() {
@@ -36,7 +36,7 @@ function SettingsHub() {
     <Page width="narrow">
       <PageHeader title="Settings" meta={data?.principal?.org?.name} />
       <Group title="You" links={you} />
-      <Group title="Organization" links={organization} />
+      <Group title="Everyone" links={everyone} />
     </Page>
   );
 }

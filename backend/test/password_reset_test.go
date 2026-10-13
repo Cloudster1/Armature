@@ -271,8 +271,12 @@ func TestAskingForAPasswordLinkTellsNothing(t *testing.T) {
 		want(t, api.client(t).post("/api/v1/auth/password-reset", map[string]string{"email": ssoEmail}), http.StatusAccepted, "a provider account asks")
 		want(t, api.client(t).post("/api/v1/auth/password-reset", map[string]string{"email": customerEmail}), http.StatusAccepted, "a customer asks")
 		body := api.awaitMail(t, ssoEmail, "How you sign in", before)
-		if !strings.Contains(body, "single sign-on") || !strings.Contains(body, slug) {
+		if !strings.Contains(body, "single sign-on") {
 			t.Errorf("the provider mail does not say how to sign in: %q", body)
+		}
+		// Single sign-on asks for no organization, so the mail names none.
+		if strings.Contains(body, slug) || strings.Contains(body, "organization") {
+			t.Errorf("the provider mail asks for an organization: %q", body)
 		}
 		if strings.Contains(body, "/reset-password#") {
 			t.Errorf("a provider account was sent a link")

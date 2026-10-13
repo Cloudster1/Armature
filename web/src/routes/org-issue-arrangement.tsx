@@ -20,7 +20,7 @@ function OrgIssueArrangementPage() {
       {canConfigure ? (
         <OrgArrangement canConfigure={canConfigure} />
       ) : (
-        <EmptyState title="Only the organization's administrators arrange this" description="A project's own administrators arrange that project's issues." />
+        <EmptyState title="Only administrators arrange this for all projects" description="A project's own administrators arrange that project's issues." />
       )}
     </Page>
   );

@@ -92,7 +92,15 @@ func TestArrangementsOverTheAPI(t *testing.T) {
 		t.Errorf("arranging answered %s, want every type back", arranged.Raw)
 	}
 	want(t, owner.put("/api/v1/issue-arrangement", map[string]any{"places": places}), http.StatusOK, "arranging the organization")
-	want(t, owner.put("/api/v1/projects/"+key+"/issue-arrangement", map[string]any{"places": nil}), http.StatusOK, "handing the type back")
+	handed := want(t, owner.put("/api/v1/projects/"+key+"/issue-arrangement", map[string]any{"places": nil}), http.StatusOK, "handing the type back")
+	// What every project follows is said to be everyone's.
+	scopes := map[string]bool{}
+	for _, each := range list(t, handed, "arrangements") {
+		scopes[each.(map[string]any)["origin"].(map[string]any)["scope"].(string)] = true
+	}
+	if !scopes["everyone"] || scopes["organization"] {
+		t.Errorf("handed back, the arrangements come from %v, want everyone's", scopes)
+	}
 	want(t, owner.put("/api/v1/projects/"+key+"/issue-arrangement", map[string]any{
 		"places": []map[string]any{{"area": "people", "slot": "nonsense"}},
 	}), http.StatusUnprocessableEntity, "a field this tracker does not know")
@@ -150,7 +158,7 @@ func TestAProjectArrangesItsOwnIssues(t *testing.T) {
 	if _, err := arrangements.SaveInOrg(ws.ctx, nil, everywhere); err != nil {
 		t.Fatalf("arrange for the organization: %v", err)
 	}
-	if got := arrangementFor(t, arrangements, ws, bug); got.Origin.Scope != arrange.ScopeOrganization || got.Origin.Named {
+	if got := arrangementFor(t, arrangements, ws, bug); got.Origin.Scope != arrange.ScopeEveryone || got.Origin.Named {
 		t.Errorf("origin = %+v, want the organization's fallback", got.Origin)
 	}
 
@@ -158,7 +166,7 @@ func TestAProjectArrangesItsOwnIssues(t *testing.T) {
 	if _, err := arrangements.SaveInProject(ws.ctx, ws.project.Key, &story, nil); err != nil {
 		t.Fatalf("hand the story back: %v", err)
 	}
-	if got := arrangementFor(t, arrangements, ws, story); got.Origin.Scope != arrange.ScopeOrganization {
+	if got := arrangementFor(t, arrangements, ws, story); got.Origin.Scope != arrange.ScopeEveryone {
 		t.Errorf("origin = %+v, want the organization's after handing it back", got.Origin)
 	}
 

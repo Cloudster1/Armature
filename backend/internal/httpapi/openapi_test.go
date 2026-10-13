@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
@@ -111,6 +112,51 @@ func TestTheDocumentBuildsAndReferencesResolve(t *testing.T) {
 	if got := issue.Properties["key"].Type; got != "string" {
 		t.Errorf("issue.key is %v", got)
 	}
+}
+
+// An installation is one team's, so what the document and the assistant's tools
+// say to a reader speaks of everyone and all projects, never an organization.
+func TestTheDocumentSaysEveryoneNotTheOrganization(t *testing.T) {
+	encoded, err := Spec().MarshalIndent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc any
+	if err := json.Unmarshal(encoded, &doc); err != nil {
+		t.Fatal(err)
+	}
+	for _, words := range readWords(doc, "") {
+		if strings.Contains(strings.ToLower(words), "organization") {
+			t.Errorf("the document says %q", words)
+		}
+	}
+	for _, op := range operations {
+		if strings.Contains(strings.ToLower(op.toolHelp), "organization") {
+			t.Errorf("the tool %s says %q", op.tool, op.toolHelp)
+		}
+	}
+}
+
+// readWords collects what a reader of the document reads: summaries,
+// descriptions, tags and the values an enum allows, but not names or ids.
+func readWords(node any, key string) []string {
+	var out []string
+	switch v := node.(type) {
+	case map[string]any:
+		for k, child := range v {
+			out = append(out, readWords(child, k)...)
+		}
+	case []any:
+		for _, child := range v {
+			out = append(out, readWords(child, key)...)
+		}
+	case string:
+		switch key {
+		case "summary", "description", "tags", "enum", "name":
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func refsIn(encoded []byte) []string {

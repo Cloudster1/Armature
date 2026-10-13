@@ -132,7 +132,7 @@ func checkFields(ctx context.Context, tx db.DBTX, projectID *uuid.UUID, places [
 		return nil
 	}
 	if projectID == nil {
-		return errors.New("the organization arranges its own fields; promote a project's field before placing it here")
+		return errors.New("the arrangement for all projects places only fields every project has; promote a project's field before placing it here")
 	}
 	return errors.New("a field of another project cannot be placed on this one")
 }

@@ -56,7 +56,7 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
                 variant="ghost"
                 data-action="delete"
                 aria-busy={remove.isPending}
-                onClick={async () => (await confirm({ noun: "scheme", body: `${scheme.name} goes; projects using it fall back to the organization's.` })) && remove.mutate(scheme.id)}
+                onClick={async () => (await confirm({ noun: "scheme", body: `${scheme.name} goes; projects using it fall back to the default.` })) && remove.mutate(scheme.id)}
               />
             )}
           </>
@@ -67,7 +67,7 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 text-sm font-medium text-ink">
             {scheme.name}
-            {scheme.isDefault && <Tag className="text-accent">The organization's</Tag>}
+            {scheme.isDefault && <Tag className="text-accent">Default</Tag>}
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">{usedBy}</p>
           <ul className="mt-2 space-y-0.5 text-sm text-ink-muted">
@@ -91,7 +91,7 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
       {canConfigure && !scheme.isDefault && (
         <div className="mt-3">
           <Button size="sm" variant="ghost" loading={promote.isPending} onClick={() => promote.mutate(scheme.id)}>
-            Make it the organization's
+            Make it the default
           </Button>
         </div>
       )}

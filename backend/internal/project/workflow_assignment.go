@@ -25,7 +25,7 @@ func (s *Service) SetWorkflowAssignment(ctx context.Context, key string, issueTy
 			return err
 		}
 		if !typeExists {
-			return fmt.Errorf("%w: this organization has no such issue type.", workflow.ErrInvalid)
+			return fmt.Errorf("%w: there is no such issue type.", workflow.ErrInvalid)
 		}
 
 		// The scheme is bookkeeping: a project needs one of its own to disagree in.

@@ -75,7 +75,7 @@ function HolidaysPage() {
                     {calendar.default && <Tag data-default-calendar>Default</Tag>}
                   </Td>
                   <Td className="text-right">{calendar.dayCount}</Td>
-                  <Td className="text-right" title="Given this calendar by name; the rest of the organization keeps the default.">
+                  <Td className="text-right" title="Given this calendar by name; everyone else keeps the default.">
                     {calendar.peopleCount}
                   </Td>
                   <Td className="text-right">

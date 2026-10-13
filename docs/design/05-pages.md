@@ -352,7 +352,7 @@ Settings / Access
 PERMISSION                          Global admin  Project admin  ...  Sprint planner ⋯
 See projects and everything   read    [x]           [x]              [x]
 Plan, start and complete...   sprint  [x]           [x]              [ ]
-Administer the organization   org.a.  [x] fixed     [ ]              [ ]
+Administer Armature           org.a.  [x] fixed     [ ]              [ ]
 ```
 
 Roles are the organization's own: the five it starts with are rows in

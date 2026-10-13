@@ -37,6 +37,6 @@ export const SLOT_LABELS: Record<Slot, string> = {
 /** Who decided the arrangement being looked at. */
 export const ORIGIN_WORDS: Record<string, string> = {
   builtin: "As this tracker draws it",
-  organization: "The organization's",
+  everyone: "The default for all projects",
   project: "This project's own",
 };

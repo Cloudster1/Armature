@@ -99,8 +99,8 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
         <div className="flex flex-wrap items-end gap-4">
           <Field label="Theme name" id="field-theme-name" value={name} onChange={(e) => setName(e.target.value)} required className="w-64" />
           <label className="flex items-center gap-2 pb-2 text-sm text-ink-muted">
-            <Switch checked={shared} onChange={setShared} label="Shared with the organization" data-theme-shared={shared ? "true" : "false"} />
-            Shared with the organization
+            <Switch checked={shared} onChange={setShared} label="Shared with everyone" data-theme-shared={shared ? "true" : "false"} />
+            Shared with everyone
           </label>
           <label className="flex items-center gap-2 pb-2 text-sm text-ink-muted">
             <Switch checked={preview} onChange={setPreview} label="Preview on this page" data-action="preview-theme" />

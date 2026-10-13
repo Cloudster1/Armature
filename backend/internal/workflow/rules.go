@@ -282,7 +282,7 @@ func NewDefaultRegistry() *Registry {
 	r := NewRegistry()
 
 	r.Describe(RuleType{Kind: KindCondition, Type: ConditionOrgRole, Label: "Actor holds a role",
-		Description: "Offered only to people whose organization role is one of these.",
+		Description: "Offered only to people whose account role is one of these.",
 		Options:     []Option{{Name: "roles", Label: "Roles", Kind: OptionRoles, Required: true, Choices: OrgRoles}}})
 	r.Describe(RuleType{Kind: KindCondition, Type: ConditionIsAssignee, Label: "Actor is the assignee",
 		Description: "Offered only to whoever the issue is assigned to."})

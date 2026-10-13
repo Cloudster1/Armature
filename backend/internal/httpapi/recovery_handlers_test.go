@@ -21,7 +21,11 @@ func TestAPasswordMailCarriesALinkOrTheWayIn(t *testing.T) {
 	if strings.Contains(pointer.Body, "/reset-password") {
 		t.Errorf("a provider account was sent a link: %q", pointer.Body)
 	}
-	if !strings.Contains(pointer.Body, "single sign-on") || !strings.Contains(pointer.Body, "acme or globex") {
+	if !strings.Contains(pointer.Body, "single sign-on") {
 		t.Errorf("the provider mail does not say how to sign in: %q", pointer.Body)
+	}
+	// Single sign-on asks for nothing, so the mail names no organization to give it.
+	if strings.Contains(pointer.Body, "acme") || strings.Contains(pointer.Body, "organization") {
+		t.Errorf("the provider mail asks for an organization: %q", pointer.Body)
 	}
 }

@@ -427,7 +427,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Deprecated: sends the browser to /auth/oidc/start, whatever organization it names. Goes in the next release. */
+        /** Deprecated: sends the browser to /auth/oidc/start, whatever slug it names. Goes in the next release. */
         get: operations["oIDCStartForOrganization"];
         put?: never;
         post?: never;
@@ -565,10 +565,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's rules, which watch every project. */
+        /** The rules that watch every project. */
         get: operations["listOrgRules"];
         put?: never;
-        /** Make a rule for the whole organization. */
+        /** Make a rule that watches every project. */
         post: operations["createOrgRule"];
         delete?: never;
         options?: never;
@@ -796,7 +796,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** What a dashboard may start from: the built-ins that suit the project, then the organization's own. */
+        /** What a dashboard may start from: the built-ins that suit the project, then the ones saved for everyone. */
         get: operations["listDashboardTemplates"];
         put?: never;
         post?: never;
@@ -816,7 +816,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove one of the organization's own templates; dashboards made from it stay. */
+        /** Remove a saved template; dashboards made from it stay. */
         delete: operations["deleteDashboardTemplate"];
         options?: never;
         head?: never;
@@ -902,7 +902,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Keep a dashboard's arrangement as a template for the organization. */
+        /** Keep a dashboard's arrangement as a template for everyone. */
         post: operations["saveDashboardTemplate"];
         delete?: never;
         options?: never;
@@ -986,7 +986,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Deprecated: sends the caller to /desk, whatever organization it names. Goes in the next release. */
+        /** Deprecated: sends the caller to /desk, whatever slug it names. Goes in the next release. */
         get: operations["deskEntryMoved"];
         put?: never;
         post?: never;
@@ -1005,7 +1005,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Deprecated: sends the same request to /desk/codes, whatever organization it names. Goes in the next release. */
+        /** Deprecated: sends the same request to /desk/codes, whatever slug it names. Goes in the next release. */
         post: operations["portalCodeMoved"];
         delete?: never;
         options?: never;
@@ -1022,7 +1022,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Deprecated: sends the same request to /desk/sessions, whatever organization it names. Goes in the next release. */
+        /** Deprecated: sends the same request to /desk/sessions, whatever slug it names. Goes in the next release. */
         post: operations["portalSessionMoved"];
         delete?: never;
         options?: never;
@@ -1054,7 +1054,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The fields every project of the organization has. */
+        /** The fields every project has. */
         get: operations["listOrgFields"];
         put?: never;
         /** Define a field for every project. */
@@ -1092,7 +1092,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Make a project's field the organization's, folding same-named fields into it. */
+        /** Make a project's field one every project has, folding same-named fields into it. */
         post: operations["promoteField"];
         delete?: never;
         options?: never;
@@ -1301,7 +1301,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's holiday calendars, the default first. */
+        /** The holiday calendars, the default first. */
         get: operations["listHolidayCalendars"];
         put?: never;
         /** Make a holiday calendar; the first one, or one sent with default true, becomes the default. */
@@ -1442,7 +1442,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** How the organization arranges an issue's fields, per issue type. */
+        /** How an issue's fields are arranged for all projects, per issue type. */
         get: operations["orgArrangement"];
         /** Arrange an issue's fields for every project; null places restore the built-in arrangement. */
         put: operations["setOrgArrangement"];
@@ -2117,7 +2117,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's labels, with how often each is used. */
+        /** The labels, with how often each is used. */
         get: operations["listLabels"];
         put?: never;
         /** Coin a label. */
@@ -2138,7 +2138,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a label from the organization and every issue. */
+        /** Remove a label from every issue. */
         delete: operations["deleteLabel"];
         options?: never;
         head?: never;
@@ -2187,7 +2187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's people. */
+        /** Everyone with an active account here, and their role. */
         get: operations["listMembers"];
         put?: never;
         post?: never;
@@ -2921,7 +2921,7 @@ export interface paths {
         };
         /** How this project arranges an issue's fields, per issue type. */
         get: operations["projectArrangement"];
-        /** Arrange an issue's fields here; null places hand the type back to the organization. */
+        /** Arrange an issue's fields here; null places hand the type back to the default for all projects. */
         put: operations["setProjectArrangement"];
         post?: never;
         delete?: never;
@@ -3218,7 +3218,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Override the organization's scheme, or hand the decision back with null. */
+        /** Override the default scheme, or hand the decision back with null. */
         put: operations["setProjectScheme"];
         post?: never;
         delete?: never;
@@ -3356,10 +3356,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's roles and what each grants. */
+        /** The roles and what each grants. */
         get: operations["listRoles"];
         put?: never;
-        /** Add a role of the organization's own. */
+        /** Add a role beside the built-in ones. */
         post: operations["createRole"];
         delete?: never;
         options?: never;
@@ -3377,7 +3377,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a role of the organization's own, and every grant of it. */
+        /** Remove a role that is not built in, and every grant of it. */
         delete: operations["deleteRole"];
         options?: never;
         head?: never;
@@ -3636,9 +3636,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The theme the caller sees: chosen, the organization's default, or null for the built-in one. */
+        /** The theme the caller sees: chosen, everyone's default, or null for the built-in one. */
         get: operations["activeTheme"];
-        /** Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one. */
+        /** Use a theme; null returns to everyone's default, null with builtIn keeps the built-in one. */
         put: operations["chooseTheme"];
         post?: never;
         delete?: never;
@@ -3828,7 +3828,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's accounts, switched off ones included, and what may be done to each. */
+        /** The accounts, switched off ones included, and what may be done to each. */
         get: operations["listUsers"];
         put?: never;
         /** Make an account that signs in here with a password. */
@@ -4069,7 +4069,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Where the organization's events are posted. */
+        /** Where events are posted. */
         get: operations["listWebhooks"];
         put?: never;
         /** Add an endpoint; the secret is shown once. */
@@ -4228,7 +4228,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Make a scheme the organization's default. */
+        /** Make a scheme the default for every project that has none of its own. */
         put: operations["setDefaultScheme"];
         post?: never;
         delete?: never;
@@ -4244,7 +4244,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's workflows. */
+        /** The workflows projects can follow. */
         get: operations["listWorkflows"];
         put?: never;
         /** Author a workflow. */
@@ -4431,7 +4431,7 @@ export interface components {
         ArrangeOrigin: {
             named: boolean;
             /** @enum {string} */
-            scope: "builtin" | "organization" | "project";
+            scope: "builtin" | "everyone" | "project";
         };
         Arrangement: {
             /** Format: uuid */

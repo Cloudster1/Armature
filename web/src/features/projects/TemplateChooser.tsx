@@ -5,7 +5,7 @@ import { leftOut } from "./features";
 /** How a template's shape reads on its card, in the words the product uses. */
 export function templateShape(template: ProjectTemplate): string {
   const board = template.boardType === "scrum" ? "Scrum board" : "Kanban board";
-  const workflow = template.workflowName ?? "the organization's workflows";
+  const workflow = template.workflowName ?? "the default workflows";
   const without = leftOut(template.features);
   return `${board} · ${workflow}` + (without.length > 0 ? ` · no ${without.join(", ")}` : "");
 }

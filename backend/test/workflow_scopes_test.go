@@ -732,7 +732,7 @@ func TestAnotherOrganizationsWorkflowCannotBeMappedRowwise(t *testing.T) {
 	if err == nil {
 		t.Fatal("a project mapped another organization's workflow")
 	}
-	if !errors.Is(err, workflow.ErrInvalid) || !strings.Contains(err.Error(), "this organization's workflows") {
+	if !errors.Is(err, workflow.ErrInvalid) || !strings.Contains(err.Error(), "Settings, under Workflows") {
 		t.Errorf("error = %v, want a sentence naming what to choose instead", err)
 	}
 	// Nothing half done: no scheme was left behind by the refused write.

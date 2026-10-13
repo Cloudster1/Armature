@@ -148,10 +148,10 @@ scenario("Constellation draws its network live behind the page", async ({ page }
   expect.truthy(drawn.w > 0 && drawn.h > 0 && drawn.lit > 0, `the canvas covers the page and something is drawn on it: ${JSON.stringify(drawn)}`);
 });
 
-// The organization's default reaches whoever has not chosen, and a person
+// Everyone's default reaches whoever has not chosen, and a person
 // may keep the built-in theme over it. Serial: the default is everybody's,
 // and it goes back to what it was.
-serialScenario("an organization's default theme reaches everybody until they choose", async ({ page }) => {
+serialScenario("everyone's default theme reaches everybody until they choose", async ({ page }) => {
   const owner = await signUp(page);
   const stock = await accentOf(page);
   const name = `House ${Date.now().toString(36)}`;

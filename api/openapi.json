@@ -64,6 +64,9 @@
       "name": "hierarchy"
     },
     {
+      "name": "installation"
+    },
+    {
       "name": "issues"
     },
     {
@@ -77,9 +80,6 @@
     },
     {
       "name": "notifications"
-    },
-    {
-      "name": "organization"
     },
     {
       "name": "plan"
@@ -1647,7 +1647,7 @@
     "/auth/oidc/{orgSlug}/start": {
       "get": {
         "operationId": "oIDCStartForOrganization",
-        "summary": "Deprecated: sends the browser to /auth/oidc/start, whatever organization it names. Goes in the next release.",
+        "summary": "Deprecated: sends the browser to /auth/oidc/start, whatever slug it names. Goes in the next release.",
         "tags": [
           "auth"
         ],
@@ -2049,7 +2049,7 @@
     "/automation/rules": {
       "get": {
         "operationId": "listOrgRules",
-        "summary": "The organization's rules, which watch every project.",
+        "summary": "The rules that watch every project.",
         "tags": [
           "automation"
         ],
@@ -2089,7 +2089,7 @@
       },
       "post": {
         "operationId": "createOrgRule",
-        "summary": "Make a rule for the whole organization.",
+        "summary": "Make a rule that watches every project.",
         "tags": [
           "automation"
         ],
@@ -3176,7 +3176,7 @@
     "/dashboard-templates": {
       "get": {
         "operationId": "listDashboardTemplates",
-        "summary": "What a dashboard may start from: the built-ins that suit the project, then the organization's own.",
+        "summary": "What a dashboard may start from: the built-ins that suit the project, then the ones saved for everyone.",
         "tags": [
           "dashboards"
         ],
@@ -3228,7 +3228,7 @@
     "/dashboard-templates/{templateID}": {
       "delete": {
         "operationId": "deleteDashboardTemplate",
-        "summary": "Remove one of the organization's own templates; dashboards made from it stay.",
+        "summary": "Remove a saved template; dashboards made from it stay.",
         "tags": [
           "dashboards"
         ],
@@ -3540,7 +3540,7 @@
     "/dashboards/{dashboardID}/template": {
       "post": {
         "operationId": "saveDashboardTemplate",
-        "summary": "Keep a dashboard's arrangement as a template for the organization.",
+        "summary": "Keep a dashboard's arrangement as a template for everyone.",
         "tags": [
           "dashboards"
         ],
@@ -3842,7 +3842,7 @@
     "/desk/{orgSlug}": {
       "get": {
         "operationId": "deskEntryMoved",
-        "summary": "Deprecated: sends the caller to /desk, whatever organization it names. Goes in the next release.",
+        "summary": "Deprecated: sends the caller to /desk, whatever slug it names. Goes in the next release.",
         "tags": [
           "portal"
         ],
@@ -3876,7 +3876,7 @@
     "/desk/{orgSlug}/codes": {
       "post": {
         "operationId": "portalCodeMoved",
-        "summary": "Deprecated: sends the same request to /desk/codes, whatever organization it names. Goes in the next release.",
+        "summary": "Deprecated: sends the same request to /desk/codes, whatever slug it names. Goes in the next release.",
         "tags": [
           "portal"
         ],
@@ -3910,7 +3910,7 @@
     "/desk/{orgSlug}/sessions": {
       "post": {
         "operationId": "portalSessionMoved",
-        "summary": "Deprecated: sends the same request to /desk/sessions, whatever organization it names. Goes in the next release.",
+        "summary": "Deprecated: sends the same request to /desk/sessions, whatever slug it names. Goes in the next release.",
         "tags": [
           "portal"
         ],
@@ -3986,7 +3986,7 @@
     "/fields": {
       "get": {
         "operationId": "listOrgFields",
-        "summary": "The fields every project of the organization has.",
+        "summary": "The fields every project has.",
         "tags": [
           "fields"
         ],
@@ -4168,7 +4168,7 @@
     "/fields/{fieldID}/promote": {
       "post": {
         "operationId": "promoteField",
-        "summary": "Make a project's field the organization's, folding same-named fields into it.",
+        "summary": "Make a project's field one every project has, folding same-named fields into it.",
         "tags": [
           "fields"
         ],
@@ -5093,7 +5093,7 @@
     "/holiday-calendars": {
       "get": {
         "operationId": "listHolidayCalendars",
-        "summary": "The organization's holiday calendars, the default first.",
+        "summary": "The holiday calendars, the default first.",
         "tags": [
           "availability"
         ],
@@ -5458,7 +5458,7 @@
         "operationId": "installation",
         "summary": "What the installation is called.",
         "tags": [
-          "organization"
+          "installation"
         ],
         "responses": {
           "200": {
@@ -5495,7 +5495,7 @@
         "operationId": "renameInstallation",
         "summary": "Rename the installation; administrators only, and written to the audit log.",
         "tags": [
-          "organization"
+          "installation"
         ],
         "requestBody": {
           "required": true,
@@ -5544,7 +5544,7 @@
         "operationId": "addDemoProject",
         "summary": "Fill the installation with the demo: a production line and its maintenance, under the keys LINE and MAINT; administrators only, once, and written to the audit log.",
         "tags": [
-          "organization"
+          "installation"
         ],
         "responses": {
           "201": {
@@ -5717,7 +5717,7 @@
     "/issue-arrangement": {
       "get": {
         "operationId": "orgArrangement",
-        "summary": "How the organization arranges an issue's fields, per issue type.",
+        "summary": "How an issue's fields are arranged for all projects, per issue type.",
         "tags": [
           "fields"
         ],
@@ -5811,7 +5811,7 @@
         "operationId": "listIssueTypes",
         "summary": "The issue types and where each sits in the hierarchy.",
         "tags": [
-          "organization"
+          "issues"
         ],
         "responses": {
           "200": {
@@ -8643,7 +8643,7 @@
     "/labels": {
       "get": {
         "operationId": "listLabels",
-        "summary": "The organization's labels, with how often each is used.",
+        "summary": "The labels, with how often each is used.",
         "tags": [
           "labels"
         ],
@@ -8732,7 +8732,7 @@
     "/labels/{labelID}": {
       "delete": {
         "operationId": "deleteLabel",
-        "summary": "Remove a label from the organization and every issue.",
+        "summary": "Remove a label from every issue.",
         "tags": [
           "labels"
         ],
@@ -8827,7 +8827,7 @@
         "operationId": "listLinkTypes",
         "summary": "The ways two issues can relate.",
         "tags": [
-          "organization"
+          "issues"
         ],
         "responses": {
           "200": {
@@ -8911,9 +8911,9 @@
     "/members": {
       "get": {
         "operationId": "listMembers",
-        "summary": "The organization's people.",
+        "summary": "Everyone with an active account here, and their role.",
         "tags": [
-          "organization"
+          "users"
         ],
         "responses": {
           "200": {
@@ -8955,7 +8955,7 @@
         "operationId": "removeMember",
         "summary": "Let a member go by switching their account off: their sessions and tokens end, and what they did stays theirs.",
         "tags": [
-          "organization"
+          "users"
         ],
         "parameters": [
           {
@@ -12017,7 +12017,7 @@
       },
       "put": {
         "operationId": "setProjectArrangement",
-        "summary": "Arrange an issue's fields here; null places hand the type back to the organization.",
+        "summary": "Arrange an issue's fields here; null places hand the type back to the default for all projects.",
         "tags": [
           "fields"
         ],
@@ -13766,7 +13766,7 @@
     "/projects/{projectKey}/workflow-scheme": {
       "put": {
         "operationId": "setProjectScheme",
-        "summary": "Override the organization's scheme, or hand the decision back with null.",
+        "summary": "Override the default scheme, or hand the decision back with null.",
         "tags": [
           "workflows"
         ],
@@ -14325,7 +14325,7 @@
     "/roles": {
       "get": {
         "operationId": "listRoles",
-        "summary": "The organization's roles and what each grants.",
+        "summary": "The roles and what each grants.",
         "tags": [
           "access"
         ],
@@ -14365,7 +14365,7 @@
       },
       "post": {
         "operationId": "createRole",
-        "summary": "Add a role of the organization's own.",
+        "summary": "Add a role beside the built-in ones.",
         "tags": [
           "access"
         ],
@@ -14414,7 +14414,7 @@
     "/roles/{roleKey}": {
       "delete": {
         "operationId": "deleteRole",
-        "summary": "Remove a role of the organization's own, and every grant of it.",
+        "summary": "Remove a role that is not built in, and every grant of it.",
         "tags": [
           "access"
         ],
@@ -15104,7 +15104,7 @@
         "operationId": "listStatuses",
         "summary": "The statuses workflows are built from.",
         "tags": [
-          "organization"
+          "workflows"
         ],
         "responses": {
           "200": {
@@ -15144,7 +15144,7 @@
         "operationId": "createStatus",
         "summary": "Coin a status workflows can be built from.",
         "tags": [
-          "organization"
+          "workflows"
         ],
         "requestBody": {
           "required": true,
@@ -15540,7 +15540,7 @@
     "/themes/active": {
       "get": {
         "operationId": "activeTheme",
-        "summary": "The theme the caller sees: chosen, the organization's default, or null for the built-in one.",
+        "summary": "The theme the caller sees: chosen, everyone's default, or null for the built-in one.",
         "tags": [
           "themes"
         ],
@@ -15588,7 +15588,7 @@
       },
       "put": {
         "operationId": "chooseTheme",
-        "summary": "Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one.",
+        "summary": "Use a theme; null returns to everyone's default, null with builtIn keeps the built-in one.",
         "tags": [
           "themes"
         ],
@@ -16305,7 +16305,7 @@
     "/users": {
       "get": {
         "operationId": "listUsers",
-        "summary": "The organization's accounts, switched off ones included, and what may be done to each.",
+        "summary": "The accounts, switched off ones included, and what may be done to each.",
         "tags": [
           "users"
         ],
@@ -17104,7 +17104,7 @@
     "/webhooks": {
       "get": {
         "operationId": "listWebhooks",
-        "summary": "Where the organization's events are posted.",
+        "summary": "Where events are posted.",
         "tags": [
           "webhooks"
         ],
@@ -17781,7 +17781,7 @@
     "/workflow-schemes/{schemeID}/default": {
       "put": {
         "operationId": "setDefaultScheme",
-        "summary": "Make a scheme the organization's default.",
+        "summary": "Make a scheme the default for every project that has none of its own.",
         "tags": [
           "workflows"
         ],
@@ -17816,7 +17816,7 @@
     "/workflows": {
       "get": {
         "operationId": "listWorkflows",
-        "summary": "The organization's workflows.",
+        "summary": "The workflows projects can follow.",
         "tags": [
           "workflows"
         ],
@@ -18584,7 +18584,7 @@
             "type": "string",
             "enum": [
               "builtin",
-              "organization",
+              "everyone",
               "project"
             ]
           }

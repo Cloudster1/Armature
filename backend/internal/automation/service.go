@@ -357,7 +357,7 @@ func (s *Service) automationActor(ctx context.Context, tx db.DBTX) (issue.Actor,
 		return issue.Actor{}, err
 	}
 	if id == nil {
-		return issue.Actor{}, errors.New("this organization has no automation account")
+		return issue.Actor{}, errors.New("there is no automation account")
 	}
 	return issue.Actor{UserID: *id, OrgRole: auth.RoleMember}, nil
 }

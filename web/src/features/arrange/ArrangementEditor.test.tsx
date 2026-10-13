@@ -110,21 +110,21 @@ describe("ArrangementEditor", () => {
     expect(sent.places.find((each) => each.slot === "sprint")?.area).toBe("hidden");
   });
 
-  it("hands a type back to the organization with no places at all", async () => {
+  it("hands a type back to the default with no places at all", async () => {
     const { onSave } = draw();
-    await userEvent.click(screen.getByRole("button", { name: "Follow the organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Follow the default" }));
 
     expect(onSave).toHaveBeenCalledWith({ issueTypeId: BUG_TYPE, places: null });
   });
 
-  // Nothing to hand back to: the organization is the top of the chain, and a
+  // Nothing to hand back to: the default for all projects is the top of the chain, and a
   // project that already follows it has nothing of its own to drop.
   it("does not offer to follow what cannot be followed", () => {
     draw({ canFollow: false });
-    expect(screen.queryByRole("button", { name: "Follow the organization" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Follow the default" })).not.toBeInTheDocument();
 
-    draw({ arrangements: [arrangement({ origin: { scope: "organization", named: false } })] });
-    expect(screen.queryByRole("button", { name: "Follow the organization" })).not.toBeInTheDocument();
+    draw({ arrangements: [arrangement({ origin: { scope: "everyone", named: false } })] });
+    expect(screen.queryByRole("button", { name: "Follow the default" })).not.toBeInTheDocument();
   });
 
   it("arranges the type that was chosen", async () => {

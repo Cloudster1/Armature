@@ -62,7 +62,7 @@ export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
       <Card elevated className="overflow-hidden">
         {canMap && (
           <p className="border-b border-border px-4 py-2.5 text-sm text-ink-muted">
-            Pick a workflow per issue type. Anything left on Follow the organization uses the organization's scheme.
+            Pick a workflow per issue type. Anything left on Follow the default uses the default scheme, which all projects share.
           </p>
         )}
         <table data-testid="workflow-assignments" className="w-full text-sm">
@@ -162,7 +162,7 @@ function AssignmentRow({
             disabled={deciding}
             onChange={(event) => onDecide(event.target.value || null)}
           >
-            {canFollow && <option value="">Follow the organization</option>}
+            {canFollow && <option value="">Follow the default</option>}
             {choices.map((workflow) => (
               <option key={workflow.id} value={workflow.id}>
                 {workflow.name}
@@ -189,7 +189,7 @@ function SchemeChoice({
   const setScheme = useSetProjectScheme();
   const [picked, setPicked] = useState("");
 
-  const organisation = schemes.find((scheme) => scheme.isDefault);
+  const defaultScheme = schemes.find((scheme) => scheme.isDefault);
   const own = schemes.find((scheme) => scheme.id === schemeId);
   const available = schemes.filter((scheme) => !scheme.isDefault && scheme.id !== schemeId);
 
@@ -201,16 +201,16 @@ function SchemeChoice({
             This project uses its own scheme, {own.name}.
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            Issue types it does not name still follow {organisation?.name ?? "the organization"}.
+            Issue types it does not name still follow {defaultScheme?.name ?? "the default scheme"}.
           </p>
         </>
       ) : (
         <>
           <p className="text-sm font-medium text-ink">
-            This project follows the organization.
+            This project follows the default.
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            Every issue type uses {organisation?.name ?? "the organization's scheme"}. Give the
+            Every issue type uses {defaultScheme?.name ?? "the default scheme"}. Give the
             project a scheme of its own to disagree about some of them.
           </p>
         </>
@@ -258,7 +258,7 @@ function SchemeChoice({
               variant="ghost"
               onClick={() => setScheme.mutate({ projectKey, schemeId: null })}
             >
-              Follow the organization
+              Follow the default
             </Button>
           )}
           <Link

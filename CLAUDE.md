@@ -62,3 +62,4 @@ refuse it too.
 - No en dashes and no typographic quotes, in code or in prose.
 - Named constants over magic numbers. Frontend ones live in `web/src/config.ts`.
 - Errors the user reads are sentences, and name what to do about it.
+- Copy says "everyone" or "all projects", never "organization"; `web/src/lib/words-guard.test.ts` refuses it outside the Installation page.

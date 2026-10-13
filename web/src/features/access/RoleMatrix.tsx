@@ -43,7 +43,7 @@ export function RoleMatrix() {
   return (
     <div className="space-y-4" data-role-matrix>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-muted">A tick is saved at once, and everybody holding the role has it from their next request. The built-in roles stay; the global administrator always administers the organization.</p>
+        <p className="text-sm text-ink-muted">A tick is saved at once, and everybody holding the role has it from their next request. The built-in roles stay; the global administrator always administers Armature.</p>
         {administers && (
           <Button icon={<Icon.Plus />} onClick={() => setAdding(true)} data-action="new-role">
             New role
@@ -92,7 +92,7 @@ export function RoleMatrix() {
                 return (
                   <Td key={role.role} className="text-center">
                     <Checkbox
-                      label={<span className="sr-only">{`${role.name} may ${permission.words.toLowerCase()}`}</span>}
+                      label={<span className="sr-only">{`${role.name} may ${permission.words.charAt(0).toLowerCase()}${permission.words.slice(1)}`}</span>}
                       checked={held}
                       disabled={!administers || fixed || update.isPending}
                       onChange={(event) => toggle(role, permission.permission, event.target.checked)}
@@ -131,8 +131,8 @@ function NewRoleDialog({ onClose }: { onClose: () => void }) {
         <Field label="Role name" id="field-role-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         <Field label="What it is for" id="field-role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
         <label className="flex items-center gap-2 text-sm text-ink-muted">
-          <Switch checked={orgWideOnly} onChange={setOrgWideOnly} label="Only over the whole organization" data-role-org-wide={orgWideOnly ? "true" : "false"} />
-          Only over the whole organization, never one project
+          <Switch checked={orgWideOnly} onChange={setOrgWideOnly} label="Only over all projects at once" data-role-org-wide={orgWideOnly ? "true" : "false"} />
+          Only over all projects at once, never one project
         </label>
         <p className="text-xs text-ink-subtle">It starts with seeing projects; tick the rest in the matrix.</p>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}

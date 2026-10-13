@@ -25,7 +25,7 @@ function IssueArrangementPage() {
           </Link>
         }
         title="Issue view"
-        meta="Which fields an issue shows, where, and in what order, for each issue type. What this project says nothing about follows the organization."
+        meta="Which fields an issue shows, where, and in what order, for each issue type. What this project says nothing about follows the default for all projects."
       />
       {canAdminister(access, projectKey) ? (
         <ProjectArrangement projectKey={projectKey} />

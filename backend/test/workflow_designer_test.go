@@ -239,7 +239,7 @@ func TestAStatusIsCoinedOnce(t *testing.T) {
 
 	t.Run("the same name in another case is refused", func(t *testing.T) {
 		_, _, err := ws.admin.CreateStatus(ws.ctx, workflow.StatusInput{Name: "reviewing", Category: workflow.CategoryTodo}, ws.actor.UserID)
-		if !errors.Is(err, workflow.ErrInvalid) || !strings.Contains(err.Error(), "already has a status called") {
+		if !errors.Is(err, workflow.ErrInvalid) || !strings.Contains(err.Error(), "already a status called") {
 			t.Errorf("err = %v, want the duplicate named", err)
 		}
 	})

@@ -8,7 +8,7 @@ type Scope string
 
 const (
 	ScopeBuiltin      Scope = "builtin"
-	ScopeOrganization Scope = "organization"
+	ScopeEveryone     Scope = "everyone"
 	ScopeProject      Scope = "project"
 )
 

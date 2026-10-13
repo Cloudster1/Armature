@@ -89,7 +89,7 @@ func (s *Service) SetAllocation(ctx context.Context, projectKey string, userID u
 		err = tx.QueryRow(ctx, selectAllocation+` WHERE u.id = $2`, projectID, userID).
 			Scan(&out.UserID, &out.Name, &out.Percent, &out.ElsewherePercent)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("%w: only somebody who works here gives a project a share of their week; choose a member of the organization", ErrInvalid)
+			return fmt.Errorf("%w: only somebody who works here gives a project a share of their week; choose somebody who works here instead", ErrInvalid)
 		}
 		if err != nil {
 			return err

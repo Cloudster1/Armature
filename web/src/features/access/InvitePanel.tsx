@@ -31,7 +31,7 @@ const roleChoices: Array<{
   {
     value: "admin",
     label: "Administrator",
-    detail: "Also manages the organization: people, roles and settings.",
+    detail: "Also manages Armature: people, roles and settings.",
   },
   {
     value: "customer",

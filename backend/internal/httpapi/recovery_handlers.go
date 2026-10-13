@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/armature/armature/backend/internal/auth"
@@ -33,7 +32,7 @@ func (s *Server) handleRequestPasswordReset(w http.ResponseWriter, r *http.Reque
 	}
 	if s.Mailer == nil {
 		respondError(w, r, &APIError{Status: http.StatusServiceUnavailable, Code: "mail_unavailable",
-			Message: "Mail is not set up on this server, so a password cannot be reset by mail. Ask an administrator of your organization to set a new one for you."})
+			Message: "Mail is not set up on this server, so a password cannot be reset by mail. Ask an administrator to set a new one for you."})
 		return
 	}
 	if !resetRequests.gate(w, r, "Too many password links were asked for from here. Wait a few minutes and try again.") {
@@ -68,8 +67,8 @@ func (s *Server) passwordResetMail(reset *auth.ResetRequest) mail.Mail {
 		return mail.Mail{
 			To:      reset.Email,
 			Subject: "How you sign in to Armature",
-			Body: fmt.Sprintf("Somebody asked to set a new password for the Armature account of %s. That account has no password here: it signs in through your organization's identity provider.\n\nOn the sign-in page at %s/login, choose \"Sign in with single sign-on\" and give the organization %s.\n\nIf you did not ask, ignore this mail.\n",
-				reset.Email, s.AppBaseURL, strings.Join(reset.Providers, " or ")),
+			Body: fmt.Sprintf("Somebody asked to set a new password for the Armature account of %s. That account has no password here: it signs in through the identity provider.\n\nOn the sign-in page at %s/login, choose \"Sign in with single sign-on\".\n\nIf you did not ask, ignore this mail.\n",
+				reset.Email, s.AppBaseURL),
 		}
 	}
 	return mail.Mail{

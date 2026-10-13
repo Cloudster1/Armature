@@ -80,7 +80,7 @@ func arrangements(ctx context.Context, tx db.DBTX, projectID *uuid.UUID) ([]Arra
 		case scanErr != nil:
 			return nil, fmt.Errorf("resolve the arrangement: %w", scanErr)
 		}
-		answer.Origin = Origin{Scope: ScopeOrganization, Named: byName}
+		answer.Origin = Origin{Scope: ScopeEveryone, Named: byName}
 		if ofOne {
 			answer.Origin.Scope = ScopeProject
 		}

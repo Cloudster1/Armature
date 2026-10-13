@@ -7,6 +7,21 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: Armature says "everyone" or "all projects" where it said "the
+  organization", on screen, in the guide, in error messages and in the API
+  document; only the Installation page names the installation. The settings
+  hub's second group is Everyone. A project follows "the default" workflows
+  and arrangement, and a scheme or theme is made the default for everyone.
+  The permission `org.administer` keeps its key and reads "Administer
+  Armature". `GET /themes/active` answers `source: "everyone"` and an
+  arrangement's `origin.scope` is `everyone`, where both said
+  `organization`. The API document's `organization` tag is split into
+  `installation`, `users`, `issues` and `workflows`. The audit log keeps the
+  stored actions `org.created` and `org.second_factor_required`, so the export
+  and a filter by action still name them, while the page reads them as
+  `installation.created` and `installation.second_factor_required`. The mail
+  to an account that signs in by single sign-on no longer asks for an
+  organization (#215).
 - Fixed: the browser suite's mention scenario names the person by the unique
   word of their name. In the shared installation "ben" matched more people
   than the picker lists, so the newest Ben was never offered.

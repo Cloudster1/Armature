@@ -27,7 +27,7 @@ func availabilityAPIError(err error) *APIError {
 	case errors.Is(err, availability.ErrNotFound):
 		return ErrNotFound("That holiday calendar was not found.")
 	case errors.Is(err, availability.ErrNameTaken):
-		return ErrConflict("This organization already has a holiday calendar by that name. Choose another.")
+		return ErrConflict("There is already a holiday calendar by that name. Choose another.")
 	case errors.Is(err, availability.ErrDefaultCalendar):
 		return ErrConflict("The default calendar stays the default until another one takes its place. Make another calendar the default first.")
 	case errors.Is(err, availability.ErrInvalid):
@@ -35,10 +35,10 @@ func availabilityAPIError(err error) *APIError {
 	case errors.Is(err, availability.ErrBadFile):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: withoutSentinel(err, availability.ErrBadFile) + "."}
 	case errors.Is(err, availability.ErrNotAMember):
-		return ErrNotFound("That person is not a member of this organization.")
+		return ErrNotFound("That person is not a member here.")
 	case errors.Is(err, availability.ErrCustomer):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed",
-			Message: "A portal customer keeps no working week or absences here. Choose somebody who works in the organization."}
+			Message: "A portal customer keeps no working week or absences here. Choose somebody who works here."}
 	case errors.Is(err, availability.ErrProjectNotFound):
 		return ErrNotFound("That project was not found.")
 	case errors.Is(err, availability.ErrAbsenceNotFound):

@@ -320,3 +320,14 @@ func TestAKeyIsMadeFromAName(t *testing.T) {
 		}
 	}
 }
+
+// The key stays org.administer because stored grants name it; what the matrix
+// reads names the product instead.
+func TestAdministeringReadsAsArmature(t *testing.T) {
+	if got := PermissionWords[OrgAdminister]; got != "Administer Armature" {
+		t.Errorf("org.administer reads %q", got)
+	}
+	if OrgAdminister != "org.administer" {
+		t.Errorf("the stored key changed to %q", OrgAdminister)
+	}
+}

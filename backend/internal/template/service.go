@@ -111,7 +111,7 @@ func (s *Service) ensureScheme(ctx context.Context, tx db.DBTX, spec *workflowSp
 	need := func(name string) (uuid.UUID, error) {
 		id, ok := statuses[name]
 		if !ok {
-			return uuid.Nil, fmt.Errorf("the %s template needs a status called %q, which this organization does not have", spec.name, name)
+			return uuid.Nil, fmt.Errorf("the %s template needs a status called %q, and there is none", spec.name, name)
 		}
 		return id, nil
 	}

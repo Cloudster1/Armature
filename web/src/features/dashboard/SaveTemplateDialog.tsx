@@ -22,7 +22,7 @@ export function SaveTemplateDialog({ dashboard, open, onClose }: { dashboard: Da
     );
   }
   return (
-    <Dialog open={open} onClose={onClose} title="Save as a template" description="The arrangement and each widget's settings are kept for the whole organization. Anything tied to this project, such as a team, is left out." attrs={{ "data-save-template": "" }}>
+    <Dialog open={open} onClose={onClose} title="Save as a template" description="The arrangement and each widget's settings are kept for everyone. Anything tied to this project, such as a team, is left out." attrs={{ "data-save-template": "" }}>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <Field label="Template name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         <Field label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What it is for" />

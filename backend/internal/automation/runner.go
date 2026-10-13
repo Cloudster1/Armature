@@ -446,7 +446,7 @@ func (s *Service) act(ctx context.Context, r Rule, a Action, key string, p paylo
 		res.Note = fmt.Sprintf("created %s under %s", made.Key, key)
 	case ActionCreateIssue:
 		if r.ProjectKey == "" {
-			return fail("an organization rule has no project to create in")
+			return fail("a rule across all projects has no project to create in")
 		}
 		made, _, err := s.issues.Create(ctx, issue.CreateInput{ProjectKey: r.ProjectKey, Summary: s.fill(ctx, a.Text, current, p)}, actor)
 		if err != nil {
@@ -538,7 +538,7 @@ func (s *Service) subtaskType(ctx context.Context) (uuid.UUID, error) {
 		return tx.QueryRow(ctx, `SELECT id FROM issue_type WHERE is_subtask ORDER BY position LIMIT 1`).Scan(&id)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, errors.New("this organization has no subtask type")
+		return uuid.Nil, errors.New("there is no subtask type")
 	}
 	return id, err
 }

@@ -26,7 +26,7 @@ export interface Theme {
   assets: ThemeAsset[];
   inUse: number;
   active: boolean;
-  /** The organization shows it to whoever has not chosen. */
+  /** Everyone who has not chosen sees it. */
   default: boolean;
   createdAt: string;
   updatedAt: string;
@@ -67,8 +67,8 @@ export function useTheme(id: string | undefined) {
   });
 }
 
-/** Where the theme the reader sees came from: their choice, the organization's default, or nothing. */
-export type ThemeSource = "chosen" | "organization" | "";
+/** Where the theme the reader sees came from: their choice, everyone's default, or nothing. */
+export type ThemeSource = "chosen" | "everyone" | "";
 
 /** The theme the reader sees; null is the built-in one. */
 export function useActiveTheme() {
@@ -92,10 +92,10 @@ export function useDeleteTheme() {
   return useThemeMutation((id: string) => request<void>(`/themes/${id}`, { method: "DELETE" }));
 }
 
-/** A choice: a theme, null for whatever the organization shows, or the built-in theme over it. */
+/** A choice: a theme, null for whatever everyone sees, or the built-in theme over it. */
 export type ThemeChoice = string | null | { builtIn: true };
 
-/** Uses a theme, returns to the organization's default with null, or keeps the built-in one over it. */
+/** Uses a theme, returns to everyone's default with null, or keeps the built-in one over it. */
 export function useChooseTheme() {
   return useThemeMutation((choice: ThemeChoice) => {
     const body = choice !== null && typeof choice === "object" ? { themeId: null, builtIn: true } : { themeId: choice };

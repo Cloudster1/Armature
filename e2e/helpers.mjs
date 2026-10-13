@@ -1829,14 +1829,14 @@ export async function openPlanFilters(page) {
 /**
  * Decides one issue type's workflow on the project's page, the way a project
  * administrator does, and waits until the table says so. "Follow the
- * organization" hands the type back.
+ * default" hands the type back.
  */
 export async function assignWorkflow(page, projectKey, typeName, workflowName) {
   await goto(page, `/projects/${projectKey}/workflows`);
   const control = `select[aria-label="Workflow for ${typeName}"]`;
   await page.waitForSelector(control, { timeout: WAIT });
   await selectByLabel(page, control, workflowName);
-  const expected = workflowName === "Follow the organization" ? "Organization" : workflowName;
+  const expected = workflowName === "Follow the default" ? "All projects" : workflowName;
   await page.waitForFunction(
     (type, text) => {
       const row = document.querySelector(`[data-assignment="${type}"]`);
@@ -1870,9 +1870,9 @@ export async function arrangeIssue(page, projectKey, typeName, { moves = [], fol
     );
   }
   if (follow) {
-    await clickButton(page, "Follow the organization");
+    await clickButton(page, "Follow the default");
     await settled(page);
-    await page.waitForSelector('[data-arrange-origin="organization"], [data-arrange-origin="builtin"]', { timeout: WAIT });
+    await page.waitForSelector('[data-arrange-origin="everyone"], [data-arrange-origin="builtin"]', { timeout: WAIT });
   }
 }
 

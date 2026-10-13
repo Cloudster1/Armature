@@ -82,7 +82,7 @@ var PermissionWords = map[Permission]string{
 	BoardConfigure:    "Set up boards",
 	ProjectAdminister: "Administer a project's own settings",
 	ProjectCreate:     "Create projects",
-	OrgAdminister:     "Administer the organization",
+	OrgAdminister:     "Administer Armature",
 }
 
 // RoleInput is a role as the matrix sends it; nil leaves a field alone on an edit.
@@ -95,12 +95,12 @@ type RoleInput struct {
 }
 
 var (
-	// ErrRoleNotFound is returned for a role the organization does not have.
-	ErrRoleNotFound = errors.New("this organization has no such role")
+	// ErrRoleNotFound is returned for a role nobody defined.
+	ErrRoleNotFound = errors.New("there is no such role")
 	// ErrBuiltinRole is returned when a built-in role is deleted.
 	ErrBuiltinRole = errors.New("a built-in role cannot be deleted; take its grants away instead")
 	// ErrRoleNameTaken is returned when another role already has the name.
-	ErrRoleNameTaken = errors.New("this organization already has a role with that name")
+	ErrRoleNameTaken = errors.New("there is already a role with that name")
 	// ErrRoleKey is returned for a key that is not a short lowercase word.
 	ErrRoleKey = errors.New("a role's key is 2 to 40 lowercase letters, digits and underscores, starting with a letter")
 	// ErrRoleName is returned for a missing name.
@@ -108,8 +108,8 @@ var (
 	// ErrUnknownPermission is returned for a permission the code does not check for.
 	ErrUnknownPermission = errors.New("that is not a permission")
 	// ErrLockout is returned when the global administrator would stop
-	// administering the organization.
-	ErrLockout = errors.New("the global administrator keeps administering the organization, or nobody could undo this")
+	// administering Armature.
+	ErrLockout = errors.New("the global administrator keeps administering Armature, or nobody could undo this")
 )
 
 var roleKey = regexp.MustCompile(`^[a-z][a-z0-9_]{1,39}$`)

@@ -78,7 +78,7 @@ func ValidateGraph(in GraphInput, names map[uuid.UUID]string) error {
 	for _, step := range in.Steps {
 		name, known := names[step.StatusID]
 		if !known {
-			return invalid("this organization has no such status")
+			return invalid("there is no such status")
 		}
 		if seen[step.StatusID] {
 			return invalid("%s is listed twice", name)

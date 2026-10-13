@@ -19,11 +19,11 @@ var (
 	ErrNotFound = errors.New("not found")
 	// ErrNotAMember is returned when granting a role to, or putting on a group,
 	// somebody who is not in the organization. Neither is a way in.
-	ErrNotAMember = errors.New("that person is not a member of this organization")
+	ErrNotAMember = errors.New("that person is not a member here")
 	// ErrScope is returned for a role granted over the wrong kind of scope.
 	ErrScope = errors.New("that role cannot be granted over one project")
 	// ErrNameTaken is returned when a group by that name already exists.
-	ErrNameTaken = errors.New("this organization already has a group with that name")
+	ErrNameTaken = errors.New("there is already a group with that name")
 	// ErrManagedElsewhere is returned when editing the membership of a group the
 	// identity provider owns. Changing it here would last until the next login.
 	ErrManagedElsewhere = errors.New("that group's members come from the identity provider")
