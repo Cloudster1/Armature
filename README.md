@@ -94,7 +94,9 @@ or over one project: global administrator, project administrator, scrum master,
 user, reader. Groups can come from the identity provider, replaced at every
 sign-in. An administrator makes local accounts with a password, resets them
 and switches them off, and somebody who forgot their password asks the sign-in
-page for a link by mail. A project is a wall: what a role does not reach is
+page for a link by mail. A person can add two-step sign-in with an
+authenticator app, with recovery codes for a lost phone, and an organization
+can require it of its administrators or of everyone. A project is a wall: what a role does not reach is
 not found.
 
 **Planning.** Boards (scrum follows the running sprint, kanban shows
@@ -329,7 +331,10 @@ them again. Nothing of this runs unless asked.
 password reaches every organization the person belongs to, a mailed code and an
 open desk door reach only the organization that asked for them, single sign-on
 reaches the organizations that trust the same provider and the ones the person
-owns, and the database refuses any other switch as well. A write carrying the session
+owns, and the database refuses any other switch as well. A person with two-step
+sign-in gets no session for the password alone: the code step that follows takes
+five tries, the app's code works once, and a recovery code works once. The
+authenticator key is sealed with AES-GCM under `ARMATURE_SECRET_KEY`. A write carrying the session
 cookie must say it is JSON and, in production, come from one of this
 application's origins. Guessing at a password or an invitation is braked by the
 address guessed at, which is the connection's own unless it comes from a proxy
@@ -372,10 +377,11 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_SESSION_TTL` | `720h` | how long a session lives |
 | `ARMATURE_SESSION_COOKIE` | `armature_session` | the cookie's name |
 | `ARMATURE_SECURE_COOKIES` | `false` | required true outside development |
+| `ARMATURE_SECRET_KEY` | none | 32 random bytes in base64 (`openssl rand -base64 32`) that seal the authenticator secrets of two-step sign-in; empty turns two-step sign-in off, and once anybody has it on the api will not start without the same key |
 | `ARMATURE_ARGON_MEMORY_KIB` / `_ITERATIONS` / `_THREADS` | `65536` / `3` / `4` | password hashing cost |
 | `ARMATURE_READ_YOUR_WRITES_TTL` | `30s` | how long a writer is pinned past their write |
 | `ARMATURE_PORTAL_CODE_COOLDOWN` | `1m` | how long an address waits between portal codes |
-| `ARMATURE_DOOR_WINDOW` | `10m` | how long the brakes on portal codes, portal entries, password links and password or invitation guesses remember an address |
+| `ARMATURE_DOOR_WINDOW` | `10m` | how long the brakes on portal codes, portal entries, password links, sign-in codes and password or invitation guesses remember an address |
 | `ARMATURE_SMTP_ADDR` | none | the relay; empty turns mail off |
 | `ARMATURE_MAIL_FROM` | `Armature <no-reply@armature.test>` | the sender |
 | `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off |

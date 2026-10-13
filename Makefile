@@ -22,6 +22,9 @@ ADMIN_DB_PASSWORD  ?= armature_admin
 REDIS_PASSWORD     ?= armature_redis
 S3_ACCESS_KEY      ?= armature
 S3_SECRET_KEY      ?= armature-dev-secret
+# Seals authenticator secrets; the compose file's api uses the same one, so a
+# row the suite leaves behind opens for the stack too.
+SECRET_KEY         ?= YXJtYXR1cmUtZGV2LWtleS1ub3QtYS1zZWNyZXQtMDA=
 
 GO_CACHE_VOL   := $(ROOT)/.cache/gocache
 GO_MOD_VOL     := $(ROOT)/.cache/gomod
@@ -119,6 +122,7 @@ test-integration: ## Run the integration suite against the running stack
 		-e ARMATURE_DB_MAX_REPLICA_LAG=1s \
 		-e ARMATURE_OUTBOUND_ALLOW='127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16' \
 		-e ARMATURE_REDIS_URL='redis://:$(REDIS_PASSWORD)@redis:6379/0' \
+		-e ARMATURE_SECRET_KEY='$(SECRET_KEY)' \
 		-e ARMATURE_S3_ENDPOINT=seaweedfs:8333 -e ARMATURE_S3_BUCKET=armature-test-attachments \
 		-e ARMATURE_S3_ACCESS_KEY='$(S3_ACCESS_KEY)' -e ARMATURE_S3_SECRET_KEY='$(S3_SECRET_KEY)' \
 		-e ARMATURE_SMTP_ADDR=mailpit:1025 -e ARMATURE_POP3_ADDR=mailpit:1110 -e ARMATURE_POP3_USER=armature -e ARMATURE_POP3_PASSWORD=armature \

@@ -939,7 +939,7 @@
     "/auth/login": {
       "post": {
         "operationId": "login",
-        "summary": "Sign in with email and password.",
+        "summary": "Sign in with email and password; an account with a second factor is answered with a challenge to finish with a code instead of a session.",
         "tags": [
           "auth"
         ],
@@ -949,6 +949,77 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "principal": {
+                      "$ref": "#/components/schemas/Principal"
+                    }
+                  },
+                  "required": [
+                    "principal"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "challenge": {
+                      "type": "string"
+                    },
+                    "expiresInSeconds": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "challenge",
+                    "expiresInSeconds"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login/second-factor": {
+      "post": {
+        "operationId": "loginSecondFactor",
+        "summary": "Finish a password sign-in with the code from the authenticator app or a recovery code, and open the session.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorLoginRequest"
               }
             }
           }
@@ -1264,6 +1335,220 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me/second-factor": {
+      "get": {
+        "operationId": "secondFactorStatus",
+        "summary": "Whether your two-step sign-in is on and how many recovery codes are left. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "secondFactor": {
+                      "$ref": "#/components/schemas/SecondFactorStatus"
+                    }
+                  },
+                  "required": [
+                    "secondFactor"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "startSecondFactor",
+        "summary": "Start setting up an authenticator app: its secret, shown this once, and the address its QR code carries. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enrolment": {
+                      "$ref": "#/components/schemas/Enrolment"
+                    }
+                  },
+                  "required": [
+                    "enrolment"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me/second-factor/confirm": {
+      "post": {
+        "operationId": "confirmSecondFactor",
+        "summary": "Turn two-step sign-in on with a code from the app; answers with ten recovery codes, shown this once. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recoveryCodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "recoveryCodes"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me/second-factor/recovery-codes": {
+      "post": {
+        "operationId": "renewRecoveryCodes",
+        "summary": "Replace your recovery codes with ten new ones, proven by a code. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recoveryCodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "recoveryCodes"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me/second-factor/remove": {
+      "post": {
+        "operationId": "removeSecondFactor",
+        "summary": "Turn two-step sign-in off, proven by a code; every other session of yours ends. From a browser session only.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorCodeRequest"
               }
             }
           }
@@ -9104,6 +9389,102 @@
         }
       }
     },
+    "/organization/second-factor": {
+      "get": {
+        "operationId": "orgSecondFactor",
+        "summary": "Who must have two-step sign-in here: off, admins or everyone.",
+        "tags": [
+          "users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "require": {
+                      "type": "string",
+                      "enum": [
+                        "off",
+                        "admins",
+                        "everyone"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "require"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "requireSecondFactor",
+        "summary": "Require two-step sign-in of nobody, the administrators or everyone; a session without one is held until it is set up.",
+        "tags": [
+          "users"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorRuleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "require": {
+                      "type": "string",
+                      "enum": [
+                        "off",
+                        "admins",
+                        "everyone"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "require"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/organizations/demo": {
       "post": {
         "operationId": "createDemoOrganization",
@@ -16311,6 +16692,41 @@
         }
       }
     },
+    "/users/{userID}/second-factor": {
+      "delete": {
+        "operationId": "removeMembersSecondFactor",
+        "summary": "Turn off somebody's two-step sign-in, for a lost phone and lost recovery codes.",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/versions/{versionID}": {
       "delete": {
         "operationId": "deleteVersion",
@@ -20749,6 +21165,21 @@
           "updatedAt"
         ]
       },
+      "Enrolment": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "uri"
+        ]
+      },
       "EpicProgress": {
         "type": "object",
         "properties": {
@@ -22284,6 +22715,9 @@
               "customer"
             ]
           },
+          "secondFactor": {
+            "type": "boolean"
+          },
           "signsInWith": {
             "type": "string",
             "enum": [
@@ -22301,7 +22735,8 @@
           "isActive",
           "signsInWith",
           "managed",
-          "createdAt"
+          "createdAt",
+          "secondFactor"
         ]
       },
       "MarkReadRequest": {
@@ -23526,6 +23961,9 @@
       "Principal": {
         "type": "object",
         "properties": {
+          "mustEnrol": {
+            "type": "boolean"
+          },
           "org": {
             "$ref": "#/components/schemas/Org"
           },
@@ -25343,6 +25781,71 @@
         "required": [
           "name",
           "items"
+        ]
+      },
+      "SecondFactorCodeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "SecondFactorLoginRequest": {
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge",
+          "code"
+        ]
+      },
+      "SecondFactorRuleRequest": {
+        "type": "object",
+        "properties": {
+          "require": {
+            "type": "string",
+            "enum": [
+              "off",
+              "admins",
+              "everyone"
+            ]
+          }
+        },
+        "required": [
+          "require"
+        ]
+      },
+      "SecondFactorStatus": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "enrolled": {
+            "type": "boolean"
+          },
+          "enrolledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recoveryCodesLeft": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enrolled",
+          "recoveryCodesLeft",
+          "available"
         ]
       },
       "SecurityScheme": {

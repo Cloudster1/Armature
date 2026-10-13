@@ -377,3 +377,15 @@ export const WORDMARK_EMBLEM_SIZE = { sm: 24, md: 40 } as const;
 
 /** Where a password link's secret waits in the tab once it is off the address bar. */
 export const PASSWORD_RESET_TOKEN_KEY = "armature.password-reset";
+
+/** How many digits an authenticator app shows; the server takes the same. */
+export const SECOND_FACTOR_CODE_DIGITS = 6;
+
+/** How wide the QR code an authenticator app scans is drawn, in pixels. */
+export const QR_CODE_PX = 176;
+
+/** The light margin around a QR code, in modules; cameras find the code by it. */
+export const QR_QUIET_MODULES = 2;
+
+/** How many characters of an authenticator key are shown together, so it can be typed. */
+export const SECRET_GROUP_LENGTH = 4;

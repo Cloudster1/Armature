@@ -80,6 +80,7 @@ type Export struct {
 	Profile       Profile        `json:"profile"`
 	Memberships   []Membership   `json:"memberships"`
 	Sessions      []Session      `json:"sessions"`
+	SecondFactor  SecondFactor   `json:"secondFactor"`
 	APITokens     []Token        `json:"apiTokens"`
 	Issues        []IssueRef     `json:"issues"`
 	Comments      []Comment      `json:"comments"`
@@ -117,6 +118,14 @@ type Session struct {
 	ExpiresAt  time.Time `json:"expiresAt"`
 	UserAgent  string    `json:"userAgent"`
 	IP         string    `json:"ip"`
+}
+
+// SecondFactor says whether two-step sign-in is on, never its secret, which
+// would hand whoever holds the file the second factor itself.
+type SecondFactor struct {
+	Enrolled          bool       `json:"enrolled"`
+	EnrolledAt        *time.Time `json:"enrolledAt,omitempty"`
+	RecoveryCodesLeft int        `json:"recoveryCodesLeft"`
 }
 
 type Token struct {
@@ -200,6 +209,16 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 				return x, err
 			})
 		if err != nil {
+			return err
+		}
+		err = tx.QueryRow(ctx, `
+			SELECT confirmed_at, (SELECT count(*) FROM recovery_code WHERE user_id = $1 AND used_at IS NULL)
+			FROM user_second_factor WHERE user_id = $1 AND confirmed_at IS NOT NULL`, userID,
+		).Scan(&out.SecondFactor.EnrolledAt, &out.SecondFactor.RecoveryCodesLeft)
+		switch {
+		case err == nil:
+			out.SecondFactor.Enrolled = true
+		case !errors.Is(err, pgx.ErrNoRows):
 			return err
 		}
 		out.APITokens, err = collect(ctx, tx, `SELECT name, scopes, created_at, last_used_at, expires_at FROM api_token WHERE user_id = $1 ORDER BY created_at`, userID,
@@ -389,6 +408,9 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM user_session WHERE user_id = $1`,
 			`DELETE FROM api_token WHERE user_id = $1`,
 			`DELETE FROM password_reset WHERE user_id = $1`,
+			`DELETE FROM user_second_factor WHERE user_id = $1`,
+			`DELETE FROM recovery_code WHERE user_id = $1`,
+			`DELETE FROM login_challenge WHERE user_id = $1`,
 			`DELETE FROM notification WHERE user_id = $1`,
 			`DELETE FROM notification_preference WHERE user_id = $1`,
 			`DELETE FROM notification_digest WHERE user_id = $1`,

@@ -51,7 +51,8 @@ installation does.
 | API tokens | `api_token`, `api_token_project` | name, token hash, last used, the projects it is confined to | until revoked or expired | revoked, erased, or swept `ARMATURE_RETAIN_API_TOKENS` (30 days) past expiry |
 | Invitations | `org_invite` | address | until accepted or expired | swept `ARMATURE_RETAIN_INVITES` (30 days) past expiry; deleted by erasure |
 | Portal codes | `portal_code` | address, code hash | 10 minutes | swept `ARMATURE_RETAIN_PORTAL_CODES` (1 day) past expiry; deleted by erasure |
-| Sign-in handshakes | `oidc_login` | state, nonce | minutes | swept `ARMATURE_RETAIN_OIDC_LOGINS` (1 day) past expiry |
+| Sign-in handshakes | `oidc_login`, `login_challenge` | state, nonce; the digest of a password sign-in's code step and how many wrong codes it took | minutes | swept `ARMATURE_RETAIN_OIDC_LOGINS` (1 day) past expiry; a code step goes when it is answered, and by erasure |
+| Two-step sign-in | `user_second_factor`, `recovery_code` | the authenticator key, sealed with `ARMATURE_SECRET_KEY`; the last step used; digests of the recovery codes and when each was used | while it is on | turned off by the person or an administrator, and by erasure; the export says whether it is on and never holds the key |
 | Work | `issue`, `issue_comment`, `issue_worklog`, `issue_history`, `issue_watcher`, `attachment` | reporter, assignee, author, uploader, the text itself | while the issue exists | with the issue; after erasure the author reads "Former user", and the person's watches are deleted |
 | Notifications | `notification`, `notification_preference` | recipient, a title naming the actor | `ARMATURE_RETAIN_NOTIFICATIONS` (180 days) | swept; deleted by erasure |
 | Digests sent | `notification_digest_sent` | when each organization last mailed a person their digest | while the membership exists | with the membership, and by erasure |
@@ -144,7 +145,9 @@ administrator for the tables that belong to nobody in particular.
 - There are no backups in this repository. An installation that adds them
   needs a policy for purging erased people from them.
 - Webhook secrets and identity-provider client secrets are at rest in clear,
-  as the schema comments say why.
+  as the schema comments say why. Authenticator keys are the one secret sealed
+  so far, with `ARMATURE_SECRET_KEY`; whoever holds both the database and that
+  key holds them.
 - Mail arriving at a desk is trusted as far as the receiving server's own
   checks go: a message whose `Authentication-Results` says the sender is
   forged is refused, and one from a colleague's address is filed where only

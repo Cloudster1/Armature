@@ -1,6 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
 import { meQueryKey } from "@/api/auth";
+import { SECOND_FACTOR_REQUIRED_CODE } from "@/api/secondFactor";
 import { QUERY_STALE_MS } from "@/config";
 
 /** Said when a change failed without the server giving a sentence of its own. */
@@ -24,8 +25,18 @@ export function createQueryClient(onSessionEnded: () => void = () => {}): QueryC
     return true;
   }
 
+  // A session the organization has just started holding is told so by every
+  // page's request; reading the session again shows the setup instead.
+  function held(error: unknown) {
+    if (error instanceof ApiError && error.code === SECOND_FACTOR_REQUIRED_CODE) void queryClient.invalidateQueries({ queryKey: meQueryKey, exact: true });
+  }
+
   const queryClient: QueryClient = new QueryClient({
-    queryCache: new QueryCache({ onError: (error) => void refused(error) }),
+    queryCache: new QueryCache({
+      onError: (error) => {
+        if (!refused(error)) held(error);
+      },
+    }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
         // Sign in says what happened to the session; a toast would only repeat it.

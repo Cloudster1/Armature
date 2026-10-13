@@ -2,6 +2,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -157,6 +158,9 @@ type Auth struct {
 	// OIDCRedirectURL is what the identity provider sends people back to; it
 	// must match what is registered there exactly.
 	OIDCRedirectURL string
+	// SecretKey seals authenticator secrets, as 32 bytes of base64; empty
+	// turns two-step sign-in off.
+	SecretKey string
 }
 
 // Render names the render service, when there is one.
@@ -172,6 +176,9 @@ type Assistant struct {
 	Model   string
 	Timeout time.Duration
 }
+
+// SecretKeyBytes is the length of ARMATURE_SECRET_KEY, an AES-256 key.
+const SecretKeyBytes = 32
 
 // Load reads configuration from the environment, applies defaults and validates
 // the result. It returns every problem it finds at once rather than the first.
@@ -263,6 +270,7 @@ func Load() (Config, error) {
 			DoorWindow:         envDur("ARMATURE_DOOR_WINDOW", 10*time.Minute),
 			Signup:             env("ARMATURE_SIGNUP", "open"),
 			OIDCRedirectURL:    env("ARMATURE_OIDC_REDIRECT_URL", DevOIDCRedirectURL),
+			SecretKey:          env("ARMATURE_SECRET_KEY", ""),
 		},
 		Webhooks: Webhooks{
 			Concurrency: envCount("ARMATURE_WEBHOOK_CONCURRENCY", DefaultWebhookConcurrency),
@@ -303,6 +311,11 @@ func Load() (Config, error) {
 	case "open", "first", "closed":
 	default:
 		problems = append(problems, fmt.Sprintf("ARMATURE_SIGNUP %q must be open, first or closed", c.Auth.Signup))
+	}
+	if c.Auth.SecretKey != "" {
+		if key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(c.Auth.SecretKey)); err != nil || len(key) != SecretKeyBytes {
+			problems = append(problems, fmt.Sprintf("ARMATURE_SECRET_KEY must be %d random bytes in base64; make one with `openssl rand -base64 %d`", SecretKeyBytes, SecretKeyBytes))
+		}
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		problems = append(problems, "ARMATURE_OTEL_SAMPLE_RATIO must be between 0 and 1")

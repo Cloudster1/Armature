@@ -96,6 +96,12 @@ type Principal struct {
 	TokenProjects []string `json:"-"`
 	// Proof is how a browser session was opened; empty for an API token.
 	Proof Proof `json:"-"`
+	// MustEnrol holds a session to setting up a second factor, which its
+	// organization requires of the person and they do not have.
+	MustEnrol bool `json:"mustEnrol,omitempty"`
+	// SecondFactor says the person has one here: their own, or the identity
+	// provider's that signed this session in and that the organization trusts.
+	SecondFactor bool `json:"-"`
 }
 
 // ReachesEverywhere reports whether the caller may act beyond the organization

@@ -195,6 +195,22 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "last_owner", Message: capitalize(auth.ErrLastActiveOwner.Error()) + "."}
 	case errors.Is(err, auth.ErrOwnerOnly):
 		return ErrForbidden(capitalize(auth.ErrOwnerOnly.Error()) + ".")
+	case errors.Is(err, auth.ErrSecondFactorCode):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "wrong_code", Message: capitalize(auth.ErrSecondFactorCode.Error()) + "."}
+	case errors.Is(err, auth.ErrChallengeInvalid):
+		return &APIError{Status: http.StatusGone, Code: "challenge_invalid", Message: capitalize(auth.ErrChallengeInvalid.Error()) + "."}
+	case errors.Is(err, auth.ErrSecondFactorUnavailable):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "second_factor_unavailable", Message: capitalize(auth.ErrSecondFactorUnavailable.Error()) + "."}
+	case errors.Is(err, auth.ErrSecondFactorEnrolled):
+		return &APIError{Status: http.StatusConflict, Code: "second_factor_on", Message: capitalize(err.Error()) + "."}
+	case errors.Is(err, auth.ErrNoEnrolment):
+		return &APIError{Status: http.StatusConflict, Code: "no_enrolment", Message: capitalize(err.Error()) + "."}
+	case errors.Is(err, auth.ErrNoSecondFactor):
+		return &APIError{Status: http.StatusConflict, Code: "no_second_factor", Message: capitalize(err.Error()) + "."}
+	case errors.Is(err, auth.ErrEnrolFirst):
+		return &APIError{Status: http.StatusConflict, Code: "enrol_first", Message: capitalize(err.Error()) + "."}
+	case errors.Is(err, auth.ErrBadSecondFactorRule):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
 	case errors.Is(err, auth.ErrWrongPassword), errors.Is(err, auth.ErrPasswordTooShort),
 		errors.Is(err, auth.ErrBadUserRole), errors.Is(err, auth.ErrUserName), errors.Is(err, auth.ErrUserAddress):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}

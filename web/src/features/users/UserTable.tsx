@@ -5,6 +5,7 @@ import { Button, Dialog, EmptyState, ErrorBanner, Field, IconButton, Menu, Selec
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { WorkingWeekDialog } from "@/features/availability/WorkingWeek";
+import { useRemoveMembersSecondFactor } from "@/api/secondFactor";
 
 const signsInWords: Record<ManagedUser["signsInWith"], string> = { password: "Password", provider: "Identity provider", none: "Nothing yet" };
 const roleWords: Record<ManagedUser["role"], string> = { owner: "Owner", admin: "Administrator", member: "Member", customer: "Customer" };
@@ -18,6 +19,7 @@ export function UserTable() {
   const { data, isLoading, error } = useManagedUsers();
   const { data: me } = useMe();
   const update = useUpdateUser();
+  const removeFactor = useRemoveMembersSecondFactor();
   const confirm = useConfirm();
   const toast = useToast();
   const [renaming, setRenaming] = useState<ManagedUser | null>(null);
@@ -37,9 +39,17 @@ export function UserTable() {
     }
   }
 
+  // For somebody who lost both the phone and the recovery codes; they sign in with the password alone after.
+  async function turnOffSecondFactor(user: ManagedUser) {
+    if (await confirm({ noun: "two-step sign-in", verb: "Turn off", body: `${user.name} signs in with the password alone until they set it up again. Do this only when you are sure it is them asking.` })) {
+      removeFactor.mutate(user.id, { onSuccess: () => toast.success(`Turned off two-step sign-in for ${user.name}`) });
+    }
+  }
+
   return (
     <div className="space-y-3">
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
+      {removeFactor.error && <ErrorBanner>{(removeFactor.error as Error).message}</ErrorBanner>}
       <Table>
         <thead>
           <tr>
@@ -59,7 +69,14 @@ export function UserTable() {
               <tr key={user.id} data-user={user.email} data-user-active={user.isActive} data-user-managed={user.managed}>
                 <Td className="text-ink">{user.name}</Td>
                 <Td className="text-ink-muted">{user.email}</Td>
-                <Td className="text-ink-muted">{signsInWords[user.signsInWith]}</Td>
+                <Td className="text-ink-muted">
+                  {signsInWords[user.signsInWith]}
+                  {user.secondFactor && (
+                    <Tag className="ml-2" data-user-second-factor>
+                      Two-step
+                    </Tag>
+                  )}
+                </Td>
                 <Td>
                   <Tag>{roleWords[user.role]}</Tag>
                 </Td>
@@ -85,6 +102,7 @@ export function UserTable() {
                       { label: "Rename", icon: <Icon.Edit />, disabled: locked, onSelect: () => setRenaming(user), attrs: { "data-action": "rename-user" } },
                       { label: "Change role", icon: <Icon.Key />, disabled: locked || user.role === "owner", onSelect: () => setChangingRole(user), attrs: { "data-action": "change-role" } },
                       { label: "Set password", icon: <Icon.Shield />, disabled: locked || user.signsInWith === "provider", onSelect: () => setSettingPassword(user), attrs: { "data-action": "set-password" } },
+                      { label: "Turn off two-step sign-in", icon: <Icon.Key />, disabled: locked || !user.secondFactor, onSelect: () => void turnOffSecondFactor(user), attrs: { "data-action": "remove-second-factor" } },
                       // Hours worked are not the account's, so a shared account's week is set here too; a customer has none.
                       { label: "Working week", icon: <Icon.Calendar />, disabled: user.role === "customer", onSelect: () => setSettingWeek(user), attrs: { "data-action": "working-week" } },
                       user.isActive

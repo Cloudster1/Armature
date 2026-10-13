@@ -32,6 +32,12 @@ vi.mock("@/api/auth", async () => {
   };
 });
 
+const finish = vi.fn();
+vi.mock("@/api/secondFactor", async () => {
+  const actual = await vi.importActual<typeof import("@/api/secondFactor")>("@/api/secondFactor");
+  return { ...actual, useLoginSecondFactor: () => finish() };
+});
+
 const me = vi.fn();
 vi.mock("@/api/client", async () => {
   const actual = await vi.importActual<typeof import("@/api/client")>("@/api/client");
@@ -136,6 +142,57 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
     expect(screen.queryByText("Which organization?")).toBeNull();
+  });
+
+  // A password alone opens nothing for somebody with two-step sign-in: the
+  // form asks for the code and signs in only once it is taken.
+  it("asks for the app's code when the account has two-step sign-in", async () => {
+    mockLogin({ mutate: vi.fn((_input, options) => options?.onSuccess?.({ challenge: "c1", expiresInSeconds: 300 })) });
+    const finishing = vi.fn((_input, options) => options?.onSuccess?.());
+    finish.mockReturnValue({ ...baseLogin(), mutate: finishing, reset: vi.fn() });
+    me.mockResolvedValue({ principal: { user: { id: "u1" }, org: { slug: "only" } }, organizations: [] });
+
+    wrap(<LoginForm />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    const code = await screen.findByLabelText("Code");
+    expect(navigate).not.toHaveBeenCalled();
+    expect(code).toHaveAttribute("autocomplete", "one-time-code");
+
+    await userEvent.type(code, "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(finishing.mock.calls[0]?.[0]).toEqual({ challenge: "c1", code: "123456" });
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
+  });
+
+  it("takes a recovery code instead when the phone is not at hand", async () => {
+    mockLogin({ mutate: vi.fn((_input, options) => options?.onSuccess?.({ challenge: "c1", expiresInSeconds: 300 })) });
+    const finishing = vi.fn();
+    finish.mockReturnValue({ ...baseLogin(), mutate: finishing, reset: vi.fn() });
+
+    wrap(<LoginForm />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Use a recovery code" }));
+    await userEvent.type(screen.getByLabelText("Recovery code"), "abcd-efgh-ijkl-mnop");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(finishing.mock.calls[0]?.[0]).toEqual({ challenge: "c1", code: "abcd-efgh-ijkl-mnop" });
+    expect(screen.getByRole("button", { name: "Use the code from your app" })).toBeInTheDocument();
+  });
+
+  it("goes back to the password once the code step has run out", async () => {
+    const reset = vi.fn();
+    mockLogin({ mutate: vi.fn((_input, options) => options?.onSuccess?.({ challenge: "c1", expiresInSeconds: 300 })), reset } as Partial<ReturnType<typeof baseLogin>>);
+    finish.mockReturnValue({
+      ...baseLogin(),
+      reset: vi.fn(),
+      error: new ApiError(410, { code: "challenge_invalid", message: "This sign-in has expired or had too many wrong codes. Sign in again with your password." }),
+    });
+
+    wrap(<LoginForm />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sign in again with your password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in again" }));
+    expect(screen.getByLabelText("Password")).toHaveValue("");
+    expect(reset).toHaveBeenCalled();
   });
 
   it("submits the credentials the user typed", async () => {

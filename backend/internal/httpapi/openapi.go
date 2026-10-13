@@ -281,6 +281,7 @@ func declareEnums(b *openapi.Builder) {
 	set(sprint.State(""), "future", "active", "closed")
 	set(auth.OrgRole(""), "owner", "admin", "member", "customer")
 	set(auth.SignInMethod(""), "password", "provider", "none")
+	set(auth.SecondFactorRule(""), string(auth.SecondFactorOff), string(auth.SecondFactorAdmins), string(auth.SecondFactorEveryone))
 	set(auth.Proof(""), string(auth.ProofPassword), string(auth.ProofInvite), string(auth.ProofPortalCode), string(auth.ProofOpenDoor), string(auth.ProofOIDC))
 	set(git.HostKind(""), "github", "gitlab", "gitea")
 	set(desk.QueueFilter(""), "open", "unassigned", "mine", "breached", "all")

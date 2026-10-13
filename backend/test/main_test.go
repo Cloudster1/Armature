@@ -21,6 +21,7 @@ import (
 	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/observability"
+	"github.com/armature/armature/backend/internal/seal"
 )
 
 // shared is what every test's harness hands out, opened once by TestMain:
@@ -34,6 +35,9 @@ var shared struct {
 	tel     *observability.Telemetry
 	spans   *spanSink
 	store   attachment.Store
+	// sealer seals authenticator secrets with the stack's own key, so a row a
+	// failed test leaves behind does not stop the stack's api from starting.
+	sealer *seal.Sealer
 }
 
 func TestMain(m *testing.M) {
@@ -92,6 +96,13 @@ func openShared() error {
 		if err != nil {
 			return fmt.Errorf("connect replica directly: %w", err)
 		}
+	}
+
+	if cfg.Auth.SecretKey == "" {
+		return fmt.Errorf("ARMATURE_SECRET_KEY is not set; run the integration suite with `make test-integration`")
+	}
+	if shared.sealer, err = seal.Parse(cfg.Auth.SecretKey); err != nil {
+		return fmt.Errorf("ARMATURE_SECRET_KEY: %w", err)
 	}
 
 	if cfg.S3.Endpoint == "" {

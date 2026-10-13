@@ -9,19 +9,27 @@ import {
   createIssue,
   createProject,
   createToken,
+  enrolSecondFactor,
+  enrolThroughPage,
   expect,
   fill,
   goto,
+  inviteMember,
+  acceptInvite,
   mailFor,
+  nextTotp,
   openPalette,
   PASSWORD,
   reload,
+  selectByLabel,
   signInThroughForm,
+  signInWithCode,
   signOut,
   signUp,
   signUpThroughForm,
   submit,
   textOf,
+  totp,
   unique,
   WAIT,
   waitForApp,
@@ -188,6 +196,64 @@ scenario("somebody who forgot their password sets a new one from a mailed link",
   expect.contains((await textOf(page, "[role=alert]")).toLowerCase(), "invalid email or password", "the old password is refused");
   await signInThroughForm(page, who.email, chosen);
   await waitForPath(page, "/");
+  await waitForApp(page);
+});
+
+scenario("a person turns on two-step sign-in and then signs in with the code from the app", async ({ page }) => {
+  const who = await signUp(page, unique("twostep"), { visit: false });
+  await goto(page, "/settings/profile");
+  await page.waitForSelector("[data-second-factor-settings]", { timeout: WAIT });
+  const { secret, codes } = await enrolThroughPage(page);
+  expect.equal(codes.length, 10, "recovery codes shown once");
+  await page.waitForFunction(() => document.body.innerText.includes("10 recovery codes are left"), { timeout: WAIT });
+  expect.notContains(await bodyText(page), codes[0], "the recovery codes are gone once put away");
+
+  // The password alone opens nothing; a wrong code is refused on the spot.
+  const wrong = String((Number(totp(secret)) + 500_000) % 1_000_000).padStart(6, "0");
+  await signInWithCode(page, who.email, wrong);
+  await page.waitForSelector("[role=alert]", { timeout: WAIT });
+  expect.contains(await textOf(page, "[role=alert]"), "not right", "a wrong code is refused");
+  expect.equal(new URL(page.url()).pathname, "/login", "still signing in");
+
+  await page.waitForSelector("#field-code", { timeout: WAIT });
+  await page.click("#field-code", { clickCount: 3 });
+  await page.keyboard.sendCharacter(nextTotp(secret));
+  await submit(page);
+  await waitForPath(page, "/");
+  await waitForApp(page);
+});
+
+scenario("a recovery code signs in once when the phone is not at hand", async ({ page }) => {
+  const who = await signUp(page, unique("recovery"), { visit: false });
+  const { codes } = await enrolSecondFactor(page);
+
+  await signInWithCode(page, who.email, codes[0], { recovery: true });
+  await waitForPath(page, "/");
+  await waitForApp(page);
+
+  await signInWithCode(page, who.email, codes[0], { recovery: true });
+  await page.waitForSelector("[role=alert]", { timeout: WAIT });
+  expect.contains(await textOf(page, "[role=alert]"), "not right", "a used recovery code is refused");
+  expect.equal(new URL(page.url()).pathname, "/login", "still signing in");
+});
+
+scenario("an administrator requires two-step sign-in and a member is held until they set it up", async ({ page }) => {
+  await signUp(page, unique("strict"), { visit: false });
+  await enrolSecondFactor(page);
+  const member = await inviteMember(page, "held");
+
+  await goto(page, "/settings/access");
+  await page.click('[data-access-tab="Sign-in"]');
+  await selectByLabel(page, "#field-require-it-of", "Everyone");
+  await page.click('[data-action="save-second-factor-rule"]');
+  await page.waitForFunction(() => document.body.innerText.includes("requirement saved"), { timeout: WAIT });
+
+  await acceptInvite(page, member);
+  await page.waitForSelector("[data-enrolment-required]", { timeout: WAIT });
+  expect.contains(await bodyText(page), "Set it up to carry on", "the member is told why they are held");
+  expect.equal(await page.$('a[href="/settings/tokens"]'), null, "nothing of the app is offered while held");
+
+  await enrolThroughPage(page);
   await waitForApp(page);
 });
 

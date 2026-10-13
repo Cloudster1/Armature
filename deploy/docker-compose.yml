@@ -315,6 +315,9 @@ services:
       # Every browser in a test run reaches the api from one address, so the
       # brakes on codes and guesses forget it after a minute, not ten.
       ARMATURE_DOOR_WINDOW: 1m
+      # Seals authenticator secrets for two-step sign-in. A fixed key, public
+      # and good only for a development stack; the integration suite uses it too.
+      ARMATURE_SECRET_KEY: ${SECRET_KEY:-YXJtYXR1cmUtZGV2LWtleS1ub3QtYS1zZWNyZXQtMDA=}
       # Set so the portal can say that answering the desk's mails works; the
       # worker is what reads the box.
       ARMATURE_POP3_ADDR: mailpit:1110

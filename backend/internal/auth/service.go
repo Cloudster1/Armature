@@ -15,6 +15,7 @@ import (
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/seal"
 	"github.com/armature/armature/backend/internal/tenant"
 )
 
@@ -32,6 +33,8 @@ type Service struct {
 	portalCooldown time.Duration
 	// signup is who may create an organization; empty means open.
 	signup SignupPolicy
+	// sealer seals authenticator secrets; nil turns enrolment off.
+	sealer *seal.Sealer
 }
 
 // NewService constructs the identity service.
@@ -222,7 +225,13 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
        u.id, u.email, u.name, u.timezone, u.locale, u.is_active, COALESCE(u.avatar_url, ''),
-       o.id, o.slug, o.name, m.org_role, pp.id, pp.key
+       o.id, o.slug, o.name, m.org_role, pp.id, pp.key,
+       COALESCE(o.second_factor, 'off'),
+       EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL),
+       s.proof = 'oidc' AND (s.proof_org_id = o.id OR EXISTS (
+           SELECT 1 FROM oidc_provider home
+           JOIN oidc_provider here ON here.issuer = home.issuer
+           WHERE home.org_id = s.proof_org_id AND here.org_id = o.id AND home.enabled AND here.enabled))
 FROM user_session s
 JOIN app_user u ON u.id = s.user_id
 LEFT JOIN org o ON o.id = s.current_org_id AND o.archived_at IS NULL
@@ -241,12 +250,16 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 		memberRole *string
 		deskID     *uuid.UUID
 		deskKey    *string
+		rule       SecondFactorRule
+		enrolled   bool
+		vouched    bool
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
 			&sessionID, &lastSeen, &p.Proof,
 			&p.User.ID, &p.User.Email, &p.User.Name, &p.User.Timezone, &p.User.Locale, &p.User.IsActive, &p.User.AvatarURL,
 			&orgID, &orgSlug, &orgName, &memberRole, &deskID, &deskKey,
+			&rule, &enrolled, &vouched,
 		)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -265,6 +278,10 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 	if orgID != nil && memberRole != nil {
 		p.Org = &Org{ID: *orgID, Slug: derefString(orgSlug), Name: derefString(orgName)}
 		p.Role = OrgRole(*memberRole)
+		// A provider that signed the session in and is trusted here vouched
+		// for the person with whatever factor it asks for.
+		p.SecondFactor = enrolled || vouched
+		p.MustEnrol = rule.Covers(p.Role) && !p.SecondFactor
 	}
 	if deskID != nil {
 		p.PortalDeskID = deskID

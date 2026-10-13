@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import net from "node:net";
 import { basename } from "node:path";
 import { expect } from "./runner.mjs";
@@ -1319,6 +1320,65 @@ export async function signInThroughForm(page, email, password = PASSWORD) {
 }
 
 export { expect };
+
+/** How long an authenticator code lasts, as the server counts it. */
+const TOTP_PERIOD_MS = 30_000;
+const TOTP_DIGITS = 6;
+const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+/**
+ * The code an authenticator app shows for a secret at a moment, by RFC 6238.
+ * Written here rather than borrowed from the server, so the suite checks it.
+ */
+export function totp(secret, at = Date.now()) {
+  let bits = "";
+  for (const char of secret.replace(/\s/g, "").toUpperCase()) bits += BASE32.indexOf(char).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g).map((byte) => parseInt(byte, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / TOTP_PERIOD_MS)));
+  const sum = createHmac("sha1", key).update(counter).digest();
+  const offset = sum[sum.length - 1] & 0x0f;
+  const value = sum.readUInt32BE(offset) & 0x7fffffff;
+  return String(value % 10 ** TOTP_DIGITS).padStart(TOTP_DIGITS, "0");
+}
+
+/** The code of the step after now, which a sign-in right after a code was used may take. */
+export function nextTotp(secret) {
+  return totp(secret, Date.now() + TOTP_PERIOD_MS);
+}
+
+/**
+ * Turns two-step sign-in on for the signed-in person through the API, and
+ * returns the secret and the recovery codes the way the page would show them.
+ */
+export async function enrolSecondFactor(page) {
+  const { enrolment } = await callAPI(page, "POST", "/auth/me/second-factor");
+  const { recoveryCodes } = await callAPI(page, "POST", "/auth/me/second-factor/confirm", { code: totp(enrolment.secret) });
+  return { secret: enrolment.secret, codes: recoveryCodes };
+}
+
+/** Sets two-step sign-in up through the page in front of it, and returns the secret it read. */
+export async function enrolThroughPage(page) {
+  await page.waitForSelector('[data-action="start-second-factor"]', { timeout: WAIT });
+  await page.click('[data-action="start-second-factor"]');
+  await page.waitForSelector("[data-second-factor-qr]", { timeout: WAIT });
+  const secret = (await textOf(page, "[data-second-factor-secret]")).replace(/\s/g, "");
+  await fill(page, "Code from the app", totp(secret));
+  await page.click('[data-action="confirm-second-factor"]');
+  await page.waitForSelector("[data-recovery-code]", { timeout: WAIT });
+  const codes = await page.$$eval("[data-recovery-code]", (items) => items.map((item) => item.textContent.trim()));
+  await page.click('[data-action="saved-recovery-codes"]');
+  return { secret, codes };
+}
+
+/** Signs in through the form as somebody with two-step sign-in, answering with this code. */
+export async function signInWithCode(page, email, code, { recovery = false } = {}) {
+  await signInThroughForm(page, email);
+  await page.waitForSelector("[data-second-factor-step]", { timeout: WAIT });
+  if (recovery) await page.click('[data-action="toggle-recovery-code"]');
+  await fill(page, recovery ? "Recovery code" : "Code", code);
+  await submit(page);
+}
 
 /** Starts a planned sprint from the sprints page and waits for it to be running. */
 export async function startSprint(page, projectKey, name) {

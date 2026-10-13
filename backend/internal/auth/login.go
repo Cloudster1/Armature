@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -10,26 +12,25 @@ import (
 	"github.com/armature/armature/backend/internal/db"
 )
 
-// Login verifies a password and opens a session in the user's first
-// organization. It returns ErrInvalidCredentials for an unknown address and a
-// wrong password alike, so the endpoint cannot be used to enumerate accounts.
+// Login opens a session for a password, or a *ChallengeIssued for somebody with
+// a second factor; an unknown address and a wrong password fail alike.
 func (s *Service) Login(ctx context.Context, email, password, userAgent, ip string) (*Credentials, error) {
 	email = NormalizeEmail(email)
 
 	var (
-		userID    uuid.UUID
-		name      string
-		timezone  string
-		locale    string
-		isActive  bool
-		stored    *string
-		avatarURL string
+		userID   uuid.UUID
+		isActive bool
+		stored   *string
+		enrolled bool
 	)
+	// Whether there is a second factor is read with the password, so a wrong
+	// password costs the same whether or not the account has one.
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT id, name, timezone, locale, is_active, password_hash, COALESCE(avatar_url, '')
+			SELECT id, is_active, password_hash,
+			       EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = app_user.id AND f.confirmed_at IS NOT NULL)
 			FROM app_user WHERE email = $1`, email,
-		).Scan(&userID, &name, &timezone, &locale, &isActive, &stored, &avatarURL)
+		).Scan(&userID, &isActive, &stored, &enrolled)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Spend comparable time on an unknown address so that response timing
@@ -61,44 +62,83 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 		}
 	}
 
-	memberships, err := s.Memberships(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	var (
-		orgID     *uuid.UUID
-		principal = Principal{User: User{ID: userID, Email: email, Name: name, Timezone: timezone, Locale: locale, IsActive: isActive, AvatarURL: avatarURL}}
-	)
-	if len(memberships) > 0 {
-		m := memberships[0]
-		orgID = &m.OrgID
-		principal.Org = &Org{ID: m.OrgID, Slug: m.OrgSlug, Name: m.OrgName}
-		principal.Role = m.Role
+	if enrolled {
+		challenge, err := s.issueChallenge(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		return nil, challenge
 	}
 
 	expiresAt := s.now().Add(s.sessionTTL)
-	var secret string
+	var (
+		principal *Principal
+		secret    string
+	)
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		sessionID, sessionSecret, err := insertSession(ctx, tx, userID, orgID, ProofPassword, expiresAt, userAgent, ip)
-		if err != nil {
+		var err error
+		if principal, err = passwordPrincipal(ctx, tx, userID); err != nil {
 			return err
 		}
-		secret = sessionSecret
-		principal.SessionID = &sessionID
-		principal.Proof = ProofPassword
-		// Recorded in the organization the session opens in, as single sign-on
-		// records its own; somebody with no organization has no log to be in.
-		if orgID == nil {
-			return nil
-		}
-		return writeAudit(ctx, tx, *orgID, userID, "auth.login", "user", &userID, ip)
+		secret, err = openPasswordSession(ctx, tx, principal, expiresAt, userAgent, ip)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &Credentials{Principal: &principal, SessionSecret: secret, ExpiresAt: expiresAt, LSN: lsn}, nil
+	return &Credentials{Principal: principal, SessionSecret: secret, ExpiresAt: expiresAt, LSN: lsn}, nil
+}
+
+// passwordPrincipal is who a password sign-in opens a session for, in the
+// organization they joined first.
+func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Principal, error) {
+	var p Principal
+	err := tx.QueryRow(ctx, `
+		SELECT id, email, name, timezone, locale, is_active, COALESCE(avatar_url, '')
+		FROM app_user WHERE id = $1`, userID,
+	).Scan(&p.User.ID, &p.User.Email, &p.User.Name, &p.User.Timezone, &p.User.Locale, &p.User.IsActive, &p.User.AvatarURL)
+	if err != nil {
+		return nil, fmt.Errorf("read the account: %w", err)
+	}
+	var m Membership
+	err = tx.QueryRow(ctx, `
+		SELECT o.id, o.slug, o.name, m.org_role
+		FROM org_member m
+		JOIN org o ON o.id = m.org_id
+		WHERE m.user_id = $1 AND o.archived_at IS NULL
+		ORDER BY m.created_at LIMIT 1`, userID,
+	).Scan(&m.OrgID, &m.OrgSlug, &m.OrgName, &m.Role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return &p, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read the first organization: %w", err)
+	}
+	p.Org = &Org{ID: m.OrgID, Slug: m.OrgSlug, Name: m.OrgName}
+	p.Role = m.Role
+	return &p, nil
+}
+
+// openPasswordSession opens the session a proven password sign-in gets and
+// records the sign-in.
+func openPasswordSession(ctx context.Context, tx db.DBTX, p *Principal, expiresAt time.Time, userAgent, ip string) (string, error) {
+	var orgID *uuid.UUID
+	if p.Org != nil {
+		orgID = &p.Org.ID
+	}
+	sessionID, secret, err := insertSession(ctx, tx, p.User.ID, orgID, ProofPassword, expiresAt, userAgent, ip)
+	if err != nil {
+		return "", err
+	}
+	p.SessionID = &sessionID
+	p.Proof = ProofPassword
+	// Recorded in the organization the session opens in, as single sign-on
+	// records its own; somebody with no organization has no log to be in.
+	if orgID == nil {
+		return secret, nil
+	}
+	return secret, writeAudit(ctx, tx, *orgID, p.User.ID, "auth.login", "user", &p.User.ID, ip)
 }
 
 // decoyHash is a real argon2id hash of an unguessable value, verified against

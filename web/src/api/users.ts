@@ -16,6 +16,8 @@ export interface ManagedUser {
   /** This is the one place the person belongs, so their account is this organization's to change. */
   managed: boolean;
   createdAt: string;
+  /** Two-step sign-in is on for them. */
+  secondFactor: boolean;
 }
 
 export const usersQueryKey = ["users"] as const;
