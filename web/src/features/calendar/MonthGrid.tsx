@@ -1,9 +1,11 @@
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { useCalendarMonth, type CalendarItem } from "@/api/calendar";
 import { useSchedule } from "@/api/plan";
 import { Button, ErrorBanner, Switch } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
+import { CALENDAR_DRAG_THRESHOLD_PX } from "@/config";
+import { useIssueDrawer, useIssueList } from "@/features/issues/IssueDrawer";
 import { draggedSchedule, isoDay, labelOf, listedItems, monthGrid, monthTitle, placeItems, shiftMonth, withHolidays, type Placed } from "./grid";
 import { useShowDaysOff } from "./settings";
 import { useFormat } from "@/lib/format";
@@ -21,9 +23,14 @@ function toneOf(item: CalendarItem): string {
   return "bg-accent/15 text-ink border-accent/30";
 }
 
+/** A click that asks for a new tab or window is the link's own business. */
+function opensElsewhere(event: ReactMouseEvent): boolean {
+  return event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+}
+
 /**
- * A month of the project's dated things. An issue's bar is dragged by the
- * pointer to another day and both its dates move together; the rest is read.
+ * A month of the project's dated things. A click on an issue opens it beside
+ * the calendar, and its bar is dragged to another day to move both its dates.
  */
 export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWrite: boolean }) {
   const today = new Date();
@@ -35,10 +42,15 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
   const items = useMemo(() => data?.month.items ?? [], [data]);
   const cells = useMemo(() => withHolidays(monthGrid(year, month), showDaysOff ? items : []), [year, month, items, showDaysOff]);
   const byDay = useMemo(() => placeItems(cells, listedItems(items, showDaysOff)), [cells, items, showDaysOff]);
+  const drawer = useIssueDrawer();
+  useIssueList(items.flatMap((item) => (item.kind === "issue" && item.key ? [item.key] : [])));
 
-  // The drag: which issue was grabbed on which day, and which day the pointer is over now.
-  const drag = useRef<{ item: CalendarItem; grabbed: string } | null>(null);
+  // The drag: which issue was grabbed on which day and where, whether it has
+  // gone far enough to be a drag, and which day the pointer is over now.
+  const drag = useRef<{ item: CalendarItem; grabbed: string; x: number; y: number; moved: boolean } | null>(null);
   const [over, setOver] = useState<string | null>(null);
+  // A drag still ends in a click on the bar it started from; that one opens nothing.
+  const dragged = useRef(false);
 
   function dayUnder(event: ReactPointerEvent): string | null {
     const el = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-day]");
@@ -48,7 +60,8 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
   function onPointerDown(event: ReactPointerEvent<HTMLElement>, item: CalendarItem, day: string) {
     if (!canWrite || item.kind !== "issue") return;
     event.preventDefault();
-    drag.current = { item, grabbed: day };
+    drag.current = { item, grabbed: day, x: event.clientX, y: event.clientY, moved: false };
+    dragged.current = false;
     // Capture keeps the moves coming when the pointer leaves the bar; a
     // synthetic pointer has no id to capture, and that is fine.
     try {
@@ -60,7 +73,9 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
   }
 
   function onPointerMove(event: ReactPointerEvent<HTMLElement>) {
-    if (!drag.current) return;
+    const current = drag.current;
+    if (!current) return;
+    if (Math.hypot(event.clientX - current.x, event.clientY - current.y) >= CALENDAR_DRAG_THRESHOLD_PX) current.moved = true;
     setOver(dayUnder(event));
   }
 
@@ -70,8 +85,21 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
     setOver(null);
     if (!current) return;
     const target = dayUnder(event);
+    dragged.current = current.moved || target !== current.grabbed;
     if (!target || target === current.grabbed || !current.item.key) return;
     schedule.mutate({ key: current.item.key, ...draggedSchedule(current.item, target, current.grabbed) });
+  }
+
+  // On the bar rather than its link: the bar holds the pointer while it is
+  // down, so the click after it lands here. Enter on the link comes here too.
+  function onClick(event: ReactMouseEvent<HTMLElement>, item: CalendarItem) {
+    const afterDrag = dragged.current;
+    dragged.current = false;
+    if (item.kind !== "issue" || !item.key || opensElsewhere(event)) return;
+    event.preventDefault();
+    // A click from the keyboard has no pointer behind it, so no drag either.
+    if (afterDrag && event.detail !== 0) return;
+    drawer.open(item.key);
   }
 
   return (
@@ -99,7 +127,7 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {schedule.error && <ErrorBanner>{(schedule.error as Error).message}</ErrorBanner>}
       {data?.month.truncated && <p className="text-sm text-ink-muted">More is dated this month than the calendar draws; the plan has all of it.</p>}
-      <div className="grid grid-cols-7 gap-px rounded-control border border-border bg-border text-xs" role="grid" aria-label={monthTitle(year, month, locale)}>
+      <div className="grid grid-cols-7 gap-px rounded-control border border-border bg-border text-xs" role="grid" aria-label={monthTitle(year, month, locale)} data-issue-list="">
         {WEEKDAYS.map((d) => (
           <div key={d} className="bg-surface px-2 py-1 font-medium text-ink-muted" role="columnheader">
             {d}
@@ -129,7 +157,7 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
               </div>
               <ul className="space-y-0.5">
                 {onDay.shown.map((placed) => (
-                  <Item key={`${placed.item.kind}-${placed.item.id}`} placed={placed} day={cell.day} draggable={canWrite && placed.item.kind === "issue"} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
+                  <Item key={`${placed.item.kind}-${placed.item.id}`} placed={placed} day={cell.day} projectKey={projectKey} draggable={canWrite && placed.item.kind === "issue"} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onClick={onClick} />
                 ))}
                 {onDay.more > 0 && <li className="px-1 text-ink-subtle" data-calendar-more={onDay.more}>{`+${onDay.more} more`}</li>}
               </ul>
@@ -144,21 +172,26 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
 function Item({
   placed,
   day,
+  projectKey,
   draggable,
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onClick,
 }: {
   placed: Placed;
   day: string;
+  projectKey: string;
   draggable: boolean;
   onPointerDown: (event: ReactPointerEvent<HTMLElement>, item: CalendarItem, day: string) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
+  onClick: (event: ReactMouseEvent<HTMLElement>, item: CalendarItem) => void;
 }) {
   const { item, starts, ends } = placed;
   const label = labelOf(item);
   const shape = cx("block truncate border px-1 py-0.5 leading-4", toneOf(item), starts ? "rounded-l" : "-ml-1 border-l-0", ends ? "rounded-r" : "-mr-1 border-r-0");
+  const text = starts ? label : " ";
   return (
     <li
       data-calendar-item={item.key ?? item.id}
@@ -168,14 +201,53 @@ function Item({
       onPointerDown={(e) => onPointerDown(e, item, day)}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onClick={(e) => onClick(e, item)}
     >
-      {item.kind === "issue" && item.key ? (
-        <Link to="/issues/$issueKey" params={{ issueKey: item.key }} className={shape} draggable={false} onClick={(e) => e.preventDefault()} onDoubleClick={(e) => e.currentTarget.click()}>
-          {starts ? label : " "}
-        </Link>
-      ) : (
-        <span className={shape}>{starts ? label : " "}</span>
-      )}
+      <Entry item={item} projectKey={projectKey} className={shape}>
+        {text}
+      </Entry>
     </li>
   );
+}
+
+/** Where an entry leads: an issue to its page, the rest to where they are kept; days off lead nowhere. */
+function Entry({ item, projectKey, className, children }: { item: CalendarItem; projectKey: string; className: string; children: string }) {
+  if (item.kind === "issue" && item.key) {
+    // The bar opens the drawer; the link stays for a new tab and the keyboard.
+    return (
+      <Link
+        to="/issues/$issueKey"
+        params={{ issueKey: item.key }}
+        className={className}
+        draggable={false}
+        onClick={(e) => {
+          if (!opensElsewhere(e)) e.preventDefault();
+        }}
+      >
+        {children}
+      </Link>
+    );
+  }
+  if (item.kind === "sprint") {
+    return (
+      <Link to="/projects/$projectKey/sprints/$sprintId/board" params={{ projectKey, sprintId: item.id }} className={className}>
+        {children}
+      </Link>
+    );
+  }
+  if (item.kind === "milestone") {
+    return (
+      <Link to="/projects/$projectKey/milestones" params={{ projectKey }} className={className}>
+        {children}
+      </Link>
+    );
+  }
+  if (item.kind === "version") {
+    return (
+      <Link to="/projects/$projectKey/releases" params={{ projectKey }} className={className}>
+        {children}
+      </Link>
+    );
+  }
+  return <span className={className}>{children}</span>;
 }
