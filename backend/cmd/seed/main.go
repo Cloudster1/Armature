@@ -1,5 +1,5 @@
-// Command seed loads a demo organization so that a fresh `docker compose up`
-// has something to sign in to.
+// Command seed fills the installation with demo people and projects so that a
+// fresh `docker compose up` has something to sign in to.
 //
 // It is idempotent: running it twice leaves the same accounts, rather than
 // failing on the second run or quietly creating duplicates.
@@ -105,17 +105,17 @@ func run() error {
 		// The installation survives from an earlier run. Sign in instead and
 		// top up whatever is missing, so that seeding after an upgrade adds the
 		// newer demo data rather than silently doing nothing.
-		log.Info("demo organization already exists, topping it up")
+		log.Info("the installation was seeded before, topping it up")
 		creds, err = svc.Login(ctx, owner.email, demoPassword, "seed", "")
 		if err != nil {
-			return fmt.Errorf("sign in to the existing demo organization: %w", err)
+			return fmt.Errorf("sign in as the demo's Ada: %w", err)
 		}
 	case err != nil:
-		return fmt.Errorf("create demo organization: %w", err)
+		return fmt.Errorf("set the installation up as the demo's Ada: %w", err)
 	}
 
 	teammates := []demoUser{
-		// Grace and Alan hold no organization role of their own: what they may
+		// Grace and Alan hold no role over all projects: what they may
 		// do comes from the Keycloak groups they are in, which is the point of
 		// the demo's single sign-on.
 		{email: "grace@armature.test", name: "Grace Hopper", role: auth.RoleMember},
@@ -167,7 +167,7 @@ const (
 	keycloakClientSecret = "armature-demo-secret"
 )
 
-// seedSingleSignOn points the demo organization at the Keycloak realm the
+// seedSingleSignOn points the installation at the Keycloak realm the
 // stack runs, and makes the groups the realm's users are in grant roles here:
 // the provider owns who is in a group, the tracker decides what a group may
 // do. It is safe to run again; what exists is left as it is.
@@ -285,7 +285,7 @@ func seedMembers(ctx context.Context, svc *auth.Service, creds *auth.Credentials
 	return nil
 }
 
-// seedWork fills the demo organization with a project and a spread of issues at
+// seedWork fills the installation with a project and a spread of issues at
 // different points in the workflow, so the first thing anybody sees is a
 // product with something in it rather than an empty state.
 func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials, store attachment.Store, log *slog.Logger) error {
@@ -1103,7 +1103,7 @@ func seedRepository(ctx context.Context, cluster *db.Cluster, issues *issue.Serv
 // every row says the same thing.
 //
 // Bugs here skip review: they go straight from In Progress to Done. Everything
-// else in the project still follows the organization.
+// else in the project still follows the default.
 func seedWorkflowOverride(ctx context.Context, cluster *db.Cluster, projectKey string, types map[string]uuid.UUID, actor uuid.UUID, log *slog.Logger) error {
 	admin := workflow.NewAdmin(cluster, workflow.NewStore())
 	projects := project.NewService(cluster)
@@ -1151,7 +1151,7 @@ func seedWorkflowOverride(ctx context.Context, cluster *db.Cluster, projectKey s
 	return nil
 }
 
-// statusIDs looks up the organization's statuses by name.
+// statusIDs looks up the installation's statuses by name.
 func statusIDs(ctx context.Context, cluster *db.Cluster) (map[string]uuid.UUID, error) {
 	out := map[string]uuid.UUID{}
 	err := cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -1178,7 +1178,7 @@ func statusIDs(ctx context.Context, cluster *db.Cluster) (map[string]uuid.UUID, 
 	return out, nil
 }
 
-// issueTypeIDs looks up the organization's issue types by name.
+// issueTypeIDs looks up the installation's issue types by name.
 func issueTypeIDs(ctx context.Context, cluster *db.Cluster) (map[string]uuid.UUID, error) {
 	out := map[string]uuid.UUID{}
 	err := cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -1206,7 +1206,7 @@ func issueTypeIDs(ctx context.Context, cluster *db.Cluster) (map[string]uuid.UUI
 }
 
 func printCredentials(email string) {
-	fmt.Printf("\n  Demo organization ready.\n\n    sign in at  http://localhost:5173/login\n    email       %s\n    password    %s\n\n", email, demoPassword)
+	fmt.Printf("\n  Demo installation ready.\n\n    sign in at  http://localhost:5173/login\n    email       %s\n    password    %s\n\n", email, demoPassword)
 }
 
 // seedThemes installs the shipped example themes, shared, owned by the demo's

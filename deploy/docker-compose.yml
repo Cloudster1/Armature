@@ -11,6 +11,11 @@ x-db-env: &db-env
 x-outbound-env: &outbound-env
   ARMATURE_OUTBOUND_ALLOW: "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 
+# What the installation is called when its first account sets it up. The api
+# and the seed both read it, since either may make that first account.
+x-installation-env: &installation-env
+  ARMATURE_NAME: Armature
+
 x-s3-env: &s3-env
   # Attachments go to the bucket; the api makes it if it is missing.
   ARMATURE_S3_ENDPOINT: seaweedfs:8333
@@ -267,7 +272,7 @@ services:
       ARMATURE_SEED_WEBHOOK_BASE_URL: http://api:8080
       # The seed talks to Gitea directly, so it needs the same permission the
       # api has to reach a private address.
-      <<: [*s3-env, *outbound-env]
+      <<: [*s3-env, *outbound-env, *installation-env]
     profiles: ["tools"]
     restart: "no"
 
@@ -288,7 +293,7 @@ services:
       seaweedfs:
         condition: service_healthy
     environment:
-      <<: [*s3-env, *outbound-env]
+      <<: [*s3-env, *outbound-env, *installation-env]
       ARMATURE_ENV: development
       ARMATURE_HTTP_ADDR: ":8080"
       # Metrics stay on the network: Prometheus scrapes them, nobody else.
@@ -317,7 +322,6 @@ services:
       ARMATURE_DOOR_WINDOW: 1m
       # The first account sets the installation up; development keeps the
       # sign-up page open after it, so later people join as members.
-      ARMATURE_NAME: Armature
       ARMATURE_SIGNUP: open
       # Seals authenticator secrets for two-step sign-in. A fixed key, public
       # and good only for a development stack; the integration suite uses it too.

@@ -166,7 +166,7 @@ metadata:
   annotations:
     # Before the Jobs and the Deployments that mount it.
     argocd.argoproj.io/sync-wave: "-20"
-    # Kept on uninstall: the files are the organization's, not the release's.
+    # Kept on uninstall: the files are the installation's, not the release's.
     helm.sh/resource-policy: keep
 spec:
   accessModes:

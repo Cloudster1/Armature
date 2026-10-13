@@ -1,4 +1,4 @@
-// Takes the pictures in docs/ from the demo organization. Run through
+// Takes the pictures in docs/ from the seeded installation. Run through
 // `make screenshots` against a stack that has been seeded.
 import puppeteer from "puppeteer";
 import { mkdirSync } from "node:fs";

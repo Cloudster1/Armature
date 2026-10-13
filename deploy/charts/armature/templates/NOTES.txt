@@ -17,10 +17,15 @@ There is no Ingress. To look at it:
 The web pod proxies /api to the api Service itself, so this works on its own.
 {{ end }}
 {{- if .Values.jobs.seed.enabled }}
-The demo organization was seeded. Sign in as ada@armature.test with the
-password the seed printed in its log:
+The seed set the installation up as {{ .Values.auth.installationName }} and filled it
+with demo people and four projects, the Customer Portal (CP) among them. Sign
+in as ada@armature.test with the password the seed printed in its log:
 
   kubectl logs job/{{ include "armature.fullname" . }}-seed
+{{ else if and .Release.IsInstall (ne .Values.auth.signup "closed") }}
+Nobody has an account yet. The first person to sign up at
+{{ include "armature.appURL" . }}/signup sets the installation up as
+{{ .Values.auth.installationName }} and administers it.
 {{ end }}
 {{- if not .Values.s3.enabled }}
 Attachments are off: no S3 endpoint is set. Everything else works; an upload
