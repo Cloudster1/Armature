@@ -31,8 +31,8 @@ type Session struct {
 	Current    bool      `json:"current"`
 }
 
-// Sessions lists a person's live sessions, newest first. user_session has no
-// row level security, so the user_id filter is the whole of the wall.
+// Sessions lists a person's live sessions, newest first. The user_id filter is
+// the whole of the wall.
 func (s *Service) Sessions(ctx context.Context, userID, current uuid.UUID) ([]Session, error) {
 	var out []Session
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {

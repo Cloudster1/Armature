@@ -1,11 +1,7 @@
 //go:build integration
 
-// Package test holds the integration suite. It runs against the real compose
-// stack rather than a stub, because the properties under test here are
-// properties of Postgres itself: row level security, streaming replication and
-// replay lag cannot be faked usefully.
-//
-// Run with: make test-integration
+// Package test holds the integration suite, run against the real compose stack:
+// triggers, streaming replication and replay lag cannot be faked usefully.
 package test
 
 import (

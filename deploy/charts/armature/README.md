@@ -54,17 +54,17 @@ api and the worker check, and refuse to start if the role they are given has
 | Value | Role | Used by |
 |---|---|---|
 | `database.ownerRole` | owns the schema, can `CREATE ROLE` outside cnpg; empty means `armature_owner` with cnpg, `postgres` otherwise | the roles and migrate Jobs |
-| `database.appRole` | ordinary, subject to row level security | api, worker |
-| `database.adminRole` | ordinary, exempt from RLS **by policy** | api, worker |
+| `database.appRole` | ordinary | api, worker |
+| `database.adminRole` | ordinary, for sign-up, sign-in and the outbox relay | api, worker |
 
-`adminRole` is exempt because the migrations write policies naming it, not
-because it has `BYPASSRLS`. Granting it `BYPASSRLS` would stop the application
-starting.
+Neither role is exempt from anything, because there is no row level security
+to be exempt from. The api and the worker still refuse to start as an
+`appRole` with `BYPASSRLS`.
 
 The role names must match what the migrations grant to. Every role reference in
 a migration is wrapped in `IF EXISTS`, so a name that does not match is skipped
-rather than refused: the grants and the RLS bypass go missing and nothing says
-so. Change these only if you also change the migrations.
+rather than refused: the grants go missing and nothing says so. Change these
+only if you also change the migrations.
 
 ### Passwords
 

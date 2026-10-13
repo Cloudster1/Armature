@@ -27,9 +27,8 @@ type Provisioner interface {
 	ProvisionProject(ctx context.Context, tx db.DBTX, created *Project, in CreateInput, statuses []workflow.Status) error
 }
 
-// Service implements project use cases. Every method is tenant scoped: it goes
-// through the cluster's ordinary read and write paths, so row level security
-// applies without the queries having to remember it.
+// Service implements project use cases, through the cluster's ordinary read and
+// write paths.
 type Service struct {
 	db           *db.Cluster
 	workflows    *workflow.Store

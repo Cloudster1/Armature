@@ -123,7 +123,7 @@ database:
   # These names must match what the migrations grant to. They are one value
   # each precisely so the roles Job and the workloads cannot disagree: a
   # migration naming a role that does not exist is skipped, not refused, and
-  # the grants and the row-level-security bypass vanish without an error.
+  # the grants vanish without an error.
   appRole: armature_app
   adminRole: armature_admin
   # The role the roles Job and the migration Job connect as. It must own the

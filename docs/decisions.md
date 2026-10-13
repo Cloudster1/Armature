@@ -46,10 +46,9 @@ reads become the problem they were meant to solve.
 
 ### Row level security in addition to tenant filters in queries
 
-**Narrowed** by [One installation is one team's tracker](#one-installation-is-one-teams-tracker)
-(#216): an installation holds one organization, so the policies keep apart
-the organizations only the integration suite still makes. They stay, with
-`org_id`, until the schema drops the tenant (#218).
+**Superseded** by [No row security: the walls inside an installation are the
+api's and the triggers'](#no-row-security-the-walls-inside-an-installation-are-the-apis-and-the-triggers)
+(#218).
 
 Application-level scoping alone means every query is one forgotten `WHERE`
 clause away from a cross-tenant disclosure, forever, in code nobody is reviewing
@@ -62,6 +61,11 @@ redundant.
 
 ### A backfill lifts forced row security around itself
 
+**Superseded** by [No row security: the walls inside an installation are the
+api's and the triggers'](#no-row-security-the-walls-inside-an-installation-are-the-apis-and-the-triggers)
+(#218): from `00932` on nothing hides a row from the owner, so the rule holds
+for the migrations before it, and the check covers only those.
+
 FORCE means the owner obeys the policies too, and a cluster migrates as a plain
 owner with no organization set, so a migration that reads `org` there reads
 nothing and fills nothing, without a word. The local stack migrates as a
@@ -72,6 +76,36 @@ written before the rule were rerun that way by `00926`.
 `TestBackfillsReadingOrgLiftItsRowSecurity` refuses a migration that reads
 `org` without the lift, and `TestMigrationsRunAsPlainOwner` migrates as such
 an owner and checks an older organization comes out like a new one.
+
+### No row security: the walls inside an installation are the api's and the triggers'
+
+Row security kept organizations apart, and an installation holds one, so the
+policies kept nothing apart. Migration `00932` drops them, the admin role's
+bypass and FORCE with them, rather than replacing them with policies per
+project (#218). It drops only the policies the migrations made, and stops at
+any other, naming it, so a rule an operator added is not lost unseen.
+
+The walls inside an installation are projects, the desk's customers and the
+owners, and they were never the policies' to keep. A project grant is a role
+somebody holds, a key narrows it and an open desk door scopes a session, and
+all three live in the request, not in a row a policy can compare. Policies per
+project would be a second copy of the permission model in SQL, run on every
+row of every query, and still blind to the narrowing. So the api keeps the
+project wall, with the sweep over every operation in the API document to keep
+it honest, and the triggers keep the rules that must hold whoever writes: an
+issue's sprint and versions are its own project's, a customer shares no
+filter, the installation keeps an administrator. The tables keep `org_id`
+until the later steps of #218 drop it.
+
+What is given up is the database's second opinion on organizations, which
+had nothing left to say with one in an installation. A query that forgets its
+project's filter was never an empty result in the database; the per-route
+guard and the sweep catch it, as before.
+
+**Reconsider if** one installation needs a group inside it that the others
+must not see at all, where a forgotten filter would be a disclosure rather
+than a bug: a policy on that one wall, keyed on what a session can carry, is
+the shape that would take.
 
 ### One installation is one team's tracker
 
@@ -96,15 +130,13 @@ the choice with the operator, who can delete what they no longer need with
 the release that still knows how.
 
 Inside, the product went first and the schema follows. The one organization
-row still holds the installation's name and settings, the tables still carry
-`org_id`, and forced row level security on `current_org_id()` still scopes
-every query, now to the one organization there is. That kept each step
-shippable with all four test layers green. The integration suite works in
-the one organization too, its tests kept apart by people, project keys and
-names of their own (#217), and the columns and policies go with the schema
-ticket (#218). Until then the
-entries on row security stand for the code as written, while the separation
-they argued for, between teams, is now between installations.
+row still holds the installation's name and settings, and the tables still
+carry `org_id`. That kept each step shippable with all four test layers
+green. The integration suite works in the one organization too, its tests
+kept apart by people, project keys and names of their own (#217). The schema
+ticket (#218) takes the tenant out in steps: row security went first, and the
+columns follow. The separation row security argued for, between teams, is now
+between installations.
 
 This supersedes the entries that described organizations as part of the
 product. Three were marked by the step that changed them: [The owner always
@@ -124,7 +156,7 @@ way a project is a wall around work, not organizations coming back.
 
 Armature is self-hosted, and an installation serves one team; running more
 than one team takes more than one installation (#208). The organization row
-stays inside for now, so `org_id` and row security keep working, and the
+stays inside for now, so `org_id` keeps working, and the
 `installation` package is the one way to its name and to the settings there is
 one of: the default theme, the second-factor rule and the automation account.
 Moving them off `org` later changes that package and nothing that calls it.
@@ -136,9 +168,9 @@ counts the organizations and, with more than one, stops: it names the first
 ten by address and name, says how many more there are, and tells the operator
 to delete the extra ones with the previous release before upgrading. It
 changes no schema, so a refusal leaves the database as it was. It lifts
-forced row security on `org` to count, as every migration reading `org` does,
-and `TestTheUpgradeRefusesSeveralOrganizations` refuses eleven as the plain
-owner a cluster migrates as.
+forced row security on `org` to count, as every migration reading `org` did
+while there was row security, and `TestTheUpgradeRefusesSeveralOrganizations`
+refuses eleven as the plain owner a cluster migrates as.
 
 **Reconsider if** operators with several organizations ask for a way across
 that is better than deleting: an export of one organization's projects into
@@ -222,8 +254,8 @@ retested periodically. The S3 client is a few hundred lines of signing over
 ### The attachment row guards the object, and the bytes go through the API
 
 One bucket serves every tenant, laid out by organization and issue, and nothing
-about the bucket knows who may read what: the row in `attachment` does, under
-the same row level security as everything else. A presigned URL would be faster
+about the bucket knows who may read what: the row in `attachment` does, behind
+the same project wall as everything else. A presigned URL would be faster
 for large files and would put a second access control system beside the first.
 
 An upload writes the row and then the object, in one transaction; a delete does
@@ -1609,7 +1641,7 @@ since the first migration because no scope had a meaning anyone enforced; the
 first one that does is read. The refusal lives in one middleware right after
 authentication rather than in each handler, so a route added next year keeps the
 promise without knowing it exists. The database is not asked to help: row level
-security answers who may see a row, not which credential is asking.
+security answered who may see a row, not which credential is asking.
 
 ### A key is narrowed where the permission set is built
 
@@ -1631,8 +1663,9 @@ which takes it away from everybody, and making a key, because a key that can
 mint a key outlives the revocation of the key it was made with. Account erasure
 was already refused to keys and is now one of three rather than the only one.
 
-What the database cannot help with is said plainly: no policy consults
-role_assignment, so row level security isolates tenants and nothing else. The
+What the database cannot help with is said plainly: no policy consulted
+role_assignment, so row level security isolated tenants and nothing else, and
+since #218 there is none. The
 confinement is proven instead by attacking it from outside, with the owner's own
 session reaching what the key is refused, so the refusal is the key's and not
 the person's.
@@ -1959,7 +1992,8 @@ not chosen, at which point the organization's settings column is where it goes.
 **Narrowed** by [One installation is one team's tracker](#one-installation-is-one-teams-tracker)
 (#216): the database wall it starts from was between organizations, and an
 installation holds one, so the project is the wall inside an installation.
-The guard stands as written.
+That database wall is gone with row security (#218). The guard stands as
+written.
 
 The database wall between organizations was solid, and there was no wall at all
 between projects inside one: `perm.Read` was defined and never checked, sixteen
@@ -2296,6 +2330,7 @@ bypass that signup, login and the outbox relay need disappears without a word.
 `TestEveryGuardedTableHasAnAdminBypass` now refuses that, taking the role's
 name from the admin pool's own `current_user` so the assertion cannot drift
 from the configuration, and catching any future table that forgets a bypass.
+The test went with row security (#218); the grants still name the roles.
 
 Two things the four layers could not see, both found by hand. The Keycloak
 realm's client secret was renamed without the matching constant in the seed,

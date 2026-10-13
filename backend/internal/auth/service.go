@@ -18,10 +18,8 @@ import (
 	"github.com/armature/armature/backend/internal/tenant"
 )
 
-// Service implements the identity use cases. Operations that must span tenants
-// or run before one is known (signup, login, session lookup) go through the
-// cluster's admin path; everything else is tenant scoped like any other data
-// access, so row level security applies to it too.
+// Service implements the identity use cases. What runs before anybody is known
+// (signup, login, session lookup) takes the admin path, the rest the ordinary one.
 type Service struct {
 	db         *db.Cluster
 	params     PasswordParams

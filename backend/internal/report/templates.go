@@ -286,7 +286,7 @@ func (s *Service) DeleteTemplate(ctx context.Context, id uuid.UUID) (db.LSN, err
 }
 
 // milestoneNamed reads the milestone a dashboard is about, refusing one from
-// another project, which under row level security is simply absent.
+// another project as if it were not there.
 func milestoneNamed(ctx context.Context, tx db.DBTX, projectID, milestoneID uuid.UUID) (string, error) {
 	var name string
 	err := tx.QueryRow(ctx, `SELECT name FROM milestone WHERE id = $1 AND project_id = $2`, milestoneID, projectID).Scan(&name)
