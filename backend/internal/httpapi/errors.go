@@ -19,6 +19,7 @@ import (
 	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/filter"
 	"github.com/armature/armature/backend/internal/git"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
@@ -154,6 +155,10 @@ func toAPIError(err error) *APIError {
 		return ErrUnauthorized("Your session has expired. Sign in again.")
 	case errors.Is(err, auth.ErrUserInactive):
 		return ErrForbidden("This account has been deactivated.")
+	case errors.Is(err, installation.ErrNameRequired):
+		return ErrValidation(map[string]string{"name": "Give the installation a name."})
+	case errors.Is(err, installation.ErrNotFound):
+		return ErrNotFound("The installation was not found. Sign in again.")
 	case errors.Is(err, auth.ErrEmailTaken):
 		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: auth.ErrEmailTaken.Error()}
 	case errors.Is(err, auth.ErrSignupClosed):

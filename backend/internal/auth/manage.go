@@ -12,6 +12,8 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/installation"
+	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // An organization manages only the accounts that belong nowhere else; anybody
@@ -109,8 +111,7 @@ SELECT u.id, u.email::text, u.name, m.org_role, u.is_active, u.created_at,
        EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)
 FROM org_member m
 JOIN app_user u ON u.id = m.user_id
-JOIN org o ON o.id = m.org_id
-WHERE m.org_id = $1 AND u.erased_at IS NULL AND u.id IS DISTINCT FROM o.automation_user_id`
+WHERE m.org_id = $1 AND u.erased_at IS NULL AND u.id IS DISTINCT FROM $2`
 
 func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	var r managedRow
@@ -136,7 +137,11 @@ func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 func (s *Service) ManagedUsers(ctx context.Context, orgID uuid.UUID, actorRole OrgRole) ([]ManagedUser, error) {
 	out := []ManagedUser{}
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, managedSelectSQL+` ORDER BY u.name, u.email`, orgID)
+		automation, err := automationOf(ctx, tx, orgID)
+		if err != nil {
+			return err
+		}
+		rows, err := tx.Query(ctx, managedSelectSQL+` ORDER BY u.name, u.email`, orgID, automation)
 		if err != nil {
 			return err
 		}
@@ -154,11 +159,20 @@ func (s *Service) ManagedUsers(ctx context.Context, orgID uuid.UUID, actorRole O
 }
 
 func readManaged(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, actorRole OrgRole) (managedRow, error) {
-	r, err := scanManaged(tx.QueryRow(ctx, managedSelectSQL+` AND u.id = $2`, orgID, userID), actorRole)
+	automation, err := automationOf(ctx, tx, orgID)
+	if err != nil {
+		return managedRow{}, err
+	}
+	r, err := scanManaged(tx.QueryRow(ctx, managedSelectSQL+` AND u.id = $3`, orgID, automation, userID), actorRole)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return r, ErrNoSuchUser
 	}
 	return r, err
+}
+
+// automationOf is the organization's automation account, which is never one of its people.
+func automationOf(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*uuid.UUID, error) {
+	return installation.AutomationUser(tenant.WithOrg(ctx, tenant.Org{ID: orgID}), tx)
 }
 
 // guardManaged is what every change to somebody else's account asks first.

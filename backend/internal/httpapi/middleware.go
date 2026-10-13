@@ -30,6 +30,7 @@ import (
 	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/filter"
 	"github.com/armature/armature/backend/internal/git"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
@@ -242,8 +243,10 @@ type Server struct {
 	Filters *filter.Service
 	// Themes are people's own redefinitions of the interface and the files behind them.
 	Themes *theme.Service
-	Bulk   *bulk.Service
-	CSV    *csvio.Service
+	// Installation is its name and the settings there is one of.
+	Installation *installation.Service
+	Bulk         *bulk.Service
+	CSV          *csvio.Service
 	// Audit reads the organization's record of who did what; Calendar lays a
 	// project's dated things over a month.
 	Audit    *audit.Service

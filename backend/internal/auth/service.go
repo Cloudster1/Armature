@@ -15,6 +15,7 @@ import (
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/seal"
 	"github.com/armature/armature/backend/internal/tenant"
 )
@@ -226,7 +227,6 @@ const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
        u.id, u.email, u.name, u.timezone, u.locale, u.is_active, COALESCE(u.avatar_url, ''),
        o.id, o.slug, o.name, m.org_role, pp.id, pp.key,
-       COALESCE(o.second_factor, 'off'),
        EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL),
        s.proof = 'oidc' AND (s.proof_org_id = o.id OR EXISTS (
            SELECT 1 FROM oidc_provider home
@@ -255,12 +255,19 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 		vouched    bool
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
+		err := tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
 			&sessionID, &lastSeen, &p.Proof,
 			&p.User.ID, &p.User.Email, &p.User.Name, &p.User.Timezone, &p.User.Locale, &p.User.IsActive, &p.User.AvatarURL,
 			&orgID, &orgSlug, &orgName, &memberRole, &deskID, &deskKey,
-			&rule, &enrolled, &vouched,
+			&enrolled, &vouched,
 		)
+		// Somebody with a factor, or vouched for, is held by no rule.
+		if err != nil || orgID == nil || enrolled || vouched {
+			return err
+		}
+		read, err := installation.SecondFactor(tenant.WithOrg(ctx, tenant.Org{ID: *orgID}), tx)
+		rule = SecondFactorRule(read)
+		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrInvalidToken

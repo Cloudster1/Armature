@@ -12,6 +12,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/seal"
 )
 
@@ -300,11 +301,13 @@ func (s *Service) RemoveMembersSecondFactor(ctx context.Context, orgID, userID u
 
 // OrgSecondFactor reads who the caller's organization requires a second factor of.
 func (s *Service) OrgSecondFactor(ctx context.Context) (SecondFactorRule, error) {
-	rule := SecondFactorOff
+	var rule string
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT second_factor FROM org WHERE id = current_org_id()`).Scan(&rule)
+		var err error
+		rule, err = installation.SecondFactor(ctx, tx)
+		return err
 	})
-	return rule, err
+	return SecondFactorRule(rule), err
 }
 
 // RequireSecondFactor sets who the organization requires a second factor of.
@@ -317,7 +320,7 @@ func (s *Service) RequireSecondFactor(ctx context.Context, p *Principal, rule Se
 		return 0, ErrEnrolFirst
 	}
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, err := tx.Exec(ctx, `UPDATE org SET second_factor = $1 WHERE id = current_org_id()`, string(rule)); err != nil {
+		if err := installation.SetSecondFactor(ctx, tx, string(rule)); err != nil {
 			return fmt.Errorf("require two-step sign-in: %w", err)
 		}
 		return audit.Write(ctx, tx, p.Org.ID, audit.Entry{

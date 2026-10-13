@@ -5420,6 +5420,92 @@
         }
       }
     },
+    "/installation": {
+      "get": {
+        "operationId": "installation",
+        "summary": "What the installation is called.",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "installation": {
+                      "$ref": "#/components/schemas/Installation"
+                    }
+                  },
+                  "required": [
+                    "installation"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "renameInstallation",
+        "summary": "Rename the installation; administrators only, and written to the audit log.",
+        "tags": [
+          "organization"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameInstallationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "installation": {
+                      "$ref": "#/components/schemas/Installation"
+                    }
+                  },
+                  "required": [
+                    "installation"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invites": {
       "get": {
         "operationId": "listInvites",
@@ -21989,6 +22075,17 @@
           }
         }
       },
+      "Installation": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
       "Invite": {
         "type": "object",
         "properties": {
@@ -24539,6 +24636,17 @@
         ]
       },
       "RenameDashboardRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "RenameInstallationRequest": {
         "type": "object",
         "properties": {
           "name": {

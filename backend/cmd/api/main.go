@@ -37,6 +37,7 @@ import (
 	"github.com/armature/armature/backend/internal/freshness"
 	"github.com/armature/armature/backend/internal/git"
 	"github.com/armature/armature/backend/internal/httpapi"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
@@ -190,21 +191,22 @@ func run() error {
 	labels := label.NewService(cluster)
 	webhooks := webhook.NewService(cluster, log)
 	server := &httpapi.Server{
-		Auth:       accounts,
-		Profiles:   profile.NewService(store, accounts),
-		Privacy:    privacy.NewService(cluster).WithAvatars(profile.NewService(store, accounts)).WithThemes(themes),
-		Themes:     themes,
-		Mailer:     mailer,
-		Fields:     field.NewService(cluster),
-		Arrange:    arrange.NewService(cluster),
-		Labels:     labels,
-		Notify:     notify.NewService(cluster),
-		Automation: automation.NewService(cluster, issues, labels, log).WithMailer(mailer).WithWebhooks(webhooks),
-		Webhooks:   webhooks,
-		Filters:    filter.NewService(cluster),
-		Audit:      audit.NewService(cluster),
-		Calendar:   calendar.NewService(cluster),
-		Bulk:       bulk.NewService(cluster, issues, labels),
+		Auth:         accounts,
+		Profiles:     profile.NewService(store, accounts),
+		Privacy:      privacy.NewService(cluster).WithAvatars(profile.NewService(store, accounts)).WithThemes(themes),
+		Themes:       themes,
+		Installation: installation.NewService(cluster),
+		Mailer:       mailer,
+		Fields:       field.NewService(cluster),
+		Arrange:      arrange.NewService(cluster),
+		Labels:       labels,
+		Notify:       notify.NewService(cluster),
+		Automation:   automation.NewService(cluster, issues, labels, log).WithMailer(mailer).WithWebhooks(webhooks),
+		Webhooks:     webhooks,
+		Filters:      filter.NewService(cluster),
+		Audit:        audit.NewService(cluster),
+		Calendar:     calendar.NewService(cluster),
+		Bulk:         bulk.NewService(cluster, issues, labels),
 		CSV: csvio.NewService(cluster, issues, labels, field.NewService(cluster), accounts).
 			WithPlanning(sprints, version.NewService(cluster), component.NewService(cluster), team.NewService(cluster)),
 		Attachments:  attachments,

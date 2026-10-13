@@ -15,6 +15,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/installation"
+	"github.com/armature/armature/backend/internal/tenant"
 	"github.com/armature/armature/backend/internal/workflow"
 )
 
@@ -182,7 +184,8 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 
 	// The automation account: the actor of every rule's act, an inactive
 	// member that never signs in and is never listed among the people.
-	if _, err := tx.Exec(ctx, `
+	var automation uuid.UUID
+	if err := tx.QueryRow(ctx, `
 		WITH made AS (
 			INSERT INTO app_user (email, name, is_active)
 			VALUES ('automation+' || $1::uuid::text || '@armature.invalid', 'Automation', false)
@@ -190,8 +193,12 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 		), joined AS (
 			INSERT INTO org_member (org_id, user_id, org_role) SELECT $1::uuid, id, 'member' FROM made
 		)
-		UPDATE org SET automation_user_id = (SELECT id FROM made) WHERE id = $1::uuid`, orgID); err != nil {
+		SELECT id FROM made`, orgID).Scan(&automation); err != nil {
 		return nil, fmt.Errorf("create the automation account: %w", err)
+	}
+	// The new organization is not yet the tenant of the transaction it is made in.
+	if err := installation.SetAutomationUser(tenant.WithOrg(ctx, tenant.Org{ID: orgID}), tx, automation); err != nil {
+		return nil, err
 	}
 
 	return result, nil

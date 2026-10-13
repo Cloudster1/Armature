@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: `GET /installation` tells anybody signed in what the installation is
+  called, and `PUT /installation` lets its administrators rename it, in the
+  audit log. Its name and the settings there is one of, the default theme,
+  the second-factor rule and the automation account, are read and written in
+  one place, ready to move off the organization (#210).
 - Upgrade note: an installation now holds one organization, and the upgrade
   refuses a database with several. The migration stops, names them (the first
   ten by address and name, and how many more) and changes nothing. Delete the
