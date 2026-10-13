@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: `make seed` runs to the end again. The demo's sprints belong to the
+  Platform team, and since a sprint keeps to its own team's work the seed
+  stopped at the first sprint; it now commits only Platform's work to them.
+  The browser suite's holiday scenarios also pass on a seeded installation:
+  they empty the default calendar first and put its days back afterwards.
 - Changed: the organization settings page is now Installation, at
   `/settings/installation`. Administrators rename the installation there,
   and the sidebar's head shows the new name at once; members read it.
