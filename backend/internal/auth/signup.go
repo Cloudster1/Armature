@@ -109,7 +109,7 @@ func (s *Service) signupState(org *Org) SignupState {
 }
 
 // installationOrg is the organization people sign up into, nil before the first
-// account. Only the integration suite's harness makes more than one.
+// account. The upgrade refuses a database with more than one.
 func installationOrg(ctx context.Context, tx db.DBTX) (*Org, error) {
 	var org Org
 	err := tx.QueryRow(ctx, `

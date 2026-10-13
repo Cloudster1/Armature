@@ -4,6 +4,7 @@ package test
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -23,7 +24,7 @@ const coiningWait = 10 * time.Second
 func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "coining")
+	ws := h.newProject(t, "coining")
 	labels := label.NewService(h.cluster)
 	create := func(summary string) string {
 		created, _, err := ws.issues.Create(ws.ctx, issue.CreateInput{ProjectKey: ws.project.Key, TypeID: h.issueTypeID(t, ws, "Story"), Summary: summary}, ws.actor)
@@ -57,17 +58,18 @@ func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
 		// The other coining is held open in plain SQL, so the tagging is sure to
 		// meet it after its own lookup found nothing.
 		ctx := context.Background()
-		held, err := h.super.Begin(ctx)
+		open, err := h.super.Begin(ctx)
 		if err != nil {
 			t.Fatalf("begin: %v", err)
 		}
-		defer func() { _ = held.Rollback(ctx) }()
+		defer func() { _ = open.Rollback(ctx) }()
+		held := h.name(t, "held")
 		var heldID uuid.UUID
 		var heldPID int
-		if err := held.QueryRow(ctx, `SELECT pg_backend_pid()`).Scan(&heldPID); err != nil {
+		if err := open.QueryRow(ctx, `SELECT pg_backend_pid()`).Scan(&heldPID); err != nil {
 			t.Fatalf("pid: %v", err)
 		}
-		if err := held.QueryRow(ctx, `INSERT INTO label (org_id, name, color) VALUES ($1, 'held', $2) RETURNING id`, ws.orgID, label.ColorFor("held")).Scan(&heldID); err != nil {
+		if err := open.QueryRow(ctx, `INSERT INTO label (org_id, name, color) VALUES ($1, $2, $3) RETURNING id`, ws.orgID, held, label.ColorFor(held)).Scan(&heldID); err != nil {
 			t.Fatalf("hold a coining open: %v", err)
 		}
 
@@ -77,7 +79,7 @@ func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
 		}
 		done := make(chan outcome, 1)
 		go func() {
-			refs, _, err := labels.SetIssueLabels(ws.ctx, first, []string{"Held"}, ws.actor)
+			refs, _, err := labels.SetIssueLabels(ws.ctx, first, []string{strings.ToUpper(held[:1]) + held[1:]}, ws.actor)
 			done <- outcome{refs, err}
 		}()
 
@@ -99,7 +101,7 @@ func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
 				t.Fatalf("the tagging never waited for the open coining")
 			}
 		}
-		if err := held.Commit(ctx); err != nil {
+		if err := open.Commit(ctx); err != nil {
 			t.Fatalf("commit the held coining: %v", err)
 		}
 
@@ -107,18 +109,18 @@ func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
 		if got.err != nil {
 			t.Fatalf("the second coining of the same word was refused: %v", got.err)
 		}
-		if id := labelOn(t, got.refs, "held"); id != heldID {
+		if id := labelOn(t, got.refs, held); id != heldID {
 			t.Errorf("the issue carries label %s, want the one already coined, %s", id, heldID)
 		}
-		if n := countNamed(t, "held"); n != 1 {
-			t.Errorf("the organization has %d labels called held, want 1", n)
+		if n := countNamed(t, held); n != 1 {
+			t.Errorf("there are %d labels called %s, want 1", n, held)
 		}
 	})
 
 	t.Run("two taggings at once with a word nobody has used yet", func(t *testing.T) {
 		const rounds = 8
 		for round := range rounds {
-			word := "race" + uuid.New().String()[:8]
+			word := h.name(t, "race")
 			start := make(chan struct{})
 			var wg sync.WaitGroup
 			results := make([][]issue.LabelRef, 2)
@@ -142,7 +144,7 @@ func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
 				t.Errorf("round %d: the two issues carry different labels for %s: %s and %s", round, word, a, b)
 			}
 			if n := countNamed(t, word); n != 1 {
-				t.Errorf("round %d: the organization has %d labels called %s, want 1", round, n, word)
+				t.Errorf("round %d: there are %d labels called %s, want 1", round, n, word)
 			}
 		}
 	})

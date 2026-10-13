@@ -12,7 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/events"
 )
 
@@ -39,15 +39,15 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	agent := api.client(t)
-	signedUp := agent.signup(t, h, "deskdoor")
+	signedUp := agent.signIn(t, h.person(t, "deskdoor", auth.RoleOwner))
 	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
-	dor := deskKey("DOR")
+	dor := h.projectKey(t, "DOR")
 	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Door", "key": dor, "template": "service-desk"}), http.StatusCreated, "desk")
 
 	visitor := api.client(t)
 	address := h.email(t, "ada")
 	want(t, visitor.get("/api/v1/desk?desk="+dor), http.StatusOK, "the desk's door")
-	want(t, visitor.get("/api/v1/desk?desk="+deskKey("NOB")), http.StatusNotFound, "no desk there")
+	want(t, visitor.get("/api/v1/desk?desk="+h.projectKey(t, "NOB")), http.StatusNotFound, "no desk there")
 	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": "not an address", "desk": dor}), http.StatusUnprocessableEntity, "not an address")
 
 	want(t, visitor.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": dor}), http.StatusAccepted, "a code is mailed")
@@ -131,25 +131,5 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 		gone := api.client(t)
 		want(t, gone.post("/api/v1/desk/codes", map[string]any{"email": address, "desk": dor}), http.StatusAccepted, "a code")
 		want(t, gone.post("/api/v1/desk/sessions", map[string]any{"email": address, "code": api.mailer.lastCode(t), "desk": dor}), http.StatusForbidden, "refused")
-	})
-
-	t.Run("codes are the organization's, through SQL", func(t *testing.T) {
-		other := h.newWorkspace(t, "elsewhere")
-		var mine, theirs int
-		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM portal_code WHERE org_id = $1`, orgID).Scan(&mine); err != nil {
-			t.Fatal(err)
-		}
-		if mine == 0 {
-			t.Fatal("expected a code row to look at")
-		}
-		err := h.cluster.Read(other.ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM portal_code`).Scan(&theirs)
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if theirs != 0 {
-			t.Errorf("another organization sees %d codes", theirs)
-		}
 	})
 }

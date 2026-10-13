@@ -3,10 +3,12 @@
 package test
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/httpapi"
 )
 
@@ -15,7 +17,7 @@ func TestInvitationLinks(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	owner.signup(t, h, "linkowner")
+	owner.signIn(t, h.person(t, "linkowner", auth.RoleOwner))
 
 	t.Run("an invitation is mailed with a link that opens the invitation page", func(t *testing.T) {
 		invitee := h.email(t, "linked")
@@ -44,7 +46,7 @@ func TestInvitationLinks(t *testing.T) {
 			t.Errorf("no mail to %s carried the link; got body %q", invitee, body)
 		}
 		// The installation is named, and no organization is.
-		if !strings.Contains(subject, "linkowner Company") || !strings.Contains(body, "invited you to linkowner Company") {
+		if !strings.Contains(subject, shared.installation.Name) || !strings.Contains(body, "invited you to "+shared.installation.Name) {
 			t.Errorf("the mail does not name the installation: %q %q", subject, body)
 		}
 	})
@@ -60,7 +62,7 @@ func TestInvitationLinks(t *testing.T) {
 			t.Fatalf("preview returned %d: %s", preview.Status, preview.Raw)
 		}
 		invite, _ := preview.Body["invite"].(map[string]any)
-		if invite["email"] != invitee || invite["role"] != "admin" || invite["installation"] != "linkowner Company" {
+		if invite["email"] != invitee || invite["role"] != "admin" || invite["installation"] != shared.installation.Name {
 			t.Errorf("preview = %v, want the address, the role and the installation's name", invite)
 		}
 
@@ -95,8 +97,11 @@ func TestInvitationLinks(t *testing.T) {
 	// which is the page working as meant, not somebody guessing.
 	t.Run("a valid link that asks its owner to sign in is not counted as a guess", func(t *testing.T) {
 		httpapi.ResetThrottles()
-		existing := api.client(t)
-		address := principalField(t, existing.signup(t, h, "hasaccount"), "principal", "user", "email").(string)
+		// An account with no membership, such as one the provider was refused for.
+		address := h.email(t, "hasaccount")
+		if _, err := h.super.Exec(context.Background(), `INSERT INTO app_user (email, name, password_hash) VALUES ($1, 'Has Account', $2)`, address, shared.passwordHash); err != nil {
+			t.Fatal(err)
+		}
 		token := owner.post("/api/v1/invites", map[string]string{"email": address, "role": "member"}).Body["token"].(string)
 
 		visitor := api.client(t)

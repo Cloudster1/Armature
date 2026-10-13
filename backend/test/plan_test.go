@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/plan"
@@ -43,7 +44,7 @@ func (h *harness) schedule(t *testing.T, ws *workspace, key, start, due string) 
 func TestScheduling(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "sched")
+	ws := h.newProject(t, "sched")
 
 	t.Run("both ends are set together and recorded", func(t *testing.T) {
 		tr := h.buildTree(t, ws)
@@ -156,7 +157,7 @@ func TestScheduling(t *testing.T) {
 func TestIssueLinks(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "linking")
+	ws := h.newProject(t, "linking")
 
 	t.Run("a blocking link is readable from both ends", func(t *testing.T) {
 		first := h.buildTree(t, ws)
@@ -234,25 +235,12 @@ func TestIssueLinks(t *testing.T) {
 			t.Errorf("links = %v, want none", links)
 		}
 	})
-
-	t.Run("a link to another organization's issue is not found", func(t *testing.T) {
-		other := h.newWorkspace(t, "linkbeta")
-		otherTree := h.buildTree(t, other)
-		mine := h.buildTree(t, ws)
-
-		_, _, err := ws.issues.AddLink(ws.ctx, mine.story.Key, issue.LinkInput{
-			TypeName: issue.LinkTypeBlocks, TargetKey: otherTree.story.Key,
-		}, ws.actor)
-		if !errors.Is(err, issue.ErrNotFound) {
-			t.Errorf("error = %v, want ErrNotFound", err)
-		}
-	})
 }
 
 func TestPlanForProject(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "planning")
+	ws := h.newProject(t, "planning")
 	plans := ws.plans
 
 	tr := h.buildTree(t, ws)
@@ -291,7 +279,7 @@ func TestPlanForProject(t *testing.T) {
 	})
 
 	t.Run("a derived parent passes its grandchildren upwards", func(t *testing.T) {
-		ws := h.newWorkspace(t, "deriving")
+		ws := h.newProject(t, "deriving")
 		plans := ws.plans
 		tr := h.buildTree(t, ws)
 		h.schedule(t, ws, tr.subtask.Key, "2026-05-01", "2026-05-09")
@@ -400,16 +388,6 @@ func TestPlanForProject(t *testing.T) {
 			t.Errorf("%s was given dates nobody asked for", loose.Key)
 		}
 	})
-
-	t.Run("another organization's plan is empty, not readable", func(t *testing.T) {
-		other := h.newWorkspace(t, "planbeta")
-		otherPlans := other.plans
-
-		got, err := otherPlans.ForProject(other.ctx, ws.project.Key)
-		if err == nil && len(got.Items) > 0 {
-			t.Errorf("beta read %d rows of alpha's plan", len(got.Items))
-		}
-	})
 }
 
 func findItem(t *testing.T, items []plan.Item, key string) plan.Item {
@@ -443,7 +421,7 @@ func containsAll(haystack []string, needles ...string) bool {
 func TestOneFarDateDoesNotStretchThePlansLoadAcrossCenturies(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "farout")
+	ws := h.newProject(t, "farout")
 	near := ws.newIssue(t, "this autumn")
 	far := ws.newIssue(t, "the very last day there is")
 	h.schedule(t, ws, near.Key, "2026-09-07", "2026-09-11")
@@ -462,13 +440,14 @@ func TestOneFarDateDoesNotStretchThePlansLoadAcrossCenturies(t *testing.T) {
 func TestADateOutsideTheYearsAnIssueCanHaveIsRefusedWithASentence(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	farKey := h.projectKey(t, "FAR")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "faroutapi")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Far", "key": "FAR", "template": "kanban"}), http.StatusCreated, "a project")
-	refused := want(t, owner.post("/api/v1/projects/FAR/issues", map[string]any{"summary": "typo", "dueDate": "9999-12-31"}), http.StatusUnprocessableEntity, "a due date in 9999")
+	owner.signIn(t, h.person(t, "faroutapi", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Far", "key": farKey, "template": "kanban"}), http.StatusCreated, "a project")
+	refused := want(t, owner.post("/api/v1/projects/"+farKey+"/issues", map[string]any{"summary": "typo", "dueDate": "9999-12-31"}), http.StatusUnprocessableEntity, "a due date in 9999")
 	refusedWithASentence(t, refused, "between 1900 and 2199")
-	key := obj(t, want(t, owner.post("/api/v1/projects/FAR/issues", map[string]any{"summary": "fine", "dueDate": "2026-10-09"}), http.StatusCreated, "an issue"), "issue")["key"].(string)
+	key := obj(t, want(t, owner.post("/api/v1/projects/"+farKey+"/issues", map[string]any{"summary": "fine", "dueDate": "2026-10-09"}), http.StatusCreated, "an issue"), "issue")["key"].(string)
 	refused = want(t, owner.put("/api/v1/issues/"+key+"/schedule", map[string]any{"startDate": "2026-10-01", "dueDate": "2206-10-09"}), http.StatusUnprocessableEntity, "a due date in 2206")
 	refusedWithASentence(t, refused, "2206-10-09")
 	refused = want(t, owner.patch("/api/v1/issues/"+key, map[string]any{"dueDate": "1066-10-14"}), http.StatusUnprocessableEntity, "a due date in 1066")
@@ -478,7 +457,7 @@ func TestADateOutsideTheYearsAnIssueCanHaveIsRefusedWithASentence(t *testing.T) 
 func TestThePlanReadsTheLoadPerTeam(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "loaded")
+	ws := h.newProject(t, "loaded")
 	alpha := ws.newTeam(t, "Alpha")
 	ten := 10.0
 	if _, _, err := ws.teams.Update(ws.ctx, alpha.ID, team.UpdateInput{WeeklyCapacity: &ten, SetCapacity: true}, ws.actor.UserID); err != nil {

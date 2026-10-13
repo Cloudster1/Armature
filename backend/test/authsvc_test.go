@@ -19,7 +19,7 @@ func TestLogin(t *testing.T) {
 	svc := h.authService()
 	ctx := context.Background()
 
-	creds := h.signup(t, svc, "login")
+	creds := h.signIn(t, svc, h.person(t, "login", auth.RoleOwner))
 	email := creds.Principal.User.Email
 
 	t.Run("succeeds with the right password", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestLogin(t *testing.T) {
 			t.Error("login resolved to a different user")
 		}
 		if got.Principal.Org == nil {
-			t.Error("login did not select the user's only organization")
+			t.Error("login did not land in the installation")
 		}
 		if got.SessionSecret == creds.SessionSecret {
 			t.Error("login reused the signup session secret instead of issuing a new one")
@@ -61,12 +61,7 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("refuses a deactivated account", func(t *testing.T) {
-		deactivated := h.signup(t, svc, "deactivated")
-		// The last owner of an organization cannot be switched off, so they
-		// step down first.
-		if _, err := h.super.Exec(ctx, `UPDATE org_member SET org_role = 'member' WHERE user_id = $1`, deactivated.Principal.User.ID); err != nil {
-			t.Fatal(err)
-		}
+		deactivated := h.signIn(t, svc, h.person(t, "deactivated", auth.RoleMember))
 		if _, err := h.super.Exec(ctx, `UPDATE app_user SET is_active = false WHERE id = $1`, deactivated.Principal.User.ID); err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +79,7 @@ func TestSessionLifecycle(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("logout invalidates the session", func(t *testing.T) {
-		creds := h.signup(t, svc, "logout")
+		creds := h.signIn(t, svc, h.person(t, "logout", auth.RoleOwner))
 		if err := svc.Logout(ctx, *creds.Principal.SessionID); err != nil {
 			t.Fatalf("logout: %v", err)
 		}
@@ -94,7 +89,7 @@ func TestSessionLifecycle(t *testing.T) {
 	})
 
 	t.Run("logout is idempotent", func(t *testing.T) {
-		creds := h.signup(t, svc, "twice")
+		creds := h.signIn(t, svc, h.person(t, "twice", auth.RoleOwner))
 		if err := svc.Logout(ctx, *creds.Principal.SessionID); err != nil {
 			t.Fatal(err)
 		}
@@ -104,7 +99,7 @@ func TestSessionLifecycle(t *testing.T) {
 	})
 
 	t.Run("an expired session does not authenticate", func(t *testing.T) {
-		creds := h.signup(t, svc, "expired")
+		creds := h.signIn(t, svc, h.person(t, "expired", auth.RoleOwner))
 		if _, err := h.super.Exec(ctx,
 			`UPDATE user_session SET expires_at = now() - interval '1 second' WHERE id = $1`,
 			*creds.Principal.SessionID); err != nil {
@@ -127,7 +122,7 @@ func TestSessionLifecycle(t *testing.T) {
 	// The secret is never stored, only its digest, so a database disclosure
 	// does not hand out working sessions.
 	t.Run("the session secret is not stored", func(t *testing.T) {
-		creds := h.signup(t, svc, "digest")
+		creds := h.signIn(t, svc, h.person(t, "digest", auth.RoleOwner))
 		var n int
 		if err := h.super.QueryRow(ctx,
 			`SELECT count(*) FROM user_session WHERE encode(token_hash, 'escape') LIKE '%' || $1 || '%'`,
@@ -140,7 +135,7 @@ func TestSessionLifecycle(t *testing.T) {
 	})
 
 	t.Run("revoking a membership ends an open session", func(t *testing.T) {
-		creds := h.signup(t, svc, "revoked")
+		creds := h.signIn(t, svc, h.person(t, "revoked", auth.RoleOwner))
 		if _, err := h.super.Exec(ctx, `DELETE FROM org_member WHERE user_id = $1`, creds.Principal.User.ID); err != nil {
 			t.Fatal(err)
 		}

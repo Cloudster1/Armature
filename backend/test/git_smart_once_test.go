@@ -10,7 +10,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/git"
 )
 
@@ -19,7 +18,7 @@ import (
 func TestASquashCommitDoesNotRepeatTheBranchsCommands(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "squashing")
+	ws := h.newProject(t, "squashing")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "", "")
 	found := ws.newIssue(t, "a typo on the sign-in page")
@@ -94,7 +93,7 @@ func TestASquashCommitDoesNotRepeatTheBranchsCommands(t *testing.T) {
 		}
 	})
 
-	t.Run("the database keeps one record of a command, inside its organization", func(t *testing.T) {
+	t.Run("the database keeps one record of a command", func(t *testing.T) {
 		ctx := context.Background()
 		var issueID, hash string
 		if err := h.super.QueryRow(ctx, `
@@ -120,19 +119,5 @@ func TestASquashCommitDoesNotRepeatTheBranchsCommands(t *testing.T) {
 			ws.orgID, repo.ID, issueID, "fixed typo")
 		refusedAs("the command's text in place of its hash", "23514", err)
 
-		elsewhere := h.newWorkspace(t, "squashaway")
-		var seen int
-		if err := h.cluster.ReadPrimary(elsewhere.ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM git_smart_command WHERE repository_id = $1`, repo.ID).Scan(&seen)
-		}); err != nil || seen != 0 {
-			t.Errorf("another organization sees %d recorded commands (%v)", seen, err)
-		}
-		_, err = h.cluster.Write(elsewhere.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `
-				INSERT INTO git_smart_command (org_id, repository_id, issue_id, command_hash) VALUES ($1, $2, $3, $4)`,
-				ws.orgID, repo.ID, issueID, strings.Repeat("0", len(hash)))
-			return err
-		})
-		refusedAs("a record written into another organization", "42501", err)
 	})
 }

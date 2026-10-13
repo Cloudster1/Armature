@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
@@ -25,8 +26,9 @@ import (
 func TestPeopleOnAnIssueAreToldOnce(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "inbox")
-	bob := h.joinExisting(t, ws, h.email(t, "bob"), "member")
+	ws := h.newProject(t, "inbox")
+	bobEmail := h.email(t, "bob")
+	bob := h.joinExisting(t, ws, bobEmail, "member")
 	made := ws.newIssue(t, "Fix the door")
 
 	mailer := &fakeMailer{}
@@ -66,7 +68,7 @@ func TestPeopleOnAnIssueAreToldOnce(t *testing.T) {
 	}
 
 	// A mention makes the person a watcher and tells them why.
-	if _, _, err := ws.issues.AddComment(ws.ctx, made.Key, issue.TextDocument("Have a look @Invited Person, please"), ws.actor); err != nil {
+	if _, _, err := ws.issues.AddComment(ws.ctx, made.Key, issue.TextDocument("Have a look @"+nameOf(bobEmail)+", please"), ws.actor); err != nil {
 		t.Fatal(err)
 	}
 	watching, _ := ws.issues.Watches(ws.ctx, made.Key, bob)
@@ -113,23 +115,12 @@ func TestPeopleOnAnIssueAreToldOnce(t *testing.T) {
 	if n, _ := inbox.Unread(ws.ctx, bob); n != 0 {
 		t.Errorf("unread after all read = %d, want 0", n)
 	}
-
-	// A notification cannot point at another organization's issue, whatever
-	// the service does: the database refuses it.
-	other := h.newWorkspace(t, "elsewhere")
-	theirs := other.newIssue(t, "Not yours")
-	_, err = h.super.Exec(context.Background(), `
-		INSERT INTO notification (org_id, user_id, issue_id, kind, title, event_id)
-		VALUES ($1, $2, $3, 'watching', 'x', $4)`, ws.orgID, bob, theirs.ID, uuid.New())
-	if err == nil || !strings.Contains(err.Error(), "same organization") {
-		t.Errorf("a cross-org notification was accepted: %v", err)
-	}
 }
 
 // A digest bundles what was queued into one mail, on the person's schedule.
 func TestADigestBundlesTheQueue(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "digest")
+	ws := h.newProject(t, "digest")
 	bob := h.joinExisting(t, ws, h.email(t, "bobdigest"), "member")
 	inbox := notify.NewService(h.cluster)
 	prefs := notify.DefaultPreferences()
@@ -192,7 +183,7 @@ func TestTheInboxOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "inboxapi")
+	c.signIn(t, h.person(t, "inboxapi", auth.RoleOwner))
 
 	want(t, c.get("/api/v1/notifications"), http.StatusOK, "inbox")
 	want(t, c.get("/api/v1/notifications?unread=true&limit=5"), http.StatusOK, "unread inbox")

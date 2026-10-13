@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/milestone"
@@ -20,7 +21,7 @@ import (
 func TestAMilestoneTracksTheIssuesAssignedToIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "milestone")
+	ws := h.newProject(t, "milestone")
 	milestones := milestone.NewService(h.cluster)
 	task := h.issueTypeID(t, ws, bootstrap.TypeTask)
 
@@ -125,7 +126,7 @@ func TestAMilestoneTracksTheIssuesAssignedToIt(t *testing.T) {
 	})
 
 	t.Run("an issue cannot count towards another project's milestone", func(t *testing.T) {
-		other := h.newWorkspace(t, "elsewhere")
+		other := h.newProject(t, "elsewhere")
 		theirs, _, err := milestone.NewService(h.cluster).Create(other.ctx, other.project.Key, milestone.Input{Name: "Theirs"}, other.actor.UserID)
 		if err != nil {
 			t.Fatal(err)
@@ -176,24 +177,25 @@ func TestAMilestoneTracksTheIssuesAssignedToIt(t *testing.T) {
 func TestThePlanCarriesMilestonesAndWarnsAboutLateWork(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	dtdKey := h.projectKey(t, "DTD")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "planms")
+	owner.signIn(t, h.person(t, "planms", auth.RoleOwner))
 
-	created := owner.post("/api/v1/projects", map[string]string{"name": "Dated", "key": "DTD"})
+	created := owner.post("/api/v1/projects", map[string]string{"name": "Dated", "key": dtdKey})
 	if created.Status != http.StatusCreated {
 		t.Fatalf("create project returned %d: %s", created.Status, created.Raw)
 	}
 	types := owner.get("/api/v1/issue-types")
 	task := find(t, types.Body["issueTypes"], "name", "Task")["id"].(string)
 
-	ms := owner.post("/api/v1/projects/DTD/milestones", map[string]any{"name": "Beta", "dueOn": "2026-10-01"})
+	ms := owner.post("/api/v1/projects/"+dtdKey+"/milestones", map[string]any{"name": "Beta", "dueOn": "2026-10-01"})
 	if ms.Status != http.StatusCreated {
 		t.Fatalf("returned %d: %s", ms.Status, ms.Raw)
 	}
 	msID := ms.Body["milestone"].(map[string]any)["id"].(string)
 
-	late := owner.post("/api/v1/projects/DTD/issues", map[string]any{
+	late := owner.post("/api/v1/projects/"+dtdKey+"/issues", map[string]any{
 		"summary": "lands after beta", "typeId": task, "startDate": "2026-09-20", "dueDate": "2026-10-10",
 	})
 	lateKey := late.Body["issue"].(map[string]any)["key"].(string)
@@ -204,7 +206,7 @@ func TestThePlanCarriesMilestonesAndWarnsAboutLateWork(t *testing.T) {
 		t.Fatal("no issue")
 	}
 
-	plan := owner.get("/api/v1/projects/DTD/plan")
+	plan := owner.get("/api/v1/projects/" + dtdKey + "/plan")
 	if plan.Status != http.StatusOK {
 		t.Fatalf("plan returned %d: %s", plan.Status, plan.Raw)
 	}
@@ -232,8 +234,8 @@ func TestThePlanCarriesMilestonesAndWarnsAboutLateWork(t *testing.T) {
 	}
 
 	t.Run("the list filters by milestone", func(t *testing.T) {
-		owner.post("/api/v1/projects/DTD/issues", map[string]any{"summary": "not for beta", "typeId": task})
-		resp := owner.get("/api/v1/projects/DTD/issues?milestone=" + msID)
+		owner.post("/api/v1/projects/"+dtdKey+"/issues", map[string]any{"summary": "not for beta", "typeId": task})
+		resp := owner.get("/api/v1/projects/" + dtdKey + "/issues?milestone=" + msID)
 		if resp.Status != http.StatusOK {
 			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
 		}

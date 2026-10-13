@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A customer's files are the request's: they see the desk's beside their own,
@@ -15,8 +17,8 @@ func TestACustomerPutsFilesOnTheirRequestAndTakesBackOnlyTheirOwn(t *testing.T) 
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "filedesk")
-	fit, fhr := deskKey("FIT"), deskKey("FHR")
+	owner.signIn(t, h.person(t, "filedesk", auth.RoleOwner))
+	fit, fhr := h.projectKey(t, "FIT"), h.projectKey(t, "FHR")
 
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "IT desk", "key": fit, "template": "service-desk"}), http.StatusCreated, "a desk")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "HR desk", "key": fhr, "template": "service-desk"}), http.StatusCreated, "another desk")

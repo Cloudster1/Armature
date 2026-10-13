@@ -20,30 +20,33 @@ import (
 	"github.com/armature/armature/backend/internal/workflow"
 )
 
-// TestOrgBootstrap checks that signing up leaves an organization able to do
-// something, rather than one that needs configuring before it can hold a single
-// issue.
-func TestOrgBootstrap(t *testing.T) {
+// The installation is set up able to do something, rather than needing
+// configuring before it can hold a single issue.
+func TestTheInstallationIsBootstrapped(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "bootstrapped")
+	ws := h.newProject(t, "bootstrapped")
 
 	t.Run("statuses, types and a workflow all exist", func(t *testing.T) {
 		var statuses, types, workflows, schemes, links int
 		err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 			return tx.QueryRow(ctx, `
-				SELECT (SELECT count(*) FROM issue_status),
-				       (SELECT count(*) FROM issue_type),
-				       (SELECT count(*) FROM workflow),
-				       (SELECT count(*) FROM workflow_scheme),
-				       (SELECT count(*) FROM issue_link_type)`).
+				SELECT (SELECT count(*) FROM issue_status WHERE name = ANY($1)),
+				       (SELECT count(*) FROM issue_type WHERE name = ANY($2)),
+				       (SELECT count(*) FROM workflow WHERE name = $3),
+				       (SELECT count(*) FROM workflow_scheme WHERE is_default),
+				       (SELECT count(*) FROM issue_link_type WHERE name = ANY($4))`,
+				[]string{bootstrap.StatusToDo, bootstrap.StatusInProgress, bootstrap.StatusInReview, bootstrap.StatusDone},
+				[]string{bootstrap.TypeTask, bootstrap.TypeBug, bootstrap.TypeStory, bootstrap.TypeEpic, bootstrap.TypeSubtask, bootstrap.TypeInitiative},
+				bootstrap.DefaultWorkflowName,
+				[]string{bootstrap.LinkBlocks, bootstrap.LinkRelates, bootstrap.LinkDuplicates}).
 				Scan(&statuses, &types, &workflows, &schemes, &links)
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if statuses != 4 || types != 6 || workflows != 1 || schemes != 1 || links != 3 {
-			t.Errorf("bootstrap produced %d statuses, %d types, %d workflows, %d schemes, %d link types",
+			t.Errorf("bootstrap left %d statuses, %d types, %d workflows, %d default schemes, %d link types",
 				statuses, types, workflows, schemes, links)
 		}
 	})
@@ -52,7 +55,7 @@ func TestOrgBootstrap(t *testing.T) {
 		var wf *workflow.Workflow
 		err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 			var id uuid.UUID
-			if err := tx.QueryRow(ctx, `SELECT id FROM workflow LIMIT 1`).Scan(&id); err != nil {
+			if err := tx.QueryRow(ctx, `SELECT id FROM workflow WHERE name = $1`, bootstrap.DefaultWorkflowName).Scan(&id); err != nil {
 				return err
 			}
 			var err error
@@ -83,22 +86,29 @@ func TestOrgBootstrap(t *testing.T) {
 func TestProjects(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "projects")
+	tmpxKey := h.projectKey(t, "TMPX")
+	ws := h.newProject(t, "projects")
 
 	t.Run("a project starts empty and is listed", func(t *testing.T) {
 		list, err := ws.projects.List(ws.ctx, false)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(list) != 1 {
-			t.Fatalf("got %d projects, want 1", len(list))
+		var listed *project.Project
+		for i := range list {
+			if list[i].Key == ws.project.Key {
+				listed = &list[i]
+			}
 		}
-		if list[0].IssueCount != 0 {
-			t.Errorf("a new project reports %d issues", list[0].IssueCount)
+		if listed == nil {
+			t.Fatalf("the new project %s is not listed", ws.project.Key)
+		}
+		if listed.IssueCount != 0 {
+			t.Errorf("a new project reports %d issues", listed.IssueCount)
 		}
 	})
 
-	t.Run("keys are unique within an organization", func(t *testing.T) {
+	t.Run("keys are unique", func(t *testing.T) {
 		_, _, err := ws.projects.Create(ws.ctx, project.CreateInput{
 			Name: "Another", Key: ws.project.Key,
 		}, ws.actor.UserID)
@@ -117,17 +127,18 @@ func TestProjects(t *testing.T) {
 
 	// Typing the key in lower case is not a mistake worth rejecting.
 	t.Run("a lower case key is accepted and stored upper case", func(t *testing.T) {
-		p, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Lowercase", Key: "lwr"}, ws.actor.UserID)
+		key := h.projectKey(t, "LWR")
+		p, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Lowercase", Key: strings.ToLower(key)}, ws.actor.UserID)
 		if err != nil {
 			t.Fatalf("create: %v", err)
 		}
-		if p.Key != "LWR" {
-			t.Errorf("key = %q, want LWR", p.Key)
+		if p.Key != key {
+			t.Errorf("key = %q, want %s", p.Key, key)
 		}
 	})
 
 	t.Run("archiving hides a project without destroying it", func(t *testing.T) {
-		p, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Temporary", Key: "TMPX"}, ws.actor.UserID)
+		p, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Temporary", Key: tmpxKey}, ws.actor.UserID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,19 +189,13 @@ func TestProjects(t *testing.T) {
 			t.Errorf("creating in a restored project failed: %v", err)
 		}
 	})
-
-	t.Run("a project in another organization is not found", func(t *testing.T) {
-		other := h.newWorkspace(t, "elsewhere")
-		if _, err := ws.projects.ByKey(ws.ctx, other.project.Key); !errors.Is(err, project.ErrNotFound) {
-			t.Errorf("error = %v, want ErrNotFound", err)
-		}
-	})
 }
 
 func TestIssueKeys(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "keys")
+	secxKey := h.projectKey(t, "SECX")
+	ws := h.newProject(t, "keys")
 
 	t.Run("keys count up from one", func(t *testing.T) {
 		for want := 1; want <= 3; want++ {
@@ -211,7 +216,7 @@ func TestIssueKeys(t *testing.T) {
 	// counter lives on the project row and is bumped inside the same
 	// transaction as the insert, so the row lock serialises them.
 	t.Run("concurrent creation never duplicates a key", func(t *testing.T) {
-		concurrent := h.newWorkspace(t, "racing")
+		concurrent := h.newProject(t, "racing")
 
 		const writers = 12
 		var (
@@ -257,7 +262,7 @@ func TestIssueKeys(t *testing.T) {
 	// A rolled back creation must not burn a number, or the sequence develops
 	// holes that look like deleted issues.
 	t.Run("a failed creation does not consume a key", func(t *testing.T) {
-		ws2 := h.newWorkspace(t, "gapless")
+		ws2 := h.newProject(t, "gapless")
 		if _, _, err := ws2.issues.Create(ws2.ctx, issue.CreateInput{ProjectKey: ws2.project.Key, Summary: "first"}, ws2.actor); err != nil {
 			t.Fatal(err)
 		}
@@ -280,7 +285,7 @@ func TestIssueKeys(t *testing.T) {
 	})
 
 	t.Run("each project has its own sequence", func(t *testing.T) {
-		second, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Second", Key: "SECX"}, ws.actor.UserID)
+		second, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Second", Key: secxKey}, ws.actor.UserID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -288,8 +293,8 @@ func TestIssueKeys(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if created.Key != "SECX-1" {
-			t.Errorf("key = %q, want SECX-1", created.Key)
+		if created.Key != secxKey+"-1" {
+			t.Errorf("key = %q, want "+secxKey+"-1", created.Key)
 		}
 	})
 }
@@ -297,7 +302,7 @@ func TestIssueKeys(t *testing.T) {
 func TestIssueCreation(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "creating")
+	ws := h.newProject(t, "creating")
 
 	t.Run("a new issue starts in the workflow's initial status", func(t *testing.T) {
 		created, lsn, err := ws.issues.Create(ws.ctx, issue.CreateInput{
@@ -404,7 +409,7 @@ func TestIssueCreation(t *testing.T) {
 func TestAnIssueCanBeFiledStraightIntoASprint(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "filed-into")
+	ws := h.newProject(t, "filed-into")
 	alpha := ws.newTeam(t, "Alpha")
 	sp := ws.teamSprint(t, "Sprint F", "2026-09-07", "2026-09-18", &alpha.ID)
 	three := 3.0
@@ -423,7 +428,7 @@ func TestAnIssueCanBeFiledStraightIntoASprint(t *testing.T) {
 	}
 
 	t.Run("another project's sprint is refused", func(t *testing.T) {
-		other := h.newWorkspace(t, "filed-elsewhere")
+		other := h.newProject(t, "filed-elsewhere")
 		theirs := other.planned(t, h, "Theirs", "2026-09-07", "2026-09-18", nil)
 		_, _, err := ws.issues.Create(ws.ctx, issue.CreateInput{ProjectKey: ws.project.Key, Summary: "misfiled", SprintID: &theirs.ID}, ws.actor)
 		if !errors.Is(err, issue.ErrSprintNotFound) {

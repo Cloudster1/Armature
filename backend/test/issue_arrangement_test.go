@@ -5,22 +5,22 @@ package test
 import (
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/arrange"
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/field"
 )
 
-// Until somebody arranges an issue, every type is drawn the way the page was
-// drawn before a project could say otherwise.
-func TestAnUnarrangedProjectIsDrawnTheBuiltInWay(t *testing.T) {
+// Until somebody arranges a project's issues, every type is drawn the way the
+// installation draws it: the built-in way, unless everyone's is arranged.
+func TestAnUnarrangedProjectIsDrawnTheInstallationsWay(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "arrange")
+	ws := h.newProject(t, "arrange")
 	arrangements := arrange.NewService(h.cluster)
 
 	here, err := arrangements.InProject(ws.ctx, ws.project.Key)
@@ -30,21 +30,25 @@ func TestAnUnarrangedProjectIsDrawnTheBuiltInWay(t *testing.T) {
 	if len(here) == 0 {
 		t.Fatal("no issue type was answered for")
 	}
+	everyone, err := arrangements.InOrg(ws.ctx)
+	if err != nil {
+		t.Fatalf("the installation's arrangements: %v", err)
+	}
+	if len(everyone) != len(here) {
+		t.Errorf("the installation answers for %d types and the project for %d", len(everyone), len(here))
+	}
+	installation := map[uuid.UUID]arrange.Arrangement{}
+	for _, each := range everyone {
+		installation[each.IssueTypeID] = each
+	}
 	for _, each := range here {
-		if each.Origin.Scope != arrange.ScopeBuiltin {
-			t.Errorf("%s is arranged by %s, want the built-in one", each.IssueTypeName, each.Origin.Scope)
+		theirs := installation[each.IssueTypeID]
+		if each.Origin.Scope != theirs.Origin.Scope || len(each.Places) != len(theirs.Places) {
+			t.Errorf("%s is arranged by %s with %d places, want the installation's %s with %d", each.IssueTypeName, each.Origin.Scope, len(each.Places), theirs.Origin.Scope, len(theirs.Places))
 		}
-		if len(each.Places) != len(arrange.Default()) {
+		if each.Origin.Scope == arrange.ScopeBuiltin && len(each.Places) != len(arrange.Default()) {
 			t.Errorf("%s holds %d places, want the built-in's %d", each.IssueTypeName, len(each.Places), len(arrange.Default()))
 		}
-	}
-
-	org, err := arrangements.InOrg(ws.ctx)
-	if err != nil {
-		t.Fatalf("the organization's arrangements: %v", err)
-	}
-	if len(org) != len(here) {
-		t.Errorf("the organization answers for %d types and the project for %d", len(org), len(here))
 	}
 
 	// The wall is the database's, not only the service's.
@@ -60,13 +64,15 @@ func TestAnUnarrangedProjectIsDrawnTheBuiltInWay(t *testing.T) {
 // Both ways over the API: read here, read the organization's, and be refused
 // the project that is not yours and the organization you do not administer.
 func TestArrangementsOverTheAPI(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
+	// Everyone's arrangement is what every project follows, so it is put back as found.
+	putBackAfter(t, h, "issue_arrangement", "project_id IS NULL")
+	arrKey := h.projectKey(t, "ARR")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "arrangeapi")
+	owner.signIn(t, h.person(t, "arrangeapi", auth.RoleOwner))
 	project := want(t, owner.post("/api/v1/projects", map[string]any{
-		"name": "Arranged", "key": "ARR" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban",
+		"name": "Arranged", "key": arrKey, "template": "kanban",
 	}), http.StatusCreated, "project")
 	key := obj(t, project, "project")["key"].(string)
 
@@ -78,11 +84,8 @@ func TestArrangementsOverTheAPI(t *testing.T) {
 
 	// A member who does not administer the organization does not read what
 	// every project of it follows.
-	invite := want(t, owner.post("/api/v1/invites", map[string]string{"email": h.email(t, "plainarrange"), "role": "member"}), http.StatusCreated, "invite")
 	member := api.client(t)
-	want(t, member.post("/api/v1/auth/invites/accept", map[string]string{
-		"token": invite.Body["token"].(string), "name": "Plain", "password": testPassword,
-	}), http.StatusOK, "accept")
+	member.signIn(t, h.person(t, "plainarrange", auth.RoleMember))
 	want(t, member.get("/api/v1/issue-arrangement"), http.StatusForbidden, "the organization's, to somebody who does not administer it")
 
 	// Arranging one type here, and for every project.
@@ -108,18 +111,22 @@ func TestArrangementsOverTheAPI(t *testing.T) {
 	want(t, member.put("/api/v1/projects/"+key+"/issue-arrangement", map[string]any{"places": places}), http.StatusForbidden, "arranging a project somebody does not administer")
 	want(t, member.put("/api/v1/issue-arrangement", map[string]any{"places": places}), http.StatusForbidden, "arranging the organization without administering it")
 
-	// Another tenant's project is not refused, it is not there.
+	// A project somebody may not read is not refused, it is not there.
 	stranger := api.client(t)
-	stranger.signup(t, h, "arrangestranger")
-	want(t, stranger.get("/api/v1/projects/"+key+"/issue-arrangement"), http.StatusNotFound, "another tenant's project")
+	stranger.signIn(t, h.outsider(t, "arrangestranger"))
+	want(t, stranger.get("/api/v1/projects/"+key+"/issue-arrangement"), http.StatusNotFound, "a project behind its wall")
 }
 
 // A project's own arrangement beats the organization's, and the organization's
 // beats the built-in, per issue type.
 func TestAProjectArrangesItsOwnIssues(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "arranging")
+	// Everyone's arrangement is what every project follows, so it is put back as found.
+	putBackAfter(t, h, "issue_arrangement", "project_id IS NULL")
+	if _, err := h.super.Exec(context.Background(), `DELETE FROM issue_arrangement WHERE project_id IS NULL`); err != nil {
+		t.Fatal(err)
+	}
+	ws := h.newProject(t, "arranging")
 	arrangements := arrange.NewService(h.cluster)
 	fields := field.NewService(h.cluster)
 	story := h.issueTypeID(t, ws, "Story")

@@ -20,7 +20,7 @@ import (
 func TestAnImportKeepsItsHistory(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "import")
+	ws := h.newProject(t, "import")
 	story := h.issueTypeID(t, ws, "Story")
 	done := h.statusID(t, ws, "Done")
 	reporter := h.joinExisting(t, ws, h.email(t, "reporter"), "member")

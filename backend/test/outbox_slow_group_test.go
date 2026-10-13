@@ -46,10 +46,11 @@ func TestOutboxRelayWaitsForTheSlowestGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	orgID, orgCtx := h.makeOrg(t, "slow-group")
+	_, orgCtx := h.installation()
+	topic := unique("test.imported")
 	if _, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
 		for i := range eventCount {
-			if err := events.EmitInTenant(ctx, tx, events.TopicIssueCreated, map[string]any{"i": i}); err != nil {
+			if err := events.EmitInTenant(ctx, tx, topic, map[string]any{"i": i}); err != nil {
 				return err
 			}
 		}
@@ -94,7 +95,7 @@ func TestOutboxRelayWaitsForTheSlowestGroup(t *testing.T) {
 	if longest > streamCap {
 		t.Errorf("the stream grew to %d entries the slow group had not read, past the cap of %d", longest, streamCap)
 	}
-	if h.countUnpublished(t, orgID) == 0 {
+	if h.countUnpublished(t, topic) == 0 {
 		t.Error("the relay published the whole import while the group had read none of it")
 	}
 
@@ -112,7 +113,7 @@ func TestOutboxRelayWaitsForTheSlowestGroup(t *testing.T) {
 	deadline = time.Now().Add(90 * time.Second)
 	for time.Now().Before(deadline) {
 		// Asked before the read, so an event published during it is not missed.
-		relayed := h.countUnpublished(t, orgID) == 0
+		relayed := h.countUnpublished(t, topic) == 0
 		res, err := rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group: group, Consumer: "test", Streams: []string{stream, ">"}, Count: 10, Block: 500 * time.Millisecond,
 		}).Result()
@@ -127,7 +128,7 @@ func TestOutboxRelayWaitsForTheSlowestGroup(t *testing.T) {
 		}
 		for _, s := range res {
 			for _, msg := range s.Messages {
-				if e := events.FromMessage(msg); e.OrgID == orgID {
+				if e := events.FromMessage(msg); e.Topic == topic {
 					seen[e.ID] = true
 					time.Sleep(handleCost)
 				}
@@ -145,7 +146,7 @@ func TestOutboxRelayWaitsForTheSlowestGroup(t *testing.T) {
 	if longest > streamCap {
 		t.Errorf("the stream grew to %d entries, past the cap of %d", longest, streamCap)
 	}
-	if left := h.countUnpublished(t, orgID); left != 0 {
+	if left := h.countUnpublished(t, topic); left != 0 {
 		t.Errorf("%d events were never relayed", left)
 	}
 }

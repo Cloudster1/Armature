@@ -38,7 +38,7 @@ func (m *refusingMailer) Send(ctx context.Context, mail desk.Mail) error {
 func TestADeskMailIsRetriedOnlyWhileNobodyHasHadIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "deskretry")
+	ws := h.newProject(t, "deskretry")
 	d, p := ws.aDesk(t, h, "Retry desk")
 	customer := ws.customerOf(t, h, "retried")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)

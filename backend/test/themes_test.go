@@ -8,21 +8,39 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/perm"
 )
 
-// A theme is its maker's, shared when they say so, chosen per person, and
-// walled by the tenant like everything else.
+// A theme is its maker's, shared when they say so, chosen per person, and one
+// may be everyone's default, which is why the test runs alone and puts it back.
 func TestThemesOverTheAPI(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "themes")
+	signedUp := owner.signIn(t, h.person(t, "themes", auth.RoleOwner))
 	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
+
+	var before *string
+	if err := h.super.QueryRow(context.Background(), `SELECT default_theme_id::text FROM org WHERE id = $1`, orgID).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = h.super.Exec(context.Background(), `UPDATE org SET default_theme_id = $1 WHERE id = $2`, before, orgID)
+	})
+	want(t, owner.put("/api/v1/themes/default", map[string]any{"themeId": nil}), http.StatusOK, "start from no default")
+	h.waitForPrimary(t)
+	// listed finds the theme among those somebody sees, which hold everybody's shared ones.
+	listed := func(seen []any, id string) map[string]any {
+		for _, row := range seen {
+			if theme := row.(map[string]any); theme["id"] == id {
+				return theme
+			}
+		}
+		return nil
+	}
 
 	spec := map[string]any{
 		"colors": map[string]any{"light": map[string]string{"accent": "#ff0066"}, "dark": map[string]string{"accent": "#00ffcc"}},
@@ -100,13 +118,13 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if got := other.get("/api/v1/themes/" + themeID); got.Status != http.StatusNotFound {
 			t.Fatalf("a private theme was found by somebody else: %d", got.Status)
 		}
-		if seen := list(t, want(t, other.get("/api/v1/themes"), http.StatusOK, "list as another"), "themes"); len(seen) != 0 {
-			t.Fatalf("somebody else sees %d themes before any is shared", len(seen))
+		if seen := list(t, want(t, other.get("/api/v1/themes"), http.StatusOK, "list as another"), "themes"); listed(seen, themeID) != nil {
+			t.Fatalf("somebody else sees the theme before it is shared")
 		}
 		want(t, owner.patch("/api/v1/themes/"+themeID, map[string]any{"shared": true}), http.StatusOK, "share")
 		h.waitForPrimary(t)
 		seen := list(t, want(t, other.get("/api/v1/themes"), http.StatusOK, "list as another"), "themes")
-		if len(seen) != 1 || seen[0].(map[string]any)["ownerId"] != ownerID {
+		if theme := listed(seen, themeID); theme == nil || theme["ownerId"] != ownerID {
 			t.Fatalf("the shared theme is not seen: %s", seen)
 		}
 		if got := other.patch("/api/v1/themes/"+themeID, map[string]any{"name": "Mine now"}); got.Status != http.StatusForbidden {
@@ -163,7 +181,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("the organization's default is what everybody sees until they choose", func(t *testing.T) {
+	t.Run("everyone's default is what everybody sees until they choose", func(t *testing.T) {
 		// Taken private first: the earlier subtest shared it.
 		want(t, owner.patch("/api/v1/themes/"+themeID, map[string]any{"shared": false}), http.StatusOK, "take it private")
 		h.waitForPrimary(t)
@@ -230,25 +248,6 @@ func TestThemesOverTheAPI(t *testing.T) {
 		_, err := h.super.Exec(context.Background(), `INSERT INTO theme (org_id, owner_id, name, shared) VALUES ($1, $2, 'Theirs', true)`, orgID, customerID)
 		if err == nil || !strings.Contains(err.Error(), "customer cannot share") {
 			t.Fatalf("SQL let a customer share: %v", err)
-		}
-	})
-
-	t.Run("another organization sees nothing, over the API and in SQL", func(t *testing.T) {
-		stranger := api.client(t)
-		stranger.signup(t, h, "themes-stranger")
-		if got := stranger.get("/api/v1/themes/" + themeID); got.Status != http.StatusNotFound {
-			t.Errorf("another organization found the theme: %d", got.Status)
-		}
-		if got := stranger.put("/api/v1/themes/active", map[string]any{"themeId": themeID}); got.Status != http.StatusNotFound {
-			t.Errorf("another organization chose the theme: %d", got.Status)
-		}
-		_, ctxB := h.makeOrg(t, h.orgSlug(t, "themes-b"))
-		var n int
-		err := h.cluster.ReadPrimary(ctxB, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM theme`).Scan(&n)
-		})
-		if err != nil || n != 0 {
-			t.Errorf("another tenant counts %d themes (err %v), want 0", n, err)
 		}
 	})
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/httpapi"
 	"github.com/armature/armature/backend/internal/perm"
 )
@@ -30,32 +31,34 @@ type far struct {
 
 // A person granted a role in one project sees nothing of another: not its
 // issues, not the things hanging off them, and not through an id.
-func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
+func TestAProjectIsAWallInsideTheInstallation(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	keyNear := h.projectKey(t, "NEAR")
+	farrKey := h.projectKey(t, "FARR")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "walls")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Near", "key": "NEAR"}), http.StatusCreated, "the near project")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Far", "key": "FARR"}), http.StatusCreated, "the far project")
-	nearIssue := obj(t, want(t, owner.post("/api/v1/projects/NEAR/issues", map[string]any{"summary": "near work"}), http.StatusCreated, "a near issue"), "issue")
+	owner.signIn(t, h.person(t, "walls", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Near", "key": keyNear}), http.StatusCreated, "the near project")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Far", "key": farrKey}), http.StatusCreated, "the far project")
+	nearIssue := obj(t, want(t, owner.post("/api/v1/projects/"+keyNear+"/issues", map[string]any{"summary": "near work"}), http.StatusCreated, "a near issue"), "issue")
 	nearKey := nearIssue["key"].(string)
 
-	it := buildFar(t, owner)
-	member := api.asRole(t, h, owner, "NEAR", perm.User)
+	it := buildFar(t, owner, farrKey)
+	member := api.asRole(t, h, owner, keyNear, perm.User)
 
 	t.Run("the far project is not there", func(t *testing.T) {
 		listed := list(t, want(t, member.get("/api/v1/projects"), http.StatusOK, "the projects they see"), "projects")
 		for _, p := range listed {
-			if p.(map[string]any)["key"] == "FARR" {
+			if p.(map[string]any)["key"] == farrKey {
 				t.Fatalf("the far project is listed: %v", listed)
 			}
 		}
 		for _, path := range []string{
-			"/api/v1/projects/FARR",
-			"/api/v1/projects/FARR/issues",
-			"/api/v1/projects/FARR/plan",
-			"/api/v1/projects/FARR/dashboards",
+			"/api/v1/projects/" + farrKey,
+			"/api/v1/projects/" + farrKey + "/issues",
+			"/api/v1/projects/" + farrKey + "/plan",
+			"/api/v1/projects/" + farrKey + "/dashboards",
 			"/api/v1/issues/" + it.issueKey,
 			"/api/v1/issues/" + it.issueKey + "/comments",
 			"/api/v1/issues/" + it.issueKey + "/history",
@@ -70,11 +73,11 @@ func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
 	})
 
 	t.Run("the lists carry nothing of it", func(t *testing.T) {
-		found := want(t, member.get("/api/v1/issues?q="+urlQuery(`project = FARR`)), http.StatusOK, "a query naming the far project")
+		found := want(t, member.get("/api/v1/issues?q="+urlQuery(`project = `+farrKey)), http.StatusOK, "a query naming the far project")
 		if strings.Contains(found.Raw, it.summary) {
 			t.Fatalf("a query reached the far project: %s", found.Raw)
 		}
-		exported, csv := member.download("/api/v1/issues/export?project=FARR")
+		exported, csv := member.download("/api/v1/issues/export?project=" + farrKey)
 		if exported.StatusCode != http.StatusOK || strings.Contains(string(csv), it.summary) {
 			t.Fatalf("the export carried the far project: %d %s", exported.StatusCode, csv)
 		}
@@ -83,7 +86,7 @@ func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
 			t.Fatalf("the search bar offered the far project's work: %s", suggested.Raw)
 		}
 		names := want(t, member.get("/api/v1/issues/suggest?q="+urlQuery("project = ")+"&at=10"), http.StatusOK, "project names")
-		if strings.Contains(names.Raw, "FARR") {
+		if strings.Contains(names.Raw, farrKey) {
 			t.Fatalf("the search bar named the far project: %s", names.Raw)
 		}
 	})
@@ -131,16 +134,16 @@ func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
 	})
 
 	t.Run("a body cannot name what a path may not", func(t *testing.T) {
-		want(t, member.post("/api/v1/issues", map[string]any{"projectKey": "FARR", "summary": "sneak"}), http.StatusNotFound, "filing into the far project")
+		want(t, member.post("/api/v1/issues", map[string]any{"projectKey": farrKey, "summary": "sneak"}), http.StatusNotFound, "filing into the far project")
 		bulk := member.post("/api/v1/issues/bulk", map[string]any{"keys": []string{it.issueKey}, "change": map[string]any{"priority": "high"}})
 		if bulk.Status != http.StatusForbidden {
 			t.Errorf("bulk editing the far project: got %d, want 403: %s", bulk.Status, bulk.Raw)
 		}
-		moved := member.post("/api/v1/projects/NEAR/board/move", map[string]any{"issueKey": it.issueKey, "swimlaneId": nearSwimlane(t, member)})
+		moved := member.post("/api/v1/projects/"+keyNear+"/board/move", map[string]any{"issueKey": it.issueKey, "swimlaneId": nearSwimlane(t, member, keyNear)})
 		if moved.Status != http.StatusNotFound {
 			t.Errorf("moving a far card on a near board: got %d, want 404: %s", moved.Status, moved.Raw)
 		}
-		lane := member.post("/api/v1/projects/NEAR/board/move", map[string]any{"issueKey": nearKey, "swimlaneId": it.swimlane})
+		lane := member.post("/api/v1/projects/"+keyNear+"/board/move", map[string]any{"issueKey": nearKey, "swimlaneId": it.swimlane})
 		if lane.Status != http.StatusNotFound {
 			t.Errorf("moving a near card into a far lane: got %d, want 404: %s", lane.Status, lane.Raw)
 		}
@@ -151,7 +154,7 @@ func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
 	})
 
 	t.Run("a rule reaches only its own project", func(t *testing.T) {
-		nearRule := idOf(t, want(t, owner.post("/api/v1/projects/NEAR/automation/rules", map[string]any{
+		nearRule := idOf(t, want(t, owner.post("/api/v1/projects/"+keyNear+"/automation/rules", map[string]any{
 			"name": "Near rule", "trigger": map[string]any{"kind": "incoming"},
 			"actions": []any{map[string]any{"kind": "add_comment", "text": "ran"}},
 		}), http.StatusCreated, "a near rule"), "rule")
@@ -163,7 +166,7 @@ func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
 
 	t.Run("every route addressed by an id is walled", func(t *testing.T) {
 		ids := map[string]string{
-			"projectKey": "FARR", "issueKey": it.issueKey, "sprintID": it.sprint,
+			"projectKey": farrKey, "issueKey": it.issueKey, "sprintID": it.sprint,
 			"milestoneID": it.milestone, "versionID": it.version, "componentID": it.component,
 			"teamID": it.team, "boardID": it.board, "swimlaneID": it.swimlane,
 			"dashboardID": it.dashboard, "shareID": it.share, "fieldID": it.field,
@@ -194,13 +197,13 @@ func TestAProjectIsAWallInsideTheOrganization(t *testing.T) {
 	})
 }
 
-// Only an owner lets an owner go, whoever else administers the organization.
+// Only an owner lets an owner go, whoever else administers the installation.
 func TestOnlyAnOwnerLetsAnOwnerGo(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	ownerID := principalField(t, owner.signup(t, h, "twoowners"), "principal", "user", "id").(string)
+	ownerID := principalField(t, owner.signIn(t, h.person(t, "twoowners", auth.RoleOwner)), "principal", "user", "id").(string)
 
 	invite := want(t, owner.post("/api/v1/invites", map[string]string{"email": h.email(t, "admin"), "role": "admin"}), http.StatusCreated, "an admin invitation")
 	admin := api.client(t)
@@ -253,41 +256,41 @@ func urlQuery(s string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(s, " ", "%20"), "=", "%3D")
 }
 
-func nearSwimlane(t *testing.T, c *client) string {
+func nearSwimlane(t *testing.T, c *client, nearProject string) string {
 	t.Helper()
-	board := obj(t, want(t, c.get("/api/v1/projects/NEAR/board"), http.StatusOK, "the near board"), "board")
+	board := obj(t, want(t, c.get("/api/v1/projects/"+nearProject+"/board"), http.StatusOK, "the near board"), "board")
 	lanes := board["swimlanes"].([]any)
 	return lanes[0].(map[string]any)["id"].(string)
 }
 
 // buildFar fills the far project with one of everything a route can address.
-func buildFar(t *testing.T, owner *client) far {
+func buildFar(t *testing.T, owner *client, farProject string) far {
 	t.Helper()
 	it := far{summary: "the far project's secret"}
-	issue := obj(t, want(t, owner.post("/api/v1/projects/FARR/issues", map[string]any{"summary": it.summary}), http.StatusCreated, "a far issue"), "issue")
+	issue := obj(t, want(t, owner.post("/api/v1/projects/"+farProject+"/issues", map[string]any{"summary": it.summary}), http.StatusCreated, "a far issue"), "issue")
 	it.issueKey = issue["key"].(string)
-	other := obj(t, want(t, owner.post("/api/v1/projects/FARR/issues", map[string]any{"summary": "the far project's other work"}), http.StatusCreated, "another far issue"), "issue")
+	other := obj(t, want(t, owner.post("/api/v1/projects/"+farProject+"/issues", map[string]any{"summary": "the far project's other work"}), http.StatusCreated, "another far issue"), "issue")
 	it.otherKey = other["key"].(string)
 
 	it.comment = idOf(t, want(t, owner.post("/api/v1/issues/"+it.issueKey+"/comments", map[string]any{"text": "said in confidence"}), http.StatusCreated, "a far comment"), "comment")
 	it.worklog = idOf(t, want(t, owner.post("/api/v1/issues/"+it.issueKey+"/worklogs", map[string]any{"minutes": 30}), http.StatusCreated, "a far worklog"), "worklog")
 	it.attachment = idOf(t, want(t, owner.upload("/api/v1/issues/"+it.issueKey+"/attachments", "file", "far.txt", "text/plain", []byte("kept here")), http.StatusCreated, "a far attachment"), "attachment")
-	it.sprint = idOf(t, want(t, owner.post("/api/v1/projects/FARR/sprints", map[string]any{"name": "Far sprint"}), http.StatusCreated, "a far sprint"), "sprint")
-	it.milestone = idOf(t, want(t, owner.post("/api/v1/projects/FARR/milestones", map[string]any{"name": "Far stone", "dueOn": "2026-10-01"}), http.StatusCreated, "a far milestone"), "milestone")
-	it.version = idOf(t, want(t, owner.post("/api/v1/projects/FARR/versions", map[string]any{"name": "1.0"}), http.StatusCreated, "a far version"), "version")
-	it.component = idOf(t, want(t, owner.post("/api/v1/projects/FARR/components", map[string]any{"name": "Far engine"}), http.StatusCreated, "a far component"), "component")
-	it.team = idOf(t, want(t, owner.post("/api/v1/projects/FARR/teams", map[string]any{"name": "Far team"}), http.StatusCreated, "a far team"), "team")
-	it.field = idOf(t, want(t, owner.post("/api/v1/projects/FARR/fields", map[string]any{"name": "Far cost", "kind": "number"}), http.StatusCreated, "a far field"), "field")
-	it.rule = idOf(t, want(t, owner.post("/api/v1/projects/FARR/automation/rules", map[string]any{
+	it.sprint = idOf(t, want(t, owner.post("/api/v1/projects/"+farProject+"/sprints", map[string]any{"name": "Far sprint"}), http.StatusCreated, "a far sprint"), "sprint")
+	it.milestone = idOf(t, want(t, owner.post("/api/v1/projects/"+farProject+"/milestones", map[string]any{"name": "Far stone", "dueOn": "2026-10-01"}), http.StatusCreated, "a far milestone"), "milestone")
+	it.version = idOf(t, want(t, owner.post("/api/v1/projects/"+farProject+"/versions", map[string]any{"name": "1.0"}), http.StatusCreated, "a far version"), "version")
+	it.component = idOf(t, want(t, owner.post("/api/v1/projects/"+farProject+"/components", map[string]any{"name": "Far engine"}), http.StatusCreated, "a far component"), "component")
+	it.team = idOf(t, want(t, owner.post("/api/v1/projects/"+farProject+"/teams", map[string]any{"name": "Far team"}), http.StatusCreated, "a far team"), "team")
+	it.field = idOf(t, want(t, owner.post("/api/v1/projects/"+farProject+"/fields", map[string]any{"name": "Far cost", "kind": "number"}), http.StatusCreated, "a far field"), "field")
+	it.rule = idOf(t, want(t, owner.post("/api/v1/projects/"+farProject+"/automation/rules", map[string]any{
 		"name": "Far rule", "trigger": map[string]any{"kind": "incoming"},
 		"actions": []any{map[string]any{"kind": "add_comment", "text": "ran"}},
 	}), http.StatusCreated, "a far rule"), "rule")
 
-	board := obj(t, want(t, owner.get("/api/v1/projects/FARR/board"), http.StatusOK, "the far board"), "board")
+	board := obj(t, want(t, owner.get("/api/v1/projects/"+farProject+"/board"), http.StatusOK, "the far board"), "board")
 	it.board = board["id"].(string)
 	it.swimlane = board["swimlanes"].([]any)[0].(map[string]any)["id"].(string)
 
-	dashboards := list(t, want(t, owner.get("/api/v1/projects/FARR/dashboards"), http.StatusOK, "the far dashboards"), "dashboards")
+	dashboards := list(t, want(t, owner.get("/api/v1/projects/"+farProject+"/dashboards"), http.StatusOK, "the far dashboards"), "dashboards")
 	it.dashboard = dashboards[0].(map[string]any)["id"].(string)
 	it.share = idOf(t, want(t, owner.post("/api/v1/dashboards/"+it.dashboard+"/shares", map[string]any{"name": "Far link"}), http.StatusCreated, "a far share"), "share")
 

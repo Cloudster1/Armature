@@ -13,8 +13,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
@@ -30,7 +28,7 @@ import (
 // service that observes its issues.
 func (ws *workspace) aDesk(t *testing.T, h *harness, name string) (*desk.Service, *project.Project) {
 	t.Helper()
-	return ws.aDeskKeyed(t, h, name, strings.ToUpper(name[:min(len(name), 3)]+uuid.New().String()[:3]))
+	return ws.aDeskKeyed(t, h, name, h.projectKey(t, name))
 }
 
 // aDeskKeyed is aDesk under a key the test chooses.
@@ -45,7 +43,7 @@ func (ws *workspace) aDeskKeyed(t *testing.T, h *harness, name, key string) (*de
 	return d, p
 }
 
-// customerOf adds a portal customer to the organization.
+// customerOf adds a portal customer to the installation.
 func (ws *workspace) customerOf(t *testing.T, h *harness, prefix string) issue.Actor {
 	t.Helper()
 	id := h.joinExisting(t, ws, h.email(t, prefix), "customer")
@@ -77,7 +75,7 @@ func timerFor(t *testing.T, timers []desk.Timer, metric desk.Metric) desk.Timer 
 func TestAServiceDeskIsSetUpFromItsTemplate(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "desking")
+	ws := h.newProject(t, "desking")
 	d, p := ws.aDesk(t, h, "Helpdesk")
 
 	if p.Kind != project.KindService {
@@ -120,7 +118,7 @@ func TestAServiceDeskIsSetUpFromItsTemplate(t *testing.T) {
 func TestACustomerRaisesAndFollowsARequest(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "raising")
+	ws := h.newProject(t, "raising")
 	d, p := ws.aDesk(t, h, "Support")
 	customer := ws.customerOf(t, h, "customer")
 	stranger := ws.customerOf(t, h, "stranger")
@@ -273,7 +271,7 @@ func ageTimer(t *testing.T, h *harness, ws *workspace, key string, metric desk.M
 
 func TestABreachIsNoticedByTheWatch(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "breaching")
+	ws := h.newProject(t, "breaching")
 	d, p := ws.aDesk(t, h, "Slow desk")
 	customer := ws.customerOf(t, h, "waiting")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -302,11 +300,7 @@ func TestABreachIsNoticedByTheWatch(t *testing.T) {
 		t.Error("the resolution clock, well within its three days, is called breached")
 	}
 
-	var breaches int
-	if err := h.super.QueryRow(context.Background(),
-		`SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2`, ws.orgID, events.TopicSLABreached).Scan(&breaches); err != nil {
-		t.Fatal(err)
-	}
+	breaches := breachEvents(t, h, p.Key)
 	if breaches != 1 {
 		t.Errorf("%d breach events, want one", breaches)
 	}
@@ -344,7 +338,7 @@ func (m *fakeMailer) Send(ctx context.Context, mail desk.Mail) error {
 func TestACustomerIsMailedAboutTheirRequest(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mailing")
+	ws := h.newProject(t, "mailing")
 	d, p := ws.aDesk(t, h, "Mail desk")
 	customer := ws.customerOf(t, h, "mailed")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -396,11 +390,12 @@ func TestACustomerIsMailedAboutTheirRequest(t *testing.T) {
 func TestCustomersAreKeptToThePortal(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	hlpKey := h.projectKey(t, "HLP")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "deskowner")
+	owner.signIn(t, h.person(t, "deskowner", auth.RoleOwner))
 
-	made := owner.post("/api/v1/projects", map[string]any{"name": "Helpdesk", "key": "HLP", "template": "service-desk"})
+	made := owner.post("/api/v1/projects", map[string]any{"name": "Helpdesk", "key": hlpKey, "template": "service-desk"})
 	if made.Status != http.StatusCreated {
 		t.Fatalf("create desk: %d %s", made.Status, made.Raw)
 	}
@@ -418,7 +413,7 @@ func TestCustomersAreKeptToThePortal(t *testing.T) {
 	}
 
 	t.Run("the agent api refuses a customer", func(t *testing.T) {
-		for _, path := range []string{"/api/v1/projects", "/api/v1/issues", "/api/v1/projects/HLP/queue"} {
+		for _, path := range []string{"/api/v1/projects", "/api/v1/issues", "/api/v1/projects/" + hlpKey + "/queue"} {
 			if r := customer.get(path); r.Status != http.StatusForbidden || r.ErrorCode() != "portal_only" {
 				t.Errorf("GET %s as a customer: %d %s", path, r.Status, r.Raw)
 			}
@@ -429,7 +424,16 @@ func TestCustomersAreKeptToThePortal(t *testing.T) {
 	if desks.Status != http.StatusOK {
 		t.Fatalf("desks: %d %s", desks.Status, desks.Raw)
 	}
-	first := desks.Body["desks"].([]any)[0].(map[string]any)
+	// Every desk in the installation is offered; this test's is the one under its key.
+	var first map[string]any
+	for _, raw := range desks.Body["desks"].([]any) {
+		if d := raw.(map[string]any); d["projectKey"] == hlpKey {
+			first = d
+		}
+	}
+	if first == nil {
+		t.Fatalf("the portal does not offer %s: %s", hlpKey, desks.Raw)
+	}
 	types := first["requestTypes"].([]any)
 	if len(types) != 3 {
 		t.Fatalf("the portal offers %d request types", len(types))
@@ -478,7 +482,7 @@ func TestCustomersAreKeptToThePortal(t *testing.T) {
 	if got := len(timers.Body["timers"].([]any)); got != 2 {
 		t.Errorf("timers over the api = %s", timers.Raw)
 	}
-	queue := owner.get("/api/v1/projects/HLP/queue?filter=open")
+	queue := owner.get("/api/v1/projects/" + hlpKey + "/queue?filter=open")
 	if got := len(queue.Body["rows"].([]any)); got != 1 {
 		t.Errorf("queue = %s", queue.Raw)
 	}
@@ -490,7 +494,7 @@ func TestCustomersAreKeptToThePortal(t *testing.T) {
 func TestARequestIsRoutedByItsTemplate(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "routing")
+	ws := h.newProject(t, "routing")
 	d, p := ws.aDesk(t, h, "Routed desk")
 	field, _, err := ws.teams.Create(ws.ctx, p.Key, team.CreateInput{Name: "Field support"}, ws.actor.UserID)
 	if err != nil {

@@ -77,12 +77,11 @@ func (c *inFlight) RoundTrip(req *http.Request) (*http.Response, error) {
 	return c.base.RoundTrip(req)
 }
 
-// One organization's hanging endpoint does not hold up another's, holds only a
-// few requests at once, and is backed off on its own after a few timeouts.
-func TestAHangingWebhookDoesNotHoldUpAnotherOrganization(t *testing.T) {
+// A hanging endpoint does not hold up another one, holds only a few requests
+// at once, and is backed off on its own after a few timeouts.
+func TestAHangingWebhookDoesNotHoldUpAnotherEndpoint(t *testing.T) {
 	h := newHarness(t)
-	slowOrg := h.newWorkspace(t, "hanghook")
-	fastOrg := h.newWorkspace(t, "fasthook")
+	ws := h.newProject(t, "hanghook")
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	stuck := &hanging{release: make(chan struct{})}
 	slowServer := httptest.NewServer(stuck)
@@ -94,26 +93,27 @@ func TestAHangingWebhookDoesNotHoldUpAnotherOrganization(t *testing.T) {
 	fastServer := httptest.NewServer(sink)
 	t.Cleanup(fastServer.Close)
 
-	slow, _, err := hooks.Create(slowOrg.ctx, webhook.Input{Name: "Hangs", URL: slowServer.URL, Topics: []string{events.TopicIssueCreated}}, slowOrg.actor.UserID)
+	// Each endpoint hears a topic of its own, so the queue is the hanging one's.
+	slow, _, err := hooks.Create(ws.ctx, webhook.Input{Name: h.name(t, "Hangs"), URL: slowServer.URL, Topics: []string{events.TopicIssueCreated}}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = hooks.Delete(slowOrg.ctx, slow.ID, slowOrg.actor.UserID) })
-	fast, _, err := hooks.Create(fastOrg.ctx, webhook.Input{Name: "Answers", URL: fastServer.URL, Topics: []string{events.TopicIssueCreated}}, fastOrg.actor.UserID)
+	t.Cleanup(func() { _, _ = hooks.Delete(ws.ctx, slow.ID, ws.actor.UserID) })
+	fast, _, err := hooks.Create(ws.ctx, webhook.Input{Name: h.name(t, "Answers"), URL: fastServer.URL, Topics: []string{events.TopicIssueUpdated}}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = hooks.Delete(fastOrg.ctx, fast.ID, fastOrg.actor.UserID) })
+	t.Cleanup(func() { _, _ = hooks.Delete(ws.ctx, fast.ID, ws.actor.UserID) })
 
 	// The hanging endpoint's deliveries are queued first, so they are first
 	// in line as well.
 	for range hangingQueue {
-		if err := hooks.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: slowOrg.orgID, Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{}`)}); err != nil {
+		if err := hooks.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{}`)}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	fastEvent := uuid.New()
-	if err := hooks.Handle(context.Background(), events.Event{ID: fastEvent, OrgID: fastOrg.orgID, Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{}`)}); err != nil {
+	if err := hooks.Handle(context.Background(), events.Event{ID: fastEvent, OrgID: ws.orgID, Topic: events.TopicIssueUpdated, Payload: json.RawMessage(`{}`)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -127,7 +127,7 @@ func TestAHangingWebhookDoesNotHoldUpAnotherOrganization(t *testing.T) {
 	}()
 
 	delivered := func() bool {
-		deliveries, err := hooks.Deliveries(fastOrg.ctx, fast.ID, 0)
+		deliveries, err := hooks.Deliveries(ws.ctx, fast.ID, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ func TestAHangingWebhookDoesNotHoldUpAnotherOrganization(t *testing.T) {
 	for !delivered() {
 		if time.Since(started) > fastDelivery {
 			cancel()
-			t.Fatalf("the answering endpoint was not delivered within %s while another organization's endpoint hung", fastDelivery)
+			t.Fatalf("the answering endpoint was not delivered within %s while another endpoint hung", fastDelivery)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
@@ -164,7 +164,7 @@ func TestAHangingWebhookDoesNotHoldUpAnotherOrganization(t *testing.T) {
 
 	// What was not tried is left for later, every delivery still waiting is
 	// due no sooner than the pause, and nothing was given up.
-	deliveries, err := hooks.Deliveries(slowOrg.ctx, slow.ID, 0)
+	deliveries, err := hooks.Deliveries(ws.ctx, slow.ID, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

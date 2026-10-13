@@ -73,7 +73,7 @@ func emailOf(t *testing.T, h *harness, id uuid.UUID) string {
 func TestACustomersReplyReopensAResolvedRequest(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "reopening")
+	ws := h.newProject(t, "reopening")
 	d, p := ws.aDesk(t, h, "Reopen desk")
 	customer := ws.customerOf(t, h, "reporter")
 	follower := ws.customerOf(t, h, "follower")
@@ -163,10 +163,39 @@ func TestACustomersReplyReopensAResolvedRequest(t *testing.T) {
 func TestAReplyNoWayOutOfDoneCanTakeIsToldToTheAgents(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "noway")
+	ws := h.newProject(t, "noway")
 	d, p := ws.aDesk(t, h, "Dead end desk")
 	customer := ws.customerOf(t, h, "stuck")
 	bob := h.joinExisting(t, ws, h.email(t, "bob"), "member")
+
+	// The desk follows a copy of the service request workflow that has no way
+	// back out of Resolved; every other desk keeps the original.
+	var serviceFlow uuid.UUID
+	if err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
+		return tx.QueryRow(ctx, `SELECT id FROM workflow WHERE name = 'Service request workflow'`).Scan(&serviceFlow)
+	}); err != nil {
+		t.Fatalf("find the service request workflow: %v", err)
+	}
+	deadEnd, _, err := ws.admin.CopyWorkflow(ws.ctx, serviceFlow, h.name(t, "Dead end workflow"), ws.actor.UserID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
+		tag, err := tx.Exec(ctx, `DELETE FROM workflow_transition WHERE workflow_id = $1 AND name = 'Reopen'`, deadEnd.ID)
+		if err == nil && tag.RowsAffected() != 1 {
+			t.Fatalf("removed %d Reopen transitions, want the copy's one", tag.RowsAffected())
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	scheme, _, err := ws.admin.CreateScheme(ws.ctx, workflow.SchemeInput{Name: h.name(t, "Dead end scheme"), Items: []workflow.SchemeItemInput{{WorkflowID: deadEnd.ID}}}, ws.actor.UserID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := ws.projects.SetWorkflowScheme(ws.ctx, p.Key, &scheme.ID, ws.actor.UserID); err != nil {
+		t.Fatal(err)
+	}
 
 	assigned := resolvedRequest(t, h, ws, d, p.Key, "The door squeaks", customer, 3)
 	bobPtr := &bob
@@ -179,19 +208,6 @@ func TestAReplyNoWayOutOfDoneCanTakeIsToldToTheAgents(t *testing.T) {
 		t.Fatal(err)
 	}
 	ws.move(t, h, unassigned.Key, "Resolve")
-
-	// The desk's workflow loses its way back out of Resolved.
-	if _, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `
-			DELETE FROM workflow_transition t USING workflow w
-			WHERE w.id = t.workflow_id AND w.name = 'Service request workflow' AND t.name = 'Reopen'`)
-		if err == nil && tag.RowsAffected() != 1 {
-			t.Fatalf("removed %d Reopen transitions, want the desk's one", tag.RowsAffected())
-		}
-		return err
-	}); err != nil {
-		t.Fatal(err)
-	}
 
 	fan := notify.NewFanOut(h.cluster, nil, nil, "http://app.test", slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	inbox := notify.NewService(h.cluster)

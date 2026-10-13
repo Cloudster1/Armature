@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
@@ -20,12 +21,13 @@ import (
 func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	pgsKey := h.projectKey(t, "PGS")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "pages")
+	signedUp := owner.signIn(t, h.person(t, "pages", auth.RoleOwner))
 	orgID := obj(t, signedUp, "principal", "org")["id"].(string)
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Pages", "key": "PGS"}), http.StatusCreated, "create project")
-	key := obj(t, want(t, owner.post("/api/v1/projects/PGS/issues", map[string]any{"summary": "checkout flow"}), http.StatusCreated, "file issue"), "issue")["key"].(string)
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Pages", "key": pgsKey}), http.StatusCreated, "create project")
+	key := obj(t, want(t, owner.post("/api/v1/projects/"+pgsKey+"/issues", map[string]any{"summary": "checkout flow"}), http.StatusCreated, "file issue"), "issue")["key"].(string)
 	path := "/api/v1/issues/" + key + "/remote-links"
 
 	countTopic := func(topic string) int {
@@ -76,7 +78,7 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 			t.Errorf("the refusal reads %q", message)
 		}
 		want(t, owner.post(path, map[string]any{"url": "https://wiki.example.com/x", "title": "", "source": "Stator"}), http.StatusUnprocessableEntity, "no title")
-		want(t, owner.post("/api/v1/issues/PGS-999/remote-links", map[string]any{"url": spec, "title": "Spec", "source": "Stator"}), http.StatusNotFound, "no such issue")
+		want(t, owner.post("/api/v1/issues/"+pgsKey+"-999/remote-links", map[string]any{"url": spec, "title": "Spec", "source": "Stator"}), http.StatusNotFound, "no such issue")
 	})
 
 	t.Run("adding and removing are announced on their own topics, never as an edit", func(t *testing.T) {
@@ -97,7 +99,7 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 	})
 
 	t.Run("a page on one issue cannot be removed through another", func(t *testing.T) {
-		other := obj(t, want(t, owner.post("/api/v1/projects/PGS/issues", map[string]any{"summary": "another"}), http.StatusCreated, "file another"), "issue")["key"].(string)
+		other := obj(t, want(t, owner.post("/api/v1/projects/"+pgsKey+"/issues", map[string]any{"summary": "another"}), http.StatusCreated, "file another"), "issue")["key"].(string)
 		want(t, owner.delete("/api/v1/issues/"+other+"/remote-links/"+first["id"].(string)), http.StatusNotFound, "removing through the wrong issue")
 		if pages := list(t, owner.get(path), "remoteLinks"); len(pages) != 1 {
 			t.Errorf("the page went through the wrong issue: %d left", len(pages))
@@ -105,7 +107,7 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 	})
 
 	t.Run("a reader sees the pages and changes none of them", func(t *testing.T) {
-		reader := api.asRole(t, h, owner, "PGS", perm.Reader)
+		reader := api.asRole(t, h, owner, pgsKey, perm.Reader)
 		if pages := list(t, want(t, reader.get(path), http.StatusOK, "reader lists"), "remoteLinks"); len(pages) != 1 {
 			t.Errorf("the reader sees %d pages, want 1", len(pages))
 		}
@@ -130,13 +132,13 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 	})
 }
 
-// The service keeping pages to their organization is not the proof. The same
-// reads and writes are tried straight through SQL and the database refuses them.
-func TestAPageLinkStaysInItsOrganizationEvenThroughSQL(t *testing.T) {
+// A page belongs to its issue: another issue cannot take it away, and what the
+// service refuses to write the table refuses too, straight through SQL.
+func TestAPageLinkKeepsToItsIssueEvenThroughSQL(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	home := h.newWorkspace(t, "pagehome")
-	away := h.newWorkspace(t, "pageaway")
+	home := h.newProject(t, "pagehome")
+	away := h.newProject(t, "pageaway")
 	mine := home.newIssue(t, "has a spec")
 	theirs := away.newIssue(t, "has a spec elsewhere")
 
@@ -147,72 +149,9 @@ func TestAPageLinkStaysInItsOrganizationEvenThroughSQL(t *testing.T) {
 		t.Fatalf("put a page: %v (created %v)", err, created)
 	}
 
-	t.Run("another organization reads none of it", func(t *testing.T) {
-		var seen int
-		_, err := h.cluster.Write(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM issue_remote_link WHERE id = $1`, link.ID).Scan(&seen)
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if seen != 0 {
-			t.Errorf("another organization sees the page")
-		}
+	t.Run("another issue does not remove it", func(t *testing.T) {
 		if _, err := away.issues.RemoveRemoteLink(away.ctx, theirs.Key, link.ID, away.actor); !errors.Is(err, issue.ErrRemoteLinkNotFound) {
-			t.Errorf("another organization removing it: %v", err)
-		}
-	})
-
-	t.Run("another organization changes none of it", func(t *testing.T) {
-		var touched int64
-		_, err := h.cluster.Write(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			tag, err := tx.Exec(ctx, `UPDATE issue_remote_link SET title = 'taken' WHERE id = $1`, link.ID)
-			if err != nil {
-				return err
-			}
-			touched = tag.RowsAffected()
-			tag, err = tx.Exec(ctx, `DELETE FROM issue_remote_link WHERE id = $1`, link.ID)
-			touched += tag.RowsAffected()
-			return err
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if touched != 0 {
-			t.Errorf("another organization changed %d rows", touched)
-		}
-	})
-
-	// The trigger runs before the policy's check, and refuses first: from here
-	// the other organization's issue cannot be seen at all.
-	t.Run("a row planted in another organization is refused", func(t *testing.T) {
-		_, err := h.cluster.Write(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `
-				INSERT INTO issue_remote_link (org_id, issue_id, url, title, source)
-				VALUES ($1, $2, 'https://wiki.example.com/planted', 'Planted', 'Stator')`, home.orgID, mine.ID)
-			return err
-		})
-		if err == nil {
-			t.Error("a row went into another organization")
-		}
-		var planted int
-		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM issue_remote_link WHERE issue_id = $1`, mine.ID).Scan(&planted); err != nil {
-			t.Fatal(err)
-		}
-		if planted != 1 {
-			t.Errorf("the issue carries %d pages, want only its own", planted)
-		}
-	})
-
-	t.Run("a row pointing at another organization's issue is refused by the trigger", func(t *testing.T) {
-		_, err := h.cluster.Write(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `
-				INSERT INTO issue_remote_link (org_id, issue_id, url, title, source)
-				VALUES (current_org_id(), $1, 'https://wiki.example.com/planted', 'Planted', 'Stator')`, mine.ID)
-			return err
-		})
-		if err == nil || !strings.Contains(err.Error(), "same organization as its issue") {
-			t.Errorf("a page reached another organization's issue: %v", err)
+			t.Errorf("removing it through another issue: %v", err)
 		}
 	})
 

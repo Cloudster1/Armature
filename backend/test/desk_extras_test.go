@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/events"
@@ -27,7 +28,7 @@ import (
 func TestArticlesAndCannedResponses(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "knowledge")
+	ws := h.newProject(t, "knowledge")
 	d, p := ws.aDesk(t, h, "Know desk")
 
 	draft, _, err := d.CreateArticle(ws.ctx, p.Key, desk.ArticleInput{Title: ptr("Resetting your password"), Body: ptr("Open Settings, then Password, then follow the mail.")}, ws.actor.UserID)
@@ -76,7 +77,7 @@ func TestArticlesAndCannedResponses(t *testing.T) {
 func TestARequestIsRatedOnce(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "ratings")
+	ws := h.newProject(t, "ratings")
 	d, p := ws.aDesk(t, h, "Rate desk")
 	customer := ws.customerOf(t, h, "rater")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -147,7 +148,7 @@ func TestARequestIsRatedOnce(t *testing.T) {
 // finds the suspect by wall time and the clock has the last word.
 func TestAGoalThatCountsBusinessHoursWaitsForMonday(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "hours")
+	ws := h.newProject(t, "hours")
 	d, p := ws.aDesk(t, h, "Hours desk")
 	cal := desk.DefaultCalendar()
 	if _, _, err := d.SaveCalendar(ws.ctx, p.Key, cal); err != nil {
@@ -231,13 +232,15 @@ func TestAGoalThatCountsBusinessHoursWaitsForMonday(t *testing.T) {
 // Every operation over the API, both ways.
 func TestDeskExtrasOverTheAPI(t *testing.T) {
 	h := newHarness(t)
+	hlxKey := h.projectKey(t, "HLX")
+	sfxKey := h.projectKey(t, "SFX")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	signedUp := c.signup(t, h, "deskextras")
+	signedUp := c.signIn(t, h.person(t, "deskextras", auth.RoleOwner))
 	orgID := uuid.MustParse(obj(t, signedUp, "principal", "org")["id"].(string))
-	made := want(t, c.post("/api/v1/projects", map[string]any{"name": "Help", "key": "HLX" + strings.ToUpper(uuid.New().String()[:3]), "template": "service-desk"}), http.StatusCreated, "desk")
+	made := want(t, c.post("/api/v1/projects", map[string]any{"name": "Help", "key": hlxKey, "template": "service-desk"}), http.StatusCreated, "desk")
 	key := obj(t, made, "project")["key"].(string)
-	soft := want(t, c.post("/api/v1/projects", map[string]any{"name": "Soft", "key": "SFX" + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "software project")
+	soft := want(t, c.post("/api/v1/projects", map[string]any{"name": "Soft", "key": sfxKey, "template": "kanban"}), http.StatusCreated, "software project")
 	softKey := obj(t, soft, "project")["key"].(string)
 
 	want(t, c.post("/api/v1/projects/"+key+"/articles", map[string]any{"title": ""}), http.StatusUnprocessableEntity, "a nameless article")

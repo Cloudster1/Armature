@@ -7,6 +7,13 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the integration suite works in the one installation instead of
+  an organization per test. A test makes its own people, project keys and
+  names, removes them when it ends and asserts only on what it made; the
+  tests that proved nothing but organizations apart are gone, and those that
+  change something everybody lives with run alone and put it back. The audit
+  log records an act whose actor is gone by the time the worker copies it,
+  without the actor, instead of retrying it until it is set aside (#217).
 - Upgrade note, for an installation that had organizations (#208): the
   upgrade refuses a database with several and names them, so delete the
   extra ones with the previous release first (#210). Bookmarks and links to

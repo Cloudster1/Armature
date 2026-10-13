@@ -11,6 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A desk names the domains it takes requests from; the door, the portal and
@@ -19,13 +21,16 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "trusting")
+	signedUp := owner.signIn(t, h.person(t, "trusting", auth.RoleOwner))
 	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
 	t.Cleanup(func() {
 		_, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE email LIKE '%@elsewhere.test'`)
+		_, _ = h.super.Exec(context.Background(), `DELETE FROM portal_code WHERE email LIKE '%@elsewhere.test'`)
 	})
+	// Addresses at the untrusted domain, unique so a code an earlier run asked for is not in the way.
+	elsewhere := func(name string) string { return unique(name) + "@elsewhere.test" }
 
-	tit, thr, tco := deskKey("TIT"), deskKey("THR"), deskKey("TCO")
+	tit, thr, tco := h.projectKey(t, "TIT"), h.projectKey(t, "THR"), h.projectKey(t, "TCO")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "IT desk", "key": tit, "template": "service-desk"}), http.StatusCreated, "a desk")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "HR desk", "key": thr, "template": "service-desk"}), http.StatusCreated, "another desk")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Code", "key": tco}), http.StatusCreated, "a software project")
@@ -42,20 +47,15 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 		}
 	})
 
-	t.Run("the code door refuses a domain only when no desk here takes it", func(t *testing.T) {
-		stranger := api.client(t)
-		want(t, stranger.post("/api/v1/desk/codes", map[string]any{"email": "walkin-a@elsewhere.test", "desk": thr}), http.StatusAccepted, "the HR desk still trusts everyone")
-		want(t, owner.patch("/api/v1/projects/"+thr, map[string]any{"trustedDomains": []string{"armature.test"}}), http.StatusOK, "now every desk names a domain")
-		refused := want(t, api.client(t).post("/api/v1/desk/codes", map[string]any{"email": "walkin-b@elsewhere.test", "desk": thr}), http.StatusForbidden, "an address at another domain")
-		if refused.ErrorCode() != "domain_not_trusted" || !strings.Contains(refused.Raw, "armature.test") {
-			t.Fatalf("refusal = %s", refused.Raw)
-		}
+	t.Run("a desk naming a domain still lets its door hand out codes to it", func(t *testing.T) {
+		want(t, api.client(t).post("/api/v1/desk/codes", map[string]any{"email": elsewhere("walkin-a"), "desk": thr}), http.StatusAccepted, "the HR desk still trusts everyone")
+		want(t, owner.patch("/api/v1/projects/"+thr, map[string]any{"trustedDomains": []string{"armature.test"}}), http.StatusOK, "now HR names a domain")
 		want(t, api.client(t).post("/api/v1/desk/codes", map[string]any{"email": h.email(t, "trusted"), "desk": thr}), http.StatusAccepted, "an address at the trusted domain")
 	})
 
 	t.Run("the open door keeps to the list too, and so does the database", func(t *testing.T) {
 		want(t, owner.patch("/api/v1/projects/"+tit, map[string]any{"portalVerifies": false}), http.StatusOK, "open the door")
-		refused := want(t, api.client(t).post("/api/v1/desk/sessions", map[string]any{"email": "walkin-c@elsewhere.test", "name": "Else Where", "desk": tit}), http.StatusForbidden, "turned away")
+		refused := want(t, api.client(t).post("/api/v1/desk/sessions", map[string]any{"email": elsewhere("walkin-c"), "name": "Else Where", "desk": tit}), http.StatusForbidden, "turned away")
 		if refused.ErrorCode() != "domain_not_trusted" {
 			t.Fatalf("code = %q", refused.ErrorCode())
 		}
@@ -64,7 +64,7 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 		walkerID := principalField(t, entered, "principal", "user", "id").(string)
 
 		var elsewhereID, deskID uuid.UUID
-		if err := h.super.QueryRow(context.Background(), `INSERT INTO app_user (email, name) VALUES ('walkin-d@elsewhere.test', 'Else') RETURNING id`).Scan(&elsewhereID); err != nil {
+		if err := h.super.QueryRow(context.Background(), `INSERT INTO app_user (email, name) VALUES ($1, 'Else') RETURNING id`, elsewhere("walkin-d")).Scan(&elsewhereID); err != nil {
 			t.Fatal(err)
 		}
 		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = $2 AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug, tit).Scan(&deskID); err != nil {
@@ -95,12 +95,22 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 		hrTypes := list(t, want(t, owner.get("/api/v1/projects/"+thr+"/request-types"), http.StatusOK, "HR request types"), "requestTypes")
 		itTypes := list(t, want(t, owner.get("/api/v1/projects/"+tit+"/request-types"), http.StatusOK, "IT request types"), "requestTypes")
 		key, customer := raiseAsCustomer(t, h, api, thr, h.email(t, "proven"), hrTypes[0].(map[string]any)["id"].(string))
-		desks := list(t, want(t, customer.get("/api/v1/portal/desks"), http.StatusOK, "desks"), "desks")
+		// Other desks in the installation trust everyone; these two are the test's.
+		ours := func() []any {
+			var out []any
+			for _, d := range list(t, want(t, customer.get("/api/v1/portal/desks"), http.StatusOK, "desks"), "desks") {
+				if k := d.(map[string]any)["projectKey"]; k == thr || k == tit {
+					out = append(out, d)
+				}
+			}
+			return out
+		}
+		desks := ours()
 		if len(desks) != 2 {
 			t.Fatalf("a trusted customer sees %d desks, want both", len(desks))
 		}
 		want(t, owner.patch("/api/v1/projects/"+tit, map[string]any{"trustedDomains": []string{"acme.test"}}), http.StatusOK, "IT trusts acme only")
-		desks = list(t, want(t, customer.get("/api/v1/portal/desks"), http.StatusOK, "desks"), "desks")
+		desks = ours()
 		if len(desks) != 1 || desks[0].(map[string]any)["projectKey"] != thr {
 			t.Fatalf("desks = %v, want HR alone", desks)
 		}
@@ -110,4 +120,27 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 		}
 		want(t, customer.get("/api/v1/portal/requests/"+key), http.StatusOK, "their own request still reads")
 	})
+}
+
+// The code door refuses a domain only when no desk takes it. Every installation
+// the suite shares has desks that take anybody, so this is one of its own.
+func TestTheCodeDoorRefusesADomainNoDeskTakes(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api, empty := emptyInstallation(t, h, "armature_code_door_domains_test")
+	api.api.Auth = empty.authService().Signups(auth.SignupFirst)
+	owner := api.client(t)
+	want(t, owner.post("/api/v1/auth/signup", map[string]string{"email": h.email(t, "domains"), "password": testPassword, "name": "Domains"}), http.StatusCreated, "the first account")
+	it, hr := h.projectKey(t, "TIT"), h.projectKey(t, "THR")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "IT desk", "key": it, "template": "service-desk"}), http.StatusCreated, "a desk")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "HR desk", "key": hr, "template": "service-desk"}), http.StatusCreated, "another desk")
+	want(t, owner.patch("/api/v1/projects/"+it, map[string]any{"trustedDomains": []string{"armature.test"}}), http.StatusOK, "IT names a domain")
+
+	want(t, api.client(t).post("/api/v1/desk/codes", map[string]any{"email": unique("walkin-a") + "@elsewhere.test", "desk": hr}), http.StatusAccepted, "the HR desk still trusts everyone")
+	want(t, owner.patch("/api/v1/projects/"+hr, map[string]any{"trustedDomains": []string{"armature.test"}}), http.StatusOK, "now every desk names a domain")
+	refused := want(t, api.client(t).post("/api/v1/desk/codes", map[string]any{"email": unique("walkin-b") + "@elsewhere.test", "desk": hr}), http.StatusForbidden, "an address at another domain")
+	if refused.ErrorCode() != "domain_not_trusted" || !strings.Contains(refused.Raw, "armature.test") {
+		t.Fatalf("refusal = %s", refused.Raw)
+	}
+	want(t, api.client(t).post("/api/v1/desk/codes", map[string]any{"email": h.email(t, "trusted"), "desk": hr}), http.StatusAccepted, "an address at the trusted domain")
 }

@@ -5,12 +5,10 @@ package test
 import (
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 )
 
@@ -24,7 +22,7 @@ func TestReadsReachTheReplica(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	_, ctx := h.makeOrg(t, "routing")
+	_, ctx := h.installation()
 
 	before := h.cluster.Stats()
 	for range 5 {
@@ -55,7 +53,7 @@ func TestReadsReachTheReplica(t *testing.T) {
 func TestWriteReportsThePositionPastItsCommit(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	orgID, ctx := h.makeOrg(t, "commitlsn")
+	orgID, ctx := h.installation()
 
 	var inside db.LSN
 	after, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -85,7 +83,7 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.makeOrg(t, "ryw")
+	orgID, ctx := h.installation()
 
 	// Let the replica see the organization itself before we freeze it, so the
 	// only thing it is missing is the write made below.
@@ -104,9 +102,10 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 	h.pauseReplay(t)
 
 	// This write can only be on the primary now.
+	action := unique("after.pause")
 	lsn, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'after.pause', 'org')`, orgID)
+			INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, $2, 'org')`, orgID, action)
 		return err
 	})
 	if err != nil {
@@ -120,7 +119,7 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 		t.Helper()
 		var n int
 		if err := h.cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action = 'after.pause'`).Scan(&n)
+			return tx.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action = $1`, action).Scan(&n)
 		}); err != nil {
 			t.Fatalf("read: %v", err)
 		}
@@ -174,7 +173,7 @@ func TestLaggingReplicaLeavesTheRotation(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.makeOrg(t, "lag")
+	orgID, ctx := h.installation()
 
 	h.pauseReplay(t)
 
@@ -226,7 +225,7 @@ func TestIdleReplicaStaysHealthy(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.makeOrg(t, "idle")
+	orgID, ctx := h.installation()
 
 	lsn, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
@@ -307,9 +306,9 @@ func TestTheInvitationsListShowsWhatWasJustSentOrWithdrawn(t *testing.T) {
 
 	// Two sessions, so that the one write each makes is the only one pinning it.
 	sender := api.client(t)
-	sender.signup(t, h, "invsend")
+	sender.signIn(t, h.person(t, "invsend", auth.RoleOwner))
 	withdrawer := api.client(t)
-	withdrawer.signup(t, h, "invwithdraw")
+	withdrawer.signIn(t, h.person(t, "invwithdraw", auth.RoleOwner))
 	withdrawn := idOf(t, want(t, withdrawer.post("/api/v1/invites", map[string]string{"email": h.email(t, "invgone"), "role": "member"}), http.StatusCreated, "an invitation"), "invite")
 
 	h.holdTheReplicaHere(t)
@@ -339,8 +338,8 @@ func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 	}
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	orgID := principalField(t, c.signup(t, h, "dashsight"), "principal", "org", "id").(string)
-	key := "DSH" + strings.ToUpper(uuid.New().String()[:3])
+	orgID := principalField(t, c.signIn(t, h.person(t, "dashsight", auth.RoleOwner)), "principal", "org", "id").(string)
+	key := h.projectKey(t, "DSH")
 	want(t, c.post("/api/v1/projects", map[string]any{"name": "Sighted", "key": key, "template": "kanban"}), http.StatusCreated, "a project")
 
 	// As a project made before dashboards existed: it has none at all.
@@ -366,7 +365,7 @@ func TestSavedPreferencesAreTheAnswerWhileTheReplicaLags(t *testing.T) {
 	}
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "prefsback")
+	c.signIn(t, h.person(t, "prefsback", auth.RoleOwner))
 
 	h.holdTheReplicaHere(t)
 
@@ -387,7 +386,7 @@ func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {
 	}
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "keyatonce")
+	owner.signIn(t, h.person(t, "keyatonce", auth.RoleOwner))
 
 	h.holdTheReplicaHere(t)
 

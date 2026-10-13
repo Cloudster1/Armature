@@ -41,7 +41,13 @@ response against it and refuses a run that left an operation unexercised.
 
 An integration test calls `t.Parallel()` first thing, or is listed in
 `backend/test/parallel_test.go` with what it shares that a parallel test would
-disturb; `make test` refuses one that is neither.
+disturb; `make test` refuses one that is neither. Every integration test works
+in the one installation: it makes its people with `h.person` or `h.outsider`,
+its projects with `h.newProject` or a key from `h.projectKey`, and gives anything
+everybody shares a name from `h.name`, all removed when it ends. It asserts on
+what it made, never on totals. One that changes something every test lives
+with, such as a default, the roles or the second-factor rule, is sequential and
+puts it back in a `t.Cleanup`.
 
 A browser scenario shares one installation with every other scenario of the run.
 It signs in as a new person (`signUp`), keeps to its own projects, which

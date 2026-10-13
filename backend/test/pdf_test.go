@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/render"
 )
 
@@ -38,16 +39,17 @@ func fakeRenderer(t *testing.T) (*httptest.Server, *[]string) {
 // mints a link for the renderer alone, hands it the path, and streams the file.
 func TestADashboardIsPrintedAsAPDF(t *testing.T) {
 	h := newHarness(t)
+	prtKey := h.projectKey(t, "PRT")
 	api := newAPIServer(t, h)
 	renderer, opened := fakeRenderer(t)
 	api.api.Renderer = render.HTTPRenderer{URL: renderer.URL}
 
 	owner := api.client(t)
-	owner.signup(t, h, "printer")
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Printed", "key": "PRT"}); made.Status != http.StatusCreated {
+	owner.signIn(t, h.person(t, "printer", auth.RoleOwner))
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Printed", "key": prtKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
-	dashboardID := owner.firstDashboard(t, "PRT")["id"].(string)
+	dashboardID := owner.firstDashboard(t, prtKey)["id"].(string)
 
 	t.Run("the signed-in export streams a file named after the dashboard", func(t *testing.T) {
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, owner.base+"/api/v1/dashboards/"+dashboardID+"/pdf?q=type+%3D+Bug", nil)
@@ -61,7 +63,7 @@ func TestADashboardIsPrintedAsAPDF(t *testing.T) {
 		if !strings.HasPrefix(string(body), "%PDF") {
 			t.Errorf("body starts %q, want a PDF", body[:min(8, len(body))])
 		}
-		if got := resp.Header.Get("Content-Disposition"); !strings.Contains(got, "attachment") || !strings.Contains(got, "PRT-overview-") {
+		if got := resp.Header.Get("Content-Disposition"); !strings.Contains(got, "attachment") || !strings.Contains(got, prtKey+"-overview-") {
 			t.Errorf("Content-Disposition = %q, want a download named after the project and dashboard", got)
 		}
 		if len(*opened) != 1 || !strings.HasPrefix((*opened)[0], "/shared/") || !strings.Contains((*opened)[0], "print=1") {

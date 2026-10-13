@@ -71,8 +71,8 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	return s.authenticateSession(ctx, secret)
 }
 
-// firstJoined orders a person's memberships so the one a session acts in comes
-// first: an installation gives each person one, the integration harness several.
+// firstJoined picks the membership a session acts in. An installation gives each
+// person one, so the order only keeps the answer stable until the tenant goes (#218).
 const firstJoined = `ORDER BY m.created_at, m.org_id LIMIT 1`
 
 // sessionPrincipalSQL resolves a session to the caller's role in the person's

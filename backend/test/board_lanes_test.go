@@ -4,7 +4,6 @@ package test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/board"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/perm"
@@ -32,26 +32,6 @@ func (ws *workspace) openingBoard(t *testing.T) uuid.UUID {
 // grouped is a board edit that changes nothing but the grouping.
 func grouped(g board.Grouping) board.UpdateBoardInput {
 	return board.UpdateBoardInput{GroupBy: &g}
-}
-
-// Another organization's board is not there, whichever lane is named with it.
-func TestAnotherOrganizationsBoardCannotBeConfigured(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	alpha := h.newWorkspace(t, "lanesalpha")
-	beta := h.newWorkspace(t, "lanesbeta")
-	betaBoard := beta.openingBoard(t)
-	betaLane := beta.swimlane(t, bootstrap.StatusToDo)
-
-	if _, _, err := alpha.boards.AddSwimlane(alpha.ctx, betaBoard, board.AddSwimlaneInput{Name: "Planted"}); !errors.Is(err, board.ErrNotFound) {
-		t.Errorf("adding a lane to beta's board: error = %v, want ErrNotFound", err)
-	}
-	if _, err := alpha.boards.DeleteSwimlane(alpha.ctx, betaBoard, betaLane.ID); !errors.Is(err, board.ErrNotFound) {
-		t.Errorf("deleting beta's lane: error = %v, want ErrNotFound", err)
-	}
-	if lanes := laneRows(t, h, betaBoard.String()); slices.ContainsFunc(lanes, func(l string) bool { return strings.HasPrefix(l, "Planted/") }) || len(lanes) == 0 {
-		t.Errorf("beta's board was changed by alpha: %v", lanes)
-	}
 }
 
 // laneRows reads a board's swimlanes straight from the database, as
@@ -105,17 +85,18 @@ func shownLaneNames(board map[string]any) []string {
 func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	laneKey := h.projectKey(t, "LANE")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "lanes")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Laned", "key": "LANE"}), http.StatusCreated, "the project")
+	owner.signIn(t, h.person(t, "lanes", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Laned", "key": laneKey}), http.StatusCreated, "the project")
 
-	first := obj(t, want(t, owner.get("/api/v1/projects/LANE/board"), http.StatusOK, "the first board"), "board")
+	first := obj(t, want(t, owner.get("/api/v1/projects/"+laneKey+"/board"), http.StatusOK, "the first board"), "board")
 	firstID := first["id"].(string)
 	firstLanes := laneIDs(t, first)
 	before := laneRows(t, h, firstID)
 
-	secondID := idOf(t, want(t, owner.post("/api/v1/projects/LANE/boards", map[string]any{"name": "Team flow", "type": "kanban"}), http.StatusCreated, "a second board"), "board")
+	secondID := idOf(t, want(t, owner.post("/api/v1/projects/"+laneKey+"/boards", map[string]any{"name": "Team flow", "type": "kanban"}), http.StatusCreated, "a second board"), "board")
 	second := func() map[string]any {
 		return obj(t, want(t, owner.get("/api/v1/boards/"+secondID), http.StatusOK, "the second board"), "board")
 	}
@@ -128,7 +109,7 @@ func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
 		if names := shownLaneNames(second()); !slices.Contains(names, "Parked") {
 			t.Errorf("the second board has %v, want Parked among them", names)
 		}
-		opening := obj(t, owner.get("/api/v1/projects/LANE/board"), "board")
+		opening := obj(t, owner.get("/api/v1/projects/"+laneKey+"/board"), "board")
 		if names := shownLaneNames(opening); slices.Contains(names, "Parked") {
 			t.Errorf("the first board gained the lane: %v", names)
 		}
@@ -161,7 +142,7 @@ func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
 		if got := obj(t, regrouped, "board")["groupBy"]; got != "assignee" {
 			t.Errorf("the second board groups by %v, want assignee", got)
 		}
-		if got := obj(t, owner.get("/api/v1/projects/LANE/board"), "board")["groupBy"]; got != "none" {
+		if got := obj(t, owner.get("/api/v1/projects/"+laneKey+"/board"), "board")["groupBy"]; got != "none" {
 			t.Errorf("the first board groups by %v, want it left alone", got)
 		}
 	})
@@ -174,7 +155,7 @@ func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
 	})
 
 	t.Run("a reader cannot configure a board", func(t *testing.T) {
-		reader := api.asRole(t, h, owner, "LANE", perm.Reader)
+		reader := api.asRole(t, h, owner, laneKey, perm.Reader)
 		want(t, reader.get("/api/v1/boards/"+secondID), http.StatusOK, "a reader reads the board")
 		lanes := laneRows(t, h, secondID)
 		for _, attempt := range []struct {
@@ -237,23 +218,24 @@ func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
 func TestAProjectOpensOnTheBoardItListsFirst(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	openKey := h.projectKey(t, "OPEN")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "opening")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Opening", "key": "OPEN"}), http.StatusCreated, "the project")
+	owner.signIn(t, h.person(t, "opening", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Opening", "key": openKey}), http.StatusCreated, "the project")
 
-	originalID := obj(t, want(t, owner.get("/api/v1/projects/OPEN/board"), http.StatusOK, "the original board"), "board")["id"].(string)
-	crew := idOf(t, want(t, owner.post("/api/v1/projects/OPEN/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
+	originalID := obj(t, want(t, owner.get("/api/v1/projects/"+openKey+"/board"), http.StatusOK, "the original board"), "board")["id"].(string)
+	crew := idOf(t, want(t, owner.post("/api/v1/projects/"+openKey+"/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
 	want(t, owner.patch("/api/v1/boards/"+originalID, map[string]any{"teamId": crew}), http.StatusOK, "hand the original board to the team")
-	wideID := idOf(t, want(t, owner.post("/api/v1/projects/OPEN/boards", map[string]any{"name": "Everyone", "type": "kanban"}), http.StatusCreated, "a project-wide board"), "board")
+	wideID := idOf(t, want(t, owner.post("/api/v1/projects/"+openKey+"/boards", map[string]any{"name": "Everyone", "type": "kanban"}), http.StatusCreated, "a project-wide board"), "board")
 
-	boards := list(t, want(t, owner.get("/api/v1/projects/OPEN/boards"), http.StatusOK, "the boards"), "boards")
+	boards := list(t, want(t, owner.get("/api/v1/projects/"+openKey+"/boards"), http.StatusOK, "the boards"), "boards")
 	listed := boards[0].(map[string]any)["id"].(string)
 	if listed != wideID {
 		t.Errorf("the list leads with %s, want the project-wide board %s ahead of the team's", listed, wideID)
 	}
 	opening := func() map[string]any {
-		return obj(t, want(t, owner.get("/api/v1/projects/OPEN/board"), http.StatusOK, "the board the project opens on"), "board")
+		return obj(t, want(t, owner.get("/api/v1/projects/"+openKey+"/board"), http.StatusOK, "the board the project opens on"), "board")
 	}
 	if got := opening()["id"]; got != listed {
 		t.Fatalf("the project opens on %v but lists %s first", got, listed)
@@ -273,22 +255,31 @@ func TestAProjectOpensOnTheBoardItListsFirst(t *testing.T) {
 func TestALaneForAStatusAddedToTheWorkflowCanBeMovedOffTheEnd(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	heldKey := h.projectKey(t, "HELD")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "onhold")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Held", "key": "HELD"}), http.StatusCreated, "the project")
+	owner.signIn(t, h.person(t, "onhold", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Held", "key": heldKey}), http.StatusCreated, "the project")
 
-	onHold := idOf(t, want(t, owner.post("/api/v1/statuses", map[string]any{"name": "On Hold", "category": "in_progress"}), http.StatusCreated, "coin On Hold"), "status")
-	var workflowID string
+	// The project follows a copy of the default workflow, since every other
+	// project follows the default itself.
+	held := h.name(t, "On Hold")
+	onHold := idOf(t, want(t, owner.post("/api/v1/statuses", map[string]any{"name": held, "category": "in_progress"}), http.StatusCreated, "coin On Hold"), "status")
+	var defaultID string
 	for _, raw := range list(t, want(t, owner.get("/api/v1/workflows"), http.StatusOK, "the workflows"), "workflows") {
 		if w := raw.(map[string]any); w["name"] == bootstrap.DefaultWorkflowName {
-			workflowID = w["id"].(string)
+			defaultID = w["id"].(string)
 		}
 	}
-	if workflowID == "" {
+	if defaultID == "" {
 		t.Fatalf("no workflow is called %q", bootstrap.DefaultWorkflowName)
 	}
-	got := want(t, owner.get("/api/v1/workflows/"+workflowID), http.StatusOK, "the default workflow")
+	workflowID := idOf(t, want(t, owner.post("/api/v1/workflows/"+defaultID+"/copy", map[string]any{"name": h.name(t, "Held flow")}), http.StatusCreated, "copy the default workflow"), "workflow")
+	scheme := idOf(t, want(t, owner.post("/api/v1/workflow-schemes", map[string]any{
+		"name": h.name(t, "Held scheme"), "items": []map[string]any{{"workflowId": workflowID}},
+	}), http.StatusCreated, "a scheme of the project's own"), "scheme")
+	want(t, owner.put("/api/v1/projects/"+heldKey+"/workflow-scheme", map[string]any{"schemeId": scheme}), http.StatusOK, "the project follows it")
+	got := want(t, owner.get("/api/v1/workflows/"+workflowID), http.StatusOK, "the project's workflow")
 	var inProgress string
 	for _, raw := range obj(t, got, "workflow")["steps"].([]any) {
 		if status := raw.(map[string]any)["status"].(map[string]any); status["name"] == bootstrap.StatusInProgress {
@@ -303,22 +294,22 @@ func TestALaneForAStatusAddedToTheWorkflowCanBeMovedOffTheEnd(t *testing.T) {
 	want(t, owner.put("/api/v1/workflows/"+workflowID, graph), http.StatusOK, "add On Hold to the workflow")
 
 	opening := func() map[string]any {
-		return obj(t, want(t, owner.get("/api/v1/projects/HELD/board"), http.StatusOK, "the board"), "board")
+		return obj(t, want(t, owner.get("/api/v1/projects/"+heldKey+"/board"), http.StatusOK, "the board"), "board")
 	}
 	board := opening()
 	boardID := board["id"].(string)
 	names := shownLaneNames(board)
-	if names[len(names)-1] != "On Hold" {
+	if names[len(names)-1] != held {
 		t.Fatalf("lanes are %v, want On Hold added last", names)
 	}
 
 	order := laneIDs(t, board)
 	order = append([]string{order[len(order)-1]}, order[:len(order)-1]...)
 	want(t, owner.put("/api/v1/boards/"+boardID+"/swimlanes", map[string]any{"order": order}), http.StatusNoContent, "move On Hold first")
-	if names := shownLaneNames(opening()); names[0] != "On Hold" {
+	if names := shownLaneNames(opening()); names[0] != held {
 		t.Errorf("lanes read back as %v, want On Hold first", names)
 	}
-	if rows := laneRows(t, h, boardID); !strings.HasPrefix(rows[0], "On Hold/0/") {
+	if rows := laneRows(t, h, boardID); !strings.HasPrefix(rows[0], held+"/0/") {
 		t.Errorf("the database holds the lanes as %v, want On Hold at position 0", rows)
 	}
 }

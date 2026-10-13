@@ -65,14 +65,14 @@ func cardKeys(b *board.Board) []string {
 func TestATeamIsMadeOfPeopleWhoAreAlreadyHere(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "forming")
+	ws := h.newProject(t, "forming")
 
 	formed := ws.newTeam(t, "Platform")
 	if formed.MemberCount != 0 {
 		t.Errorf("a new team has %d members, want none until somebody joins", formed.MemberCount)
 	}
 
-	t.Run("somebody in the organization can join", func(t *testing.T) {
+	t.Run("somebody on the team can join", func(t *testing.T) {
 		updated, _, err := ws.teams.AddMember(ws.ctx, formed.ID, ws.actor.UserID, true, ws.actor.UserID)
 		if err != nil {
 			t.Fatal(err)
@@ -82,23 +82,23 @@ func TestATeamIsMadeOfPeopleWhoAreAlreadyHere(t *testing.T) {
 		}
 	})
 
-	// A team is narrower than the organization, never wider: joining one is
-	// never a way to gain access to something.
-	t.Run("a stranger cannot", func(t *testing.T) {
-		other := h.newWorkspace(t, "elsewhere")
-		_, _, err := ws.teams.AddMember(ws.ctx, formed.ID, other.actor.UserID, false, ws.actor.UserID)
+	// A team is narrower than the people working here, never wider: joining
+	// one is never a way for a desk customer to gain access to something.
+	t.Run("a customer cannot", func(t *testing.T) {
+		customer := ws.customerOf(t, h, "teamcustomer")
+		_, _, err := ws.teams.AddMember(ws.ctx, formed.ID, customer.UserID, false, ws.actor.UserID)
 		if !errors.Is(err, team.ErrNotAMember) {
 			t.Errorf("error = %v, want it refused", err)
 		}
 	})
 
 	t.Run("and SQL refuses it too", func(t *testing.T) {
-		other := h.newWorkspace(t, "outside")
+		customer := ws.customerOf(t, h, "sqlcustomer")
 		_, err := h.super.Exec(context.Background(), `
 			INSERT INTO team_member (org_id, team_id, user_id) VALUES ($1, $2, $3)`,
-			ws.orgID, formed.ID, other.actor.UserID)
+			ws.orgID, formed.ID, customer.UserID)
 		if err == nil {
-			t.Fatal("SQL put a stranger on a team")
+			t.Fatal("SQL put a customer on a team")
 		}
 		if !strings.Contains(err.Error(), "member of the organization") {
 			t.Errorf("error = %v, want the guard's own message", err)
@@ -119,7 +119,7 @@ func TestATeamIsMadeOfPeopleWhoAreAlreadyHere(t *testing.T) {
 func TestWorkStaysWithTheTeamWhenSomebodyLeaves(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "leaving")
+	ws := h.newProject(t, "leaving")
 
 	formed := ws.newTeam(t, "Platform")
 	if _, _, err := ws.teams.AddMember(ws.ctx, formed.ID, ws.actor.UserID, false, ws.actor.UserID); err != nil {
@@ -144,7 +144,7 @@ func TestWorkStaysWithTheTeamWhenSomebodyLeaves(t *testing.T) {
 func TestABoardDrawsOnlyItsTeamsWork(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "drawing")
+	ws := h.newProject(t, "drawing")
 
 	platform := ws.newTeam(t, "Platform")
 	product := ws.newTeam(t, "Product")
@@ -200,7 +200,7 @@ func TestABoardDrawsOnlyItsTeamsWork(t *testing.T) {
 func TestEachBoardHasItsOwnBacklog(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "backlogs")
+	ws := h.newProject(t, "backlogs")
 
 	platform := ws.newTeam(t, "Platform")
 	product := ws.newTeam(t, "Product")
@@ -249,7 +249,7 @@ func TestEachBoardHasItsOwnBacklog(t *testing.T) {
 func TestTwoTeamsRunSprintsAtTheSameTime(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "parallel")
+	ws := h.newProject(t, "parallel")
 
 	platform := ws.newTeam(t, "Platform")
 	product := ws.newTeam(t, "Product")
@@ -307,8 +307,8 @@ func TestTwoTeamsRunSprintsAtTheSameTime(t *testing.T) {
 func TestATeamCannotBeBorrowedFromAnotherProject(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	mine := h.newWorkspace(t, "mine")
-	theirs := h.newWorkspace(t, "theirs")
+	mine := h.newProject(t, "mine")
+	theirs := h.newProject(t, "theirs")
 
 	other := theirs.newTeam(t, "Theirs")
 	task := mine.typed(t, h, bootstrap.TypeTask, "stays where it belongs")
@@ -340,7 +340,7 @@ func TestATeamCannotBeBorrowedFromAnotherProject(t *testing.T) {
 func TestATeamCarryingWorkCannotJustBeDeleted(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "deleting")
+	ws := h.newProject(t, "deleting")
 
 	formed := ws.newTeam(t, "Platform")
 	task := ws.typed(t, h, bootstrap.TypeTask, "carried by the team")
@@ -363,7 +363,7 @@ func TestATeamCarryingWorkCannotJustBeDeleted(t *testing.T) {
 func TestAProjectKeepsAtLeastOneBoard(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "lastboard")
+	ws := h.newProject(t, "lastboard")
 
 	extra := ws.boardFor(t, "A second view", nil)
 	if _, err := ws.boards.DeleteBoard(ws.ctx, extra.ID); err != nil {
@@ -401,7 +401,7 @@ func keysOf(cards []board.Card) []string {
 func TestATeamSaysHowMuchItCanTakeOnInAWeek(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "capacity")
+	ws := h.newProject(t, "capacity")
 	alpha := ws.newTeam(t, "Alpha")
 	if alpha.WeeklyCapacity != nil {
 		t.Fatalf("a new team already has a capacity: %v", *alpha.WeeklyCapacity)

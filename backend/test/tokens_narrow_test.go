@@ -3,11 +3,10 @@
 package test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
-	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A key holds what the person who made it holds, and never more: not the
@@ -15,18 +14,20 @@ import (
 func TestAKeyIsNarrowerThanTheOwnerWhoMadeIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	lateKey := h.projectKey(t, "LATE")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "narrow")
+	owner.signIn(t, h.person(t, "narrow", auth.RoleOwner))
+	near, far := h.projectKey(t, "NEAR"), h.projectKey(t, "FAR")
 
-	for _, key := range []string{"NEAR", "FAR"} {
+	for _, key := range []string{near, far} {
 		if made := owner.post("/api/v1/projects", map[string]any{"name": "Project " + key, "key": key}); made.Status != http.StatusCreated {
 			t.Fatalf("create project %s: %d %s", key, made.Status, made.Raw)
 		}
 		owner.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "already here"})
 	}
 
-	created := owner.post("/api/v1/tokens", map[string]any{"name": "pipeline", "projects": []string{"NEAR"}})
+	created := owner.post("/api/v1/tokens", map[string]any{"name": "pipeline", "projects": []string{near}})
 	if created.Status != http.StatusCreated {
 		t.Fatalf("create token: %d %s", created.Status, created.Raw)
 	}
@@ -36,23 +37,23 @@ func TestAKeyIsNarrowerThanTheOwnerWhoMadeIt(t *testing.T) {
 	h.waitForPrimary(t)
 
 	t.Run("it works in the project it names", func(t *testing.T) {
-		if resp := confined.get("/api/v1/projects/NEAR/issues"); resp.Status != http.StatusOK {
+		if resp := confined.get("/api/v1/projects/" + near + "/issues"); resp.Status != http.StatusOK {
 			t.Fatalf("read the named project: %d %s", resp.Status, resp.Raw)
 		}
-		if resp := confined.post("/api/v1/projects/NEAR/issues", map[string]any{"summary": "from the key"}); resp.Status != http.StatusCreated {
+		if resp := confined.post("/api/v1/projects/"+near+"/issues", map[string]any{"summary": "from the key"}); resp.Status != http.StatusCreated {
 			t.Fatalf("write in the named project: %d %s", resp.Status, resp.Raw)
 		}
 	})
 
 	t.Run("the other project is not found, while its owner still sees it", func(t *testing.T) {
-		if resp := confined.get("/api/v1/projects/FAR/issues"); resp.Status != http.StatusNotFound {
+		if resp := confined.get("/api/v1/projects/" + far + "/issues"); resp.Status != http.StatusNotFound {
 			t.Fatalf("read an unnamed project: %d %s", resp.Status, resp.Raw)
 		}
-		if resp := confined.post("/api/v1/projects/FAR/issues", map[string]any{"summary": "should not land"}); resp.Status < 400 {
+		if resp := confined.post("/api/v1/projects/"+far+"/issues", map[string]any{"summary": "should not land"}); resp.Status < 400 {
 			t.Fatalf("wrote into an unnamed project: %d %s", resp.Status, resp.Raw)
 		}
 		// The refusal has to be the key's, not the person's.
-		if resp := owner.get("/api/v1/projects/FAR/issues"); resp.Status != http.StatusOK || resp.Body["total"].(float64) != 1 {
+		if resp := owner.get("/api/v1/projects/" + far + "/issues"); resp.Status != http.StatusOK || resp.Body["total"].(float64) != 1 {
 			t.Fatalf("the owner lost the project too, so this proves nothing: %d %s", resp.Status, resp.Raw)
 		}
 	})
@@ -66,38 +67,40 @@ func TestAKeyIsNarrowerThanTheOwnerWhoMadeIt(t *testing.T) {
 		if len(projects) != 1 {
 			t.Fatalf("a confined key lists %d projects, want 1: %s", len(projects), listed.Raw)
 		}
-		if key := projects[0].(map[string]any)["key"]; key != "NEAR" {
-			t.Errorf("listed %v, want NEAR", key)
+		if key := projects[0].(map[string]any)["key"]; key != near {
+			t.Errorf("listed %v, want %s", key, near)
 		}
 	})
 
 	t.Run("a project made afterwards is still out of reach", func(t *testing.T) {
-		if made := owner.post("/api/v1/projects", map[string]any{"name": "Later", "key": "LATE"}); made.Status != http.StatusCreated {
+		if made := owner.post("/api/v1/projects", map[string]any{"name": "Later", "key": lateKey}); made.Status != http.StatusCreated {
 			t.Fatalf("create the later project: %d %s", made.Status, made.Raw)
 		}
-		if resp := confined.get("/api/v1/projects/LATE/issues"); resp.Status != http.StatusNotFound {
+		if resp := confined.get("/api/v1/projects/" + lateKey + "/issues"); resp.Status != http.StatusNotFound {
 			t.Fatalf("a key reached a project made after it: %d %s", resp.Status, resp.Raw)
 		}
 	})
 
 	t.Run("naming a project the owner cannot reach is refused", func(t *testing.T) {
-		resp := owner.post("/api/v1/tokens", map[string]any{"name": "hopeful", "projects": []string{"NOPE"}})
+		resp := owner.post("/api/v1/tokens", map[string]any{"name": "hopeful", "projects": []string{uniqueKey("NOPE")}})
 		if resp.Status != http.StatusUnprocessableEntity {
 			t.Fatalf("named an unknown project: %d %s", resp.Status, resp.Raw)
 		}
 	})
 }
 
-// The owner here is the organization's owner, which is as much standing as
+// The owner here is an owner of the installation, which is as much standing as
 // anybody has. Their key still does not administer.
 func TestAKeyNeverAdministersHoweverMuchItsOwnerCan(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	wrkKey := h.projectKey(t, "WRK")
+	snkKey := h.projectKey(t, "SNK")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	joined := owner.signup(t, h, "noadmin")
+	joined := owner.signIn(t, h.person(t, "noadmin", auth.RoleOwner))
 	ownerID := principalField(t, joined, "principal", "user", "id").(string)
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Work", "key": "WRK"}); made.Status != http.StatusCreated {
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Work", "key": wrkKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 
@@ -108,7 +111,7 @@ func TestAKeyNeverAdministersHoweverMuchItsOwnerCan(t *testing.T) {
 	h.waitForPrimary(t)
 
 	t.Run("it cannot grant a role, though its owner can", func(t *testing.T) {
-		body := map[string]any{"role": "project_administrator", "projectKey": "WRK", "userId": ownerID}
+		body := map[string]any{"role": "project_administrator", "projectKey": wrkKey, "userId": ownerID}
 		refused := key.post("/api/v1/role-assignments", body)
 		if refused.Status != http.StatusForbidden {
 			t.Fatalf("a key granted a role: %d %s", refused.Status, refused.Raw)
@@ -119,13 +122,13 @@ func TestAKeyNeverAdministersHoweverMuchItsOwnerCan(t *testing.T) {
 	})
 
 	t.Run("it cannot make a project", func(t *testing.T) {
-		if refused := key.post("/api/v1/projects", map[string]any{"name": "Sneaky", "key": "SNK"}); refused.Status != http.StatusForbidden {
+		if refused := key.post("/api/v1/projects", map[string]any{"name": "Sneaky", "key": snkKey}); refused.Status != http.StatusForbidden {
 			t.Fatalf("a key made a project: %d %s", refused.Status, refused.Raw)
 		}
 	})
 
 	t.Run("it cannot archive one, which its owner can", func(t *testing.T) {
-		refused := key.delete("/api/v1/projects/WRK")
+		refused := key.delete("/api/v1/projects/" + wrkKey)
 		if refused.Status != http.StatusForbidden || refused.ErrorCode() != "session_only" {
 			t.Fatalf("a key archived a project: %d %s", refused.Status, refused.Raw)
 		}
@@ -139,43 +142,8 @@ func TestAKeyNeverAdministersHoweverMuchItsOwnerCan(t *testing.T) {
 	})
 
 	t.Run("it still does the ordinary work", func(t *testing.T) {
-		if resp := key.post("/api/v1/projects/WRK/issues", map[string]any{"summary": "from the key"}); resp.Status != http.StatusCreated {
+		if resp := key.post("/api/v1/projects/"+wrkKey+"/issues", map[string]any{"summary": "from the key"}); resp.Status != http.StatusCreated {
 			t.Fatalf("a key lost the work along with the administration: %d %s", resp.Status, resp.Raw)
 		}
 	})
-}
-
-// The service refusing is not proof: the same rows are asked for straight
-// through SQL under another organization's scope, and refused there too.
-func TestAKeysProjectsAreInvisibleToAnotherOrganization(t *testing.T) {
-	h := newHarness(t)
-	api := newAPIServer(t, h)
-	owner := api.client(t)
-	owner.signup(t, h, "keysql")
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Mine", "key": "MIN"}); made.Status != http.StatusCreated {
-		t.Fatalf("create project: %d %s", made.Status, made.Raw)
-	}
-	if created := owner.post("/api/v1/tokens", map[string]any{"name": "mine", "projects": []string{"MIN"}}); created.Status != http.StatusCreated {
-		t.Fatalf("create token: %d %s", created.Status, created.Raw)
-	}
-
-	// The row is really there, read as the superuser who answers to no policy.
-	var all int
-	if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM api_token_project`).Scan(&all); err != nil {
-		t.Fatal(err)
-	}
-	if all == 0 {
-		t.Fatal("no api_token_project row was written, so the count below proves nothing")
-	}
-
-	stranger := h.newWorkspace(t, "keysqlother")
-	var seen int
-	if err := h.cluster.Read(stranger.ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT count(*) FROM api_token_project`).Scan(&seen)
-	}); err != nil {
-		t.Fatalf("count under the stranger's scope: %v", err)
-	}
-	if seen != 0 {
-		t.Errorf("another organization sees %d rows of api_token_project, want 0", seen)
-	}
 }

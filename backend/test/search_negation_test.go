@@ -20,7 +20,7 @@ import (
 func TestNegationKeepsIssuesWithNothingThere(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "negating")
+	ws := h.newProject(t, "negating")
 
 	me := ws.actor.UserID
 	create := func(summary string, shape func(in *issue.CreateInput)) *issue.Issue {
@@ -59,7 +59,8 @@ func TestNegationKeepsIssuesWithNothingThere(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%q: %v", text, err)
 		}
-		res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled}, issue.Page{Limit: 50})
+		// Within the test's project: the owner reads every project in the installation.
+		res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled, Within: []string{ws.project.Key}, Scoped: true}, issue.Page{Limit: 50})
 		if err != nil {
 			t.Fatalf("%q: %v", text, err)
 		}

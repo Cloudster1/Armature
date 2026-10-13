@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/desk"
@@ -20,10 +21,10 @@ import (
 )
 
 // anotherProject adds a project to the workspace to move issues into.
-func (ws *workspace) anotherProject(t *testing.T, name string) *project.Project {
+func (ws *workspace) anotherProject(t *testing.T, h *harness, name string) *project.Project {
 	t.Helper()
 	p, _, err := ws.projects.Create(ws.ctx, project.CreateInput{
-		Name: name, Key: strings.ToUpper(name[:min(len(name), 3)] + uuid.New().String()[:3]),
+		Name: name, Key: h.projectKey(t, name),
 	}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("create project %s: %v", name, err)
@@ -36,9 +37,9 @@ func (ws *workspace) anotherProject(t *testing.T, name string) *project.Project 
 func TestEveryKeyAnIssueHadStillFindsIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "rekeyed")
-	second := ws.anotherProject(t, "Second")
-	third := ws.anotherProject(t, "Third")
+	ws := h.newProject(t, "rekeyed")
+	second := ws.anotherProject(t, h, "Second")
+	third := ws.anotherProject(t, h, "Third")
 
 	story := ws.newIssue(t, "Moved twice")
 	step, _, err := ws.issues.Create(ws.ctx, issue.CreateInput{
@@ -95,11 +96,11 @@ func TestEveryKeyAnIssueHadOpensItOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "rekeyapi")
+	c.signIn(t, h.person(t, "rekeyapi", auth.RoleOwner))
 	var projects []string
 	for _, name := range []string{"Start", "Middle", "End"} {
 		made := want(t, c.post("/api/v1/projects", map[string]any{
-			"name": name, "key": strings.ToUpper(name[:3]) + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban",
+			"name": name, "key": h.projectKey(t, name), "template": "kanban",
 		}), http.StatusCreated, "project "+name)
 		projects = append(projects, obj(t, made, "project")["key"].(string))
 	}
@@ -120,7 +121,7 @@ func TestEveryKeyAnIssueHadOpensItOverTheAPI(t *testing.T) {
 func TestAReplyToAKeyARequestHadBeforeItMovedReachesIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mailmove")
+	ws := h.newProject(t, "mailmove")
 	d, first := ws.aDesk(t, h, "First desk")
 	_, second := ws.aDesk(t, h, "Second desk")
 	customer := ws.customerOf(t, h, "mover")
@@ -181,24 +182,22 @@ func TestAReplyToAKeyARequestHadBeforeItMovedReachesIt(t *testing.T) {
 	}
 }
 
-// The same reads and writes as the service, straight through SQL: a key names
-// one issue in an organization, and none in another.
-func TestAnOldKeyStaysInItsOrganizationEvenThroughSQL(t *testing.T) {
+// The same writes as the service, straight through SQL: an old key names one
+// issue, has the shape of a key, and goes with its issue.
+func TestAnOldKeyNamesOneIssueEvenThroughSQL(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	home := h.newWorkspace(t, "oldhome")
-	away := h.newWorkspace(t, "oldaway")
-	elsewhere := home.anotherProject(t, "Elsewhere")
+	home := h.newProject(t, "oldhome")
+	elsewhere := home.anotherProject(t, h, "Elsewhere")
 	mine := home.newIssue(t, "moved once")
 	other := home.newIssue(t, "never moved")
-	theirs := away.newIssue(t, "in another organization")
 	if _, _, err := home.issues.Move(home.ctx, mine.Key, issue.MoveInput{ProjectKey: elsewhere.Key}, home.actor); err != nil {
 		t.Fatal(err)
 	}
 	old := mine.Key
-	insert := func(ctx context.Context, orgID any, issueID uuid.UUID, key string) error {
+	insert := func(ctx context.Context, issueID uuid.UUID, key string) error {
 		_, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `INSERT INTO issue_old_key (org_id, issue_id, key) VALUES (COALESCE($1, current_org_id()), $2, $3)`, orgID, issueID, key)
+			_, err := tx.Exec(ctx, `INSERT INTO issue_old_key (org_id, issue_id, key) VALUES (current_org_id(), $1, $2)`, issueID, key)
 			return err
 		})
 		return err
@@ -215,83 +214,17 @@ func TestAnOldKeyStaysInItsOrganizationEvenThroughSQL(t *testing.T) {
 		t.Fatalf("the moved issue has %d old keys, want 1", rowsFor(t, mine.ID))
 	}
 
-	t.Run("an old key names one issue in its organization", func(t *testing.T) {
-		err := insert(home.ctx, nil, other.ID, old)
+	t.Run("an old key names one issue", func(t *testing.T) {
+		err := insert(home.ctx, other.ID, old)
 		if err == nil || !strings.Contains(err.Error(), "issue_old_key_pkey") {
 			t.Errorf("a second issue took the old key %s: %v", old, err)
 		}
 	})
 
 	t.Run("a key that is not one is refused", func(t *testing.T) {
-		err := insert(home.ctx, nil, other.ID, "not a key")
+		err := insert(home.ctx, other.ID, "not a key")
 		if err == nil || !strings.Contains(err.Error(), "issue_old_key_shape") {
 			t.Errorf("a key of the wrong shape went in: %v", err)
-		}
-	})
-
-	t.Run("another organization reads none of it", func(t *testing.T) {
-		var seen int
-		_, err := h.cluster.Write(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM issue_old_key WHERE key = $1`, old).Scan(&seen)
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if seen != 0 {
-			t.Error("another organization sees the old key")
-		}
-		if _, err := away.issues.ByKey(away.ctx, old); err == nil {
-			t.Error("another organization opened the issue by its old key")
-		}
-	})
-
-	t.Run("another organization changes none of it", func(t *testing.T) {
-		var touched int64
-		_, err := h.cluster.Write(away.ctx, func(ctx context.Context, tx db.DBTX) error {
-			tag, err := tx.Exec(ctx, `UPDATE issue_old_key SET issue_id = $2 WHERE key = $1`, old, theirs.ID)
-			if err != nil {
-				return err
-			}
-			touched = tag.RowsAffected()
-			tag, err = tx.Exec(ctx, `DELETE FROM issue_old_key WHERE key = $1`, old)
-			touched += tag.RowsAffected()
-			return err
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if touched != 0 || rowsFor(t, mine.ID) != 1 {
-			t.Errorf("another organization changed %d rows", touched)
-		}
-	})
-
-	// The trigger runs before the policy's check, and refuses first: from there
-	// the other organization's issue cannot be seen at all.
-	t.Run("a row planted in another organization is refused", func(t *testing.T) {
-		if err := insert(away.ctx, home.orgID, mine.ID, "PLANT-1"); err == nil {
-			t.Error("an old key went into another organization")
-		}
-		if rowsFor(t, mine.ID) != 1 {
-			t.Errorf("the issue has %d old keys, want only its own", rowsFor(t, mine.ID))
-		}
-	})
-
-	t.Run("a row pointing at another organization's issue is refused by the trigger", func(t *testing.T) {
-		err := insert(away.ctx, nil, mine.ID, "PLANT-2")
-		if err == nil || !strings.Contains(err.Error(), "same organization as its issue") {
-			t.Errorf("an old key reached another organization's issue: %v", err)
-		}
-	})
-
-	t.Run("the same key is another organization's own to give", func(t *testing.T) {
-		if err := insert(away.ctx, nil, theirs.ID, old); err != nil {
-			t.Fatalf("the other organization could not use %s: %v", old, err)
-		}
-		if found, err := away.issues.ByKey(away.ctx, old); err != nil || found.ID != theirs.ID {
-			t.Errorf("%s there found %+v, %v; want their own issue", old, found, err)
-		}
-		if found, err := home.issues.ByKey(home.ctx, old); err != nil || found.ID != mine.ID {
-			t.Errorf("%s here found %+v, %v; want the moved issue", old, found, err)
 		}
 	})
 

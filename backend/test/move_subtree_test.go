@@ -45,7 +45,7 @@ func (h *harness) buildBranch(t *testing.T, ws *workspace) branch {
 
 func (h *harness) moveTarget(t *testing.T, ws *workspace, name string) *project.Project {
 	t.Helper()
-	target, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: name, Key: "MV" + strings.ToUpper(uuid.New().String()[:4])}, ws.actor.UserID)
+	target, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: name, Key: h.projectKey(t, "MV")}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("create target project: %v", err)
 	}
@@ -70,7 +70,7 @@ func (h *harness) crossProjectParents(t *testing.T, ids ...uuid.UUID) int {
 func TestMovingAnIssueCarriesItsWholeSubtree(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "subtree")
+	ws := h.newProject(t, "subtree")
 	br := h.buildBranch(t, ws)
 	br.subtask = ws.move(t, h, br.subtask.Key, "Start progress")
 	target := h.moveTarget(t, ws, "Subtree target")
@@ -161,16 +161,18 @@ func TestMovingAnIssueCarriesItsWholeSubtree(t *testing.T) {
 func TestAMoveIsRefusedWhenPartOfTheSubtreeCannotCome(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "stranded")
+	ws := h.newProject(t, "stranded")
+	// Named before the target exists, so they are cleared after it is gone.
+	flowName, schemeName := h.name(t, "Subtask flow"), h.name(t, "Strict subtasks")
 	br := h.buildBranch(t, ws)
 	br.subtask = ws.move(t, h, br.subtask.Key, "Start progress")
 	target := h.moveTarget(t, ws, "Strict target")
 
 	// The target runs subtasks through a workflow that has no In Progress.
-	subtaskFlow := h.straightThrough(t, ws, "Subtask flow", bootstrap.StatusToDo, bootstrap.StatusDone)
+	subtaskFlow := h.straightThrough(t, ws, flowName, bootstrap.StatusToDo, bootstrap.StatusDone)
 	subtaskType := h.issueTypeID(t, ws, bootstrap.TypeSubtask)
 	scheme, _, err := ws.admin.CreateScheme(ws.ctx, workflow.SchemeInput{
-		Name:  "Strict subtasks",
+		Name:  schemeName,
 		Items: []workflow.SchemeItemInput{{IssueTypeID: &subtaskType, WorkflowID: subtaskFlow.ID}},
 	}, ws.actor.UserID)
 	if err != nil {

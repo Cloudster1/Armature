@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // MCP is the same table, dispatched in process: a tool call answers what the
@@ -14,15 +16,16 @@ import (
 func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	mcpKey := h.projectKey(t, "MCP")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "mcp")
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Tools", "key": "MCP"}); made.Status != http.StatusCreated {
+	owner.signIn(t, h.person(t, "mcp", auth.RoleOwner))
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Tools", "key": mcpKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 	types := owner.get("/api/v1/issue-types")
 	bug := find(t, types.Body["issueTypes"], "name", "Bug")["id"].(string)
-	first := owner.post("/api/v1/projects/MCP/issues", map[string]any{"summary": "a bug to find", "typeId": bug})
+	first := owner.post("/api/v1/projects/"+mcpKey+"/issues", map[string]any{"summary": "a bug to find", "typeId": bug})
 	firstKey := obj(t, first, "issue")["key"].(string)
 
 	token := owner.post("/api/v1/tokens", map[string]any{"name": "assistant"})
@@ -103,7 +106,7 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 	})
 
 	t.Run("a search takes an NQL query", func(t *testing.T) {
-		res := call(t, agent, "search_issues", map[string]any{"q": "project = MCP AND type = Bug", "limit": 5})
+		res := call(t, agent, "search_issues", map[string]any{"q": "project = " + mcpKey + " AND type = Bug", "limit": 5})
 		found := res["structuredContent"].(map[string]any)
 		if found["total"].(float64) != 1 {
 			t.Fatalf("search found %v", found["total"])
@@ -115,7 +118,7 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 	})
 
 	t.Run("a write lands and is read back at once", func(t *testing.T) {
-		res := call(t, agent, "create_issue", map[string]any{"projectKey": "MCP", "summary": "made by a tool"})
+		res := call(t, agent, "create_issue", map[string]any{"projectKey": mcpKey, "summary": "made by a tool"})
 		if res["isError"] == true {
 			t.Fatalf("create_issue: %s", text(res))
 		}
@@ -126,13 +129,13 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 		// The owner has not written since, so their read may come from the
 		// replica: let it see the tool's write first.
 		h.waitForPrimary(t)
-		if listed := owner.get("/api/v1/projects/MCP/issues"); listed.Body["total"].(float64) != 2 {
+		if listed := owner.get("/api/v1/projects/" + mcpKey + "/issues"); listed.Body["total"].(float64) != 2 {
 			t.Errorf("the project has %v issues after the tool wrote one", listed.Body["total"])
 		}
 	})
 
 	t.Run("a wrong key is an error the model reads, not a failure", func(t *testing.T) {
-		res := call(t, agent, "get_issue", map[string]any{"issueKey": "MCP-999"})
+		res := call(t, agent, "get_issue", map[string]any{"issueKey": mcpKey + "-999"})
 		if res["isError"] != true || !strings.HasSuffix(text(res), ".") {
 			t.Errorf("unknown issue: %v", res)
 		}
@@ -147,7 +150,7 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 		if res := call(t, reader, "get_issue", map[string]any{"issueKey": firstKey}); res["isError"] == true {
 			t.Fatalf("a read token cannot read: %s", text(res))
 		}
-		res := call(t, reader, "create_issue", map[string]any{"projectKey": "MCP", "summary": "not allowed"})
+		res := call(t, reader, "create_issue", map[string]any{"projectKey": mcpKey, "summary": "not allowed"})
 		if res["isError"] != true || !strings.Contains(text(res), "only read") {
 			t.Errorf("a read token wrote: %v", res)
 		}

@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/armature/armature/backend/internal/assistant"
+	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // fakeProvider speaks the Messages API shape back: it asks for a search first,
@@ -59,15 +61,16 @@ func fakeProvider(t *testing.T) (*httptest.Server, *[]string) {
 // MCP tools under the caller's credential and ends by naming a place.
 func TestAModelAnswersWithTheCallersOwnTools(t *testing.T) {
 	h := newHarness(t)
+	askKey := h.projectKey(t, "ASK")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "asker")
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Asked", "key": "ASK"}); made.Status != http.StatusCreated {
+	owner.signIn(t, h.person(t, "asker", auth.RoleOwner))
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Asked", "key": askKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 	types := owner.get("/api/v1/issue-types")
 	bug := find(t, types.Body["issueTypes"], "name", "Bug")["id"].(string)
-	owner.post("/api/v1/projects/ASK/issues", map[string]any{"summary": "a bug", "typeId": bug})
+	owner.post("/api/v1/projects/"+askKey+"/issues", map[string]any{"summary": "a bug", "typeId": bug})
 
 	t.Run("without a provider the door says so", func(t *testing.T) {
 		if status := owner.get("/api/v1/assistant"); status.Body["configured"] != false {
@@ -82,10 +85,13 @@ func TestAModelAnswersWithTheCallersOwnTools(t *testing.T) {
 	api.api.Assistant = assistant.HTTPAsker{URL: provider.URL, Key: "secret", Model: "fake"}
 
 	t.Run("with one it looks, then points", func(t *testing.T) {
-		if status := owner.get("/api/v1/assistant"); status.Body["configured"] != true {
+		// Somebody who reads this project alone, so the search the model asks
+		// for finds its one bug among every project's in the installation.
+		user := api.asRole(t, h, owner, askKey, perm.User)
+		if status := user.get("/api/v1/assistant"); status.Body["configured"] != true {
 			t.Fatalf("status = %s", status.Raw)
 		}
-		resp := owner.post("/api/v1/assistant/ask", map[string]any{"question": "where are the open bugs", "projectKey": "ASK",
+		resp := user.post("/api/v1/assistant/ask", map[string]any{"question": "where are the open bugs", "projectKey": askKey,
 			"places": []map[string]any{{"id": "page:search", "title": "Search", "sentence": "Search every project.", "path": "/search"}}})
 		if resp.Status != http.StatusOK {
 			t.Fatalf("ask: %d %s", resp.Status, resp.Raw)
@@ -97,7 +103,7 @@ func TestAModelAnswersWithTheCallersOwnTools(t *testing.T) {
 		if len(*seen) != 2 {
 			t.Fatalf("the provider was called %d times", len(*seen))
 		}
-		if !strings.Contains((*seen)[0], `"name":"search_issues"`) || !strings.Contains((*seen)[0], "Places:") || !strings.Contains((*seen)[0], "project ASK") {
+		if !strings.Contains((*seen)[0], `"name":"search_issues"`) || !strings.Contains((*seen)[0], "Places:") || !strings.Contains((*seen)[0], "project "+askKey) {
 			t.Error("the first call lacked the tools, the places or the project")
 		}
 		if !strings.Contains((*seen)[1], `total\":1`) {
@@ -118,7 +124,7 @@ func TestAModelAnswersWithTheCallersOwnTools(t *testing.T) {
 				io.WriteString(w, `{"stop_reason":"end_turn","content":[{"type":"text","text":"Nothing was changed."}]}`)
 				return
 			}
-			io.WriteString(w, `{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"create_issue","input":{"projectKey":"ASK","summary":"from a model"}}]}`)
+			io.WriteString(w, `{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"create_issue","input":{"projectKey":"`+askKey+`","summary":"from a model"}}]}`)
 		}))
 		defer writing.Close()
 		api.api.Assistant = assistant.HTTPAsker{URL: writing.URL, Model: "fake"}
@@ -129,7 +135,7 @@ func TestAModelAnswersWithTheCallersOwnTools(t *testing.T) {
 		if !strings.Contains((*seen)[1], "only read") {
 			t.Errorf("the model's write was not refused: %s", (*seen)[1])
 		}
-		if listed := owner.get("/api/v1/projects/ASK/issues"); listed.Body["total"].(float64) != 1 {
+		if listed := owner.get("/api/v1/projects/" + askKey + "/issues"); listed.Body["total"].(float64) != 1 {
 			t.Errorf("the model wrote through a read token: %s", listed.Raw)
 		}
 	})
@@ -149,10 +155,11 @@ func TestAModelAnswersWithTheCallersOwnTools(t *testing.T) {
 // written by people, and a person confirms the change.
 func TestAModelsChangeWaitsForTheReader(t *testing.T) {
 	h := newHarness(t)
+	prpKey := h.projectKey(t, "PRP")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "proposer")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Proposed", "key": "PRP"}), http.StatusCreated, "a project")
+	owner.signIn(t, h.person(t, "proposer", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Proposed", "key": prpKey}), http.StatusCreated, "a project")
 
 	writing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
@@ -161,7 +168,7 @@ func TestAModelsChangeWaitsForTheReader(t *testing.T) {
 			io.WriteString(w, `{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t2","name":"navigate","input":{"text":"I propose filing it."}}]}`)
 			return
 		}
-		io.WriteString(w, `{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"create_issue","input":{"projectKey":"PRP","summary":"from a model"}}]}`)
+		io.WriteString(w, `{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"create_issue","input":{"projectKey":"`+prpKey+`","summary":"from a model"}}]}`)
 	}))
 	defer writing.Close()
 	api.api.Assistant = assistant.HTTPAsker{URL: writing.URL, Model: "fake"}
@@ -171,7 +178,7 @@ func TestAModelsChangeWaitsForTheReader(t *testing.T) {
 	if len(proposals) != 1 || proposals[0].(map[string]any)["tool"] != "create_issue" {
 		t.Fatalf("proposals = %s", answered.Raw)
 	}
-	if listed := owner.get("/api/v1/projects/PRP/issues"); listed.Body["total"].(float64) != 0 {
+	if listed := owner.get("/api/v1/projects/" + prpKey + "/issues"); listed.Body["total"].(float64) != 0 {
 		t.Fatalf("the model filed an issue by itself: %s", listed.Raw)
 	}
 
@@ -181,7 +188,7 @@ func TestAModelsChangeWaitsForTheReader(t *testing.T) {
 		"params": map[string]any{"name": "create_issue", "arguments": proposals[0].(map[string]any)["arguments"]},
 	}), http.StatusOK, "confirming the proposal")
 	h.waitForPrimary(t)
-	if listed := owner.get("/api/v1/projects/PRP/issues"); listed.Body["total"].(float64) != 1 {
+	if listed := owner.get("/api/v1/projects/" + prpKey + "/issues"); listed.Body["total"].(float64) != 1 {
 		t.Fatalf("confirming did not file the issue: %s", listed.Raw)
 	}
 }

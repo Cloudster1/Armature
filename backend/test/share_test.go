@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A share link is a read that names its tenant: the token finds the
@@ -17,20 +19,21 @@ import (
 // else about the dashboard is reachable through it.
 func TestADashboardIsSharedByALinkUntilItIsRevoked(t *testing.T) {
 	h := newHarness(t)
+	shrKey := h.projectKey(t, "SHR")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "sharer")
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Shared", "key": "SHR"}); made.Status != http.StatusCreated {
+	owner.signIn(t, h.person(t, "sharer", auth.RoleOwner))
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Shared", "key": shrKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 	types := owner.get("/api/v1/issue-types")
 	bug := find(t, types.Body["issueTypes"], "name", "Bug")["id"].(string)
-	owner.post("/api/v1/projects/SHR/issues", map[string]any{"summary": "a bug", "typeId": bug})
-	owner.post("/api/v1/projects/SHR/issues", map[string]any{"summary": "a task"})
-	mine := owner.post("/api/v1/projects/SHR/issues", map[string]any{"summary": "mine"})
+	owner.post("/api/v1/projects/"+shrKey+"/issues", map[string]any{"summary": "a bug", "typeId": bug})
+	owner.post("/api/v1/projects/"+shrKey+"/issues", map[string]any{"summary": "a task"})
+	mine := owner.post("/api/v1/projects/"+shrKey+"/issues", map[string]any{"summary": "mine"})
 	owner.patch("/api/v1/issues/"+obj(t, mine, "issue")["key"].(string), map[string]any{"assigneeId": obj(t, owner.get("/api/v1/auth/me"), "principal", "user")["id"]})
 
-	board := owner.firstDashboard(t, "SHR")
+	board := owner.firstDashboard(t, shrKey)
 	dashboardID := board["id"].(string)
 	var statusWidget string
 	for _, w := range board["widgets"].([]any) {
@@ -80,7 +83,7 @@ func TestADashboardIsSharedByALinkUntilItIsRevoked(t *testing.T) {
 		if widget.Body["total"].(float64) != 1 {
 			t.Errorf("total = %v through the link, want the one bug the frozen query keeps", widget.Body["total"])
 		}
-		own := owner.get("/api/v1/projects/SHR/reports/status_breakdown?q=type%20%3D%20Bug")
+		own := owner.get("/api/v1/projects/" + shrKey + "/reports/status_breakdown?q=type%20%3D%20Bug")
 		if own.Body["total"] != widget.Body["total"] {
 			t.Errorf("the link says %v and the signed-in report says %v", widget.Body["total"], own.Body["total"])
 		}
@@ -90,7 +93,7 @@ func TestADashboardIsSharedByALinkUntilItIsRevoked(t *testing.T) {
 		if resp := visitor.get("/api/v1/shared/" + token + "/widgets/" + uuid.New().String()); resp.Status != http.StatusNotFound {
 			t.Errorf("a widget that is not on the dashboard: %d", resp.Status)
 		}
-		if resp := visitor.get("/api/v1/projects/SHR/dashboards"); resp.Status != http.StatusUnauthorized {
+		if resp := visitor.get("/api/v1/projects/" + shrKey + "/dashboards"); resp.Status != http.StatusUnauthorized {
 			t.Errorf("the ordinary route without a session: %d, want 401", resp.Status)
 		}
 	})
@@ -144,19 +147,6 @@ func TestADashboardIsSharedByALinkUntilItIsRevoked(t *testing.T) {
 		var kept bool
 		if err := h.super.QueryRow(context.Background(), `SELECT revoked_at IS NOT NULL FROM dashboard_share WHERE id = $1`, shareID).Scan(&kept); err != nil || !kept {
 			t.Errorf("the revoked row is gone or not marked: kept=%v err=%v", kept, err)
-		}
-	})
-
-	t.Run("SQL refuses a link across organizations", func(t *testing.T) {
-		other := h.newWorkspace(t, "otherorg")
-		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO dashboard_share (org_id, dashboard_id, name, token_hash)
-			VALUES ($1, $2, 'Borrowed', decode('00', 'hex'))`, other.orgID, dashboardID)
-		if err == nil {
-			t.Fatal("SQL let a link point at another organization's dashboard")
-		}
-		if !strings.Contains(err.Error(), "its own organization") {
-			t.Errorf("error = %v, want the guard's own message", err)
 		}
 	})
 

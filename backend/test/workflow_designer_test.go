@@ -5,6 +5,7 @@ package test
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -41,14 +42,15 @@ func layoutOf(w *workflow.Workflow, statusID uuid.UUID) *workflow.Point {
 func TestTheDesignerKeepsWhereStatusesWereDrawn(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "drawn")
+	ws := h.newProject(t, "drawn")
 
 	todo := h.statusID(t, ws, bootstrap.StatusToDo)
 	progress := h.statusID(t, ws, bootstrap.StatusInProgress)
 	done := h.statusID(t, ws, bootstrap.StatusDone)
+	drawn := h.name(t, "Drawn")
 
 	built, _, err := ws.admin.CreateWorkflow(ws.ctx, workflow.GraphInput{
-		Name: "Drawn",
+		Name: drawn,
 		Steps: []workflow.StepInput{
 			{StatusID: todo, IsInitial: true, Layout: &workflow.Point{X: 40, Y: 80}},
 			{StatusID: progress, Layout: &workflow.Point{X: 300, Y: 80}},
@@ -71,7 +73,7 @@ func TestTheDesignerKeepsWhereStatusesWereDrawn(t *testing.T) {
 
 	// Moving a status is a save with a new point; leaving the point out unplaces it.
 	saved, _, err := ws.admin.SaveWorkflow(ws.ctx, built.ID, workflow.GraphInput{
-		Name: "Drawn",
+		Name: drawn,
 		Steps: []workflow.StepInput{
 			{StatusID: todo, IsInitial: true, Layout: &workflow.Point{X: 60, Y: 120}},
 			{StatusID: progress},
@@ -94,7 +96,7 @@ func TestTheDesignerKeepsWhereStatusesWereDrawn(t *testing.T) {
 		t.Errorf("Done drawn at %v, want x 560", got)
 	}
 
-	copied, _, err := ws.admin.CopyWorkflow(ws.ctx, built.ID, "Drawn again", ws.actor.UserID)
+	copied, _, err := ws.admin.CopyWorkflow(ws.ctx, built.ID, h.name(t, "Drawn again"), ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("copy: %v", err)
 	}
@@ -124,14 +126,15 @@ func ruleTypes(t *workflow.Transition) []string {
 func TestSentRulesReplaceAndUnsentRulesStay(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "ruled")
+	ws := h.newProject(t, "ruled")
 
 	todo := h.statusID(t, ws, bootstrap.StatusToDo)
 	done := h.statusID(t, ws, bootstrap.StatusDone)
+	ruled := h.name(t, "Ruled")
 
 	graph := func(id uuid.UUID, rules []workflow.RuleInput) workflow.GraphInput {
 		return workflow.GraphInput{
-			Name: "Ruled",
+			Name: ruled,
 			Steps: []workflow.StepInput{
 				{StatusID: todo, IsInitial: true},
 				{StatusID: done},
@@ -211,18 +214,19 @@ func TestSentRulesReplaceAndUnsentRulesStay(t *testing.T) {
 	})
 }
 
-// A status is the organization's, shared by every workflow, so it is coined
-// once and kept unique by name whatever the case.
+// A status is everyone's, shared by every workflow, so it is coined once and
+// kept unique by name whatever the case.
 func TestAStatusIsCoinedOnce(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "coining")
+	ws := h.newProject(t, "coining")
+	reviewing := h.name(t, "Reviewing")
 
-	made, _, err := ws.admin.CreateStatus(ws.ctx, workflow.StatusInput{Name: " Reviewing ", Category: workflow.CategoryInProgress, Description: "Somebody else is looking."}, ws.actor.UserID)
+	made, _, err := ws.admin.CreateStatus(ws.ctx, workflow.StatusInput{Name: " " + reviewing + " ", Category: workflow.CategoryInProgress, Description: "Somebody else is looking."}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("coin a status: %v", err)
 	}
-	if made.Name != "Reviewing" || made.Category != workflow.CategoryInProgress || made.Position < 4 {
+	if made.Name != reviewing || made.Category != workflow.CategoryInProgress || made.Position < 4 {
 		t.Errorf("status = %+v, want the trimmed name, its category, and a place after the seeded four", made)
 	}
 	var listed []workflow.Status
@@ -233,12 +237,21 @@ func TestAStatusIsCoinedOnce(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(listed) != 5 || listed[4].ID != made.ID {
-		t.Errorf("statuses = %v, want the coined one last", listed)
+	// Other tests coin statuses too, so the coined one is after the seeded
+	// four rather than at a place of its own.
+	seeded := map[string]bool{bootstrap.StatusToDo: true, bootstrap.StatusInProgress: true, bootstrap.StatusInReview: true, bootstrap.StatusDone: true}
+	at := slices.IndexFunc(listed, func(st workflow.Status) bool { return st.ID == made.ID })
+	if at < 0 {
+		t.Fatalf("the coined status is not listed: %v", listed)
+	}
+	for _, st := range listed[at+1:] {
+		if seeded[st.Name] {
+			t.Errorf("statuses = %v, want the coined one after the seeded four", listed)
+		}
 	}
 
 	t.Run("the same name in another case is refused", func(t *testing.T) {
-		_, _, err := ws.admin.CreateStatus(ws.ctx, workflow.StatusInput{Name: "reviewing", Category: workflow.CategoryTodo}, ws.actor.UserID)
+		_, _, err := ws.admin.CreateStatus(ws.ctx, workflow.StatusInput{Name: strings.ToLower(reviewing), Category: workflow.CategoryTodo}, ws.actor.UserID)
 		if !errors.Is(err, workflow.ErrInvalid) || !strings.Contains(err.Error(), "already a status called") {
 			t.Errorf("err = %v, want the duplicate named", err)
 		}
@@ -255,18 +268,11 @@ func TestAStatusIsCoinedOnce(t *testing.T) {
 
 	t.Run("and the database refuses the duplicate too", func(t *testing.T) {
 		_, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `INSERT INTO issue_status (org_id, name, category) VALUES (current_org_id(), 'REVIEWING', 'todo')`)
+			_, err := tx.Exec(ctx, `INSERT INTO issue_status (org_id, name, category) VALUES (current_org_id(), $1, 'todo')`, strings.ToUpper(reviewing))
 			return err
 		})
 		if err == nil {
 			t.Error("the unique index let a second Reviewing through")
-		}
-	})
-
-	t.Run("another organization may coin its own", func(t *testing.T) {
-		other := h.newWorkspace(t, "coining-other")
-		if _, _, err := other.admin.CreateStatus(other.ctx, workflow.StatusInput{Name: "Reviewing", Category: workflow.CategoryDone}, other.actor.UserID); err != nil {
-			t.Errorf("another organization was refused its own Reviewing: %v", err)
 		}
 	})
 }

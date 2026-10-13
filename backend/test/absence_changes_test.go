@@ -14,11 +14,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/notify"
 )
 
-// absenceCrew is an organization where Max is scrum master of the team Ada is
+// absenceCrew is a project where Max is scrum master of the team Ada is
 // on: the people a manager's reach over absences is tried with.
 type absenceCrew struct {
 	api                *apiServer
@@ -33,14 +34,15 @@ func newAbsenceCrew(t *testing.T, h *harness, slug string) *absenceCrew {
 	t.Helper()
 	api := newAPIServer(t, h)
 	c := &absenceCrew{api: api, owner: api.client(t), ownerName: slug}
-	signedUp := c.owner.signup(t, h, slug)
+	signedUp := c.owner.signIn(t, h.person(t, slug, auth.RoleOwner))
 	c.ownerID = principalField(t, signedUp, "principal", "user", "id").(string)
 	c.orgID = uuid.MustParse(principalField(t, signedUp, "principal", "org", "id").(string))
-	want(t, c.owner.post("/api/v1/projects", map[string]any{"name": "Away", "key": "AWY", "template": "scrum"}), http.StatusCreated, "a project")
+	key := h.projectKey(t, "AWY")
+	want(t, c.owner.post("/api/v1/projects", map[string]any{"name": "Away", "key": key, "template": "scrum"}), http.StatusCreated, "a project")
 	c.ada, c.adaID = api.namedMember(t, h, c.owner, "Ada Away")
 	c.master, c.masterID = api.namedMember(t, h, c.owner, "Max Master")
-	want(t, c.owner.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": "AWY", "userId": c.masterID}), http.StatusCreated, "Max is scrum master")
-	c.crew = idOf(t, want(t, c.owner.post("/api/v1/projects/AWY/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
+	want(t, c.owner.post("/api/v1/role-assignments", map[string]any{"role": "scrum_master", "projectKey": key, "userId": c.masterID}), http.StatusCreated, "Max is scrum master")
+	c.crew = idOf(t, want(t, c.owner.post("/api/v1/projects/"+key+"/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
 	want(t, c.owner.post("/api/v1/teams/"+c.crew+"/members", map[string]any{"userId": c.adaID}), http.StatusOK, "Ada joins the team")
 	return c
 }
@@ -227,7 +229,7 @@ func TestThePersonIsToldWhenSomebodyElseTouchesTheirAbsences(t *testing.T) {
 func TestWhoRecordedAnAbsenceHoldsThroughSQL(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "absencerecorder")
+	ws := h.newProject(t, "absencerecorder")
 	ctx := context.Background()
 	recorder := h.joinExisting(t, ws, h.email(t, "absencerecorder"), "member")
 	other := h.joinExisting(t, ws, h.email(t, "absencenotrecorder"), "member")

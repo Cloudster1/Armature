@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // currentSession is the id of the session a client is calling with, as the
@@ -30,7 +32,7 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	me := api.client(t)
-	signedUp := me.signup(t, h, "sessions")
+	signedUp := me.signIn(t, h.person(t, "sessions", auth.RoleOwner))
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	userID := principalField(t, signedUp, "principal", "user", "id").(string)
 	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
@@ -63,7 +65,7 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 
 	// Another person's session is not there to end, and keeps working.
 	stranger := api.client(t)
-	stranger.signup(t, h, "sessions-stranger")
+	stranger.signIn(t, h.person(t, "sessions-stranger", auth.RoleOwner))
 	if got := me.delete("/api/v1/auth/sessions/" + currentSession(t, stranger)); got.Status != http.StatusNotFound {
 		t.Fatalf("ended somebody else's session: %d %s", got.Status, got.Raw)
 	}
@@ -111,7 +113,7 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 	}
 	want(t, stranger.get("/api/v1/auth/me"), http.StatusOK, "nobody else is signed out")
 
-	// Both acts are in the organization's log, by the person who did them.
+	// Both acts are in the installation's log, by the person who did them.
 	for _, c := range []struct{ action, target string }{{"auth.session_ended", phoneID}, {"auth.sessions_ended", userID}} {
 		var n int
 		if err := h.super.QueryRow(context.Background(), `
@@ -126,7 +128,7 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 	}
 	var ended int
 	if err := h.super.QueryRow(context.Background(), `
-		SELECT (data->>'ended')::int FROM audit_log WHERE org_id = $1 AND action = 'auth.sessions_ended'`, orgID).Scan(&ended); err != nil {
+		SELECT (data->>'ended')::int FROM audit_log WHERE org_id = $1 AND action = 'auth.sessions_ended' AND actor_user_id = $2`, orgID, userID).Scan(&ended); err != nil {
 		t.Fatal(err)
 	}
 	if ended != 2 {

@@ -3,155 +3,19 @@
 package test
 
 import (
-	"context"
 	"errors"
 	"testing"
 
 	"github.com/google/uuid"
 
-	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/issue"
-	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/workflow"
 )
-
-// TestIssueTenantIsolation extends the isolation guarantee to everything this
-// milestone added. Each new table is another chance to leak, so each is checked
-// rather than assumed to inherit the property.
-func TestIssueTenantIsolation(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-
-	alpha := h.newWorkspace(t, "isoalpha")
-	beta := h.newWorkspace(t, "isobeta")
-
-	alphaIssue := alpha.newIssue(t, "alpha's private issue")
-	betaIssue := beta.newIssue(t, "beta's private issue")
-
-	if _, _, err := alpha.issues.AddComment(alpha.ctx, alphaIssue.Key,
-		issue.TextDocument("alpha's private comment"), alpha.actor); err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("each organization sees only its own configuration", func(t *testing.T) {
-		// Bootstrap gives every organization its own statuses, types and
-		// workflow, so the counts must not add up across tenants.
-		count := func(ctx context.Context, table string) int {
-			var n int
-			err := h.cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-				return tx.QueryRow(ctx, `SELECT count(*) FROM `+table).Scan(&n)
-			})
-			if err != nil {
-				t.Fatalf("count %s: %v", table, err)
-			}
-			return n
-		}
-		for table, want := range map[string]int{
-			"issue_status":    4,
-			"issue_type":      6,
-			"workflow":        1,
-			"workflow_scheme": 1,
-			"issue_link_type": 3,
-		} {
-			if got := count(alpha.ctx, table); got != want {
-				t.Errorf("alpha sees %d rows in %s, want only its own %d", got, table, want)
-			}
-		}
-	})
-
-	t.Run("issues are invisible across organizations", func(t *testing.T) {
-		if _, err := alpha.issues.ByKey(alpha.ctx, betaIssue.Key); !errors.Is(err, issue.ErrNotFound) {
-			t.Errorf("alpha read beta's issue: %v", err)
-		}
-		if _, err := beta.issues.ByKey(beta.ctx, alphaIssue.Key); !errors.Is(err, issue.ErrNotFound) {
-			t.Errorf("beta read alpha's issue: %v", err)
-		}
-
-		listed, err := alpha.issues.List(alpha.ctx, issue.Filter{}, issue.Page{Limit: 200})
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, i := range listed.Issues {
-			if i.Key == betaIssue.Key {
-				t.Error("beta's issue appeared in alpha's unfiltered listing")
-			}
-		}
-	})
-
-	t.Run("another organization's issue cannot be edited or moved", func(t *testing.T) {
-		summary := "renamed by a stranger"
-		if _, _, err := alpha.issues.Update(alpha.ctx, betaIssue.Key,
-			issue.UpdateInput{Summary: &summary}, alpha.actor); !errors.Is(err, issue.ErrNotFound) {
-			t.Errorf("error = %v, want ErrNotFound", err)
-		}
-
-		if _, _, err := alpha.issues.Transition(alpha.ctx, betaIssue.Key,
-			issue.TransitionInput{TransitionID: uuid.New()}, alpha.actor); !errors.Is(err, issue.ErrNotFound) {
-			t.Errorf("error = %v, want ErrNotFound", err)
-		}
-
-		// And beta's issue is untouched.
-		after, err := beta.issues.ByKey(beta.ctx, betaIssue.Key)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if after.Summary != betaIssue.Summary {
-			t.Errorf("beta's issue summary is now %q", after.Summary)
-		}
-	})
-
-	t.Run("comments and history do not cross organizations", func(t *testing.T) {
-		comments, err := beta.issues.Comments(beta.ctx, alphaIssue.Key, true)
-		if err != nil && !errors.Is(err, issue.ErrNotFound) {
-			t.Fatal(err)
-		}
-		if len(comments) != 0 {
-			t.Errorf("beta read %d of alpha's comments", len(comments))
-		}
-
-		history, err := beta.issues.History(beta.ctx, alphaIssue.Key)
-		if err != nil && !errors.Is(err, issue.ErrNotFound) {
-			t.Fatal(err)
-		}
-		if len(history) != 0 {
-			t.Errorf("beta read %d of alpha's changelog entries", len(history))
-		}
-	})
-
-	t.Run("a project key can be reused in a different organization", func(t *testing.T) {
-		// Keys are unique per organization, not globally: two customers must
-		// both be able to have a project called PROJ.
-		shared := "SHRD"
-		if _, _, err := alpha.projects.Create(alpha.ctx, project.CreateInput{Name: "Shared name", Key: shared}, alpha.actor.UserID); err != nil {
-			t.Fatalf("alpha could not take the key: %v", err)
-		}
-		if _, _, err := beta.projects.Create(beta.ctx, project.CreateInput{Name: "Shared name", Key: shared}, beta.actor.UserID); err != nil {
-			t.Errorf("beta could not use the same key in its own organization: %v", err)
-		}
-	})
-
-	t.Run("an issue cannot be assigned to somebody outside the organization", func(t *testing.T) {
-		stranger := beta.actor.UserID
-		_, _, err := alpha.issues.Update(alpha.ctx, alphaIssue.Key,
-			issue.UpdateInput{Assignee: ptr(&stranger)}, alpha.actor)
-		if err == nil {
-			t.Fatal("an outsider was assigned an issue")
-		}
-
-		after, err := alpha.issues.ByKey(alpha.ctx, alphaIssue.Key)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if after.Assignee != nil {
-			t.Errorf("assignee = %v, want it left unset", after.Assignee)
-		}
-	})
-}
 
 func TestIssueEditing(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "editing")
+	ws := h.newProject(t, "editing")
 
 	t.Run("changed fields are recorded, unchanged ones are not", func(t *testing.T) {
 		created := ws.newIssue(t, "original summary")
@@ -297,7 +161,7 @@ func TestIssueEditing(t *testing.T) {
 func TestIssueFiltering(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "filtering")
+	ws := h.newProject(t, "filtering")
 
 	todo := ws.newIssue(t, "still to do")
 	started := ws.newIssue(t, "being worked on")
@@ -340,7 +204,7 @@ func TestIssueFiltering(t *testing.T) {
 			t.Errorf("assigned to me = %v, want only %s", got, started.Key)
 		}
 
-		unassigned, err := ws.issues.List(ws.ctx, issue.Filter{Unassigned: true}, issue.Page{Limit: 50})
+		unassigned, err := ws.issues.List(ws.ctx, issue.Filter{ProjectKey: ws.project.Key, Unassigned: true}, issue.Page{Limit: 50})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -350,7 +214,7 @@ func TestIssueFiltering(t *testing.T) {
 	})
 
 	t.Run("by text in the summary", func(t *testing.T) {
-		found, err := ws.issues.List(ws.ctx, issue.Filter{Text: "worked"}, issue.Page{Limit: 50})
+		found, err := ws.issues.List(ws.ctx, issue.Filter{ProjectKey: ws.project.Key, Text: "worked"}, issue.Page{Limit: 50})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // pictureOf makes a small PNG in memory, the way a test can without a file.
@@ -44,7 +46,7 @@ func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	me := api.client(t)
-	me.signup(t, h, "profiled")
+	me.signIn(t, h.person(t, "profiled", auth.RoleOwner))
 
 	t.Run("name, time zone and language", func(t *testing.T) {
 		changed := want(t, me.patch("/api/v1/auth/me", map[string]any{"name": "Ada Lovelace", "timezone": "Europe/Berlin", "locale": "de-DE"}), http.StatusOK, "profile")
@@ -101,11 +103,11 @@ func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
 		if !found {
 			t.Errorf("the member list does not carry the picture: %v", members)
 		}
-		// Even from an organization of its own, which only this suite still makes.
-		elsewhere := api.client(t)
-		elsewhere.signup(t, h, "elsewhere")
-		if got, _ := elsewhere.download(pictureURL); got.StatusCode != http.StatusOK {
-			t.Errorf("somebody signed in elsewhere got %d", got.StatusCode)
+		// Even somebody who may see no project at all.
+		outsider := api.client(t)
+		outsider.signIn(t, h.outsider(t, "outsider"))
+		if got, _ := outsider.download(pictureURL); got.StatusCode != http.StatusOK {
+			t.Errorf("somebody with no role got %d", got.StatusCode)
 		}
 		if got, _ := api.client(t).download(pictureURL); got.StatusCode != http.StatusUnauthorized {
 			t.Errorf("nobody signed in got %d", got.StatusCode)

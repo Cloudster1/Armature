@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/field"
 )
@@ -29,7 +30,7 @@ func valueOf(values []field.Value, name string) *field.Value {
 func TestCustomFieldsAreDefinedPerProjectAndAnsweredPerIssue(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "fielded")
+	ws := h.newProject(t, "fielded")
 	f := ws.fields(h)
 
 	customer, _, err := f.Create(ws.ctx, ws.project.Key, field.Input{Name: "Customer", Kind: field.Text})
@@ -63,8 +64,8 @@ func TestCustomFieldsAreDefinedPerProjectAndAnsweredPerIssue(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(values) != 2 {
-			t.Fatalf("want 2 values, got %d", len(values))
+		if valueOf(values, "Platform") == nil {
+			t.Fatalf("the platform field is not listed: %+v", values)
 		}
 		if v := valueOf(values, "Customer"); v == nil || v.Value != nil {
 			t.Fatalf("an unanswered field should be listed with no value: %+v", v)
@@ -138,7 +139,7 @@ func TestCustomFieldsAreDefinedPerProjectAndAnsweredPerIssue(t *testing.T) {
 func TestAFieldBelongsToOneProjectAndTheDatabaseKnowsIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "twoproj")
+	ws := h.newProject(t, "twoproj")
 	f := ws.fields(h)
 
 	other := ws.fromTemplate(t, h, "kanban", "Other")
@@ -165,42 +166,15 @@ func TestAFieldBelongsToOneProjectAndTheDatabaseKnowsIt(t *testing.T) {
 	}
 }
 
-func TestFieldsAreTenantIsolated(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	a := h.newWorkspace(t, "fielda")
-	b := h.newWorkspace(t, "fieldb")
-	f := a.fields(h)
-
-	made, _, err := f.Create(a.ctx, a.project.Key, field.Input{Name: "Secret", Kind: field.Text})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := f.Field(b.ctx, made.ID); !errors.Is(err, field.ErrNotFound) {
-		t.Fatalf("the other tenant should not see the field, got %v", err)
-	}
-	if _, err := f.Delete(b.ctx, made.ID); !errors.Is(err, field.ErrNotFound) {
-		t.Fatalf("the other tenant should not be able to delete the field, got %v", err)
-	}
-	var seen int
-	if err := h.cluster.Read(b.ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT count(*) FROM custom_field WHERE id = $1`, made.ID).Scan(&seen)
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if seen != 0 {
-		t.Fatal("row level security let another tenant read the field")
-	}
-}
-
 func TestFieldsOverTheAPI(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	fldKey := h.projectKey(t, "FLD")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "fieldapi")
+	owner.signIn(t, h.person(t, "fieldapi", auth.RoleOwner))
 
-	if made := owner.post("/api/v1/projects", map[string]any{"name": "Fielded", "key": "FLD"}); made.Status != http.StatusCreated {
+	if made := owner.post("/api/v1/projects", map[string]any{"name": "Fielded", "key": fldKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 	kinds := owner.get("/api/v1/field-kinds")
@@ -208,13 +182,13 @@ func TestFieldsOverTheAPI(t *testing.T) {
 		t.Fatalf("field kinds: %d %s", kinds.Status, kinds.Raw)
 	}
 
-	created := owner.post("/api/v1/projects/FLD/fields", map[string]any{"name": "Cost", "kind": "number"})
+	created := owner.post("/api/v1/projects/"+fldKey+"/fields", map[string]any{"name": "Cost", "kind": "number"})
 	if created.Status != http.StatusCreated {
 		t.Fatalf("create field: %d %s", created.Status, created.Raw)
 	}
 	fieldID := created.Body["field"].(map[string]any)["id"].(string)
 
-	issued := owner.post("/api/v1/projects/FLD/issues", map[string]any{"summary": "priced work"})
+	issued := owner.post("/api/v1/projects/"+fldKey+"/issues", map[string]any{"summary": "priced work"})
 	if issued.Status != http.StatusCreated {
 		t.Fatalf("create issue: %d %s", issued.Status, issued.Raw)
 	}
@@ -231,15 +205,25 @@ func TestFieldsOverTheAPI(t *testing.T) {
 		t.Fatalf("a non-number should be refused with 400, got %d %s", bad.Status, bad.Raw)
 	}
 
-	listed := owner.get("/api/v1/issues/" + key + "/fields")
-	values := listed.Body["values"].([]any)
-	if len(values) != 1 || values[0].(map[string]any)["value"] != 12.5 {
-		t.Fatalf("values = %s", listed.Raw)
+	// Fields on every project would be listed too, so the one made here is found by its id.
+	answerOf := func(t *testing.T) map[string]any {
+		t.Helper()
+		listed := owner.get("/api/v1/issues/" + key + "/fields")
+		for _, raw := range listed.Body["values"].([]any) {
+			if v := raw.(map[string]any); v["field"].(map[string]any)["id"] == fieldID {
+				return v
+			}
+		}
+		t.Fatalf("the field is not listed: %s", listed.Raw)
+		return nil
+	}
+	if v := answerOf(t); v["value"] != 12.5 {
+		t.Fatalf("value = %v", v)
 	}
 
-	t.Run("another tenant cannot touch the field", func(t *testing.T) {
+	t.Run("somebody who may not read the project cannot touch the field", func(t *testing.T) {
 		stranger := api.client(t)
-		stranger.signup(t, h, "fieldstranger")
+		stranger.signIn(t, h.outsider(t, "fieldstranger"))
 		if resp := stranger.delete("/api/v1/fields/" + fieldID); resp.Status != http.StatusNotFound {
 			t.Fatalf("want 404, got %d %s", resp.Status, resp.Raw)
 		}
@@ -252,10 +236,8 @@ func TestFieldsOverTheAPI(t *testing.T) {
 		if resp := owner.do(http.MethodPatch, "/api/v1/fields/"+fieldID, map[string]any{"name": "Price"}); resp.Status != http.StatusOK {
 			t.Fatalf("rename: %d %s", resp.Status, resp.Raw)
 		}
-		again := owner.get("/api/v1/issues/" + key + "/fields")
-		v := again.Body["values"].([]any)[0].(map[string]any)
-		if v["field"].(map[string]any)["name"] != "Price" || v["display"] != "12.5" {
-			t.Fatalf("after rename: %s", again.Raw)
+		if v := answerOf(t); v["field"].(map[string]any)["name"] != "Price" || v["display"] != "12.5" {
+			t.Fatalf("after rename: %v", v)
 		}
 	})
 }

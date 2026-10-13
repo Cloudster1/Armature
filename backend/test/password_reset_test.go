@@ -94,7 +94,7 @@ func TestAForgottenPasswordIsResetByMail(t *testing.T) {
 	t.Run("the link sets a new password once and ends every session and token", func(t *testing.T) {
 		httpapi.ResetThrottles()
 		me := api.client(t)
-		signedUp := me.signup(t, h, "forgot")
+		signedUp := me.signIn(t, h.person(t, "forgot", auth.RoleOwner))
 		email := principalField(t, signedUp, "principal", "user", "email").(string)
 		userID := principalField(t, signedUp, "principal", "user", "id").(string)
 		token := want(t, me.post("/api/v1/tokens", map[string]any{"name": "ci", "scopes": []string{}, "projects": []string{}}), http.StatusCreated, "make a token")
@@ -149,7 +149,7 @@ func TestAForgottenPasswordIsResetByMail(t *testing.T) {
 
 	t.Run("an expired link is refused and changes nothing", func(t *testing.T) {
 		httpapi.ResetThrottles()
-		signedUp := api.client(t).signup(t, h, "expired")
+		signedUp := api.client(t).signIn(t, h.person(t, "expired", auth.RoleOwner))
 		email := principalField(t, signedUp, "principal", "user", "email").(string)
 		userID := principalField(t, signedUp, "principal", "user", "id").(string)
 		secret := api.askForReset(t, email)
@@ -165,7 +165,7 @@ func TestAForgottenPasswordIsResetByMail(t *testing.T) {
 
 	t.Run("asking again replaces the link before", func(t *testing.T) {
 		httpapi.ResetThrottles()
-		signedUp := api.client(t).signup(t, h, "twice")
+		signedUp := api.client(t).signIn(t, h.person(t, "twice", auth.RoleOwner))
 		email := principalField(t, signedUp, "principal", "user", "email").(string)
 		userID := principalField(t, signedUp, "principal", "user", "id").(string)
 		first := api.askForReset(t, email)
@@ -179,16 +179,12 @@ func TestAForgottenPasswordIsResetByMail(t *testing.T) {
 		want(t, api.client(t).post("/api/v1/auth/password-reset/confirm", map[string]string{"token": second, "password": newPassword}), http.StatusNoContent, "the latest link")
 	})
 
-	t.Run("the request and the reset are recorded once, in the person's organization", func(t *testing.T) {
+	t.Run("the request and the reset are recorded once", func(t *testing.T) {
 		httpapi.ResetThrottles()
-		signedUp := api.client(t).signup(t, h, "two-orgs")
+		signedUp := api.client(t).signIn(t, h.person(t, "recorded", auth.RoleOwner))
 		email := principalField(t, signedUp, "principal", "user", "email").(string)
 		userID := principalField(t, signedUp, "principal", "user", "id").(string)
 		home := principalField(t, signedUp, "principal", "org", "id").(string)
-		away := principalField(t, api.client(t).signup(t, h, "other-org"), "principal", "org", "id").(string)
-		if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, away, userID); err != nil {
-			t.Fatalf("join the second organization: %v", err)
-		}
 
 		secret := api.askForReset(t, email)
 		want(t, api.client(t).post("/api/v1/auth/password-reset/confirm", map[string]string{"token": secret, "password": newPassword}), http.StatusNoContent, "reset")
@@ -227,7 +223,7 @@ func TestAskingForAPasswordLinkTellsNothing(t *testing.T) {
 
 	t.Run("an unknown address gets the same answer and no mail", func(t *testing.T) {
 		httpapi.ResetThrottles()
-		known := principalField(t, api.client(t).signup(t, h, "known"), "principal", "user", "email").(string)
+		known := principalField(t, api.client(t).signIn(t, h.person(t, "known", auth.RoleOwner)), "principal", "user", "email").(string)
 		unknown := h.email(t, "nobody")
 
 		before := api.mailsSoFar()
@@ -246,10 +242,14 @@ func TestAskingForAPasswordLinkTellsNothing(t *testing.T) {
 
 	t.Run("a provider account is told to use it, and a customer gets nothing", func(t *testing.T) {
 		httpapi.ResetThrottles()
-		owner := api.client(t).signup(t, h, "sso-org")
+		owner := api.client(t).signIn(t, h.person(t, "sso-org", auth.RoleOwner))
 		orgID := principalField(t, owner, "principal", "org", "id").(string)
-		slug := principalField(t, owner, "principal", "org", "slug").(string)
 		ctx := context.Background()
+		// The installation has one provider; the one it had comes back after.
+		h.keepProvider(t)
+		if _, err := h.super.Exec(ctx, `DELETE FROM oidc_provider WHERE org_id = $1`, orgID); err != nil {
+			t.Fatalf("clear the provider: %v", err)
+		}
 		if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret) VALUES ($1, 'https://idp.test', 'armature', 'secret')`, orgID); err != nil {
 			t.Fatalf("configure a provider: %v", err)
 		}
@@ -275,7 +275,7 @@ func TestAskingForAPasswordLinkTellsNothing(t *testing.T) {
 			t.Errorf("the provider mail does not say how to sign in: %q", body)
 		}
 		// Single sign-on asks for no organization, so the mail names none.
-		if strings.Contains(body, slug) || strings.Contains(body, "organization") {
+		if strings.Contains(body, "organization") {
 			t.Errorf("the provider mail asks for an organization: %q", body)
 		}
 		if strings.Contains(body, "/reset-password#") {
@@ -326,7 +326,7 @@ func TestAskingForAPasswordLinkTellsNothing(t *testing.T) {
 		mailer := api.api.Mailer
 		api.api.Mailer = nil
 		t.Cleanup(func() { api.api.Mailer = mailer })
-		known := principalField(t, api.client(t).signup(t, h, "unmailed"), "principal", "user", "email").(string)
+		known := principalField(t, api.client(t).signIn(t, h.person(t, "unmailed", auth.RoleOwner)), "principal", "user", "email").(string)
 		forKnown := api.client(t).post("/api/v1/auth/password-reset", map[string]string{"email": known})
 		forUnknown := api.client(t).post("/api/v1/auth/password-reset", map[string]string{"email": h.email(t, "unmailed-nobody")})
 		// Each error names its own request, so the rest of it is what must agree.

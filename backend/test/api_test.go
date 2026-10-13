@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 func TestAPIAuthFlow(t *testing.T) {
@@ -16,7 +18,7 @@ func TestAPIAuthFlow(t *testing.T) {
 	t.Run("signup, me, logout", func(t *testing.T) {
 		c := api.client(t)
 
-		signup := c.signup(t, h, "flow")
+		signup := c.signIn(t, h.person(t, "flow", auth.RoleOwner))
 		if got := principalField(t, signup, "principal", "role"); got != "owner" {
 			t.Errorf("role = %v, want owner", got)
 		}
@@ -61,7 +63,7 @@ func TestAPIAuthFlow(t *testing.T) {
 
 	t.Run("login through the API", func(t *testing.T) {
 		c := api.client(t)
-		signup := c.signup(t, h, "relogin")
+		signup := c.signIn(t, h.person(t, "relogin", auth.RoleOwner))
 		email := principalField(t, signup, "principal", "user", "email").(string)
 
 		fresh := api.client(t)
@@ -76,7 +78,7 @@ func TestAPIAuthFlow(t *testing.T) {
 
 	t.Run("a wrong password is a 401 with a non-committal message", func(t *testing.T) {
 		c := api.client(t)
-		signup := c.signup(t, h, "wrongpw")
+		signup := c.signIn(t, h.person(t, "wrongpw", auth.RoleOwner))
 		email := principalField(t, signup, "principal", "user", "email").(string)
 
 		resp := api.client(t).post("/api/v1/auth/login", map[string]string{
@@ -101,7 +103,7 @@ func TestAPIAuthFlow(t *testing.T) {
 
 	t.Run("a bearer token authenticates without a cookie", func(t *testing.T) {
 		owner := api.client(t)
-		owner.signup(t, h, "bearer")
+		owner.signIn(t, h.person(t, "bearer", auth.RoleOwner))
 
 		created := owner.post("/api/v1/tokens", map[string]any{"name": "ci"})
 		if created.Status != http.StatusCreated {
@@ -153,9 +155,9 @@ func TestAPIAuthorization(t *testing.T) {
 		}
 	})
 
-	t.Run("a plain member cannot administer the organization", func(t *testing.T) {
+	t.Run("a plain member cannot administer the installation", func(t *testing.T) {
 		owner := api.client(t)
-		owner.signup(t, h, "adminonly")
+		owner.signIn(t, h.person(t, "adminonly", auth.RoleOwner))
 
 		// Invite a member and accept, which signs the new client in.
 		invite := owner.post("/api/v1/invites", map[string]string{
@@ -196,9 +198,9 @@ func TestAPIAuthorization(t *testing.T) {
 		}
 	})
 
-	t.Run("an admin can administer the organization", func(t *testing.T) {
+	t.Run("an admin can administer the installation", func(t *testing.T) {
 		owner := api.client(t)
-		owner.signup(t, h, "adminrole")
+		owner.signIn(t, h.person(t, "adminrole", auth.RoleOwner))
 		invite := owner.post("/api/v1/invites", map[string]string{
 			"email": h.email(t, "theadmin"), "role": "admin",
 		})

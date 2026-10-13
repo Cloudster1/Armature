@@ -19,9 +19,11 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/git"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // stubHost stands in for GitHub and GitLab: it answers the few API calls the
@@ -171,7 +173,7 @@ func jsonString(s string) string {
 func TestAPushLinksCommitsAndDrivesTheWorkflow(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "pushing")
+	ws := h.newProject(t, "pushing")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "", "")
 	found := ws.newIssue(t, "fix the validator")
@@ -267,7 +269,7 @@ func TestAPushLinksCommitsAndDrivesTheWorkflow(t *testing.T) {
 func TestAPullRequestLinksAndMergingMovesTheIssue(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "merging")
+	ws := h.newProject(t, "merging")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "", "Close")
 	found := ws.newIssue(t, "add the export")
@@ -343,7 +345,7 @@ func boolString(b bool) string {
 func TestGitLabDeliveriesAreReadToo(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "gitlabbing")
+	ws := h.newProject(t, "gitlabbing")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitLab, stub, "", "")
 	found := ws.newIssue(t, "the gitlab one")
@@ -386,7 +388,7 @@ func TestGitLabDeliveriesAreReadToo(t *testing.T) {
 func TestABranchIsMadeOnTheHost(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "branching")
+	ws := h.newProject(t, "branching")
 	stub := newStubHost(t)
 	found := ws.newIssue(t, "Sign-in rejects a plus sign")
 
@@ -456,7 +458,7 @@ func TestABranchIsMadeOnTheHost(t *testing.T) {
 	})
 
 	t.Run("and on gitlab", func(t *testing.T) {
-		other := h.newWorkspace(t, "branchgl")
+		other := h.newProject(t, "branchgl")
 		gl, glRepo := other.connect(t, h, git.GitLab, stub, "glpat", "")
 		theirs := other.newIssue(t, "their fix")
 		made, _, err := gl.CreateBranch(other.ctx, theirs.Key, glRepo.ID, "custom-name", "", other.actor.UserID)
@@ -473,7 +475,7 @@ func TestABranchIsMadeOnTheHost(t *testing.T) {
 	})
 
 	t.Run("and on gitea", func(t *testing.T) {
-		other := h.newWorkspace(t, "branchgt")
+		other := h.newProject(t, "branchgt")
 		gt, gtRepo := other.connect(t, h, git.Gitea, stub, "gitea_tok", "")
 		theirs := other.newIssue(t, "their fix")
 		made, _, err := gt.CreateBranch(other.ctx, theirs.Key, gtRepo.ID, "", "", other.actor.UserID)
@@ -497,7 +499,7 @@ func TestABranchIsMadeOnTheHost(t *testing.T) {
 func TestABranchIsFollowedFromTheIssue(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "following")
+	ws := h.newProject(t, "following")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "ghp_token", "Close")
 	found := ws.newIssue(t, "Accept a plus sign")
@@ -583,7 +585,7 @@ func TestABranchIsFollowedFromTheIssue(t *testing.T) {
 func TestGiteaDeliveriesAreReadToo(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "gitea")
+	ws := h.newProject(t, "gitea")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.Gitea, stub, "", "")
 	found := ws.newIssue(t, "wire the portal")
@@ -624,7 +626,7 @@ func TestGiteaDeliveriesAreReadToo(t *testing.T) {
 func TestATransitionTellsTheOpenPullRequest(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "telling")
+	ws := h.newProject(t, "telling")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "ghp_token", "")
 	found := ws.newIssue(t, "tell the pull request")
@@ -663,28 +665,32 @@ func TestATransitionTellsTheOpenPullRequest(t *testing.T) {
 	})
 }
 
-func TestRepositoriesAreTenantScoped(t *testing.T) {
+// A repository is behind its project's wall: somebody who holds a role in
+// another project neither sees it nor changes it.
+func TestARepositoryIsBehindItsProjectsWall(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mine")
-	other := h.newWorkspace(t, "theirs")
-	stub := newStubHost(t)
-	svc, repo := ws.connect(t, h, git.GitHub, stub, "ghp", "")
+	walled, elsewhere := h.projectKey(t, "WAL"), h.projectKey(t, "ELSW")
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signIn(t, h.person(t, "repowall", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Walled", "key": walled}), http.StatusCreated, "the walled project")
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Elsewhere", "key": elsewhere}), http.StatusCreated, "another project")
+	repoID := idOf(t, want(t, owner.post("/api/v1/projects/"+walled+"/repositories", map[string]any{"host": "github", "name": "acme/walled"}), http.StatusCreated, "connect"), "repository")
+	stranger := api.asRole(t, h, owner, elsewhere, perm.ProjectAdministrator)
 
-	theirs := git.NewService(h.cluster, other.issues)
-	if _, err := theirs.ByID(other.ctx, repo.ID); !errors.Is(err, git.ErrNotFound) {
-		t.Errorf("another organization can read the repository: %v", err)
-	}
-	branch := "main"
-	if _, _, err := theirs.Update(other.ctx, repo.ID, git.UpdateInput{DefaultBranch: &branch}, other.actor.UserID); !errors.Is(err, git.ErrNotFound) {
-		t.Errorf("another organization can edit the repository: %v", err)
-	}
-	if _, err := theirs.Disconnect(other.ctx, repo.ID); !errors.Is(err, git.ErrNotFound) {
-		t.Errorf("another organization can disconnect the repository: %v", err)
+	want(t, stranger.get("/api/v1/projects/"+walled+"/repositories"), http.StatusNotFound, "listing the walled project's repositories")
+	want(t, stranger.patch("/api/v1/repositories/"+repoID, map[string]any{"host": "github", "name": "acme/walled", "defaultBranch": "main"}), http.StatusNotFound, "editing the repository")
+	want(t, stranger.post("/api/v1/repositories/"+repoID+"/rotate-secret", nil), http.StatusNotFound, "rotating its secret")
+	want(t, stranger.delete("/api/v1/repositories/"+repoID), http.StatusNotFound, "disconnecting it")
+	if listed := list(t, want(t, owner.get("/api/v1/projects/"+walled+"/repositories"), http.StatusOK, "the owner's list"), "repositories"); len(listed) != 1 {
+		t.Errorf("the owner's project has %d repositories after the attempts, want its one", len(listed))
 	}
 
 	// A delivery to a repository that does not exist is not found, and says
-	// nothing about which organizations do.
+	// nothing about which projects do.
+	ws := h.newProject(t, "hookless")
+	svc := git.NewService(h.cluster, ws.issues)
 	r := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewBufferString(`{}`))
 	if _, err := svc.Receive(context.Background(), uuid.New(), r, []byte(`{}`)); !errors.Is(err, git.ErrNotFound) {
 		t.Errorf("err = %v, want ErrNotFound", err)
@@ -694,21 +700,22 @@ func TestRepositoriesAreTenantScoped(t *testing.T) {
 func TestRepositoriesOverTheAPI(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	prtKey := h.projectKey(t, "PRT")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "apigit")
+	c.signIn(t, h.person(t, "apigit", auth.RoleOwner))
 
-	made := c.post("/api/v1/projects", map[string]any{"name": "Portal", "key": "PRT"})
+	made := c.post("/api/v1/projects", map[string]any{"name": "Portal", "key": prtKey})
 	if made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
-	filed := c.post("/api/v1/issues", map[string]any{"projectKey": "PRT", "summary": "over the api"})
+	filed := c.post("/api/v1/issues", map[string]any{"projectKey": prtKey, "summary": "over the api"})
 	if filed.Status != http.StatusCreated {
 		t.Fatalf("create issue: %d %s", filed.Status, filed.Raw)
 	}
 	key := filed.Body["issue"].(map[string]any)["key"].(string)
 
-	connected := c.post("/api/v1/projects/PRT/repositories", map[string]any{"host": "github", "name": "acme/portal"})
+	connected := c.post("/api/v1/projects/"+prtKey+"/repositories", map[string]any{"host": "github", "name": "acme/portal"})
 	if connected.Status != http.StatusCreated {
 		t.Fatalf("connect: %d %s", connected.Status, connected.Raw)
 	}
@@ -724,7 +731,7 @@ func TestRepositoriesOverTheAPI(t *testing.T) {
 		t.Error("the response carries the access token field")
 	}
 
-	listed := c.get("/api/v1/projects/PRT/repositories")
+	listed := c.get("/api/v1/projects/" + prtKey + "/repositories")
 	first := listed.Body["repositories"].([]any)[0].(map[string]any)
 	if s, _ := first["webhookSecret"].(string); s != "" {
 		t.Error("listing repositories hands the secret out again")

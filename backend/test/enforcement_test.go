@@ -3,48 +3,23 @@
 package test
 
 import (
+	"context"
 	"net/http"
-	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/perm"
 )
 
-// asRole invites somebody into the owner's organization, grants them one role
-// over the project, and returns a client signed in as them.
+// asRole makes somebody who holds nothing in the installation, grants them one
+// role over the project (or everywhere, for ""), and returns a client signed in as them.
 func (s *apiServer) asRole(t *testing.T, h *harness, owner *client, projectKey string, role perm.Role) *client {
 	t.Helper()
-
-	invite := owner.post("/api/v1/invites", map[string]string{
-		"email": h.email(t, "roled"), "role": "member",
-	})
-	if invite.Status != http.StatusCreated {
-		t.Fatalf("invite returned %d: %s", invite.Status, invite.Raw)
+	email := h.outsider(t, string(role))
+	var userID string
+	if err := h.super.QueryRow(context.Background(), `SELECT id::text FROM app_user WHERE email = $1`, email).Scan(&userID); err != nil {
+		t.Fatalf("find %s: %v", email, err)
 	}
-
-	joined := s.client(t)
-	accepted := joined.post("/api/v1/auth/invites/accept", map[string]string{
-		"token": invite.Body["token"].(string), "name": string(role), "password": testPassword,
-	})
-	if accepted.Status != http.StatusOK {
-		t.Fatalf("accept returned %d: %s", accepted.Status, accepted.Raw)
-	}
-	userID := principalField(t, accepted, "principal", "user", "id")
-
-	// Joining grants an organization-wide user role. A test about one role has
-	// to start from nothing, so that role is taken away first. The grant was
-	// the joiner's write, so the owner's read of it waits for the replica.
-	h.waitForPrimary(t)
-	held := owner.get("/api/v1/role-assignments")
-	for _, row := range held.Body["assignments"].([]any) {
-		a := row.(map[string]any)
-		if a["userId"] == userID {
-			owner.delete("/api/v1/role-assignments/" + a["id"].(string))
-		}
-	}
-
 	granted := owner.post("/api/v1/role-assignments", map[string]any{
 		"role": string(role), "projectKey": projectKey, "userId": userID,
 	})
@@ -52,9 +27,10 @@ func (s *apiServer) asRole(t *testing.T, h *harness, owner *client, projectKey s
 		t.Fatalf("granting %s returned %d: %s", role, granted.Status, granted.Raw)
 	}
 	// The owner's writes pin the owner to the primary, not this client, whose
-	// first requests read the replica. Until the grant has arrived there, the
-	// role it was given on joining is what those requests would see.
+	// first requests read the replica; until the grant is there it holds nothing.
 	h.waitForPrimary(t)
+	joined := s.client(t)
+	joined.signIn(t, email)
 	return joined
 }
 
@@ -64,16 +40,17 @@ func (s *apiServer) asRole(t *testing.T, h *harness, owner *client, projectKey s
 func TestWhatEachRoleMayDo(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	guardKey := h.projectKey(t, "GUARD")
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	owner.signup(t, h, "roles")
-	created := owner.post("/api/v1/projects", map[string]string{"name": "Guarded", "key": "GUARD"})
+	owner.signIn(t, h.person(t, "roles", auth.RoleOwner))
+	created := owner.post("/api/v1/projects", map[string]string{"name": "Guarded", "key": guardKey})
 	if created.Status != http.StatusCreated {
 		t.Fatalf("create project returned %d: %s", created.Status, created.Raw)
 	}
-	issue := owner.post("/api/v1/projects/GUARD/issues", map[string]any{"summary": "something to touch"})
-	guardedSprint := idOf(t, want(t, owner.post("/api/v1/projects/GUARD/sprints", map[string]any{"name": "Guarded sprint"}), http.StatusCreated, "guarded sprint"), "sprint")
+	issue := owner.post("/api/v1/projects/"+guardKey+"/issues", map[string]any{"summary": "something to touch"})
+	guardedSprint := idOf(t, want(t, owner.post("/api/v1/projects/"+guardKey+"/sprints", map[string]any{"name": "Guarded sprint"}), http.StatusCreated, "guarded sprint"), "sprint")
 	issueKey := issue.Body["issue"].(map[string]any)["key"].(string)
 
 	// what one role is expected to be able to do. Reading is always allowed.
@@ -86,7 +63,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 	attempts := []attempt{
 		{
 			what: "read the project",
-			do:   func(c *client) response { return c.get("/api/v1/projects/GUARD") },
+			do:   func(c *client) response { return c.get("/api/v1/projects/" + guardKey) },
 			allowed: map[perm.Role]bool{
 				perm.Reader: true, perm.User: true, perm.ScrumMaster: true,
 				perm.ProjectAdministrator: true, perm.GlobalAdministrator: true,
@@ -103,7 +80,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 		{
 			what: "file an issue",
 			do: func(c *client) response {
-				return c.post("/api/v1/projects/GUARD/issues", map[string]any{"summary": "filed"})
+				return c.post("/api/v1/projects/"+guardKey+"/issues", map[string]any{"summary": "filed"})
 			},
 			allowed: map[perm.Role]bool{
 				perm.User: true, perm.ScrumMaster: true,
@@ -125,7 +102,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 			// sprint permission that moving into one does.
 			what: "file an issue straight into a sprint",
 			do: func(c *client) response {
-				return c.post("/api/v1/projects/GUARD/issues", map[string]any{"summary": "committed on arrival", "sprintId": guardedSprint})
+				return c.post("/api/v1/projects/"+guardKey+"/issues", map[string]any{"summary": "committed on arrival", "sprintId": guardedSprint})
 			},
 			allowed: map[perm.Role]bool{
 				perm.ScrumMaster: true, perm.ProjectAdministrator: true, perm.GlobalAdministrator: true,
@@ -134,7 +111,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 		{
 			what: "plan a sprint",
 			do: func(c *client) response {
-				return c.post("/api/v1/projects/GUARD/sprints", map[string]any{"name": unique("sprint")})
+				return c.post("/api/v1/projects/"+guardKey+"/sprints", map[string]any{"name": unique("sprint")})
 			},
 			allowed: map[perm.Role]bool{
 				perm.ScrumMaster: true, perm.ProjectAdministrator: true, perm.GlobalAdministrator: true,
@@ -143,7 +120,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 		{
 			what: "form a team",
 			do: func(c *client) response {
-				return c.post("/api/v1/projects/GUARD/teams", map[string]any{"name": unique("team")})
+				return c.post("/api/v1/projects/"+guardKey+"/teams", map[string]any{"name": unique("team")})
 			},
 			allowed: map[perm.Role]bool{
 				perm.ScrumMaster: true, perm.ProjectAdministrator: true, perm.GlobalAdministrator: true,
@@ -152,7 +129,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 		{
 			what: "configure the project",
 			do: func(c *client) response {
-				return c.do(http.MethodPatch, "/api/v1/projects/GUARD", map[string]any{"description": "changed"})
+				return c.do(http.MethodPatch, "/api/v1/projects/"+guardKey, map[string]any{"description": "changed"})
 			},
 			allowed: map[perm.Role]bool{
 				perm.ProjectAdministrator: true, perm.GlobalAdministrator: true,
@@ -168,7 +145,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 		{
 			what: "coin a status",
 			do: func(c *client) response {
-				return c.post("/api/v1/statuses", map[string]string{"name": "Coined " + freshProjectKey(), "category": "todo"})
+				return c.post("/api/v1/statuses", map[string]string{"name": h.name(t, "Coined"), "category": "todo"})
 			},
 			allowed: map[perm.Role]bool{
 				perm.GlobalAdministrator: true,
@@ -177,7 +154,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 		{
 			what: "make a project",
 			do: func(c *client) response {
-				return c.post("/api/v1/projects", map[string]string{"name": "Mine", "key": freshProjectKey()})
+				return c.post("/api/v1/projects", map[string]string{"name": "Mine", "key": h.projectKey(t, "K")})
 			},
 			allowed: map[perm.Role]bool{
 				perm.GlobalAdministrator: true,
@@ -206,7 +183,7 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 		t.Run(string(role), func(t *testing.T) {
 			// A role that only makes sense over the whole tenant is granted
 			// that way; the rest are scoped to the one project.
-			scope := "GUARD"
+			scope := guardKey
 			if role.OrgWideOnly() {
 				scope = ""
 			}
@@ -228,12 +205,6 @@ func TestWhatEachRoleMayDo(t *testing.T) {
 			}
 		})
 	}
-}
-
-// freshProjectKey is a key nothing else has taken, so that the one role allowed
-// to make a project does not collide with an earlier attempt or an earlier run.
-func freshProjectKey() string {
-	return "K" + strings.ToUpper(strings.ReplaceAll(uuid.New().String()[:6], "-", ""))
 }
 
 func allowedWord(allowed bool) string {

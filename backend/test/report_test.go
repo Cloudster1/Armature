@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/desk"
@@ -59,7 +60,7 @@ func bucket(b *report.Breakdown, label string) int {
 func TestANewProjectHasADashboardThatSuitsIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "dashing")
+	ws := h.newProject(t, "dashing")
 	r := ws.reports(h)
 
 	dashboards, err := r.Dashboards(ws.ctx, ws.project.Key)
@@ -111,7 +112,7 @@ func TestANewProjectHasADashboardThatSuitsIt(t *testing.T) {
 func TestReportsCountTheProjectsWork(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "counting")
+	ws := h.newProject(t, "counting")
 	r := ws.reports(h)
 
 	waiting := ws.newIssue(t, "still to do")
@@ -258,7 +259,7 @@ func TestReportsCountTheProjectsWork(t *testing.T) {
 func TestTheDeskReportsHowItKeptItsGoals(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "goalkeeping")
+	ws := h.newProject(t, "goalkeeping")
 	d, p := ws.aDesk(t, h, "Report desk")
 	r := ws.reports(h)
 	customer := ws.customerOf(t, h, "reported")
@@ -301,8 +302,7 @@ func TestTheDeskReportsHowItKeptItsGoals(t *testing.T) {
 func TestDashboardsAreArranged(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "arranging")
-	other := h.newWorkspace(t, "elsewhere")
+	ws := h.newProject(t, "arranging")
 	r := ws.reports(h)
 
 	made, _, err := r.CreateDashboardFrom(ws.ctx, ws.project.Key, report.CreateInput{Name: "Release readiness"}, ws.actor.UserID)
@@ -366,43 +366,35 @@ func TestDashboardsAreArranged(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization sees nothing", func(t *testing.T) {
-		theirs := report.NewService(h.cluster, other.plans)
-		if got, _ := theirs.Dashboards(other.ctx, ws.project.Key); len(got) != 0 {
-			t.Errorf("another organization read %d dashboards", len(got))
-		}
-		if _, _, err := theirs.AddWidget(other.ctx, made.ID, report.WidgetInput{Kind: report.Epics}); !errors.Is(err, report.ErrNotFound) {
-			t.Errorf("another organization added a widget: %v", err)
-		}
-	})
 }
 
 func TestDashboardsOverTheAPI(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	dshKey := h.projectKey(t, "DSH")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "dashapi")
-	if made := c.post("/api/v1/projects", map[string]any{"name": "Dashed", "key": "DSH"}); made.Status != http.StatusCreated {
+	c.signIn(t, h.person(t, "dashapi", auth.RoleOwner))
+	if made := c.post("/api/v1/projects", map[string]any{"name": "Dashed", "key": dshKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 
-	listed := c.get("/api/v1/projects/DSH/dashboards")
+	listed := c.get("/api/v1/projects/" + dshKey + "/dashboards")
 	if listed.Status != http.StatusOK || len(listed.Body["dashboards"].([]any)) != 1 {
 		t.Fatalf("dashboards: %d %s", listed.Status, listed.Raw)
 	}
-	kinds := c.get("/api/v1/projects/DSH/report-kinds")
+	kinds := c.get("/api/v1/projects/" + dshKey + "/report-kinds")
 	if kinds.Status != http.StatusOK || len(kinds.Body["kinds"].([]any)) == 0 {
 		t.Errorf("kinds: %d %s", kinds.Status, kinds.Raw)
 	}
-	status := c.get("/api/v1/projects/DSH/reports/status_breakdown")
+	status := c.get("/api/v1/projects/" + dshKey + "/reports/status_breakdown")
 	if status.Status != http.StatusOK || status.Body["total"].(float64) != 0 {
 		t.Errorf("status report: %d %s", status.Status, status.Raw)
 	}
-	if bad := c.get("/api/v1/projects/DSH/reports/pie"); bad.Status != http.StatusBadRequest {
+	if bad := c.get("/api/v1/projects/" + dshKey + "/reports/pie"); bad.Status != http.StatusBadRequest {
 		t.Errorf("an unknown report over the api: %d %s", bad.Status, bad.Raw)
 	}
-	if bad := c.get("/api/v1/projects/DSH/reports/throughput?team=not-a-uuid"); bad.Status != http.StatusBadRequest {
+	if bad := c.get("/api/v1/projects/" + dshKey + "/reports/throughput?team=not-a-uuid"); bad.Status != http.StatusBadRequest {
 		t.Errorf("a bad team id over the api: %d", bad.Status)
 	}
 }
@@ -412,7 +404,7 @@ func TestDashboardsOverTheAPI(t *testing.T) {
 func TestAQueryNarrowsWhatAReportCounts(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "narrowed")
+	ws := h.newProject(t, "narrowed")
 	r := ws.reports(h)
 
 	ws.typed(t, h, bootstrap.TypeBug, "a bug")
@@ -495,7 +487,7 @@ func TestAQueryNarrowsWhatAReportCounts(t *testing.T) {
 func TestADashboardKeepsOneFilter(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "onefilter")
+	ws := h.newProject(t, "onefilter")
 	r := ws.reports(h)
 
 	boards, err := r.Dashboards(ws.ctx, ws.project.Key)
@@ -546,29 +538,30 @@ func TestADashboardKeepsOneFilter(t *testing.T) {
 func TestReportsNarrowOverTheAPI(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	nrwKey := h.projectKey(t, "NRW")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "narrowapi")
-	if made := c.post("/api/v1/projects", map[string]any{"name": "Narrowed", "key": "NRW"}); made.Status != http.StatusCreated {
+	c.signIn(t, h.person(t, "narrowapi", auth.RoleOwner))
+	if made := c.post("/api/v1/projects", map[string]any{"name": "Narrowed", "key": nrwKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 	types := c.get("/api/v1/issue-types")
 	bug := find(t, types.Body["issueTypes"], "name", "Bug")["id"].(string)
-	c.post("/api/v1/projects/NRW/issues", map[string]any{"summary": "a bug", "typeId": bug})
-	c.post("/api/v1/projects/NRW/issues", map[string]any{"summary": "a task"})
+	c.post("/api/v1/projects/"+nrwKey+"/issues", map[string]any{"summary": "a bug", "typeId": bug})
+	c.post("/api/v1/projects/"+nrwKey+"/issues", map[string]any{"summary": "a task"})
 
-	narrowed := c.get("/api/v1/projects/NRW/reports/status_breakdown?q=" + url.QueryEscape("type = Bug"))
+	narrowed := c.get("/api/v1/projects/" + nrwKey + "/reports/status_breakdown?q=" + url.QueryEscape("type = Bug"))
 	if narrowed.Status != http.StatusOK || narrowed.Body["total"].(float64) != 1 {
 		t.Errorf("narrowed report: %d %s", narrowed.Status, narrowed.Raw)
 	}
-	bad := c.get("/api/v1/projects/NRW/reports/status_breakdown?q=" + url.QueryEscape("type = "))
+	bad := c.get("/api/v1/projects/" + nrwKey + "/reports/status_breakdown?q=" + url.QueryEscape("type = "))
 	if bad.Status != http.StatusBadRequest {
 		t.Fatalf("a query that does not parse: %d %s", bad.Status, bad.Raw)
 	}
 	if _, has := bad.Error()["position"]; !has {
 		t.Errorf("the refusal does not say where: %s", bad.Raw)
 	}
-	if noReport := c.get("/api/v1/projects/NRW/reports/filter"); noReport.Status != http.StatusBadRequest {
+	if noReport := c.get("/api/v1/projects/" + nrwKey + "/reports/filter"); noReport.Status != http.StatusBadRequest {
 		t.Errorf("the filter tile as a report: %d %s", noReport.Status, noReport.Raw)
 	}
 }
@@ -578,18 +571,20 @@ func TestReportsNarrowOverTheAPI(t *testing.T) {
 func TestAChartGroupsIssuesByAField(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	chtKey := h.projectKey(t, "CHT")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "charted")
-	if made := c.post("/api/v1/projects", map[string]any{"name": "Charted", "key": "CHT"}); made.Status != http.StatusCreated {
+	c.signIn(t, h.person(t, "charted", auth.RoleOwner))
+	if made := c.post("/api/v1/projects", map[string]any{"name": "Charted", "key": chtKey}); made.Status != http.StatusCreated {
 		t.Fatalf("create project: %d %s", made.Status, made.Raw)
 	}
 	types := c.get("/api/v1/issue-types")
 	bug := find(t, types.Body["issueTypes"], "name", "Bug")["id"].(string)
-	first := obj(t, want(t, c.post("/api/v1/projects/CHT/issues", map[string]any{"summary": "a bug", "typeId": bug}), http.StatusCreated, "bug"), "issue")["key"].(string)
-	c.post("/api/v1/projects/CHT/issues", map[string]any{"summary": "a task"})
-	c.post("/api/v1/projects/CHT/issues", map[string]any{"summary": "another task"})
-	want(t, c.put("/api/v1/issues/"+first+"/labels", map[string]any{"labels": []string{"backend", "urgent"}}), http.StatusOK, "tag the bug twice")
+	first := obj(t, want(t, c.post("/api/v1/projects/"+chtKey+"/issues", map[string]any{"summary": "a bug", "typeId": bug}), http.StatusCreated, "bug"), "issue")["key"].(string)
+	c.post("/api/v1/projects/"+chtKey+"/issues", map[string]any{"summary": "a task"})
+	c.post("/api/v1/projects/"+chtKey+"/issues", map[string]any{"summary": "another task"})
+	backend, urgent := h.name(t, "backend"), h.name(t, "urgent")
+	want(t, c.put("/api/v1/issues/"+first+"/labels", map[string]any{"labels": []string{backend, urgent}}), http.StatusOK, "tag the bug twice")
 
 	groups := func(resp response) map[string]float64 {
 		t.Helper()
@@ -605,7 +600,7 @@ func TestAChartGroupsIssuesByAField(t *testing.T) {
 	}
 
 	t.Run("bars by type, largest first", func(t *testing.T) {
-		resp := c.get("/api/v1/projects/CHT/reports/chart?groupBy=type&shape=bar")
+		resp := c.get("/api/v1/projects/" + chtKey + "/reports/chart?groupBy=type&shape=bar")
 		byType := groups(resp)
 		if byType["Bug"] != 1 || byType["Task"] != 2 || resp.Body["total"].(float64) != 3 {
 			t.Errorf("by type = %v, total %v", byType, resp.Body["total"])
@@ -616,7 +611,7 @@ func TestAChartGroupsIssuesByAField(t *testing.T) {
 	})
 
 	t.Run("a stack's parts add up to its bar", func(t *testing.T) {
-		resp := c.get("/api/v1/projects/CHT/reports/chart?groupBy=type&splitBy=statusCategory&shape=stacked")
+		resp := c.get("/api/v1/projects/" + chtKey + "/reports/chart?groupBy=type&splitBy=statusCategory&shape=stacked")
 		if resp.Status != http.StatusOK {
 			t.Fatalf("stacked: %d %s", resp.Status, resp.Raw)
 		}
@@ -634,22 +629,22 @@ func TestAChartGroupsIssuesByAField(t *testing.T) {
 
 	// A chart by label is a chart of labels: an issue with two counts in both.
 	t.Run("labels count an issue once per label, and the total says so", func(t *testing.T) {
-		resp := c.get("/api/v1/projects/CHT/reports/chart?groupBy=label")
+		resp := c.get("/api/v1/projects/" + chtKey + "/reports/chart?groupBy=label")
 		byLabel := groups(resp)
-		if byLabel["backend"] != 1 || byLabel["urgent"] != 1 || byLabel["No label"] != 2 || resp.Body["total"].(float64) != 4 {
+		if byLabel[backend] != 1 || byLabel[urgent] != 1 || byLabel["No label"] != 2 || resp.Body["total"].(float64) != 4 {
 			t.Errorf("by label = %v, total %v; want backend 1, urgent 1, No label 2, total 4", byLabel, resp.Body["total"])
 		}
 	})
 
 	t.Run("the dashboard's query narrows a chart like anything else", func(t *testing.T) {
-		resp := c.get("/api/v1/projects/CHT/reports/chart?groupBy=status&q=" + url.QueryEscape("type = Bug"))
+		resp := c.get("/api/v1/projects/" + chtKey + "/reports/chart?groupBy=status&q=" + url.QueryEscape("type = Bug"))
 		if resp.Body["total"].(float64) != 1 {
 			t.Errorf("narrowed total = %v, want 1", resp.Body["total"])
 		}
 	})
 
 	t.Run("a line over time keeps its empty weeks and sums to the issues", func(t *testing.T) {
-		resp := c.get("/api/v1/projects/CHT/reports/chart?shape=line&series=created&interval=week&days=30")
+		resp := c.get("/api/v1/projects/" + chtKey + "/reports/chart?shape=line&series=created&interval=week&days=30")
 		if resp.Status != http.StatusOK {
 			t.Fatalf("line: %d %s", resp.Status, resp.Raw)
 		}
@@ -668,14 +663,14 @@ func TestAChartGroupsIssuesByAField(t *testing.T) {
 		if sum != 3 {
 			t.Errorf("created over the window = %v, want 3", sum)
 		}
-		split := c.get("/api/v1/projects/CHT/reports/chart?shape=line&series=open&groupBy=type&interval=month&days=90")
+		split := c.get("/api/v1/projects/" + chtKey + "/reports/chart?shape=line&series=open&groupBy=type&interval=month&days=90")
 		if split.Status != http.StatusOK || len(split.Body["series"].([]any)) != 2 {
 			t.Errorf("a line per type: %d %s", split.Status, split.Raw)
 		}
 	})
 
 	t.Run("a word off the list is refused with the list", func(t *testing.T) {
-		resp := c.get("/api/v1/projects/CHT/reports/chart?groupBy=summary")
+		resp := c.get("/api/v1/projects/" + chtKey + "/reports/chart?groupBy=summary")
 		if resp.Status != http.StatusBadRequest {
 			t.Fatalf("groupBy=summary: %d %s", resp.Status, resp.Raw)
 		}
@@ -683,7 +678,7 @@ func TestAChartGroupsIssuesByAField(t *testing.T) {
 			t.Errorf("message = %q, want the allowed words", message)
 		}
 		for _, bad := range []string{"shape=pie", "measure=hours", "shape=line&interval=day", "shape=line&series=touched", "groupBy=type&splitBy=type"} {
-			if resp := c.get("/api/v1/projects/CHT/reports/chart?" + bad); resp.Status != http.StatusBadRequest {
+			if resp := c.get("/api/v1/projects/" + chtKey + "/reports/chart?" + bad); resp.Status != http.StatusBadRequest {
 				t.Errorf("%s: %d, want 400", bad, resp.Status)
 			}
 		}
@@ -695,7 +690,7 @@ func TestAChartGroupsIssuesByAField(t *testing.T) {
 func TestAMilestonesWidgetCountsWhatTheCardCounts(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mwidget")
+	ws := h.newProject(t, "mwidget")
 	r := ws.reports(h)
 	milestones := milestone.NewService(h.cluster)
 
@@ -788,13 +783,15 @@ func TestAMilestonesWidgetCountsWhatTheCardCounts(t *testing.T) {
 	})
 }
 
-// A template is a copy: built in as code or saved as the organization's own
+// A template is a copy: built in as code or saved as the installation's own
 // rows, and a dashboard made from one never follows it.
 func TestADashboardIsMadeFromATemplate(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "templated")
+	ldgKey := h.projectKey(t, "LDG")
+	ws := h.newProject(t, "templated")
 	r := ws.reports(h)
+	ours := h.name(t, "Our overview")
 
 	t.Run("the built-in milestone template puts the filter first, and only one", func(t *testing.T) {
 		made, _, err := r.CreateDashboardFrom(ws.ctx, ws.project.Key, report.CreateInput{Name: "Release readiness", Template: "milestone"}, ws.actor.UserID)
@@ -833,7 +830,7 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 		if _, _, err := r.AddWidget(ws.ctx, overview.ID, report.WidgetInput{Kind: report.TeamWorkload, Config: report.Params{TeamID: &team, Days: 90}}); err != nil {
 			t.Fatal(err)
 		}
-		saved, _, err = r.SaveTemplate(ws.ctx, overview.ID, "Our overview", "What we look at on Mondays.", ws.actor.UserID)
+		saved, _, err = r.SaveTemplate(ws.ctx, overview.ID, ours, "What we look at on Mondays.", ws.actor.UserID)
 		if err != nil {
 			t.Fatalf("save template: %v", err)
 		}
@@ -849,7 +846,7 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 		if kept == nil || kept.Config.TeamID != nil || kept.Config.Days != 90 {
 			t.Errorf("team workload widget = %+v, want the window kept and the team id dropped", kept)
 		}
-		if _, _, err := r.SaveTemplate(ws.ctx, overview.ID, "our OVERVIEW", "", ws.actor.UserID); !errors.Is(err, report.ErrTemplateNameTaken) {
+		if _, _, err := r.SaveTemplate(ws.ctx, overview.ID, strings.ToUpper(ours), "", ws.actor.UserID); !errors.Is(err, report.ErrTemplateNameTaken) {
 			t.Errorf("the same name again: err = %v, want ErrTemplateNameTaken", err)
 		}
 		if _, _, err := r.SaveTemplate(ws.ctx, overview.ID, "  ", "", ws.actor.UserID); !errors.Is(err, report.ErrTemplateName) {
@@ -863,19 +860,24 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 			t.Fatal(err)
 		}
 		var keys []string
-		for _, tpl := range templates {
+		lastBuiltIn := -1
+		for i, tpl := range templates {
 			keys = append(keys, tpl.Key)
+			if tpl.BuiltIn {
+				lastBuiltIn = i
+			}
 		}
 		if !slices.Contains(keys, "overview-software") || !slices.Contains(keys, "milestone") || slices.Contains(keys, "overview-service") {
 			t.Errorf("keys = %v, want the software built-ins and not the service one", keys)
 		}
-		if keys[len(keys)-1] != saved.Key {
-			t.Errorf("keys = %v, want the saved template last", keys)
+		// Other tests save templates too, so this one is looked for after the built-ins.
+		if at := slices.Index(keys, saved.Key); at < 0 || at < lastBuiltIn {
+			t.Errorf("keys = %v, want the saved template after the built-ins", keys)
 		}
 	})
 
 	t.Run("a saved software template on a business project leaves its sprint widgets out", func(t *testing.T) {
-		business, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Ledger", Key: "LDG", Kind: project.KindBusiness}, ws.actor.UserID)
+		business, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Ledger", Key: ldgKey, Kind: project.KindBusiness}, ws.actor.UserID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -889,25 +891,9 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization neither sees nor names it", func(t *testing.T) {
-		theirs := h.newWorkspace(t, "theirtemplates")
-		templates, err := theirs.reports(h).Templates(theirs.ctx, project.KindSoftware)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, tpl := range templates {
-			if !tpl.BuiltIn {
-				t.Errorf("another organization lists %q", tpl.Name)
-			}
-		}
-		if _, _, err := theirs.reports(h).CreateDashboardFrom(theirs.ctx, theirs.project.Key, report.CreateInput{Name: "Borrowed", Template: saved.Key}, theirs.actor.UserID); !errors.Is(err, report.ErrNoTemplate) {
-			t.Errorf("err = %v, want the saved template to be nobody's there", err)
-		}
-	})
-
-	t.Run("SQL refuses the same name twice in one organization", func(t *testing.T) {
+	t.Run("SQL refuses the same name twice", func(t *testing.T) {
 		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO dashboard_template (org_id, name) VALUES ($1, 'OUR overview')`, ws.orgID)
+			INSERT INTO dashboard_template (org_id, name) VALUES ($1, upper($2))`, ws.orgID, ours)
 		if err == nil {
 			t.Fatal("SQL let a second template take the name")
 		}
@@ -923,7 +909,7 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 		if _, err := r.DeleteTemplate(ws.ctx, *saved.ID); !errors.Is(err, report.ErrNotFound) {
 			t.Errorf("deleting twice: err = %v, want ErrNotFound", err)
 		}
-		boards, err := r.Dashboards(ws.ctx, "LDG")
+		boards, err := r.Dashboards(ws.ctx, ldgKey)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -938,7 +924,8 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 func TestAMilestoneGetsADashboard(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mdash")
+	otmKey := h.projectKey(t, "OTM")
+	ws := h.newProject(t, "mdash")
 	r := ws.reports(h)
 	milestones := milestone.NewService(h.cluster)
 	release, _, err := milestones.Create(ws.ctx, ws.project.Key, milestone.Input{Name: "Release 1"}, ws.actor.UserID)
@@ -965,7 +952,7 @@ func TestAMilestoneGetsADashboard(t *testing.T) {
 	}
 
 	t.Run("a milestone of another project is not found", func(t *testing.T) {
-		other, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Other", Key: "OTM"}, ws.actor.UserID)
+		other, _, err := ws.projects.Create(ws.ctx, project.CreateInput{Name: "Other", Key: otmKey}, ws.actor.UserID)
 		if err != nil {
 			t.Fatal(err)
 		}

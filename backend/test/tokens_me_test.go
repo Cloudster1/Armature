@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // An integration asks who it is when it connects, and learns there what its
@@ -16,8 +18,9 @@ func TestAuthMeTellsATokenWhatItMayDo(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "whoami")
-	for _, key := range []string{"DOC", "OPS"} {
+	owner.signIn(t, h.person(t, "whoami", auth.RoleOwner))
+	doc, ops := h.projectKey(t, "DOC"), h.projectKey(t, "OPS")
+	for _, key := range []string{doc, ops} {
 		if made := owner.post("/api/v1/projects", map[string]any{"name": "Project " + key, "key": key}); made.Status != http.StatusCreated {
 			t.Fatalf("create project %s: %d %s", key, made.Status, made.Raw)
 		}
@@ -34,7 +37,7 @@ func TestAuthMeTellsATokenWhatItMayDo(t *testing.T) {
 	t.Run("a read token confined to projects says so", func(t *testing.T) {
 		expires := time.Now().Add(30 * 24 * time.Hour).UTC().Truncate(time.Second)
 		created := want(t, owner.post("/api/v1/tokens", map[string]any{
-			"name": "stator", "scopes": []string{"read"}, "projects": []string{"OPS", "DOC"}, "expiresAt": expires,
+			"name": "stator", "scopes": []string{"read"}, "projects": []string{ops, doc}, "expiresAt": expires,
 		}), http.StatusCreated, "create token")
 		caller := api.client(t)
 		caller.bearer = principalField(t, created, "token", "secret").(string)
@@ -46,8 +49,8 @@ func TestAuthMeTellsATokenWhatItMayDo(t *testing.T) {
 		if got := token["scopes"]; !reflect.DeepEqual(got, []any{"read"}) {
 			t.Errorf("scopes = %v, want [read]", got)
 		}
-		if got := token["projects"]; !reflect.DeepEqual(got, []any{"DOC", "OPS"}) {
-			t.Errorf("projects = %v, want [DOC OPS]", got)
+		if got := token["projects"]; !reflect.DeepEqual(got, []any{doc, ops}) {
+			t.Errorf("projects = %v, want [%s %s]", got, doc, ops)
 		}
 		if got, err := time.Parse(time.RFC3339, token["expiresAt"].(string)); err != nil || !got.Equal(expires) {
 			t.Errorf("expiresAt = %v, want %v", token["expiresAt"], expires)

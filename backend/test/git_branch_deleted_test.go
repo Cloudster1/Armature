@@ -48,7 +48,7 @@ func wire(t *testing.T, b git.Branch) map[string]any {
 func TestAMergedBranchOutlivesItsDeletion(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "branchgone")
+	ws := h.newProject(t, "branchgone")
 	stub := newStubHost(t)
 	svc, repo := ws.connect(t, h, git.GitHub, stub, "", "")
 	found := ws.newIssue(t, "Accept a plus sign")

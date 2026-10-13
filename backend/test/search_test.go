@@ -27,10 +27,12 @@ import (
 func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "searching")
-	other := h.newWorkspace(t, "elsewhere")
+	ws := h.newProject(t, "searching")
+	other := h.newProject(t, "elsewhere")
 	labels := label.NewService(h.cluster)
 	fields := field.NewService(h.cluster)
+	// Labels are words the whole installation shares, so these are the test's own.
+	backend, security := h.name(t, "backend"), h.name(t, "security")
 
 	me := ws.actor.UserID
 	create := func(ws *workspace, summary, typeName string, shape func(in *issue.CreateInput)) *issue.Issue {
@@ -54,12 +56,12 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 		in.Estimate = &five
 	})
 	c := create(ws, "Tidy the docs", "Story", func(in *issue.CreateInput) { in.Priority = issue.PriorityLow })
-	otherLogin := create(other, "Login page in another organization", "Bug", nil)
+	create(other, "Login page in another project", "Bug", nil)
 
-	if _, _, err := labels.SetIssueLabels(ws.ctx, a.Key, []string{"backend", "security"}, ws.actor); err != nil {
+	if _, _, err := labels.SetIssueLabels(ws.ctx, a.Key, []string{backend, security}, ws.actor); err != nil {
 		t.Fatalf("label a: %v", err)
 	}
-	if _, _, err := labels.SetIssueLabels(ws.ctx, b.Key, []string{"backend"}, ws.actor); err != nil {
+	if _, _, err := labels.SetIssueLabels(ws.ctx, b.Key, []string{backend}, ws.actor); err != nil {
 		t.Fatalf("label b: %v", err)
 	}
 	closeID := h.transitionID(t, ws, c.Key, "Close")
@@ -95,8 +97,13 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 		}
 		return compiled
 	}
-	search := func(t *testing.T, ws *workspace, text string) ([]string, int) {
-		res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compile(t, text)}, issue.Page{Limit: 50})
+	// search asks as somebody who reads only the projects named: the owner reads
+	// every project in the installation, and other tests' work is not this one's.
+	search := func(t *testing.T, ws *workspace, text string, projects ...string) ([]string, int) {
+		if len(projects) == 0 {
+			projects = []string{ws.project.Key}
+		}
+		res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compile(t, text), Within: projects, Scoped: true}, issue.Page{Limit: 50})
 		if err != nil {
 			t.Fatalf("%q: %v", text, err)
 		}
@@ -106,7 +113,7 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 		}
 		return keys, res.Total
 	}
-	// bySQL asks the database the same thing in plain SQL, in the tenant's context.
+	// bySQL asks the database the same thing in plain SQL, of the test's project.
 	bySQL := func(t *testing.T, where string, args ...any) []string {
 		var keys []string
 		err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -114,7 +121,7 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 				SELECT p.key || '-' || i.key_num FROM issue i
 				JOIN project p ON p.id = i.project_id
 				JOIN issue_status s ON s.id = i.status_id
-				JOIN issue_type it ON it.id = i.issue_type_id WHERE `+where, args...)
+				JOIN issue_type it ON it.id = i.issue_type_id WHERE p.key = '`+ws.project.Key+`' AND (`+where+`)`, args...)
 			if err != nil {
 				return err
 			}
@@ -157,9 +164,9 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 		{q: "assignee IS EMPTY", want: sorted(b.Key, c.Key), sql: "i.assignee_id IS NULL"},
 		{q: "statusCategory != done", want: sorted(a.Key, b.Key), sql: "s.category <> 'done'"},
 		{q: "status = Done", want: sorted(c.Key), sql: "s.name = 'Done'"},
-		{q: "labels IN (security, nothing)", want: sorted(a.Key),
-			sql: "EXISTS (SELECT 1 FROM issue_label il JOIN label l ON l.id = il.label_id WHERE il.issue_id = i.id AND l.name = 'security')"},
-		{q: "labels = backend AND priority >= high", want: sorted(a.Key)},
+		{q: `labels IN ("` + security + `", nothing)`, want: sorted(a.Key),
+			sql: "EXISTS (SELECT 1 FROM issue_label il JOIN label l ON l.id = il.label_id WHERE il.issue_id = i.id AND l.name = '" + security + "')"},
+		{q: `labels = "` + backend + `" AND priority >= high`, want: sorted(a.Key)},
 		{q: "labels IS EMPTY", want: sorted(c.Key)},
 		{q: `"Customer" = globex`, want: sorted(b.Key),
 			sql: "EXISTS (SELECT 1 FROM issue_field_value v WHERE v.issue_id = i.id AND v.value = '\"Globex\"'::jsonb)"},
@@ -208,11 +215,12 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 
 	t.Run("paging walks the same order", func(t *testing.T) {
 		compiled := compile(t, "ORDER BY key")
-		first, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled}, issue.Page{Limit: 2})
+		mine := []string{ws.project.Key}
+		first, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled, Within: mine, Scoped: true}, issue.Page{Limit: 2})
 		if err != nil {
 			t.Fatal(err)
 		}
-		second, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled}, issue.Page{Limit: 2, Offset: 2})
+		second, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled, Within: mine, Scoped: true}, issue.Page{Limit: 2, Offset: 2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -225,7 +233,7 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 	})
 
 	t.Run("the query is ANDed with the filter it is given with", func(t *testing.T) {
-		res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compile(t, "labels = backend"), Priorities: []issue.Priority{issue.PriorityHigh}}, issue.Page{Limit: 50})
+		res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compile(t, `labels = "`+backend+`"`), Priorities: []issue.Priority{issue.PriorityHigh}, Within: []string{ws.project.Key}, Scoped: true}, issue.Page{Limit: 50})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -235,7 +243,7 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 	})
 
 	t.Run("Keys answers the same set without a page", func(t *testing.T) {
-		keys, err := ws.issues.Keys(ws.ctx, issue.Filter{ProjectKey: ws.project.Key, Query: compile(t, "labels = backend")})
+		keys, err := ws.issues.Keys(ws.ctx, issue.Filter{ProjectKey: ws.project.Key, Query: compile(t, `labels = "`+backend+`"`)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -243,13 +251,8 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 	})
 
 	t.Run("a custom field is found by name in whichever project defines it", func(t *testing.T) {
-		got, _ := search(t, other, `"customer" = Globex`)
-		same(t, "other project", got, []string{otherIssue.Key})
-	})
-
-	t.Run("another organization sees none of it", func(t *testing.T) {
-		got, _ := search(t, other, "summary ~ login OR labels = backend OR assignee = "+ws.owner.Principal.User.Email)
-		same(t, "other org", got, []string{otherLogin.Key})
+		got, _ := search(t, other, `"customer" = Globex`, ws.project.Key, other.project.Key)
+		same(t, "both projects", sorted(got...), sorted(b.Key, otherIssue.Key))
 	})
 
 	t.Run("a query that does not compile never reaches the database", func(t *testing.T) {
@@ -265,7 +268,7 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 	})
 
 	t.Run("the plan marks the keys a query selects and keeps every row", func(t *testing.T) {
-		p, err := ws.plans.ForProjectMatching(ws.ctx, ws.project.Key, compile(t, "labels = backend ORDER BY key"))
+		p, err := ws.plans.ForProjectMatching(ws.ctx, ws.project.Key, compile(t, `labels = "`+backend+`" ORDER BY key`))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -289,10 +292,11 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 func TestCustomNumberAndDateFieldsAnswerEveryOperator(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "measured")
+	wdKey := h.projectKey(t, "WD")
+	ws := h.newProject(t, "measured")
 	fields := field.NewService(h.cluster)
 	elsewhere, _, err := ws.projects.Create(ws.ctx, project.CreateInput{
-		Name: "Worded", Key: "WD" + strings.ToUpper(uuid.New().String()[:4]),
+		Name: "Worded", Key: wdKey,
 	}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("the second project: %v", err)
@@ -375,7 +379,7 @@ func TestCustomNumberAndDateFieldsAnswerEveryOperator(t *testing.T) {
 			if err != nil {
 				t.Fatalf("compile: %v", err)
 			}
-			res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled}, issue.Page{Limit: 50})
+			res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled, Within: []string{ws.project.Key, elsewhere.Key}, Scoped: true}, issue.Page{Limit: 50})
 			if err != nil {
 				t.Fatalf("a query that compiled failed in the database: %v", err)
 			}

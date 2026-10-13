@@ -43,10 +43,11 @@ func (w *statusWatcher) IssueDeleted(context.Context, db.DBTX, *issue.Issue, iss
 	return nil
 }
 
-// coinType adds an issue type at the ordinary working level; the bootstrap
-// has no Incident and types have no admin service to coin one with.
-func (h *harness) coinType(t *testing.T, ws *workspace, name string) uuid.UUID {
+// coinType adds an issue type at the ordinary working level, named uniquely
+// after name; types have no admin service to coin one with.
+func (h *harness) coinType(t *testing.T, ws *workspace, name string) (uuid.UUID, string) {
 	t.Helper()
+	name = h.name(t, name)
 	var id uuid.UUID
 	_, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
@@ -57,15 +58,17 @@ func (h *harness) coinType(t *testing.T, ws *workspace, name string) uuid.UUID {
 	if err != nil {
 		t.Fatalf("coin issue type %q: %v", name, err)
 	}
-	return id
+	return id, name
 }
 
-// coinStatus adds a status to the organization.
-func (ws *workspace) coinStatus(t *testing.T, name string, category workflow.StatusCategory) {
+// coinStatus adds a status everyone shares, named uniquely after name.
+func (ws *workspace) coinStatus(t *testing.T, h *harness, name string, category workflow.StatusCategory) string {
 	t.Helper()
+	name = h.name(t, name)
 	if _, _, err := ws.admin.CreateStatus(ws.ctx, workflow.StatusInput{Name: name, Category: category}, ws.actor.UserID); err != nil {
 		t.Fatalf("coin status %q: %v", name, err)
 	}
+	return name
 }
 
 // statusMoves reads the issue.transitioned events about an issue as from->to.
@@ -149,15 +152,15 @@ func matching(t *testing.T, ws *workspace, query, key string) bool {
 func TestATypeChangeThatMovesTheStatusRecordsTheMove(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "retype")
+	ws := h.newProject(t, "retype")
 	watcher := &statusWatcher{}
 	ws.issues.Observe(watcher)
 
-	ws.coinStatus(t, "Triage", workflow.CategoryTodo)
-	incidents := h.straightThrough(t, ws, "Incident response", "Triage", bootstrap.StatusInProgress)
+	triage := ws.coinStatus(t, h, "Triage", workflow.CategoryTodo)
+	incidents := h.straightThrough(t, ws, "Incident response", triage, bootstrap.StatusInProgress)
 	archive := h.straightThrough(t, ws, "Archive", bootstrap.StatusDone, bootstrap.StatusInProgress)
-	incident := h.coinType(t, ws, "Incident")
-	archived := h.coinType(t, ws, "Archived")
+	incident, incidentName := h.coinType(t, ws, "Incident")
+	archived, _ := h.coinType(t, ws, "Archived")
 	h.overrideWith(t, ws, "Incident scheme",
 		workflow.SchemeItemInput{IssueTypeID: &incident, WorkflowID: incidents.ID},
 		workflow.SchemeItemInput{IssueTypeID: &archived, WorkflowID: archive.ID},
@@ -178,7 +181,7 @@ func TestATypeChangeThatMovesTheStatusRecordsTheMove(t *testing.T) {
 		if err != nil {
 			t.Fatalf("change the type to Incident: %v", err)
 		}
-		if retyped.Status.Name != "Triage" {
+		if retyped.Status.Name != triage {
 			t.Errorf("status = %q, want the incident workflow's Triage", retyped.Status.Name)
 		}
 		if retyped.ResolvedAt != nil {
@@ -186,10 +189,10 @@ func TestATypeChangeThatMovesTheStatusRecordsTheMove(t *testing.T) {
 		}
 
 		changes := latestChanges(t, ws, bug.Key)
-		if c := changes["type"]; c.From != bootstrap.TypeBug || c.To != "Incident" {
+		if c := changes["type"]; c.From != bootstrap.TypeBug || c.To != incidentName {
 			t.Errorf("type change = %+v, want Bug->Incident", c)
 		}
-		if c, ok := changes["status"]; !ok || c.From != bootstrap.StatusDone || c.To != "Triage" {
+		if c, ok := changes["status"]; !ok || c.From != bootstrap.StatusDone || c.To != triage {
 			t.Errorf("status change = %+v (recorded %v), want Done->Triage in the same entry", c, ok)
 		}
 		if c, ok := changes["resolution"]; !ok || c.To != "Unresolved" {
@@ -197,10 +200,10 @@ func TestATypeChangeThatMovesTheStatusRecordsTheMove(t *testing.T) {
 		}
 
 		moves := h.statusMoves(t, ws, bug.Key)
-		if len(moves) != 2 || moves[1] != "Done->Triage" {
+		if len(moves) != 2 || moves[1] != "Done->"+triage {
 			t.Errorf("issue.transitioned events = %v, want the close and then Done->Triage", moves)
 		}
-		if len(watcher.moves) != 1 || watcher.moves[0] != bug.Key+": Done->Triage" {
+		if len(watcher.moves) != 1 || watcher.moves[0] != bug.Key+": Done->"+triage {
 			t.Errorf("observers heard %v, want the one move to Triage", watcher.moves)
 		}
 

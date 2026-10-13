@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/armature/armature/backend/internal/db"
@@ -39,12 +38,13 @@ func redisClient(t *testing.T) *redis.Client {
 	return client
 }
 
-// countUnpublished reports how many events are still waiting for the relay.
-func (h *harness) countUnpublished(t *testing.T, orgID uuid.UUID) int {
+// countUnpublished reports how many events of a topic are still waiting for
+// the relay; a test's topics are its own.
+func (h *harness) countUnpublished(t *testing.T, topic string) int {
 	t.Helper()
 	var n int
 	err := h.super.QueryRow(context.Background(),
-		`SELECT count(*) FROM outbox_event WHERE org_id = $1 AND published_at IS NULL`, orgID).Scan(&n)
+		`SELECT count(*) FROM outbox_event WHERE topic = $1 AND published_at IS NULL`, topic).Scan(&n)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,19 +56,20 @@ func TestOutbox(t *testing.T) {
 	h := newHarness(t)
 
 	t.Run("an event is committed with the change that caused it", func(t *testing.T) {
-		orgID, orgCtx := h.makeOrg(t, "outbox")
+		orgID, orgCtx := h.installation()
+		topic := unique("test.thing.happened")
 
 		if _, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'thing.happened', 'thing')`, orgID); err != nil {
 				return err
 			}
-			return events.EmitInTenant(ctx, tx, "test.thing.happened", map[string]any{"n": 1})
+			return events.EmitInTenant(ctx, tx, topic, map[string]any{"n": 1})
 		}); err != nil {
 			t.Fatalf("write: %v", err)
 		}
 
-		if got := h.countUnpublished(t, orgID); got != 1 {
+		if got := h.countUnpublished(t, topic); got != 1 {
 			t.Errorf("%d unpublished events, want 1", got)
 		}
 	})
@@ -76,11 +77,12 @@ func TestOutbox(t *testing.T) {
 	// The whole point of the outbox: an event must not survive a transaction
 	// that did not.
 	t.Run("a rolled back change leaves no event behind", func(t *testing.T) {
-		orgID, orgCtx := h.makeOrg(t, "rollback")
+		_, orgCtx := h.installation()
+		topic := unique("test.should.not.exist")
 
 		sentinel := errors.New("deliberate failure after emitting")
 		_, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
-			if err := events.EmitInTenant(ctx, tx, "test.should.not.exist", map[string]any{}); err != nil {
+			if err := events.EmitInTenant(ctx, tx, topic, map[string]any{}); err != nil {
 				return err
 			}
 			return sentinel
@@ -89,25 +91,9 @@ func TestOutbox(t *testing.T) {
 			t.Fatalf("error = %v, want the sentinel", err)
 		}
 
-		if got := h.countUnpublished(t, orgID); got != 0 {
+		if got := h.countUnpublished(t, topic); got != 0 {
 			t.Errorf("%d events survived a rolled back transaction, want 0", got)
 		}
-	})
-
-	t.Run("an event cannot be emitted into another tenant", func(t *testing.T) {
-		orgA, ctxA := h.makeOrg(t, "emitter")
-		orgB, _ := h.makeOrg(t, "victim")
-
-		_, err := h.cluster.Write(ctxA, func(ctx context.Context, tx db.DBTX) error {
-			return events.Emit(ctx, tx, orgB, "test.cross.tenant", map[string]any{})
-		})
-		if err == nil {
-			t.Error("an event was emitted into another organization")
-		}
-		if got := h.countUnpublished(t, orgB); got != 0 {
-			t.Errorf("organization B has %d events from A, want 0", got)
-		}
-		_ = orgA
 	})
 }
 
@@ -117,23 +103,24 @@ func TestOutboxRelay(t *testing.T) {
 	ctx := context.Background()
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	// emit writes n events for a fresh organization and returns its id.
-	emit := func(t *testing.T, name string, n int) uuid.UUID {
+	// emit writes n events under a topic of their own and returns the topic.
+	emit := func(t *testing.T, name string, n int) string {
 		t.Helper()
-		orgID, orgCtx := h.makeOrg(t, name)
+		_, orgCtx := h.installation()
+		topic := unique("test.relayed." + name)
 		for i := range n {
 			if _, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
-				return events.EmitInTenant(ctx, tx, "test.relayed", map[string]any{"i": i})
+				return events.EmitInTenant(ctx, tx, topic, map[string]any{"i": i})
 			}); err != nil {
 				t.Fatalf("emit %d: %v", i, err)
 			}
 		}
-		return orgID
+		return topic
 	}
 
-	// drain runs the relay until the organization has nothing unpublished, or
-	// the deadline passes.
-	drain := func(t *testing.T, orgID uuid.UUID, within time.Duration) {
+	// drain runs the relay until the topic has nothing unpublished, or the
+	// deadline passes.
+	drain := func(t *testing.T, topic string, within time.Duration) {
 		t.Helper()
 		runCtx, cancel := context.WithTimeout(ctx, within)
 		defer cancel()
@@ -146,7 +133,7 @@ func TestOutboxRelay(t *testing.T) {
 
 		deadline := time.Now().Add(within)
 		for time.Now().Before(deadline) {
-			if h.countUnpublished(t, orgID) == 0 {
+			if h.countUnpublished(t, topic) == 0 {
 				cancel()
 				<-done
 				return
@@ -155,7 +142,7 @@ func TestOutboxRelay(t *testing.T) {
 		}
 		cancel()
 		<-done
-		t.Fatalf("the relay left %d events unpublished after %s", h.countUnpublished(t, orgID), within)
+		t.Fatalf("the relay left %d events unpublished after %s", h.countUnpublished(t, topic), within)
 	}
 
 	// The stream is capped, so its length stops growing once it is full; what
@@ -183,8 +170,8 @@ func TestOutboxRelay(t *testing.T) {
 	t.Run("committed events reach the stream and are marked published", func(t *testing.T) {
 		before := mark(t)
 
-		orgID := emit(t, "relayed", 3)
-		drain(t, orgID, 10*time.Second)
+		topic := emit(t, "relayed", 3)
+		drain(t, topic, 10*time.Second)
 
 		if grew := since(t, before); grew < 3 {
 			t.Errorf("the stream grew by %d, want at least the 3 events emitted", grew)
@@ -192,8 +179,8 @@ func TestOutboxRelay(t *testing.T) {
 	})
 
 	t.Run("a second pass does not republish what it already sent", func(t *testing.T) {
-		orgID := emit(t, "once", 2)
-		drain(t, orgID, 10*time.Second)
+		topic := emit(t, "once", 2)
+		drain(t, topic, 10*time.Second)
 
 		before := mark(t)
 
@@ -211,7 +198,7 @@ func TestOutboxRelay(t *testing.T) {
 	// LOCKED is what stops them blocking on, or duplicating, each other's rows.
 	t.Run("concurrent relays neither block nor duplicate", func(t *testing.T) {
 		const eventCount = 40
-		orgID := emit(t, "concurrent", eventCount)
+		topic := emit(t, "concurrent", eventCount)
 
 		before := mark(t)
 
@@ -226,13 +213,13 @@ func TestOutboxRelay(t *testing.T) {
 		}
 
 		deadline := time.Now().Add(10 * time.Second)
-		for time.Now().Before(deadline) && h.countUnpublished(t, orgID) > 0 {
+		for time.Now().Before(deadline) && h.countUnpublished(t, topic) > 0 {
 			time.Sleep(50 * time.Millisecond)
 		}
 		cancel()
 		wg.Wait()
 
-		if remaining := h.countUnpublished(t, orgID); remaining != 0 {
+		if remaining := h.countUnpublished(t, topic); remaining != 0 {
 			t.Fatalf("%d events left unpublished", remaining)
 		}
 
@@ -248,7 +235,7 @@ func TestOutboxRelay(t *testing.T) {
 	})
 
 	t.Run("a publish failure is recorded and the event is retried", func(t *testing.T) {
-		orgID := emit(t, "failing", 1)
+		topic := emit(t, "failing", 1)
 
 		// A client pointed at nothing, so publishing cannot succeed.
 		broken := redis.NewClient(&redis.Options{
@@ -262,14 +249,14 @@ func TestOutboxRelay(t *testing.T) {
 		_ = events.NewRelay(h.cluster, broken, log).Run(runCtx)
 		cancel()
 
-		if got := h.countUnpublished(t, orgID); got != 1 {
+		if got := h.countUnpublished(t, topic); got != 1 {
 			t.Errorf("%d unpublished events after a failed publish, want the event to still be waiting", got)
 		}
 
 		var attempts int
 		var lastError *string
 		if err := h.super.QueryRow(ctx,
-			`SELECT attempts, last_error FROM outbox_event WHERE org_id = $1`, orgID).Scan(&attempts, &lastError); err != nil {
+			`SELECT attempts, last_error FROM outbox_event WHERE topic = $1`, topic).Scan(&attempts, &lastError); err != nil {
 			t.Fatal(err)
 		}
 		if attempts == 0 {
@@ -280,6 +267,6 @@ func TestOutboxRelay(t *testing.T) {
 		}
 
 		// And a working relay still delivers it afterwards.
-		drain(t, orgID, 10*time.Second)
+		drain(t, topic, 10*time.Second)
 	})
 }

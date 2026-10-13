@@ -41,9 +41,11 @@ func signInWith(t *testing.T, h *harness, svc *oidc.Service, ws *workspace, prov
 	return svc.SignIn(context.Background(), orgID, identity, time.Hour, "test", "")
 }
 
-// configured wires a stub provider into an organization and returns the service.
+// configured wires a stub provider into the installation, which has one, and
+// puts back the one it found when the test ends.
 func configured(t *testing.T, h *harness, ws *workspace, provider *idp, createGroups bool) (*oidc.Service, string) {
 	t.Helper()
+	h.keepProvider(t)
 	clientID := "armature-test"
 	svc := oidc.NewService(h.cluster, "http://localhost:8080/api/v1/auth/oidc/callback")
 
@@ -58,9 +60,8 @@ func configured(t *testing.T, h *harness, ws *workspace, provider *idp, createGr
 }
 
 func TestSigningInThroughAProvider(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "sso")
+	ws := h.newProject(t, "sso")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 
@@ -89,14 +90,13 @@ func TestSigningInThroughAProvider(t *testing.T) {
 
 // Authenticating is not the same as being let in.
 func TestSomebodyWhoWasNeverInvitedIsRefused(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "uninvited")
+	ws := h.newProject(t, "uninvited")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 
 	_, err := signInWith(t, h, svc, ws, provider, clientID, map[string]any{
-		"email": "stranger@example.test", "name": "A Stranger",
+		"email": h.email(t, "stranger"), "name": "A Stranger",
 	})
 	if !errors.Is(err, oidc.ErrNotAMember) {
 		t.Errorf("error = %v, want them refused", err)
@@ -106,9 +106,8 @@ func TestSomebodyWhoWasNeverInvitedIsRefused(t *testing.T) {
 // The point of reading groups from the token: revoking access at the provider
 // has to revoke it here.
 func TestGroupsFollowTheProvider(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "claims")
+	ws := h.newProject(t, "claims")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 	perms := h.perms()
@@ -117,8 +116,9 @@ func TestGroupsFollowTheProvider(t *testing.T) {
 	userID := h.joinExisting(t, ws, email, "member")
 
 	// A group tied to the value the provider will send, with a role on it.
+	platform := h.name(t, "platform-engineers")
 	group, _, err := perms.CreateGroup(ws.ctx, perm.GroupInput{
-		Name: "Platform engineers", ExternalRef: "platform-engineers",
+		Name: platform, ExternalRef: platform,
 	}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +131,7 @@ func TestGroupsFollowTheProvider(t *testing.T) {
 
 	t.Run("a claim puts somebody in the group and brings the role", func(t *testing.T) {
 		if _, err := signInWith(t, h, svc, ws, provider, clientID, map[string]any{
-			"email": email, "name": "Claimed", "groups": []any{"platform-engineers"},
+			"email": email, "name": "Claimed", "groups": []any{platform},
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -153,7 +153,7 @@ func TestGroupsFollowTheProvider(t *testing.T) {
 
 	// A group somebody maintains by hand is none of the provider's business.
 	t.Run("a group kept by hand is left alone", func(t *testing.T) {
-		local, _, err := perms.CreateGroup(ws.ctx, perm.GroupInput{Name: "On call"}, ws.actor.UserID)
+		local, _, err := perms.CreateGroup(ws.ctx, perm.GroupInput{Name: h.name(t, "On call")}, ws.actor.UserID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -176,17 +176,17 @@ func TestGroupsFollowTheProvider(t *testing.T) {
 }
 
 func TestAGroupTheProviderNamesCanBeCreatedOnSight(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "autogroup")
+	ws := h.newProject(t, "autogroup")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, true)
 
 	email := h.email(t, "autojoined")
 	h.joinExisting(t, ws, email, "member")
 
+	designers := h.name(t, "designers")
 	if _, err := signInWith(t, h, svc, ws, provider, clientID, map[string]any{
-		"email": email, "name": "Auto", "groups": []any{"designers"},
+		"email": email, "name": "Auto", "groups": []any{designers},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestAGroupTheProviderNamesCanBeCreatedOnSight(t *testing.T) {
 	}
 	var found bool
 	for _, g := range groups {
-		if g.ExternalRef == "designers" {
+		if g.ExternalRef == designers {
 			found = true
 			if !g.FromProvider() {
 				t.Error("a group the provider made is not marked as its own")
@@ -215,9 +215,8 @@ func TestAGroupTheProviderNamesCanBeCreatedOnSight(t *testing.T) {
 // The tokens a verifier has to refuse. Each of these is a way somebody would
 // try to sign in as anybody at all.
 func TestForgedTokensAreRefused(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "forgery")
+	ws := h.newProject(t, "forgery")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 
@@ -299,9 +298,8 @@ func TestForgedTokensAreRefused(t *testing.T) {
 // A callback whose state this server never issued is what a forged callback
 // looks like, and a state is good for exactly one sign-in.
 func TestACallbackMustBelongToASignInThatStartedHere(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "state")
+	ws := h.newProject(t, "state")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 
@@ -334,9 +332,8 @@ func TestACallbackMustBelongToASignInThatStartedHere(t *testing.T) {
 }
 
 func TestSignInIsRefusedWhenTheProviderIsOff(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "disabled")
+	ws := h.newProject(t, "disabled")
 	provider := newIDP(t)
 	svc, _ := configured(t, h, ws, provider, false)
 
@@ -350,9 +347,8 @@ func TestSignInIsRefusedWhenTheProviderIsOff(t *testing.T) {
 
 // The secret is never handed back, and saving without one keeps the stored one.
 func TestTheClientSecretIsKeptOutOfSight(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "secret")
+	ws := h.newProject(t, "secret")
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 

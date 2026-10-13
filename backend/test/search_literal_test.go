@@ -19,7 +19,7 @@ import (
 func TestATextSearchFindsPercentAndUnderscoreAsTyped(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "literal")
+	ws := h.newProject(t, "literal")
 	fields := field.NewService(h.cluster)
 	code, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: "Code", Kind: field.Text})
 	if err != nil {
@@ -64,7 +64,7 @@ func TestATextSearchFindsPercentAndUnderscoreAsTyped(t *testing.T) {
 			if err != nil {
 				t.Fatalf("compile: %v", err)
 			}
-			res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled}, issue.Page{Limit: 50})
+			res, err := ws.issues.List(ws.ctx, issue.Filter{Query: compiled, Within: []string{ws.project.Key}, Scoped: true}, issue.Page{Limit: 50})
 			if err != nil {
 				t.Fatalf("search: %v", err)
 			}

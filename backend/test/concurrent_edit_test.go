@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 const staleEditSentence = "Somebody changed this issue since you opened it. Reload it and apply your edit again."
@@ -22,11 +24,12 @@ func paragraphDoc(text string) map[string]any {
 func TestAStaleEditOfAnIssueIsRefused(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	tabKey := h.projectKey(t, "TAB")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "two-tabs")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Two tabs", "key": "TAB"}), http.StatusCreated, "create project")
-	issued := want(t, owner.post("/api/v1/projects/TAB/issues", map[string]any{"summary": "shared", "description": paragraphDoc("as it was")}), http.StatusCreated, "create issue")
+	owner.signIn(t, h.person(t, "two-tabs", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Two tabs", "key": tabKey}), http.StatusCreated, "create project")
+	issued := want(t, owner.post("/api/v1/projects/"+tabKey+"/issues", map[string]any{"summary": "shared", "description": paragraphDoc("as it was")}), http.StatusCreated, "create issue")
 	key := issued.Body["issue"].(map[string]any)["key"].(string)
 	opened := issued.Body["issue"].(map[string]any)["updatedAt"].(string)
 
@@ -73,11 +76,12 @@ func TestAStaleEditOfAnIssueIsRefused(t *testing.T) {
 func TestASaveThatChangesNothingRecordsNothing(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	nopKey := h.projectKey(t, "NOP")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "no-op-saver")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Unchanged", "key": "NOP"}), http.StatusCreated, "create project")
-	issued := want(t, owner.post("/api/v1/projects/NOP/issues", map[string]any{"summary": "steady"}), http.StatusCreated, "create issue")
+	owner.signIn(t, h.person(t, "no-op-saver", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Unchanged", "key": nopKey}), http.StatusCreated, "create project")
+	issued := want(t, owner.post("/api/v1/projects/"+nopKey+"/issues", map[string]any{"summary": "steady"}), http.StatusCreated, "create issue")
 	key := issued.Body["issue"].(map[string]any)["key"].(string)
 	issueID := issued.Body["issue"].(map[string]any)["id"].(string)
 

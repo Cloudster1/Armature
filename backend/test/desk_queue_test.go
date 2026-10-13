@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/issue"
 )
@@ -18,7 +19,7 @@ import (
 func TestTheQueuePutsTheMostPressingFirst(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "queueing")
+	ws := h.newProject(t, "queueing")
 	d, p := ws.aDesk(t, h, "Queue desk")
 	customer := ws.customerOf(t, h, "queuer")
 	types, _ := d.RequestTypes(ws.ctx, p.Key)
@@ -76,14 +77,15 @@ const (
 func TestTheQueueReadsEveryRequestMostOverdueFirst(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	bsyKey := h.projectKey(t, "BSY")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "busydesk")
-	projectID := uuid.MustParse(idOf(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Busy desk", "key": "BSY", "template": "service-desk"}), http.StatusCreated, "create the desk"), "project"))
+	owner.signIn(t, h.person(t, "busydesk", auth.RoleOwner))
+	projectID := uuid.MustParse(idOf(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Busy desk", "key": bsyKey, "template": "service-desk"}), http.StatusCreated, "create the desk"), "project"))
 
 	keys := make([]string, busyDeskRequests)
 	for n := range keys {
-		filed := want(t, owner.post("/api/v1/projects/BSY/issues", map[string]any{"summary": fmt.Sprintf("request %d", n+1), "priority": "medium"}), http.StatusCreated, "file a request")
+		filed := want(t, owner.post("/api/v1/projects/"+bsyKey+"/issues", map[string]any{"summary": fmt.Sprintf("request %d", n+1), "priority": "medium"}), http.StatusCreated, "file a request")
 		keys[n] = obj(t, filed, "issue")["key"].(string)
 	}
 
@@ -102,9 +104,11 @@ func TestTheQueueReadsEveryRequestMostOverdueFirst(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// Written behind the owner's back, so their reads are not pinned past it.
+	h.waitForPrimary(t)
 
 	t.Run("Breached lists every breached request, the most overdue first", func(t *testing.T) {
-		got := owner.get(fmt.Sprintf("/api/v1/projects/BSY/queue?filter=breached&limit=%d", busyDeskMaxPerPage))
+		got := owner.get(fmt.Sprintf("/api/v1/projects/"+bsyKey+"/queue?filter=breached&limit=%d", busyDeskMaxPerPage))
 		want(t, got, http.StatusOK, "the breached queue")
 		if total := got.Body["total"]; total != float64(busyDeskBreached) {
 			t.Errorf("breached total = %v, want %d", total, busyDeskBreached)
@@ -115,7 +119,7 @@ func TestTheQueueReadsEveryRequestMostOverdueFirst(t *testing.T) {
 	})
 
 	t.Run("the first page of Open starts with them and counts the whole queue", func(t *testing.T) {
-		got := owner.get(fmt.Sprintf("/api/v1/projects/BSY/queue?filter=open&limit=%d&offset=0", busyDeskPage))
+		got := owner.get(fmt.Sprintf("/api/v1/projects/"+bsyKey+"/queue?filter=open&limit=%d&offset=0", busyDeskPage))
 		want(t, got, http.StatusOK, "the open queue")
 		if got.Body["total"] != float64(busyDeskRequests) || got.Body["limit"] != float64(busyDeskPage) || got.Body["offset"] != float64(0) {
 			t.Errorf("open page = total %v, limit %v, offset %v; want %d, %d, 0", got.Body["total"], got.Body["limit"], got.Body["offset"], busyDeskRequests, busyDeskPage)
@@ -128,7 +132,7 @@ func TestTheQueueReadsEveryRequestMostOverdueFirst(t *testing.T) {
 	t.Run("paging walks every request once", func(t *testing.T) {
 		seen := map[string]int{}
 		for offset := 0; offset < busyDeskRequests; offset += busyDeskPage {
-			got := want(t, owner.get(fmt.Sprintf("/api/v1/projects/BSY/queue?filter=open&limit=%d&offset=%d", busyDeskPage, offset)), http.StatusOK, "a page of the open queue")
+			got := want(t, owner.get(fmt.Sprintf("/api/v1/projects/"+bsyKey+"/queue?filter=open&limit=%d&offset=%d", busyDeskPage, offset)), http.StatusOK, "a page of the open queue")
 			rows := queueRowKeys(t, got)
 			if len(rows) != busyDeskPage {
 				t.Errorf("page at %d holds %d requests, want %d", offset, len(rows), busyDeskPage)
@@ -142,7 +146,7 @@ func TestTheQueueReadsEveryRequestMostOverdueFirst(t *testing.T) {
 				t.Errorf("%s was shown %d times across the pages, want once", key, seen[key])
 			}
 		}
-		past := want(t, owner.get(fmt.Sprintf("/api/v1/projects/BSY/queue?filter=open&limit=%d&offset=%d", busyDeskPage, busyDeskRequests)), http.StatusOK, "past the end")
+		past := want(t, owner.get(fmt.Sprintf("/api/v1/projects/"+bsyKey+"/queue?filter=open&limit=%d&offset=%d", busyDeskPage, busyDeskRequests)), http.StatusOK, "past the end")
 		if rows := queueRowKeys(t, past); len(rows) != 0 || past.Body["total"] != float64(busyDeskRequests) {
 			t.Errorf("past the end = %v of %v, want nothing of %d", rows, past.Body["total"], busyDeskRequests)
 		}

@@ -5,24 +5,46 @@ package test
 import (
 	"net/http"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
+
+// borrowTheDefaultCalendar is the id of everybody's calendar, whose days come
+// back as they were when the test ends; a test that changes them runs alone.
+func borrowTheDefaultCalendar(t *testing.T, admin *client) string {
+	t.Helper()
+	calendars := list(t, want(t, admin.get("/api/v1/holiday-calendars"), http.StatusOK, "the calendars"), "calendars")
+	standard := calendars[0].(map[string]any)
+	if standard["default"] != true {
+		t.Fatalf("the first calendar listed is not the default: %v", standard)
+	}
+	id := standard["id"].(string)
+	before := obj(t, want(t, admin.get("/api/v1/holiday-calendars/"+id), http.StatusOK, "the default's days"), "calendar")["days"]
+	if before == nil {
+		before = []any{}
+	}
+	t.Cleanup(func() {
+		want(t, admin.put("/api/v1/holiday-calendars/"+id+"/days", map[string]any{"days": before}), http.StatusOK, "the default's days put back")
+	})
+	return id
+}
 
 // The project calendar and the plan read holidays and absences: of the default
 // calendar and of the project's people, and nobody else's.
 func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
+	avlKey := h.projectKey(t, "AVL")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "availplan")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Available", "key": "AVL", "template": "scrum"}), http.StatusCreated, "a project")
+	owner.signIn(t, h.person(t, "availplan", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Available", "key": avlKey, "template": "scrum"}), http.StatusCreated, "a project")
 
 	_, adaID := api.namedMember(t, h, owner, "Ada Lovelace")
 	_, beaID := api.namedMember(t, h, owner, "Bea Lisboa")
 	_, carlID := api.namedMember(t, h, owner, "Carl Assigned")
 	_, stanID := api.namedMember(t, h, owner, "Stan Stranger")
 
-	crew := idOf(t, want(t, owner.post("/api/v1/projects/AVL/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
+	crew := idOf(t, want(t, owner.post("/api/v1/projects/"+avlKey+"/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
 	want(t, owner.patch("/api/v1/teams/"+crew, map[string]any{"weeklyCapacity": 20}), http.StatusOK, "the team's capacity")
 	for _, id := range []string{adaID, beaID} {
 		want(t, owner.post("/api/v1/teams/"+crew+"/members", map[string]any{"userId": id}), http.StatusOK, "join the team")
@@ -30,8 +52,7 @@ func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
 
 	// The default calendar has Wednesday the 12th off; Bea keeps Lisbon's, and
 	// Stan, who is not on the project, keeps one of his own.
-	calendars := list(t, want(t, owner.get("/api/v1/holiday-calendars"), http.StatusOK, "the calendars"), "calendars")
-	standard := calendars[0].(map[string]any)["id"].(string)
+	standard := borrowTheDefaultCalendar(t, owner)
 	want(t, owner.put("/api/v1/holiday-calendars/"+standard+"/days", map[string]any{"days": []map[string]any{{"day": "2031-03-12", "name": "Founders' Day"}}}), http.StatusOK, "a default holiday")
 	keep := func(person, name, day, holiday string) {
 		t.Helper()
@@ -39,8 +60,9 @@ func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
 		want(t, owner.put("/api/v1/holiday-calendars/"+id+"/days", map[string]any{"days": []map[string]any{{"day": day, "name": holiday}}}), http.StatusOK, "its holiday")
 		want(t, owner.put("/api/v1/users/"+person+"/schedule", map[string]any{"calendarId": id}), http.StatusOK, "give it to somebody")
 	}
-	keep(beaID, "Lisbon", "2031-03-14", "Lisbon day")
-	keep(stanID, "Faraway", "2031-03-13", "Far day")
+	lisbon, faraway := h.name(t, "Lisbon"), h.name(t, "Faraway")
+	keep(beaID, lisbon, "2031-03-14", "Lisbon day")
+	keep(stanID, faraway, "2031-03-13", "Far day")
 
 	away := func(person, from, to string) {
 		t.Helper()
@@ -52,15 +74,15 @@ func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
 
 	// Ten points for the crew over a week with the default holiday in it, and
 	// work assigned to Carl, which makes him one of the project's people.
-	crewed := obj(t, want(t, owner.post("/api/v1/projects/AVL/issues", map[string]any{"summary": "crew work", "estimate": 10}), http.StatusCreated, "crew work"), "issue")["key"].(string)
+	crewed := obj(t, want(t, owner.post("/api/v1/projects/"+avlKey+"/issues", map[string]any{"summary": "crew work", "estimate": 10}), http.StatusCreated, "crew work"), "issue")["key"].(string)
 	want(t, owner.put("/api/v1/issues/"+crewed+"/team", map[string]any{"teamId": crew}), http.StatusOK, "hand it to the crew")
 	want(t, owner.put("/api/v1/issues/"+crewed+"/schedule", map[string]any{"startDate": "2031-03-10", "dueDate": "2031-03-14"}), http.StatusOK, "schedule it")
-	carls := obj(t, want(t, owner.post("/api/v1/projects/AVL/issues", map[string]any{"summary": "Carl's work", "assigneeId": carlID}), http.StatusCreated, "Carl's work"), "issue")["key"].(string)
+	carls := obj(t, want(t, owner.post("/api/v1/projects/"+avlKey+"/issues", map[string]any{"summary": "Carl's work", "assigneeId": carlID}), http.StatusCreated, "Carl's work"), "issue")["key"].(string)
 	want(t, owner.put("/api/v1/issues/"+carls+"/schedule", map[string]any{"startDate": "2031-03-17", "dueDate": "2031-03-20"}), http.StatusOK, "schedule Carl's work")
-	want(t, owner.post("/api/v1/projects/AVL/sprints", map[string]any{"name": "Crew sprint", "teamId": crew, "startsOn": "2031-03-03", "endsOn": "2031-03-14"}), http.StatusCreated, "a sprint")
+	want(t, owner.post("/api/v1/projects/"+avlKey+"/sprints", map[string]any{"name": "Crew sprint", "teamId": crew, "startsOn": "2031-03-03", "endsOn": "2031-03-14"}), http.StatusCreated, "a sprint")
 
 	t.Run("the month shows the holidays and who of the project is away", func(t *testing.T) {
-		items := list(t, want(t, owner.get("/api/v1/projects/AVL/calendar?month=2031-03"), http.StatusOK, "the month"), "month", "items")
+		items := list(t, want(t, owner.get("/api/v1/projects/"+avlKey+"/calendar?month=2031-03"), http.StatusOK, "the month"), "month", "items")
 		byTitle := map[string]map[string]any{}
 		for _, raw := range items {
 			it := raw.(map[string]any)
@@ -71,7 +93,7 @@ func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
 		if it := byTitle["Founders' Day"]; it == nil || it["kind"] != "holiday" || it["from"] != "2031-03-12" || it["calendar"] != nil {
 			t.Errorf("the default holiday = %v", it)
 		}
-		if it := byTitle["Lisbon day (Lisbon)"]; it == nil || it["calendar"] != "Lisbon" || it["from"] != "2031-03-14" {
+		if it := byTitle["Lisbon day ("+lisbon+")"]; it == nil || it["calendar"] != lisbon || it["from"] != "2031-03-14" {
 			t.Errorf("the holiday of a calendar somebody on the project keeps = %v", it)
 		}
 		if it := byTitle["Ada Lovelace"]; it == nil || it["kind"] != "absence" || it["from"] != "2031-02-26" || it["to"] != "2031-03-04" {
@@ -80,7 +102,7 @@ func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
 		if it := byTitle["Carl Assigned"]; it == nil || it["from"] != "2031-03-24" {
 			t.Errorf("the absence of somebody assigned work in the month = %v", it)
 		}
-		if byTitle["Stan Stranger"] != nil || byTitle["Far day (Faraway)"] != nil {
+		if byTitle["Stan Stranger"] != nil || byTitle["Far day ("+faraway+")"] != nil {
 			t.Errorf("somebody outside the project leaked onto its calendar: %v", byTitle)
 		}
 		if len(byTitle) != 4 {
@@ -89,7 +111,7 @@ func TestHolidaysAndAbsencesReachTheCalendarAndThePlan(t *testing.T) {
 	})
 
 	t.Run("the plan shades the default holidays and shrinks the crew's weeks", func(t *testing.T) {
-		got := want(t, owner.get("/api/v1/projects/AVL/plan"), http.StatusOK, "the plan")
+		got := want(t, owner.get("/api/v1/projects/"+avlKey+"/plan"), http.StatusOK, "the plan")
 		holidays := list(t, got, "holidays")
 		if len(holidays) != 1 || holidays[0].(map[string]any)["name"] != "Founders' Day" {
 			t.Errorf("the plan's holidays = %v, want the default calendar's one", holidays)

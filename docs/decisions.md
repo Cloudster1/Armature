@@ -99,9 +99,10 @@ Inside, the product went first and the schema follows. The one organization
 row still holds the installation's name and settings, the tables still carry
 `org_id`, and forced row level security on `current_org_id()` still scopes
 every query, now to the one organization there is. That kept each step
-shippable with all four test layers green. The integration suite keeps its
-tests apart by organization until it isolates them another way (#217), and
-the columns and policies go with the schema ticket (#218). Until then the
+shippable with all four test layers green. The integration suite works in
+the one organization too, its tests kept apart by people, project keys and
+names of their own (#217), and the columns and policies go with the schema
+ticket (#218). Until then the
 entries on row security stand for the code as written, while the separation
 they argued for, between teams, is now between installations.
 
@@ -1089,11 +1090,12 @@ connection that drops leaves the box as it was.
 A mail names a request by the key in its subject or the id of the mail it
 answers, and the sender is part of the question: the reply is accepted only
 where the address belongs to the reporter, a follower or an agent. A key names
-one request in an installation, so there is no "ambiguous" outcome; while the
-integration harness still makes several organizations, the one the sender
-joined first is the one, as a session's is (#214). Every consumed mail is
-recorded by message id, so a redelivery is refused by the database however many
-workers are reading, and machines are never answered, so no loop can form.
+one request in an installation, so there is no "ambiguous" outcome; were a
+person in several organizations, the one they joined first would be the one, as
+a session's is (#214). Since #217 not even the integration suite makes a
+second. Every consumed mail is recorded by message id, so a redelivery is
+refused by the database however many workers are reading, and machines are
+never answered, so no loop can form.
 
 Nor is a machine's mail taken for the customer's word. An out-of-office that
 reaches a request waiting on its customer would otherwise be posted as their
@@ -1723,12 +1725,11 @@ stack runs with `open`, so its sign-up form stays to be tried, and the browser
 suite's administrator, the seed's Ada by default, signs up through the page
 when it finds the installation empty.
 
-The integration suite still keeps its tests apart by organization until #217:
-its harness founds one with an owner straight through the admin path, the
-way the first sign-up does, and no route or exported function offers that to
-anybody else. The tests of sign-up itself run against a database of their own,
-migrated from nothing, which is the only place an installation is reliably
-empty.
+The integration suite kept its tests apart by organization until #217, which
+moved every test into the one installation, kept apart by people, project keys
+and names of their own. The tests of sign-up itself run against a database of
+their own, migrated from nothing, which is the only place an installation is
+reliably empty.
 
 **Reconsider if** an installation wants people to sign up only from its own
 mail domain, at which point `open` takes a domain rather than growing a fourth
@@ -1772,10 +1773,10 @@ the sign-in page, the sidebar's switcher and the profile's list are gone, and
 `/auth/me` no longer lists organizations. A session names no organization: it
 acts in the person's own, read from the membership at every request, and the
 database refuses a session row that names one (`00931`). The columns stay,
-empty, until the tenant goes (#218); until then the integration harness gives
-some people a second organization, so the one joined first is the one, as a
-password sign-in always chose. A session through an open desk door acts in
-that desk's organization and sees that desk alone.
+empty, until the tenant goes (#218). Were somebody in a second organization, the
+one joined first would be the one, as a password sign-in always chose; since
+#217 not even the integration suite gives anybody a second. A session through
+an open desk door acts in that desk's organization and sees that desk alone.
 
 What made a session reach further is gone with it: `session_reaches`, the
 trigger that applied it, the trust between organizations sharing an issuer,
@@ -1809,12 +1810,12 @@ the body. Without a desk the door is the installation's, which is where mail
 links lead, since a code is the installation's whichever desk it was asked at.
 
 Nobody is signed in at the door, so the desk's key alone says where it leads. A
-key is unique per organization only, and until the tenant goes (#218) the
-integration harness makes several; a key two of them share is refused with
-`desk_ambiguous` rather than guessed at, and the door's tests use keys of their
-own. In an installation the refusal cannot happen. Taking the installation's
-organization for every key would have been simpler, but it would have sent
-every test's door to one organization.
+key is unique per organization only, and until #217 the integration harness made
+several; a key two of them share is refused with `desk_ambiguous` rather than
+guessed at, and the door's tests use keys of their own. In an installation the
+refusal cannot happen. Taking the installation's organization for every key
+would have been simpler, but it would have sent every test's door to one
+organization.
 
 A code's digest binds the address and the code, no longer the organization, so
 codes issued before the upgrade stop working; they live ten minutes. The rows
@@ -2219,6 +2220,39 @@ also caught a flaw the sequential suite never could: the freshness position was
 read inside the writing transaction, before its commit record, so a replica
 could be past the position without holding the change. It is read after the
 commit now, and an integration test holds the two positions apart.
+
+### The integration suite works in the installation, kept apart by what it makes
+
+Each integration test used to found organizations of its own, which kept tests
+apart for free: nothing one test made was on any list another read. An
+installation holds one organization (#208), so the suite does what a team does
+and works in it (#217). `TestMain` finds the database's organization, or makes
+one the way the first sign-up would. A test makes its people at the standing it
+needs (`h.person`, `h.outsider`), its projects under keys nobody else has
+(`h.projectKey`, `h.newProject`), and anything on a list the whole installation
+shares under a name nobody else has (`h.name`). Each is removed when the test
+ends, since no organization goes with it any more: the test's own cleanups
+first, then a sweep of its projects, its people with the invitations and codes
+sent to them, and its names, in that order, so nothing still holds what goes.
+The records the product keeps of what happened (the audit log, the outbox and
+the mail it read) stay, as they would for anybody's work. The worker copies a
+test's acts into the audit log after the test removed the actor, so the log
+records such an act without them, as it does when an actor goes later. The demo
+answers to keys an installation has once, so its test gets a database of its own.
+
+Being apart is no longer the same as seeing nothing of each other. An
+administrator sees every test's projects and people, so a test asserts on what
+it made rather than on totals. A test that changes what every test lives with,
+such as the second-factor rule, a default, the roles, the provider or a field on
+every project, runs alone before the parallel ones and puts back what it found,
+since the database it runs against is somebody's development installation.
+Tests that proved only that organizations cannot see each other were deleted;
+where they also proved a project wall, the wall is tested between projects.
+Separate databases per test would have kept the old freedom, at a second or more
+each, and would not have tested one installation the way it runs.
+
+**Reconsider if** the sequential list grows long enough to dominate the run:
+then the shared settings want a scope a test can own, not more tests alone.
 
 ## The product's name
 

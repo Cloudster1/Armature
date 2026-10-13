@@ -28,7 +28,7 @@ func TestMailsAboutOneRequestArriveEncodedInOneThread(t *testing.T) {
 		t.Skip("ARMATURE_POP3_ADDR and ARMATURE_SMTP_ADDR are not set")
 	}
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "mailthread")
+	ws := h.newProject(t, "mailthread")
 	d, p := ws.aDesk(t, h, "Mail desk")
 	customer := ws.customerOf(t, h, "threaded")
 	ctx := context.Background()

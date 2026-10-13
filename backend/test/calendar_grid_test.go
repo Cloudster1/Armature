@@ -5,30 +5,31 @@ package test
 import (
 	"net/http"
 	"testing"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // The page draws six weeks, padded from the neighbouring months, so their days
 // off come along and an absence is not cut where the month ends.
 func TestTheCalendarMonthCarriesTheDaysOffOfTheSixWeeksItDraws(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
+	grdKey := h.projectKey(t, "GRD")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	owner.signup(t, h, "calgrid")
-	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Grid", "key": "GRD", "template": "scrum"}), http.StatusCreated, "a project")
+	owner.signIn(t, h.person(t, "calgrid", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Grid", "key": grdKey, "template": "scrum"}), http.StatusCreated, "a project")
 
 	_, adaID := api.namedMember(t, h, owner, "Ada Lovelace")
 	_, bobID := api.namedMember(t, h, owner, "Bob Away")
 	_, carlID := api.namedMember(t, h, owner, "Carl Later")
-	crew := idOf(t, want(t, owner.post("/api/v1/projects/GRD/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
+	crew := idOf(t, want(t, owner.post("/api/v1/projects/"+grdKey+"/teams", map[string]any{"name": "Crew"}), http.StatusCreated, "a team"), "team")
 	for _, id := range []string{adaID, bobID, carlID} {
 		want(t, owner.post("/api/v1/teams/"+crew+"/members", map[string]any{"userId": id}), http.StatusOK, "join the team")
 	}
 
 	// September 2032 begins on a Wednesday: its grid runs from Monday 30 August
 	// to Sunday 10 October.
-	calendars := list(t, want(t, owner.get("/api/v1/holiday-calendars"), http.StatusOK, "the calendars"), "calendars")
-	standard := calendars[0].(map[string]any)["id"].(string)
+	standard := borrowTheDefaultCalendar(t, owner)
 	want(t, owner.put("/api/v1/holiday-calendars/"+standard+"/days", map[string]any{"days": []map[string]any{
 		{"day": "2032-08-30", "name": "Late Summer Day"},
 		{"day": "2032-10-01", "name": "Harvest Day"},
@@ -43,7 +44,7 @@ func TestTheCalendarMonthCarriesTheDaysOffOfTheSixWeeksItDraws(t *testing.T) {
 	away(adaID, "2032-08-16", "2032-10-22")
 	away(carlID, "2032-10-11", "2032-10-12")
 
-	items := list(t, want(t, owner.get("/api/v1/projects/GRD/calendar?month=2032-09"), http.StatusOK, "September"), "month", "items")
+	items := list(t, want(t, owner.get("/api/v1/projects/"+grdKey+"/calendar?month=2032-09"), http.StatusOK, "September"), "month", "items")
 	byTitle := map[string]map[string]any{}
 	for _, raw := range items {
 		it := raw.(map[string]any)

@@ -4,7 +4,6 @@ package test
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
@@ -20,16 +19,12 @@ import (
 // A Jira export is the file this has to read: columns repeated under one name,
 // its own words for types and statuses, and usernames where addresses go.
 func TestAnImportMapsWhatItFinds(t *testing.T) {
-	t.Parallel()
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "jiraimport")
+	ws := h.newProject(t, "jiraimport")
 	files := csvio.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster), h.authService())
 	byrne := h.joinExisting(t, ws, "ada.byrne@example.test", "member")
 
-	data, err := os.ReadFile("testdata/jira-export.csv")
-	if err != nil {
-		t.Fatal(err)
-	}
+	data := jiraExport(t, h)
 
 	// The preview reads the file as it is: by position, and with the words and
 	// the people it holds.
@@ -76,9 +71,12 @@ func TestAnImportMapsWhatItFinds(t *testing.T) {
 func (h *harness) importedAsTheFileSaysIt(t *testing.T, ws *workspace, files *csvio.Service, data []byte, mapping csvio.Mapping, byrne uuid.UUID) {
 	t.Helper()
 	// The integration database outlives the run, so the account this makes is
-	// given a domain of its own; an address held elsewhere is refused, rightly.
+	// given a domain of its own and goes at the end, or the next run's file would match it.
 	domain := "made-" + uuid.New().String()[:8] + ".test"
 	address := "sam.okonkwo@" + domain
+	t.Cleanup(func() {
+		_, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE email = $1`, address)
+	})
 	req := csvio.ImportRequest{
 		Mapping: mapping,
 		Values:  csvio.Values{"status": {"Requested": "To Do"}},

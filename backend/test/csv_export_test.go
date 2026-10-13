@@ -10,8 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/csvio"
 )
 
@@ -28,9 +27,9 @@ func exportedRows(t *testing.T, body []byte) ([]string, [][]string) {
 }
 
 // exportProject makes a project over the API and answers its key and id.
-func exportProject(t *testing.T, c *client, name, prefix string) (string, string) {
+func exportProject(t *testing.T, h *harness, c *client, name, prefix string) (string, string) {
 	t.Helper()
-	made := want(t, c.post("/api/v1/projects", map[string]any{"name": name, "key": prefix + strings.ToUpper(uuid.New().String()[:3]), "template": "kanban"}), http.StatusCreated, "project")
+	made := want(t, c.post("/api/v1/projects", map[string]any{"name": name, "key": h.projectKey(t, prefix), "template": "kanban"}), http.StatusCreated, "project")
 	p := obj(t, made, "project")
 	return p["key"].(string), p["id"].(string)
 }
@@ -41,8 +40,8 @@ func TestACSVExportHoldsEveryIssueItMatches(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "exportall")
-	key, _ := exportProject(t, c, "Exported", "EXA")
+	c.signIn(t, h.person(t, "exportall", auth.RoleOwner))
+	key, _ := exportProject(t, h, c, "Exported", "EXA")
 
 	const made = 120
 	for n := range made {
@@ -77,16 +76,15 @@ func TestACSVExportOverTheCapSaysItWasCut(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	c.signup(t, h, "exportcap")
+	c.signIn(t, h.person(t, "exportcap", auth.RoleOwner))
 	// Two projects, so key numbers repeat across the result and paging has to
 	// break those ties the same way every page.
-	first, firstID := exportProject(t, c, "Exported first", "EXF")
-	second, secondID := exportProject(t, c, "Exported second", "EXS")
+	first, firstID := exportProject(t, h, c, "Exported first", "EXF")
+	second, secondID := exportProject(t, h, c, "Exported second", "EXS")
 	perProject := map[string]int{first: csvio.ExportRows/2 + 1, second: csvio.ExportRows / 2}
 	ids := map[string]string{first: firstID, second: secondID}
 
 	ctx := context.Background()
-	var orgID uuid.UUID
 	for key, count := range perProject {
 		want(t, c.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "The one made by hand"}), http.StatusCreated, "issue")
 		// The rest are copies of it written straight to the database: making
@@ -98,21 +96,22 @@ func TestACSVExportOverTheCapSaysItWasCut(t *testing.T) {
 			WHERE i.project_id = $1 AND i.key_num = 1`, ids[key], count); err != nil {
 			t.Fatalf("copy issues into %s: %v", key, err)
 		}
-		if err := h.super.QueryRow(ctx, `UPDATE project SET issue_seq = $2 WHERE id = $1 RETURNING org_id`, ids[key], count).Scan(&orgID); err != nil {
+		if _, err := h.super.Exec(ctx, `UPDATE project SET issue_seq = $2 WHERE id = $1`, ids[key], count); err != nil {
 			t.Fatalf("move %s's key counter on: %v", key, err)
 		}
 	}
 	var matched int
-	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM issue WHERE org_id = $1`, orgID).Scan(&matched); err != nil {
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM issue WHERE project_id IN ($1, $2)`, firstID, secondID).Scan(&matched); err != nil {
 		t.Fatal(err)
 	}
 	if matched <= csvio.ExportRows {
-		t.Fatalf("the organization holds %d issues, want more than the %d an export holds", matched, csvio.ExportRows)
+		t.Fatalf("the two projects hold %d issues, want more than the %d an export holds", matched, csvio.ExportRows)
 	}
 
 	// The copies went straight to the primary, and the export reads the replica.
+	// The query names both projects: everybody else's work is in the installation too.
 	h.waitForPrimary(t)
-	resp, body := c.download("/api/v1/issues/export?columns=key,summary")
+	resp, body := c.download("/api/v1/issues/export?columns=key,summary&q=" + urlQuery("project in ("+first+", "+second+")"))
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("export answered %d: %s", resp.StatusCode, body)
 	}

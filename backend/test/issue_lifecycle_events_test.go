@@ -66,14 +66,14 @@ func withoutImported(t *testing.T, e events.Event) events.Event {
 // comes or goes is announced: filed, cloned, imported and deleted.
 func TestEveryIssueThatComesOrGoesIsAnnounced(t *testing.T) {
 	h := newHarness(t)
-	ws := h.newWorkspace(t, "lifecycle")
+	ws := h.newProject(t, "lifecycle")
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	hooks := webhook.NewService(h.cluster, log)
 	sink := &receiver{status: http.StatusOK}
 	server := httptest.NewServer(sink)
 	defer server.Close()
-	endpoint, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Cache", URL: server.URL, Topics: []string{events.TopicIssueCreated, events.TopicIssueDeleted}}, ws.actor.UserID)
+	endpoint, _, err := hooks.Create(ws.ctx, webhook.Input{Name: h.name(t, "Cache"), URL: server.URL, Topics: []string{events.TopicIssueCreated, events.TopicIssueDeleted}}, ws.actor.UserID)
 	if err != nil {
 		t.Fatalf("subscribe to issue.created and issue.deleted: %v", err)
 	}
@@ -126,9 +126,15 @@ func TestEveryIssueThatComesOrGoesIsAnnounced(t *testing.T) {
 		if err := audit.NewConsumer(h.cluster, nil, log).Handle(context.Background(), e); err != nil {
 			t.Fatal(err)
 		}
-		rows, err := audit.NewService(h.cluster).List(ws.ctx, audit.Filter{Action: events.TopicIssueDeleted})
+		logged, err := audit.NewService(h.cluster).List(ws.ctx, audit.Filter{Action: events.TopicIssueDeleted})
 		if err != nil {
 			t.Fatal(err)
+		}
+		var rows []audit.Row
+		for _, row := range logged {
+			if row.TargetID != nil && *row.TargetID == doomed.ID {
+				rows = append(rows, row)
+			}
 		}
 		if len(rows) != 1 || rows[0].TargetID == nil || *rows[0].TargetID != doomed.ID || rows[0].ActorID == nil || *rows[0].ActorID != ws.actor.UserID {
 			t.Fatalf("audit rows = %+v, want the deletion with its actor", rows)
@@ -196,7 +202,7 @@ func TestEveryIssueThatComesOrGoesIsAnnounced(t *testing.T) {
 		rules := automation.NewService(h.cluster, ws.issues, label.NewService(h.cluster), log)
 		rule, _, err := rules.Create(ws.ctx, ws.project.Key, automation.Input{
 			Name: "Triage new work", Trigger: automation.Trigger{Kind: automation.TriggerIssueCreated},
-			Actions: []automation.Action{{Kind: automation.ActionAddLabel, Value: "triage"}},
+			Actions: []automation.Action{{Kind: automation.ActionAddLabel, Value: h.name(t, "triage")}},
 		}, ws.actor.UserID)
 		if err != nil {
 			t.Fatal(err)

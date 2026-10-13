@@ -11,6 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/armature/armature/backend/internal/auth"
 )
 
 // A template decides which pages a project has. Off means hidden and refused,
@@ -18,13 +20,15 @@ import (
 func TestATemplateDecidesAProjectsFeatures(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	fhdKey := h.projectKey(t, "FHD")
+	fcoKey := h.projectKey(t, "FCO")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signup(t, h, "featured")
+	signedUp := owner.signIn(t, h.person(t, "featured", auth.RoleOwner))
 	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
 
-	desk := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Helpdesk", "key": "FHD", "template": "service-desk"}), http.StatusCreated, "a desk"), "project")
-	code := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Code", "key": "FCO"}), http.StatusCreated, "a kanban project"), "project")
+	desk := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Helpdesk", "key": fhdKey, "template": "service-desk"}), http.StatusCreated, "a desk"), "project")
+	code := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Code", "key": fcoKey}), http.StatusCreated, "a kanban project"), "project")
 
 	names := func(p map[string]any) string {
 		parts := make([]string, 0)
@@ -51,20 +55,20 @@ func TestATemplateDecidesAProjectsFeatures(t *testing.T) {
 	})
 
 	t.Run("a page the project does not have is refused, and the answer says where to turn it on", func(t *testing.T) {
-		refused := want(t, owner.post("/api/v1/projects/FHD/sprints", map[string]any{"name": "Sprint 1"}), http.StatusConflict, "a sprint on a desk")
-		if refused.ErrorCode() != "feature_off" || !strings.Contains(refused.Raw, "FHD does not use sprints. Turn it on under the project's settings.") {
+		refused := want(t, owner.post("/api/v1/projects/"+fhdKey+"/sprints", map[string]any{"name": "Sprint 1"}), http.StatusConflict, "a sprint on a desk")
+		if refused.ErrorCode() != "feature_off" || !strings.Contains(refused.Raw, fhdKey+" does not use sprints. Turn it on under the project's settings.") {
 			t.Fatalf("refusal = %s", refused.Raw)
 		}
-		want(t, owner.post("/api/v1/projects/FHD/milestones", map[string]any{"name": "Launch"}), http.StatusConflict, "a milestone on a desk")
-		want(t, owner.post("/api/v1/projects/FHD/teams", map[string]any{"name": "Front line"}), http.StatusCreated, "a team on a desk is fine")
+		want(t, owner.post("/api/v1/projects/"+fhdKey+"/milestones", map[string]any{"name": "Launch"}), http.StatusConflict, "a milestone on a desk")
+		want(t, owner.post("/api/v1/projects/"+fhdKey+"/teams", map[string]any{"name": "Front line"}), http.StatusCreated, "a team on a desk is fine")
 	})
 
 	t.Run("and the database refuses the row whatever the service believed", func(t *testing.T) {
 		var deskID, codeID uuid.UUID
-		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = 'FHD' AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug).Scan(&deskID); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = '`+fhdKey+`' AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug).Scan(&deskID); err != nil {
 			t.Fatal(err)
 		}
-		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = 'FCO' AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug).Scan(&codeID); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = '`+fcoKey+`' AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug).Scan(&codeID); err != nil {
 			t.Fatal(err)
 		}
 		var pgErr *pgconn.PgError
@@ -83,15 +87,15 @@ func TestATemplateDecidesAProjectsFeatures(t *testing.T) {
 	})
 
 	t.Run("an administrator turns a page on, and the desk's pages stay the desk's", func(t *testing.T) {
-		refused := want(t, owner.patch("/api/v1/projects/FHD", map[string]any{"features": []string{"board", "gantt"}}), http.StatusUnprocessableEntity, "not a feature")
+		refused := want(t, owner.patch("/api/v1/projects/"+fhdKey, map[string]any{"features": []string{"board", "gantt"}}), http.StatusUnprocessableEntity, "not a feature")
 		if fields, _ := refused.Error()["fields"].(map[string]any); fields["features"] == nil {
 			t.Errorf("the refusal does not name the field: %v", refused.Error())
 		}
-		want(t, owner.patch("/api/v1/projects/FCO", map[string]any{"features": []string{"board", "queues"}}), http.StatusConflict, "queues off a desk")
-		updated := obj(t, want(t, owner.patch("/api/v1/projects/FHD", map[string]any{"features": []string{"sprints", "board", "desk", "queues", "sprints"}}), http.StatusOK, "turn sprints on"), "project")
+		want(t, owner.patch("/api/v1/projects/"+fcoKey, map[string]any{"features": []string{"board", "queues"}}), http.StatusConflict, "queues off a desk")
+		updated := obj(t, want(t, owner.patch("/api/v1/projects/"+fhdKey, map[string]any{"features": []string{"sprints", "board", "desk", "queues", "sprints"}}), http.StatusOK, "turn sprints on"), "project")
 		if got := names(updated); got != "board,sprints,queues,desk" {
 			t.Fatalf("features after the change = %s", got)
 		}
-		want(t, owner.post("/api/v1/projects/FHD/sprints", map[string]any{"name": "Sprint 1"}), http.StatusCreated, "a sprint once the page is on")
+		want(t, owner.post("/api/v1/projects/"+fhdKey+"/sprints", map[string]any{"name": "Sprint 1"}), http.StatusCreated, "a sprint once the page is on")
 	})
 }
