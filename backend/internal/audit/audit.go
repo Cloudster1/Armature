@@ -308,6 +308,17 @@ func (c *Consumer) Handle(ctx context.Context, e events.Event) error {
 	}
 	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
 	_, err := c.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if entry.Actor != uuid.Nil {
+			// The act is copied after the fact; one whose actor is gone by now
+			// is kept without them, as the log keeps it when they go afterwards.
+			var present bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM app_user WHERE id = $1)`, entry.Actor).Scan(&present); err != nil {
+				return fmt.Errorf("find the actor: %w", err)
+			}
+			if !present {
+				entry.Actor = uuid.Nil
+			}
+		}
 		return Write(ctx, tx, e.OrgID, entry)
 	})
 	return err
