@@ -56,7 +56,7 @@ scenario("an administrator makes a local user who can sign in, then resets and s
 
   await signInThroughForm(page, who.email, reset);
   await page.waitForSelector("[role=alert]", { timeout: WAIT });
-  expect.contains((await textOf(page, "[role=alert]")).toLowerCase(), "deactivated", "a switched off account is told so");
+  expect.contains(await textOf(page, "[role=alert]"), "Your account has been switched off. Ask an administrator.", "a switched off account is told so");
 });
 
 scenario("an administrator's own row is not theirs to change here", async ({ page }) => {

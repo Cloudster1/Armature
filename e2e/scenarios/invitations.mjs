@@ -3,21 +3,16 @@
 import { scenario } from "../runner.mjs";
 import {
   bodyText,
-  clickButton,
   confirm,
   expect,
-  fill,
   goto,
   inviteFromMembersPage,
   joinThroughLink,
   mailFor,
   PASSWORD,
   signIn,
-  signInThroughForm,
   signOut,
   signUp,
-  signUpOwnOrganization,
-  submit,
   unique,
   WAIT,
   waitForApp,
@@ -78,63 +73,4 @@ scenario("a withdrawn invitation cannot be used", async ({ page }) => {
   await goto(page, `/invite#${token}`);
   await page.waitForSelector("[data-invite-invalid]", { timeout: WAIT });
   expect.contains(await bodyText(page), "Ask whoever invited you for a new one", "the page says what to do");
-});
-
-scenario("somebody who already has an account signs in from the invitation and belongs to both", async ({ page }) => {
-  const owner = await signUp(page, unique("user"), { visit: false });
-  await signOut(page, { visit: false });
-  // An account of their own elsewhere: an organization of their own.
-  const other = await signUpOwnOrganization(page, unique("twofold"), { visit: false });
-  await signIn(page, owner.email);
-  await waitForApp(page);
-  const { token } = await inviteFromMembersPage(page, other.email);
-
-  // Opened signed out: the address has an account, so it asks for a sign-in.
-  await signOut(page, { visit: false });
-  await goto(page, `/invite#${token}`);
-  await fill(page, "Your name", "Somebody Else");
-  await fill(page, "Password", PASSWORD);
-  await fill(page, "Repeat password", PASSWORD);
-  await page.click("[data-invite-accept] button[type=submit]");
-  await page.waitForSelector("[data-invite-sign-in]", { timeout: WAIT });
-  await clickButton(page, "Sign in to accept");
-
-  await waitForPath(page, "/login");
-  await fill(page, "Email", other.email);
-  await fill(page, "Password", PASSWORD);
-  await submit(page);
-
-  // Back on the invitation, signed in as the right person.
-  await waitForPath(page, "/invite");
-  await clickButton(page, `Join ${owner.org}`);
-  await waitForPath(page, "/");
-  await waitForApp(page);
-  const both = await bodyText(page);
-  expect.contains(both, owner.org, "now working in the organization that invited them");
-});
-
-scenario("somebody in two organizations chooses which one when signing in", async ({ page }) => {
-  const owner = await signUp(page, unique("user"), { visit: false });
-  await signOut(page, { visit: false });
-  const other = await signUpOwnOrganization(page, unique("chooser"), { visit: false });
-  await signIn(page, owner.email);
-  await waitForApp(page);
-  const { token } = await inviteFromMembersPage(page, other.email);
-
-  await signIn(page, other.email);
-  await waitForApp(page);
-  await goto(page, `/invite#${token}`);
-  await clickButton(page, `Join ${owner.org}`);
-  await waitForPath(page, "/");
-
-  await signInThroughForm(page, other.email);
-  await page.waitForSelector("[data-org-choice-list]", { timeout: WAIT });
-  const offered = await bodyText(page);
-  expect.contains(offered, owner.org, "the organization they joined is offered");
-  expect.contains(offered, other.org, "and their own");
-
-  await page.evaluate((name) => [...document.querySelectorAll("[data-org-choice]")].find((b) => b.textContent.includes(name))?.click(), owner.org);
-  await waitForPath(page, "/");
-  await waitForApp(page);
-  await page.waitForFunction((name) => document.querySelector("[data-sidebar]")?.innerText.includes(name), { timeout: WAIT }, owner.org);
 });

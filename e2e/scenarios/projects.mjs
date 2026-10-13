@@ -14,24 +14,19 @@ import {
   fill,
   goto,
   grantRole,
-  inviteAddress,
   inviteMember,
   PASSWORD,
-  tryAcceptInvite,
-  removeMember,
   reload,
   signIn,
   signInThroughForm,
-  signOut,
   signUp,
-  signUpOwnOrganization,
+  switchOff,
   textOf,
   unique,
   WAIT,
   editorText,
   setEditorMode,
   waitForApp,
-  waitForPath,
 } from "../helpers.mjs";
 
 scenario("a project can be created and is listed", async ({ page }) => {
@@ -151,7 +146,7 @@ scenario("a person can take their data and go, and their comment stays", async (
   expect.contains(await bodyText(page), "Former user", "the comment stays, by Former user");
 });
 
-scenario("an administrator lets a member go", async ({ page }) => {
+scenario("an administrator lets a member go by switching them off", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   const member = await inviteMember(page, "goer");
   await acceptInvite(page, member, { visit: false });
@@ -159,7 +154,7 @@ scenario("an administrator lets a member go", async ({ page }) => {
   await page.waitForSelector("header", { timeout: WAIT });
 
   await signIn(page, owner.email, PASSWORD, { visit: false });
-  await removeMember(page, member.name);
+  await switchOff(page, member.email);
   await goto(page, "/settings/access");
   await page.click('[data-access-tab="Members"]');
   await page.waitForSelector("[data-member]", { timeout: WAIT });
@@ -176,37 +171,12 @@ scenario("somebody let go is told at sign-in that their account is switched off"
   await signIn(page, owner.email);
   await waitForApp(page);
   await grantRole(page, { who: member.name, role: "Global administrator" });
-  await removeMember(page, member.name);
+  await switchOff(page, member.email);
 
   await signInThroughForm(page, member.email);
   await page.waitForSelector("[role=alert]", { timeout: WAIT });
   expect.contains(await textOf(page, "[role=alert]"), "Your account has been switched off. Ask an administrator.", "the sign-in page says what to do");
   expect.equal(new URL(page.url()).pathname, "/login", "nobody is signed in to an empty shell");
-});
-
-scenario("an invitation to an address with an account is that account's to accept", async ({ page }) => {
-  const owner = await signUp(page, unique("user"), { visit: false });
-  await signOut(page, { visit: false });
-  // Somebody with an account of their own, elsewhere: an organization of their own.
-  const invitee = await signUpOwnOrganization(page, unique("invitee"), { visit: false });
-  await signIn(page, owner.email);
-  await waitForPath(page, "/");
-  await waitForApp(page);
-  const token = await inviteAddress(page, invitee.email);
-
-  // Whoever holds the link cannot take it for the account, whatever password they give.
-  await signOut(page, { visit: false });
-  await goto(page, "/login");
-  expect.equal(await tryAcceptInvite(page, { token, name: "Somebody Else" }), "sign_in_to_accept", "nobody signed in is asked to sign in");
-
-  // Signed in as the invitee, it is theirs.
-  await signIn(page, invitee.email);
-  await waitForPath(page, "/");
-  await waitForApp(page);
-  expect.equal(await tryAcceptInvite(page, { token }), "", "the invitee takes their own invitation");
-  await goto(page, "/");
-  await waitForApp(page);
-  expect.contains(await bodyText(page), owner.org, "and is in the organization that invited them");
 });
 
 scenario("a description keeps its formatting in both editor modes", async ({ page }) => {

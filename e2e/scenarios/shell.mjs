@@ -1,6 +1,6 @@
 // What the application does before anybody is anywhere in particular.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
   expect,
@@ -29,7 +29,7 @@ scenario("an unknown path shows the not-found page rather than a blank screen", 
   expect.contains(await bodyText(page), "Page not found", "not-found page");
 });
 
-scenario("form validation is reported against the field, not swallowed", async ({ page }) => {
+serialScenario("form validation is reported against the field, not swallowed", async ({ page }) => {
   const who = unique("dupe");
   await signUp(page, who);
   await page.click('[data-action="sign-out"]');
@@ -41,21 +41,19 @@ scenario("form validation is reported against the field, not swallowed", async (
   await fill(page, "Work email", who.email);
   await fill(page, "Password", PASSWORD);
   await fill(page, "Repeat password", PASSWORD);
-  await fill(page, "Organization name", `Another ${Date.now()}`);
   await submit(page);
 
   await page.waitForSelector("[role=alert]", { timeout: WAIT });
   expect.contains((await textOf(page, "[role=alert]")).toLowerCase(), "already exists", "duplicate email message");
 });
 
-scenario("a password typed differently the second time creates no account", async ({ page }) => {
+serialScenario("a password typed differently the second time creates no account", async ({ page }) => {
   const who = unique("typo");
   await goto(page, "/signup");
   await fill(page, "Your name", who.name);
   await fill(page, "Work email", who.email);
   await fill(page, "Password", PASSWORD);
   await fill(page, "Repeat password", `${PASSWORD}x`);
-  await fill(page, "Organization name", who.org);
   await submit(page);
 
   await page.waitForFunction(() => document.body.innerText.includes("The two passwords are not the same"), { timeout: WAIT });
