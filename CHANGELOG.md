@@ -13,7 +13,7 @@ here in the branch that makes it.
   so are `organizations` on `/auth/me` and `orgName` on `/auth/sessions`. A
   session names no organization and migration `00931` holds the database to
   that; the `session_bound` refusal is gone. A session through an open desk
-  door may no longer export or erase the account behind the address (#212).
+  door may not export or erase the account behind the address (#212).
 - Changed: single sign-on starts at `/api/v1/auth/oidc/start`, at the
   installation's one provider, and the sign-in page offers "Continue with
   single sign-on" without asking for an organization. The old
