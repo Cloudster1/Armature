@@ -1,0 +1,207 @@
+# Publishes the release a v* tag names. Every step survives a re-run of the same
+# tag, so a release that failed halfway is finished by re-running, not re-cut.
+name: Release
+
+on:
+  # make release-tag pushes the tag with the releaser's own credentials; a tag a
+  # workflow pushes with its GITHUB_TOKEN would start no run here.
+  push:
+    tags: ["v*"]
+  # For a tag whose run was lost: gh workflow run release.yml -f tag=v1.2.3
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag to publish, for example v1.2.3
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+  CHART: deploy/charts/armature
+  CHART_REPOSITORY: oci://ghcr.io/${{ github.repository_owner }}/charts
+  DYNAMO_REPOSITORY: praetorianer777/Dynamo
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      commit: ${{ steps.release.outputs.commit }}
+    steps:
+      - name: Checkout the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      # The checkout may leave the tag as a plain ref; its message is the notes.
+      - name: Fetch the tag itself
+        run: git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+
+      - name: Check the tag is a release of main
+        id: release
+        run: |
+          version=${TAG#v}
+          if ! printf '%s\n' "$TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'; then
+            echo "::error::$TAG is not a release tag; a release is tagged vX.Y.Z by make release-tag."
+            exit 1
+          fi
+          if [ "$(git cat-file -t "refs/tags/$TAG")" != tag ]; then
+            echo "::error::$TAG carries no release notes; delete it and tag the merge with make release-tag, which annotates it."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$TAG names a commit main does not have; only the merge of a release pull request is released."
+            exit 1
+          fi
+          for found in "VERSION $(cat VERSION)" \
+            "Chart.yaml version $(sed -n 's/^version: //p' "$CHART/Chart.yaml")" \
+            "Chart.yaml appVersion $(sed -n 's/^appVersion: //p' "$CHART/Chart.yaml" | tr -d '"')"; do
+            if [ "${found##* }" != "$version" ]; then
+              echo "::error::${found% *} says ${found##* } at $TAG, not $version; release the next version with make release."
+              exit 1
+            fi
+          done
+          {
+            echo "version=$version"
+            echo "commit=$(git rev-parse HEAD)"
+          } >>"$GITHUB_OUTPUT"
+
+  images:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      # One job per Dockerfile, as the Jenkinsfile has one pod per Dockerfile;
+      # the four backend targets share the builder stage within theirs.
+      matrix:
+        include:
+          - dockerfile: deploy/Dockerfile.backend
+            images: api:api worker:worker migrate:migrate seed:seed
+          - dockerfile: deploy/Dockerfile.web
+            images: web:production
+          - dockerfile: deploy/Dockerfile.render
+            images: "render:"
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      COMMIT: ${{ needs.check.outputs.commit }}
+    steps:
+      - name: Checkout the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Sign in to the GitHub container registry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      # The source label links each package to this repository on ghcr.io.
+      - name: Build and push ${{ matrix.images }}
+        env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          IMAGES: ${{ matrix.images }}
+        run: |
+          owner=$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          for image in $IMAGES; do
+            name=${image%%:*} target=${image#*:}
+            repository=ghcr.io/$owner/armature-$name
+            docker build --file "$DOCKERFILE" ${target:+--target "$target"} \
+              --build-arg VERSION="$VERSION" --build-arg COMMIT="$COMMIT" --build-arg BUILT_AT="$built_at" \
+              --label org.opencontainers.image.source="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+              --label org.opencontainers.image.version="$VERSION" \
+              --label org.opencontainers.image.revision="$COMMIT" \
+              --tag "$repository:$VERSION" --tag "$repository:$COMMIT" .
+            docker push "$repository:$VERSION"
+            docker push "$repository:$COMMIT"
+          done
+
+  chart:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+
+      # The Helm that renders the golden files is the one that packages the chart.
+      - name: Read the Helm version from the Makefile
+        id: helm
+        run: echo "version=v$(sed -n 's,^HELM_IMAGE ?= alpine/helm:,,p' Makefile)" >>"$GITHUB_OUTPUT"
+
+      - name: Install Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ steps.helm.outputs.version }}
+
+      # update, as make helm-deps runs it: build wants each repository added by
+      # name first, and the version in Chart.yaml is pinned exactly anyway.
+      - name: Package and push the chart
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          helm dependency update "$CHART"
+          helm package "$CHART" --destination dist
+          printf '%s' "$GH_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          helm push dist/armature-*.tgz "$(printf '%s' "$CHART_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+
+  release:
+    needs: [check, images, chart]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Fetch the tag itself
+        run: git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+
+      - name: Publish the GitHub release from the tag message
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "The release $TAG is already published."
+            exit 0
+          fi
+          git tag -l --format='%(contents:body)' "$TAG" >notes.md
+          prerelease=
+          case $VERSION in *-*) prerelease=--prerelease ;; esac
+          gh release create "$TAG" --verify-tag --title "Armature $VERSION" --notes-file notes.md $prerelease
+
+  dynamo:
+    needs: [check, release]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      # Dynamo releases the combinations of Stator, Armature and Exciter that pass together.
+      - name: Tell Dynamo
+        env:
+          DISPATCH_TOKEN: ${{ secrets.DYNAMO_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "::notice title=Dynamo was not told::DYNAMO_DISPATCH_TOKEN is not set, so $DYNAMO_REPOSITORY did not hear of $VERSION; add the secret and re-run this job."
+            exit 0
+          fi
+          GH_TOKEN=$DISPATCH_TOKEN gh api "repos/$DYNAMO_REPOSITORY/dispatches" \
+            -f event_type=tool-released \
+            -f 'client_payload[tool]=armature' \
+            -f "client_payload[version]=$VERSION"
