@@ -105,7 +105,7 @@ test: test-scripts ## Run backend unit tests and the script tests
 .PHONY: test-scripts
 test-scripts: ## Test the scripts in deploy/ and the push hook, and lint the GitHub workflows
 	docker run --rm -t -u $(UID):$(GID) -e HOME=/tmp -v $(ROOT):/src:ro -w /src \
-		--entrypoint sh $(SCRIPTS_IMAGE) deploy/tests/conventions_test.sh
+		--entrypoint sh $(SCRIPTS_IMAGE) -c 'for t in deploy/tests/*_test.sh; do sh "$$t" || exit 1; done'
 	docker run --rm -t -u $(UID):$(GID) -v $(ROOT):/src:ro -w /src $(ACTIONLINT_IMAGE) -color
 
 .PHONY: hooks
