@@ -356,6 +356,8 @@ export interface UpdateIssueInput {
   priority?: Priority;
   assigneeId?: string | null;
   reporterId?: string;
+  /** Another type at the same level; a workflow without the issue's status moves it to its first. */
+  typeId?: string;
   /** Minutes; null clears. */
   timeEstimateMinutes?: number | null;
   timeRemainingMinutes?: number | null;

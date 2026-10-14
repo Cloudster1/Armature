@@ -2576,3 +2576,31 @@ export async function chooseDesk(page, projectKey) {
   }, { timeout: WAIT }, projectKey);
   await settled(page);
 }
+
+/**
+ * Has one issue type follow a workflow of its own in one project, drawn from
+ * statuses by name: issues open in the first, and each leads to the next.
+ */
+export async function followWorkflow(page, projectKey, typeName, { name, statuses }) {
+  const { statuses: known } = await callAPI(page, "GET", "/statuses");
+  const idOf = (status) => {
+    const found = known.find((each) => each.name === status);
+    if (!found) throw new Error(`There is no status called ${status}; name one of ${known.map((s) => s.name).join(", ")}.`);
+    return found.id;
+  };
+  const steps = statuses.map((status, i) => ({ statusId: idOf(status), isInitial: i === 0 }));
+  const transitions = statuses.slice(1).map((status, i) => ({ name: `To ${status}`, fromStatusId: idOf(statuses[i]), toStatusId: idOf(status) }));
+  const { workflow } = await callAPI(page, "POST", "/workflows", { name, steps, transitions });
+  const typeId = await issueTypeId(page, typeName);
+  await callAPI(page, "PUT", `/projects/${projectKey}/workflow-assignments/${typeId}`, { workflowId: workflow.id });
+  return name;
+}
+
+/** On an issue's page, picks another type from the one in its header. */
+export async function changeType(page, typeName) {
+  await page.waitForSelector('[data-action="change-type"]', { timeout: WAIT });
+  await page.click('[data-action="change-type"]');
+  const option = `[role="menu"] [data-type-option="${typeName}"]`;
+  await page.waitForSelector(option, { timeout: WAIT });
+  await page.click(option);
+}

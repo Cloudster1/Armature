@@ -140,12 +140,16 @@ export interface WorkflowDetail {
   rules: Record<string, Rule[]>;
 }
 
-export function useWorkflow(id: string) {
-  return useQuery({
+/** One workflow's query, shared by the hook and a caller that needs it only on demand. */
+export function workflowQuery(id: string) {
+  return {
     queryKey: [...workflowsQueryKey, id],
     queryFn: () => request<WorkflowDetail>(`/workflows/${id}`),
-    enabled: Boolean(id),
-  });
+  };
+}
+
+export function useWorkflow(id: string) {
+  return useQuery({ ...workflowQuery(id), enabled: Boolean(id) });
 }
 
 export function useRuleTypes() {
@@ -163,12 +167,16 @@ export function useSchemes() {
   });
 }
 
-export function useProjectWorkflows(projectKey: string) {
-  return useQuery({
+/** Which workflow each type follows in one project, for the hook and an on-demand caller alike. */
+export function projectWorkflowsQuery(projectKey: string) {
+  return {
     queryKey: [...workflowsQueryKey, "project", projectKey],
     queryFn: () => request<ProjectWorkflows>(`/projects/${projectKey}/workflows`),
-    enabled: Boolean(projectKey),
-  });
+  };
+}
+
+export function useProjectWorkflows(projectKey: string) {
+  return useQuery({ ...projectWorkflowsQuery(projectKey), enabled: Boolean(projectKey) });
 }
 
 export interface RuleInput {
