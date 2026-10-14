@@ -383,7 +383,7 @@ func TestASchemeAnArchivedProjectNamesIsStillInUse(t *testing.T) {
 	lean := h.straightThrough(t, ws, "Lean", bootstrap.StatusInProgress, bootstrap.StatusDone)
 	scheme := h.overrideWith(t, ws, "Archived scheme", workflow.SchemeItemInput{WorkflowID: lean.ID})
 
-	if _, err := ws.projects.Archive(ws.ctx, ws.project.Key); err != nil {
+	if _, err := ws.projects.Archive(ws.ctx, ws.project.Key, ws.actor.UserID); err != nil {
 		t.Fatalf("archive the project: %v", err)
 	}
 
