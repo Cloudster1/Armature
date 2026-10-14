@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: `issue.transitioned` names the categories of the statuses it moved
+  between, `fromStatusCategory` and `toStatusCategory` (`todo`,
+  `in_progress` or `done`) beside `fromStatus` and `toStatus`, so a
+  subscriber keeps an issue's category without reading it again. Nothing is
+  taken away, so a subscriber that ignores them goes on as before;
+  `docs/webhooks.md` lists the topic's fields (#224).
 - Changed: the organization's tables are named for the installation. `org`
   is `installation`, `org_role` is `role`, `org_invite` is `invite` and
   `org_join_request` is `join_request`, with their constraints, indexes,
