@@ -58,6 +58,8 @@ function describe(field: string, from?: string, to?: string): string {
       return to === "Unresolved" ? "reopened this" : `resolved this as ${to}`;
     case "description":
       return to === "cleared" ? "cleared the description" : "updated the description";
+    case "type":
+      return `changed the type from ${from} to ${to}`;
     case "summary":
       return `renamed this from "${from}" to "${to}"`;
     case "attachment":

@@ -4,6 +4,7 @@ import { writeFileSync } from "node:fs";
 import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
+  changeType,
   clickButton,
   commitIssue,
   confirm,
@@ -16,6 +17,7 @@ import {
   estimateIssue,
   expect,
   fill,
+  followWorkflow,
   goto,
   issueRows,
   openFilters,
@@ -395,4 +397,40 @@ scenario("a draft started in the side panel stays with its own issue", async ({ 
   await goto(page, `/issues/${b}`);
   await page.waitForFunction(() => document.querySelector('[data-activity="comments"]')?.textContent.includes("Half a thought on B"), { timeout: WAIT });
   expect.contains(await textOf(page, "[data-description]"), "What B is about.", "B kept what was written on it");
+});
+
+scenario("a task that turns out to be a bug is changed to one from its header", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Retyped", { visit: false });
+  const issueKey = await createIssue(page, key, "the export drops the last row", { type: "Task", visit: false });
+
+  await goto(page, `/issues/${issueKey}`);
+  await changeType(page, "Bug");
+
+  await page.waitForSelector('[data-action="change-type"][aria-label="Issue type: Bug"]', { timeout: WAIT });
+  await page.waitForFunction(() => document.querySelector("[data-issue-history]")?.innerText.includes("changed the type from Task to Bug"), { timeout: WAIT });
+  expect.equal(await page.$('[role="dialog"]'), null, "the status carried over, so nothing was asked");
+});
+
+scenario("a type change that leaves the issue's status behind says where it lands", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Relanded", { visit: false });
+  // Workflows are everybody's, so this one has a name nobody else took.
+  await followWorkflow(page, key, "Bug", { name: uniqueName("Bugs skip the middle"), statuses: ["To Do", "Done"] });
+  const issueKey = await createIssue(page, key, "half done and mislabelled", { type: "Task", visit: false });
+
+  await goto(page, `/issues/${issueKey}`);
+  await clickButton(page, "Start progress");
+  await page.waitForSelector("header .status-in_progress", { timeout: WAIT });
+  await changeType(page, "Bug");
+
+  await page.waitForSelector('[role="dialog"] [data-action="confirm"]', { timeout: WAIT });
+  const asked = await textOf(page, '[role="dialog"]');
+  expect.contains(asked, `Change ${issueKey} to Bug?`, "the question names the issue and the type");
+  expect.contains(asked, "Its workflow has no In Progress, so it moves to To Do.", "and where the issue lands");
+  await confirm(page);
+
+  await page.waitForSelector('[data-action="change-type"][aria-label="Issue type: Bug"]', { timeout: WAIT });
+  await page.waitForSelector("header .status-todo", { timeout: WAIT });
+  await page.waitForFunction(() => document.querySelector("[data-issue-history]")?.innerText.includes("moved this from In Progress to To Do"), { timeout: WAIT });
 });
