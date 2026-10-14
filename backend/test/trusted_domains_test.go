@@ -96,6 +96,8 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 		key, customer := raiseAsCustomer(t, h, api, thr, h.email(t, "proven"), hrTypes[0].(map[string]any)["id"].(string))
 		// Other desks in the installation trust everyone; these two are the test's.
 		ours := func() []any {
+			// The customer reads what the owner's session wrote.
+			h.waitForPrimary(t)
 			var out []any
 			for _, d := range list(t, want(t, customer.get("/api/v1/portal/desks"), http.StatusOK, "desks"), "desks") {
 				if k := d.(map[string]any)["projectKey"]; k == thr || k == tit {
