@@ -14,6 +14,8 @@ import {
   fill,
   goto,
   grantRole,
+  pickProjectAction,
+  press,
   inviteMember,
   PASSWORD,
   reload,
@@ -27,6 +29,7 @@ import {
   editorText,
   setEditorMode,
   waitForApp,
+  waitForProjectRow,
 } from "../helpers.mjs";
 
 scenario("a project can be created and is listed", async ({ page }) => {
@@ -292,4 +295,45 @@ scenario("a project's sidebar links to its documentation", async ({ page }) => {
   await fill(page, "Documentation", "");
   await clickButton(page, "Save changes");
   await page.waitForFunction(() => !document.querySelector("[data-project-docs]"), { timeout: WAIT });
+});
+
+// Archiving deletes nothing, so it asks nothing: its toast's Undo brings the
+// project back, and so does Restore on its row once the archived are shown.
+scenario("an archived project comes back by Undo and by Restore", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Brought back", { visit: false });
+  await goto(page, "/projects");
+
+  await pickProjectAction(page, key, "archive-project");
+  await page.waitForFunction((k) => !document.querySelector(`[data-project="${k}"]`), { timeout: WAIT }, key);
+  await clickButton(page, "Undo");
+  await waitForProjectRow(page, key, { archived: false });
+
+  await pickProjectAction(page, key, "archive-project");
+  await page.waitForFunction((k) => !document.querySelector(`[data-project="${k}"]`), { timeout: WAIT }, key);
+  await press(page, "[data-show-archived]");
+  await waitForProjectRow(page, key, { archived: true });
+  await pickProjectAction(page, key, "restore-project");
+  await waitForProjectRow(page, key, { archived: false });
+
+  await reload(page);
+  await waitForProjectRow(page, key, { archived: false });
+});
+
+// An archived project's settings say so and stay closed, since every save would
+// be refused, until Restore on the page brings it back.
+scenario("an archived project's settings are closed until it is restored", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Put away", { visit: false });
+  await goto(page, `/projects/${key}/settings`);
+
+  await press(page, '[data-action="archive-project"]');
+  await page.waitForSelector("[data-archived-notice]", { timeout: WAIT });
+  expect.contains(await textOf(page, "[data-archived-notice]"), "Put away is archived", "the page says the project is archived");
+  expect.truthy(await page.$eval("#field-project-name", (input) => input.matches(":disabled")), "the name cannot be changed while archived");
+
+  await press(page, '[data-action="restore-project"]');
+  await page.waitForFunction(() => !document.querySelector("[data-archived-notice]"), { timeout: WAIT });
+  await page.waitForFunction(() => document.querySelector("#field-project-name")?.matches(":enabled"), { timeout: WAIT });
+  expect.truthy((await page.$('[data-action="archive-project"]')) !== null, "the project can be archived again");
 });
