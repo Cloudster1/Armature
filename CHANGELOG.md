@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a remote link says what it is to its issue. `relation` on a
+  remote link, its request and the `issue.remote_link.added` and
+  `issue.remote_link.removed` payloads is `page` or `requirement`; a new
+  link sent without one is a page, and a resend that leaves it out keeps
+  the one the link has. The issue page heads requirements apart from pages,
+  pages first, and its rail names the section References (#223).
 - Changed: the organization's tables are named for the installation. `org`
   is `installation`, `org_role` is `role`, `org_invite` is `invite` and
   `org_join_request` is `join_request`, with their constraints, indexes,

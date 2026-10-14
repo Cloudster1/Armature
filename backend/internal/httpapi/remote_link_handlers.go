@@ -16,6 +16,9 @@ type remoteLinkRequest struct {
 	// Source names the application the page lives in.
 	Source  string `json:"source"`
 	IconURL string `json:"iconUrl,omitempty"`
+	// Relation is page when a new link leaves it out; a resend that leaves it
+	// out keeps the one the link has.
+	Relation *issue.RemoteLinkRelation `json:"relation,omitempty"`
 }
 
 func (s *Server) handleListRemoteLinks(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +37,7 @@ func (s *Server) handlePutRemoteLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	link, created, lsn, err := s.Issues.PutRemoteLink(r.Context(), r.PathValue("issueKey"), issue.RemoteLinkInput{
-		URL: req.URL, Title: req.Title, Source: req.Source, IconURL: req.IconURL,
+		URL: req.URL, Title: req.Title, Source: req.Source, IconURL: req.IconURL, Relation: req.Relation,
 	}, actorFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))

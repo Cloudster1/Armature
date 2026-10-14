@@ -23,20 +23,49 @@ type RemoteLink struct {
 	// Title is the page's own title, as the application last reported it.
 	Title string `json:"title"`
 	// Source names the application the page lives in.
-	Source    string     `json:"source"`
-	IconURL   *string    `json:"iconUrl"`
-	CreatedBy *uuid.UUID `json:"createdBy,omitempty"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
+	Source string `json:"source"`
+	// Relation is what the page is to the issue.
+	Relation  RemoteLinkRelation `json:"relation"`
+	IconURL   *string            `json:"iconUrl"`
+	CreatedBy *uuid.UUID         `json:"createdBy,omitempty"`
+	CreatedAt time.Time          `json:"createdAt"`
+	UpdatedAt time.Time          `json:"updatedAt"`
+}
+
+// RemoteLinkRelation is what a linked page is to its issue, so what the issue
+// implements reads apart from what merely documents it.
+type RemoteLinkRelation string
+
+const (
+	RemoteLinkPage        RemoteLinkRelation = "page"
+	RemoteLinkRequirement RemoteLinkRelation = "requirement"
+)
+
+func (r RemoteLinkRelation) Valid() bool {
+	switch r {
+	case RemoteLinkPage, RemoteLinkRequirement:
+		return true
+	}
+	return false
+}
+
+// orPage is the relation of a link whose sender said none, as every sender did
+// before there were relations.
+func (r RemoteLinkRelation) orPage() RemoteLinkRelation {
+	if r == "" {
+		return RemoteLinkPage
+	}
+	return r
 }
 
 // RemoteLinkInput is a page to put on an issue, or to retitle when its address
-// is already there.
+// is already there; a nil Relation is a page when new and unchanged otherwise.
 type RemoteLinkInput struct {
-	URL     string
-	Title   string
-	Source  string
-	IconURL string
+	URL      string
+	Title    string
+	Source   string
+	IconURL  string
+	Relation *RemoteLinkRelation
 }
 
 // The bounds on a page link, which the table's checks repeat.
@@ -81,6 +110,10 @@ func checkRemoteLink(in RemoteLinkInput) (RemoteLinkInput, error) {
 	if len([]rune(in.Source)) > MaxRemoteLinkSource {
 		return in, fmt.Errorf("%w: shorten the source to %d characters or fewer", ErrBadRemoteLink, MaxRemoteLinkSource)
 	}
+	if in.Relation != nil && !in.Relation.Valid() {
+		return in, fmt.Errorf("%w: a link's relation is %s or %s; send one of those, or leave it out for a page",
+			ErrBadRemoteLink, RemoteLinkPage, RemoteLinkRequirement)
+	}
 	return in, nil
 }
 
@@ -99,12 +132,14 @@ func checkWebAddress(raw, what string) error {
 }
 
 const selectRemoteLink = `
-SELECT id, url, title, source, icon_url, created_by, created_at, updated_at
+SELECT ` + remoteLinkColumns + `
 FROM issue_remote_link`
+
+const remoteLinkColumns = `id, url, title, source, relation, icon_url, created_by, created_at, updated_at`
 
 func scanRemoteLink(row pgx.Row) (RemoteLink, error) {
 	var l RemoteLink
-	err := row.Scan(&l.ID, &l.URL, &l.Title, &l.Source, &l.IconURL, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt)
+	err := row.Scan(&l.ID, &l.URL, &l.Title, &l.Source, &l.Relation, &l.IconURL, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt)
 	return l, err
 }
 
@@ -151,6 +186,11 @@ func (s *Service) PutRemoteLink(ctx context.Context, key string, in RemoteLinkIn
 	if actor.UserID != uuid.Nil {
 		creator = &actor.UserID
 	}
+	// A resend that says nothing of the relation keeps the one the link has.
+	var said RemoteLinkRelation
+	if in.Relation != nil {
+		said = *in.Relation
+	}
 
 	lsn, err = s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		issueID, issueKey, err := s.idAndKey(ctx, tx, key)
@@ -161,14 +201,15 @@ func (s *Service) PutRemoteLink(ctx context.Context, key string, in RemoteLinkIn
 		// new page from a retitled one without a second round trip.
 		var inserted bool
 		row := tx.QueryRow(ctx, `
-			INSERT INTO issue_remote_link (issue_id, url, title, source, icon_url, created_by)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO issue_remote_link (issue_id, url, title, source, relation, icon_url, created_by)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (issue_id, url) DO UPDATE
-				SET title = EXCLUDED.title, source = EXCLUDED.source, icon_url = EXCLUDED.icon_url
-			RETURNING id, url, title, source, icon_url, created_by, created_at, updated_at, xmax = 0`,
-			issueID, in.URL, in.Title, in.Source, icon, creator)
+				SET title = EXCLUDED.title, source = EXCLUDED.source, icon_url = EXCLUDED.icon_url,
+					relation = COALESCE(NULLIF($8, ''), issue_remote_link.relation)
+			RETURNING `+remoteLinkColumns+`, xmax = 0`,
+			issueID, in.URL, in.Title, in.Source, string(said.orPage()), icon, creator, string(said))
 		var l RemoteLink
-		if err := row.Scan(&l.ID, &l.URL, &l.Title, &l.Source, &l.IconURL, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt, &inserted); err != nil {
+		if err := row.Scan(&l.ID, &l.URL, &l.Title, &l.Source, &l.Relation, &l.IconURL, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt, &inserted); err != nil {
 			return fmt.Errorf("put page link: %w", err)
 		}
 		link, created = &l, inserted
@@ -177,7 +218,7 @@ func (s *Service) PutRemoteLink(ctx context.Context, key string, in RemoteLinkIn
 		}
 		return events.Emit(ctx, tx, events.TopicRemoteLinkAdded, map[string]any{
 			"issueId": issueID, "key": issueKey, "linkId": l.ID, "url": l.URL, "title": l.Title,
-			"source": l.Source, "actorId": actor.UserID,
+			"source": l.Source, "relation": l.Relation, "actorId": actor.UserID,
 		})
 	})
 	if err != nil {
@@ -196,7 +237,7 @@ func (s *Service) RemoveRemoteLink(ctx context.Context, key string, id uuid.UUID
 		}
 		removed, err := scanRemoteLink(tx.QueryRow(ctx, `
 			DELETE FROM issue_remote_link WHERE id = $1 AND issue_id = $2
-			RETURNING id, url, title, source, icon_url, created_by, created_at, updated_at`, id, issueID))
+			RETURNING `+remoteLinkColumns, id, issueID))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrRemoteLinkNotFound
 		}
@@ -205,7 +246,7 @@ func (s *Service) RemoveRemoteLink(ctx context.Context, key string, id uuid.UUID
 		}
 		return events.Emit(ctx, tx, events.TopicRemoteLinkRemoved, map[string]any{
 			"issueId": issueID, "key": issueKey, "linkId": removed.ID, "url": removed.URL, "title": removed.Title,
-			"source": removed.Source, "actorId": actor.UserID,
+			"source": removed.Source, "relation": removed.Relation, "actorId": actor.UserID,
 		})
 	})
 }
