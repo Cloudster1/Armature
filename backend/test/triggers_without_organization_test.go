@@ -32,7 +32,7 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 		}
 		ids[name] = id
 	}
-	made("installation", `INSERT INTO org (slug, name) VALUES ('first', 'First') RETURNING id`)
+	made("installation", `INSERT INTO installation (slug, name) VALUES ('first', 'First') RETURNING id`)
 	// One transaction, as the scheme is checked once it maps a workflow.
 	setUp, err := super.Begin(ctx)
 	if err != nil {
@@ -52,12 +52,7 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 	for _, p := range []struct{ name, role string }{
 		{"admin", "owner"}, {"member", "member"}, {"customer", "customer"}, {"stranger", ""},
 	} {
-		made(p.name, `INSERT INTO app_user (email, name) VALUES ($1 || '@triggers.test', $1) RETURNING id`, p.name)
-		if p.role != "" {
-			if _, err := super.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)`, ids[p.name], p.role); err != nil {
-				t.Fatal(err)
-			}
-		}
+		made(p.name, `INSERT INTO app_user (email, name, standing) VALUES ($1 || '@triggers.test', $1, nullif($2, '')) RETURNING id`, p.name, p.role)
 	}
 	const planned = `{sprints,milestones,releases,components,teams,automation}`
 	made("alpha", `INSERT INTO project (key, name, features) VALUES ('ALPHA', 'Alpha', $1) RETURNING id`, planned)
@@ -140,14 +135,14 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 		{"a customer shares no theme", `INSERT INTO theme (owner_id, name, shared) VALUES (:customer, 'Dusk', true)`, "cannot share a theme"},
 		{"a stranger is granted no role", `INSERT INTO role_assignment (role, user_id) VALUES ('user', :stranger)`, "granted to a member here"},
 		{"global administration is not granted over one project", `INSERT INTO role_assignment (role, project_id, user_id) VALUES ('global_administrator', :alpha, :member)`, "cannot be granted over one project"},
-		{"a built-in role stays", `DELETE FROM org_role WHERE key = 'reader'`, "a built-in role cannot be deleted"},
-		{"a role keeps its key", `UPDATE org_role SET key = 'viewer' WHERE key = 'reader'`, "key and standing are fixed"},
-		{"the global administrator keeps administering", `UPDATE org_role SET permissions = ARRAY['read'] WHERE key = 'global_administrator'`, "keeps administering"},
+		{"a built-in role stays", `DELETE FROM role WHERE key = 'reader'`, "a built-in role cannot be deleted"},
+		{"a role keeps its key", `UPDATE role SET key = 'viewer' WHERE key = 'reader'`, "key and standing are fixed"},
+		{"the global administrator keeps administering", `UPDATE role SET permissions = ARRAY['read'] WHERE key = 'global_administrator'`, "keeps administering"},
 		{"the last administrator stays switched on", `UPDATE app_user SET is_active = false WHERE id = :admin`, "cannot be switched off"},
 		{"the installation keeps a default scheme", `UPDATE workflow_scheme SET is_default = false WHERE id = :scheme`, "one default workflow scheme"},
 		{"the default scheme keeps its catch-all", `DELETE FROM workflow_scheme_item WHERE scheme_id = :scheme AND issue_type_id IS NULL`, "map the issue types it does not name"},
 		{"a session keeps its proof", `UPDATE user_session SET proof = 'oidc' WHERE id = :session`, "keeps the proof it was opened with"},
-		{"the default theme is a shared one", `INSERT INTO theme (owner_id, name) VALUES (:admin, 'Private'); UPDATE org SET default_theme_id = (SELECT id FROM theme WHERE name = 'Private')`, "default theme has to be a shared theme"},
+		{"the default theme is a shared one", `INSERT INTO theme (owner_id, name) VALUES (:admin, 'Private'); UPDATE installation SET default_theme_id = (SELECT id FROM theme WHERE name = 'Private')`, "default theme has to be a shared theme"},
 
 		// These were held to the organization alone, and nothing holds them now.
 		{"a rule watches a project", `INSERT INTO automation_rule (project_id, name, trigger, actions) VALUES (:alpha, 'Nightly', '{"kind": "manual"}', '[{"kind": "comment"}]')`, ""},
@@ -177,10 +172,10 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 	t.Run("unsharing the default theme clears it", func(t *testing.T) {
 		err := try(t, `
 			INSERT INTO theme (owner_id, name, shared) VALUES (:admin, 'House', true);
-			UPDATE org SET default_theme_id = (SELECT id FROM theme WHERE name = 'House');
+			UPDATE installation SET default_theme_id = (SELECT id FROM theme WHERE name = 'House');
 			UPDATE theme SET shared = false WHERE name = 'House';
 			DO $$ BEGIN
-			    IF (SELECT default_theme_id FROM org) IS NOT NULL THEN
+			    IF (SELECT default_theme_id FROM installation) IS NOT NULL THEN
 			        RAISE EXCEPTION 'the unshared theme is still the default';
 			    END IF;
 			END $$`)
@@ -190,10 +185,9 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 	})
 
 	// A database's history orders an account's foreign keys; made again, the
-	// granter is forgotten after the membership went and before the role goes.
+	// granter is forgotten before the role goes.
 	t.Run("an account that granted itself a role can go", func(t *testing.T) {
 		for _, fk := range []struct{ table, constraint, column, action string }{
-			{"org_member", "org_member_user_id_fkey", "user_id", "CASCADE"},
 			{"role_assignment", "role_assignment_created_by_fkey", "created_by", "SET NULL"},
 			{"role_assignment", "role_assignment_user_id_fkey", "user_id", "CASCADE"},
 		} {
@@ -205,7 +199,7 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 		rows, err := super.Query(ctx, `
 			SELECT c.conname FROM pg_trigger t JOIN pg_constraint c ON c.oid = t.tgconstraint
 			WHERE t.tgrelid = 'app_user'::regclass AND t.tgtype & 8 = 8
-			  AND c.conname IN ('org_member_user_id_fkey', 'role_assignment_created_by_fkey', 'role_assignment_user_id_fkey')
+			  AND c.conname IN ('role_assignment_created_by_fkey', 'role_assignment_user_id_fkey')
 			ORDER BY t.tgname`)
 		if err != nil {
 			t.Fatal(err)
@@ -214,15 +208,12 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := []string{"org_member_user_id_fkey", "role_assignment_created_by_fkey", "role_assignment_user_id_fkey"}; !slices.Equal(order, want) {
+		if want := []string{"role_assignment_created_by_fkey", "role_assignment_user_id_fkey"}; !slices.Equal(order, want) {
 			t.Fatalf("the foreign keys act in the order %v, want %v", order, want)
 		}
 
 		var self string
-		if err := super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ('self@triggers.test', 'Self') RETURNING id`).Scan(&self); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := super.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'member')`, self); err != nil {
+		if err := super.QueryRow(ctx, `INSERT INTO app_user (email, name, standing) VALUES ('self@triggers.test', 'Self', 'member') RETURNING id`).Scan(&self); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := super.Exec(ctx, `INSERT INTO role_assignment (role, user_id, created_by) VALUES ('user', $1, $1)`, self); err != nil {

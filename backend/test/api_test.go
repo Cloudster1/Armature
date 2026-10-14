@@ -51,6 +51,12 @@ func TestAPIAuthFlow(t *testing.T) {
 		if listed, ok := me.Body["organizations"]; ok {
 			t.Errorf("/auth/me lists organizations to switch to: %v", listed)
 		}
+		// The deprecated org names the same installation for one more release.
+		home := obj(t, me, "principal", "installation")
+		org := obj(t, me, "principal", "org")
+		if home["id"] == nil || home["id"] != org["id"] || home["name"] == "" || home["name"] != org["name"] {
+			t.Errorf("/auth/me names the installation %v, and the organization %v", home, org)
+		}
 
 		if out := c.post("/api/v1/auth/logout", nil); out.Status != http.StatusNoContent {
 			t.Fatalf("logout returned %d: %s", out.Status, out.Raw)

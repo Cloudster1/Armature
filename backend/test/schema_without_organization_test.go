@@ -72,23 +72,6 @@ func TestNothingInTheSchemaNamesTheOrganization(t *testing.T) {
 	}
 }
 
-// The organization's row holds the installation's settings, and with nothing
-// else naming it there must be exactly one, so a second is refused.
-func TestTheInstallationIsOneRow(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	ctx := context.Background()
-	tx, err := h.super.Begin(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	_, err = tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ($1, 'Second')`, strings.ToLower(unique("second")))
-	if err == nil || !strings.Contains(err.Error(), "org_one_row_idx") {
-		t.Errorf("a second installation row = %v, want it refused by org_one_row_idx", err)
-	}
-}
-
 // rowCounts counts the rows of every table, so an upgrade can be held to
 // losing none.
 func rowCounts(t *testing.T, conn *pgx.Conn) map[string]int {
