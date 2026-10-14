@@ -114,8 +114,12 @@ func run() error {
 		return fmt.Errorf("set the installation up as the demo's Ada: %w", err)
 	}
 
-	teammates := append(append([]demoUser{}, realmPeople...),
-		demoUser{email: "customer@armature.test", name: "Sam Customer", role: auth.RoleCustomer})
+	teammates := append([]demoUser{
+		{email: "grace@armature.test", name: "Grace Hopper", role: auth.RoleMember},
+		{email: "alan@armature.test", name: "Alan Turing", role: auth.RoleMember},
+		{email: "rita@armature.test", name: "Rita Reader", role: auth.RoleMember},
+		{email: "customer@armature.test", name: "Sam Customer", role: auth.RoleCustomer},
+	}, realmPeople...)
 	if err := seedMembers(ctx, svc, creds, teammates, log); err != nil {
 		return err
 	}
@@ -155,17 +159,18 @@ func run() error {
 // keycloakIssuer is where the browser finds the demo's identity provider;
 // the api reaches it through its backchannel rewrite.
 const (
-	keycloakIssuer       = "http://localhost:8180/realms/demo"
+	keycloakIssuer       = "http://localhost:8180/realms/dynamo"
 	keycloakClientID     = "armature"
-	keycloakClientSecret = "armature-demo-secret"
+	keycloakClientSecret = "armature-dev-secret"
 )
 
-// realmPeople are the realm's users. They hold no role over all projects:
-// what they may do comes from their groups there, the point of the demo's single sign-on.
+// realmPeople are the realm's users, let in here so they can sign in. What they
+// may do comes from their groups there alone, the point of the demo's single sign-on.
 var realmPeople = []demoUser{
-	{email: "grace@armature.test", name: "Grace Hopper", role: auth.RoleMember},
-	{email: "alan@armature.test", name: "Alan Turing", role: auth.RoleMember},
-	{email: "rita@armature.test", name: "Rita Reader", role: auth.RoleMember},
+	{email: "alice@suite.test", name: "Alice Admin", role: auth.RoleMember},
+	{email: "bob@suite.test", name: "Bob Builder", role: auth.RoleMember},
+	{email: "carol@suite.test", name: "Carol Checker", role: auth.RoleMember},
+	{email: "dave@suite.test", name: "Dave Visitor", role: auth.RoleMember},
 }
 
 // realmGroups are the realm's groups and what each grants here: the provider
@@ -228,7 +233,7 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 
 	// Joining by invitation grants the ordinary member role directly. For the
 	// people who sign in through Keycloak that would hide what their groups
-	// grant, so their direct grants go; the owner keeps hers.
+	// grant, so their direct grants go; the seed's other people keep theirs.
 	people, err := membersByEmail(ctx, cluster)
 	if err != nil {
 		return err
@@ -692,8 +697,9 @@ func seedAccess(ctx context.Context, cluster *db.Cluster, projectKey string, tea
 		return fmt.Errorf("grant the scrum role: %w", err)
 	}
 
-	// Nobody is granted a role directly: what Grace, Alan and Rita may do
-	// comes from the Keycloak groups they are in, see seedSingleSignOn.
+	// Nobody else is granted a role here: Grace, Alan and Rita keep the one
+	// joining gave them, and the realm's people get theirs from their groups,
+	// see seedSingleSignOn.
 
 	log.Info("seeded access", "project", projectKey, "group", scrum.Name)
 	return nil
@@ -1210,6 +1216,7 @@ func issueTypeIDs(ctx context.Context, cluster *db.Cluster) (map[string]uuid.UUI
 
 func printCredentials(email string) {
 	fmt.Printf("\n  Demo installation ready.\n\n    sign in at  http://localhost:5173/login\n    email       %s\n    password    %s\n\n", email, demoPassword)
+	fmt.Print("  Or continue with single sign-on as alice, bob, carol or dave, each with the\n  password \"<name> password\".\n\n")
 }
 
 // seedThemes installs the shipped example themes, shared, owned by the demo's
