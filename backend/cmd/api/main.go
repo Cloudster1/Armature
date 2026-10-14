@@ -95,8 +95,8 @@ func run() error {
 		return err
 	}
 	defer cluster.Close()
-	// Outside development the tenant wall is the database's to keep, and a
-	// role that ignores it would make every policy decoration.
+	// Outside development the app role must be a plain one: a superuser reads
+	// the secret tables past the grants that keep them the admin role's.
 	if cfg.Env != "development" {
 		if err := cluster.RefuseSuperuser(ctx); err != nil {
 			return err

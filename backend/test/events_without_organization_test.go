@@ -30,12 +30,12 @@ func TestAnEventThatNamesNoOrganizationIsActedOn(t *testing.T) {
 		if err := audit.NewConsumer(h.cluster, nil, log).Handle(ctx, events.Event{ID: eventID, Topic: "project.archived", Payload: raw}); err != nil {
 			t.Fatal(err)
 		}
-		var landed uuid.UUID
-		if err := h.super.QueryRow(ctx, `SELECT org_id FROM audit_log WHERE event_id = $1`, eventID).Scan(&landed); err != nil {
-			t.Fatalf("find the copied entry: %v", err)
+		var copied int
+		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE event_id = $1`, eventID).Scan(&copied); err != nil {
+			t.Fatal(err)
 		}
-		if landed != shared.installation.ID {
-			t.Errorf("the entry landed in %s, want the installation %s", landed, shared.installation.ID)
+		if copied != 1 {
+			t.Errorf("the event was copied into the audit log %d times, want once", copied)
 		}
 	})
 

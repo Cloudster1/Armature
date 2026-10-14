@@ -7,6 +7,18 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the tables no longer carry the organization. `org_id` goes from
+  every table, and so do the two session columns an earlier release emptied
+  and the functions that answered for them. The installation's own row is
+  kept to one, and its five built-in roles come from `builtin_roles()`
+  (#218).
+- Upgrade note (#218): the upgrade stops, names what it found and changes
+  nothing at a second organization, at anything else that depends on an
+  `org_id` column, such as a view or an index you made, and at a function of
+  yours that reads one. Drop or change them first. A report or export that
+  reads the database directly and names `org_id` breaks with this release;
+  take the column out of it. Taking the upgrade back adds the columns again,
+  filled with the installation's id.
 - Changed: no query names the organization any more. Rows are written
   without `org_id`, which the installation fills by default, no filter asks
   for it, and the code passes no organization's id along to reach the

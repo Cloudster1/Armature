@@ -94,8 +94,8 @@ row of every query, and still blind to the narrowing. So the api keeps the
 project wall, with the sweep over every operation in the API document to keep
 it honest, and the triggers keep the rules that must hold whoever writes: an
 issue's sprint and versions are its own project's, a customer shares no
-filter, the installation keeps an administrator. The tables keep `org_id`
-until the later steps of #218 drop it.
+filter, the installation keeps an administrator. The tables kept `org_id`
+until `00937` dropped it (#218).
 
 What is given up is the database's second opinion on organizations, which
 had nothing left to say with one in an installation. A query that forgets its
@@ -128,8 +128,7 @@ An `ON CONFLICT` names the columns of the index it means, so the Go statements
 changed with the keys. A desk's key can no longer name two desks, so the
 `desk_ambiguous` refusal went, and so did the `ambiguous` outcome of a mail.
 A mail recorded so reached no request, so the upgrade records it as
-`unmatched`, which says that. The columns themselves stay until the last step
-of #218.
+`unmatched`, which says that. The columns themselves went with `00937`.
 
 ### Triggers keep their rules without the organization
 
@@ -165,8 +164,8 @@ guess. `current_org_id()` answers the same. No query names either any more:
 a row is written without `org_id`, no filter asks for it, and no function
 passes an organization's id along to reach the installation's rows. A unit
 test reads every string in the Go module and refuses one that names them,
-outside the organization's own tables, which the last step renames, and the
-tests about the column itself. A mail that matched no request and a file's
+outside the tests about the column itself and those that run migrations from
+before it went. A mail that matched no request and a file's
 tombstone keep naming no organization, and so now does a mail placed on a
 request, since nothing read which organization it was placed in.
 
@@ -180,6 +179,56 @@ receivers do not break on this upgrade. The `member.joined` event's own
 payload and an invitation in the API keep their `orgId` the same way. The previous release's consumers skip
 an event without an `org_id`, so an upgrade drains the outbox and the stream
 first, and workers of the two releases never run side by side.
+
+### The tables no longer carry the organization
+
+Migration `00937` drops `org_id` from the 94 tables that carried it, the two
+session columns `00931` emptied with their check, and `current_org_id()` and
+`installation_org_id()` with them (#218). By then nothing wrote or read
+them: no query named the column, no key, index or trigger took it into
+account, and every row was the installation's.
+
+Postgres drops what depends on a column together with it, without a word, so
+the upgrade looks first. It stops at a second organization, since no row
+could then say which it belongs to, at anything that depends on the columns
+beyond each one's own default, not-null rule and foreign key to `org`, such
+as a view somebody made, and at a function whose body reads `org_id`, which
+the catalog does not track. Each refusal names what it found and leaves the
+database as it was. The drop itself runs without `CASCADE`, so what the
+check did not foresee stops it too.
+
+The organization's own functions kept their rules without its id: the five
+built-in roles come from `builtin_roles()`, and the default theme has to be
+a shared theme. The row is the installation's settings, and with nothing
+naming it nothing could tell a second one apart, so a unique index keeps it
+to one. Its way back adds every column again, filled with the installation's
+id, so the release before this one runs on it unchanged.
+
+What is left of the organization is names: the `org` row and the tables
+`org_member` and `org_role`, which the code reaches without an id, and the
+deprecated `orgId` that webhooks carry for one more release.
+
+**Reconsider if** a column naming a group of rows is wanted again, for a wall
+inside an installation: that is a new column with its own name, keyed on what
+the wall is, not `org_id` back.
+
+### Two database roles keep the secret tables apart
+
+Row security was one reason for an admin role beside the app role; it went
+(#218), and the roles stay for the other. `armature_app` does the ordinary
+work. `armature_admin` serves sign-up, sign-in, the account paths and the
+outbox relay, and it alone can read the secret tables: password reset
+links, second-factor keys, recovery codes and sign-in challenges.
+`00927` and `00928` take those tables away from the app role, so a query in
+an ordinary path that reaches for one fails, rather than hands it over.
+
+Outside development the api and the worker still refuse to start when the
+app role is a superuser or may bypass row security, because a superuser
+reads the secret tables past their grants. `TestOnlyTheAdminRoleReadsTheSecretTables`
+holds both roles to their grants through SQL.
+
+**Reconsider if** the secret tables move out of this database: the two roles
+would then hold the same grants, and one would do.
 
 ### One installation is one team's tracker
 
@@ -203,13 +252,13 @@ migration would be choosing for them with nobody watching. Refusing leaves
 the choice with the operator, who can delete what they no longer need with
 the release that still knows how.
 
-Inside, the product went first and the schema follows. The one organization
-row still holds the installation's name and settings, and the tables still
-carry `org_id`. That kept each step shippable with all four test layers
-green. The integration suite works in the one organization too, its tests
+Inside, the product went first and the schema followed. The one organization
+row still holds the installation's name and settings, and since `00937` no
+table carries `org_id`. That kept each step shippable with all four test
+layers green. The integration suite works in the one organization too, its tests
 kept apart by people, project keys and names of their own (#217). The schema
-ticket (#218) takes the tenant out in steps: row security went first, then
-the keys, the triggers and the code's own tenant, and the columns follow. The separation row security argued for, between teams, is now
+ticket (#218) took the tenant out in steps: row security went first, then
+the keys, the triggers, the code's own tenant and the columns. The separation row security argued for, between teams, is now
 between installations.
 
 This supersedes the entries that described organizations as part of the
@@ -230,7 +279,7 @@ way a project is a wall around work, not organizations coming back.
 
 Armature is self-hosted, and an installation serves one team; running more
 than one team takes more than one installation (#208). The organization row
-stays inside for now, so `org_id` keeps working, and the
+stays inside as the installation's settings, and the
 `installation` package is the one way to its name and to the settings there is
 one of: the default theme, the second-factor rule and the automation account.
 Moving them off `org` later changes that package and nothing that calls it.
@@ -2057,11 +2106,11 @@ not chosen, at which point the organization's settings column is where it goes.
 
 ### A project is a wall inside the organization
 
-**Narrowed** by [One installation is one team's tracker](#one-installation-is-one-teams-tracker)
-(#216): the database wall it starts from was between organizations, and an
-installation holds one, so the project is the wall inside an installation.
-That database wall is gone with row security (#218). The guard stands as
-written.
+**Superseded in part** by [The tables no longer carry the organization](#the-tables-no-longer-carry-the-organization)
+(#218): the database wall it starts from was between organizations. An
+installation holds one (#216), the wall went with row security, and the
+column it stood on went after it, so the project is the wall inside an
+installation. The guard stands as written.
 
 The database wall between organizations was solid, and there was no wall at all
 between projects inside one: `perm.Read` was defined and never checked, sixteen

@@ -3,7 +3,6 @@
 package test
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,13 +19,11 @@ func TestASignInLandsInTheInstallation(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	api := newAPIServer(t, h)
-	ctx := context.Background()
 
 	owner := api.client(t)
 	signedUp := owner.signIn(t, h.person(t, "lands", auth.RoleOwner))
 	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
-	userID := principalField(t, signedUp, "principal", "user", "id").(string)
 	in := func(t *testing.T, c *client) string {
 		t.Helper()
 		return principalField(t, want(t, c.get("/api/v1/auth/me"), http.StatusOK, "who is signed in"), "principal", "org", "id").(string)
@@ -40,22 +37,6 @@ func TestASignInLandsInTheInstallation(t *testing.T) {
 		if listed, ok := me.Body["organizations"]; ok {
 			t.Errorf("/auth/me still lists organizations to switch to: %v", listed)
 		}
-	})
-
-	t.Run("a session names no organization, and the database keeps it so", func(t *testing.T) {
-		var named int
-		if err := h.super.QueryRow(ctx, `
-			SELECT count(*) FROM user_session
-			WHERE user_id = $1 AND (current_org_id IS NOT NULL OR proof_org_id IS NOT NULL)`, userID).Scan(&named); err != nil {
-			t.Fatal(err)
-		}
-		if named != 0 {
-			t.Errorf("%d sessions name an organization", named)
-		}
-		_, err := h.super.Exec(ctx, `UPDATE user_session SET current_org_id = $2 WHERE user_id = $1`, userID, orgID)
-		refusedByCheck(t, err, "a session pointed at an organization")
-		_, err = h.super.Exec(ctx, `UPDATE user_session SET proof_org_id = $2 WHERE user_id = $1`, userID, orgID)
-		refusedByCheck(t, err, "a session's proof tied to an organization")
 	})
 
 	t.Run("a new sign-in lands in the installation too", func(t *testing.T) {

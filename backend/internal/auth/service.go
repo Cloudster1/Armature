@@ -223,7 +223,7 @@ func grantJoiningRole(ctx context.Context, tx db.DBTX, userID uuid.UUID, role Or
 	}
 	// An installation from before roles were rows may still lack its five;
 	// this adds nothing where they are there.
-	if _, err := tx.Exec(ctx, `SELECT org_builtin_roles(id) FROM org`); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT builtin_roles()`); err != nil {
 		return fmt.Errorf("make sure the installation has its roles: %w", err)
 	}
 	_, err := tx.Exec(ctx, `

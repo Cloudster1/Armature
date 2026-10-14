@@ -55,11 +55,14 @@ api and the worker check, and refuse to start if the role they are given has
 |---|---|---|
 | `database.ownerRole` | owns the schema, can `CREATE ROLE` outside cnpg; empty means `armature_owner` with cnpg, `postgres` otherwise | the roles and migrate Jobs |
 | `database.appRole` | ordinary | api, worker |
-| `database.adminRole` | ordinary, for sign-up, sign-in and the outbox relay | api, worker |
+| `database.adminRole` | ordinary, for sign-up, sign-in, the account paths and the outbox relay, and the only one that reads the secret tables | api, worker |
 
-Neither role is exempt from anything, because there is no row level security
-to be exempt from. The api and the worker still refuse to start as an
-`appRole` with `BYPASSRLS`.
+The two roles differ in their grants and nothing else: the migrations take
+password reset links, second-factor keys, recovery codes and sign-in
+challenges away from `appRole`, so only `adminRole` reads them. Neither is
+exempt from anything, because there is no row level security to be exempt
+from. The api and the worker still refuse to start as an `appRole` with
+`rolsuper` or `BYPASSRLS`, which would read those tables past their grants.
 
 The role names must match what the migrations grant to. Every role reference in
 a migration is wrapped in `IF EXISTS`, so a name that does not match is skipped

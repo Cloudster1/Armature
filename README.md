@@ -171,11 +171,11 @@ browser ──> web (Vite SPA, Tailwind)
 
 Writes go to the primary and return the write ahead log position they committed
 at; a reader who just wrote is pinned to a replica caught up past it, or to the
-primary. The API connects as a role that is neither owner nor superuser.
-Inside an installation the walls are projects, kept by the API and by
-triggers on the tables; there is no row level security. The tables still
-carry `org_id` until the schema drops it, and a row written without one is
-the installation's by default. Events are written to an outbox table in the
+primary. The API connects as a role that is neither owner nor superuser,
+and a second role, for sign-in and the account paths, is the only one that
+reads the secret tables. Inside an installation the walls are projects, kept
+by the API and by triggers on the tables; there is no row level security, and
+no table names an organization. Events are written to an outbox table in the
 same transaction as the change and relayed to Redis, so an event never describes
 a transaction that rolled back.
 
@@ -204,7 +204,9 @@ at length, because each is a way to get it wrong:
 - **Three database roles.** The application never connects as a privileged one.
   Outside `development` both binaries refuse to start if the role they are given
   has `rolsuper` or `rolbypassrls`. The admin role is the second, for sign-up,
-  sign-in and the outbox relay; it holds the same grants as the app role.
+  sign-in, the account paths and the outbox relay, and the only one that reads
+  the secret tables: password reset links, second-factor keys, recovery codes
+  and sign-in challenges.
 - **The role names must match the migrations.** Every role reference in a
   migration is wrapped in `IF EXISTS`, so a name that does not match is skipped
   rather than refused: the grants go missing and nothing says so. The chart
