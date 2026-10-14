@@ -48,8 +48,8 @@ echo "$new" | grep -Eq "$SEMVER" ||
 	fail "The working tree has changes; commit or stash them before cutting a release."
 git rev-parse -q --verify "refs/tags/v$new" >/dev/null &&
 	fail "v$new is already tagged; choose the next version."
-git rev-parse -q --verify "refs/heads/release/$new" >/dev/null &&
-	fail "A branch release/$new already exists; delete it or choose the next version."
+git rev-parse -q --verify "refs/heads/release/v$new" >/dev/null &&
+	fail "A branch release/v$new already exists; delete it or choose the next version."
 
 last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
 last=${last#v}
@@ -63,7 +63,7 @@ git var GIT_COMMITTER_IDENT >/dev/null 2>&1 ||
 said=$(awk '/^## Unreleased/ { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md | grep -c '[^[:space:]]' || true)
 [ "$said" -gt 0 ] || fail "CHANGELOG.md says nothing under ## Unreleased; write what changed there first."
 
-git switch -q -c "release/$new"
+git switch -q -c "release/v$new"
 
 printf '%s\n' "$new" >VERSION
 set_json_version "$new" web/package.json 1
@@ -81,9 +81,9 @@ make --no-print-directory helm-template
 make --no-print-directory go ARGS="test -count=1 ./internal/buildinfo/"
 
 git add VERSION CHANGELOG.md web/package.json web/package-lock.json $CHART/Chart.yaml $GOLDEN
-git commit -q -m "Release $new"
+git commit -q -m "chore(release): v$new"
 git switch -q main
-git merge -q --no-ff "release/$new" -m "Merge release $new"
+git merge -q --no-ff "release/v$new" -m "Merge release v$new"
 git tag -a "v$new" -m "Armature $new"
 
 printf 'Tagged v%s on main. Publish it with: git push origin main v%s\n' "$new" "$new"
