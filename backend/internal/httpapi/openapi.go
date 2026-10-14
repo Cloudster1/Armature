@@ -317,6 +317,7 @@ func itoa(n int) string { return strconv.Itoa(n) }
 func declareEnums(b *openapi.Builder) {
 	set := func(v any, values ...string) { b.Enums[reflect.TypeOf(v)] = values }
 	set(issue.Priority(""), "lowest", "low", "medium", "high", "highest")
+	set(issue.RemoteLinkRelation(""), string(issue.RemoteLinkPage), string(issue.RemoteLinkRequirement))
 	set(workflow.StatusCategory(""), "todo", "in_progress", "done")
 	set(workflow.RuleKind(""), "condition", "validator", "postfunction")
 	set(workflow.OptionKind(""), "text", "roles")

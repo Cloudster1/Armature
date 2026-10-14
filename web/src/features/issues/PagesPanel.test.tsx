@@ -16,10 +16,24 @@ const spec: RemoteLink = {
   url: "https://wiki.example.com/pages/checkout",
   title: "Checkout spec",
   source: "Stator",
+  relation: "page",
   iconUrl: "https://wiki.example.com/favicon.png",
   createdAt: "2026-09-01T00:00:00Z",
   updatedAt: "2026-09-01T00:00:00Z",
 };
+
+const requirement: RemoteLink = {
+  id: "0199a0b2-0000-7000-8000-000000000002",
+  url: "https://req.example.com/requirements/R-7",
+  title: "R-7 Pay by card",
+  source: "Exciter",
+  relation: "requirement",
+  iconUrl: null,
+  createdAt: "2026-09-02T00:00:00Z",
+  updatedAt: "2026-09-02T00:00:00Z",
+};
+
+const headings = () => screen.getAllByRole("heading").map((h) => h.textContent);
 
 describe("PagesPanel", () => {
   it("is not there at all while the issue has no pages", () => {
@@ -53,5 +67,22 @@ describe("PagesPanel", () => {
     render(<PagesPanel issueKey="CP-1" editable />);
     fireEvent.click(screen.getByRole("button", { name: "Remove the page Checkout spec" }));
     expect(removeMutate).toHaveBeenCalledWith({ key: "CP-1", id: spec.id });
+  });
+
+  it("shows the requirements the issue implements apart from the pages about it, pages first", () => {
+    remoteLinks = [requirement, spec];
+    render(<PagesPanel issueKey="CP-1" editable />);
+    expect(headings()).toEqual(["Pages (1)", "Requirements (1)"]);
+    const group = screen.getByRole("list", { name: "Requirements" });
+    expect(group).toContainElement(screen.getByRole("link", { name: "R-7 Pay by card" }));
+    expect(group).not.toContainElement(screen.getByRole("link", { name: "Checkout spec" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove the requirement R-7 Pay by card" }));
+    expect(removeMutate).toHaveBeenCalledWith({ key: "CP-1", id: requirement.id });
+  });
+
+  it("does not head an issue's requirements as pages when it has no pages", () => {
+    remoteLinks = [requirement];
+    render(<PagesPanel issueKey="CP-1" editable={false} />);
+    expect(headings()).toEqual(["Requirements (1)"]);
   });
 });

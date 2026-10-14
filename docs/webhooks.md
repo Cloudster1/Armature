@@ -215,15 +215,16 @@ A service desk request ran past a target.
 
 ### issue.remote_link.added
 
-A page elsewhere was put on an issue.
+A page or a requirement elsewhere was put on an issue.
 
 - `issueId` (uuid), `key` (string), `linkId` (uuid), `actorId` (uuid).
 - `url`, `title` (string): the page.
 - `source` (string): the application that put it there.
+- `relation` (string): `page` or `requirement`, what the link is to the issue.
 
 ### issue.remote_link.removed
 
-A page elsewhere was taken off an issue. The same fields as
+A page or a requirement elsewhere was taken off an issue. The same fields as
 `issue.remote_link.added`, as the link was.
 
 ### request.stays_done

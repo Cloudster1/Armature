@@ -35,6 +35,13 @@ here in the branch that makes it.
   subscriber keeps an issue's category without reading it again. Nothing is
   taken away, so a subscriber that ignores them goes on as before;
   `docs/webhooks.md` lists the topic's fields (#224).
+- Added: a remote link says what it is to its issue. `relation` on a
+  remote link, its request and the `issue.remote_link.added` and
+  `issue.remote_link.removed` payloads is `page` or `requirement`; a new
+  link sent without one is a page, and a resend that leaves it out keeps
+  the one the link has. The issue page heads requirements apart from pages,
+  pages first, and its rail names the section References. `/meta` lists
+  `remote-link-relations@1`, so a partner can tell before it sends one (#223).
 - Changed: the organization's tables are named for the installation. `org`
   is `installation`, `org_role` is `role`, `org_invite` is `invite` and
   `org_join_request` is `join_request`, with their constraints, indexes,

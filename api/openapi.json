@@ -24825,6 +24825,13 @@
             "type": "string",
             "format": "uuid"
           },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "page",
+              "requirement"
+            ]
+          },
           "source": {
             "type": "string"
           },
@@ -24844,6 +24851,7 @@
           "url",
           "title",
           "source",
+          "relation",
           "iconUrl",
           "createdAt",
           "updatedAt"
@@ -24854,6 +24862,13 @@
         "properties": {
           "iconUrl": {
             "type": "string"
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "page",
+              "requirement"
+            ]
           },
           "source": {
             "type": "string"

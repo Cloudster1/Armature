@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "issue-embed@1", "plan@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks@1"]
+  "capabilities": ["calendar@1", "issue-embed@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks@1"]
 }
 ```
 
@@ -39,6 +39,17 @@ putting the same url again, taken off, and announced as topics.
 - `GET /issues/{issueKey}/remote-links`
 - `POST /issues/{issueKey}/remote-links`
 - `DELETE /issues/{issueKey}/remote-links/{remoteLinkID}`
+- topics `issue.remote_link.added` and `issue.remote_link.removed`
+
+### `remote-link-relations@1`
+
+A remote link says whether it is a `page` or a `requirement`: `relation` on the
+link, on the request that puts it and in both topics' payloads. One sent
+without it is a page, and a resend that leaves it out keeps the one the link
+has. A partner sends `relation` only to a build that lists this name.
+
+- `GET /issues/{issueKey}/remote-links`
+- `POST /issues/{issueKey}/remote-links`
 - topics `issue.remote_link.added` and `issue.remote_link.removed`
 
 ### `webhooks@1`

@@ -49,3 +49,27 @@ func TestAPageLinkRefusalSaysWhatToFix(t *testing.T) {
 		t.Errorf("got %v, want a sentence naming the schemes taken", err)
 	}
 }
+
+func TestALinkSentWithoutARelationIsAPage(t *testing.T) {
+	if got := RemoteLinkRelation("").orPage(); got != RemoteLinkPage {
+		t.Errorf("a link with no relation is %q, want %q", got, RemoteLinkPage)
+	}
+	in, err := checkRemoteLink(RemoteLinkInput{URL: "https://wiki.example.com/pages/42", Title: "Spec", Source: "Stator"})
+	if err != nil || in.Relation != nil {
+		t.Errorf("a link sent without a relation should be taken and say none: %+v %v", in, err)
+	}
+	for _, relation := range []RemoteLinkRelation{RemoteLinkPage, RemoteLinkRequirement} {
+		if _, err := checkRemoteLink(RemoteLinkInput{URL: "https://req.example.com/R-1", Title: "R-1", Source: "Exciter", Relation: &relation}); err != nil {
+			t.Errorf("%s should be taken: %v", relation, err)
+		}
+	}
+}
+
+func TestAnUnknownRelationIsRefusedNamingTheKnownOnes(t *testing.T) {
+	for _, relation := range []RemoteLinkRelation{"", "spec", "Requirement"} {
+		_, err := checkRemoteLink(RemoteLinkInput{URL: "https://req.example.com/R-1", Title: "R-1", Source: "Exciter", Relation: &relation})
+		if !errors.Is(err, ErrBadRemoteLink) || !strings.Contains(err.Error(), "page or requirement") {
+			t.Errorf("relation %q: got %v, want a refusal naming page and requirement", relation, err)
+		}
+	}
+}
