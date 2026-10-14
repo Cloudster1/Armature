@@ -2320,6 +2320,17 @@ Dynamo release has read `/meta` instead.
 **Reconsider if** an outside caller needs the commit, such as an operator's
 monitoring without an account; a token for it is the way, not an open commit.
 
+The capabilities at `/meta` are names with a version, such as
+`remote-links@1`, so a partner asks whether a feature is there instead of
+working out from release numbers which build had it. Each names the operations
+and topics it promises, and a test refuses one naming a route or a topic the
+build no longer has, so the list cannot outlive a feature. A breaking change
+raises the number and the old name stays reported for a Dynamo release, which
+gives a partner one release in which both work. The names are public, as
+`/meta` is: they say what the build can do, not what anybody keeps in it. The
+list follows the one Dynamo keeps for all three tools
+([`docs/integration.md`](integration.md)).
+
 ### MCP is the same table, dispatched in process
 
 A tool is a row of the operation table marked with a name and a sentence, and

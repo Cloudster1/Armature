@@ -138,8 +138,8 @@ func pkgName(t reflect.Type) string {
 }
 
 // object describes a struct the way encoding/json writes it: exported fields
-// under their tag names, embedded structs flattened, omitempty optional, and
-// a pointer that is always written nullable.
+// under their tag names, embedded structs flattened, omitempty and omitzero
+// optional, and a pointer that is always written nullable.
 func (b *Builder) object(t reflect.Type) *Schema {
 	s := &Schema{Type: "object", Properties: map[string]*Schema{}}
 	b.fields(t, t, s)
@@ -172,7 +172,7 @@ func (b *Builder) fields(owner, t reflect.Type, into *Schema) {
 		if name == "" {
 			name = f.Name
 		}
-		omitempty := strings.Contains(","+opts+",", ",omitempty,")
+		omitempty := strings.Contains(","+opts+",", ",omitempty,") || strings.Contains(","+opts+",", ",omitzero,")
 		_, overridden := b.Overrides[f.Type]
 		schema := b.Schema(f.Type)
 		if f.Type.Kind() == reflect.Pointer && omitempty && !overridden {

@@ -24,6 +24,7 @@ type Thing struct {
 	Priority  Priority        `json:"priority"`
 	Tags      []string        `json:"tags"`
 	Counts    map[string]int  `json:"counts,omitempty"`
+	Watchers  []string        `json:"watchers,omitzero"`
 	CreatedAt time.Time       `json:"createdAt"`
 	hidden    int
 	Skipped   int `json:"-"`
@@ -78,7 +79,7 @@ func TestStructsBecomeNamedComponents(t *testing.T) {
 			t.Errorf("%s should be required (%s)", name, required)
 		}
 	}
-	for _, name := range []string{"body", "assignee", "counts", "hidden", "Skipped"} {
+	for _, name := range []string{"body", "assignee", "counts", "watchers", "hidden", "Skipped"} {
 		if strings.Contains(required, name) {
 			t.Errorf("%s should not be required (%s)", name, required)
 		}

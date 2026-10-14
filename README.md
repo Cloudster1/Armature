@@ -548,8 +548,10 @@ sidebar: `0.2.0` on the tag, `0.2.0+3.g1a2b3c4` three commits past it, and
 `0.2.0+dev` when no tag is in reach, as in a shallow clone of a branch.
 `/meta` answers anyone, the way Stator and Exciter answer it, with the
 product, that version, the API's own version (`info.version` of the OpenAPI
-document) and the capabilities; the commit and when it was built are added for
-somebody signed in. `GET /api/v1/build` still answers behind the session and
+document) and the capabilities, the integration features a partner checks for
+by name, listed with what each promises in
+[`docs/integration.md`](docs/integration.md); the commit and when it was built
+are added for somebody signed in. `GET /api/v1/build` still answers behind the session and
 is deprecated.
 
 ## Build notes
