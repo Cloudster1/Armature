@@ -48,11 +48,18 @@ boards and sprints, with "Add the demo project" under Settings, Installation.
 
 Or sign in the way a company would: on the sign-in page choose Continue with
 single sign-on. The stack runs a Keycloak at
-<http://localhost:8180> (admin console: `admin` / `admin`) with the same
-people, the same password, and groups that grant their roles here. Grace is in
-`portal-owners` and `scrum-masters`, Alan in `developers`, Rita in `readers`;
-move somebody between groups in Keycloak and their role here follows at their
-next sign-in.
+<http://localhost:8180> (admin console: `admin` / `admin`) with the realm
+`dynamo` that Stator and Exciter import too, from the same
+`deploy/keycloak/realm.json`, so one sign-in works in all three. Its people
+sign in with their name and the word password, `alice` / `alice password` and
+so on, and their groups grant their roles here: alice is in
+`armature-administrators`, bob in `developers`, carol in `portal-owners` and
+`scrum-masters`, dave in `readers`. Move somebody between groups in Keycloak
+and their role here follows at their next sign-in. The client secrets in the
+realm (`armature-dev-secret` and the partners' ones) are for development only.
+`make realm-check` compares the realm with Dynamo's canonical copy, and the
+Conventions workflow runs it on every pull request. It reaches GitHub, so
+`make test` leaves it out and runs offline.
 
 The stack also runs a Gitea at <http://localhost:3001> (`demo` / the same
 password), and the seed connects the demo project to a repository there. Open
@@ -512,7 +519,7 @@ Zero keeps a kind forever, which nothing here recommends.
 | `api/` | the generated OpenAPI document, checked in |
 | `web/src/` | the SPA |
 | `e2e/` | the browser suite: one module per area under `scenarios/` |
-| `deploy/` | compose stack, Dockerfiles, Postgres bootstrap, nginx, the Keycloak demo realm |
+| `deploy/` | compose stack, Dockerfiles, Postgres bootstrap, nginx, the suite's Keycloak realm |
 | `deploy/charts/armature/` | the Helm chart and its golden rendered manifests |
 
 </details>

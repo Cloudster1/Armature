@@ -37,8 +37,8 @@ NPM_CACHE_VOL  := $(ROOT)/.cache/npm
 # The OpenAPI document lives beside the code at api/, outside the backend
 # module, so it is mounted separately and the test that checks it is told where.
 # The files that carry the release are mounted the same way, for the test that
-# refuses them disagreeing, and so is the README whose table of variables a
-# test holds against the code.
+# refuses them disagreeing, and so are the README whose table of variables a
+# test holds against the code and the Keycloak realm the seed has to match.
 DOCKER_GO = docker run --rm -t \
 	-u $(UID):$(GID) \
 	-v $(ROOT)/backend:/src \
@@ -49,10 +49,12 @@ DOCKER_GO = docker run --rm -t \
 	-v $(ROOT)/web/package-lock.json:/release/package-lock.json:ro \
 	-v $(ROOT)/$(CHART)/Chart.yaml:/release/Chart.yaml:ro \
 	-v $(ROOT)/README.md:/docs/README.md:ro \
+	-v $(ROOT)/deploy/keycloak/realm.json:/keycloak/realm.json:ro \
 	-e ARMATURE_OPENAPI_FILE=/api/openapi.json \
 	-e ARMATURE_README_FILE=/docs/README.md \
 	-e ARMATURE_THEME_FILES=/themes \
 	-e ARMATURE_RELEASE_FILES=/release \
+	-e ARMATURE_REALM_FILE=/keycloak/realm.json \
 	-v $(GO_CACHE_VOL):/gocache \
 	-v $(GO_MOD_VOL):/gomod \
 	-e GOCACHE=/gocache \
@@ -226,6 +228,15 @@ shell: ## Interactive shell in the Go toolchain container
 		-v $(ROOT)/backend:/src -v $(GO_CACHE_VOL):/gocache -v $(GO_MOD_VOL):/gomod \
 		-e GOCACHE=/gocache -e GOMODCACHE=/gomod -e GOFLAGS=-buildvcs=false \
 		-w /src $(GO_IMAGE) sh
+
+# Dynamo holds the suite's realm; each tool's copy has to be the same file, keys
+# order aside. Until Dynamo has one there is nothing to compare, which passes.
+DYNAMO_REALM_URL ?= https://raw.githubusercontent.com/praetorianer777/Dynamo/main/deploy/keycloak/realm.json
+
+.PHONY: realm-check
+realm-check: ## Fail if deploy/keycloak/realm.json differs from Dynamo's canonical realm
+	@docker run --rm -u $(UID):$(GID) -v $(ROOT)/deploy/keycloak:/realm:ro $(NODE_IMAGE) \
+		node /realm/realm-check.mjs '$(DYNAMO_REALM_URL)' /realm/realm.json
 
 ## ---------- release ----------
 

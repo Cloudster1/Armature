@@ -25,3 +25,6 @@ jobs:
 
       - name: Script tests
         run: sh deploy/tests/conventions_test.sh
+
+      - name: Keycloak realm matches Dynamo's
+        run: make realm-check
