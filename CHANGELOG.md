@@ -10,6 +10,18 @@ here in the branch that makes it.
 - Fixed: what somebody types in a project's settings stays when the project
   is fetched again, for instance right after the previous save; a field nobody
   touched still follows what the server has (#252).
+- Changed: the stack's Keycloak imports the realm `dynamo` from
+  `deploy/keycloak/realm.json`, the same file Stator and Exciter import, in
+  place of the realm `demo`. Its people are alice, bob, carol and dave, each
+  with the password `<name> password`; Ada, Grace, Alan and Rita sign in with
+  their local accounts only. The seed points single sign-on at the new realm
+  with the development secret `armature-dev-secret`, and a unit test refuses a
+  seed naming what the realm does not hold. `make realm-check` compares the
+  realm with Dynamo's canonical copy (#241).
+- Upgrade note (#241): `make up` imports the new realm. Run `make seed` again,
+  or set the identity provider's issuer to
+  `http://localhost:8180/realms/dynamo` and its secret to
+  `armature-dev-secret` under Settings, Access (#241).
 - Added: branches are named `<type>/<issue>-<slug>` and commit subjects are
   Conventional Commits, so the release script can read the next version from
   them. `make hooks` has git refuse a push outside the convention and the

@@ -154,10 +154,11 @@ services:
       timeout: 5s
       retries: 20
 
-  # The demo's identity provider. The realm is imported on first start: four
-  # people in five groups, and a client for the tracker. The browser reaches it
-  # at localhost:8180; the api reaches it as keycloak:8080 through the
-  # backchannel rewrite below.
+  # The demo's identity provider. The realm is the suite's realm dynamo, the
+  # same file in Stator, Armature and Exciter: four people, a client for each
+  # tool, and groups that grant roles here. The browser reaches it at
+  # localhost:8180; the api reaches it as keycloak:8080 through the backchannel
+  # rewrite below.
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     command: ["start-dev", "--import-realm", "--http-port=8080"]
@@ -171,7 +172,7 @@ services:
     # demo needs, and a mounted data directory would be root owned while the
     # image runs unprivileged.
     volumes:
-      - ../deploy/keycloak/demo-realm.json:/opt/keycloak/data/import/demo-realm.json:ro
+      - ../deploy/keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
     ports:
       - "127.0.0.1:${KEYCLOAK_PORT:-8180}:8080"
     healthcheck:
