@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useMemo, type FormEvent } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useArchiveProject, useProject, useUpdateProject } from "@/api/projects";
@@ -7,6 +7,7 @@ import { canAdminister, useAccess } from "@/api/access";
 import { ApiError } from "@/api/client";
 import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, SectionTitle, Select, Switch, Tag, useToast } from "@/components/ui";
 import { DOCS_LABEL_MAX_LENGTH } from "@/config";
+import { useDraft } from "@/lib/draft";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { FEATURES } from "@/features/projects/features";
 import { ShareSettings } from "@/features/projects/ShareSettings";
@@ -33,22 +34,13 @@ function ProjectSettingsPage() {
   const toast = useToast();
   const navigate = useNavigate();
   const project = data?.project;
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [leadId, setLeadId] = useState("");
-  const [docsUrl, setDocsUrl] = useState("");
-  const [docsLabel, setDocsLabel] = useState("");
+  const saved = useMemo(
+    () => project && { name: project.name, description: project.description, leadId: project.leadId ?? "", docsUrl: project.docsUrl ?? "", docsLabel: project.docsLabel ?? "" },
+    [project],
+  );
+  const [draft, setField] = useDraft(saved);
+  const { name = "", description = "", leadId = "", docsUrl = "", docsLabel = "" } = draft ?? {};
   const fieldErrors = update.error instanceof ApiError ? update.error.fields : {};
-
-  useEffect(() => {
-    if (project) {
-      setName(project.name);
-      setDescription(project.description);
-      setLeadId(project.leadId ?? "");
-      setDocsUrl(project.docsUrl ?? "");
-      setDocsLabel(project.docsLabel ?? "");
-    }
-  }, [project]);
 
   if (!project) return null;
   if (!canAdminister(access, projectKey)) {
@@ -85,9 +77,9 @@ function ProjectSettingsPage() {
       <Card className="p-5">
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
-          <Field label="Project name" required value={name} onChange={(e) => setName(e.target.value)} />
-          <Field label="Description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What the project is for, in a sentence." />
-          <Select label="Lead" value={leadId} onChange={(e) => setLeadId(e.target.value)} hint="A person to ask; nothing is refused on it.">
+          <Field label="Project name" required value={name} onChange={(e) => setField("name", e.target.value)} />
+          <Field label="Description" rows={3} value={description} onChange={(e) => setField("description", e.target.value)} placeholder="What the project is for, in a sentence." />
+          <Select label="Lead" value={leadId} onChange={(e) => setField("leadId", e.target.value)} hint="A person to ask; nothing is refused on it.">
             <option value="">Nobody in particular</option>
             {(memberData?.members ?? []).map((m) => (
               <option key={m.id} value={m.id}>
@@ -99,7 +91,7 @@ function ProjectSettingsPage() {
             label="Documentation"
             type="url"
             value={docsUrl}
-            onChange={(e) => setDocsUrl(e.target.value)}
+            onChange={(e) => setField("docsUrl", e.target.value)}
             placeholder="https://wiki.example.com/spaces/team"
             hint="Where the project's docs live. The sidebar links to it; leave it empty for none."
             error={fieldErrors.docsUrl}
@@ -107,7 +99,7 @@ function ProjectSettingsPage() {
           <Field
             label="Link name"
             value={docsLabel}
-            onChange={(e) => setDocsLabel(e.target.value)}
+            onChange={(e) => setField("docsLabel", e.target.value)}
             placeholder="Docs"
             maxLength={DOCS_LABEL_MAX_LENGTH}
             disabled={!docsUrl.trim()}
