@@ -717,16 +717,17 @@ export async function addOnPlan(page, groupLabel, summary) {
   await page.keyboard.press("Enter");
 }
 
-/** Clicks the button whose visible label matches exactly. */
+/** Clicks the button whose visible label matches exactly, once it is enabled:
+ *  a click on a busy button does nothing, and a person waits for the spinner. */
 export async function clickButton(page, label) {
-  await page.waitForFunction(
-    (text) => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === text),
-    { timeout: WAIT },
-    label,
-  );
+  const enabled = (text) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === text && !b.disabled);
+  try {
+    await page.waitForFunction(enabled, { timeout: WAIT }, label);
+  } catch {
+    throw new Error(`No enabled button reads "${label}" after ${WAIT}ms; check it is on the page and nothing keeps it busy.`);
+  }
   await page.evaluate((text) => {
-    const button = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === text);
-    button?.click();
+    [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === text && !b.disabled)?.click();
   }, label);
 }
 

@@ -17,6 +17,9 @@ and its tag message, so a change is written here in the branch that makes it.
   to `ghcr.io/cloudster1/armature-<image>`, the chart to
   `oci://ghcr.io/cloudster1/charts` and the GitHub release, and tells Dynamo.
   The chart pulls those images by default (#240).
+- Fixed: what somebody types in a project's settings stays when the project
+  is fetched again, for instance right after the previous save; a field nobody
+  touched still follows what the server has (#252).
 - Added: branches are named `<type>/<issue>-<slug>` and commit subjects are
   Conventional Commits, so the release script can read the next version from
   them. `make hooks` has git refuse a push outside the convention and the
