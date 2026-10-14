@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: what somebody types in a project's settings stays when the project
+  is fetched again, for instance right after the previous save; a field nobody
+  touched still follows what the server has (#252).
 - Changed: the stack's Keycloak imports the realm `dynamo` from
   `deploy/keycloak/realm.json`, the same file Stator and Exciter import, in
   place of the realm `demo`. Its people are alice, bob, carol and dave, each
