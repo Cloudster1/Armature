@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: `GET /api/v1/meta` lists the integration capabilities a partner checks
+  for by name: `issue-embed@1`, `remote-links@1`, `webhooks@1`,
+  `theme-export@1`, `reports@1`, `plan@1` and `calendar@1`, each with what it
+  promises in `docs/integration.md`. A test refuses a capability naming an
+  operation or a topic the build does not have (#239).
 - Added: `GET /api/v1/meta` says which build answers, as Stator and Exciter
   do, without a sign-in: the product, the version, the API's own version and
   its capabilities, for now none. The commit and when it was built are added
