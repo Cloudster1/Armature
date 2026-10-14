@@ -468,6 +468,9 @@ func TestTheInstallationRequiresASecondFactor(t *testing.T) {
 		t.Fatalf("a held session changed the profile: %d", renamed.Status)
 	}
 	want(t, member.get("/api/v1/build"), http.StatusOK, "the foot of the page still loads")
+	if build := obj(t, want(t, member.get("/api/v1/meta"), http.StatusOK, "a held session asks which build answers"), "build"); build["commit"] != nil {
+		t.Errorf("a held session was told the commit: %v", build)
+	}
 	want(t, owner.get("/api/v1/projects"), http.StatusOK, "an owner with a factor is not held")
 
 	enrol(t, member)

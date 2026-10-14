@@ -22,6 +22,7 @@ import (
 	"github.com/armature/armature/backend/internal/attachment"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/bootstrap"
+	"github.com/armature/armature/backend/internal/buildinfo"
 	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/observability"
@@ -58,6 +59,9 @@ func TestMain(m *testing.M) {
 		}
 		opened = true
 	}
+	// The suite is built without a stamp; this one is what the linker would
+	// write, so a build report has a commit to show or keep back.
+	buildinfo.Version, buildinfo.Commit, buildinfo.BuiltAt = "0.0.0+1.gintegration", "integration", "2026-01-01T00:00:00Z"
 	code := m.Run()
 	if !everyOperationWasExercised() && code == 0 {
 		code = 1
@@ -188,7 +192,7 @@ func everyOperationWasExercised() bool {
 	neverSucceeded, neverRefused := apiContract.uncovered()
 	// A GET with no input and no session cannot be refused; there is nothing
 	// to refuse it for.
-	unrefusable := map[string]bool{"GET /healthz": true, "GET /readyz": true, "GET /openapi.json": true, "GET /auth/signup": true}
+	unrefusable := map[string]bool{"GET /healthz": true, "GET /readyz": true, "GET /openapi.json": true, "GET /auth/signup": true, "GET /meta": true}
 	kept := neverRefused[:0]
 	for _, key := range neverRefused {
 		if !unrefusable[key] {
