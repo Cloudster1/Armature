@@ -114,6 +114,30 @@ func TestTheDocumentBuildsAndReferencesResolve(t *testing.T) {
 	}
 }
 
+// An endpoint kept for one more release is marked, with what to call instead,
+// and the one that replaces it is not.
+func TestADeprecatedOperationSaysSo(t *testing.T) {
+	encoded, err := Spec().MarshalIndent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Paths map[string]map[string]struct {
+			Deprecated  bool   `json:"deprecated"`
+			Description string `json:"description"`
+		} `json:"paths"`
+	}
+	if err := json.Unmarshal(encoded, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if old := doc.Paths["/build"]["get"]; !old.Deprecated || !strings.Contains(old.Description, "/meta") {
+		t.Errorf("GET /build = %+v, want it deprecated, pointing at /meta", old)
+	}
+	if doc.Paths["/meta"]["get"].Deprecated {
+		t.Error("GET /meta is what to call instead, not deprecated")
+	}
+}
+
 // An installation is one team's, so what the document and the assistant's tools
 // say to a reader speaks of everyone and all projects, never an organization.
 func TestTheDocumentSaysEveryoneNotTheOrganization(t *testing.T) {

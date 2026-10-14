@@ -1,4 +1,4 @@
-import { useBuild } from "@/api/build";
+import { useMeta } from "@/api/meta";
 import { COMMIT_SHORT_LENGTH } from "@/config";
 import { useFormat } from "@/lib/format";
 
@@ -8,7 +8,7 @@ import { useFormat } from "@/lib/format";
  * when it was built, sit in the title for the one who then looks it up.
  */
 export function BuildStamp() {
-  const { data } = useBuild();
+  const { data } = useMeta();
   const format = useFormat();
   if (!data) return null;
   const { version, commit, builtAt } = data.build;

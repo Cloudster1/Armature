@@ -41,6 +41,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		// The API's own description, derived from the code that serves it.
 		r.Get("/openapi.json", s.handleOpenAPI)
+		// Which build answers and which API it speaks, for anyone who asks;
+		// the commit only for somebody signed in.
+		r.Get("/meta", s.handleMeta)
 
 		// Unauthenticated entry points.
 		r.Get("/auth/signup", s.handleSignupOpen)
@@ -95,8 +98,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 
 			r.Post("/auth/logout", s.handleLogout)
 			r.Get("/auth/me", s.handleMe)
-			// Which build answers, for the foot of the screen. Behind the
-			// session: a commit hash is nobody else's business.
+			// Which build answers, deprecated for /meta and kept for one more
+			// release. Behind the session: a commit hash is nobody else's business.
 			r.Get("/build", s.handleBuild)
 			// One's own account: what a person may change about themselves.
 			r.Patch("/auth/me", s.handleUpdateProfile)
