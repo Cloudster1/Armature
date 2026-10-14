@@ -1,9 +1,15 @@
 package webhook
 
 import (
+	"encoding/json"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/armature/armature/backend/internal/events"
 )
 
 func TestSignAndVerify(t *testing.T) {
@@ -69,6 +75,48 @@ func TestAuditedAddressKeepsOnlyTheHost(t *testing.T) {
 	} {
 		if got := auditedAddress(in); got != want {
 			t.Errorf("auditedAddress(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// Version 1 is the envelope receivers were written against before it had a
+// number: the same fields, the number added, and a mail's token left out.
+func TestVersionOneIsTheEnvelopeWithItsNumber(t *testing.T) {
+	installationID, eventID := uuid.New(), uuid.New()
+	at := time.Date(2026, 10, 14, 9, 30, 0, 0, time.UTC)
+	body, err := envelopeFor(1, installationID, events.Event{ID: eventID, Topic: events.TopicWatcherAdded, Payload: json.RawMessage(`{"key":"X-1","token":"unwatch"}`)}, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]json.RawMessage
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"version":    `1`,
+		"id":         `"` + eventID.String() + `"`,
+		"topic":      `"watcher.added"`,
+		"orgId":      `"` + installationID.String() + `"`,
+		"occurredAt": `"2026-10-14T09:30:00Z"`,
+		"payload":    `{"key":"X-1"}`,
+	}
+	if len(got) != len(want) {
+		t.Errorf("the envelope has %d fields, want %d: %s", len(got), len(want), body)
+	}
+	for field, value := range want {
+		if string(got[field]) != value {
+			t.Errorf("%s = %s, want %s", field, got[field], value)
+		}
+	}
+	if CurrentVersion != 1 {
+		t.Errorf("a new endpoint gets version %d; a receiver written for 1 would not know it", CurrentVersion)
+	}
+}
+
+func TestAVersionNotOfferedBuildsNothing(t *testing.T) {
+	for _, version := range []int{0, 2, -1} {
+		if _, err := envelopeFor(version, uuid.New(), events.Event{ID: uuid.New(), Topic: TopicPing, Payload: json.RawMessage(`{}`)}, time.Now()); !errors.Is(err, ErrUnknownVersion) {
+			t.Errorf("version %d: err = %v, want ErrUnknownVersion", version, err)
 		}
 	}
 }
