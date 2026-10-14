@@ -11,14 +11,20 @@ export function orderFilters(filters: SavedFilter[], me: string | undefined): Sa
   return [...filters].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
 
-// The row under the query on the search page: the saved searches as chips,
+/** What the row offers: what I starred or made, and the search that is running;
+ *  everyone's shared searches would grow it without end. */
+export function chipFilters(filters: SavedFilter[], me: string | undefined, activeId: string | null): SavedFilter[] {
+  return filters.filter((f) => f.starred || f.ownerId === me || f.id === activeId);
+}
+
+// The row under the query on the search page: my saved searches as chips,
 // with a star on each, Save for the query that is running, and Export.
 export function SavedFilterBar({ query, me, active }: { query: string; me: string | undefined; active: SavedFilter | null }) {
   const { data } = useSavedFilters();
   const star = useStarFilter();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const filters = orderFilters(data?.filters ?? [], me);
+  const filters = orderFilters(chipFilters(data?.filters ?? [], me, active?.id ?? null), me);
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2" data-saved-filters>

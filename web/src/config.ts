@@ -218,6 +218,9 @@ export const TOOLTIP_DELAY_MS = 400;
 export const ICON_SIZE_PX = 16;
 export const ICON_STROKE = 1.5;
 
+/** A board's text filter waits this long after the last key, so the address is not rewritten per letter. */
+export const BOARD_SEARCH_DELAY_MS = 250;
+
 /** How many results of each kind the command palette shows. */
 export const PALETTE_RESULTS = 8;
 

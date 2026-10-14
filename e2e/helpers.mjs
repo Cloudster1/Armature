@@ -438,13 +438,15 @@ async function issueTypeId(page, name) {
 }
 
 /**
- * Creates an issue and returns its key; with visit, on the project's page
- * where the form leaves it. A string in place of the options names the type.
+ * Creates an issue and returns its key, on the project's page with visit. A string in
+ * place of the options names the type; assignee "me" gives it to whoever is signed in.
  */
 export async function createIssue(page, projectKey, summary, options = {}) {
-  const { type, visit = true } = typeof options === "string" ? { type: options } : options;
+  const { type, assignee, visit = true } = typeof options === "string" ? { type: options } : options;
   const body = { summary };
   if (type) body.typeId = await issueTypeId(page, type);
+  if (assignee === "me") body.assigneeId = (await callAPI(page, "GET", "/auth/me")).principal.user.id;
+  else if (assignee) throw new Error(`createIssue gives an issue only to "me", not to ${assignee}; assign anybody else through the API.`);
   const { issue } = await callAPI(page, "POST", `/projects/${projectKey}/issues`, body);
   if (visit) await goto(page, `/projects/${projectKey}`);
   return issue.key;
