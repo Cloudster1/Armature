@@ -138,6 +138,32 @@ func TestADeprecatedOperationSaysSo(t *testing.T) {
 	}
 }
 
+// A public operation overrides the document's session-or-token rule with an
+// empty one; without it a generated client sends credentials it need not have.
+func TestAPublicOperationNeedsNoCredentials(t *testing.T) {
+	encoded, err := Spec().MarshalIndent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Paths map[string]map[string]struct {
+			Security *[]map[string][]string `json:"security"`
+		} `json:"paths"`
+	}
+	if err := json.Unmarshal(encoded, &doc); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range Catalog() {
+		security := doc.Paths[r.Path][strings.ToLower(r.Method)].Security
+		switch {
+		case r.Public && (security == nil || len(*security) != 0):
+			t.Errorf("%s %s is public, want security: [], got %v", r.Method, r.Path, security)
+		case !r.Public && security != nil:
+			t.Errorf("%s %s needs a session or a token, want the document's security, got %v", r.Method, r.Path, *security)
+		}
+	}
+}
+
 // An installation is one team's, so what the document and the assistant's tools
 // say to a reader speaks of everyone and all projects, never an organization.
 func TestTheDocumentSaysEveryoneNotTheOrganization(t *testing.T) {
