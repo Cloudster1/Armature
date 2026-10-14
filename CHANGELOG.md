@@ -7,6 +7,10 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the search page offers as chips only the searches you starred or
+  made, and the one running; what others share is on All saved searches
+  until you star it, so a few dozen shared searches no longer push the
+  results down the page (#262).
 - Added: the type in an issue's header is a picker for anybody who may edit
   it, offering the other types at the same level. When the new type's
   workflow has no place for the issue's status, the page says which status
