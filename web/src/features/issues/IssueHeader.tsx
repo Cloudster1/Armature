@@ -3,8 +3,9 @@ import { Link } from "@tanstack/react-router";
 import { type Issue, isStaleEdit, useIssueHierarchy, useTransitionIssue, useTransitions, useUpdateIssue } from "@/api/issues";
 import { Icon } from "@/components/icons";
 import { Button, ErrorBanner, IconButton, Input, cx } from "@/components/ui";
-import { StatusBadge, TypeBadge } from "./badges";
+import { StatusBadge } from "./badges";
 import { Ancestry } from "./hierarchy";
+import { TypeField } from "./TypePicker";
 import { CloneMoveMenu } from "@/features/filters/CloneMoveMenu";
 
 export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; editable: boolean; inDrawer: boolean }) {
@@ -20,7 +21,7 @@ export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; edita
         <IssueAncestry issueKey={issue.key} />
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-2">
-        <TypeBadge icon={issue.type.icon} name={issue.type.name} />
+        <TypeField issue={issue} editable={editable} />
         <span className="font-mono text-sm text-ink-muted">{issue.key}</span>
         <StatusBadge name={issue.status.name} category={issue.status.category} />
         <span className="flex-1" />

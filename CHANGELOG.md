@@ -12,6 +12,11 @@ and its tag message, so a change is written here in the branch that makes it.
   until it is. Archiving no longer asks first; its toast offers Undo, which
   restores the project. The audit log records who archived and who restored a
   project (#112).
+- Added: the type in an issue's header is a picker for anybody who may edit
+  it, offering the other types at the same level. When the new type's
+  workflow has no place for the issue's status, the page says which status
+  it moves to and asks first; a refusal is shown as the server's sentence,
+  and the history reads "changed the type from Task to Bug" (#114).
 - Added: `make release` reads the next version from the commits since the
   last tag when none is given, and prints the rule it applied and the commits
   that decided it; `DRY_RUN=1` prints that and the notes and changes nothing.

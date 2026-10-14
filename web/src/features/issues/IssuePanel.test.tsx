@@ -66,7 +66,7 @@ vi.mock("@/api/issues", async () => ({
   ...(await vi.importActual<typeof import("@/api/issues")>("@/api/issues")),
   useIssue: (key: string) => ({ data: { issue: issues[key] }, isLoading: false, error: null }),
   useComments: nothing, useHistory: nothing, useTransitions: nothing, useIssueHierarchy: nothing,
-  useMembers: nothing, useIssues: nothing, useStatuses: nothing, useWorklogs: nothing,
+  useMembers: nothing, useIssues: nothing, useStatuses: nothing, useWorklogs: nothing, useIssueTypes: nothing,
   useAddComment: writes(sent.comment), useTransitionIssue: mutation, useUpdateIssue: writes(sent.update),
   useSetParent: mutation, useCreateIssue: mutation, useLogWork: mutation, useDeleteWorklog: mutation,
 }));
