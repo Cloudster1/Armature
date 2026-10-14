@@ -60,7 +60,7 @@ func (f *FanOut) handleAbsence(ctx context.Context, e events.Event, p payload) e
 		return tx.QueryRow(ctx, `
 			SELECT COALESCE((SELECT name FROM app_user WHERE id = $2), 'Somebody'),
 			       EXISTS (SELECT 1 FROM org_member m JOIN app_user u ON u.id = m.user_id AND u.is_active
-			               WHERE m.user_id = $1 AND m.org_id = current_org_id() AND m.org_role <> 'customer')`,
+			               WHERE m.user_id = $1 AND m.org_role <> 'customer')`,
 			p.UserID, p.ActorID).Scan(&actor, &member)
 	})
 	if err != nil || !member {

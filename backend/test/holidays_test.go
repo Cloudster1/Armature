@@ -323,12 +323,12 @@ func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
 		var customerID uuid.UUID
 		err := h.super.QueryRow(ctx, `
 			WITH made AS (INSERT INTO app_user (email, name) VALUES ($1, 'Sam Customer') RETURNING id)
-			INSERT INTO org_member (org_id, user_id, org_role) SELECT $2, id, 'customer' FROM made RETURNING user_id`,
-			h.email(t, "sqlcustomer"), home.orgID).Scan(&customerID)
+			INSERT INTO org_member (user_id, org_role) SELECT id, 'customer' FROM made RETURNING user_id`,
+			h.email(t, "sqlcustomer")).Scan(&customerID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = h.super.Exec(ctx, `INSERT INTO member_schedule (org_id, user_id) VALUES ($1, $2)`, home.orgID, customerID)
+		_, err = h.super.Exec(ctx, `INSERT INTO member_schedule (user_id) VALUES ($1)`, customerID)
 		refusedAs(t, err, "23514")
 		if err != nil && !strings.Contains(err.Error(), "only a member") {
 			t.Errorf("error = %v, want the guard's own words", err)
@@ -355,11 +355,11 @@ func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
 	t.Run("there is one default and a name once", func(t *testing.T) {
 		_, err := h.super.Exec(ctx, `UPDATE holiday_calendar SET is_default = true WHERE id = $1`, own.ID)
 		refusedAs(t, err, "23505")
-		_, err = h.super.Exec(ctx, `INSERT INTO holiday_calendar (org_id, name) VALUES ($1, $2)`, home.orgID, strings.ToUpper(name))
+		_, err = h.super.Exec(ctx, `INSERT INTO holiday_calendar (name) VALUES ($1)`, strings.ToUpper(name))
 		refusedAs(t, err, "23505")
-		_, err = h.super.Exec(ctx, `INSERT INTO holiday_calendar (org_id, name) VALUES ($1, '   ')`, home.orgID)
+		_, err = h.super.Exec(ctx, `INSERT INTO holiday_calendar (name) VALUES ('   ')`)
 		refusedAs(t, err, "23514")
-		_, err = h.super.Exec(ctx, `INSERT INTO holiday (org_id, calendar_id, day, name) VALUES ($1, $2, '2026-12-25', 'Twice')`, home.orgID, own.ID)
+		_, err = h.super.Exec(ctx, `INSERT INTO holiday (calendar_id, day, name) VALUES ($1, '2026-12-25', 'Twice')`, own.ID)
 		refusedAs(t, err, "23505")
 	})
 }

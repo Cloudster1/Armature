@@ -99,9 +99,9 @@ func (s *Service) Connect(ctx context.Context, projectKey string, in ConnectInpu
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
 			INSERT INTO git_repository
-			    (org_id, project_id, host, name, url, api_base_url, default_branch,
+			    (project_id, host, name, url, api_base_url, default_branch,
 			     webhook_secret, access_token, transition_on_merge, connected_by)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			RETURNING id`,
 			projectID, string(in.Host), in.Name, in.URL, in.APIBaseURL, in.DefaultBranch,
 			secret, in.AccessToken, strings.TrimSpace(in.TransitionOnMerge), actor,

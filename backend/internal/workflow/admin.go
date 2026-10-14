@@ -84,8 +84,8 @@ func (a *Admin) CreateStatus(ctx context.Context, in StatusInput, actor uuid.UUI
 func InsertStatus(ctx context.Context, tx db.DBTX, in StatusInput) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := tx.QueryRow(ctx, `
-		INSERT INTO issue_status (org_id, name, category, description, position)
-		VALUES (current_org_id(), $1, $2, $3, (SELECT COALESCE(max(position) + 1, 0) FROM issue_status))
+		INSERT INTO issue_status (name, category, description, position)
+		VALUES ($1, $2, $3, (SELECT COALESCE(max(position) + 1, 0) FROM issue_status))
 		RETURNING id`, in.Name, string(in.Category), in.Description).Scan(&id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create status %q: %w", in.Name, err)
@@ -118,8 +118,8 @@ func (a *Admin) CreateWorkflow(ctx context.Context, in GraphInput, actor uuid.UU
 
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO workflow (org_id, name, description)
-			VALUES (current_org_id(), $1, $2) RETURNING id`,
+			INSERT INTO workflow (name, description)
+			VALUES ($1, $2) RETURNING id`,
 			in.Name, in.Description,
 		).Scan(&id)
 		if isUniqueViolation(err) {
@@ -224,8 +224,8 @@ func (a *Admin) CopyWorkflow(ctx context.Context, id uuid.UUID, name string, act
 
 		var copyID uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO workflow (org_id, name, description)
-			VALUES (current_org_id(), $1, $2) RETURNING id`,
+			INSERT INTO workflow (name, description)
+			VALUES ($1, $2) RETURNING id`,
 			name, source.Description,
 		).Scan(&copyID)
 		if isUniqueViolation(err) {
@@ -241,8 +241,8 @@ func (a *Admin) CopyWorkflow(ctx context.Context, id uuid.UUID, name string, act
 			var newID uuid.UUID
 			err := tx.QueryRow(ctx, `
 				INSERT INTO workflow_step
-				    (org_id, workflow_id, status_id, is_initial, position, layout_x, layout_y)
-				VALUES (current_org_id(), $1, $2, $3, $4, $5, $6) RETURNING id`,
+				    (workflow_id, status_id, is_initial, position, layout_x, layout_y)
+				VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 				copyID, step.Status.ID, step.IsInitial, step.Position, x, y,
 			).Scan(&newID)
 			if err != nil {
@@ -260,8 +260,8 @@ func (a *Admin) CopyWorkflow(ctx context.Context, id uuid.UUID, name string, act
 			var newID uuid.UUID
 			err := tx.QueryRow(ctx, `
 				INSERT INTO workflow_transition
-				    (org_id, workflow_id, name, from_step_id, to_step_id, description, position)
-				VALUES (current_org_id(), $1, $2, $3, $4, $5, $6) RETURNING id`,
+				    (workflow_id, name, from_step_id, to_step_id, description, position)
+				VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 				copyID, t.Name, from, steps[t.ToStepID], t.Description, t.Position,
 			).Scan(&newID)
 			if err != nil {
@@ -269,8 +269,8 @@ func (a *Admin) CopyWorkflow(ctx context.Context, id uuid.UUID, name string, act
 			}
 			for _, rule := range t.Rules {
 				if _, err := tx.Exec(ctx, `
-					INSERT INTO transition_rule (org_id, transition_id, kind, rule_type, config, position)
-					VALUES (current_org_id(), $1, $2, $3, $4, $5)`,
+					INSERT INTO transition_rule (transition_id, kind, rule_type, config, position)
+					VALUES ($1, $2, $3, $4, $5)`,
 					newID, rule.Kind, rule.Type, rule.Config, rule.Position,
 				); err != nil {
 					return fmt.Errorf("copy rule: %w", err)
@@ -387,8 +387,8 @@ func (a *Admin) writeGraph(ctx context.Context, tx db.DBTX, workflowID uuid.UUID
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO workflow_step
-			    (org_id, workflow_id, status_id, is_initial, position, layout_x, layout_y)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6) RETURNING id`,
+			    (workflow_id, status_id, is_initial, position, layout_x, layout_y)
+			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 			workflowID, step.StatusID, step.IsInitial, position, x, y,
 		).Scan(&id); err != nil {
 			return fmt.Errorf("add status: %w", err)
@@ -451,8 +451,8 @@ func (a *Admin) writeTransitions(ctx context.Context, tx db.DBTX, workflowID uui
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO workflow_transition
-			    (org_id, workflow_id, name, from_step_id, to_step_id, description, position)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6) RETURNING id`,
+			    (workflow_id, name, from_step_id, to_step_id, description, position)
+			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 			workflowID, t.Name, from, to, t.Description, position).Scan(&id); err != nil {
 			return fmt.Errorf("add transition %q: %w", t.Name, err)
 		}
@@ -470,8 +470,8 @@ func writeRules(ctx context.Context, tx db.DBTX, transitionID uuid.UUID, t Trans
 			config = "{}"
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO transition_rule (org_id, transition_id, kind, rule_type, config, position)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)`,
+			INSERT INTO transition_rule (transition_id, kind, rule_type, config, position)
+			VALUES ($1, $2, $3, $4, $5)`,
 			transitionID, string(rule.Kind), rule.Type, config, j); err != nil {
 			return fmt.Errorf("add rule %q to %q: %w", rule.Type, t.Name, err)
 		}
@@ -500,8 +500,8 @@ func (a *Admin) EnsureWorkflow(ctx context.Context, tx db.DBTX, in GraphInput) (
 		return uuid.Nil, err
 	}
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO workflow (org_id, name, description)
-		VALUES (current_org_id(), $1, $2) RETURNING id`,
+		INSERT INTO workflow (name, description)
+		VALUES ($1, $2) RETURNING id`,
 		in.Name, in.Description,
 	).Scan(&id); err != nil {
 		return uuid.Nil, fmt.Errorf("create workflow %q: %w", in.Name, err)
@@ -530,7 +530,7 @@ func (a *Admin) EnsureScheme(ctx context.Context, tx db.DBTX, in SchemeInput) (u
 		return uuid.Nil, err
 	}
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO workflow_scheme (org_id, name) VALUES (current_org_id(), $1) RETURNING id`,
+		INSERT INTO workflow_scheme (name) VALUES ($1) RETURNING id`,
 		in.Name,
 	).Scan(&id); err != nil {
 		return uuid.Nil, fmt.Errorf("create scheme %q: %w", in.Name, err)

@@ -112,8 +112,8 @@ func (s *Service) Setup(ctx context.Context, tx db.DBTX, projectID uuid.UUID) er
 			}
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO request_type (org_id, project_id, name, description, issue_type_id, priority, position)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)
+			INSERT INTO request_type (project_id, name, description, issue_type_id, priority, position)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT DO NOTHING`, projectID, rt.name, rt.description, typeID, string(rt.priority), i); err != nil {
 			return fmt.Errorf("create request type %q: %w", rt.name, err)
 		}
@@ -131,8 +131,8 @@ func (s *Service) Setup(ctx context.Context, tx db.DBTX, projectID uuid.UUID) er
 	for _, metric := range []Metric{FirstResponse, Resolution} {
 		goals, _ := json.Marshal(defaultGoals[metric])
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO sla_policy (org_id, project_id, name, metric, goals, pause_status_ids)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO sla_policy (project_id, name, metric, goals, pause_status_ids)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT DO NOTHING`, projectID, policyNames[metric], string(metric), goals, pause); err != nil {
 			return fmt.Errorf("create policy %q: %w", policyNames[metric], err)
 		}
@@ -242,8 +242,8 @@ func (s *Service) CreateRequestType(ctx context.Context, projectKey string, in R
 		}
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO request_type (org_id, project_id, name, description, issue_type_id, priority, position, category, details_template, team_id)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5,
+			INSERT INTO request_type (project_id, name, description, issue_type_id, priority, position, category, details_template, team_id)
+			VALUES ($1, $2, $3, $4, $5,
 			        (SELECT COALESCE(max(position) + 1, 0) FROM request_type WHERE project_id = $1), $6, $7, $8)
 			RETURNING id`, projectID, in.Name, strings.TrimSpace(in.Description), typeID, string(in.Priority),
 			strings.TrimSpace(in.Category), tidyTemplate(in.DetailsTemplate), in.TeamID).Scan(&id)

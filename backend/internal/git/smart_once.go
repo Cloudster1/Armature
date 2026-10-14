@@ -58,8 +58,8 @@ func (s *Service) recordCommand(ctx context.Context, repoID uuid.UUID, key strin
 			return err
 		}
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO git_smart_command (org_id, repository_id, issue_id, command_hash)
-			VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO git_smart_command (repository_id, issue_id, command_hash)
+			VALUES ($1, $2, $3)
 			ON CONFLICT DO NOTHING`, repoID, *issueID, cmd.Identity())
 		if err != nil {
 			return fmt.Errorf("record the command: %w", err)

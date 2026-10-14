@@ -44,8 +44,8 @@ func TestBulkEditRefusalLeavesTheIssueAsItWas(t *testing.T) {
 		t.Helper()
 		rows, err := h.super.Query(context.Background(), `
 			SELECT payload FROM outbox_event
-			WHERE org_id = $1 AND payload->>'key' = $2 AND ($3 = '' OR topic = $3)
-			ORDER BY created_at, id`, ws.orgID, key, topic)
+			WHERE payload->>'key' = $1 AND ($2 = '' OR topic = $2)
+			ORDER BY created_at, id`, key, topic)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -189,8 +189,8 @@ func (s *Service) Create(ctx context.Context, projectKey string, in Input, actor
 		}
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO version (org_id, project_id, name, description, start_on, release_on, position)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, COALESCE((SELECT max(position) + 1 FROM version WHERE project_id = $1), 0))
+			INSERT INTO version (project_id, name, description, start_on, release_on, position)
+			VALUES ($1, $2, $3, $4, $5, COALESCE((SELECT max(position) + 1 FROM version WHERE project_id = $1), 0))
 			RETURNING id`, projectID, name, description, start, release).Scan(&id)
 		if isUnique(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicateName, name)

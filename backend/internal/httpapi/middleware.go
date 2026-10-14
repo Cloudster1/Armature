@@ -351,8 +351,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 				// every later check is a question of memory. Asking the
 				// database inside each handler instead would be a query per
 				// guard, and there are several on some routes.
-				set, err := s.Perms.ResolveFor(ctx, principal.Org.ID,
-					principal.User.ID, principal.Role == auth.RoleOwner)
+				set, err := s.Perms.ResolveFor(ctx, principal.User.ID, principal.Role == auth.RoleOwner)
 				if err != nil {
 					respondError(w, r, err)
 					return

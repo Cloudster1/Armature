@@ -134,8 +134,8 @@ func (s *Service) Create(ctx context.Context, projectKey string, in Input, actor
 
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO milestone (org_id, project_id, name, description, due_on, position)
-			VALUES (current_org_id(), $1, $2, $3, $4,
+			INSERT INTO milestone (project_id, name, description, due_on, position)
+			VALUES ($1, $2, $3, $4,
 			        COALESCE((SELECT max(position) + 1 FROM milestone WHERE project_id = $1), 0))
 			RETURNING id`,
 			projectID, in.Name, strings.TrimSpace(in.Description), in.DueOn,

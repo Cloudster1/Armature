@@ -17,6 +17,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
 )
 
@@ -170,13 +171,10 @@ func (s *Service) Upload(ctx context.Context, issueKey string, in UploadInput, a
 
 	var created *Attachment
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var (
-			issueID uuid.UUID
-			orgID   uuid.UUID
-		)
+		var issueID uuid.UUID
 		err := tx.QueryRow(ctx, `
-			SELECT i.id, i.org_id FROM issue i JOIN project p ON p.id = i.project_id
-			WHERE p.key = $1 AND i.key_num = $2`, projectKey, num).Scan(&issueID, &orgID)
+			SELECT i.id FROM issue i JOIN project p ON p.id = i.project_id
+			WHERE p.key = $1 AND i.key_num = $2`, projectKey, num).Scan(&issueID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return issue.ErrNotFound
 		}
@@ -188,10 +186,14 @@ func (s *Service) Upload(ctx context.Context, issueKey string, in UploadInput, a
 		if err != nil {
 			return err
 		}
-		key := objectKey(orgID, issueID, id, name)
+		installationID, err := installation.ID(ctx, tx)
+		if err != nil {
+			return err
+		}
+		key := objectKey(installationID, issueID, id, name)
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO attachment (id, org_id, issue_id, uploader_id, file_name, content_type, size_bytes, object_key)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6, $7)`,
+			INSERT INTO attachment (id, issue_id, uploader_id, file_name, content_type, size_bytes, object_key)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 			id, issueID, actor.UserID, name, contentType, len(data), key); err != nil {
 			return fmt.Errorf("record attachment: %w", err)
 		}
@@ -289,10 +291,10 @@ func (s *Service) reap(ctx context.Context, key string, write func(context.Conte
 	return err
 }
 
-// objectKey lays objects out by tenant, issue and attachment, so a bucket can
-// be read by a person and a tenant's files can be found without the database.
-func objectKey(orgID, issueID, id uuid.UUID, name string) string {
-	return path.Join("org", orgID.String(), "issue", issueID.String(), id.String(), name)
+// objectKey lays objects out by installation, issue and attachment, so a bucket
+// can be read by a person; the prefix keeps the layout files were stored under.
+func objectKey(installationID, issueID, id uuid.UUID, name string) string {
+	return path.Join("org", installationID.String(), "issue", issueID.String(), id.String(), name)
 }
 
 // MaxNameLength keeps a file name short enough for a header and a listing.

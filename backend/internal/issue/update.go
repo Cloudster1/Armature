@@ -256,7 +256,7 @@ func (s *Service) applyAssignee(ctx context.Context, tx db.DBTX, before *Issue, 
 	if assignee != nil {
 		if err := tx.QueryRow(ctx, `
 			SELECT u.name FROM app_user u
-			JOIN org_member m ON m.user_id = u.id AND m.org_id = current_org_id()
+			JOIN org_member m ON m.user_id = u.id
 			WHERE u.id = $1`, *assignee).Scan(&toName); errors.Is(err, pgx.ErrNoRows) {
 			// Assigning to somebody outside the organization would leak the
 			// issue to them the moment they were added.
@@ -285,7 +285,7 @@ func (s *Service) applyReporter(ctx context.Context, tx db.DBTX, before *Issue, 
 	var name string
 	if err := tx.QueryRow(ctx, `
 		SELECT u.name FROM app_user u
-		JOIN org_member m ON m.user_id = u.id AND m.org_id = current_org_id()
+		JOIN org_member m ON m.user_id = u.id
 		WHERE u.id = $1`, reporter).Scan(&name); errors.Is(err, pgx.ErrNoRows) {
 		return nil, errors.New("that person is not a member here")
 	} else if err != nil {
@@ -360,8 +360,8 @@ func RecordChanges(ctx context.Context, tx db.DBTX, issueID, actorID uuid.UUID, 
 		return fmt.Errorf("encode changelog entry: %w", err)
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO issue_history (org_id, issue_id, actor_id, changes)
-		VALUES (current_org_id(), $1, $2, $3)`, issueID, actorID, encoded)
+		INSERT INTO issue_history (issue_id, actor_id, changes)
+		VALUES ($1, $2, $3)`, issueID, actorID, encoded)
 	if err != nil {
 		return fmt.Errorf("record changelog entry: %w", err)
 	}

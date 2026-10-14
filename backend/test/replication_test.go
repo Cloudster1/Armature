@@ -53,12 +53,12 @@ func TestReadsReachTheReplica(t *testing.T) {
 func TestWriteReportsThePositionPastItsCommit(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	orgID, ctx := h.installation(), context.Background()
+	ctx := context.Background()
 
 	var inside db.LSN
 	after, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'commit.lsn', 'org')`, orgID); err != nil {
+			INSERT INTO audit_log (action, target_type) VALUES ('commit.lsn', 'org')`); err != nil {
 			return err
 		}
 		var text string
@@ -83,13 +83,13 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.installation(), context.Background()
+	ctx := context.Background()
 
 	// Let the replica see the organization itself before we freeze it, so the
 	// only thing it is missing is the write made below.
 	warmup, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'warmup', 'org')`, orgID)
+			INSERT INTO audit_log (action, target_type) VALUES ('warmup', 'org')`)
 		return err
 	})
 	if err != nil {
@@ -105,7 +105,7 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 	action := unique("after.pause")
 	lsn, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, $2, 'org')`, orgID, action)
+			INSERT INTO audit_log (action, target_type) VALUES ($1, 'org')`, action)
 		return err
 	})
 	if err != nil {
@@ -173,7 +173,7 @@ func TestLaggingReplicaLeavesTheRotation(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.installation(), context.Background()
+	ctx := context.Background()
 
 	h.pauseReplay(t)
 
@@ -182,7 +182,7 @@ func TestLaggingReplicaLeavesTheRotation(t *testing.T) {
 	for range 3 {
 		if _, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 			_, err := tx.Exec(ctx, `
-				INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'backlog', 'org')`, orgID)
+				INSERT INTO audit_log (action, target_type) VALUES ('backlog', 'org')`)
 			return err
 		}); err != nil {
 			t.Fatalf("backlog write: %v", err)
@@ -225,11 +225,11 @@ func TestIdleReplicaStaysHealthy(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.installation(), context.Background()
+	ctx := context.Background()
 
 	lsn, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'idle', 'org')`, orgID)
+			INSERT INTO audit_log (action, target_type) VALUES ('idle', 'org')`)
 		return err
 	})
 	if err != nil {
@@ -338,13 +338,13 @@ func TestADashboardMadeOnFirstSightIsShownAtOnce(t *testing.T) {
 	}
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	orgID := principalField(t, c.signIn(t, h.person(t, "dashsight", auth.RoleOwner)), "principal", "org", "id").(string)
+	c.signIn(t, h.person(t, "dashsight", auth.RoleOwner))
 	key := h.projectKey(t, "DSH")
 	want(t, c.post("/api/v1/projects", map[string]any{"name": "Sighted", "key": key, "template": "kanban"}), http.StatusCreated, "a project")
 
 	// As a project made before dashboards existed: it has none at all.
 	if _, err := h.super.Exec(context.Background(), `
-		DELETE FROM dashboard WHERE project_id = (SELECT id FROM project WHERE org_id = $1 AND key = $2)`, orgID, key); err != nil {
+		DELETE FROM dashboard WHERE project_id = (SELECT id FROM project WHERE key = $1)`, key); err != nil {
 		t.Fatal(err)
 	}
 	h.holdTheReplicaHere(t)

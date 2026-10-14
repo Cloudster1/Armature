@@ -90,8 +90,8 @@ func TestACSVExportOverTheCapSaysItWasCut(t *testing.T) {
 		// The rest are copies of it written straight to the database: making
 		// five thousand issues one request at a time proves nothing more.
 		if _, err := h.super.Exec(ctx, `
-			INSERT INTO issue (org_id, project_id, key_num, issue_type_id, status_id, summary, priority, reporter_id, rank)
-			SELECT i.org_id, i.project_id, n, i.issue_type_id, i.status_id, 'Copy ' || n, i.priority, i.reporter_id, lpad(to_hex(n), 16, '0')
+			INSERT INTO issue (project_id, key_num, issue_type_id, status_id, summary, priority, reporter_id, rank)
+			SELECT i.project_id, n, i.issue_type_id, i.status_id, 'Copy ' || n, i.priority, i.reporter_id, lpad(to_hex(n), 16, '0')
 			FROM issue i, generate_series(2, $2::int) n
 			WHERE i.project_id = $1 AND i.key_num = 1`, ids[key], count); err != nil {
 			t.Fatalf("copy issues into %s: %v", key, err)

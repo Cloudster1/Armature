@@ -78,8 +78,8 @@ func (s *Service) CreateShare(ctx context.Context, dashboardID uuid.UUID, in Sha
 			return err
 		}
 		return tx.QueryRow(ctx, `
-			INSERT INTO dashboard_share (org_id, dashboard_id, name, query, token_hash, internal, created_by, expires_at)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7)
+			INSERT INTO dashboard_share (dashboard_id, name, query, token_hash, internal, created_by, expires_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			RETURNING id, created_by, created_at`, dashboardID, out.Name, out.Query, digest, in.Internal, actor, in.ExpiresAt,
 		).Scan(&out.ID, &out.CreatedBy, &out.CreatedAt)
 	})

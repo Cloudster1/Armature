@@ -20,14 +20,7 @@ func (s *Server) handleOIDCStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	org, err := s.Auth.InstallationOrg(r.Context())
-	if err != nil {
-		// An installation nobody set up has no provider either.
-		respondError(w, r, toAPIError(oidc.ErrNotConfigured))
-		return
-	}
-
-	target, err := s.OIDC.Start(r.Context(), org.ID, safeRedirect(r.URL.Query().Get("next")))
+	target, err := s.OIDC.Start(r.Context(), safeRedirect(r.URL.Query().Get("next")))
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -67,13 +60,13 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orgID, identity, redirect, err := s.OIDC.Exchange(r.Context(), query.Get("state"), query.Get("code"))
+	identity, redirect, err := s.OIDC.Exchange(r.Context(), query.Get("state"), query.Get("code"))
 	if err != nil {
 		s.landAfterSignIn(w, r, "", signInFailure(err))
 		return
 	}
 
-	session, err := s.OIDC.SignIn(r.Context(), orgID, identity, s.SessionTTL,
+	session, err := s.OIDC.SignIn(r.Context(), identity, s.SessionTTL,
 		r.UserAgent(), clientIP(r))
 	if err != nil {
 		s.landAfterSignIn(w, r, "", signInFailure(err))
@@ -125,11 +118,10 @@ func safeRedirect(next string) string {
 	return next
 }
 
-// handleGetOIDCProvider returns the organization's provider configuration. The
+// handleGetOIDCProvider returns the installation's provider configuration. The
 // client secret is never included; only whether one is set.
 func (s *Server) handleGetOIDCProvider(w http.ResponseWriter, r *http.Request) {
-	p := PrincipalFrom(r.Context())
-	found, err := s.OIDC.ProviderFor(r.Context(), p.Org.ID)
+	found, err := s.OIDC.ProviderFor(r.Context())
 	if errors.Is(err, oidc.ErrNotConfigured) {
 		respondJSON(w, r, http.StatusOK, map[string]any{"provider": nil})
 		return
@@ -159,7 +151,7 @@ func (s *Server) handleSaveOIDCProvider(w http.ResponseWriter, r *http.Request) 
 	}
 
 	p := PrincipalFrom(r.Context())
-	saved, lsn, err := s.OIDC.Save(r.Context(), p.Org.ID, oidc.Provider{
+	saved, lsn, err := s.OIDC.Save(r.Context(), oidc.Provider{
 		Issuer:       req.Issuer,
 		ClientID:     req.ClientID,
 		ClientSecret: req.ClientSecret,

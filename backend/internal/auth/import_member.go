@@ -33,7 +33,7 @@ func (s *Service) ImportedMember(ctx context.Context, raw, name string) (uuid.UU
 			member bool
 		)
 		err := tx.QueryRow(ctx, `
-			SELECT u.id, EXISTS (SELECT 1 FROM org_member m WHERE m.user_id = u.id AND m.org_id = current_org_id())
+			SELECT u.id, EXISTS (SELECT 1 FROM org_member m WHERE m.user_id = u.id)
 			FROM app_user u WHERE u.email = $1`, email).Scan(&found, &member)
 		switch {
 		case err == nil && member:
@@ -50,8 +50,8 @@ func (s *Service) ImportedMember(ctx context.Context, raw, name string) (uuid.UU
 			return fmt.Errorf("make an account for %s: %w", email, err)
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role)
-			VALUES (current_org_id(), $1, 'member') ON CONFLICT DO NOTHING`, id)
+			INSERT INTO org_member (user_id, org_role)
+			VALUES ($1, 'member') ON CONFLICT DO NOTHING`, id)
 		return err
 	})
 	return id, err

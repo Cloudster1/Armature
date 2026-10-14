@@ -23,7 +23,7 @@ func TestAnImportKeepsItsHistory(t *testing.T) {
 	ws := h.newProject(t, "import")
 	story := h.issueTypeID(t, ws, "Story")
 	done := h.statusID(t, ws, "Done")
-	reporter := h.joinExisting(t, ws, h.email(t, "reporter"), "member")
+	reporter := h.joinExisting(t, h.email(t, "reporter"), "member")
 
 	filed := time.Date(2026, time.August, 24, 8, 51, 0, 0, time.UTC)
 	touched := time.Date(2026, time.September, 8, 9, 39, 0, 0, time.UTC)

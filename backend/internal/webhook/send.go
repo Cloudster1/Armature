@@ -255,8 +255,8 @@ func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db
 			}
 			if next != nil {
 				if _, err := tx.Exec(ctx, `
-					INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
-					VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)
+					INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
+					VALUES ($1, $2, $3, $4, $5, $6)
 					ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`, endpointID, eventID, topic, attempt+1, body, *next); err != nil {
 					return err
 				}

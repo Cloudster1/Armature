@@ -128,8 +128,8 @@ func (s *Service) LogWork(ctx context.Context, key string, in WorklogInput, acto
 		}
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO issue_worklog (org_id, issue_id, author_id, minutes, started_on, note)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5) RETURNING id`,
+			INSERT INTO issue_worklog (issue_id, author_id, minutes, started_on, note)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
 			before.ID, actor.UserID, in.Minutes, *in.StartedOn, in.Note).Scan(&id); err != nil {
 			return fmt.Errorf("log work: %w", err)
 		}

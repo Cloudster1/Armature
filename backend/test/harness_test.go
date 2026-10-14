@@ -294,20 +294,19 @@ func testPasswordParams() auth.PasswordParams {
 func (h *harness) person(t *testing.T, name string, role auth.OrgRole) (email string) {
 	t.Helper()
 	email = h.email(t, name)
-	orgID := shared.installation.ID
 	_, err := h.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
 		var userID uuid.UUID
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id`,
 			email, name, shared.passwordHash).Scan(&userID); err != nil {
 			return fmt.Errorf("make the account: %w", err)
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, orgID, userID, role); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)`, userID, role); err != nil {
 			return fmt.Errorf("make the membership: %w", err)
 		}
 		if role.AppRole() == "" {
 			return nil
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, $2, $3)`, orgID, role.AppRole(), userID)
+		_, err := tx.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ($1, $2)`, role.AppRole(), userID)
 		return err
 	})
 	if err != nil {
@@ -332,15 +331,14 @@ func (h *harness) outsider(t *testing.T, name string) (email string) {
 // the test ends, or takes the test's away when there was none.
 func (h *harness) keepProvider(t *testing.T) {
 	t.Helper()
-	orgID := h.installation()
 	var kept *string
 	if err := h.super.QueryRow(context.Background(), `
-		SELECT (SELECT row_to_json(p)::text FROM oidc_provider p WHERE p.org_id = $1)`, orgID).Scan(&kept); err != nil {
+		SELECT (SELECT row_to_json(p)::text FROM oidc_provider p)`).Scan(&kept); err != nil {
 		t.Fatalf("read the installation's provider: %v", err)
 	}
 	t.Cleanup(func() {
 		ctx := context.Background()
-		if _, err := h.super.Exec(ctx, `DELETE FROM oidc_provider WHERE org_id = $1`, orgID); err != nil {
+		if _, err := h.super.Exec(ctx, `DELETE FROM oidc_provider`); err != nil {
 			t.Errorf("take the test's provider away: %v", err)
 		}
 		if kept == nil {
@@ -505,7 +503,7 @@ func nameOf(email string) string {
 
 // joinExisting adds somebody to the installation by email, creating the account
 // if it does not exist, named after the address so no other test's is named alike.
-func (h *harness) joinExisting(t *testing.T, ws *workspace, email, role string) uuid.UUID {
+func (h *harness) joinExisting(t *testing.T, email, role string) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
 	if err := h.super.QueryRow(context.Background(), `
@@ -515,10 +513,9 @@ func (h *harness) joinExisting(t *testing.T, ws *workspace, email, role string) 
 		t.Fatalf("create the account: %v", err)
 	}
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)
-		ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
-		ws.orgID, id, role); err != nil {
-		t.Fatalf("add them to the organization: %v", err)
+		INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)
+		ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`, id, role); err != nil {
+		t.Fatalf("add them to the installation: %v", err)
 	}
 	t.Cleanup(func() {
 		_, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE id = $1`, id)

@@ -197,7 +197,7 @@ func TestAnOldKeyNamesOneIssueEvenThroughSQL(t *testing.T) {
 	old := mine.Key
 	insert := func(ctx context.Context, issueID uuid.UUID, key string) error {
 		_, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `INSERT INTO issue_old_key (org_id, issue_id, key) VALUES (current_org_id(), $1, $2)`, issueID, key)
+			_, err := tx.Exec(ctx, `INSERT INTO issue_old_key (issue_id, key) VALUES ($1, $2)`, issueID, key)
 			return err
 		})
 		return err

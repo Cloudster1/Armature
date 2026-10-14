@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 )
@@ -22,7 +20,7 @@ func TestAWebhookTestReadsTheDeliveryItJustWrote(t *testing.T) {
 	h.ownCluster(t)
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	orgID := uuid.MustParse(principalField(t, c.signIn(t, h.person(t, "hooktest", auth.RoleOwner)), "principal", "org", "id").(string))
+	c.signIn(t, h.person(t, "hooktest", auth.RoleOwner))
 
 	sink := &receiver{status: http.StatusOK}
 	server := httptest.NewServer(sink)
@@ -34,7 +32,7 @@ func TestAWebhookTestReadsTheDeliveryItJustWrote(t *testing.T) {
 	// there, and then it stops: whatever the test writes next is primary only.
 	ctx := context.Background()
 	warmup, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'webhook.warmup', 'org')`, orgID)
+		_, err := tx.Exec(ctx, `INSERT INTO audit_log (action, target_type) VALUES ('webhook.warmup', 'org')`)
 		return err
 	})
 	if err != nil {

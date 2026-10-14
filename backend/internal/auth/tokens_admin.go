@@ -12,7 +12,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/db"
-	"github.com/armature/armature/backend/internal/events"
 )
 
 // The operations below run through the cluster's normal Write and Read paths,
@@ -41,7 +40,7 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 		var standing OrgRole
 		err := tx.QueryRow(ctx, `
 			SELECT m.org_role FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE m.org_id = current_org_id() AND u.email = $1`, email).Scan(&standing)
+			WHERE u.email = $1`, email).Scan(&standing)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
@@ -51,14 +50,14 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 		// Re-inviting someone who already has a pending invitation replaces it,
 		// rather than failing on the partial unique index.
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO org_invite (org_id, email, org_role, token_hash, invited_by, expires_at)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO org_invite (email, org_role, token_hash, invited_by, expires_at)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (email) WHERE accepted_at IS NULL
 			DO UPDATE SET org_role = EXCLUDED.org_role,
 			              token_hash = EXCLUDED.token_hash,
 			              invited_by = EXCLUDED.invited_by,
 			              expires_at = EXCLUDED.expires_at
-			RETURNING id, org_id, created_at`,
+			RETURNING id, (SELECT id FROM org), created_at`,
 			email, string(role), digest, invitedBy, inv.ExpiresAt,
 		).Scan(&inv.ID, &inv.OrgID, &inv.CreatedAt); err != nil {
 			return err
@@ -71,12 +70,12 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 	return &inv, secret, lsn, nil
 }
 
-// ListInvites returns the organization's pending invitations.
+// ListInvites returns the installation's pending invitations.
 func (s *Service) ListInvites(ctx context.Context) ([]Invite, error) {
 	var out []Invite
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT id, org_id, email, org_role, expires_at, created_at
+			SELECT id, (SELECT id FROM org), email, org_role, expires_at, created_at
 			FROM org_invite
 			WHERE accepted_at IS NULL AND expires_at > now()
 			ORDER BY created_at DESC`)
@@ -113,7 +112,7 @@ func (s *Service) PreviewInvite(ctx context.Context, secret string) (*InvitePrev
 		return tx.QueryRow(ctx, `
 			SELECT o.name, i.email, i.org_role
 			FROM org_invite i
-			JOIN org o ON o.id = i.org_id AND o.archived_at IS NULL
+			JOIN org o ON o.archived_at IS NULL
 			WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.expires_at > now()`,
 			HashToken(secret)).Scan(&out.Installation, &out.Email, &out.Role)
 	})
@@ -146,7 +145,7 @@ func (s *Service) RevokeInvite(ctx context.Context, id uuid.UUID, actor uuid.UUI
 
 // recordInvite writes who invited whom as what; the link's secret stays out.
 func recordInvite(ctx context.Context, tx db.DBTX, action string, id uuid.UUID, email string, role OrgRole, actor uuid.UUID) error {
-	return audit.Record(ctx, tx, audit.Entry{Action: action, TargetType: "invite", TargetID: &id, Actor: actor, Data: map[string]any{"email": email, "role": role}})
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "invite", TargetID: &id, Actor: actor, Data: map[string]any{"email": email, "role": role}})
 }
 
 // AcceptInviteInput carries either an existing user's identity or the details
@@ -186,9 +185,9 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 		// FOR UPDATE on the invite makes acceptance single use even if the link
 		// is opened twice at the same moment.
 		err := tx.QueryRow(ctx, `
-			SELECT i.id, i.org_id, o.slug, o.name, i.email, i.org_role
+			SELECT i.id, o.id, o.slug, o.name, i.email, i.org_role
 			FROM org_invite i
-			JOIN org o ON o.id = i.org_id AND o.archived_at IS NULL
+			JOIN org o ON o.archived_at IS NULL
 			WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.expires_at > now()
 			FOR UPDATE OF i`,
 			HashToken(in.Secret),
@@ -256,20 +255,20 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 		// Only a customer is lifted by an invitation; a member already on the
 		// team keeps the standing they have.
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role)
-			VALUES ($1, $2, $3)
+			INSERT INTO org_member (user_id, org_role)
+			VALUES ($1, $2)
 			ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role
 			WHERE org_member.org_role = 'customer'`,
-			orgID, userID, string(role),
+			userID, string(role),
 		)
 		if err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}
 		if tag.RowsAffected() > 0 {
-			if err := grantJoiningRole(ctx, tx, orgID, userID, role); err != nil {
+			if err := grantJoiningRole(ctx, tx, userID, role); err != nil {
 				return err
 			}
-		} else if err := tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE org_id = $1 AND user_id = $2`, orgID, userID).Scan(&role); err != nil {
+		} else if err := tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, userID).Scan(&role); err != nil {
 			return err
 		}
 
@@ -289,14 +288,10 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 			SessionID: &sessionID,
 			Proof:     proof,
 		}
-		if err := writeAudit(ctx, tx, orgID, userID, "member.joined", "user", &userID, in.IP); err != nil {
+		if err := writeAudit(ctx, tx, userID, "member.joined", "user", &userID, in.IP); err != nil {
 			return err
 		}
-		return events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{
-			"orgId":  orgID,
-			"userId": userID,
-			"role":   role,
-		})
+		return memberJoined(ctx, tx, userID, role)
 	})
 	if err != nil {
 		return nil, err
@@ -332,20 +327,19 @@ func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, name str
 	tok := APIToken{Name: name, Scopes: scopes, Projects: projects, ExpiresAt: expiresAt, Secret: secret}
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id, created_at`,
 			userID, name, digest, scopes, expiresAt,
 		).Scan(&tok.ID, &tok.CreatedAt); err != nil {
 			return err
 		}
 		if len(projects) > 0 {
-			// The insert selects the ids, so a key naming a project of another
-			// organization inserts nothing and is refused by the count.
+			// The insert selects the ids, so a key naming no project inserts
+			// nothing and is refused by the count.
 			tag, err := tx.Exec(ctx, `
-				INSERT INTO api_token_project (org_id, token_id, project_id)
-				SELECT current_org_id(), $1, p.id FROM project p
-				WHERE p.org_id = current_org_id() AND p.key = ANY($2)`, tok.ID, projects)
+				INSERT INTO api_token_project (token_id, project_id)
+				SELECT $1, p.id FROM project p WHERE p.key = ANY($2)`, tok.ID, projects)
 			if err != nil {
 				return err
 			}
@@ -353,7 +347,7 @@ func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, name str
 				return ErrNoSuchProject
 			}
 		}
-		return audit.Record(ctx, tx, audit.Entry{Action: "token.created", TargetType: "api_token", TargetID: &tok.ID, Actor: userID, Data: map[string]any{"name": name, "scopes": scopes, "projects": projects}})
+		return audit.Write(ctx, tx, audit.Entry{Action: "token.created", TargetType: "api_token", TargetID: &tok.ID, Actor: userID, Data: map[string]any{"name": name, "scopes": scopes, "projects": projects}})
 	})
 	if err != nil {
 		if errors.Is(err, ErrNoSuchProject) {
@@ -431,6 +425,6 @@ func (s *Service) RevokeAPIToken(ctx context.Context, userID, tokenID uuid.UUID)
 		if tag.RowsAffected() == 0 {
 			return ErrInvalidToken
 		}
-		return audit.Record(ctx, tx, audit.Entry{Action: "token.revoked", TargetType: "api_token", TargetID: &tokenID, Actor: userID})
+		return audit.Write(ctx, tx, audit.Entry{Action: "token.revoked", TargetType: "api_token", TargetID: &tokenID, Actor: userID})
 	})
 }

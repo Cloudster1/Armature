@@ -135,8 +135,8 @@ func (s *Service) Create(ctx context.Context, projectKey string, in CreateInput,
 
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO team (org_id, project_id, name, description, position)
-			VALUES (current_org_id(), $1, $2, $3,
+			INSERT INTO team (project_id, name, description, position)
+			VALUES ($1, $2, $3,
 			        COALESCE((SELECT max(position) + 1 FROM team WHERE project_id = $1), 0))
 			RETURNING id`,
 			projectID, in.Name, strings.TrimSpace(in.Description),
@@ -235,8 +235,8 @@ func (s *Service) AddMember(ctx context.Context, teamID, userID uuid.UUID, lead 
 		}
 
 		_, err := tx.Exec(ctx, `
-			INSERT INTO team_member (org_id, team_id, user_id, is_lead)
-			VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO team_member (team_id, user_id, is_lead)
+			VALUES ($1, $2, $3)
 			ON CONFLICT (team_id, user_id) DO UPDATE SET is_lead = EXCLUDED.is_lead`,
 			teamID, userID, lead)
 		if isCheckViolation(err) {

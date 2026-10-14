@@ -95,8 +95,7 @@ func TestATeamIsMadeOfPeopleWhoAreAlreadyHere(t *testing.T) {
 	t.Run("and SQL refuses it too", func(t *testing.T) {
 		customer := ws.customerOf(t, h, "sqlcustomer")
 		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO team_member (org_id, team_id, user_id) VALUES ($1, $2, $3)`,
-			ws.orgID, formed.ID, customer.UserID)
+			INSERT INTO team_member (team_id, user_id) VALUES ($1, $2)`, formed.ID, customer.UserID)
 		if err == nil {
 			t.Fatal("SQL put a customer on a team")
 		}

@@ -85,7 +85,7 @@ func auditedAddress(raw string) string {
 
 // record writes what an administrator did to an endpoint, never its secret.
 func record(ctx context.Context, tx db.DBTX, action string, e *Endpoint, actor uuid.UUID) error {
-	return audit.Record(ctx, tx, audit.Entry{Action: action, TargetType: "webhook", TargetID: &e.ID, Actor: actor, Data: map[string]any{
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "webhook", TargetID: &e.ID, Actor: actor, Data: map[string]any{
 		"name": e.Name, "address": auditedAddress(e.URL), "topics": e.Topics, "enabled": e.Enabled,
 	}})
 }
@@ -106,8 +106,8 @@ func (s *Service) Create(ctx context.Context, in Input, actor uuid.UUID) (*Endpo
 	var out *Endpoint
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		e, err := scanEndpoint(tx.QueryRow(ctx, `
-			INSERT INTO webhook_endpoint (org_id, name, url, secret, topics, enabled)
-			VALUES (current_org_id(), $1, $2, $3, $4, true)
+			INSERT INTO webhook_endpoint (name, url, secret, topics, enabled)
+			VALUES ($1, $2, $3, $4, true)
 			RETURNING id, name, url, topics, enabled, created_at, updated_at`, strings.TrimSpace(in.Name), in.URL, secret, in.Topics))
 		if isUnique(err) {
 			return errors.New("a webhook with that name is already here")

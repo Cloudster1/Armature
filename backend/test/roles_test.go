@@ -21,7 +21,6 @@ func TestTheInstallationEditsItsOwnRoles(t *testing.T) {
 	api := newAPIServer(t, h)
 	owner := api.client(t)
 	signedUp := owner.signIn(t, h.person(t, "rolematrix", auth.RoleOwner))
-	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	want(t, owner.post("/api/v1/projects", map[string]string{"name": "Matrix", "key": mtxKey}), http.StatusCreated, "project")
 
 	// Other tests add roles of their own beside these, so the five are looked for.
@@ -68,16 +67,16 @@ func TestTheInstallationEditsItsOwnRoles(t *testing.T) {
 
 	t.Run("SQL refuses the same", func(t *testing.T) {
 		ctx := context.Background()
-		if _, err := h.super.Exec(ctx, `DELETE FROM org_role WHERE org_id = $1 AND key = 'reader'`, orgID); err == nil {
+		if _, err := h.super.Exec(ctx, `DELETE FROM org_role WHERE key = 'reader'`); err == nil {
 			t.Error("SQL deleted a built-in role")
 		}
-		if _, err := h.super.Exec(ctx, `UPDATE org_role SET permissions = '{read}' WHERE org_id = $1 AND key = 'global_administrator'`, orgID); err == nil {
+		if _, err := h.super.Exec(ctx, `UPDATE org_role SET permissions = '{read}' WHERE key = 'global_administrator'`); err == nil {
 			t.Error("SQL let the global administrator stop administering")
 		}
-		if _, err := h.super.Exec(ctx, `UPDATE org_role SET permissions = '{read,fly}' WHERE org_id = $1 AND key = $2`, orgID, plannerKey); err == nil {
+		if _, err := h.super.Exec(ctx, `UPDATE org_role SET permissions = '{read,fly}' WHERE key = $1`, plannerKey); err == nil {
 			t.Error("SQL took a permission that is a word")
 		}
-		if _, err := h.super.Exec(ctx, `UPDATE org_role SET key = 'planner' WHERE org_id = $1 AND key = $2`, orgID, plannerKey); err == nil {
+		if _, err := h.super.Exec(ctx, `UPDATE org_role SET key = 'planner' WHERE key = $1`, plannerKey); err == nil {
 			t.Error("SQL let a role's key change")
 		}
 	})
@@ -105,8 +104,8 @@ func TestTheInstallationEditsItsOwnRoles(t *testing.T) {
 			t.Fatalf("an org-wide role was scoped: %d %s", got.Status, got.Raw)
 		}
 		if _, err := h.super.Exec(context.Background(), `
-			INSERT INTO role_assignment (org_id, role, project_id, user_id)
-			SELECT $1, $2, p.id, $3 FROM project p WHERE p.key = '`+mtxKey+`'`, orgID, key, userID); err == nil {
+			INSERT INTO role_assignment (role, project_id, user_id)
+			SELECT $1, p.id, $2 FROM project p WHERE p.key = $3`, key, userID, mtxKey); err == nil {
 			t.Fatal("SQL let an org-wide role be granted over one project")
 		}
 	})
@@ -126,4 +125,20 @@ func TestTheInstallationEditsItsOwnRoles(t *testing.T) {
 			}
 		}
 	})
+}
+
+// The built-in roles read as the code describes them, in the words the rest of
+// the product uses: an installation, never a tenant (#218).
+func TestTheBuiltInRolesReadAsTheCodeDescribesThem(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	for _, want := range perm.Builtins() {
+		var name, description string
+		if err := h.super.QueryRow(context.Background(), `SELECT name, description FROM org_role WHERE key = $1 AND builtin`, string(want.Key)).Scan(&name, &description); err != nil {
+			t.Fatalf("read %s: %v", want.Key, err)
+		}
+		if name != want.Name || description != want.Description {
+			t.Errorf("%s reads %q, %q; want %q, %q", want.Key, name, description, want.Name, want.Description)
+		}
+	}
 }

@@ -52,10 +52,9 @@ func TestTheAPIRoleNeedsNoOrganizationSet(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	ctx := context.Background()
-	orgID := h.installation()
 	committed := unique("test.unwalled")
 	if _, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, $2, 'org')`, orgID, committed)
+		_, err := tx.Exec(ctx, `INSERT INTO audit_log (action, target_type) VALUES ($1, 'org')`, committed)
 		return err
 	}); err != nil {
 		t.Fatalf("write a row in the installation: %v", err)
@@ -80,7 +79,7 @@ func TestTheAPIRoleNeedsNoOrganizationSet(t *testing.T) {
 	if seen != 1 {
 		t.Errorf("read %d of the installation's rows with no organization set, want 1", seen)
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, $2, 'org')`, orgID, unique("test.unset")); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO audit_log (action, target_type) VALUES ($1, 'org')`, unique("test.unset")); err != nil {
 		t.Errorf("write with no organization set: %v", err)
 	}
 }

@@ -37,7 +37,7 @@ func EnsureOwnScheme(ctx context.Context, tx db.DBTX, projectID uuid.UUID, proje
 	}
 	var id uuid.UUID
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO workflow_scheme (org_id, name) VALUES (current_org_id(), $1) RETURNING id`, name,
+		INSERT INTO workflow_scheme (name) VALUES ($1) RETURNING id`, name,
 	).Scan(&id); err != nil {
 		return uuid.Nil, false, fmt.Errorf("create scheme %q: %w", name, err)
 	}
@@ -45,8 +45,8 @@ func EnsureOwnScheme(ctx context.Context, tx db.DBTX, projectID uuid.UUID, proje
 		// The project followed a shared scheme until now; it keeps behaving the
 		// same until somebody changes a row, so the shared items are copied.
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO workflow_scheme_item (org_id, scheme_id, issue_type_id, workflow_id)
-			SELECT current_org_id(), $1, issue_type_id, workflow_id
+			INSERT INTO workflow_scheme_item (scheme_id, issue_type_id, workflow_id)
+			SELECT $1, issue_type_id, workflow_id
 			FROM workflow_scheme_item WHERE scheme_id = $2`, id, *current); err != nil {
 			return uuid.Nil, false, fmt.Errorf("copy the shared scheme: %w", err)
 		}

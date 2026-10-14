@@ -179,14 +179,14 @@ func TestAMergedBranchOutlivesItsDeletion(t *testing.T) {
 			}
 		}
 		ctx := context.Background()
-		const insert = `INSERT INTO git_branch (org_id, repository_id, name) VALUES ($1, $2, $3) RETURNING id`
+		const insert = `INSERT INTO git_branch (repository_id, name) VALUES ($1, $2) RETURNING id`
 
 		// Two deleted ones of this name exist; a live one beside them is fine.
 		var live uuid.UUID
-		if err := h.super.QueryRow(ctx, insert, ws.orgID, repo.ID, name).Scan(&live); err != nil {
+		if err := h.super.QueryRow(ctx, insert, repo.ID, name).Scan(&live); err != nil {
 			t.Fatalf("a live branch beside deleted ones of its name was refused: %v", err)
 		}
-		_, err := h.super.Exec(ctx, insert, ws.orgID, repo.ID, name)
+		_, err := h.super.Exec(ctx, insert, repo.ID, name)
 		refusedAs(t, err, "23505")
 
 		_, err = h.super.Exec(ctx, `UPDATE git_branch SET deleted_at = now() WHERE id = $1`, live)

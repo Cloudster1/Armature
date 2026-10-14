@@ -108,8 +108,8 @@ func (s *Service) AddLink(ctx context.Context, key string, in LinkInput, actor A
 
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO issue_link (org_id, link_type_id, source_id, target_id)
-			VALUES (current_org_id(), $1, $2, $3) RETURNING id`,
+			INSERT INTO issue_link (link_type_id, source_id, target_id)
+			VALUES ($1, $2, $3) RETURNING id`,
 			linkType.ID, source, target).Scan(&id)
 		if isUniqueViolation(err) {
 			// The unordered index means "A blocks B" and "B blocks A" are the

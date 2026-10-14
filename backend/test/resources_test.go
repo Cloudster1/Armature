@@ -41,7 +41,7 @@ func TestTheResourceViewSetsHoursAgainstTeamsOrPeople(t *testing.T) {
 	sprtKey := h.projectKey(t, "SPRT")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	orgID := obj(t, owner.signIn(t, h.person(t, "resources", auth.RoleOwner)), "principal", "org")["id"].(string)
+	owner.signIn(t, h.person(t, "resources", auth.RoleOwner))
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Flow", "key": flowKey, "template": "kanban"}), http.StatusCreated, "a kanban project")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Sprinting", "key": sprtKey, "template": "scrum"}), http.StatusCreated, "a scrum project")
 	_, adaID := api.namedMember(t, h, owner, "Ada Lovelace")
@@ -155,12 +155,12 @@ func TestTheResourceViewSetsHoursAgainstTeamsOrPeople(t *testing.T) {
 
 	t.Run("the database refuses a scrum project by person", func(t *testing.T) {
 		for name, query := range map[string]string{
-			"scrum by person":                      `UPDATE project SET resource_grouping = 'person' WHERE key = '` + sprtKey + `' AND org_id = $1`,
-			"a method":                             `UPDATE project SET planning_method = 'waterfall' WHERE key = '` + flowKey + `' AND org_id = $1`,
-			"a grouping":                           `UPDATE project SET resource_grouping = 'everyone' WHERE key = '` + flowKey + `' AND org_id = $1`,
-			"turning to scrum without the service": `UPDATE project SET planning_method = 'scrum' WHERE key = '` + flowKey + `' AND org_id = $1`,
+			"scrum by person":                      `UPDATE project SET resource_grouping = 'person' WHERE key = '` + sprtKey + `'`,
+			"a method":                             `UPDATE project SET planning_method = 'waterfall' WHERE key = '` + flowKey + `'`,
+			"a grouping":                           `UPDATE project SET resource_grouping = 'everyone' WHERE key = '` + flowKey + `'`,
+			"turning to scrum without the service": `UPDATE project SET planning_method = 'scrum' WHERE key = '` + flowKey + `'`,
 		} {
-			_, err := h.super.Exec(context.Background(), query, orgID)
+			_, err := h.super.Exec(context.Background(), query)
 			var pgErr *pgconn.PgError
 			if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 				t.Errorf("%s: got %v, want a check violation", name, err)

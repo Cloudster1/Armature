@@ -184,31 +184,19 @@ func TestAForgottenPasswordIsResetByMail(t *testing.T) {
 		signedUp := api.client(t).signIn(t, h.person(t, "recorded", auth.RoleOwner))
 		email := principalField(t, signedUp, "principal", "user", "email").(string)
 		userID := principalField(t, signedUp, "principal", "user", "id").(string)
-		home := principalField(t, signedUp, "principal", "org", "id").(string)
 
 		secret := api.askForReset(t, email)
 		want(t, api.client(t).post("/api/v1/auth/password-reset/confirm", map[string]string{"token": secret, "password": newPassword}), http.StatusNoContent, "reset")
 
-		wantOrgs := []string{home}
 		for _, action := range []string{"auth.password_reset_requested", "auth.password_reset"} {
-			rows, err := h.super.Query(context.Background(), `
-				SELECT org_id::text FROM audit_log
-				WHERE action = $1 AND target_id = $2 AND position($3 IN data::text) = 0
-				ORDER BY org_id::text`, action, userID, secret)
-			if err != nil {
+			var n int
+			if err := h.super.QueryRow(context.Background(), `
+				SELECT count(*) FROM audit_log
+				WHERE action = $1 AND target_id = $2 AND position($3 IN data::text) = 0`, action, userID, secret).Scan(&n); err != nil {
 				t.Fatal(err)
 			}
-			var orgs []string
-			for rows.Next() {
-				var org string
-				if err := rows.Scan(&org); err != nil {
-					t.Fatal(err)
-				}
-				orgs = append(orgs, org)
-			}
-			rows.Close()
-			if strings.Join(orgs, ",") != strings.Join(wantOrgs, ",") {
-				t.Errorf("%s is recorded in %v, want once, in %v", action, orgs, wantOrgs)
+			if n != 1 {
+				t.Errorf("%s is recorded %d times without the link's secret, want once", action, n)
 			}
 		}
 	})
@@ -242,15 +230,14 @@ func TestAskingForAPasswordLinkTellsNothing(t *testing.T) {
 
 	t.Run("a provider account is told to use it, and a customer gets nothing", func(t *testing.T) {
 		httpapi.ResetThrottles()
-		owner := api.client(t).signIn(t, h.person(t, "sso-org", auth.RoleOwner))
-		orgID := principalField(t, owner, "principal", "org", "id").(string)
+		api.client(t).signIn(t, h.person(t, "sso-org", auth.RoleOwner))
 		ctx := context.Background()
 		// The installation has one provider; the one it had comes back after.
 		h.keepProvider(t)
-		if _, err := h.super.Exec(ctx, `DELETE FROM oidc_provider WHERE org_id = $1`, orgID); err != nil {
+		if _, err := h.super.Exec(ctx, `DELETE FROM oidc_provider`); err != nil {
 			t.Fatalf("clear the provider: %v", err)
 		}
-		if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret) VALUES ($1, 'https://idp.test', 'armature', 'secret')`, orgID); err != nil {
+		if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (issuer, client_id, client_secret) VALUES ('https://idp.test', 'armature', 'secret')`); err != nil {
 			t.Fatalf("configure a provider: %v", err)
 		}
 		member := func(prefix, role string) (string, string) {
@@ -259,7 +246,7 @@ func TestAskingForAPasswordLinkTellsNothing(t *testing.T) {
 			if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Passwordless') RETURNING id`, email).Scan(&id); err != nil {
 				t.Fatalf("make %s: %v", prefix, err)
 			}
-			if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, orgID, id, role); err != nil {
+			if _, err := h.super.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)`, id, role); err != nil {
 				t.Fatalf("add %s: %v", prefix, err)
 			}
 			return email, id

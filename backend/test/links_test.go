@@ -55,8 +55,8 @@ func TestABlockCannotComeBackAround(t *testing.T) {
 	t.Run("the database refuses the same row written through SQL", func(t *testing.T) {
 		_, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 			_, err := tx.Exec(ctx, `
-				INSERT INTO issue_link (org_id, link_type_id, source_id, target_id)
-				SELECT current_org_id(), (SELECT id FROM issue_link_type WHERE lower(name) = 'blocks'), $1, $2`, c.ID, a.ID)
+				INSERT INTO issue_link (link_type_id, source_id, target_id)
+				SELECT (SELECT id FROM issue_link_type WHERE lower(name) = 'blocks'), $1, $2`, c.ID, a.ID)
 			return err
 		})
 		if err == nil || !strings.Contains(err.Error(), "come back around") {

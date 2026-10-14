@@ -28,9 +28,9 @@ func (s *Service) recordPull(ctx context.Context, tx db.DBTX, repo *Repository, 
 		return nil, fmt.Errorf("read pull request %d: %w", pr.Number, err)
 	}
 	err = tx.QueryRow(ctx, `
-		INSERT INTO pull_request (org_id, repository_id, number, title, url, state, source_branch,
+		INSERT INTO pull_request (repository_id, number, title, url, state, source_branch,
 		    target_branch, author_name, head_sha, opened_at, merged_at)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (repository_id, number) DO UPDATE SET
 		    title = EXCLUDED.title, url = EXCLUDED.url, state = EXCLUDED.state,
 		    source_branch = EXCLUDED.source_branch, target_branch = EXCLUDED.target_branch,

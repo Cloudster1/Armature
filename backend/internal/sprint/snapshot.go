@@ -96,8 +96,8 @@ func (s *Service) Snapshots(ctx context.Context, id uuid.UUID) ([]Snapshot, erro
 func writeSnapshot(ctx context.Context, tx db.DBTX, sprint *Sprint, day time.Time, t Totals) (*Snapshot, error) {
 	var out Snapshot
 	err := tx.QueryRow(ctx, `
-		INSERT INTO sprint_snapshot (org_id, project_id, sprint_id, day, scope, done, issues, issues_done, unestimated)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO sprint_snapshot (project_id, sprint_id, day, scope, done, issues, issues_done, unestimated)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (sprint_id, day) DO UPDATE SET
 		    scope = EXCLUDED.scope, done = EXCLUDED.done, issues = EXCLUDED.issues,
 		    issues_done = EXCLUDED.issues_done, unestimated = EXCLUDED.unestimated, taken_at = now()

@@ -31,7 +31,7 @@ import (
 func TestASavedFilterIsAQueryWithAName(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newProject(t, "filters")
-	bob := h.joinExisting(t, ws, h.email(t, "bobfilter"), "member")
+	bob := h.joinExisting(t, h.email(t, "bobfilter"), "member")
 	filters := filter.NewService(h.cluster)
 	me := ws.actor.UserID
 
@@ -81,7 +81,7 @@ func TestASavedFilterIsAQueryWithAName(t *testing.T) {
 	if _, _, err := filters.Create(ws.ctx, customer.UserID, filter.Input{Name: ptr("Theirs"), Query: ptr("project = X"), Shared: ptr(true)}); err == nil {
 		t.Error("a customer shared a filter through the service")
 	}
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO saved_filter (org_id, owner_id, name, query, shared) VALUES ($1, $2, 'x', 'project = X', true)`, ws.orgID, customer.UserID); err == nil || !strings.Contains(err.Error(), "customer cannot share") {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO saved_filter (owner_id, name, query, shared) VALUES ($1, 'x', 'project = X', true)`, customer.UserID); err == nil || !strings.Contains(err.Error(), "customer cannot share") {
 		t.Errorf("the database let a customer share: %v", err)
 	}
 

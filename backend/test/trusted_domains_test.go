@@ -21,8 +21,7 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signIn(t, h.person(t, "trusting", auth.RoleOwner))
-	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
+	owner.signIn(t, h.person(t, "trusting", auth.RoleOwner))
 	t.Cleanup(func() {
 		_, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE email LIKE '%@elsewhere.test'`)
 		_, _ = h.super.Exec(context.Background(), `DELETE FROM portal_code WHERE email LIKE '%@elsewhere.test'`)
@@ -67,7 +66,7 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 		if err := h.super.QueryRow(context.Background(), `INSERT INTO app_user (email, name) VALUES ($1, 'Else') RETURNING id`, elsewhere("walkin-d")).Scan(&elsewhereID); err != nil {
 			t.Fatal(err)
 		}
-		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = $2 AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug, tit).Scan(&deskID); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = $1`, tit).Scan(&deskID); err != nil {
 			t.Fatal(err)
 		}
 		var pgErr *pgconn.PgError
@@ -75,7 +74,7 @@ func TestADeskTrustsDomainsNotAddresses(t *testing.T) {
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 			t.Fatalf("a code-less session at an untrusted domain was accepted: %v", err)
 		}
-		_, err = h.super.Exec(context.Background(), `UPDATE project SET trusted_domains = '{acme.test}' WHERE key = $2 AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug, tco)
+		_, err = h.super.Exec(context.Background(), `UPDATE project SET trusted_domains = '{acme.test}' WHERE key = $1`, tco)
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 			t.Fatalf("a software project was allowed a list: %v", err)
 		}

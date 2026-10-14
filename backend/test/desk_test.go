@@ -46,7 +46,7 @@ func (ws *workspace) aDeskKeyed(t *testing.T, h *harness, name, key string) (*de
 // customerOf adds a portal customer to the installation.
 func (ws *workspace) customerOf(t *testing.T, h *harness, prefix string) issue.Actor {
 	t.Helper()
-	id := h.joinExisting(t, ws, h.email(t, prefix), "customer")
+	id := h.joinExisting(t, h.email(t, prefix), "customer")
 	return issue.Actor{UserID: id, OrgRole: auth.RoleCustomer}
 }
 

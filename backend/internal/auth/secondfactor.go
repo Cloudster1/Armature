@@ -280,9 +280,9 @@ func (s *Service) RemoveSecondFactor(ctx context.Context, userID uuid.UUID, keep
 
 // RemoveMembersSecondFactor is an administrator's way back in for somebody who
 // lost both the phone and the codes, within the reach SetManagedPassword has.
-func (s *Service) RemoveMembersSecondFactor(ctx context.Context, orgID, userID uuid.UUID, actor uuid.UUID, actorRole OrgRole, ip string) (db.LSN, error) {
+func (s *Service) RemoveMembersSecondFactor(ctx context.Context, userID uuid.UUID, actor uuid.UUID, actorRole OrgRole, ip string) (db.LSN, error) {
 	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, err := guardManaged(ctx, tx, orgID, userID, actor, actorRole); err != nil {
+		if _, err := guardManaged(ctx, tx, userID, actor, actorRole); err != nil {
 			return err
 		}
 		var has bool
@@ -295,7 +295,7 @@ func (s *Service) RemoveMembersSecondFactor(ctx context.Context, orgID, userID u
 		if err := dropSecondFactor(ctx, tx, userID); err != nil {
 			return err
 		}
-		return writeAudit(ctx, tx, orgID, actor, "member.second_factor_removed", "user", &userID, ip)
+		return writeAudit(ctx, tx, actor, "member.second_factor_removed", "user", &userID, ip)
 	})
 }
 
@@ -323,7 +323,7 @@ func (s *Service) RequireSecondFactor(ctx context.Context, p *Principal, rule Se
 		if err := installation.SetSecondFactor(ctx, tx, string(rule)); err != nil {
 			return fmt.Errorf("require two-step sign-in: %w", err)
 		}
-		return audit.Write(ctx, tx, p.Org.ID, audit.Entry{
+		return audit.Write(ctx, tx, audit.Entry{
 			Action: "org.second_factor_required", TargetType: "org", TargetID: &p.Org.ID, Actor: p.User.ID, IP: ip,
 			Data: map[string]any{"require": string(rule)},
 		})

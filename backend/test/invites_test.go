@@ -150,7 +150,7 @@ func TestInvites(t *testing.T) {
 
 	t.Run("a desk's customer joins the team with the account they have", func(t *testing.T) {
 		email := h.email(t, "customer")
-		customerID := h.joinExisting(t, &workspace{orgID: owner.Principal.Org.ID}, email, "customer")
+		customerID := h.joinExisting(t, email, "customer")
 		_, token, _, err := svc.CreateInvite(ctx, email, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)

@@ -54,8 +54,8 @@ func save(ctx context.Context, tx db.DBTX, projectID, issueTypeID *uuid.UUID, pl
 
 	var id uuid.UUID
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO issue_arrangement (org_id, project_id, issue_type_id)
-		VALUES (current_org_id(), $1, $2)
+		INSERT INTO issue_arrangement (project_id, issue_type_id)
+		VALUES ($1, $2)
 		ON CONFLICT (project_id, issue_type_id) DO UPDATE SET updated_at = now()
 		RETURNING id`, projectID, issueTypeID).Scan(&id); err != nil {
 		return fmt.Errorf("keep the arrangement: %w", err)
@@ -70,8 +70,8 @@ func save(ctx context.Context, tx db.DBTX, projectID, issueTypeID *uuid.UUID, pl
 			builtin = &word
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO issue_arrangement_slot (org_id, arrangement_id, area, position, builtin, custom_field_id)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)`,
+			INSERT INTO issue_arrangement_slot (arrangement_id, area, position, builtin, custom_field_id)
+			VALUES ($1, $2, $3, $4, $5)`,
 			id, string(place.Area), at, builtin, place.FieldID); err != nil {
 			return fmt.Errorf("place %s: %w", place.Area, err)
 		}

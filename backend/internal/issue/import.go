@@ -263,12 +263,12 @@ func (s *Service) insertImported(ctx context.Context, tx db.DBTX, projectID uuid
 
 	var id uuid.UUID
 	err = tx.QueryRow(ctx, `
-		INSERT INTO issue (org_id, project_id, key_num, issue_type_id, status_id,
+		INSERT INTO issue (project_id, key_num, issue_type_id, status_id,
 		                   summary, description, priority, assignee_id, reporter_id,
 		                   parent_id, start_date, due_date, estimate, team_id, sprint_id,
 		                   rank, request_type_id, external_key, created_at, updated_at, resolved_at,
 		                   time_estimate_minutes, time_remaining_minutes)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
 		        $16, $17, $18, $19, $20, $21, $22, $23)
 		RETURNING id`,
 		projectID, keyNum, typeID, statusID,
@@ -290,8 +290,8 @@ func (s *Service) insertImported(ctx context.Context, tx db.DBTX, projectID uuid
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO issue_history (org_id, issue_id, actor_id, changes, created_at)
-		VALUES (current_org_id(), $1, $2, $3, $4)`, id, actor.UserID, changes, in.CreatedAt); err != nil {
+		INSERT INTO issue_history (issue_id, actor_id, changes, created_at)
+		VALUES ($1, $2, $3, $4)`, id, actor.UserID, changes, in.CreatedAt); err != nil {
 		return nil, fmt.Errorf("record import: %w", err)
 	}
 	return scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, id))
@@ -341,8 +341,8 @@ func (s *Service) AddImportedComment(ctx context.Context, key string, body json.
 			return err
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO issue_comment (org_id, issue_id, author_id, body, is_internal, external_key, created_at, updated_at)
-			VALUES (current_org_id(), $1, $2, $3, false, $4, $5, $5)
+			INSERT INTO issue_comment (issue_id, author_id, body, is_internal, external_key, created_at, updated_at)
+			VALUES ($1, $2, $3, false, $4, $5, $5)
 			ON CONFLICT (external_key) DO NOTHING`,
 			issueID, authorID, []byte(body), nullableText(externalKey), at)
 		if err != nil {
@@ -379,8 +379,8 @@ func (s *Service) LogImportedWork(ctx context.Context, key string, in WorklogInp
 			return err
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO issue_worklog (org_id, issue_id, author_id, minutes, started_on, note, external_key)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)
+			INSERT INTO issue_worklog (issue_id, author_id, minutes, started_on, note, external_key)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT (external_key) DO NOTHING`,
 			issueID, authorID, in.Minutes, *in.StartedOn, in.Note, nullableText(externalKey))
 		if err != nil {

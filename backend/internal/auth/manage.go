@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/db"
-	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/installation"
 )
 
@@ -95,15 +94,15 @@ type managedRow struct {
 }
 
 // The one shape every read takes. The person is excluded who is not a member,
-// who is the organization's automation account, or who was erased.
+// who is the installation's automation account, or who was erased.
 const managedSelectSQL = `
 SELECT u.id, u.email::text, u.name, m.org_role, u.is_active, u.created_at,
        u.password_hash IS NOT NULL,
-       EXISTS (SELECT 1 FROM oidc_provider p WHERE p.org_id = m.org_id),
+       EXISTS (SELECT 1 FROM oidc_provider),
        EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)
 FROM org_member m
 JOIN app_user u ON u.id = m.user_id
-WHERE m.org_id = $1 AND u.erased_at IS NULL AND u.id IS DISTINCT FROM $2`
+WHERE u.erased_at IS NULL AND u.id IS DISTINCT FROM $1`
 
 func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	var r managedRow
@@ -124,16 +123,16 @@ func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	return r, nil
 }
 
-// ManagedUsers lists the organization's people, switched off ones included,
+// ManagedUsers lists the installation's people, switched off ones included,
 // with what an administrator may do to each.
-func (s *Service) ManagedUsers(ctx context.Context, orgID uuid.UUID, actorRole OrgRole) ([]ManagedUser, error) {
+func (s *Service) ManagedUsers(ctx context.Context, actorRole OrgRole) ([]ManagedUser, error) {
 	out := []ManagedUser{}
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		automation, err := installation.AutomationUser(ctx, tx)
 		if err != nil {
 			return err
 		}
-		rows, err := tx.Query(ctx, managedSelectSQL+` ORDER BY u.name, u.email`, orgID, automation)
+		rows, err := tx.Query(ctx, managedSelectSQL+` ORDER BY u.name, u.email`, automation)
 		if err != nil {
 			return err
 		}
@@ -150,12 +149,12 @@ func (s *Service) ManagedUsers(ctx context.Context, orgID uuid.UUID, actorRole O
 	return out, err
 }
 
-func readManaged(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, actorRole OrgRole) (managedRow, error) {
+func readManaged(ctx context.Context, tx db.DBTX, userID uuid.UUID, actorRole OrgRole) (managedRow, error) {
 	automation, err := installation.AutomationUser(ctx, tx)
 	if err != nil {
 		return managedRow{}, err
 	}
-	r, err := scanManaged(tx.QueryRow(ctx, managedSelectSQL+` AND u.id = $3`, orgID, automation, userID), actorRole)
+	r, err := scanManaged(tx.QueryRow(ctx, managedSelectSQL+` AND u.id = $2`, automation, userID), actorRole)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return r, ErrNoSuchUser
 	}
@@ -163,11 +162,11 @@ func readManaged(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, actor
 }
 
 // guardManaged is what every change to somebody else's account asks first.
-func guardManaged(ctx context.Context, tx db.DBTX, orgID, userID, actor uuid.UUID, actorRole OrgRole) (managedRow, error) {
+func guardManaged(ctx context.Context, tx db.DBTX, userID, actor uuid.UUID, actorRole OrgRole) (managedRow, error) {
 	if userID == actor {
 		return managedRow{}, ErrOwnAccount
 	}
-	r, err := readManaged(ctx, tx, orgID, userID, actorRole)
+	r, err := readManaged(ctx, tx, userID, actorRole)
 	if err != nil {
 		return r, err
 	}
@@ -187,7 +186,7 @@ func cleanUserName(name string) (string, error) {
 
 // CreateLocalUser makes a password account here. An address that signs in is
 // refused; a passwordless row, such as a desk's customer, is claimed.
-func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in CreateLocalUserInput, actor uuid.UUID, ip string) (*ManagedUser, db.LSN, error) {
+func (s *Service) CreateLocalUser(ctx context.Context, in CreateLocalUserInput, actor uuid.UUID, ip string) (*ManagedUser, db.LSN, error) {
 	email, err := ParseAddress(in.Email)
 	if err != nil {
 		return nil, 0, ErrUserAddress
@@ -244,26 +243,22 @@ func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in Creat
 		// A customer row here is lifted to the standing given; a fresh
 		// account is simply put in.
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role)
-			VALUES ($1, $2, $3)
+			INSERT INTO org_member (user_id, org_role)
+			VALUES ($1, $2)
 			ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
-			orgID, userID, string(in.Role)); err != nil {
+			userID, string(in.Role)); err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}
-		if err := grantJoiningRole(ctx, tx, orgID, userID, in.Role); err != nil {
+		if err := grantJoiningRole(ctx, tx, userID, in.Role); err != nil {
 			return err
 		}
-		if err := writeAudit(ctx, tx, orgID, actor, "member.created", "user", &userID, ip); err != nil {
+		if err := writeAudit(ctx, tx, actor, "member.created", "user", &userID, ip); err != nil {
 			return err
 		}
-		if err := events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{
-			"orgId":  orgID,
-			"userId": userID,
-			"role":   in.Role,
-		}); err != nil {
+		if err := memberJoined(ctx, tx, userID, in.Role); err != nil {
 			return err
 		}
-		r, err := readManaged(ctx, tx, orgID, userID, RoleOwner)
+		r, err := readManaged(ctx, tx, userID, RoleOwner)
 		if err != nil {
 			return err
 		}
@@ -278,7 +273,7 @@ func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in Creat
 
 // UpdateManagedUser renames somebody, changes their standing, or switches
 // them off or on. Switching off ends every session and token they hold.
-func (s *Service) UpdateManagedUser(ctx context.Context, orgID, userID uuid.UUID, in ManagedUserInput, actor uuid.UUID, actorRole OrgRole, ip string) (*ManagedUser, db.LSN, error) {
+func (s *Service) UpdateManagedUser(ctx context.Context, userID uuid.UUID, in ManagedUserInput, actor uuid.UUID, actorRole OrgRole, ip string) (*ManagedUser, db.LSN, error) {
 	if in.Name != nil {
 		name, err := cleanUserName(*in.Name)
 		if err != nil {
@@ -292,7 +287,7 @@ func (s *Service) UpdateManagedUser(ctx context.Context, orgID, userID uuid.UUID
 
 	var updated ManagedUser
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		r, err := guardManaged(ctx, tx, orgID, userID, actor, actorRole)
+		r, err := guardManaged(ctx, tx, userID, actor, actorRole)
 		if err != nil {
 			return err
 		}
@@ -309,8 +304,8 @@ func (s *Service) UpdateManagedUser(ctx context.Context, orgID, userID uuid.UUID
 			if r.user.Role == RoleOwner {
 				return ErrOwnerStanding
 			}
-			if _, err := tx.Exec(ctx, `UPDATE org_member SET org_role = $3 WHERE org_id = $1 AND user_id = $2`,
-				orgID, userID, string(*in.Role)); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE org_member SET org_role = $2 WHERE user_id = $1`,
+				userID, string(*in.Role)); err != nil {
 				return fmt.Errorf("change standing: %w", err)
 			}
 			// The old standing's joining role goes with it, or a demoted
@@ -318,12 +313,12 @@ func (s *Service) UpdateManagedUser(ctx context.Context, orgID, userID uuid.UUID
 			if old := r.user.Role.AppRole(); old != "" {
 				if _, err := tx.Exec(ctx, `
 					DELETE FROM role_assignment
-					WHERE org_id = $1 AND user_id = $2 AND project_id IS NULL AND role = $3`,
-					orgID, userID, old); err != nil {
+					WHERE user_id = $1 AND project_id IS NULL AND role = $2`,
+					userID, old); err != nil {
 					return fmt.Errorf("take back the joining role: %w", err)
 				}
 			}
-			if err := grantJoiningRole(ctx, tx, orgID, userID, *in.Role); err != nil {
+			if err := grantJoiningRole(ctx, tx, userID, *in.Role); err != nil {
 				return err
 			}
 			changes["role"] = *in.Role
@@ -350,17 +345,17 @@ func (s *Service) UpdateManagedUser(ctx context.Context, orgID, userID uuid.UUID
 					return fmt.Errorf("revoke tokens: %w", err)
 				}
 			}
-			if err := writeAudit(ctx, tx, orgID, actor, action, "user", &userID, ip); err != nil {
+			if err := writeAudit(ctx, tx, actor, action, "user", &userID, ip); err != nil {
 				return err
 			}
 		}
 
 		if len(changes) > 0 {
-			if err := writeAudit(ctx, tx, orgID, actor, "member.updated", "user", &userID, ip); err != nil {
+			if err := writeAudit(ctx, tx, actor, "member.updated", "user", &userID, ip); err != nil {
 				return err
 			}
 		}
-		r, err = readManaged(ctx, tx, orgID, userID, actorRole)
+		r, err = readManaged(ctx, tx, userID, actorRole)
 		if err != nil {
 			return err
 		}
@@ -375,7 +370,7 @@ func (s *Service) UpdateManagedUser(ctx context.Context, orgID, userID uuid.UUID
 
 // SetManagedPassword gives somebody a new password and ends every session
 // they had, so whoever held the old one is out.
-func (s *Service) SetManagedPassword(ctx context.Context, orgID, userID uuid.UUID, password string, actor uuid.UUID, actorRole OrgRole, ip string) (db.LSN, error) {
+func (s *Service) SetManagedPassword(ctx context.Context, userID uuid.UUID, password string, actor uuid.UUID, actorRole OrgRole, ip string) (db.LSN, error) {
 	if err := ValidatePassword(password); err != nil {
 		return 0, err
 	}
@@ -384,7 +379,7 @@ func (s *Service) SetManagedPassword(ctx context.Context, orgID, userID uuid.UUI
 		return 0, err
 	}
 	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		r, err := guardManaged(ctx, tx, orgID, userID, actor, actorRole)
+		r, err := guardManaged(ctx, tx, userID, actor, actorRole)
 		if err != nil {
 			return err
 		}
@@ -397,7 +392,7 @@ func (s *Service) SetManagedPassword(ctx context.Context, orgID, userID uuid.UUI
 		if err := endEverySession(ctx, tx, userID, nil); err != nil {
 			return err
 		}
-		return writeAudit(ctx, tx, orgID, actor, "member.password_set", "user", &userID, ip)
+		return writeAudit(ctx, tx, actor, "member.password_set", "user", &userID, ip)
 	})
 }
 

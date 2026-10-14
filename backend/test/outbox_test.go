@@ -56,12 +56,11 @@ func TestOutbox(t *testing.T) {
 	h := newHarness(t)
 
 	t.Run("an event is committed with the change that caused it", func(t *testing.T) {
-		orgID := h.installation()
 		topic := unique("test.thing.happened")
 
 		if _, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'thing.happened', 'thing')`, orgID); err != nil {
+				INSERT INTO audit_log (action, target_type) VALUES ('thing.happened', 'thing')`); err != nil {
 				return err
 			}
 			return events.Emit(ctx, tx, topic, map[string]any{"n": 1})

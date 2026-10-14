@@ -62,7 +62,7 @@ func TestAVersionCollectsWhatFixesItAndShips(t *testing.T) {
 	if _, _, err := ws.issues.SetVersions(ws.ctx, fixed.Key, []uuid.UUID{theirs.ID}, nil, ws.actor); err == nil {
 		t.Error("another project's version was accepted by the service")
 	}
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO issue_version (org_id, issue_id, version_id, role) VALUES ($1, $2, $3, 'fix')`, ws.orgID, fixed.ID, theirs.ID); err == nil || !strings.Contains(err.Error(), "own project") {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO issue_version (issue_id, version_id, role) VALUES ($1, $2, 'fix')`, fixed.ID, theirs.ID); err == nil || !strings.Contains(err.Error(), "own project") {
 		t.Errorf("the database accepted another project's version: %v", err)
 	}
 
@@ -108,7 +108,7 @@ func TestAComponentTakesNewWork(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	ws := h.newProject(t, "components")
-	bob := h.joinExisting(t, ws, h.email(t, "bobcomp"), "member")
+	bob := h.joinExisting(t, h.email(t, "bobcomp"), "member")
 	components := component.NewService(h.cluster)
 
 	bobPtr := &bob
@@ -146,7 +146,7 @@ func TestAComponentTakesNewWork(t *testing.T) {
 	if _, _, err := ws.issues.SetComponents(ws.ctx, taken.Key, []uuid.UUID{theirs.ID}, ws.actor); err == nil {
 		t.Error("another project's component was accepted by the service")
 	}
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO issue_component (org_id, issue_id, component_id) VALUES ($1, $2, $3)`, ws.orgID, taken.ID, theirs.ID); err == nil || !strings.Contains(err.Error(), "own project") {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO issue_component (issue_id, component_id) VALUES ($1, $2)`, taken.ID, theirs.ID); err == nil || !strings.Contains(err.Error(), "own project") {
 		t.Errorf("the database accepted another project's component: %v", err)
 	}
 

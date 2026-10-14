@@ -141,7 +141,7 @@ func (s *Service) Create(ctx context.Context, in Input) (*Label, db.LSN, error) 
 	var created *Label
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id uuid.UUID
-		err := tx.QueryRow(ctx, `INSERT INTO label (org_id, name, color) VALUES (current_org_id(), $1, $2) RETURNING id`, name, color).Scan(&id)
+		err := tx.QueryRow(ctx, `INSERT INTO label (name, color) VALUES ($1, $2) RETURNING id`, name, color).Scan(&id)
 		if isUniqueViolation(err) {
 			return ErrNameTaken
 		}
@@ -290,7 +290,7 @@ func (s *Service) labelIssue(ctx context.Context, tx db.DBTX, key string, names 
 		}
 		// Coin the word unless it exists, then read it. Somebody coining the
 		// same word at once makes this wait for them and use theirs.
-		if _, err := tx.Exec(ctx, `INSERT INTO label (org_id, name, color) VALUES (current_org_id(), $1, $2) ON CONFLICT (lower(name)) DO NOTHING`,
+		if _, err := tx.Exec(ctx, `INSERT INTO label (name, color) VALUES ($1, $2) ON CONFLICT (lower(name)) DO NOTHING`,
 			name, ColorFor(name)); err != nil {
 			return uuid.Nil, nil, nil, fmt.Errorf("label %q: %w", name, err)
 		}
@@ -298,7 +298,7 @@ func (s *Service) labelIssue(ctx context.Context, tx db.DBTX, key string, names 
 		if err := tx.QueryRow(ctx, `SELECT id FROM label WHERE lower(name) = $1`, lower).Scan(&id); err != nil {
 			return uuid.Nil, nil, nil, fmt.Errorf("label %q: %w", name, err)
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO issue_label (org_id, issue_id, label_id) VALUES (current_org_id(), $1, $2) ON CONFLICT DO NOTHING`, issueID, id); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO issue_label (issue_id, label_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, issueID, id); err != nil {
 			return uuid.Nil, nil, nil, err
 		}
 	}

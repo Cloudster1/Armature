@@ -73,9 +73,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, ip string) (*
 			// A row without a password that no provider signs in is a portal
 			// customer or a follower named in a mail: there is no account to recover.
 			rows, err := tx.Query(ctx, `
-				SELECT o.slug FROM org_member m
-				JOIN org o ON o.id = m.org_id
-				JOIN oidc_provider p ON p.org_id = o.id
+				SELECT o.slug FROM org_member m, org o, oidc_provider p
 				WHERE m.user_id = $1 AND m.org_role <> 'customer' AND p.enabled AND o.archived_at IS NULL
 				ORDER BY o.slug`, userID)
 			if err != nil {
@@ -151,17 +149,15 @@ func (s *Service) ResetPassword(ctx context.Context, secret, password, ip string
 	return err
 }
 
-// AuditAccount records an act on an account once, in the log of the person's
-// organization; somebody with no membership left has no log to be in.
+// AuditAccount records an act on an account once, in the installation's log;
+// somebody with no membership left has no log to be in.
 func AuditAccount(ctx context.Context, tx db.DBTX, userID uuid.UUID, e audit.Entry) error {
-	var orgID uuid.UUID
-	err := tx.QueryRow(ctx, `
-		SELECT org_id FROM org_member WHERE user_id = $1 ORDER BY created_at, org_id LIMIT 1`, userID).Scan(&orgID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
+	var member bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM org_member WHERE user_id = $1)`, userID).Scan(&member); err != nil {
 		return err
 	}
-	return audit.Write(ctx, tx, orgID, e)
+	if !member {
+		return nil
+	}
+	return audit.Write(ctx, tx, e)
 }

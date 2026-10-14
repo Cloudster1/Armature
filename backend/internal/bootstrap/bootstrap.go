@@ -1,9 +1,9 @@
-// Package bootstrap gives a brand new organization the configuration it needs
+// Package bootstrap gives a brand new installation the configuration it needs
 // to be usable.
 //
-// An organization with no statuses, issue types or workflow cannot have a
+// An installation with no statuses, issue types or workflow cannot have a
 // project, and a project is the first thing anybody wants. Rather than make the
-// user assemble that by hand, every organization is created with a working set
+// user assemble that by hand, the installation is created with a working set
 // in the same transaction as the signup itself, so there is no window in which
 // an account exists but cannot do anything.
 package bootstrap
@@ -65,13 +65,13 @@ type Result struct {
 	IssueTypeIDs     map[string]uuid.UUID
 }
 
-// Org creates the default statuses, issue types, workflow, workflow scheme,
-// link types and holiday calendar for an organization.
+// Installation creates the default statuses, issue types, workflow, workflow
+// scheme, link types and holiday calendar for the installation.
 //
-// It must run in the same transaction as the organization's own creation. It is
-// not idempotent: calling it twice for one organization violates the uniqueness
-// constraints on names, which is the correct outcome.
-func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
+// It must run in the same transaction as the installation's own creation. It is
+// not idempotent: calling it twice violates the uniqueness constraints on
+// names, which is the correct outcome.
+func Installation(ctx context.Context, tx db.DBTX) (*Result, error) {
 	result := &Result{
 		StatusIDs:    map[string]uuid.UUID{},
 		IssueTypeIDs: map[string]uuid.UUID{},
@@ -90,9 +90,9 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 	for i, s := range statuses {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO issue_status (org_id, name, category, description, position)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			orgID, s.name, string(s.category), s.desc, i,
+			INSERT INTO issue_status (name, category, description, position)
+			VALUES ($1, $2, $3, $4) RETURNING id`,
+			s.name, string(s.category), s.desc, i,
 		).Scan(&id)
 		if err != nil {
 			return nil, fmt.Errorf("create status %q: %w", s.name, err)
@@ -119,9 +119,9 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 	for i, t := range issueTypes {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO issue_type (org_id, name, description, icon, hierarchy_level, position)
-			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-			orgID, t.name, t.desc, t.icon, t.level, i,
+			INSERT INTO issue_type (name, description, icon, hierarchy_level, position)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			t.name, t.desc, t.icon, t.level, i,
 		).Scan(&id)
 		if err != nil {
 			return nil, fmt.Errorf("create issue type %q: %w", t.name, err)
@@ -129,19 +129,19 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 		result.IssueTypeIDs[t.name] = id
 	}
 
-	workflowID, err := defaultWorkflow(ctx, tx, orgID, result.StatusIDs)
+	workflowID, err := defaultWorkflow(ctx, tx, result.StatusIDs)
 	if err != nil {
 		return nil, err
 	}
 	result.WorkflowID = workflowID
 
-	// The organization's own scheme: the answer for every project that does not
+	// The installation's own scheme: the answer for every project that does not
 	// name one of its own.
 	var schemeID uuid.UUID
 	err = tx.QueryRow(ctx, `
-		INSERT INTO workflow_scheme (org_id, name, is_default)
-		VALUES ($1, $2, true) RETURNING id`,
-		orgID, DefaultSchemeName,
+		INSERT INTO workflow_scheme (name, is_default)
+		VALUES ($1, true) RETURNING id`,
+		DefaultSchemeName,
 	).Scan(&schemeID)
 	if err != nil {
 		return nil, fmt.Errorf("create workflow scheme: %w", err)
@@ -151,9 +151,9 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 	// A null issue type is the fallback, so every type gets this workflow until
 	// somebody maps one explicitly.
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO workflow_scheme_item (org_id, scheme_id, issue_type_id, workflow_id)
-		VALUES ($1, $2, NULL, $3)`,
-		orgID, schemeID, workflowID,
+		INSERT INTO workflow_scheme_item (scheme_id, issue_type_id, workflow_id)
+		VALUES ($1, NULL, $2)`,
+		schemeID, workflowID,
 	); err != nil {
 		return nil, fmt.Errorf("map workflow into scheme: %w", err)
 	}
@@ -165,9 +165,9 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 	}
 	for _, l := range linkTypes {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO issue_link_type (org_id, name, outward, inward)
-			VALUES ($1, $2, $3, $4)`,
-			orgID, l.name, l.outward, l.inward,
+			INSERT INTO issue_link_type (name, outward, inward)
+			VALUES ($1, $2, $3)`,
+			l.name, l.outward, l.inward,
 		); err != nil {
 			return nil, fmt.Errorf("create link type %q: %w", l.name, err)
 		}
@@ -175,14 +175,18 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 
 	// An empty calendar of days off, so a working week always has one to read.
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO holiday_calendar (org_id, name, is_default) VALUES ($1, $2, true)`,
-		orgID, DefaultHolidayCalendarName,
+		INSERT INTO holiday_calendar (name, is_default) VALUES ($1, true)`,
+		DefaultHolidayCalendarName,
 	); err != nil {
 		return nil, fmt.Errorf("create the holiday calendar: %w", err)
 	}
 
 	// The automation account: the actor of every rule's act, an inactive
 	// member that never signs in and is never listed among the people.
+	id, err := installation.ID(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
 	var automation uuid.UUID
 	if err := tx.QueryRow(ctx, `
 		WITH made AS (
@@ -190,9 +194,9 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 			VALUES ('automation+' || $1::uuid::text || '@armature.invalid', 'Automation', false)
 			RETURNING id
 		), joined AS (
-			INSERT INTO org_member (org_id, user_id, org_role) SELECT $1::uuid, id, 'member' FROM made
+			INSERT INTO org_member (user_id, org_role) SELECT id, 'member' FROM made
 		)
-		SELECT id FROM made`, orgID).Scan(&automation); err != nil {
+		SELECT id FROM made`, id).Scan(&automation); err != nil {
 		return nil, fmt.Errorf("create the automation account: %w", err)
 	}
 	if err := installation.SetAutomationUser(ctx, tx, automation); err != nil {
@@ -211,12 +215,12 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 //
 // plus a global Close, because in practice something always needs closing from
 // wherever it happens to be.
-func defaultWorkflow(ctx context.Context, tx db.DBTX, orgID uuid.UUID, statuses map[string]uuid.UUID) (uuid.UUID, error) {
+func defaultWorkflow(ctx context.Context, tx db.DBTX, statuses map[string]uuid.UUID) (uuid.UUID, error) {
 	var workflowID uuid.UUID
 	err := tx.QueryRow(ctx, `
-		INSERT INTO workflow (org_id, name, description)
-		VALUES ($1, $2, $3) RETURNING id`,
-		orgID, DefaultWorkflowName, "To Do, In Progress, In Review and Done, with a review loop.",
+		INSERT INTO workflow (name, description)
+		VALUES ($1, $2) RETURNING id`,
+		DefaultWorkflowName, "To Do, In Progress, In Review and Done, with a review loop.",
 	).Scan(&workflowID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create workflow: %w", err)
@@ -227,9 +231,9 @@ func defaultWorkflow(ctx context.Context, tx db.DBTX, orgID uuid.UUID, statuses 
 	for i, name := range order {
 		var stepID uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO workflow_step (org_id, workflow_id, status_id, is_initial, position)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			orgID, workflowID, statuses[name], name == StatusToDo, i,
+			INSERT INTO workflow_step (workflow_id, status_id, is_initial, position)
+			VALUES ($1, $2, $3, $4) RETURNING id`,
+			workflowID, statuses[name], name == StatusToDo, i,
 		).Scan(&stepID)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("add step %q: %w", name, err)
@@ -283,9 +287,9 @@ func defaultWorkflow(ctx context.Context, tx db.DBTX, orgID uuid.UUID, statuses 
 
 		var transitionID uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO workflow_transition (org_id, workflow_id, name, from_step_id, to_step_id, position)
-			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-			orgID, workflowID, t.name, fromStep, steps[t.to], i,
+			INSERT INTO workflow_transition (workflow_id, name, from_step_id, to_step_id, position)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			workflowID, t.name, fromStep, steps[t.to], i,
 		).Scan(&transitionID)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("add transition %q: %w", t.name, err)
@@ -297,9 +301,9 @@ func defaultWorkflow(ctx context.Context, tx db.DBTX, orgID uuid.UUID, statuses 
 				config = "{}"
 			}
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO transition_rule (org_id, transition_id, kind, rule_type, config, position)
-				VALUES ($1, $2, $3, $4, $5, $6)`,
-				orgID, transitionID, string(r.kind), r.ruleType, config, j,
+				INSERT INTO transition_rule (transition_id, kind, rule_type, config, position)
+				VALUES ($1, $2, $3, $4, $5)`,
+				transitionID, string(r.kind), r.ruleType, config, j,
 			); err != nil {
 				return uuid.Nil, fmt.Errorf("add rule %q to %q: %w", r.ruleType, t.name, err)
 			}

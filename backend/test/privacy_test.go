@@ -44,18 +44,18 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 
 	t.Run("what has served its purpose is pruned, and what is fresh stays", func(t *testing.T) {
 		for _, q := range []string{
-			`INSERT INTO user_session (user_id, token_hash, expires_at) SELECT $1, decode(md5(random()::text), 'hex'), now() - interval '3 days' WHERE $2::uuid IS NOT NULL`,
-			`INSERT INTO user_session (user_id, token_hash, expires_at) SELECT $1, decode(md5(random()::text), 'hex'), now() + interval '3 days' WHERE $2::uuid IS NOT NULL`,
-			`INSERT INTO notification (org_id, user_id, kind, title, event_id, created_at) VALUES ($2, $1, 'assigned', 'ancient', gen_random_uuid(), now() - interval '200 days')`,
-			`INSERT INTO notification (org_id, user_id, kind, title, event_id, created_at) VALUES ($2, $1, 'assigned', 'recent', gen_random_uuid(), now() - interval '2 days')`,
-			`INSERT INTO inbound_mail (message_id, from_email, subject, outcome, received_at) VALUES ('<old@' || $2::text || $1::text || '>', 'someone@elsewhere.test', 'old', 'unmatched', now() - interval '100 days')`,
-			`INSERT INTO login_challenge (user_id, token_hash, expires_at) SELECT $1, decode(md5(random()::text), 'hex'), now() - interval '3 days' WHERE $2::uuid IS NOT NULL`,
+			`INSERT INTO user_session (user_id, token_hash, expires_at) SELECT $1, decode(md5(random()::text), 'hex'), now() - interval '3 days'`,
+			`INSERT INTO user_session (user_id, token_hash, expires_at) SELECT $1, decode(md5(random()::text), 'hex'), now() + interval '3 days'`,
+			`INSERT INTO notification (user_id, kind, title, event_id, created_at) VALUES ($1, 'assigned', 'ancient', gen_random_uuid(), now() - interval '200 days')`,
+			`INSERT INTO notification (user_id, kind, title, event_id, created_at) VALUES ($1, 'assigned', 'recent', gen_random_uuid(), now() - interval '2 days')`,
+			`INSERT INTO inbound_mail (message_id, from_email, subject, outcome, received_at) VALUES ('<old@' || $1::text || '>', 'someone@elsewhere.test', 'old', 'unmatched', now() - interval '100 days')`,
+			`INSERT INTO login_challenge (user_id, token_hash, expires_at) SELECT $1, decode(md5(random()::text), 'hex'), now() - interval '3 days'`,
 		} {
-			if _, err := h.super.Exec(context.Background(), q, ownerID, orgID); err != nil {
+			if _, err := h.super.Exec(context.Background(), q, ownerID); err != nil {
 				t.Fatalf("%s: %v", q, err)
 			}
 		}
-		if _, err := h.super.Exec(context.Background(), `UPDATE outbox_event SET published_at = now() - interval '40 days' WHERE org_id = $1 AND payload->>'key' LIKE $2`, orgID, recKey+"-%"); err != nil {
+		if _, err := h.super.Exec(context.Background(), `UPDATE outbox_event SET published_at = now() - interval '40 days' WHERE payload->>'key' LIKE $1`, recKey+"-%"); err != nil {
 			t.Fatal(err)
 		}
 		counts, err := privacy.NewRetention(h.cluster, privacy.DefaultPolicy(), slog.New(slog.DiscardHandler)).Once(context.Background())
@@ -107,8 +107,8 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 		var active bool
 		var members int
 		if err := h.super.QueryRow(context.Background(), `
-			SELECT u.is_active, (SELECT count(*) FROM org_member m WHERE m.user_id = u.id AND m.org_id = $2)
-			FROM app_user u WHERE u.id = $1`, goerID, orgID).Scan(&active, &members); err != nil {
+			SELECT u.is_active, (SELECT count(*) FROM org_member m WHERE m.user_id = u.id)
+			FROM app_user u WHERE u.id = $1`, goerID).Scan(&active, &members); err != nil {
 			t.Fatal(err)
 		}
 		if active || members != 1 {
@@ -165,7 +165,7 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 			t.Fatalf("watchers after erasure = %v, want the owner alone", watchers)
 		}
 		var audited int
-		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'user.erased' AND target_id = $2`, orgID, otherID).Scan(&audited); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE action = 'user.erased' AND target_id = $1`, otherID).Scan(&audited); err != nil {
 			t.Fatal(err)
 		}
 		if audited != 1 {

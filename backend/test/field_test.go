@@ -156,8 +156,8 @@ func TestAFieldBelongsToOneProjectAndTheDatabaseKnowsIt(t *testing.T) {
 	// The same thing straight through SQL, as the application role.
 	_, err = h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO issue_field_value (org_id, issue_id, field_id, value)
-			VALUES (current_org_id(), $1, $2, '"EU"'::jsonb)`, made.ID, otherField.ID)
+			INSERT INTO issue_field_value (issue_id, field_id, value)
+			VALUES ($1, $2, '"EU"'::jsonb)`, made.ID, otherField.ID)
 		return err
 	})
 	var pgErr *pgconn.PgError

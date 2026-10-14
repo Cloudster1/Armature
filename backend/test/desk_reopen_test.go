@@ -52,8 +52,8 @@ func lastMove(t *testing.T, h *harness, ws *workspace, key string) (name string,
 	var actorID string
 	if err := h.super.QueryRow(context.Background(), `
 		SELECT payload->>'transition', payload->>'actorId' FROM outbox_event
-		WHERE org_id = $1 AND topic = $2 AND payload->>'key' = $3
-		ORDER BY id DESC LIMIT 1`, ws.orgID, events.TopicIssueTransitioned, key).Scan(&name, &actorID); err != nil {
+		WHERE topic = $1 AND payload->>'key' = $2
+		ORDER BY id DESC LIMIT 1`, events.TopicIssueTransitioned, key).Scan(&name, &actorID); err != nil {
 		t.Fatalf("no move announced on %s: %v", key, err)
 	}
 	return name, uuid.MustParse(actorID)
@@ -166,7 +166,7 @@ func TestAReplyNoWayOutOfDoneCanTakeIsToldToTheAgents(t *testing.T) {
 	ws := h.newProject(t, "noway")
 	d, p := ws.aDesk(t, h, "Dead end desk")
 	customer := ws.customerOf(t, h, "stuck")
-	bob := h.joinExisting(t, ws, h.email(t, "bob"), "member")
+	bob := h.joinExisting(t, h.email(t, "bob"), "member")
 
 	// The desk follows a copy of the service request workflow that has no way
 	// back out of Resolved; every other desk keeps the original.

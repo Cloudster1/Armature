@@ -322,8 +322,8 @@ func TestConditionHidesTransition(t *testing.T) {
 			return err
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO transition_rule (org_id, transition_id, kind, rule_type, config, position)
-			VALUES (current_org_id(), $1, 'condition', $2, $3, 0)`,
+			INSERT INTO transition_rule (transition_id, kind, rule_type, config, position)
+			VALUES ($1, 'condition', $2, $3, 0)`,
 			transitionID, workflow.ConditionOrgRole, `{"roles":["owner","admin"]}`)
 		return err
 	})

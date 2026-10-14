@@ -168,8 +168,8 @@ func (s *Service) create(ctx context.Context, projectKey *string, in Input) (*Fi
 		}
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO custom_field (org_id, project_id, name, kind, options, position)
-			VALUES (current_org_id(), $1, $2, $3, $4,
+			INSERT INTO custom_field (project_id, name, kind, options, position)
+			VALUES ($1, $2, $3, $4,
 			        (SELECT COALESCE(max(position), -1) + 1 FROM custom_field WHERE project_id IS NOT DISTINCT FROM $1))
 			RETURNING id`, pid, name, string(in.Kind), encoded).Scan(&id)
 		if isUniqueViolation(err) {
@@ -442,8 +442,8 @@ func (s *Service) Set(ctx context.Context, issueKey string, fieldID uuid.UUID, r
 			}
 		} else {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO issue_field_value (org_id, issue_id, field_id, value)
-				VALUES (current_org_id(), $1, $2, $3)
+				INSERT INTO issue_field_value (issue_id, field_id, value)
+				VALUES ($1, $2, $3)
 				ON CONFLICT (issue_id, field_id) DO UPDATE SET value = EXCLUDED.value`,
 				issueID, fieldID, []byte(value)); err != nil {
 				return fmt.Errorf("set field: %w", err)

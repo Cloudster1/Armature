@@ -44,8 +44,8 @@ func (s *Service) recordBranches(ctx context.Context, tx db.DBTX, repo *Reposito
 		var followed *uuid.UUID
 		if b.created || issueID != nil {
 			err = tx.QueryRow(ctx, `
-				INSERT INTO git_branch (org_id, repository_id, name, url, issue_id, head_sha, pushed_at)
-				VALUES (current_org_id(), $1, $2, $3, $4, $5, CASE WHEN $5 = '' THEN NULL ELSE now() END)
+				INSERT INTO git_branch (repository_id, name, url, issue_id, head_sha, pushed_at)
+				VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 = '' THEN NULL ELSE now() END)
 				ON CONFLICT (repository_id, name) WHERE deleted_at IS NULL DO UPDATE SET url = EXCLUDED.url,
 				    issue_id = COALESCE(git_branch.issue_id, EXCLUDED.issue_id),
 				    head_sha = CASE WHEN EXCLUDED.head_sha = '' THEN git_branch.head_sha ELSE EXCLUDED.head_sha END,

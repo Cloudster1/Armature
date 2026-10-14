@@ -104,8 +104,7 @@ func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Prin
 	var org Org
 	err = tx.QueryRow(ctx, `
 		SELECT o.id, o.slug, o.name, m.org_role
-		FROM org_member m
-		JOIN org o ON o.id = m.org_id
+		FROM org_member m, org o
 		WHERE m.user_id = $1 AND o.archived_at IS NULL`, userID,
 	).Scan(&org.ID, &org.Slug, &org.Name, &p.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -127,9 +126,7 @@ func openPasswordSession(ctx context.Context, tx db.DBTX, p *Principal, expiresA
 	}
 	p.SessionID = &sessionID
 	p.Proof = ProofPassword
-	// Recorded in the organization the session opens in, as single sign-on
-	// records its own.
-	return secret, writeAudit(ctx, tx, p.Org.ID, p.User.ID, "auth.login", "user", &p.User.ID, ip)
+	return secret, writeAudit(ctx, tx, p.User.ID, "auth.login", "user", &p.User.ID, ip)
 }
 
 // decoyHash is a real argon2id hash of an unguessable value, verified against

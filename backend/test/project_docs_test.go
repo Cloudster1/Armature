@@ -22,7 +22,7 @@ func TestAProjectLinksToItsDocumentation(t *testing.T) {
 	docsKey := h.projectKey(t, "DOCS")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	orgID := obj(t, owner.signIn(t, h.person(t, "documented", auth.RoleOwner)), "principal", "org")["id"].(string)
+	owner.signIn(t, h.person(t, "documented", auth.RoleOwner))
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Documented", "key": docsKey}), http.StatusCreated, "create project")
 
 	t.Run("a new project has no link", func(t *testing.T) {
@@ -84,12 +84,12 @@ func TestAProjectLinksToItsDocumentation(t *testing.T) {
 
 	t.Run("the database refuses what the service refuses", func(t *testing.T) {
 		for name, query := range map[string]string{
-			"a script address":        `UPDATE project SET docs_url = 'javascript:alert(1)' WHERE key = '` + docsKey + `' AND org_id = $1`,
-			"an address with no host": `UPDATE project SET docs_url = 'https://' WHERE key = '` + docsKey + `' AND org_id = $1`,
-			"a label with no address": `UPDATE project SET docs_url = NULL, docs_label = 'Docs' WHERE key = '` + docsKey + `' AND org_id = $1`,
-			"a blank label":           `UPDATE project SET docs_url = 'https://docs.test', docs_label = '  ' WHERE key = '` + docsKey + `' AND org_id = $1`,
+			"a script address":        `UPDATE project SET docs_url = 'javascript:alert(1)' WHERE key = '` + docsKey + `'`,
+			"an address with no host": `UPDATE project SET docs_url = 'https://' WHERE key = '` + docsKey + `'`,
+			"a label with no address": `UPDATE project SET docs_url = NULL, docs_label = 'Docs' WHERE key = '` + docsKey + `'`,
+			"a blank label":           `UPDATE project SET docs_url = 'https://docs.test', docs_label = '  ' WHERE key = '` + docsKey + `'`,
 		} {
-			_, err := h.super.Exec(context.Background(), query, orgID)
+			_, err := h.super.Exec(context.Background(), query)
 			var pgErr *pgconn.PgError
 			if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 				t.Errorf("%s: got %v, want a check violation", name, err)

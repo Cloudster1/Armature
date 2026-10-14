@@ -165,8 +165,8 @@ func applyTemplate(ctx context.Context, tx db.DBTX, dashboardID uuid.UUID, t Tem
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO dashboard_widget (org_id, dashboard_id, kind, title, width, position, config)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)`, dashboardID, string(w.Kind), title, width, position, raw); err != nil {
+			INSERT INTO dashboard_widget (dashboard_id, kind, title, width, position, config)
+			VALUES ($1, $2, $3, $4, $5, $6)`, dashboardID, string(w.Kind), title, width, position, raw); err != nil {
 			return fmt.Errorf("add widget %s: %w", w.Kind, err)
 		}
 		position++
@@ -253,8 +253,8 @@ func (s *Service) SaveTemplate(ctx context.Context, dashboardID uuid.UUID, name,
 		}
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO dashboard_template (org_id, name, description, widgets, created_by)
-			VALUES (current_org_id(), $1, $2, $3, $4) RETURNING id`, out.Name, out.Description, raw, actor).Scan(&id)
+			INSERT INTO dashboard_template (name, description, widgets, created_by)
+			VALUES ($1, $2, $3, $4) RETURNING id`, out.Name, out.Description, raw, actor).Scan(&id)
 		if isUniqueViolation(err) {
 			return ErrTemplateNameTaken
 		}

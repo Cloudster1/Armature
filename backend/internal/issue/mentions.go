@@ -76,7 +76,7 @@ func isNameRune(r rune) bool {
 func (s *Service) members(ctx context.Context, tx db.DBTX) ([]Member, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT u.id, u.name, u.email FROM app_user u
-		JOIN org_member m ON m.user_id = u.id AND m.org_id = current_org_id()
+		JOIN org_member m ON m.user_id = u.id
 		WHERE u.is_active AND m.org_role <> 'customer'`)
 	if err != nil {
 		return nil, err

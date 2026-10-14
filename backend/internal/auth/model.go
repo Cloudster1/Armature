@@ -134,7 +134,8 @@ type Org struct {
 
 // Invite is a pending invitation to join the installation.
 type Invite struct {
-	ID        uuid.UUID `json:"id"`
+	ID uuid.UUID `json:"id"`
+	// OrgID is the installation's id, deprecated with the webhook envelope's.
 	OrgID     uuid.UUID `json:"orgId"`
 	Email     string    `json:"email"`
 	Role      OrgRole   `json:"role"`

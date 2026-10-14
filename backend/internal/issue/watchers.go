@@ -119,8 +119,8 @@ func (s *Service) watch(ctx context.Context, tx db.DBTX, issueID uuid.UUID, issu
 		return "", err
 	}
 	tag, err := tx.Exec(ctx, `
-		INSERT INTO issue_watcher (org_id, issue_id, user_id, added_by, unwatch_token_hash)
-		VALUES (current_org_id(), $1, $2, $3, $4)
+		INSERT INTO issue_watcher (issue_id, user_id, added_by, unwatch_token_hash)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT DO NOTHING`, issueID, userID, actor.UserID, digest)
 	if err != nil {
 		return "", fmt.Errorf("add watcher: %w", err)

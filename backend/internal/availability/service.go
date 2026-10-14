@@ -128,8 +128,8 @@ func (s *Service) CreateCalendar(ctx context.Context, in CalendarInput, actor uu
 		}
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO holiday_calendar (org_id, name, is_default)
-			VALUES (current_org_id(), $1, $2) RETURNING id`, name, makeDefault).Scan(&id)
+			INSERT INTO holiday_calendar (name, is_default)
+			VALUES ($1, $2) RETURNING id`, name, makeDefault).Scan(&id)
 		if isUniqueViolation(err) {
 			return ErrNameTaken
 		}
@@ -292,8 +292,8 @@ func putDays(ctx context.Context, tx db.DBTX, calendarID uuid.UUID, days []Holid
 		dates[i], names[i], halves[i] = d.Day, d.Name, d.HalfDay
 	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO holiday (org_id, calendar_id, day, name, half_day)
-		SELECT current_org_id(), $1, d.day::date, d.name, d.half_day
+		INSERT INTO holiday (calendar_id, day, name, half_day)
+		SELECT $1, d.day::date, d.name, d.half_day
 		FROM unnest($2::text[], $3::text[], $4::boolean[]) AS d(day, name, half_day)
 		ON CONFLICT (calendar_id, day) DO UPDATE SET name = EXCLUDED.name`,
 		calendarID, dates, names, halves)
@@ -322,8 +322,8 @@ func readWeek(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*WorkingWeek, 
 	err := tx.QueryRow(ctx, `
 		SELECT m.org_role, s.calendar_id, s.minutes
 		FROM org_member m
-		LEFT JOIN member_schedule s ON s.org_id = m.org_id AND s.user_id = m.user_id
-		WHERE m.org_id = current_org_id() AND m.user_id = $1`, userID).Scan(&role, &calendarID, &raw)
+		LEFT JOIN member_schedule s ON s.user_id = m.user_id
+		WHERE m.user_id = $1`, userID).Scan(&role, &calendarID, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotAMember
 	}
@@ -396,8 +396,8 @@ func (s *Service) SaveWorkingWeek(ctx context.Context, userID uuid.UUID, in Week
 			}
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO member_schedule (org_id, user_id, calendar_id, minutes)
-			VALUES (current_org_id(), $1, $2, $3::jsonb)
+			INSERT INTO member_schedule (user_id, calendar_id, minutes)
+			VALUES ($1, $2, $3::jsonb)
 			ON CONFLICT (user_id) DO UPDATE SET calendar_id = EXCLUDED.calendar_id, minutes = EXCLUDED.minutes`,
 			userID, in.CalendarID, string(body))
 		if err != nil {

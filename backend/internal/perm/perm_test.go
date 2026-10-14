@@ -54,7 +54,7 @@ func TestProjectAdministratorStopsAtTheProjectBoundary(t *testing.T) {
 	}
 	for _, p := range []Permission{OrgAdminister, ProjectCreate} {
 		if ProjectAdministrator.Allows(p) {
-			t.Errorf("a project administrator is allowed %s, which is a tenant level act", p)
+			t.Errorf("a project administrator is allowed %s, which is an installation level act", p)
 		}
 	}
 }

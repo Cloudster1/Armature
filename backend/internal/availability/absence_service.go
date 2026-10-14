@@ -77,7 +77,7 @@ func (s *Service) Absences(ctx context.Context, from time.Time, to *time.Time, u
 // the database refuses both alike.
 func memberStanding(ctx context.Context, tx db.DBTX, userID uuid.UUID) error {
 	var role string
-	err := tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE org_id = current_org_id() AND user_id = $1`, userID).Scan(&role)
+	err := tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, userID).Scan(&role)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return ErrNotAMember
@@ -174,8 +174,8 @@ func (s *Service) RecordAbsence(ctx context.Context, by Recorder, userID uuid.UU
 		}
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO absence (org_id, user_id, starts_on, ends_on, half_day, created_by)
-			VALUES (current_org_id(), $1, $2::date, $3::date, $4, $5) RETURNING id`,
+			INSERT INTO absence (user_id, starts_on, ends_on, half_day, created_by)
+			VALUES ($1, $2::date, $3::date, $4, $5) RETURNING id`,
 			userID, checked.StartsOn, checked.EndsOn, checked.HalfDay, by.ID).Scan(&id)
 		if err != nil {
 			return absenceWriteError("record an absence", err)

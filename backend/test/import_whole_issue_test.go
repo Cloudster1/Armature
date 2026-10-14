@@ -55,7 +55,7 @@ func TestAnImportBringsTheWholeIssue(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	ws := h.newProject(t, "wholeissue")
-	byrne := h.joinExisting(t, ws, h.email(t, "ada.byrne"), "member")
+	byrne := h.joinExisting(t, h.email(t, "ada.byrne"), "member")
 	files := csvio.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster), h.authService()).
 		WithPlanning(ws.sprints, version.NewService(h.cluster), component.NewService(h.cluster), ws.teams)
 

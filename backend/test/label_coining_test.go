@@ -48,7 +48,7 @@ func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
 	countNamed := func(t *testing.T, name string) int {
 		t.Helper()
 		var n int
-		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM label WHERE org_id = $1 AND lower(name) = lower($2)`, ws.orgID, name).Scan(&n); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM label WHERE lower(name) = lower($1)`, name).Scan(&n); err != nil {
 			t.Fatalf("count labels: %v", err)
 		}
 		return n
@@ -69,7 +69,7 @@ func TestTwoPeopleCoiningTheSameLabelBothSucceed(t *testing.T) {
 		if err := open.QueryRow(ctx, `SELECT pg_backend_pid()`).Scan(&heldPID); err != nil {
 			t.Fatalf("pid: %v", err)
 		}
-		if err := open.QueryRow(ctx, `INSERT INTO label (org_id, name, color) VALUES ($1, $2, $3) RETURNING id`, ws.orgID, held, label.ColorFor(held)).Scan(&heldID); err != nil {
+		if err := open.QueryRow(ctx, `INSERT INTO label (name, color) VALUES ($1, $2) RETURNING id`, held, label.ColorFor(held)).Scan(&heldID); err != nil {
 			t.Fatalf("hold a coining open: %v", err)
 		}
 

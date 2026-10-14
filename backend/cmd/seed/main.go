@@ -178,7 +178,7 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 		issuer = fromEnv
 	}
 	sso := oidc.NewService(cluster, "")
-	if _, _, err := sso.Save(ctx, creds.Principal.Org.ID, oidc.Provider{
+	if _, _, err := sso.Save(ctx, oidc.Provider{
 		Issuer: issuer, ClientID: keycloakClientID, ClientSecret: keycloakClientSecret,
 		GroupsClaim: "groups", Scopes: "openid profile email", CreateGroups: true, Enabled: true,
 	}, creds.Principal.User.ID); err != nil {
@@ -701,7 +701,7 @@ func membersByEmail(ctx context.Context, cluster *db.Cluster) (map[string]uuid.U
 	err := cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT u.email, u.id FROM app_user u
-			JOIN org_member m ON m.user_id = u.id AND m.org_id = current_org_id()`)
+			JOIN org_member m ON m.user_id = u.id`)
 		if err != nil {
 			return err
 		}

@@ -93,14 +93,14 @@ func appendLaneToBoards(ctx context.Context, tx db.DBTX, projectID uuid.UUID, st
 	for _, boardID := range boards {
 		var laneID uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO board_swimlane (org_id, board_id, name, position)
-			VALUES (current_org_id(), $1, $2, (SELECT COALESCE(max(position) + 1, 0) FROM board_swimlane WHERE board_id = $1))
+			INSERT INTO board_swimlane (board_id, name, position)
+			VALUES ($1, $2, (SELECT COALESCE(max(position) + 1, 0) FROM board_swimlane WHERE board_id = $1))
 			RETURNING id`, boardID, status.Name).Scan(&laneID); err != nil {
 			return fmt.Errorf("add a lane for %q: %w", status.Name, err)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO board_swimlane_status (org_id, board_id, swimlane_id, status_id)
-			VALUES (current_org_id(), $1, $2, $3)`, boardID, laneID, status.ID); err != nil {
+			INSERT INTO board_swimlane_status (board_id, swimlane_id, status_id)
+			VALUES ($1, $2, $3)`, boardID, laneID, status.ID); err != nil {
 			return fmt.Errorf("map %q into its new lane: %w", status.Name, err)
 		}
 	}

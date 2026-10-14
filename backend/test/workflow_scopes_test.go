@@ -441,9 +441,8 @@ func TestSavingAWorkflowKeepsTheRulesOnTransitionsItKept(t *testing.T) {
 
 	built := h.straightThrough(t, ws, "Guarded", bootstrap.StatusToDo, bootstrap.StatusInProgress)
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO transition_rule (org_id, transition_id, kind, rule_type, config)
-		VALUES ($1, $2, 'condition', 'role_is', '{"role":"admin"}')`,
-		ws.orgID, built.Transitions[0].ID); err != nil {
+		INSERT INTO transition_rule (transition_id, kind, rule_type, config)
+		VALUES ($1, 'condition', 'role_is', '{"role":"admin"}')`, built.Transitions[0].ID); err != nil {
 		t.Fatalf("attach a rule: %v", err)
 	}
 

@@ -80,13 +80,13 @@ func (n *Inbound) fail(ctx context.Context, messageID string, attempts int, p *p
 	// The poll may be ending, and a row left processing would hold the mail
 	// for five minutes; the record is written regardless.
 	_, err := n.db.WriteAdmin(context.WithoutCancel(ctx), func(ctx context.Context, tx db.DBTX) error {
-		var orgID, issueID any
+		var issueID any
 		if p != nil {
-			orgID, issueID = p.orgID, p.issueID
+			issueID = p.issueID
 		}
 		if _, err := tx.Exec(ctx, `
-			UPDATE inbound_mail SET outcome = 'failed', detail = $2, org_id = $3, issue_id = $4
-			WHERE message_id = $1`, messageID, cause.Error(), orgID, issueID); err != nil {
+			UPDATE inbound_mail SET outcome = 'failed', detail = $2, issue_id = $3
+			WHERE message_id = $1`, messageID, cause.Error(), issueID); err != nil {
 			return err
 		}
 		if !givenUp || p == nil {
@@ -94,8 +94,8 @@ func (n *Inbound) fail(ctx context.Context, messageID string, attempts int, p *p
 		}
 		// Written with the record, so a given-up mail is never one nobody hears of.
 		_, err := tx.Exec(ctx, `
-			INSERT INTO issue_comment (org_id, issue_id, author_id, body, is_internal)
-			VALUES ($1, $2, NULL, $3, true)`, p.orgID, p.issueID, gaveUpNote(attempts, cause))
+			INSERT INTO issue_comment (issue_id, author_id, body, is_internal)
+			VALUES ($1, NULL, $2, true)`, p.issueID, gaveUpNote(attempts, cause))
 		return err
 	})
 	if err != nil {

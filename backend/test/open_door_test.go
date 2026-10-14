@@ -21,7 +21,6 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 	api := newAPIServer(t, h)
 	owner := api.client(t)
 	signedUp := owner.signIn(t, h.person(t, "opendoor", auth.RoleOwner))
-	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
 
 	// Two desks and a software project. Only a desk has a door.
 	itd, hrd, cod := h.projectKey(t, "ITD"), h.projectKey(t, "HRD"), h.projectKey(t, "COD")
@@ -105,7 +104,7 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 
 	t.Run("a session without a code belongs to an open desk, through SQL", func(t *testing.T) {
 		var hrID uuid.UUID
-		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = $2 AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug, hrd).Scan(&hrID); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = $1`, hrd).Scan(&hrID); err != nil {
 			t.Fatal(err)
 		}
 		_, err := h.super.Exec(context.Background(), `
@@ -115,7 +114,7 @@ func TestADeskMayLetItsCallersInWithoutACode(t *testing.T) {
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 			t.Fatalf("a code-less session for a desk that asks for a code was accepted: %v", err)
 		}
-		_, err = h.super.Exec(context.Background(), `UPDATE project SET portal_verifies = false WHERE key = $2 AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug, cod)
+		_, err = h.super.Exec(context.Background(), `UPDATE project SET portal_verifies = false WHERE key = $1`, cod)
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 			t.Fatalf("a software project was allowed a door: %v", err)
 		}

@@ -196,8 +196,8 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, in Input) (*Filte
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO saved_filter (org_id, owner_id, name, query, shared, columns)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5) RETURNING id`, owner, name, query, shared, columns).Scan(&id)
+			INSERT INTO saved_filter (owner_id, name, query, shared, columns)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`, owner, name, query, shared, columns).Scan(&id)
 		if isUnique(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicateName, name)
 		}
@@ -286,7 +286,7 @@ func (s *Service) Star(ctx context.Context, id, reader uuid.UUID, on bool) (*Fil
 		}
 		var err error
 		if on {
-			_, err = tx.Exec(ctx, `INSERT INTO saved_filter_star (org_id, filter_id, user_id) VALUES (current_org_id(), $1, $2) ON CONFLICT DO NOTHING`, id, reader)
+			_, err = tx.Exec(ctx, `INSERT INTO saved_filter_star (filter_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, reader)
 		} else {
 			_, err = tx.Exec(ctx, `DELETE FROM saved_filter_star WHERE filter_id = $1 AND user_id = $2`, id, reader)
 		}
@@ -310,8 +310,8 @@ func (s *Service) Subscribe(ctx context.Context, id, reader uuid.UUID, sub Subsc
 			return err
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO saved_filter_subscription (org_id, filter_id, user_id, schedule, hour, weekday)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO saved_filter_subscription (filter_id, user_id, schedule, hour, weekday)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (filter_id, user_id) DO UPDATE SET schedule = EXCLUDED.schedule, hour = EXCLUDED.hour, weekday = EXCLUDED.weekday`,
 			id, reader, sub.Schedule, sub.Hour, sub.Weekday)
 		if err != nil {

@@ -28,7 +28,7 @@ func TestPeopleOnAnIssueAreToldOnce(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newProject(t, "inbox")
 	bobEmail := h.email(t, "bob")
-	bob := h.joinExisting(t, ws, bobEmail, "member")
+	bob := h.joinExisting(t, bobEmail, "member")
 	made := ws.newIssue(t, "Fix the door")
 
 	mailer := &fakeMailer{}
@@ -121,7 +121,7 @@ func TestPeopleOnAnIssueAreToldOnce(t *testing.T) {
 func TestADigestBundlesTheQueue(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newProject(t, "digest")
-	bob := h.joinExisting(t, ws, h.email(t, "bobdigest"), "member")
+	bob := h.joinExisting(t, h.email(t, "bobdigest"), "member")
 	inbox := notify.NewService(h.cluster)
 	prefs := notify.DefaultPreferences()
 	prefs.Digest = notify.DigestHourly

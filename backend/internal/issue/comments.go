@@ -100,8 +100,8 @@ func (s *Service) addComment(ctx context.Context, key string, body json.RawMessa
 // system, which is how a workflow post-function's comment is attributed.
 func (s *Service) insertComment(ctx context.Context, tx db.DBTX, issueID uuid.UUID, authorID *uuid.UUID, body json.RawMessage, internal bool) error {
 	_, err := tx.Exec(ctx, `
-		INSERT INTO issue_comment (org_id, issue_id, author_id, body, is_internal)
-		VALUES (current_org_id(), $1, $2, $3, $4)`, issueID, authorID, []byte(body), internal)
+		INSERT INTO issue_comment (issue_id, author_id, body, is_internal)
+		VALUES ($1, $2, $3, $4)`, issueID, authorID, []byte(body), internal)
 	if err != nil {
 		return fmt.Errorf("add comment: %w", err)
 	}

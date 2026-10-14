@@ -214,8 +214,8 @@ func (s *Service) SavePreferences(ctx context.Context, userID uuid.UUID, p Prefe
 	inappRaw, _ := json.Marshal(p.InApp)
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO notification_preference (org_id, user_id, mail, inapp, digest, watch_own)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO notification_preference (user_id, mail, inapp, digest, watch_own)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (user_id) DO UPDATE SET mail = EXCLUDED.mail, inapp = EXCLUDED.inapp, digest = EXCLUDED.digest, watch_own = EXCLUDED.watch_own`,
 			userID, mailRaw, inappRaw, p.Digest, p.WatchOwn)
 		return err

@@ -101,8 +101,8 @@ func (s *Service) Record(ctx context.Context, repo *Repository, d *Delivery) (*R
 				inserted bool
 			)
 			err := tx.QueryRow(ctx, `
-				INSERT INTO git_commit (org_id, repository_id, sha, message, author_name, author_email, url, branch, committed_at)
-				VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8)
+				INSERT INTO git_commit (repository_id, sha, message, author_name, author_email, url, branch, committed_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 				ON CONFLICT (repository_id, sha) DO UPDATE SET branch = EXCLUDED.branch
 				RETURNING id, (xmax = 0)`,
 				repo.ID, c.SHA, c.Message, c.AuthorName, c.AuthorEmail, c.URL, c.Branch, c.CommittedAt,
@@ -163,8 +163,8 @@ func (s *Service) Record(ctx context.Context, repo *Repository, d *Delivery) (*R
 
 		for _, run := range d.Runs {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO ci_run (org_id, repository_id, external_id, name, status, url, sha, branch, started_at, finished_at)
-				VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
+				INSERT INTO ci_run (repository_id, external_id, name, status, url, sha, branch, started_at, finished_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 				ON CONFLICT (repository_id, external_id) DO UPDATE SET
 				    name = EXCLUDED.name, status = EXCLUDED.status, url = EXCLUDED.url,
 				    finished_at = EXCLUDED.finished_at`,
@@ -317,7 +317,7 @@ func (s *Service) actorFor(ctx context.Context, repo *Repository, email string) 
 		if email != "" {
 			err := tx.QueryRow(ctx, `
 				SELECT u.id, m.org_role FROM app_user u
-				JOIN org_member m ON m.user_id = u.id AND m.org_id = current_org_id()
+				JOIN org_member m ON m.user_id = u.id
 				WHERE lower(u.email) = lower($1) AND m.org_role <> 'customer'`, email).Scan(&userID, &role)
 			if err == nil {
 				found = true
@@ -330,7 +330,7 @@ func (s *Service) actorFor(ctx context.Context, repo *Repository, email string) 
 		err := tx.QueryRow(ctx, `
 			SELECT u.id, m.org_role FROM git_repository r
 			JOIN app_user u ON u.id = r.connected_by
-			JOIN org_member m ON m.user_id = u.id AND m.org_id = current_org_id()
+			JOIN org_member m ON m.user_id = u.id
 			WHERE r.id = $1`, repo.ID).Scan(&userID, &role)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
@@ -377,7 +377,7 @@ func (s *Service) link(ctx context.Context, tx db.DBTX, table, column, key strin
 		return false, err
 	}
 	_, err = tx.Exec(ctx, fmt.Sprintf(`
-		INSERT INTO %s (org_id, issue_id, %s) VALUES (current_org_id(), $1, $2)
+		INSERT INTO %s (issue_id, %s) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, table, column), *issueID, id)
 	if err != nil {
 		return false, fmt.Errorf("link %s to %s: %w", key, table, err)

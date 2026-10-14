@@ -38,7 +38,7 @@ type Definitions map[Role][]Permission
 // a unit test wants and what a request never gets.
 func Builtins() []Definition {
 	names := map[Role][2]string{
-		GlobalAdministrator:  {"Global administrator", "Administers the tenant: its members, its roles, its workflows and every project in it."},
+		GlobalAdministrator:  {"Global administrator", "Administers the installation: its members, its roles, its workflows and every project in it."},
 		ProjectAdministrator: {"Project administrator", "Configures one project: its boards, its workflow scheme, its teams, and whether it is archived."},
 		ScrumMaster:          {"Scrum master", "Runs the work in one project: sprints, teams and the planning that goes with them."},
 		User:                 {"User", "Does the ordinary work: files issues, moves them, comments."},
@@ -141,7 +141,7 @@ func KeyFromName(name string) Role {
 
 const selectRoles = `
 SELECT r.key, r.name, r.description, r.org_wide_only, r.builtin, r.permissions,
-       (SELECT count(*) FROM role_assignment a WHERE a.org_id = r.org_id AND a.role = r.key)
+       (SELECT count(*) FROM role_assignment a WHERE a.role = r.key)
 FROM org_role r`
 
 func scanDefinition(row pgx.Row) (*Definition, error) {
@@ -186,8 +186,8 @@ func (s *Store) Roles(ctx context.Context) ([]Definition, error) {
 }
 
 // definitionsFor reads what each role grants, for resolving one person.
-func definitionsFor(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (Definitions, error) {
-	rows, err := tx.Query(ctx, `SELECT key, permissions FROM org_role WHERE org_id = $1`, orgID)
+func definitionsFor(ctx context.Context, tx db.DBTX) (Definitions, error) {
+	rows, err := tx.Query(ctx, `SELECT key, permissions FROM org_role`)
 	if err != nil {
 		return nil, fmt.Errorf("read roles: %w", err)
 	}
@@ -256,8 +256,8 @@ func (s *Store) CreateRole(ctx context.Context, in RoleInput, actor uuid.UUID) (
 	var out *Definition
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO org_role (org_id, key, name, description, org_wide_only, permissions)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)`, string(key), name, description, orgWide, perms)
+			INSERT INTO org_role (key, name, description, org_wide_only, permissions)
+			VALUES ($1, $2, $3, $4, $5)`, string(key), name, description, orgWide, perms)
 		if isUniqueViolation(err) {
 			return ErrRoleNameTaken
 		}
