@@ -1,0 +1,27 @@
+# The push hook judges only the clones that turned it on; this judges every
+# pull request, by the same script, before it can be merged.
+name: Conventions
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  conventions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Branch name
+        run: sh deploy/conventions.sh branch "$GITHUB_HEAD_REF"
+
+      - name: Commit subjects
+        run: sh deploy/conventions.sh range "origin/$GITHUB_BASE_REF" HEAD
+
+      - name: Script tests
+        run: sh deploy/tests/conventions_test.sh
