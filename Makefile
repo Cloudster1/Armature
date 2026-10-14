@@ -107,7 +107,7 @@ test: test-scripts ## Run backend unit tests and the script tests
 .PHONY: test-scripts
 test-scripts: ## Test the scripts in deploy/ and the push hook, and lint the GitHub workflows
 	docker run --rm -t -u $(UID):$(GID) -e HOME=/tmp -v $(ROOT):/src:ro -w /src \
-		--entrypoint sh $(SCRIPTS_IMAGE) deploy/tests/conventions_test.sh
+		--entrypoint sh $(SCRIPTS_IMAGE) -c 'for t in deploy/tests/*_test.sh; do sh "$$t" || exit 1; done'
 	docker run --rm -t -u $(UID):$(GID) -v $(ROOT):/src:ro -w /src $(ACTIONLINT_IMAGE) -color
 
 .PHONY: hooks
@@ -243,8 +243,12 @@ realm-check: ## Fail if deploy/keycloak/realm.json differs from Dynamo's canonic
 # VERSION is read here only as the argument; the file of the same name is what
 # the release writes. See deploy/release.sh for what is refused and why.
 .PHONY: release
-release: ## Cut a release from a clean main: make release VERSION=x.y.z (tags, does not push)
-	@sh deploy/release.sh '$(VERSION)'
+release: ## Open the release pull request from an up-to-date main: make release [VERSION=x.y.z] [DRY_RUN=1]
+	@sh deploy/release.sh '$(VERSION)' $(if $(DRY_RUN),--dry-run)
+
+.PHONY: release-tag
+release-tag: ## Tag the merged release pull request and push the tag, which publishes it: make release-tag [DRY_RUN=1]
+	@sh deploy/release.sh tag $(if $(DRY_RUN),--dry-run)
 
 ## ---------- frontend ----------
 

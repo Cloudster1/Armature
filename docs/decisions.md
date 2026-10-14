@@ -2382,6 +2382,37 @@ counting, so the release script never has to read the old subjects.
 than the subjects, such as labels on the pull request; then the subjects need
 not carry it and the check can go.
 
+### A release is inferred, merged as a pull request and tagged by the releaser
+
+Stator, Armature and Exciter release the same way, so Dynamo can treat them
+alike. With no version given, `make release` reads it from the commits since
+the last tag, by the convention `deploy/conventions.sh` checks: a break raises
+MAJOR, or MINOR below 1.0.0 as semver allows, a `feat` MINOR and the rest
+PATCH. It prints the rule and the commits behind it, so the number is checked
+before anything is written, and a version can still be named by hand. Before
+the first tag there is nothing to count from, and the first one is named.
+
+Main takes no direct commits, so the bump travels on `release/vX.Y.Z` with a
+pull request like any other change, and the tag goes on its merge, never on a
+commit main does not have. Both steps refuse a checkout behind or ahead of the
+remote for the same reason. The tag is made and pushed by `make release-tag`
+from the releaser's clone rather than by a workflow after the merge: a tag
+pushed with a workflow's `GITHUB_TOKEN` starts no other workflow, so the
+Release workflow would never run, and a personal token stored for it would
+be one more secret to rotate.
+
+The Release workflow builds from the tag, so what is published is what CI
+built from a commit anyone can fetch. The images are
+`ghcr.io/cloudster1/armature-<image>`, one package per image under the owner,
+the shape all three tools use, and the chart's defaults, so a chart of a
+release installs its own images. The chart is an OCI artifact beside them at
+`oci://ghcr.io/cloudster1/charts`, which needs no index to keep. The Jenkinsfile
+stays for a private registry and is not part of a release.
+
+**Reconsider if** the repository moves to a GitHub organization whose tokens may
+start workflows, or GitHub lets a workflow's tag start another; then the
+workflow could tag the merge itself and the second step would go.
+
 ### MCP is the same table, dispatched in process
 
 A tool is a row of the operation table marked with a name and a sentence, and

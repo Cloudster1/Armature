@@ -7,14 +7,15 @@ fullnameOverride: ""
 
 images:
   # The four backend targets of deploy/Dockerfile.backend, the production
-  # target of deploy/Dockerfile.web, and the public Chrome image the PDF
-  # renderer runs in. An empty tag means the chart's appVersion.
-  api: { repository: armature/api, tag: "" }
-  worker: { repository: armature/worker, tag: "" }
-  migrate: { repository: armature/migrate, tag: "" }
-  seed: { repository: armature/seed, tag: "" }
-  web: { repository: armature/web, tag: "" }
-  render: { repository: armature/render, tag: "" }
+  # target of deploy/Dockerfile.web and the PDF renderer of
+  # deploy/Dockerfile.render, as the Release workflow publishes them for each
+  # tag. An empty tag means the chart's appVersion.
+  api: { repository: ghcr.io/cloudster1/armature-api, tag: "" }
+  worker: { repository: ghcr.io/cloudster1/armature-worker, tag: "" }
+  migrate: { repository: ghcr.io/cloudster1/armature-migrate, tag: "" }
+  seed: { repository: ghcr.io/cloudster1/armature-seed, tag: "" }
+  web: { repository: ghcr.io/cloudster1/armature-web, tag: "" }
+  render: { repository: ghcr.io/cloudster1/armature-render, tag: "" }
   psql: { repository: postgres, tag: 18-alpine }
   # Valkey answers the Redis protocol; only the bundled cache uses this.
   redis: { repository: valkey/valkey, tag: 8-alpine }

@@ -1,12 +1,22 @@
 # Changelog
 
 What changed in each release, newest first. Versions follow
-[semantic versioning](https://semver.org); `make release VERSION=x.y.z` moves
-everything under Unreleased into a section of its own, so a change is written
-here in the branch that makes it.
+[semantic versioning](https://semver.org); `make release` moves everything
+under Unreleased into a section of its own, which becomes the release's notes
+and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: `make release` reads the next version from the commits since the
+  last tag when none is given, and prints the rule it applied and the commits
+  that decided it; `DRY_RUN=1` prints that and the notes and changes nothing.
+  It refuses a checkout off `main`, with changes, or behind or ahead of
+  `origin/main`, and opens a pull request for `release/vX.Y.Z` instead of
+  merging into main itself. `make release-tag` tags that merge with the notes
+  and pushes the tag, and on the tag the Release workflow publishes the images
+  to `ghcr.io/cloudster1/armature-<image>`, the chart to
+  `oci://ghcr.io/cloudster1/charts` and the GitHub release, and tells Dynamo.
+  The chart pulls those images by default (#240).
 - Fixed: what somebody types in a project's settings stays when the project
   is fetched again, for instance right after the previous save; a field nobody
   touched still follows what the server has (#252).
