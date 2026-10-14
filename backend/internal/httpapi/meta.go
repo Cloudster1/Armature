@@ -22,12 +22,6 @@ type meta struct {
 	Capabilities []string       `json:"capabilities"`
 }
 
-// capabilities is what this build announces beyond its API version; a client
-// checks for a name here rather than comparing versions.
-func capabilities() []string {
-	return []string{}
-}
-
 // handleMeta answers anyone; the commit and when it was built are only for
 // somebody signed in and past enrolment, as they were at /build.
 func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {

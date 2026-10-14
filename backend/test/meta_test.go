@@ -4,6 +4,7 @@ package test
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/armature/armature/backend/internal/auth"
@@ -12,7 +13,7 @@ import (
 )
 
 // What a partner, an operator or Dynamo reads to tell which build it talks to:
-// the stamp the binary carries, and the API version the document declares.
+// the stamp, the API version and the capabilities, the last to anyone.
 func TestMetaReportsTheRunningBuild(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
@@ -28,8 +29,9 @@ func TestMetaReportsTheRunningBuild(t *testing.T) {
 	if meta.Body["apiVersion"] != httpapi.Spec().Info.Version {
 		t.Errorf("apiVersion = %v, the document says %s", meta.Body["apiVersion"], httpapi.Spec().Info.Version)
 	}
-	if caps, ok := meta.Body["capabilities"].([]any); !ok || len(caps) != 0 {
-		t.Errorf("capabilities = %v, want an empty list", meta.Body["capabilities"])
+	wantCaps := []any{"calendar@1", "issue-embed@1", "plan@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks@1"}
+	if caps, ok := meta.Body["capabilities"].([]any); !ok || !slices.Equal(caps, wantCaps) {
+		t.Errorf("capabilities = %v, want %v", meta.Body["capabilities"], wantCaps)
 	}
 	build := obj(t, meta, "build")
 	if build["version"] != current.Version || build["commit"] != current.Commit || build["builtAt"] != current.BuiltAt {
@@ -46,6 +48,9 @@ func TestMetaReportsTheRunningBuild(t *testing.T) {
 	}
 	if _, told := seen["builtAt"]; told {
 		t.Errorf("somebody not signed in was told when it was built: %s", anonymous.Raw)
+	}
+	if caps, ok := anonymous.Body["capabilities"].([]any); !ok || !slices.Equal(caps, wantCaps) {
+		t.Errorf("capabilities = %v anonymously, want %v", anonymous.Body["capabilities"], wantCaps)
 	}
 	if anonymous.Body["apiVersion"] != meta.Body["apiVersion"] {
 		t.Errorf("apiVersion = %v anonymously, %v signed in", anonymous.Body["apiVersion"], meta.Body["apiVersion"])
