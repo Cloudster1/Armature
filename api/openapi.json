@@ -18393,7 +18393,8 @@
           "default": {
             "description": "Not taken: the delivery is tried again later, with backoff, as is one not answered in time."
           }
-        }
+        },
+        "security": []
       }
     }
   },
