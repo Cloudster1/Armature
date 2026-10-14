@@ -175,7 +175,7 @@ primary. The API connects as a role that is neither owner nor superuser,
 and a second role, for sign-in and the account paths, is the only one that
 reads the secret tables. Inside an installation the walls are projects, kept
 by the API and by triggers on the tables; there is no row level security, and
-no table names an organization. Events are written to an outbox table in the
+no table names an organization or is named for one. Events are written to an outbox table in the
 same transaction as the change and relayed to Redis, so an event never describes
 a transaction that rolled back.
 
@@ -244,8 +244,8 @@ afterwards, including on failure.
 
 The integration suite opens one cluster, the superuser pools and the attachment
 bucket in `TestMain`, and `newHarness` hands them to every test. Every test
-works in the one installation, the database's organization, which `TestMain`
-makes the way the first sign-up would when there is none yet. Tests keep apart
+works in the one installation, the database's `installation` row, which
+`TestMain` makes the way the first sign-up would when there is none yet. Tests keep apart
 by what they make rather than where: `h.person` and `h.outsider` make people at
 the standing a test needs, `h.newProject` an owner with a project of their own,
 `h.projectKey` a project key nobody else has and `h.name` a name for anything

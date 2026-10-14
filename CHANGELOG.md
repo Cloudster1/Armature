@@ -7,6 +7,27 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the organization's tables are named for the installation. `org`
+  is `installation`, `org_role` is `role`, `org_invite` is `invite` and
+  `org_join_request` is `join_request`, with their constraints, indexes,
+  triggers and functions. A membership is the account's standing,
+  `app_user.standing`: owner, admin, member, customer, or NULL for somebody
+  who is no member, and `org_member` is gone. An invitation's and a role's
+  `org_role` and `org_wide_only` are `standing` and `installation_wide_only`.
+  `/auth/me` names the installation, its id and name (#218).
+- Deprecated: the `org` of `/auth/me`, which names the same installation,
+  read `installation` instead. It goes in the next release, together with
+  the deprecated `orgId` of webhooks, the `member.joined` event and
+  invitations, and the redirects from the old addresses (#218).
+- Upgrade note (#218): a report, export or script that reads the database
+  directly and names `org`, `org_member`, `org_role`, `org_invite` or
+  `org_join_request` breaks with this release. Read `installation`, `role`,
+  `invite` and `join_request`, and a person's standing from
+  `app_user.standing`, where no membership is NULL. The upgrade stops,
+  names what it found and changes nothing at a view, trigger, rule or key of
+  yours on `org_member`, and at a function of yours that names an old
+  table; change or drop them first. Taking the upgrade back makes
+  `org_member` again from the standings and every name as it was.
 - Changed: the tables no longer carry the organization. `org_id` goes from
   every table, and so do the two session columns an earlier release emptied
   and the functions that answered for them. The installation's own row is

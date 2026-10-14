@@ -354,7 +354,7 @@ Administer Armature           org.a.  [x] fixed     [ ]              [ ]
 ```
 
 Roles are the installation's own: the five it starts with are rows in
-`org_role`, and administrators may add more. The Matrix tab (`[data-role-matrix]`) lists
+`role`, and administrators may add more. The Matrix tab (`[data-role-matrix]`) lists
 every permission the code checks for (`GET /permissions`, `data-permission-row`)
 against every role (`GET /roles`, `data-role-column=<key>`), a checkbox at
 each crossing (`data-permission-cell="<key>:<permission>"`) saved the moment
