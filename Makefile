@@ -105,10 +105,11 @@ test: test-scripts ## Run backend unit tests and the script tests
 	$(DOCKER_GO) go test ./...
 
 .PHONY: test-scripts
-test-scripts: ## Test the scripts in deploy/ and the push hook, and lint the GitHub workflows
+test-scripts: ## Test the scripts in deploy/ and the push hook, lint the GitHub workflows, and compare the realm with Dynamo's
 	docker run --rm -t -u $(UID):$(GID) -e HOME=/tmp -v $(ROOT):/src:ro -w /src \
 		--entrypoint sh $(SCRIPTS_IMAGE) deploy/tests/conventions_test.sh
 	docker run --rm -t -u $(UID):$(GID) -v $(ROOT):/src:ro -w /src $(ACTIONLINT_IMAGE) -color
+	@$(MAKE) --no-print-directory realm-check
 
 .PHONY: hooks
 hooks: ## Have git refuse a push whose branch name or commit subjects the release script cannot read
