@@ -19,6 +19,7 @@ import {
   inviteMember,
   PASSWORD,
   reload,
+  settled,
   signIn,
   signInThroughForm,
   signUp,
@@ -304,9 +305,12 @@ scenario("an archived project comes back by Undo and by Restore", async ({ page 
   const key = await createProject(page, "Brought back", { visit: false });
   await goto(page, "/projects");
 
+  // The toast lasts seconds, so Undo is pressed as soon as it says the project went.
   await pickProjectAction(page, key, "archive-project");
-  await page.waitForFunction((k) => !document.querySelector(`[data-project="${k}"]`), { timeout: WAIT }, key);
+  await page.waitForFunction(() => document.body.innerText.includes("Archived Brought back"), { timeout: WAIT });
   await clickButton(page, "Undo");
+  await settled(page);
+  await reload(page);
   await waitForProjectRow(page, key, { archived: false });
 
   await pickProjectAction(page, key, "archive-project");
