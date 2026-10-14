@@ -192,3 +192,115 @@ func TestAPageLinkKeepsToItsIssueEvenThroughSQL(t *testing.T) {
 		}
 	})
 }
+
+// A requirement traced to an issue is told apart from a page about it, and a
+// sync that says nothing of the relation leaves the one it has.
+func TestALinkSaysWhatItIsToTheIssue(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	relKey := h.projectKey(t, "REL")
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signIn(t, h.person(t, "relations", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Relations", "key": relKey}), http.StatusCreated, "create project")
+	filed := obj(t, want(t, owner.post("/api/v1/projects/"+relKey+"/issues", map[string]any{"summary": "checkout flow"}), http.StatusCreated, "file issue"), "issue")
+	key, issueID := filed["key"].(string), filed["id"].(string)
+	path := "/api/v1/issues/" + key + "/remote-links"
+	requirement := "https://req.example.com/requirements/R-7"
+
+	payloadOf := func(topic, url string) map[string]any {
+		t.Helper()
+		var payload map[string]any
+		if err := h.super.QueryRow(context.Background(), `
+			SELECT payload FROM outbox_event WHERE topic = $1 AND payload->>'key' = $2 AND payload->>'url' = $3`,
+			topic, key, url).Scan(&payload); err != nil {
+			t.Fatalf("the %s event for %s: %v", topic, url, err)
+		}
+		return payload
+	}
+
+	made := obj(t, want(t, owner.post(path, map[string]any{
+		"url": requirement, "title": "R-7 Pay by card", "source": "Exciter", "relation": "requirement",
+	}), http.StatusCreated, "trace a requirement to the issue"), "remoteLink")
+	if made["relation"] != "requirement" {
+		t.Errorf("the requirement came back as %v", made)
+	}
+	if got := payloadOf(events.TopicRemoteLinkAdded, requirement)["relation"]; got != "requirement" {
+		t.Errorf("the addition announced relation %v, want requirement", got)
+	}
+
+	t.Run("a link sent without a relation is a page", func(t *testing.T) {
+		page := obj(t, want(t, owner.post(path, map[string]any{
+			"url": "https://wiki.example.com/pages/checkout", "title": "Checkout spec", "source": "Stator",
+		}), http.StatusCreated, "put a page as before relations"), "remoteLink")
+		if page["relation"] != "page" {
+			t.Errorf("a link without a relation came back as %v", page)
+		}
+	})
+
+	t.Run("a sync that leaves the relation out keeps it, and one that says it changes it", func(t *testing.T) {
+		again := obj(t, want(t, owner.post(path, map[string]any{
+			"url": requirement, "title": "R-7 Pay by card or wallet", "source": "Exciter",
+		}), http.StatusOK, "retitle the requirement"), "remoteLink")
+		if again["relation"] != "requirement" || again["title"] != "R-7 Pay by card or wallet" {
+			t.Errorf("a retitle without a relation came back as %v", again)
+		}
+		read := map[any]any{}
+		for _, link := range list(t, owner.get(path), "remoteLinks") {
+			read[link.(map[string]any)["url"]] = link.(map[string]any)["relation"]
+		}
+		if read[requirement] != "requirement" {
+			t.Errorf("the requirement reads back as %v", read[requirement])
+		}
+		changed := obj(t, want(t, owner.post(path, map[string]any{
+			"url": requirement, "title": "R-7 Pay by card or wallet", "source": "Exciter", "relation": "page",
+		}), http.StatusOK, "say it is a page after all"), "remoteLink")
+		if changed["relation"] != "page" {
+			t.Errorf("a relation sent again was not taken: %v", changed)
+		}
+		want(t, owner.post(path, map[string]any{
+			"url": requirement, "title": "R-7 Pay by card or wallet", "source": "Exciter", "relation": "requirement",
+		}), http.StatusOK, "and a requirement again")
+	})
+
+	t.Run("a relation the server does not know is refused with a sentence", func(t *testing.T) {
+		refused := want(t, owner.post(path, map[string]any{
+			"url": "https://req.example.com/requirements/R-8", "title": "R-8", "source": "Exciter", "relation": "spec",
+		}), http.StatusUnprocessableEntity, "an unknown relation")
+		message, _ := refused.Error()["message"].(string)
+		if !strings.Contains(message, "page or requirement") || !strings.HasSuffix(message, ".") {
+			t.Errorf("the refusal reads %q", message)
+		}
+	})
+
+	t.Run("the removal announces what the link was", func(t *testing.T) {
+		want(t, owner.delete(path+"/"+made["id"].(string)), http.StatusNoContent, "take the requirement off")
+		if got := payloadOf(events.TopicRemoteLinkRemoved, requirement)["relation"]; got != "requirement" {
+			t.Errorf("the removal announced relation %v, want requirement", got)
+		}
+	})
+
+	t.Run("the table refuses a relation written by hand that it does not know", func(t *testing.T) {
+		_, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+			_, err := tx.Exec(ctx, `
+				INSERT INTO issue_remote_link (issue_id, url, title, source, relation)
+				VALUES ($1, 'https://req.example.com/requirements/R-9', 'By hand', 'Exciter', 'other')`, issueID)
+			return err
+		})
+		if err == nil || !strings.Contains(err.Error(), "issue_remote_link_relation_known") {
+			t.Errorf("a relation of other was written: %v", err)
+		}
+		var relation string
+		if _, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+			return tx.QueryRow(ctx, `
+				INSERT INTO issue_remote_link (issue_id, url, title, source)
+				VALUES ($1, 'https://wiki.example.com/pages/by-hand', 'By hand', 'Stator')
+				RETURNING relation`, issueID).Scan(&relation)
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if relation != "page" {
+			t.Errorf("a row written by hand without a relation is %q, want page", relation)
+		}
+	})
+}
