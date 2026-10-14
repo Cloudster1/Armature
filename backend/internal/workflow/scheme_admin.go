@@ -90,7 +90,7 @@ func (a *Admin) CreateScheme(ctx context.Context, in SchemeInput, actor uuid.UUI
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "workflow.scheme.created", map[string]any{
+		return events.Emit(ctx, tx, "workflow.scheme.created", map[string]any{
 			"schemeId": id, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -132,7 +132,7 @@ func (a *Admin) SaveScheme(ctx context.Context, id uuid.UUID, in SchemeInput, ac
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "workflow.scheme.updated", map[string]any{
+		return events.Emit(ctx, tx, "workflow.scheme.updated", map[string]any{
 			"schemeId": id, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -170,7 +170,7 @@ func (a *Admin) SetDefaultScheme(ctx context.Context, id uuid.UUID, actor uuid.U
 			UPDATE workflow_scheme SET is_default = true WHERE id = $1`, id); err != nil {
 			return fmt.Errorf("promote scheme: %w", err)
 		}
-		return events.EmitInTenant(ctx, tx, "workflow.scheme.promoted", map[string]any{
+		return events.Emit(ctx, tx, "workflow.scheme.promoted", map[string]any{
 			"schemeId": id, "actorId": actor,
 		})
 	})

@@ -151,7 +151,7 @@ func (s *Service) Create(ctx context.Context, projectKey string, in Input, actor
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "milestone.created", map[string]any{
+		return events.Emit(ctx, tx, "milestone.created", map[string]any{
 			"milestoneId": id, "projectId": projectID, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -209,7 +209,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "milestone.updated", map[string]any{
+		return events.Emit(ctx, tx, "milestone.updated", map[string]any{
 			"milestoneId": id, "name": name, "actorId": actor,
 		})
 	})
@@ -257,7 +257,7 @@ func (s *Service) setClosed(ctx context.Context, id uuid.UUID, closed bool, acto
 		if !closed {
 			topic = "milestone.reopened"
 		}
-		return events.EmitInTenant(ctx, tx, topic, map[string]any{
+		return events.Emit(ctx, tx, topic, map[string]any{
 			"milestoneId": id, "name": before.Name, "actorId": actor,
 		})
 	})
@@ -279,7 +279,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db
 		if err != nil {
 			return fmt.Errorf("delete milestone: %w", err)
 		}
-		return events.EmitInTenant(ctx, tx, "milestone.deleted", map[string]any{
+		return events.Emit(ctx, tx, "milestone.deleted", map[string]any{
 			"milestoneId": id, "name": name, "actorId": actor,
 		})
 	})

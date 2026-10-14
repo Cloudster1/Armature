@@ -349,7 +349,7 @@ func TestACustomerIsMailedAboutTheirRequest(t *testing.T) {
 	handle := func(topic string, payload map[string]any) {
 		t.Helper()
 		raw, _ := json.Marshal(payload)
-		if err := notifier.Handle(context.Background(), events.Event{OrgID: ws.orgID, Topic: topic, Payload: raw}); err != nil {
+		if err := notifier.Handle(context.Background(), events.Event{Topic: topic, Payload: raw}); err != nil {
 			t.Fatal(err)
 		}
 	}

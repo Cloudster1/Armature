@@ -124,7 +124,7 @@ func (s *Service) AddLink(ctx context.Context, key string, in LinkInput, actor A
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": source,
 			"key":     strings.ToUpper(key),
 			"changes": []Change{{Field: "link", To: linkType.Outward + " " + created.Issue.Key}},
@@ -163,7 +163,7 @@ func (s *Service) RemoveLink(ctx context.Context, from string, id uuid.UUID) (db
 		if _, err := tx.Exec(ctx, `DELETE FROM issue_link WHERE id = $1`, id); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": source,
 			"key":     sourceKey,
 			"changes": []Change{{Field: "link", From: removed.Phrase + " " + removed.Issue.Key}},
@@ -393,7 +393,7 @@ func readLink(ctx context.Context, tx db.DBTX, id, from uuid.UUID) (*Link, error
 	return nil, ErrLinkNotFound
 }
 
-// issueIDOf resolves a project key and number to an id inside this tenant.
+// issueIDOf resolves a project key and number to an id.
 func issueIDOf(ctx context.Context, tx db.DBTX, projectKey string, num int64) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := tx.QueryRow(ctx, `

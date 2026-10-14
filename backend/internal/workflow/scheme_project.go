@@ -51,7 +51,7 @@ func EnsureOwnScheme(ctx context.Context, tx db.DBTX, projectID uuid.UUID, proje
 			return uuid.Nil, false, fmt.Errorf("copy the shared scheme: %w", err)
 		}
 	}
-	return id, true, events.EmitInTenant(ctx, tx, "workflow.scheme.created", map[string]any{
+	return id, true, events.Emit(ctx, tx, "workflow.scheme.created", map[string]any{
 		"schemeId": id, "name": name, "projectId": projectID,
 	})
 }

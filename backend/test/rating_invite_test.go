@@ -71,7 +71,7 @@ func TestOnlyTheReporterIsAskedToRate(t *testing.T) {
 	}
 	notifier := desk.NewNotifier(h.cluster, nil, send, "http://app.test", slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	raw, _ := json.Marshal(map[string]any{"key": raised.Key, "transition": "Resolve", "fromStatus": "Waiting for support", "toStatus": "Resolved", "actorId": ws.actor.UserID})
-	if err := notifier.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: raw}); err != nil {
+	if err := notifier.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueTransitioned, Payload: raw}); err != nil {
 		t.Fatal(err)
 	}
 

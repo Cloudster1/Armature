@@ -175,7 +175,7 @@ func (s *Service) PutRemoteLink(ctx context.Context, key string, in RemoteLinkIn
 		if !inserted {
 			return nil
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicRemoteLinkAdded, map[string]any{
+		return events.Emit(ctx, tx, events.TopicRemoteLinkAdded, map[string]any{
 			"issueId": issueID, "key": issueKey, "linkId": l.ID, "url": l.URL, "title": l.Title,
 			"source": l.Source, "actorId": actor.UserID,
 		})
@@ -203,7 +203,7 @@ func (s *Service) RemoveRemoteLink(ctx context.Context, key string, id uuid.UUID
 		if err != nil {
 			return fmt.Errorf("remove page link: %w", err)
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicRemoteLinkRemoved, map[string]any{
+		return events.Emit(ctx, tx, events.TopicRemoteLinkRemoved, map[string]any{
 			"issueId": issueID, "key": issueKey, "linkId": removed.ID, "url": removed.URL, "title": removed.Title,
 			"source": removed.Source, "actorId": actor.UserID,
 		})

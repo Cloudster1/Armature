@@ -146,7 +146,7 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	})
 
 	// Authoring workflows and deciding which scheme answers for the
-	// organization is administration of the tenant.
+	// organization is administration of the installation.
 	r.Group(func(r chi.Router) {
 		r.Use(requirePerm(perm.OrgAdminister))
 		r.Post("/statuses", s.handleCreateStatus)

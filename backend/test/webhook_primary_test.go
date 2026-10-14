@@ -13,7 +13,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Testing and redelivering a webhook read back the delivery they just wrote,
@@ -33,7 +32,7 @@ func TestAWebhookTestReadsTheDeliveryItJustWrote(t *testing.T) {
 
 	// The replica holds everything up to here, so the caller's reads may go
 	// there, and then it stops: whatever the test writes next is primary only.
-	ctx := tenant.WithOrg(context.Background(), tenant.Org{ID: orgID})
+	ctx := context.Background()
 	warmup, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'webhook.warmup', 'org')`, orgID)
 		return err

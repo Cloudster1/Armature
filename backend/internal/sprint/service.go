@@ -187,7 +187,7 @@ func (s *Service) Create(ctx context.Context, projectKey string, in CreateInput,
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "sprint.created", map[string]any{
+		return events.Emit(ctx, tx, "sprint.created", map[string]any{
 			"sprintId": id, "projectId": projectID, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -259,7 +259,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "sprint.updated", map[string]any{
+		return events.Emit(ctx, tx, "sprint.updated", map[string]any{
 			"sprintId": id, "name": name, "actorId": actor,
 		})
 	})

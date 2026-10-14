@@ -62,7 +62,7 @@ func (s *Service) recordPull(ctx context.Context, tx db.DBTX, repo *Repository, 
 		}
 		if linked {
 			receipt.Linked = appendUnique(receipt.Linked, key)
-			if err := events.EmitInTenant(ctx, tx, events.TopicPullRequestLinked, map[string]any{
+			if err := events.Emit(ctx, tx, events.TopicPullRequestLinked, map[string]any{
 				"issueKey": key, "repositoryId": repo.ID, "number": pr.Number,
 			}); err != nil {
 				return nil, err

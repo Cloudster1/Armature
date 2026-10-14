@@ -67,7 +67,7 @@ func (s *Service) Schedule(ctx context.Context, key string, in ScheduleInput, ac
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": updated.ID,
 			"key":     updated.Key,
 			"changes": changes,

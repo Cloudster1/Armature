@@ -7,6 +7,21 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the api and the worker no longer carry the organization. No
+  transaction is bound to one, a row written without `org_id` is the
+  installation's by default, the worker's passes run once over the
+  installation instead of once per organization, events name no
+  organization on their way through the stream, and the request log has no
+  `org` field (#218).
+- Deprecated: the `orgId` of a webhook's envelope. It holds the
+  installation's stable id for one more release, the same id it held
+  before, and a later release removes it; read nothing from it (#218).
+- Upgrade note (#218): drain the outbox and the event stream before
+  upgrading, and do not run workers of both releases side by side. The
+  previous release's worker skips an event this release relayed, because it
+  names no organization. Stop the api, let the worker run until
+  `armature_outbox_pending`, `armature_stream_lag` and
+  `armature_stream_pending` are 0 for every group, stop it, then upgrade.
 - Changed: the database's triggers keep their rules without the
   organization. Each still holds a row to its project, its service desk or
   its member, and none reads `org_id` or fires on it changing; the nine that

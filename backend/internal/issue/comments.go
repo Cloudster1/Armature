@@ -81,7 +81,7 @@ func (s *Service) addComment(ctx context.Context, key string, body json.RawMessa
 			return err
 		}
 
-		return events.EmitInTenant(ctx, tx, events.TopicCommentAdded, map[string]any{
+		return events.Emit(ctx, tx, events.TopicCommentAdded, map[string]any{
 			"issueId":   issueID,
 			"key":       issueKey,
 			"commentId": comment.ID,

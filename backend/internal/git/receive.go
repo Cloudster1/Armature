@@ -14,7 +14,6 @@ import (
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Receipt says what a delivery amounted to, for the host's log and for tests.
@@ -31,18 +30,16 @@ type Receipt struct {
 	Refused []string `json:"refused"`
 }
 
-// Receive handles a webhook. It arrives with no session, so the repository is
-// looked up outside any tenant, the delivery is authenticated against that
-// repository's secret, and only then does the work run inside its organization.
+// Receive handles a webhook. It arrives with no session, so the delivery is
+// authenticated against its repository's secret before any work runs.
 func (s *Service) Receive(ctx context.Context, repoID uuid.UUID, r *http.Request, body []byte) (*Receipt, error) {
 	var (
-		orgID  uuid.UUID
 		kind   HostKind
 		secret string
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT org_id, host, webhook_secret FROM git_repository WHERE id = $1`, repoID).
-			Scan(&orgID, &kind, &secret)
+		return tx.QueryRow(ctx, `SELECT host, webhook_secret FROM git_repository WHERE id = $1`, repoID).
+			Scan(&kind, &secret)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -59,7 +56,7 @@ func (s *Service) Receive(ctx context.Context, repoID uuid.UUID, r *http.Request
 		return nil, err
 	}
 
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID}))
+	ctx = db.PinPrimary(ctx)
 	repo, err := s.ByID(ctx, repoID)
 	if err != nil {
 		return nil, err
@@ -137,7 +134,7 @@ func (s *Service) Record(ctx context.Context, repo *Repository, d *Delivery) (*R
 				}
 				if linked {
 					receipt.Linked = appendUnique(receipt.Linked, key)
-					if err := events.EmitInTenant(ctx, tx, events.TopicCommitLinked, map[string]any{
+					if err := events.Emit(ctx, tx, events.TopicCommitLinked, map[string]any{
 						"issueKey": key, "repositoryId": repo.ID, "sha": c.SHA,
 					}); err != nil {
 						return err
@@ -176,7 +173,7 @@ func (s *Service) Record(ctx context.Context, repo *Repository, d *Delivery) (*R
 				return fmt.Errorf("record run %s: %w", run.ExternalID, err)
 			}
 			receipt.Runs++
-			if err := events.EmitInTenant(ctx, tx, events.TopicCIRunRecorded, map[string]any{
+			if err := events.Emit(ctx, tx, events.TopicCIRunRecorded, map[string]any{
 				"repositoryId": repo.ID, "externalId": run.ExternalID, "status": run.Status, "sha": run.SHA,
 			}); err != nil {
 				return err

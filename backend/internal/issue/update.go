@@ -234,7 +234,7 @@ func AnnounceUpdate(ctx context.Context, tx db.DBTX, issueID uuid.UUID, key stri
 	if err := RecordChanges(ctx, tx, issueID, actor.UserID, changes); err != nil {
 		return err
 	}
-	return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+	return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 		"issueId": issueID,
 		"key":     key,
 		"changes": changes,

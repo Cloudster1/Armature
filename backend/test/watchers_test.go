@@ -66,7 +66,7 @@ func TestAFollowerIsToldAndCanStop(t *testing.T) {
 	handle := func(topic string, payload map[string]any) {
 		t.Helper()
 		raw, _ := json.Marshal(payload)
-		if err := notifier.Handle(context.Background(), events.Event{OrgID: ws.orgID, Topic: topic, Payload: raw}); err != nil {
+		if err := notifier.Handle(context.Background(), events.Event{Topic: topic, Payload: raw}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -246,7 +246,7 @@ func TestWatchOwnDecidesWhoHearsOfTheirOwnIssues(t *testing.T) {
 	handle := func(topic string, payload map[string]any) {
 		t.Helper()
 		raw, _ := json.Marshal(payload)
-		if err := fan.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: topic, Payload: raw}); err != nil {
+		if err := fan.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: topic, Payload: raw}); err != nil {
 			t.Fatal(err)
 		}
 	}

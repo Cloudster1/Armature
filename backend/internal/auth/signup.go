@@ -113,8 +113,7 @@ func (s *Service) signupState(org *Org) SignupState {
 func installationOrg(ctx context.Context, tx db.DBTX) (*Org, error) {
 	var org Org
 	err := tx.QueryRow(ctx, `
-		SELECT id, slug, name FROM org WHERE archived_at IS NULL
-		ORDER BY created_at, id LIMIT 1`).Scan(&org.ID, &org.Slug, &org.Name)
+		SELECT id, slug, name FROM org WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -273,7 +272,7 @@ func joinInstallation(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, 
 	if err := writeAudit(ctx, tx, orgID, userID, "member.joined", "user", &userID, ip); err != nil {
 		return err
 	}
-	return events.Emit(ctx, tx, orgID, events.TopicMemberJoined, map[string]any{
+	return events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{
 		"orgId": orgID, "userId": userID, "role": RoleMember,
 	})
 }

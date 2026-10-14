@@ -169,7 +169,7 @@ func (s *Service) CreateIn(ctx context.Context, tx db.DBTX, in CreateInput, acto
 		}
 	}
 
-	err = events.EmitInTenant(ctx, tx, "project.created", map[string]any{
+	err = events.Emit(ctx, tx, "project.created", map[string]any{
 		"projectId": p.ID,
 		"key":       p.Key,
 		"name":      p.Name,
@@ -478,7 +478,7 @@ func (s *Service) SetWorkflowScheme(ctx context.Context, key string, schemeID *u
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "project.workflow_scheme_changed", map[string]any{
+		return events.Emit(ctx, tx, "project.workflow_scheme_changed", map[string]any{
 			"projectId": p.ID, "key": p.Key, "schemeId": schemeID, "actorId": actor,
 		})
 	})
@@ -502,7 +502,7 @@ func (s *Service) Archive(ctx context.Context, key string) (db.LSN, error) {
 		if tag.RowsAffected() == 0 {
 			return ErrNotFound
 		}
-		return events.EmitInTenant(ctx, tx, "project.archived", map[string]any{"key": NormalizeKey(key)})
+		return events.Emit(ctx, tx, "project.archived", map[string]any{"key": NormalizeKey(key)})
 	})
 }
 

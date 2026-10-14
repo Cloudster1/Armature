@@ -17,7 +17,6 @@ import (
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/mail"
 	"github.com/armature/armature/backend/internal/nql"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // payload is every field an event may carry that a rule reads.
@@ -47,9 +46,6 @@ func (p payload) key() string {
 // the same event: a run exists per rule and event, and the second pass stops
 // at the row that is already there.
 func (s *Service) Handle(ctx context.Context, e events.Event) error {
-	if e.OrgID == uuid.Nil {
-		return nil
-	}
 	var p payload
 	if len(e.Payload) > 0 {
 		if err := json.Unmarshal(e.Payload, &p); err != nil {
@@ -59,7 +55,7 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 	if e.ID == uuid.Nil {
 		e.ID = uuid.New()
 	}
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
+	ctx = db.PinPrimary(ctx)
 
 	var rules []Rule
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -608,10 +604,9 @@ func (s *Service) RunNow(ctx context.Context, ruleID uuid.UUID, issueKey string,
 			return nil, fmt.Errorf("%w: %s is not in %s, which this rule runs in", ErrOutsideRule, issueKey, rule.ProjectKey)
 		}
 	}
-	org, _ := tenant.FromContext(ctx)
 	eventID := uuid.New()
 	raw, _ := json.Marshal(map[string]any{"ruleId": rule.ID, "key": issueKey, "actorId": actor})
-	if err := s.Handle(ctx, events.Event{ID: eventID, OrgID: org.ID, Topic: events.TopicAutomationManual, Payload: raw}); err != nil {
+	if err := s.Handle(ctx, events.Event{ID: eventID, Topic: events.TopicAutomationManual, Payload: raw}); err != nil {
 		return nil, err
 	}
 	var run *Run
@@ -625,7 +620,7 @@ func (s *Service) RunNow(ctx context.Context, ruleID uuid.UUID, issueKey string,
 
 // Incoming records a call on a hook's address as an event, so the rule runs
 // through the stream like any other and the caller is answered at once.
-func (s *Service) Incoming(ctx context.Context, rule *Rule, orgID uuid.UUID, body json.RawMessage) error {
+func (s *Service) Incoming(ctx context.Context, rule *Rule, body json.RawMessage) error {
 	var posted struct {
 		IssueKey string `json:"issueKey"`
 	}
@@ -633,29 +628,26 @@ func (s *Service) Incoming(ctx context.Context, rule *Rule, orgID uuid.UUID, bod
 	if len(body) == 0 {
 		body = json.RawMessage(`{}`)
 	}
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID}))
-	_, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return events.EmitInTenant(ctx, tx, events.TopicAutomationIncoming, map[string]any{
+	_, err := s.db.Write(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
+		return events.Emit(ctx, tx, events.TopicAutomationIncoming, map[string]any{
 			"ruleId": rule.ID, "key": posted.IssueKey, "body": body,
 		})
 	})
 	return err
 }
 
-// Tick runs every scheduled rule that is due, across organizations. The run
-// happens here rather than through the stream: the run row it leaves is what
-// the next tick reads as the last run, so a rule cannot fire twice while an
-// event is in flight.
+// Tick runs every scheduled rule that is due, here and not through the stream:
+// the next tick reads the run row it leaves, so a rule cannot fire twice.
 func (s *Service) Tick(ctx context.Context) (int, error) {
 	type candidate struct {
-		orgID, ruleID uuid.UUID
-		schedule      Schedule
-		last          time.Time
+		ruleID   uuid.UUID
+		schedule Schedule
+		last     time.Time
 	}
 	var found []candidate
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT r.org_id, r.id, r.trigger->'schedule',
+			SELECT r.id, r.trigger->'schedule',
 			       COALESCE((SELECT max(started_at) FROM automation_run WHERE rule_id = r.id), r.created_at)
 			FROM automation_rule r WHERE r.enabled AND r.trigger->>'kind' = $1`, TriggerScheduled)
 		if err != nil {
@@ -667,7 +659,7 @@ func (s *Service) Tick(ctx context.Context) (int, error) {
 				c   candidate
 				raw []byte
 			)
-			if err := rows.Scan(&c.orgID, &c.ruleID, &raw, &c.last); err != nil {
+			if err := rows.Scan(&c.ruleID, &raw, &c.last); err != nil {
 				return err
 			}
 			if err := json.Unmarshal(raw, &c.schedule); err != nil {
@@ -687,7 +679,7 @@ func (s *Service) Tick(ctx context.Context) (int, error) {
 			continue
 		}
 		raw, _ := json.Marshal(map[string]any{"ruleId": c.ruleID, "at": now})
-		if err := s.Handle(ctx, events.Event{ID: uuid.New(), OrgID: c.orgID, Topic: events.TopicAutomationScheduled, Payload: raw}); err != nil {
+		if err := s.Handle(ctx, events.Event{ID: uuid.New(), Topic: events.TopicAutomationScheduled, Payload: raw}); err != nil {
 			s.log.Warn("could not run a scheduled rule", "rule", c.ruleID, "error", err)
 			continue
 		}

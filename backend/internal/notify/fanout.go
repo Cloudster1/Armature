@@ -16,7 +16,6 @@ import (
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/mail"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // FanOut runs in the worker: an event about an issue, or about somebody's days
@@ -96,9 +95,6 @@ type tell struct {
 // Handle turns one event into inbox rows and mail. It is safe to call twice
 // with the same event: the second pass finds every row already there.
 func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
-	if e.OrgID == uuid.Nil {
-		return nil
-	}
 	var p payload
 	if err := json.Unmarshal(e.Payload, &p); err != nil || p.Imported {
 		return nil
@@ -113,7 +109,7 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 	if e.Topic == events.TopicIssueDeleted {
 		return nil
 	}
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
+	ctx = db.PinPrimary(ctx)
 	s, err := f.lookup(ctx, p, e.Topic)
 	if err != nil || s == nil {
 		return err

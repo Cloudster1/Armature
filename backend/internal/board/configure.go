@@ -253,8 +253,8 @@ func assignStatuses(ctx context.Context, tx db.DBTX, boardID, swimlaneID uuid.UU
 	return nil
 }
 
-// ensureBoard answers a board the caller cannot see, another tenant's
-// included, the way it answers one that does not exist.
+// ensureBoard answers a board the caller cannot see the way it answers one
+// that does not exist.
 func ensureBoard(ctx context.Context, tx db.DBTX, boardID uuid.UUID) error {
 	var exists bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM board WHERE id = $1)`, boardID).Scan(&exists); err != nil {
@@ -343,7 +343,7 @@ func (s *Service) CreateBoard(ctx context.Context, projectKey string, in CreateI
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "board.created", map[string]any{
+		return events.Emit(ctx, tx, "board.created", map[string]any{
 			"boardId": boardID, "projectId": projectID, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -415,7 +415,7 @@ func (s *Service) UpdateBoard(ctx context.Context, id uuid.UUID, in UpdateBoardI
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "board.updated", map[string]any{
+		return events.Emit(ctx, tx, "board.updated", map[string]any{
 			"boardId": id, "name": name, "actorId": actor,
 		})
 	})

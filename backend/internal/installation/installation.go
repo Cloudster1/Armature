@@ -1,5 +1,5 @@
 // Package installation is the one way to the installation's name and settings,
-// which live on the context tenant's org row until the schema drops it (#218).
+// which live on its one org row until the schema renames it (#218).
 package installation
 
 import (
@@ -13,7 +13,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/db"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Installation is what everybody signed in may read about it.
@@ -24,7 +23,7 @@ type Installation struct {
 // ErrNameRequired is a rename to nothing.
 var ErrNameRequired = errors.New("the installation needs a name")
 
-// ErrNotFound is a tenant in the context with no row behind it.
+// ErrNotFound is a database nobody has set up yet.
 var ErrNotFound = errors.New("the installation was not found")
 
 // Service serves the installation's own page.
@@ -57,7 +56,7 @@ func (s *Service) Rename(ctx context.Context, actor uuid.UUID, name, ip string) 
 		return nil, 0, ErrNameRequired
 	}
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		id, err := current(ctx)
+		id, err := ID(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -119,19 +118,16 @@ func SetAutomationUser(ctx context.Context, tx db.DBTX, id uuid.UUID) error {
 	return set(ctx, tx, "automation_user_id", id)
 }
 
-// current is the row the context's tenant names.
-func current(ctx context.Context) (uuid.UUID, error) {
-	org, err := tenant.MustFromContext(ctx)
-	return org.ID, err
+// ID is the installation's stable id, which a webhook's envelope still carries
+// as orgId for one more release.
+func ID(ctx context.Context, tx db.DBTX) (uuid.UUID, error) {
+	var id uuid.UUID
+	return id, get(ctx, tx, "id", &id)
 }
 
 // get and set take a column from the fixed list above, never from a caller.
 func get(ctx context.Context, tx db.DBTX, column string, into any) error {
-	id, err := current(ctx)
-	if err != nil {
-		return err
-	}
-	err = tx.QueryRow(ctx, `SELECT `+column+` FROM org WHERE id = $1`, id).Scan(into)
+	err := tx.QueryRow(ctx, `SELECT `+column+` FROM org`).Scan(into)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}
@@ -142,11 +138,7 @@ func get(ctx context.Context, tx db.DBTX, column string, into any) error {
 }
 
 func set(ctx context.Context, tx db.DBTX, column string, value any) error {
-	id, err := current(ctx)
-	if err != nil {
-		return err
-	}
-	tag, err := tx.Exec(ctx, `UPDATE org SET `+column+` = $2 WHERE id = $1`, id, value)
+	tag, err := tx.Exec(ctx, `UPDATE org SET `+column+` = $1`, value)
 	if err != nil {
 		return fmt.Errorf("change the installation's %s: %w", column, err)
 	}

@@ -250,7 +250,7 @@ func (s *Store) CreateGroup(ctx context.Context, in GroupInput, actor uuid.UUID)
 			return err
 		}
 		out.Members = []Member{}
-		return events.EmitInTenant(ctx, tx, "group.created", map[string]any{
+		return events.Emit(ctx, tx, "group.created", map[string]any{
 			"groupId": id, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -271,7 +271,7 @@ func (s *Store) DeleteGroup(ctx context.Context, id uuid.UUID, actor uuid.UUID) 
 		if err != nil {
 			return fmt.Errorf("delete group: %w", err)
 		}
-		return events.EmitInTenant(ctx, tx, "group.deleted", map[string]any{
+		return events.Emit(ctx, tx, "group.deleted", map[string]any{
 			"groupId": id, "name": name, "actorId": actor,
 		})
 	})
@@ -303,7 +303,7 @@ func (s *Store) AddToGroup(ctx context.Context, groupID, userID uuid.UUID, actor
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "group.member_added", map[string]any{
+		return events.Emit(ctx, tx, "group.member_added", map[string]any{
 			"groupId": groupID, "userId": userID, "actorId": actor,
 		})
 	})
@@ -335,7 +335,7 @@ func (s *Store) RemoveFromGroup(ctx context.Context, groupID, userID uuid.UUID, 
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "group.member_removed", map[string]any{
+		return events.Emit(ctx, tx, "group.member_removed", map[string]any{
 			"groupId": groupID, "userId": userID, "actorId": actor,
 		})
 	})

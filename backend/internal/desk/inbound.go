@@ -17,7 +17,6 @@ import (
 	"github.com/armature/armature/backend/internal/mailin"
 	"github.com/armature/armature/backend/internal/observability"
 	"github.com/armature/armature/backend/internal/project"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Outcome is what became of a mail the desk read.
@@ -223,18 +222,18 @@ func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, 
 		return n.finish(ctx, messageID, &p, Empty, "nothing left once the quotes went", m, Message{})
 	}
 
-	orgCtx := db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: p.orgID}))
+	ctx = db.PinPrimary(ctx)
 	actor := issue.Actor{UserID: p.userID, OrgRole: p.role}
 	var comment *issue.Comment
 	switch {
 	case p.role.IsAgent():
 		// Nothing proves a colleague's address, so their mail is filed where
 		// the desk can see it and the customer cannot; they answer in the app.
-		comment, _, err = n.issues.AddNote(orgCtx, p.key, issue.TextDocument(text), actor)
+		comment, _, err = n.issues.AddNote(ctx, p.key, issue.TextDocument(text), actor)
 	default:
 		// The reporter and a follower answer as they would in the portal, so a
 		// reply brings the request back to the desk whoever sends it.
-		comment, _, err = n.desk.Reply(orgCtx, p.key, text, actor)
+		comment, _, err = n.desk.Reply(ctx, p.key, text, actor)
 	}
 	if err != nil {
 		return "", fmt.Errorf("comment on %s: %w", p.key, err)
@@ -287,8 +286,8 @@ func (n *Inbound) place(ctx context.Context, key, from string) (*placement, erro
 		from, issue.FormatKey(projectKey, num))
 }
 
-// placeWhere asks place's question of the requests the condition names. A key
-// is one request in an installation; were it in two, the sender's first wins.
+// placeWhere asks place's question of the request the condition names: a key is
+// one request, and the sender is one member.
 func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...any) (*placement, error) {
 	var out *placement
 	err := n.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -301,8 +300,7 @@ func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...an
 			JOIN issue i ON i.project_id = p.id
 			JOIN app_user u ON u.email = $1 AND u.is_active
 			JOIN org_member m ON m.org_id = p.org_id AND m.user_id = u.id
-			WHERE p.kind = 'service' AND i.request_type_id IS NOT NULL AND `+which+`
-			ORDER BY m.created_at, m.org_id`, append([]any{from}, args...)...)
+			WHERE p.kind = 'service' AND i.request_type_id IS NOT NULL AND `+which, append([]any{from}, args...)...)
 		if err != nil {
 			return err
 		}

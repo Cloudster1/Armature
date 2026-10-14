@@ -146,8 +146,7 @@ func theInstallation(ctx context.Context, name string) (auth.Org, error) {
 			return err
 		}
 		err := tx.QueryRow(ctx, `
-			SELECT id, slug, name FROM org WHERE archived_at IS NULL
-			ORDER BY created_at, id LIMIT 1`).Scan(&org.ID, &org.Slug, &org.Name)
+			SELECT id, slug, name FROM org WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name)
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}

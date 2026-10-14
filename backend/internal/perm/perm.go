@@ -33,7 +33,7 @@ var Roles = []Role{GlobalAdministrator, ProjectAdministrator, ScrumMaster, User,
 
 func (r Role) Valid() bool { return slices.Contains(Roles, r) }
 
-// OrgWideOnly reports whether a role only makes sense over the whole tenant.
+// OrgWideOnly reports whether a role only makes sense over the whole installation.
 // Administering the organization from inside one project is not a smaller
 // version of the same thing; it is a different thing.
 func (r Role) OrgWideOnly() bool { return r == GlobalAdministrator }
@@ -207,7 +207,7 @@ func (s Set) Grants() []Grant { return slices.Clone(s.roles) }
 
 // CanInOrg reports whether the permission is held over the whole organization.
 // It is the right question for anything not about one project: creating a
-// project, or administering the tenant.
+// project, or administering the installation.
 func (s Set) CanInOrg(p Permission) bool { return s.orgWide[p] }
 
 // Can reports whether the permission is held in one project, whether that comes

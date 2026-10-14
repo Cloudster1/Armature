@@ -407,7 +407,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actor Actor) (*Iss
 			}
 		}
 
-		return events.EmitInTenant(ctx, tx, events.TopicIssueCreated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueCreated, map[string]any{
 			"issueId": created.ID,
 			"key":     created.Key,
 			"summary": created.Summary,

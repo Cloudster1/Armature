@@ -37,7 +37,7 @@ func TestPeopleOnAnIssueAreToldOnce(t *testing.T) {
 	handle := func(id uuid.UUID, topic string, payload map[string]any) {
 		t.Helper()
 		raw, _ := json.Marshal(payload)
-		if err := fan.Handle(context.Background(), events.Event{ID: id, OrgID: ws.orgID, Topic: topic, Payload: raw}); err != nil {
+		if err := fan.Handle(context.Background(), events.Event{ID: id, Topic: topic, Payload: raw}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -139,7 +139,7 @@ func TestADigestBundlesTheQueue(t *testing.T) {
 			t.Fatal(err)
 		}
 		raw, _ := json.Marshal(map[string]any{"key": made.Key, "actorId": ws.actor.UserID, "changes": []map[string]any{{"field": "assignee"}}})
-		if err := fan.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueUpdated, Payload: raw}); err != nil {
+		if err := fan.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueUpdated, Payload: raw}); err != nil {
 			t.Fatal(err)
 		}
 	}

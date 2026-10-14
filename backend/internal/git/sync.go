@@ -9,12 +9,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Sync is the outbound half that runs in the worker: when an issue moves, every
@@ -49,7 +47,7 @@ func (s *Sync) Run(ctx context.Context) error {
 // Handle acts on one event. Only a transition means anything here; a comment
 // is posted on each open pull request linked to the issue that moved.
 func (s *Sync) Handle(ctx context.Context, e events.Event) error {
-	if e.Topic != events.TopicIssueTransitioned || e.OrgID == uuid.Nil {
+	if e.Topic != events.TopicIssueTransitioned {
 		return nil
 	}
 	var moved struct {
@@ -62,7 +60,7 @@ func (s *Sync) Handle(ctx context.Context, e events.Event) error {
 		return nil
 	}
 
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
+	ctx = db.PinPrimary(ctx)
 
 	type target struct {
 		repo   Repository

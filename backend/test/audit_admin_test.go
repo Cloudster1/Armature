@@ -22,14 +22,14 @@ import (
 func (h *harness) copyToAudit(t *testing.T, actorID string) {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
-		SELECT id, org_id, topic, payload FROM outbox_event WHERE payload->>'actorId' = $1 ORDER BY created_at`, actorID)
+		SELECT id, topic, payload FROM outbox_event WHERE payload->>'actorId' = $1 ORDER BY created_at`, actorID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var found []events.Event
 	for rows.Next() {
 		var e events.Event
-		if err := rows.Scan(&e.ID, &e.OrgID, &e.Topic, &e.Payload); err != nil {
+		if err := rows.Scan(&e.ID, &e.Topic, &e.Payload); err != nil {
 			t.Fatal(err)
 		}
 		found = append(found, e)

@@ -82,7 +82,6 @@ var Groups = []string{"audit", "automation", "desk-mail", "git-sync", "notify", 
 // Event is one committed domain event.
 type Event struct {
 	ID        uuid.UUID       `json:"id"`
-	OrgID     uuid.UUID       `json:"orgId"`
 	Topic     string          `json:"topic"`
 	Payload   json.RawMessage `json:"payload"`
 	CreatedAt time.Time       `json:"createdAt"`
@@ -93,31 +92,14 @@ type Event struct {
 
 // Emit writes an event inside the caller's transaction. It must be called with
 // the same DBTX as the change it describes, never afterwards on a fresh one.
-func Emit(ctx context.Context, tx db.DBTX, orgID uuid.UUID, topic string, payload any) error {
+func Emit(ctx context.Context, tx db.DBTX, topic string, payload any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal %s payload: %w", topic, err)
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO outbox_event (org_id, topic, payload, trace_parent)
-		VALUES ($1, $2, $3, nullif($4, ''))`,
-		orgID, topic, body, observability.Inject(ctx))
-	if err != nil {
-		return fmt.Errorf("emit %s: %w", topic, err)
-	}
-	return nil
-}
-
-// EmitInTenant writes an event for the transaction's current organization,
-// which saves the caller threading the id through.
-func EmitInTenant(ctx context.Context, tx db.DBTX, topic string, payload any) error {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("marshal %s payload: %w", topic, err)
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO outbox_event (org_id, topic, payload, trace_parent)
-		VALUES (current_org_id(), $1, $2, nullif($3, ''))`,
+		INSERT INTO outbox_event (topic, payload, trace_parent)
+		VALUES ($1, $2, nullif($3, ''))`,
 		topic, body, observability.Inject(ctx))
 	if err != nil {
 		return fmt.Errorf("emit %s: %w", topic, err)

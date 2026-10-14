@@ -108,7 +108,7 @@ func (s *Service) PostUpdate(ctx context.Context, key string, in StatusInput, ac
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "project.status_posted", map[string]any{
+		return events.Emit(ctx, tx, "project.status_posted", map[string]any{
 			"projectId": pid, "key": NormalizeKey(key), "status": in.Status, "updateId": id, "actorId": actor,
 		})
 	})

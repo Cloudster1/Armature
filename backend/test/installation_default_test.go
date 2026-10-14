@@ -20,7 +20,7 @@ import (
 const installationDefault = "installation_org_id()"
 
 // A row written without its org_id lands in the installation, which is what
-// lets the code stop naming the organization at all.
+// lets the code stop naming it. A column that may name none keeps naming none.
 func TestEveryOrganizationColumnDefaultsToTheInstallation(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
@@ -34,6 +34,7 @@ func TestEveryOrganizationColumnDefaultsToTheInstallation(t *testing.T) {
 		WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p')
 		  AND a.attname = 'org_id' AND NOT a.attisdropped
 		  AND pg_get_expr(d.adbin, d.adrelid) IS DISTINCT FROM $1
+		  AND (a.attnotnull OR d.adbin IS NOT NULL)
 		ORDER BY 1`, installationDefault)
 	if err != nil {
 		t.Fatal(err)

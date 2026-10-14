@@ -6,13 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/armature/armature/backend/internal/tenant"
 )
-
-// setOrgSQL binds what current_org_id() answers, transaction-locally so a pooled
-// connection never carries it on; set_config, unlike SET LOCAL, takes a parameter.
-const setOrgSQL = `SELECT set_config($1, $2, true)`
 
 // currentLSNSQL reads the primary's current write ahead log insert position.
 const currentLSNSQL = `SELECT pg_current_wal_insert_lsn()::text`
@@ -58,23 +52,14 @@ func (c *Cluster) ReadPrimary(ctx context.Context, fn func(context.Context, DBTX
 	return c.Read(PinPrimary(ctx), fn)
 }
 
-// inTx opens a transaction, applies the tenant scope, runs fn and commits.
-//
-// The tenant scope is not optional: without an organization in context, and
-// without the context being explicitly marked as system level, the transaction
-// is refused. A query that forgets its tenant filter is then a failed request
-// rather than a cross-tenant disclosure.
+// inTx opens a transaction, runs fn and commits. The installation is the one
+// organization, so nothing binds the transaction to one (#218).
 func (c *Cluster) inTx(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	opts pgx.TxOptions,
 	fn func(context.Context, pgx.Tx) error,
 ) error {
-	org, hasOrg := tenant.FromContext(ctx)
-	if !hasOrg && !isSystem(ctx) {
-		return tenant.ErrNoTenant
-	}
-
 	tx, err := pool.BeginTx(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
@@ -83,11 +68,6 @@ func (c *Cluster) inTx(
 	// on every path including panics.
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 
-	if hasOrg {
-		if _, err := tx.Exec(ctx, setOrgSQL, tenant.PostgresVar, org.ID.String()); err != nil {
-			return fmt.Errorf("apply tenant scope: %w", err)
-		}
-	}
 	if err := fn(ctx, tx); err != nil {
 		return err
 	}
@@ -97,10 +77,10 @@ func (c *Cluster) inTx(
 	return nil
 }
 
-// WriteAdmin runs fn on the primary as the admin role, for what runs before a
-// tenant is known: sign-up, a sign-in's lookup, an invitation, the outbox relay.
+// WriteAdmin runs fn on the primary as the admin role, for what runs before
+// anybody is signed in: sign-up, a sign-in's lookup, an invitation, the outbox relay.
 func (c *Cluster) WriteAdmin(ctx context.Context, fn func(context.Context, DBTX) error) (LSN, error) {
-	err := c.inTx(WithSystem(ctx), c.admin, pgx.TxOptions{AccessMode: pgx.ReadWrite}, func(ctx context.Context, tx pgx.Tx) error {
+	err := c.inTx(ctx, c.admin, pgx.TxOptions{AccessMode: pgx.ReadWrite}, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)
 	})
 	if err != nil {
@@ -113,7 +93,7 @@ func (c *Cluster) WriteAdmin(ctx context.Context, fn func(context.Context, DBTX)
 // primary: the operations that need it are authentication paths where a stale
 // answer is worse than a slightly more expensive one.
 func (c *Cluster) ReadAdmin(ctx context.Context, fn func(context.Context, DBTX) error) error {
-	return c.inTx(WithSystem(ctx), c.admin, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+	return c.inTx(ctx, c.admin, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)
 	})
 }

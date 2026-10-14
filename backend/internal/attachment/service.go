@@ -206,7 +206,7 @@ func (s *Service) Upload(ctx context.Context, issueKey string, in UploadInput, a
 			return err
 		}
 		created = &found.Attachment
-		return events.EmitInTenant(ctx, tx, events.TopicAttachmentAdded, map[string]any{
+		return events.Emit(ctx, tx, events.TopicAttachmentAdded, map[string]any{
 			"issueId":      issueID,
 			"key":          created.IssueKey,
 			"attachmentId": id,

@@ -59,7 +59,7 @@ func TestADeskMailIsRetriedOnlyWhileNobodyHasHadIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload, _ := json.Marshal(map[string]any{"key": raised.Key, "commentId": reply.ID, "internal": false, "actorId": ws.actor.UserID})
-	replied := events.Event{OrgID: ws.orgID, Topic: events.TopicCommentAdded, Payload: payload}
+	replied := events.Event{Topic: events.TopicCommentAdded, Payload: payload}
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	t.Run("nobody mailed: the failure is worth another attempt", func(t *testing.T) {

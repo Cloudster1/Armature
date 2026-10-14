@@ -263,7 +263,7 @@ func (s *Service) Promote(ctx context.Context, id uuid.UUID) (*Field, db.LSN, er
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "field.promoted", map[string]any{
+		return events.Emit(ctx, tx, "field.promoted", map[string]any{
 			"fieldId": id, "name": f.Name, "from": f.ProjectKey, "folded": len(twins),
 		})
 	})
@@ -462,7 +462,7 @@ func (s *Service) Set(ctx context.Context, issueKey string, fieldID uuid.UUID, r
 		if err := issue.RecordChanges(ctx, tx, issueID, actor.UserID, []issue.Change{change}); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": issueID,
 			"key":     issue.FormatKey(projectKey, num),
 			"changes": []issue.Change{change},

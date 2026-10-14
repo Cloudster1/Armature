@@ -29,7 +29,6 @@ import (
 	"github.com/armature/armature/backend/internal/report"
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
-	"github.com/armature/armature/backend/internal/tenant"
 	"github.com/armature/armature/backend/internal/workflow"
 )
 
@@ -119,11 +118,9 @@ func (h *harness) sweep() {
 	}
 }
 
-// installation is the one organization every test works in, and a context
-// scoped to it for a test that writes below the services.
-func (h *harness) installation() (uuid.UUID, context.Context) {
-	org := shared.installation
-	return org.ID, tenant.WithOrg(context.Background(), tenant.Org{ID: org.ID, Slug: org.Slug})
+// installation is the id of the one organization every test works in.
+func (h *harness) installation() uuid.UUID {
+	return shared.installation.ID
 }
 
 // waitForReplica blocks until the replica has replayed up to lsn, or the
@@ -335,7 +332,7 @@ func (h *harness) outsider(t *testing.T, name string) (email string) {
 // the test ends, or takes the test's away when there was none.
 func (h *harness) keepProvider(t *testing.T) {
 	t.Helper()
-	orgID, _ := h.installation()
+	orgID := h.installation()
 	var kept *string
 	if err := h.super.QueryRow(context.Background(), `
 		SELECT (SELECT row_to_json(p)::text FROM oidc_provider p WHERE p.org_id = $1)`, orgID).Scan(&kept); err != nil {
@@ -360,7 +357,7 @@ func (h *harness) keepProvider(t *testing.T) {
 // the test ends: every other test, and the browser suite, signs in under it.
 func (h *harness) keepSecondFactorRule(t *testing.T) {
 	t.Helper()
-	orgID, _ := h.installation()
+	orgID := h.installation()
 	var rule string
 	if err := h.super.QueryRow(context.Background(), `SELECT second_factor::text FROM org WHERE id = $1`, orgID).Scan(&rule); err != nil {
 		t.Fatal(err)
@@ -440,7 +437,7 @@ func (h *harness) newProject(t *testing.T, name string) *workspace {
 	// caller to their own write position. Reproducing that plumbing here would
 	// test the routing layer, which has its own tests, and would otherwise make
 	// every assertion a race against replication.
-	ctx := db.PinPrimary(auth.ContextForOrg(context.Background(), creds.Principal))
+	ctx := db.PinPrimary(context.Background())
 
 	projects, issues, boards, engine, store := h.services()
 	sprints, plans := h.sprintService(issues)

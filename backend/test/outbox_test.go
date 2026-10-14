@@ -56,15 +56,15 @@ func TestOutbox(t *testing.T) {
 	h := newHarness(t)
 
 	t.Run("an event is committed with the change that caused it", func(t *testing.T) {
-		orgID, orgCtx := h.installation()
+		orgID := h.installation()
 		topic := unique("test.thing.happened")
 
-		if _, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
+		if _, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'thing.happened', 'thing')`, orgID); err != nil {
 				return err
 			}
-			return events.EmitInTenant(ctx, tx, topic, map[string]any{"n": 1})
+			return events.Emit(ctx, tx, topic, map[string]any{"n": 1})
 		}); err != nil {
 			t.Fatalf("write: %v", err)
 		}
@@ -77,12 +77,11 @@ func TestOutbox(t *testing.T) {
 	// The whole point of the outbox: an event must not survive a transaction
 	// that did not.
 	t.Run("a rolled back change leaves no event behind", func(t *testing.T) {
-		_, orgCtx := h.installation()
 		topic := unique("test.should.not.exist")
 
 		sentinel := errors.New("deliberate failure after emitting")
-		_, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
-			if err := events.EmitInTenant(ctx, tx, topic, map[string]any{}); err != nil {
+		_, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+			if err := events.Emit(ctx, tx, topic, map[string]any{}); err != nil {
 				return err
 			}
 			return sentinel
@@ -106,11 +105,10 @@ func TestOutboxRelay(t *testing.T) {
 	// emit writes n events under a topic of their own and returns the topic.
 	emit := func(t *testing.T, name string, n int) string {
 		t.Helper()
-		_, orgCtx := h.installation()
 		topic := unique("test.relayed." + name)
 		for i := range n {
-			if _, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
-				return events.EmitInTenant(ctx, tx, topic, map[string]any{"i": i})
+			if _, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+				return events.Emit(ctx, tx, topic, map[string]any{"i": i})
 			}); err != nil {
 				t.Fatalf("emit %d: %v", i, err)
 			}

@@ -106,7 +106,7 @@ func (s *Service) SetAllocation(ctx context.Context, projectKey string, userID u
 			return fmt.Errorf("set the share: %w", err)
 		}
 		out.Percent = percent
-		return events.EmitInTenant(ctx, tx, "project.allocation_set", map[string]any{
+		return events.Emit(ctx, tx, "project.allocation_set", map[string]any{
 			"projectId": projectID, "userId": userID, "percent": percent, "actorId": actor,
 		})
 	})

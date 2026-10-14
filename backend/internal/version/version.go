@@ -202,7 +202,7 @@ func (s *Service) Create(ctx context.Context, projectKey string, in Input, actor
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "version.created", map[string]any{"versionId": id, "projectId": projectID, "name": name, "actorId": actor})
+		return events.Emit(ctx, tx, "version.created", map[string]any{"versionId": id, "projectId": projectID, "name": name, "actorId": actor})
 	})
 	return out, lsn, err
 }
@@ -277,7 +277,7 @@ func (s *Service) Archive(ctx context.Context, id uuid.UUID, actor uuid.UUID) (*
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "version.archived", map[string]any{"versionId": id, "actorId": actor})
+		return events.Emit(ctx, tx, "version.archived", map[string]any{"versionId": id, "actorId": actor})
 	})
 	return out, lsn, err
 }
@@ -299,7 +299,7 @@ func (s *Service) mark(ctx context.Context, id uuid.UUID, sql, topic string, act
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, topic, map[string]any{"versionId": id, "name": out.Name, "actorId": actor})
+		return events.Emit(ctx, tx, topic, map[string]any{"versionId": id, "name": out.Name, "actorId": actor})
 	})
 	return out, lsn, err
 }
@@ -315,7 +315,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "version.deleted", map[string]any{"versionId": id, "name": name, "actorId": actor})
+		return events.Emit(ctx, tx, "version.deleted", map[string]any{"versionId": id, "name": name, "actorId": actor})
 	})
 }
 

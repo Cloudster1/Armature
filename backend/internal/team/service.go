@@ -153,7 +153,7 @@ func (s *Service) Create(ctx context.Context, projectKey string, in CreateInput,
 			return err
 		}
 		out.Members = []Member{}
-		return events.EmitInTenant(ctx, tx, "team.created", map[string]any{
+		return events.Emit(ctx, tx, "team.created", map[string]any{
 			"teamId": id, "projectId": projectID, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -215,7 +215,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "team.updated", map[string]any{
+		return events.Emit(ctx, tx, "team.updated", map[string]any{
 			"teamId": id, "name": name, "actorId": actor,
 		})
 	})
@@ -250,7 +250,7 @@ func (s *Service) AddMember(ctx context.Context, teamID, userID uuid.UUID, lead 
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "team.member_added", map[string]any{
+		return events.Emit(ctx, tx, "team.member_added", map[string]any{
 			"teamId": teamID, "userId": userID, "actorId": actor,
 		})
 	})
@@ -278,7 +278,7 @@ func (s *Service) RemoveMember(ctx context.Context, teamID, userID uuid.UUID, ac
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "team.member_removed", map[string]any{
+		return events.Emit(ctx, tx, "team.member_removed", map[string]any{
 			"teamId": teamID, "userId": userID, "actorId": actor,
 		})
 	})

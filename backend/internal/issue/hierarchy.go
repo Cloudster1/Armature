@@ -255,7 +255,7 @@ func (s *Service) SetParent(ctx context.Context, key string, parentKey *string, 
 			return err
 		}
 
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": updated.ID,
 			"key":     updated.Key,
 			"changes": changes,

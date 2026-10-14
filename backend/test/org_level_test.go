@@ -42,7 +42,7 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload, _ := json.Marshal(map[string]any{"assignmentId": granted.ID, "role": "project_administrator", "userId": member, "actorId": ws.actor.UserID})
-	e := events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: "role.granted", Payload: payload}
+	e := events.Event{ID: uuid.New(), Topic: "role.granted", Payload: payload}
 	consumer := audit.NewConsumer(h.cluster, nil, log)
 	for range 2 {
 		if err := consumer.Handle(context.Background(), e); err != nil {
@@ -60,7 +60,7 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 	}
 	// A topic the log does not copy leaves nothing.
 	noise, _ := json.Marshal(map[string]any{"key": ws.project.Key + "-1", "actorId": ws.actor.UserID})
-	_ = consumer.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: noise})
+	_ = consumer.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueTransitioned, Payload: noise})
 	if got, _ := reader.List(ws.ctx, audit.Filter{Action: events.TopicIssueTransitioned, ActorID: &ws.actor.UserID}); len(got) != 0 {
 		t.Errorf("an issue transition was copied into the audit log: %+v", got)
 	}

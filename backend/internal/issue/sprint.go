@@ -231,7 +231,7 @@ func (s *Service) SetEstimate(ctx context.Context, key string, estimate *float64
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": updated.ID, "key": updated.Key, "changes": changes, "actorId": actor.UserID,
 		})
 	})

@@ -45,7 +45,7 @@ func TestADailyDigestGoesInOnePassAtTheDigestHour(t *testing.T) {
 			t.Fatal(err)
 		}
 		raw, _ := json.Marshal(map[string]any{"key": made.Key, "actorId": ws.actor.UserID, "changes": []map[string]any{{"field": "assignee"}}})
-		if err := fan.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueUpdated, Payload: raw}); err != nil {
+		if err := fan.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueUpdated, Payload: raw}); err != nil {
 			t.Fatal(err)
 		}
 		return made.Key

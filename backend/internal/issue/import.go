@@ -151,7 +151,7 @@ func (s *Service) importIssue(ctx context.Context, tx db.DBTX, in ImportInput, a
 	if err != nil {
 		return nil, err
 	}
-	if err := events.EmitInTenant(ctx, tx, events.TopicIssueCreated, map[string]any{
+	if err := events.Emit(ctx, tx, events.TopicIssueCreated, map[string]any{
 		"issueId":  made.ID,
 		"key":      made.Key,
 		"summary":  made.Summary,

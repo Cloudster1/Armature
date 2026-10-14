@@ -20,7 +20,6 @@ import (
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/report"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Articles are offered before a request is raised, published ones only, and
@@ -87,7 +86,7 @@ func TestARequestIsRatedOnce(t *testing.T) {
 	mailer := &fakeMailer{}
 	notifier := desk.NewNotifier(h.cluster, nil, mailer, "http://app.test", slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	raw, _ := json.Marshal(map[string]any{"key": raised.Key, "transition": "Resolve", "fromStatus": "Waiting for support", "toStatus": "Resolved"})
-	if err := notifier.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: raw}); err != nil {
+	if err := notifier.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueTransitioned, Payload: raw}); err != nil {
 		t.Fatal(err)
 	}
 	if len(mailer.sent) != 1 || !strings.Contains(mailer.sent[0].Body, "http://app.test/rate/") {
@@ -114,7 +113,7 @@ func TestARequestIsRatedOnce(t *testing.T) {
 		t.Error("a made-up token answered")
 	}
 	// A second resolution mails no second invitation.
-	if err := notifier.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: raw}); err != nil {
+	if err := notifier.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueTransitioned, Payload: raw}); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(mailer.sent[1].Body, "/rate/") {
@@ -236,8 +235,7 @@ func TestDeskExtrasOverTheAPI(t *testing.T) {
 	sfxKey := h.projectKey(t, "SFX")
 	api := newAPIServer(t, h)
 	c := api.client(t)
-	signedUp := c.signIn(t, h.person(t, "deskextras", auth.RoleOwner))
-	orgID := uuid.MustParse(obj(t, signedUp, "principal", "org")["id"].(string))
+	c.signIn(t, h.person(t, "deskextras", auth.RoleOwner))
 	made := want(t, c.post("/api/v1/projects", map[string]any{"name": "Help", "key": hlxKey, "template": "service-desk"}), http.StatusCreated, "desk")
 	key := obj(t, made, "project")["key"].(string)
 	soft := want(t, c.post("/api/v1/projects", map[string]any{"name": "Soft", "key": sfxKey, "template": "kanban"}), http.StatusCreated, "software project")
@@ -281,7 +279,7 @@ func TestDeskExtrasOverTheAPI(t *testing.T) {
 	if err := h.super.QueryRow(context.Background(), `SELECT i.id FROM issue i JOIN project p ON p.id = i.project_id WHERE p.key || '-' || i.key_num = $1`, issueKey).Scan(&issueID); err != nil {
 		t.Fatal(err)
 	}
-	token, err := api.api.Desk.InviteRating(db.PinPrimary(tenant.WithOrg(context.Background(), tenant.Org{ID: orgID})), issueID)
+	token, err := api.api.Desk.InviteRating(db.PinPrimary(context.Background()), issueID)
 	if err != nil || token == "" {
 		t.Fatalf("mint a rating token: %q %v", token, err)
 	}

@@ -271,7 +271,7 @@ func (s *Store) CreateRole(ctx context.Context, in RoleInput, actor uuid.UUID) (
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "role.defined", map[string]any{"role": key, "actorId": actor})
+		return events.Emit(ctx, tx, "role.defined", map[string]any{"role": key, "actorId": actor})
 	})
 	if err != nil {
 		return nil, 0, err
@@ -334,7 +334,7 @@ func (s *Store) UpdateRole(ctx context.Context, in RoleInput, actor uuid.UUID) (
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "role.redefined", map[string]any{"role": in.Key, "actorId": actor})
+		return events.Emit(ctx, tx, "role.redefined", map[string]any{"role": in.Key, "actorId": actor})
 	})
 	if err != nil {
 		return nil, 0, err
@@ -358,6 +358,6 @@ func (s *Store) DeleteRole(ctx context.Context, key Role, actor uuid.UUID) (db.L
 			}
 			return fmt.Errorf("delete role: %w", err)
 		}
-		return events.EmitInTenant(ctx, tx, "role.removed", map[string]any{"role": key, "grants": current.InUse, "actorId": actor})
+		return events.Emit(ctx, tx, "role.removed", map[string]any{"role": key, "grants": current.InUse, "actorId": actor})
 	})
 }

@@ -64,7 +64,7 @@ type Telemetry struct {
 type DB struct {
 	PrimaryURL  string
 	ReplicaURLs []string
-	// AdminURL is the role for what runs before a tenant is known, such as signup,
+	// AdminURL is the role for what runs before anybody is signed in, such as signup,
 	// login and the outbox relay; unset, it is PrimaryURL, as in the test harness.
 	AdminURL string
 

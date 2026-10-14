@@ -9,7 +9,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/observability"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // flowSnapshotInterval is well inside a day, so a day is never missed for a restart.
@@ -45,22 +44,21 @@ func (w *FlowSnapshots) Run(ctx context.Context) error {
 	}
 }
 
-// Once snapshots every unarchived project across organizations for today.
+// Once snapshots every unarchived project for today.
 func (w *FlowSnapshots) Once(ctx context.Context) (int, error) {
-	type live struct{ orgID, projectID uuid.UUID }
-	var found []live
+	var found []uuid.UUID
 	err := w.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `SELECT org_id, id FROM project WHERE archived_at IS NULL ORDER BY org_id, id`)
+		rows, err := tx.Query(ctx, `SELECT id FROM project WHERE archived_at IS NULL ORDER BY id`)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var l live
-			if err := rows.Scan(&l.orgID, &l.projectID); err != nil {
+			var id uuid.UUID
+			if err := rows.Scan(&id); err != nil {
 				return err
 			}
-			found = append(found, l)
+			found = append(found, id)
 		}
 		return rows.Err()
 	})
@@ -69,10 +67,9 @@ func (w *FlowSnapshots) Once(ctx context.Context) (int, error) {
 	}
 	today := midnightUTC(w.now())
 	written := 0
-	for _, l := range found {
-		orgCtx := db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: l.orgID}))
-		if err := w.reports.WriteFlowSnapshot(orgCtx, l.projectID, today); err != nil {
-			w.log.Warn("could not snapshot a project's flow", "project", l.projectID, "error", err)
+	for _, projectID := range found {
+		if err := w.reports.WriteFlowSnapshot(db.PinPrimary(ctx), projectID, today); err != nil {
+			w.log.Warn("could not snapshot a project's flow", "project", projectID, "error", err)
 			continue
 		}
 		written++

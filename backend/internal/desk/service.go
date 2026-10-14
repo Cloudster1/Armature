@@ -873,7 +873,7 @@ func (s *Service) breach(ctx context.Context, tx db.DBTX, timerID uuid.UUID) (bo
 	if err != nil {
 		return false, err
 	}
-	return true, events.EmitInTenant(ctx, tx, events.TopicSLABreached, map[string]any{
+	return true, events.Emit(ctx, tx, events.TopicSLABreached, map[string]any{
 		"issueKey": issueKey, "metric": metric, "timerId": timerID,
 	})
 }

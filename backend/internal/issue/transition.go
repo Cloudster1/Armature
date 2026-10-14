@@ -180,7 +180,7 @@ func (s *Service) announceMove(ctx context.Context, tx db.DBTX, before, after *I
 			return err
 		}
 	}
-	return events.EmitInTenant(ctx, tx, events.TopicIssueTransitioned, map[string]any{
+	return events.Emit(ctx, tx, events.TopicIssueTransitioned, map[string]any{
 		"issueId":    after.ID,
 		"key":        after.Key,
 		"transition": transition,

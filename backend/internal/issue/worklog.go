@@ -160,7 +160,7 @@ func (s *Service) LogWork(ctx context.Context, key string, in WorklogInput, acto
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicWorkLogged, map[string]any{
+		return events.Emit(ctx, tx, events.TopicWorkLogged, map[string]any{
 			"issueId": before.ID, "key": before.Key, "worklogId": id, "minutes": in.Minutes, "actorId": actor.UserID,
 		})
 	})

@@ -17,7 +17,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/netguard"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 const (
@@ -38,17 +37,17 @@ const (
 )
 
 // due is one delivery a pass found, with what decides where it may run.
-type due struct{ orgID, endpointID, id uuid.UUID }
+type due struct{ endpointID, id uuid.UUID }
 
-// SendDue posts every delivery whose time has come, across organizations, and
-// returns how many were tried.
+// SendDue posts every delivery whose time has come and returns how many were
+// tried.
 func (s *Service) SendDue(ctx context.Context) (int, error) {
 	tried := 0
 	for {
 		var found []due
 		err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 			rows, err := tx.Query(ctx, `
-				SELECT org_id, endpoint_id, id FROM webhook_delivery
+				SELECT endpoint_id, id FROM webhook_delivery
 				WHERE delivered_at IS NULL AND next_attempt_at IS NOT NULL AND next_attempt_at <= now()
 				ORDER BY next_attempt_at LIMIT $1`, sendBatch)
 			if err != nil {
@@ -57,7 +56,7 @@ func (s *Service) SendDue(ctx context.Context) (int, error) {
 			defer rows.Close()
 			for rows.Next() {
 				var d due
-				if err := rows.Scan(&d.orgID, &d.endpointID, &d.id); err != nil {
+				if err := rows.Scan(&d.endpointID, &d.id); err != nil {
 					return err
 				}
 				found = append(found, d)
@@ -69,7 +68,7 @@ func (s *Service) SendDue(ctx context.Context) (int, error) {
 		}
 		var mu sync.Mutex
 		spread(ctx, found, s.concurrency, func(ctx context.Context, d due) bool {
-			_, _, timedOut, err := s.send(inOrg(ctx, d), d.id)
+			_, _, timedOut, err := s.send(db.PinPrimary(ctx), d.id)
 			if err != nil {
 				s.log.Warn("webhook attempt failed", "delivery", d.id, "error", err)
 			}
@@ -84,15 +83,11 @@ func (s *Service) SendDue(ctx context.Context) (int, error) {
 	}
 }
 
-func inOrg(ctx context.Context, d due) context.Context {
-	return db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID}))
-}
-
 // pause puts off everything the endpoint has waiting, retries included, so
 // the next passes go by it; a redelivery or a test by hand still goes at once.
 func (s *Service) pause(ctx context.Context, d due) {
 	until := s.now().Add(EndpointPause)
-	_, err := s.db.Write(inOrg(ctx, d), func(ctx context.Context, tx db.DBTX) error {
+	_, err := s.db.Write(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
 			UPDATE webhook_delivery SET next_attempt_at = $2
 			WHERE endpoint_id = $1 AND delivered_at IS NULL AND next_attempt_at IS NOT NULL AND next_attempt_at < $2`,

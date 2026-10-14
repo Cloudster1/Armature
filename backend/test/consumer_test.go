@@ -116,12 +116,11 @@ func (r *streamRig) group(t *testing.T) string {
 // their ids in order.
 func (r *streamRig) add(t *testing.T, n int) []uuid.UUID {
 	t.Helper()
-	orgID, _ := r.h.installation()
 	ids := make([]uuid.UUID, n)
 	for i := range n {
 		ids[i] = uuid.New()
 		id, err := r.rdb.XAdd(context.Background(), &redis.XAddArgs{Stream: events.StreamKey, Values: map[string]any{
-			"id": ids[i].String(), "org_id": orgID.String(), "topic": "test.consumed", "payload": `{}`, "trace": "",
+			"id": ids[i].String(), "topic": "test.consumed", "payload": `{}`, "trace": "",
 		}}).Result()
 		if err != nil {
 			t.Fatalf("add %d: %v", i, err)
@@ -185,7 +184,7 @@ func (r *streamRig) pending(t *testing.T, name string, ids []uuid.UUID) int64 {
 // events the group set aside; other groups' are other tests'.
 func (r *streamRig) deadLetters(t *testing.T, group string) []audit.Row {
 	t.Helper()
-	_, ctx := r.h.installation()
+	ctx := context.Background()
 	rows, err := audit.NewService(r.h.cluster).List(db.PinPrimary(ctx), audit.Filter{Action: events.ActionDeadLettered})
 	if err != nil {
 		t.Fatal(err)

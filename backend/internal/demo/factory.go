@@ -40,14 +40,14 @@ const FactoryName = "Production line 3"
 // shift that owns the work, its maintenance windows and the milestones the
 // plant is aiming at. It runs once per installation; the key is taken after.
 func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *slog.Logger) (*project.Project, error) {
-	orgCtx := db.PinPrimary(auth.ContextForOrg(ctx, p))
+	ctx = db.PinPrimary(ctx)
 	engine := workflow.NewEngine(workflow.NewDefaultRegistry())
 	projects := project.NewService(cluster, board.Provisioner{}, report.Provisioner{})
 	templates := template.NewService(cluster, projects, workflow.NewAdmin(cluster, workflow.NewStore()))
 	issues := issue.NewService(cluster, engine, workflow.NewStore())
 	actor := issue.Actor{UserID: p.User.ID, OrgRole: p.Role}
 
-	created, _, err := templates.Create(orgCtx, "scrum", project.CreateInput{
+	created, _, err := templates.Create(ctx, "scrum", project.CreateInput{
 		Key:         FactoryKey,
 		Name:        FactoryName,
 		Description: "The line that builds the housings: six stations, two robots, one paint cell, two shifts.",
@@ -56,7 +56,7 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 	if err != nil {
 		return nil, fmt.Errorf("create the demo project: %w", err)
 	}
-	types, err := issueTypes(orgCtx, cluster)
+	types, err := issueTypes(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -105,18 +105,18 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 		if w.description != "" {
 			in.Description = paragraphs(w.description)
 		}
-		made, _, err := issues.Create(orgCtx, in, actor)
+		made, _, err := issues.Create(ctx, in, actor)
 		if err != nil {
 			return nil, fmt.Errorf("create %q: %w", w.summary, err)
 		}
 		keys[w.summary] = made.Key
 		if len(w.labels) > 0 {
-			if _, _, err := labels.SetIssueLabels(orgCtx, made.Key, w.labels, actor); err != nil {
+			if _, _, err := labels.SetIssueLabels(ctx, made.Key, w.labels, actor); err != nil {
 				return nil, fmt.Errorf("label %s: %w", made.Key, err)
 			}
 		}
 		for _, name := range w.advance {
-			if err := advance(orgCtx, issues, made.Key, name, actor); err != nil {
+			if err := advance(ctx, issues, made.Key, name, actor); err != nil {
 				return nil, err
 			}
 		}
@@ -125,18 +125,18 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 	// The shift that runs the line owns the work, and its maintenance
 	// windows are the sprints: one just closed, one in flight, one planned.
 	teams := team.NewService(cluster)
-	shift, _, err := teams.Create(orgCtx, created.Key, team.CreateInput{Name: "Shift A", Description: "Runs line 3 by day and owns its maintenance."}, actor.UserID)
+	shift, _, err := teams.Create(ctx, created.Key, team.CreateInput{Name: "Shift A", Description: "Runs line 3 by day and owns its maintenance."}, actor.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("form the shift: %w", err)
 	}
-	if _, _, err := teams.AddMember(orgCtx, shift.ID, actor.UserID, true, actor.UserID); err != nil {
+	if _, _, err := teams.AddMember(ctx, shift.ID, actor.UserID, true, actor.UserID); err != nil {
 		return nil, fmt.Errorf("put the owner on the shift: %w", err)
 	}
 	for _, summary := range []string{
 		"Replace the worn conveyor belt between stations 4 and 5", "Welding cell 2 stops intermittently",
 		"Calibrate the torque tools on station 7", "Firmware update on the filling machine", "Order spare gripper fingers for robot R3",
 	} {
-		if _, _, err := issues.SetTeam(orgCtx, keys[summary], &shift.ID, actor); err != nil {
+		if _, _, err := issues.SetTeam(ctx, keys[summary], &shift.ID, actor); err != nil {
 			return nil, fmt.Errorf("hand %q to the shift: %w", summary, err)
 		}
 	}
@@ -144,32 +144,32 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 	sprints := sprint.NewService(cluster)
 	sprints.CountWith(plan.NewService(issues, sprints))
 	capacity := 20.0
-	closed, _, err := sprints.Create(orgCtx, created.Key, sprint.CreateInput{Name: "Maintenance window 38", Goal: "Spares in, tools checked.", StartsOn: day(-21), EndsOn: day(-8), Capacity: &capacity, TeamID: &shift.ID}, actor.UserID)
+	closed, _, err := sprints.Create(ctx, created.Key, sprint.CreateInput{Name: "Maintenance window 38", Goal: "Spares in, tools checked.", StartsOn: day(-21), EndsOn: day(-8), Capacity: &capacity, TeamID: &shift.ID}, actor.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("create the closed window: %w", err)
 	}
-	running, _, err := sprints.Create(orgCtx, created.Key, sprint.CreateInput{Name: "Maintenance window 40", Goal: "Stop the stops: belt, welding cell, torque tools.", StartsOn: day(-7), EndsOn: day(6), Capacity: &capacity, TeamID: &shift.ID}, actor.UserID)
+	running, _, err := sprints.Create(ctx, created.Key, sprint.CreateInput{Name: "Maintenance window 40", Goal: "Stop the stops: belt, welding cell, torque tools.", StartsOn: day(-7), EndsOn: day(6), Capacity: &capacity, TeamID: &shift.ID}, actor.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("create the running window: %w", err)
 	}
-	if _, _, err := sprints.Create(orgCtx, created.Key, sprint.CreateInput{Name: "Maintenance window 42", StartsOn: day(7), EndsOn: day(20), Capacity: &capacity, TeamID: &shift.ID}, actor.UserID); err != nil {
+	if _, _, err := sprints.Create(ctx, created.Key, sprint.CreateInput{Name: "Maintenance window 42", StartsOn: day(7), EndsOn: day(20), Capacity: &capacity, TeamID: &shift.ID}, actor.UserID); err != nil {
 		return nil, fmt.Errorf("create the next window: %w", err)
 	}
-	if _, _, err := sprints.Start(orgCtx, closed.ID, actor.UserID); err != nil {
+	if _, _, err := sprints.Start(ctx, closed.ID, actor.UserID); err != nil {
 		return nil, fmt.Errorf("start the closed window: %w", err)
 	}
-	if _, _, err := issues.SetSprint(orgCtx, keys["Order spare gripper fingers for robot R3"], &closed.ID, actor); err != nil {
+	if _, _, err := issues.SetSprint(ctx, keys["Order spare gripper fingers for robot R3"], &closed.ID, actor); err != nil {
 		return nil, err
 	}
-	if _, _, err := sprints.Complete(orgCtx, closed.ID, sprint.CompleteInput{MoveTo: &running.ID}, actor.UserID); err != nil {
+	if _, _, err := sprints.Complete(ctx, closed.ID, sprint.CompleteInput{MoveTo: &running.ID}, actor.UserID); err != nil {
 		return nil, fmt.Errorf("complete the closed window: %w", err)
 	}
 	for _, summary := range []string{"Replace the worn conveyor belt between stations 4 and 5", "Welding cell 2 stops intermittently", "Calibrate the torque tools on station 7"} {
-		if _, _, err := issues.SetSprint(orgCtx, keys[summary], &running.ID, actor); err != nil {
+		if _, _, err := issues.SetSprint(ctx, keys[summary], &running.ID, actor); err != nil {
 			return nil, err
 		}
 	}
-	if _, _, err := sprints.Start(orgCtx, running.ID, actor.UserID); err != nil {
+	if _, _, err := sprints.Start(ctx, running.ID, actor.UserID); err != nil {
 		return nil, fmt.Errorf("start the running window: %w", err)
 	}
 
@@ -182,25 +182,25 @@ func Factory(ctx context.Context, cluster *db.Cluster, p *auth.Principal, log *s
 		{"Line 3 back under four hours of unplanned stops", "The month the downtime target holds.", day(21), []string{"Replace the worn conveyor belt between stations 4 and 5", "Welding cell 2 stops intermittently", "Firmware update on the filling machine"}},
 		{"Model B start of production", "First hundred housings through final inspection.", day(42), []string{"Update the work instructions for stations 1 to 6", "Qualify the model B paint recipe", "Train shift B on the new HMI screens", "Scrap rate on the paint line above target"}},
 	} {
-		made, _, err := milestones.Create(orgCtx, created.Key, milestone.Input{Name: target.name, Description: target.description, DueOn: target.due}, actor.UserID)
+		made, _, err := milestones.Create(ctx, created.Key, milestone.Input{Name: target.name, Description: target.description, DueOn: target.due}, actor.UserID)
 		if err != nil {
 			return nil, fmt.Errorf("create milestone %s: %w", target.name, err)
 		}
 		for _, summary := range target.summaries {
-			if _, _, err := issues.SetMilestone(orgCtx, keys[summary], &made.ID, actor); err != nil {
+			if _, _, err := issues.SetMilestone(ctx, keys[summary], &made.ID, actor); err != nil {
 				return nil, err
 			}
 		}
 	}
 
 	// One dependency the plan can point at: the paint recipe waits on the scrap.
-	if _, _, err := issues.AddLink(orgCtx, keys["Scrap rate on the paint line above target"], issue.LinkInput{TypeName: issue.LinkTypeBlocks, TargetKey: keys["Qualify the model B paint recipe"]}, actor); err != nil {
+	if _, _, err := issues.AddLink(ctx, keys["Scrap rate on the paint line above target"], issue.LinkInput{TypeName: issue.LinkTypeBlocks, TargetKey: keys["Qualify the model B paint recipe"]}, actor); err != nil {
 		return nil, fmt.Errorf("link the demo dependency: %w", err)
 	}
-	if _, _, err := issues.AddComment(orgCtx, keys["Welding cell 2 stops intermittently"], issue.TextDocument("Swapped the door switch on cell 2 at 06:40. No stop since; watching it through the shift."), actor); err != nil {
+	if _, _, err := issues.AddComment(ctx, keys["Welding cell 2 stops intermittently"], issue.TextDocument("Swapped the door switch on cell 2 at 06:40. No stop since; watching it through the shift."), actor); err != nil {
 		return nil, fmt.Errorf("add the demo comment: %w", err)
 	}
-	if err := plant(orgCtx, cluster, templates, issues, actor, plantInput{
+	if err := plant(ctx, cluster, templates, issues, actor, plantInput{
 		line: created.Key, types: types, keys: keys, shift: shift.ID, sprints: sprints, day: day, pts: pts,
 	}); err != nil {
 		return nil, err
