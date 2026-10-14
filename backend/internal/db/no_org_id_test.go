@@ -31,9 +31,41 @@ var orgIDAllowed = map[string]string{
 	"test/row_security_test.go TestRowSecurityGoesAsThePlainOwner":        "writes rows at a version before the column had a default",
 }
 
+// namesTheOldTables is a table the schema renamed or a column it moved: the
+// organization's row, its members, roles, invitations and requests to join.
+var namesTheOldTables = regexp.MustCompile(`\b` + "org" + `_(member|role|invite|join_request|wide_only)\b|(?i:\b(from|join|into|update|table|references)\s+` + "org" + `\b)`)
+
+// oldTablesAllowed names the files, or a file's declarations, that may name an
+// old table, and why: each runs at a version from before the rename.
+var oldTablesAllowed = map[string]string{
+	"internal/workflow/rules.go ConditionOrgRole":                                          "is a rule type stored in workflows, which compares a standing",
+	"migrations/backfill_rls_test.go":                                                      "checks migrations written while the organization had row security",
+	"test/installation_tables_test.go":                                                     "renames the tables in a database of its own and looks for the old names",
+	"test/installation_keys_test.go TestTheUpgradeRefusesKeysThatCollide":                  "writes rows of two organizations at a version before 00933",
+	"test/one_installation_migrate_test.go TestTheUpgradeRefusesSeveralOrganizations":      "writes organizations at a version before 00929",
+	"test/owner_migrate_test.go TestMigrationsRunAsPlainOwner":                             "writes organizations at a version before 00929",
+	"test/owner_migrate_test.go expectBackfilled":                                          "reads what migrations made for each organization of a legacy database",
+	"test/old_keys_test.go TestOldKeysComeOverFromTheColumnThatKeptOne":                    "writes rows at a version before the column had a default",
+	"test/row_security_test.go TestRowSecurityGoesAsThePlainOwner":                         "writes rows at a version before the column had a default",
+	"test/schema_without_organization_test.go TestTheOrganizationColumnsGoAsThePlainOwner": "writes rows at a version before the columns went",
+}
+
 // No query names the organization: the tables no longer carry it, and the
 // installation is the only one a row can belong to (#218).
 func TestNoQueryNamesTheOrganization(t *testing.T) {
+	refuseStrings(t, namesTheOrganization, orgIDAllowed, "name the organization")
+}
+
+// No query names the organization's tables: the installation, its roles and
+// invitations have their own names, and a member's standing is on the account (#218).
+func TestNoQueryNamesTheOrganizationsTables(t *testing.T) {
+	refuseStrings(t, namesTheOldTables, oldTablesAllowed, "name the organization's tables")
+}
+
+// refuseStrings fails for every string in the backend's Go that matches, unless
+// allowed, and for every allowance that is no longer needed.
+func refuseStrings(t *testing.T, pattern *regexp.Regexp, allowed map[string]string, what string) {
+	t.Helper()
 	var found []string
 	used := map[string]bool{}
 	err := filepath.WalkDir(backendRoot, func(path string, d fs.DirEntry, err error) error {
@@ -60,16 +92,16 @@ func TestNoQueryNamesTheOrganization(t *testing.T) {
 					return true
 				}
 				text, err := strconv.Unquote(lit.Value)
-				if err != nil || !namesTheOrganization.MatchString(text) {
+				if err != nil || !pattern.MatchString(text) {
 					return true
 				}
 				for _, key := range []string{rel, rel + " " + declName(decl)} {
-					if _, ok := orgIDAllowed[key]; ok {
+					if _, ok := allowed[key]; ok {
 						used[key] = true
 						return true
 					}
 				}
-				found = append(found, rel+":"+strconv.Itoa(fset.Position(lit.Pos()).Line)+": "+firstLineNaming(text))
+				found = append(found, rel+":"+strconv.Itoa(fset.Position(lit.Pos()).Line)+": "+firstLineMatching(pattern, text))
 				return true
 			})
 		}
@@ -80,11 +112,11 @@ func TestNoQueryNamesTheOrganization(t *testing.T) {
 	}
 	sort.Strings(found)
 	if len(found) > 0 {
-		t.Errorf("%d queries still name the organization:\n%s", len(found), strings.Join(found, "\n"))
+		t.Errorf("%d queries still %s:\n%s", len(found), what, strings.Join(found, "\n"))
 	}
-	for key := range orgIDAllowed {
+	for key := range allowed {
 		if !used[key] {
-			t.Errorf("%s is allowed to name the organization but no longer does; take it off the list", key)
+			t.Errorf("%s is allowed to %s but no longer does; take it off the list", key, what)
 		}
 	}
 }
@@ -104,9 +136,9 @@ func declName(decl ast.Decl) string {
 	return ""
 }
 
-func firstLineNaming(text string) string {
+func firstLineMatching(pattern *regexp.Regexp, text string) string {
 	for _, line := range strings.Split(text, "\n") {
-		if namesTheOrganization.MatchString(line) {
+		if pattern.MatchString(line) {
 			return strings.TrimSpace(line)
 		}
 	}

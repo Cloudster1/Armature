@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/armature/armature/backend/internal/installation"
 )
 
-// OrgRole is a member's standing within one organization. Project level
-// permissions are layered on top of this by the perm package; org_role only
-// answers "may this person administer the tenant" and "do they consume a seat".
+// OrgRole is a member's standing: whether they hold a seat and may administer
+// the installation. What they may do in a project is the perm package's.
 type OrgRole string
 
 const (
@@ -67,11 +68,13 @@ type User struct {
 }
 
 // Principal is the authenticated caller of a request: who they are, the
-// installation's organization they act in, and what that lets them do.
+// installation they act in, and what that lets them do.
 type Principal struct {
 	User User `json:"user"`
-	// Org is never nil: nobody is signed in outside the installation's organization.
-	Org  *Org    `json:"org,omitempty"`
+	// Installation is never nil: nobody is signed in outside it.
+	Installation *installation.Installation `json:"installation,omitempty"`
+	// Org is the installation under its old name, kept for one more release.
+	Org  *Org    `json:"org,omitempty" deprecated:"The installation under its old name; read installation instead. A later release removes it."`
 	Role OrgRole `json:"role,omitempty"`
 
 	// PortalDesk is the key of the one desk a session that came through an
@@ -125,7 +128,13 @@ func ValidateScopes(scopes []string) error {
 	return nil
 }
 
-// Org is the organization a principal is acting within.
+// placeIn puts the principal in the installation, under both names it answers to.
+func (p *Principal) placeIn(org Org) {
+	p.Org = &org
+	p.Installation = &installation.Installation{ID: org.ID, Name: org.Name}
+}
+
+// Org is the installation a principal acts in, under its old name.
 type Org struct {
 	ID   uuid.UUID `json:"id"`
 	Slug string    `json:"slug"`
@@ -136,7 +145,7 @@ type Org struct {
 type Invite struct {
 	ID uuid.UUID `json:"id"`
 	// OrgID is the installation's id, deprecated with the webhook envelope's.
-	OrgID     uuid.UUID `json:"orgId"`
+	OrgID     uuid.UUID `json:"orgId" deprecated:"The installation's id, kept for one more release; a later release removes it."`
 	Email     string    `json:"email"`
 	Role      OrgRole   `json:"role"`
 	ExpiresAt time.Time `json:"expiresAt"`

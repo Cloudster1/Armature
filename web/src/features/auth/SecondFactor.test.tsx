@@ -33,7 +33,7 @@ vi.mock("@/api/auth", async () => {
     ...actual,
     useMe: () => ({
       data: {
-        principal: { user: { id: "u1" }, org: { slug: "strict", name: "Strict Corp" }, role: "member", mustEnrol: true },
+        principal: { user: { id: "u1" }, installation: { id: "i1", name: "Strict Corp" }, role: "member", mustEnrol: true },
         organizations: [
           { orgId: "o1", orgSlug: "strict", orgName: "Strict Corp", role: "member" },
           { orgId: "o2", orgSlug: "relaxed", orgName: "Relaxed Corp", role: "member" },

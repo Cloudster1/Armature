@@ -136,8 +136,7 @@ func TestAShareOfThePersonsWeekIsSetPerProject(t *testing.T) {
 
 		var customerID, halfID string
 		if err := h.super.QueryRow(ctx, `
-			WITH made AS (INSERT INTO app_user (email, name) VALUES ($1, 'Sam Customer') RETURNING id)
-			INSERT INTO org_member (user_id, org_role) SELECT id, 'customer' FROM made RETURNING user_id`,
+			INSERT INTO app_user (email, name, standing) VALUES ($1, 'Sam Customer', 'customer') RETURNING id`,
 			h.email(t, "sharecustomer")).Scan(&customerID); err != nil {
 			t.Fatal(err)
 		}

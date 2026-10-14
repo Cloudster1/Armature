@@ -68,18 +68,17 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	return s.authenticateSession(ctx, secret)
 }
 
-// sessionPrincipalSQL resolves a session to the caller's role in the
-// installation; left joins tell a lost membership apart.
+// sessionPrincipalSQL resolves a session to the caller's standing in the
+// installation; a NULL standing is a lost membership.
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
        u.id, u.email, u.name, u.timezone, u.locale, u.is_active, COALESCE(u.avatar_url, ''),
-       o.id, o.slug, o.name, m.org_role, pp.id, pp.key,
+       o.id, o.slug, o.name, u.standing, pp.id, pp.key,
        EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)
 FROM user_session s
 JOIN app_user u ON u.id = s.user_id
 LEFT JOIN project pp ON pp.id = s.portal_project_id
-LEFT JOIN org o ON o.archived_at IS NULL
-LEFT JOIN org_member m ON m.user_id = u.id AND o.id IS NOT NULL
+LEFT JOIN installation o ON o.archived_at IS NULL
 WHERE s.token_hash = $1 AND s.expires_at > now()`
 
 func (s *Service) authenticateSession(ctx context.Context, secret string) (*Principal, error) {
@@ -121,13 +120,13 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 		return nil, ErrUserInactive
 	}
 
-	// A membership row is required, not merely an org row: revoking someone's
+	// A standing is required, not merely an installation: revoking someone's
 	// membership ends an already open session at once.
 	if orgID == nil || memberRole == nil {
 		return nil, ErrInvalidToken
 	}
 	p.SessionID = &sessionID
-	p.Org = &Org{ID: *orgID, Slug: derefString(orgSlug), Name: derefString(orgName)}
+	p.placeIn(Org{ID: *orgID, Slug: derefString(orgSlug), Name: derefString(orgName)})
 	p.Role = OrgRole(*memberRole)
 	// The installation's one provider vouched for the person with whatever
 	// factor it asks for.
@@ -152,14 +151,13 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 const apiTokenPrincipalSQL = `
 SELECT t.id, t.scopes,
        u.id, u.email, u.name, u.timezone, u.locale, u.is_active, COALESCE(u.avatar_url, ''),
-       o.id, o.slug, o.name, m.org_role,
+       o.id, o.slug, o.name, u.standing,
        COALESCE(ARRAY(SELECT p.key FROM api_token_project tp
                       JOIN project p ON p.id = tp.project_id
                       WHERE tp.token_id = t.id ORDER BY p.key), '{}')
 FROM api_token t
 JOIN app_user u ON u.id = t.user_id
-JOIN org o ON o.archived_at IS NULL
-LEFT JOIN org_member m ON m.user_id = u.id
+JOIN installation o ON o.archived_at IS NULL
 WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())`
 
 func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Principal, error) {
@@ -193,7 +191,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 	}
 
 	p.TokenID = &tokenID
-	p.Org = &Org{ID: orgID, Slug: orgSlug, Name: orgName}
+	p.placeIn(Org{ID: orgID, Slug: orgSlug, Name: orgName})
 	p.Role = OrgRole(*memberRole)
 
 	_, _ = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -296,7 +294,7 @@ func (s *Service) OrgBySlug(ctx context.Context, slug string) (*Org, error) {
 	var org Org
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT id, slug, name FROM org WHERE slug = $1 AND archived_at IS NULL`,
+			SELECT id, slug, name FROM installation WHERE slug = $1 AND archived_at IS NULL`,
 			strings.ToLower(strings.TrimSpace(slug)),
 		).Scan(&org.ID, &org.Slug, &org.Name)
 	})

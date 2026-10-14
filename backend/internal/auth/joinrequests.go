@@ -29,7 +29,7 @@ func (s *Service) JoinRequests(ctx context.Context) ([]JoinRequest, error) {
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.email::text, u.name, r.created_at
-			FROM org_join_request r JOIN app_user u ON u.id = r.user_id
+			FROM join_request r JOIN app_user u ON u.id = r.user_id
 			WHERE u.erased_at IS NULL
 			ORDER BY r.created_at, u.email`)
 		if err != nil {
@@ -56,17 +56,14 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, userID uuid.UUID, role O
 	}
 	var made ManagedUser
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE user_id = $1`, userID)
+		tag, err := tx.Exec(ctx, `DELETE FROM join_request WHERE user_id = $1`, userID)
 		if err != nil {
 			return err
 		}
 		if tag.RowsAffected() == 0 {
 			return ErrNoSuchRequest
 		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (user_id, org_role)
-			VALUES ($1, $2)
-			ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
+		if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = $2 WHERE id = $1`,
 			userID, string(role)); err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}
@@ -96,7 +93,7 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, userID uuid.UUID, role O
 // ask once more; nothing about them is kept.
 func (s *Service) DeclineJoinRequest(ctx context.Context, userID uuid.UUID, actor uuid.UUID, ip string) (db.LSN, error) {
 	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE user_id = $1`, userID)
+		tag, err := tx.Exec(ctx, `DELETE FROM join_request WHERE user_id = $1`, userID)
 		if err != nil {
 			return err
 		}

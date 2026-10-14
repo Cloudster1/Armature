@@ -98,7 +98,7 @@ export function Sidebar({ onNewIssue, onAsk }: { onNewIssue: () => void; onAsk?:
         <nav className="flex shrink-0 flex-col border-r border-border bg-surface" style={{ width: SIDEBAR_WIDTH }} data-sidebar={mode} aria-label="Where you are">
           <div className="flex h-12 items-center gap-1 border-b border-border px-3">
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
-              {principal?.org?.name}
+              {principal?.installation?.name}
             </span>
           </div>
 

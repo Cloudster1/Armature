@@ -24,11 +24,11 @@ func TestTheInstallationIsNamedByItsAdministrators(t *testing.T) {
 
 	// Everybody reads this name, so it is put back as it was found.
 	var was string
-	if err := h.super.QueryRow(context.Background(), `SELECT name FROM org WHERE id = $1`, orgID).Scan(&was); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT name FROM installation WHERE id = $1`, orgID).Scan(&was); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if _, err := h.super.Exec(context.Background(), `UPDATE org SET name = $2 WHERE id = $1`, orgID, was); err != nil {
+		if _, err := h.super.Exec(context.Background(), `UPDATE installation SET name = $2 WHERE id = $1`, orgID, was); err != nil {
 			t.Errorf("put the installation's name back: %v", err)
 		}
 	})

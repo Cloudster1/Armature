@@ -156,7 +156,7 @@ func (s *Service) valueNames(ctx context.Context, field string, in SuggestInput,
 	case "type":
 		query, detail = `SELECT name FROM issue_type WHERE lower(name) LIKE $1 ORDER BY name`, "type"
 	case "assignee", "reporter":
-		query, detail = `SELECT u.name FROM app_user u JOIN org_member m ON m.user_id = u.id WHERE u.is_active AND lower(u.name) LIKE $1 ORDER BY u.name`, "person"
+		query, detail = `SELECT u.name FROM app_user u WHERE u.is_active AND u.standing IS NOT NULL AND lower(u.name) LIKE $1 ORDER BY u.name`, "person"
 	case "project":
 		query, detail = `SELECT key FROM project WHERE archived_at IS NULL AND lower(key) LIKE $1`+byKey+` ORDER BY key`, "project"
 	case "sprint":

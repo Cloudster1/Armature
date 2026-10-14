@@ -136,7 +136,7 @@ func TestSessionLifecycle(t *testing.T) {
 
 	t.Run("revoking a membership ends an open session", func(t *testing.T) {
 		creds := h.signIn(t, svc, h.person(t, "revoked", auth.RoleOwner))
-		if _, err := h.super.Exec(ctx, `DELETE FROM org_member WHERE user_id = $1`, creds.Principal.User.ID); err != nil {
+		if _, err := h.super.Exec(ctx, `UPDATE app_user SET standing = NULL WHERE id = $1`, creds.Principal.User.ID); err != nil {
 			t.Fatal(err)
 		}
 

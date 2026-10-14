@@ -450,7 +450,7 @@ func TestTheInstallationRequiresASecondFactor(t *testing.T) {
 	if h.auditCountBy(t, principalField(t, signedUp, "principal", "user", "id"), "org.second_factor_required") != 1 {
 		t.Fatal("the rule was not recorded")
 	}
-	_, err := h.super.Exec(context.Background(), `UPDATE org SET second_factor = 'sometimes' WHERE id = $1`, orgID)
+	_, err := h.super.Exec(context.Background(), `UPDATE installation SET second_factor = 'sometimes' WHERE id = $1`, orgID)
 	refusedByCheck(t, err, "a rule the organization cannot have")
 
 	me := want(t, member.get("/api/v1/auth/me"), http.StatusOK, "a held session still says who it is")
@@ -511,7 +511,7 @@ func TestASingleSignOnSessionReliesOnItsProvider(t *testing.T) {
 
 	email := h.email(t, "ssofactor")
 	h.joinExisting(t, email, "admin")
-	if _, err := h.super.Exec(ctx, `UPDATE org SET second_factor = 'everyone' WHERE id = $1`, home.orgID); err != nil {
+	if _, err := h.super.Exec(ctx, `UPDATE installation SET second_factor = 'everyone' WHERE id = $1`, home.orgID); err != nil {
 		t.Fatal(err)
 	}
 

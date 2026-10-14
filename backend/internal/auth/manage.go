@@ -96,13 +96,12 @@ type managedRow struct {
 // The one shape every read takes. The person is excluded who is not a member,
 // who is the installation's automation account, or who was erased.
 const managedSelectSQL = `
-SELECT u.id, u.email::text, u.name, m.org_role, u.is_active, u.created_at,
+SELECT u.id, u.email::text, u.name, u.standing, u.is_active, u.created_at,
        u.password_hash IS NOT NULL,
        EXISTS (SELECT 1 FROM oidc_provider),
        EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)
-FROM org_member m
-JOIN app_user u ON u.id = m.user_id
-WHERE u.erased_at IS NULL AND u.id IS DISTINCT FROM $1`
+FROM app_user u
+WHERE u.standing IS NOT NULL AND u.erased_at IS NULL AND u.id IS DISTINCT FROM $1`
 
 func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	var r managedRow
@@ -240,12 +239,9 @@ func (s *Service) CreateLocalUser(ctx context.Context, in CreateLocalUserInput, 
 			}
 		}
 
-		// A customer row here is lifted to the standing given; a fresh
-		// account is simply put in.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (user_id, org_role)
-			VALUES ($1, $2)
-			ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`,
+		// A customer here is lifted to the standing given; a fresh account
+		// is simply put in.
+		if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = $2 WHERE id = $1`,
 			userID, string(in.Role)); err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}
@@ -304,7 +300,7 @@ func (s *Service) UpdateManagedUser(ctx context.Context, userID uuid.UUID, in Ma
 			if r.user.Role == RoleOwner {
 				return ErrOwnerStanding
 			}
-			if _, err := tx.Exec(ctx, `UPDATE org_member SET org_role = $2 WHERE user_id = $1`,
+			if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = $2 WHERE id = $1`,
 				userID, string(*in.Role)); err != nil {
 				return fmt.Errorf("change standing: %w", err)
 			}
@@ -441,9 +437,9 @@ func endEverySession(ctx context.Context, tx db.DBTX, userID uuid.UUID, keep *uu
 func SoleActiveAdministratorOf(ctx context.Context, tx db.DBTX, userID uuid.UUID) (string, error) {
 	var alone bool
 	err := tx.QueryRow(ctx, `
-		SELECT EXISTS (SELECT 1 FROM org_member WHERE user_id = $1 AND org_role IN ('owner', 'admin'))
-		   AND NOT EXISTS (SELECT 1 FROM org_member x JOIN app_user xu ON xu.id = x.user_id
-		                   WHERE x.org_role IN ('owner', 'admin') AND x.user_id <> $1 AND xu.is_active)`, userID).Scan(&alone)
+		SELECT EXISTS (SELECT 1 FROM app_user WHERE id = $1 AND standing IN ('owner', 'admin'))
+		   AND NOT EXISTS (SELECT 1 FROM app_user x
+		                   WHERE x.standing IN ('owner', 'admin') AND x.id <> $1 AND x.is_active)`, userID).Scan(&alone)
 	if err != nil || !alone {
 		return "", err
 	}

@@ -5418,6 +5418,8 @@ export interface components {
             spec?: components["schemas"]["Spec"];
         };
         Installation: {
+            /** Format: uuid */
+            id: string;
             name: string;
         };
         Invite: {
@@ -5428,7 +5430,11 @@ export interface components {
             expiresAt: string;
             /** Format: uuid */
             id: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @deprecated
+             * @description The installation's id, kept for one more release; a later release removes it.
+             */
             orgId: string;
             /** @enum {string} */
             role: "owner" | "admin" | "member" | "customer";
@@ -5962,7 +5968,12 @@ export interface components {
             token: string;
         };
         Principal: {
+            installation?: components["schemas"]["Installation"];
             mustEnrol?: boolean;
+            /**
+             * @deprecated
+             * @description The installation under its old name; read installation instead. A later release removes it.
+             */
             org?: components["schemas"]["Org"];
             portalDesk?: string;
             /** @enum {string} */
@@ -6423,6 +6434,7 @@ export interface components {
             };
             $ref?: string;
             additionalProperties?: components["schemas"]["Schema"];
+            deprecated?: boolean;
             description?: string;
             enum?: string[];
             format?: string;

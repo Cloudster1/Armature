@@ -36,7 +36,7 @@ SELECT u.id, u.name,
        COALESCE((SELECT a.percent FROM project_allocation a WHERE a.project_id = $1 AND a.user_id = u.id), 100),
        COALESCE((SELECT sum(a.percent) FROM project_allocation a WHERE a.user_id = u.id AND a.project_id <> $1), 0)::int
 FROM app_user u
-JOIN org_member o ON o.user_id = u.id AND o.org_role <> 'customer'`
+WHERE u.standing <> 'customer'`
 
 // Allocations lists the shares of a project's people: the members of its
 // teams, the assignees of its open issues, and anybody given a share in it.
@@ -48,7 +48,7 @@ func (s *Service) Allocations(ctx context.Context, projectKey string) ([]Allocat
 			return err
 		}
 		rows, err := tx.Query(ctx, selectAllocation+`
-			WHERE u.id IN (
+			AND u.id IN (
 			    SELECT m.user_id FROM team_member m JOIN team t ON t.id = m.team_id WHERE t.project_id = $1
 			    UNION SELECT i.assignee_id FROM issue i WHERE i.project_id = $1 AND i.resolved_at IS NULL
 			    UNION SELECT a.user_id FROM project_allocation a WHERE a.project_id = $1)
@@ -86,7 +86,7 @@ func (s *Service) SetAllocation(ctx context.Context, projectKey string, userID u
 		}
 		// Read first so a stranger is told what to do, before the guard in
 		// the database refuses them in its own words.
-		err = tx.QueryRow(ctx, selectAllocation+` WHERE u.id = $2`, projectID, userID).
+		err = tx.QueryRow(ctx, selectAllocation+` AND u.id = $2`, projectID, userID).
 			Scan(&out.UserID, &out.Name, &out.Percent, &out.ElsewherePercent)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("%w: only somebody who works here gives a project a share of their week; choose somebody who works here instead", ErrInvalid)

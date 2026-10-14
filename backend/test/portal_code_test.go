@@ -83,7 +83,7 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 
 	// The receipt goes to the address, by the worker's notifier.
 	var orgID uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `SELECT id FROM org WHERE slug = $1`, slug).Scan(&orgID); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT id FROM installation WHERE slug = $1`, slug).Scan(&orgID); err != nil {
 		t.Fatal(err)
 	}
 	payload, _ := json.Marshal(map[string]any{"key": key, "actorId": requesterID})

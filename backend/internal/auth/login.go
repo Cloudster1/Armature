@@ -103,9 +103,9 @@ func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Prin
 	}
 	var org Org
 	err = tx.QueryRow(ctx, `
-		SELECT o.id, o.slug, o.name, m.org_role
-		FROM org_member m, org o
-		WHERE m.user_id = $1 AND o.archived_at IS NULL`, userID,
+		SELECT o.id, o.slug, o.name, u.standing
+		FROM app_user u, installation o
+		WHERE u.id = $1 AND u.standing IS NOT NULL AND o.archived_at IS NULL`, userID,
 	).Scan(&org.ID, &org.Slug, &org.Name, &p.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrSwitchedOff
@@ -113,7 +113,7 @@ func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Prin
 	if err != nil {
 		return nil, fmt.Errorf("read the person's organization: %w", err)
 	}
-	p.Org = &org
+	p.placeIn(org)
 	return &p, nil
 }
 

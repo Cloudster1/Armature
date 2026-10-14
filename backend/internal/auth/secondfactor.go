@@ -324,7 +324,7 @@ func (s *Service) RequireSecondFactor(ctx context.Context, p *Principal, rule Se
 			return fmt.Errorf("require two-step sign-in: %w", err)
 		}
 		return audit.Write(ctx, tx, audit.Entry{
-			Action: "org.second_factor_required", TargetType: "org", TargetID: &p.Org.ID, Actor: p.User.ID, IP: ip,
+			Action: "org.second_factor_required", TargetType: "org", TargetID: &p.Installation.ID, Actor: p.User.ID, IP: ip,
 			Data: map[string]any{"require": string(rule)},
 		})
 	})

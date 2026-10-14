@@ -166,6 +166,27 @@ func TestDocumentRendersDeterministically(t *testing.T) {
 	}
 }
 
+// A field kept for one more release is marked, with what to read instead,
+// and the type it refers to is not.
+func TestADeprecatedFieldSaysSo(t *testing.T) {
+	type Old struct {
+		Name string `json:"name"`
+	}
+	type Holder struct {
+		Old *Old   `json:"old,omitempty" deprecated:"Read new instead."`
+		New string `json:"new"`
+	}
+	b := NewBuilder()
+	b.SchemaOf(Holder{})
+	held := b.Components()["Holder"]
+	if old := held.Properties["old"]; !old.Deprecated || old.Description != "Read new instead." || old.Ref == "" {
+		t.Errorf("old = %+v, want a deprecated reference saying what to read", old)
+	}
+	if held.Properties["new"].Deprecated || b.Components()["Old"].Deprecated {
+		t.Error("only the field is deprecated")
+	}
+}
+
 // A raw JSON field can be promised to be more than "some JSON".
 func TestFieldOverridesNameOneField(t *testing.T) {
 	b := NewBuilder()

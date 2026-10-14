@@ -17,15 +17,14 @@ export interface User {
   avatarUrl?: string;
 }
 
-export interface Org {
+export interface Installation {
   id: string;
-  slug: string;
   name: string;
 }
 
 export interface Principal {
   user: User;
-  org?: Org;
+  installation?: Installation;
   role?: OrgRole;
   /** The one desk a session that came in without a code may see. */
   portalDesk?: string;

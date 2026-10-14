@@ -43,13 +43,13 @@ installation does.
 | Category | Where | Personal columns | Kept | Goes when |
 |---|---|---|---|---|
 | Account | `app_user` | address, name, password hash, picture, time zone, language | while the account exists | erased on request: the row becomes a tombstone ("Former user", a reserved address, no password, no picture) |
-| Membership | `org_member`, `role_assignment`, `group_member`, `team_member` | who belongs where and holds what | while the account exists | the person erases their account; an administrator switching it off keeps it, so switching on brings it back |
+| Membership | `app_user.standing`, `role_assignment`, `group_member`, `team_member` | who belongs where and holds what | while the account exists | the person erases their account; an administrator switching it off keeps it, so switching on brings it back |
 | Working week | `member_schedule` | the minutes a person works on each weekday, and the holiday calendar they keep | while the account exists | the person erases their account |
 | Shares of the week | `project_allocation` | the percent of a person's week a project has | while the account and the project exist | set back to the whole week, with the project, and by erasure |
 | Absences | `absence` | the first and last day away, whether it is half a day, who wrote it down | `ARMATURE_RETAIN_ABSENCES` (400 days) after the last day | swept; removed by the person, an administrator, or the manager who recorded it, and by erasure |
 | Sessions | `user_session` | token hash, user agent, address, last seen | `ARMATURE_SESSION_TTL` (30 days) | signed out, erased, or swept `ARMATURE_RETAIN_SESSIONS` (1 day) past expiry |
 | API tokens | `api_token`, `api_token_project` | name, token hash, last used, the projects it is confined to | until revoked or expired | revoked, erased, or swept `ARMATURE_RETAIN_API_TOKENS` (30 days) past expiry |
-| Invitations | `org_invite` | address | until accepted or expired | swept `ARMATURE_RETAIN_INVITES` (30 days) past expiry; deleted by erasure |
+| Invitations | `invite` | address | until accepted or expired | swept `ARMATURE_RETAIN_INVITES` (30 days) past expiry; deleted by erasure |
 | Portal codes | `portal_code` | address, code hash | 10 minutes | swept `ARMATURE_RETAIN_PORTAL_CODES` (1 day) past expiry; deleted by erasure |
 | Sign-in handshakes | `oidc_login`, `login_challenge` | state, nonce; the digest of a password sign-in's code step and how many wrong codes it took | minutes | swept `ARMATURE_RETAIN_OIDC_LOGINS` (1 day) past expiry; a code step goes when it is answered, and by erasure |
 | Two-step sign-in | `user_second_factor`, `recovery_code` | the authenticator key, sealed with `ARMATURE_SECRET_KEY`; the last step used; digests of the recovery codes and when each was used | while it is on | turned off by the person or an administrator, and by erasure; the export says whether it is on and never holds the key |

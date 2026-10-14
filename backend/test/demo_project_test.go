@@ -131,7 +131,7 @@ func TestTheInstallationIsNotDeletedThroughTheAPI(t *testing.T) {
 		t.Fatalf("deleting the installation answered %d %s, want 404", gone.Status, gone.Raw)
 	}
 	var n int
-	if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM org WHERE id = $1`, org["id"]).Scan(&n); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM installation WHERE id = $1`, org["id"]).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 1 {

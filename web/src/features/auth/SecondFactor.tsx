@@ -307,7 +307,7 @@ export function EnrolmentRequired() {
         <Wordmark />
         <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">Set up two-step sign-in</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {data?.principal?.org?.name ?? "Armature"} asks everybody in your role to sign in with a code from an app on their phone as well as a password. Set it up to carry on.
+          {data?.principal?.installation?.name ?? "Armature"} asks everybody in your role to sign in with a code from an app on their phone as well as a password. Set it up to carry on.
         </p>
         <Card className="mt-6 space-y-4 p-5">
           <Enrolment onDone={() => {}} />

@@ -53,7 +53,7 @@ function OrgAutomationPage() {
           </Link>
         }
         title="Automation"
-        meta={data?.principal?.org?.name ? `Rules across every project of ${data.principal.org.name}` : undefined}
+        meta={data?.principal?.installation?.name ? `Rules across every project of ${data.principal.installation.name}` : undefined}
       />
       <RulesPanel canEdit={Boolean(access?.canAdministerOrg)} />
     </Page>

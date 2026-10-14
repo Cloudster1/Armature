@@ -125,9 +125,8 @@ func (s *Subscriptions) send(ctx context.Context, subID, filterID, userID uuid.U
 	)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT f.name, f.query, u.email, m.org_role, (f.owner_id = $2 OR f.shared)
+			SELECT f.name, f.query, u.email, u.standing, (f.owner_id = $2 OR f.shared)
 			FROM saved_filter f JOIN app_user u ON u.id = $2
-			LEFT JOIN org_member m ON m.user_id = u.id
 			WHERE f.id = $1`, filterID, userID).Scan(&name, &query, &to, &role, &visible)
 	})
 	if err != nil {

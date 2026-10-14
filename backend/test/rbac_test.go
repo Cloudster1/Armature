@@ -40,7 +40,7 @@ func (h *harness) joinAs(t *testing.T, ws *workspace, name, role string) uuid.UU
 		t.Fatalf("create %s: %v", name, err)
 	}
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)`, id, role); err != nil {
+		UPDATE app_user SET standing = $2 WHERE id = $1`, id, role); err != nil {
 		t.Fatalf("add %s to the organization: %v", name, err)
 	}
 	return id
@@ -168,13 +168,13 @@ func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 	ctx := context.Background()
 	var orgID, ownerID uuid.UUID
 	if _, err := own.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ('lastadmin', 'Last Admin') RETURNING id`).Scan(&orgID); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO installation (slug, name) VALUES ('lastadmin', 'Last Admin') RETURNING id`).Scan(&orgID); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ('owner@lastadmin.test', 'Owner') RETURNING id`).Scan(&ownerID); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'owner')`, ownerID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'owner' WHERE id = $1`, ownerID); err != nil {
 			return err
 		}
 		_, err := tx.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('global_administrator', $1)`, ownerID)
@@ -212,7 +212,7 @@ func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ('successor@lastadmin.test', 'Successor') RETURNING id`).Scan(&another); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'member')`, another)
+		_, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'member' WHERE id = $1`, another)
 		return err
 	}); err != nil {
 		t.Fatal(err)

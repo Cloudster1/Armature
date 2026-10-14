@@ -114,7 +114,7 @@ func (s *Service) signupState(org *Org) SignupState {
 func installationOrg(ctx context.Context, tx db.DBTX) (*Org, error) {
 	var org Org
 	err := tx.QueryRow(ctx, `
-		SELECT id, slug, name FROM org WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name)
+		SELECT id, slug, name FROM installation WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -205,11 +205,11 @@ func (s *Service) Signup(ctx context.Context, in SignupInput) (*Credentials, err
 		secret = sessionSecret
 		principal = Principal{
 			User:      User{ID: userID, Email: email, Name: name, Timezone: "UTC", Locale: "en", IsActive: true},
-			Org:       org,
 			Role:      role,
 			SessionID: &sessionID,
 			Proof:     ProofPassword,
 		}
+		principal.placeIn(*org)
 		return nil
 	})
 	if err != nil {
@@ -218,19 +218,18 @@ func (s *Service) Signup(ctx context.Context, in SignupInput) (*Credentials, err
 	return &Credentials{Principal: &principal, SessionSecret: secret, ExpiresAt: expiresAt, LSN: lsn}, nil
 }
 
-// setUpInstallation makes the installation's organization, owned by its first
-// account, with what a project needs, in the sign-up's own transaction.
+// setUpInstallation makes the installation, owned by its first account, with
+// what a project needs, in the sign-up's own transaction.
 func (s *Service) setUpInstallation(ctx context.Context, tx db.DBTX, ownerID uuid.UUID, ip string) (*Org, error) {
 	org := Org{Name: s.nameOfInstallation(), Slug: Slugify(s.nameOfInstallation())}
 	if !ValidSlug(org.Slug) {
 		org.Slug = installationSlug
 	}
-	if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, org.Slug, org.Name).Scan(&org.ID); err != nil {
+	if err := tx.QueryRow(ctx, `INSERT INTO installation (slug, name) VALUES ($1, $2) RETURNING id`, org.Slug, org.Name).Scan(&org.ID); err != nil {
 		return nil, fmt.Errorf("create the installation: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO org_member (user_id, org_role) VALUES ($1, 'owner')`, ownerID); err != nil {
-		return nil, fmt.Errorf("create membership: %w", err)
+	if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'owner' WHERE id = $1`, ownerID); err != nil {
+		return nil, fmt.Errorf("make the owner: %w", err)
 	}
 	if err := grantJoiningRole(ctx, tx, ownerID, RoleOwner); err != nil {
 		return nil, err
@@ -248,9 +247,8 @@ func (s *Service) setUpInstallation(ctx context.Context, tx db.DBTX, ownerID uui
 
 // joinInstallation makes somebody who signed up a plain member.
 func joinInstallation(ctx context.Context, tx db.DBTX, userID uuid.UUID, ip string) error {
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO org_member (user_id, org_role) VALUES ($1, 'member')`, userID); err != nil {
-		return fmt.Errorf("create membership: %w", err)
+	if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'member' WHERE id = $1`, userID); err != nil {
+		return fmt.Errorf("make a member: %w", err)
 	}
 	if err := grantJoiningRole(ctx, tx, userID, RoleMember); err != nil {
 		return err

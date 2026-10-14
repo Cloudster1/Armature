@@ -24,11 +24,11 @@ func TestThemesOverTheAPI(t *testing.T) {
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
 
 	var before *string
-	if err := h.super.QueryRow(context.Background(), `SELECT default_theme_id::text FROM org WHERE id = $1`, orgID).Scan(&before); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT default_theme_id::text FROM installation WHERE id = $1`, orgID).Scan(&before); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = h.super.Exec(context.Background(), `UPDATE org SET default_theme_id = $1 WHERE id = $2`, before, orgID)
+		_, _ = h.super.Exec(context.Background(), `UPDATE installation SET default_theme_id = $1 WHERE id = $2`, before, orgID)
 	})
 	want(t, owner.put("/api/v1/themes/default", map[string]any{"themeId": nil}), http.StatusOK, "start from no default")
 	h.waitForPrimary(t)
@@ -189,7 +189,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if got := owner.put("/api/v1/themes/default", map[string]any{"themeId": themeID}); got.Status != http.StatusUnprocessableEntity {
 			t.Fatalf("a private theme became the default: %d %s", got.Status, got.Raw)
 		}
-		if _, err := h.super.Exec(context.Background(), `UPDATE org SET default_theme_id = $1 WHERE id = $2`, themeID, orgID); err == nil {
+		if _, err := h.super.Exec(context.Background(), `UPDATE installation SET default_theme_id = $1 WHERE id = $2`, themeID, orgID); err == nil {
 			t.Fatalf("SQL let a private theme be the default")
 		}
 		if got := other.put("/api/v1/themes/default", map[string]any{"themeId": themeID}); got.Status != http.StatusForbidden {
@@ -229,7 +229,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 			t.Fatalf("an unshared theme is still shown as the default: %s", gone.Raw)
 		}
 		var still *string
-		if err := h.super.QueryRow(context.Background(), `SELECT default_theme_id::text FROM org WHERE id = $1`, orgID).Scan(&still); err != nil || still != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT default_theme_id::text FROM installation WHERE id = $1`, orgID).Scan(&still); err != nil || still != nil {
 			t.Fatalf("default_theme_id after unsharing = %v, %v", still, err)
 		}
 		want(t, owner.patch("/api/v1/themes/"+themeID, map[string]any{"shared": true}), http.StatusOK, "share again")
@@ -242,7 +242,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if err := h.super.QueryRow(context.Background(), `INSERT INTO app_user (email, name) VALUES ($1, 'Customer') RETURNING id`, h.email(t, "customer")).Scan(&customerID); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'customer')`, customerID); err != nil {
+		if _, err := h.super.Exec(context.Background(), `UPDATE app_user SET standing = 'customer' WHERE id = $1`, customerID); err != nil {
 			t.Fatal(err)
 		}
 		_, err := h.super.Exec(context.Background(), `INSERT INTO theme (owner_id, name, shared) VALUES ($1, 'Theirs', true)`, customerID)

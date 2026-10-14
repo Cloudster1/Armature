@@ -27,7 +27,7 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: () => state.params,
 }));
 vi.mock("@/api/auth", () => ({
-  useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada Lovelace" }, org: { name: "Acme" }, role: "owner" }, organizations: state.organizations } }),
+  useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada Lovelace" }, installation: { id: "i1", name: "Acme" }, role: "owner" }, organizations: state.organizations } }),
   useLogout: () => ({ mutate: vi.fn(), isPending: false }),
   useEraseMe: () => ({ mutate: vi.fn(), isPending: false }),
   MY_DATA_HREF: "/api/v1/auth/me/export",

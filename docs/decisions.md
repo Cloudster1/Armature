@@ -140,7 +140,7 @@ rating belongs to a service desk, a customer joins no team and shares no
 filter or theme, a role over a project is not one that answers for the whole
 installation, and the installation keeps an active administrator and a default
 workflow scheme. The membership checks read `org_member` by person, as its key
-already does. Nine triggers held a row to its organization and nothing else;
+already did, and since `00938` the account's standing. Nine triggers held a row to its organization and nothing else;
 they are gone, and the foreign keys keep what they also said, that the row
 pointed at exists.
 
@@ -204,13 +204,60 @@ naming it nothing could tell a second one apart, so a unique index keeps it
 to one. Its way back adds every column again, filled with the installation's
 id, so the release before this one runs on it unchanged.
 
-What is left of the organization is names: the `org` row and the tables
+What was left of the organization was names: the `org` row and the tables
 `org_member` and `org_role`, which the code reaches without an id, and the
-deprecated `orgId` that webhooks carry for one more release.
+deprecated `orgId` that webhooks carry for one more release. `00938` renamed
+them, as [The organization's tables are the
+installation's](#the-organizations-tables-are-the-installations) says.
 
 **Reconsider if** a column naming a group of rows is wanted again, for a wall
 inside an installation: that is a new column with its own name, keyed on what
 the wall is, not `org_id` back.
+
+### The organization's tables are the installation's
+
+The last of the organization was names, and migration `00938` gives them the
+installation's (#218). `org` is `installation`, still one row. `org_role` is
+`role`, and its `org_wide_only` is `installation_wide_only`. `org_invite` is
+`invite`, and `org_join_request` is `join_request`. Every constraint, index and
+trigger named for an old table is renamed with it. That includes the not-null
+constraints Postgres 18 names after table and column, which a table's rename
+leaves as they were: the installation's id was held by `org_id_not_null`.
+Nothing in the schema is named for the organization any more, and a test
+reads the catalog to keep it so.
+
+`org_member` held one row per person, keyed by the account, with a standing
+and nothing else anybody read. So it is a column of the account:
+`app_user.standing`, owner, admin, member or customer, and NULL for somebody
+who is no member, such as a follower known by a mail or a person erased.
+Switching somebody off is still `is_active = false`, which keeps the
+standing, so switching them on gives it back. A column needs no join to ask
+whether somebody is here, and a check keeps it to the four. It is
+`standing`, not `role`, because a role is what `role_assignment` grants
+over projects; the standing answers whether somebody holds a seat and may
+administer the installation. An invitation's `org_role` is its `standing`
+too. The triggers that read the membership read the standing, with the same
+rules.
+
+A table's rename moves what depends on it, but a function body names a table
+as text and breaks only when it runs, and what depends on `org_member` would
+go with it unseen. So the upgrade stops first at a view, trigger, rule or key
+on `org_member`, and at a function that names an old table, and names them.
+Its way back makes `org_member` again from the standings and every name as it
+was. A membership's own dates were never read, so they were not kept: the
+way back dates each membership by its account.
+
+The API keeps its words for one more release. `/auth/me` names the
+installation, its id and name, and still carries `org`, marked deprecated, as
+the webhook envelope, the `member.joined` event and an invitation still carry
+`orgId`. The next release removes all four, with the redirects from the old
+sign-in, desk and settings addresses. `orgWideOnly`, the `org.administer`
+permission and the `condition.org_role` rule type are part of what clients
+and stored workflows say, and keep their names.
+
+**Reconsider if** a person needs more than one standing at once, such as a
+customer of one desk who works on another: that is a table of standings
+again, keyed by person and by what they stand in, not `org_member` back.
 
 ### Two database roles keep the secret tables apart
 
@@ -253,12 +300,12 @@ the choice with the operator, who can delete what they no longer need with
 the release that still knows how.
 
 Inside, the product went first and the schema followed. The one organization
-row still holds the installation's name and settings, and since `00937` no
-table carries `org_id`. That kept each step shippable with all four test
+row held the installation's name and settings until `00938` named it the
+installation, and since `00937` no table carries `org_id`. That kept each step shippable with all four test
 layers green. The integration suite works in the one organization too, its tests
 kept apart by people, project keys and names of their own (#217). The schema
 ticket (#218) took the tenant out in steps: row security went first, then
-the keys, the triggers, the code's own tenant and the columns. The separation row security argued for, between teams, is now
+the keys, the triggers, the code's own tenant, the columns and the names. The separation row security argued for, between teams, is now
 between installations.
 
 This supersedes the entries that described organizations as part of the
@@ -276,6 +323,11 @@ others must not see at all: that is a wall around people and settings, the
 way a project is a wall around work, not organizations coming back.
 
 ### One installation holds one organization, and an upgrade with several stops
+
+**Superseded in part** by [The organization's tables are the
+installation's](#the-organizations-tables-are-the-installations) (#218): the
+row is the `installation` table's now, and the `installation` package reads
+it there. The refusal stands.
 
 Armature is self-hosted, and an installation serves one team; running more
 than one team takes more than one installation (#208). The organization row
@@ -1768,7 +1820,7 @@ security answered who may see a row, not which credential is asking.
 ### A key is narrowed where the permission set is built
 
 A key was always its owner in miniature, resolved live: the role comes from
-org_member on every request and the grants from role_assignment, so demoting
+the account's standing on every request and the grants from role_assignment, so demoting
 somebody narrows their keys before they finish the sentence. What was missing
 was a way to make one narrower still, and a limit on what "everything its owner
 can" includes.
@@ -1796,6 +1848,11 @@ the person's.
 point it wants an identity of its own rather than a narrowing of somebody's.
 
 ### Nobody is signed in outside the organization
+
+**Superseded in part** by [The organization's tables are the
+installation's](#the-organizations-tables-are-the-installations) (#218): every
+principal carries the installation, and a membership is the account's
+standing. The refusal stands as written.
 
 Somebody signed in with no organization saw a shell of empty tables, and
 every guard had to ask whether there was a tenant at all; a forgotten check

@@ -140,9 +140,9 @@ func KeyFromName(name string) Role {
 }
 
 const selectRoles = `
-SELECT r.key, r.name, r.description, r.org_wide_only, r.builtin, r.permissions,
+SELECT r.key, r.name, r.description, r.installation_wide_only, r.builtin, r.permissions,
        (SELECT count(*) FROM role_assignment a WHERE a.role = r.key)
-FROM org_role r`
+FROM role r`
 
 func scanDefinition(row pgx.Row) (*Definition, error) {
 	var (
@@ -187,7 +187,7 @@ func (s *Store) Roles(ctx context.Context) ([]Definition, error) {
 
 // definitionsFor reads what each role grants, for resolving one person.
 func definitionsFor(ctx context.Context, tx db.DBTX) (Definitions, error) {
-	rows, err := tx.Query(ctx, `SELECT key, permissions FROM org_role`)
+	rows, err := tx.Query(ctx, `SELECT key, permissions FROM role`)
 	if err != nil {
 		return nil, fmt.Errorf("read roles: %w", err)
 	}
@@ -256,7 +256,7 @@ func (s *Store) CreateRole(ctx context.Context, in RoleInput, actor uuid.UUID) (
 	var out *Definition
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO org_role (key, name, description, org_wide_only, permissions)
+			INSERT INTO role (key, name, description, installation_wide_only, permissions)
 			VALUES ($1, $2, $3, $4, $5)`, string(key), name, description, orgWide, perms)
 		if isUniqueViolation(err) {
 			return ErrRoleNameTaken
@@ -319,7 +319,7 @@ func (s *Store) UpdateRole(ctx context.Context, in RoleInput, actor uuid.UUID) (
 			}
 		}
 		_, err = tx.Exec(ctx, `
-			UPDATE org_role SET name = $2, description = $3, org_wide_only = $4, permissions = $5
+			UPDATE role SET name = $2, description = $3, installation_wide_only = $4, permissions = $5
 			WHERE key = $1`, string(in.Key), name, description, orgWide, perms)
 		if isUniqueViolation(err) {
 			return ErrRoleNameTaken
@@ -352,7 +352,7 @@ func (s *Store) DeleteRole(ctx context.Context, key Role, actor uuid.UUID) (db.L
 		if current.Builtin {
 			return ErrBuiltinRole
 		}
-		if _, err := tx.Exec(ctx, `DELETE FROM org_role WHERE key = $1`, string(key)); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM role WHERE key = $1`, string(key)); err != nil {
 			if isCheckViolation(err) {
 				return ErrBuiltinRole
 			}

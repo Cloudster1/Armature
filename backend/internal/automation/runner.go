@@ -332,7 +332,7 @@ func (s *Service) roleOf(ctx context.Context, userID uuid.UUID) (string, error) 
 	}
 	var role string
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, userID).Scan(&role)
+		return tx.QueryRow(ctx, `SELECT standing FROM app_user WHERE id = $1 AND standing IS NOT NULL`, userID).Scan(&role)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil

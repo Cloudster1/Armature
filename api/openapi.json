@@ -22106,11 +22106,16 @@
       "Installation": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "name": {
             "type": "string"
           }
         },
         "required": [
+          "id",
           "name"
         ]
       },
@@ -22134,7 +22139,9 @@
           },
           "orgId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The installation's id, kept for one more release; a later release removes it.",
+            "deprecated": true
           },
           "role": {
             "type": "string",
@@ -24044,11 +24051,16 @@
       "Principal": {
         "type": "object",
         "properties": {
+          "installation": {
+            "$ref": "#/components/schemas/Installation"
+          },
           "mustEnrol": {
             "type": "boolean"
           },
           "org": {
-            "$ref": "#/components/schemas/Org"
+            "$ref": "#/components/schemas/Org",
+            "description": "The installation under its old name; read installation instead. A later release removes it.",
+            "deprecated": true
           },
           "portalDesk": {
             "type": "string"
@@ -25732,6 +25744,9 @@
           },
           "additionalProperties": {
             "$ref": "#/components/schemas/Schema"
+          },
+          "deprecated": {
+            "type": "boolean"
           },
           "description": {
             "type": "string"

@@ -1,5 +1,5 @@
 // Package installation is the one way to the installation's name and settings,
-// which live on its one org row until the schema renames it (#218).
+// which live on its one row.
 package installation
 
 import (
@@ -17,7 +17,8 @@ import (
 
 // Installation is what everybody signed in may read about it.
 type Installation struct {
-	Name string `json:"name"`
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 // ErrNameRequired is a rename to nothing.
@@ -40,6 +41,9 @@ func (s *Service) Get(ctx context.Context) (*Installation, error) {
 	var out Installation
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
+		if out.ID, err = ID(ctx, tx); err != nil {
+			return err
+		}
 		out.Name, err = Name(ctx, tx)
 		return err
 	})
@@ -55,9 +59,10 @@ func (s *Service) Rename(ctx context.Context, actor uuid.UUID, name, ip string) 
 	if name == "" {
 		return nil, 0, ErrNameRequired
 	}
+	var id uuid.UUID
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		id, err := ID(ctx, tx)
-		if err != nil {
+		var err error
+		if id, err = ID(ctx, tx); err != nil {
 			return err
 		}
 		before, err := Name(ctx, tx)
@@ -75,7 +80,7 @@ func (s *Service) Rename(ctx context.Context, actor uuid.UUID, name, ip string) 
 	if err != nil {
 		return nil, 0, err
 	}
-	return &Installation{Name: name}, lsn, nil
+	return &Installation{ID: id, Name: name}, lsn, nil
 }
 
 // Name is what the installation is called.
@@ -127,7 +132,7 @@ func ID(ctx context.Context, tx db.DBTX) (uuid.UUID, error) {
 
 // get and set take a column from the fixed list above, never from a caller.
 func get(ctx context.Context, tx db.DBTX, column string, into any) error {
-	err := tx.QueryRow(ctx, `SELECT `+column+` FROM org`).Scan(into)
+	err := tx.QueryRow(ctx, `SELECT `+column+` FROM installation`).Scan(into)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}
@@ -138,7 +143,7 @@ func get(ctx context.Context, tx db.DBTX, column string, into any) error {
 }
 
 func set(ctx context.Context, tx db.DBTX, column string, value any) error {
-	tag, err := tx.Exec(ctx, `UPDATE org SET `+column+` = $1`, value)
+	tag, err := tx.Exec(ctx, `UPDATE installation SET `+column+` = $1`, value)
 	if err != nil {
 		return fmt.Errorf("change the installation's %s: %w", column, err)
 	}

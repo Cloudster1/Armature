@@ -701,7 +701,7 @@ func membersByEmail(ctx context.Context, cluster *db.Cluster) (map[string]uuid.U
 	err := cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT u.email, u.id FROM app_user u
-			JOIN org_member m ON m.user_id = u.id`)
+			WHERE u.standing IS NOT NULL`)
 		if err != nil {
 			return err
 		}

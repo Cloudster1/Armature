@@ -257,8 +257,7 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 		}
 		rows, err := tx.Query(ctx, `
 			SELECT w.user_id FROM issue_watcher w
-			JOIN app_user u ON u.id = w.user_id AND u.is_active
-			JOIN org_member m ON m.user_id = w.user_id AND m.org_role <> 'customer'
+			JOIN app_user u ON u.id = w.user_id AND u.is_active AND u.standing <> 'customer'
 			WHERE w.issue_id = $1 ORDER BY w.created_at`, s.id)
 		if err != nil {
 			return err
@@ -297,8 +296,8 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 			}
 			var ok, watchOwn bool
 			err := tx.QueryRow(ctx, `
-				SELECT EXISTS (SELECT 1 FROM org_member m JOIN app_user u ON u.id = m.user_id AND u.is_active
-				               WHERE m.user_id = $1 AND m.org_role <> 'customer'),
+				SELECT EXISTS (SELECT 1 FROM app_user u
+				               WHERE u.id = $1 AND u.is_active AND u.standing <> 'customer'),
 				       COALESCE((SELECT watch_own FROM notification_preference
 				                 WHERE user_id = $1), true)`, **who).Scan(&ok, &watchOwn)
 			if err != nil {

@@ -246,7 +246,7 @@ func TestAskingForAPasswordLinkTellsNothing(t *testing.T) {
 			if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Passwordless') RETURNING id`, email).Scan(&id); err != nil {
 				t.Fatalf("make %s: %v", prefix, err)
 			}
-			if _, err := h.super.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)`, id, role); err != nil {
+			if _, err := h.super.Exec(ctx, `UPDATE app_user SET standing = $2 WHERE id = $1`, id, role); err != nil {
 				t.Fatalf("add %s: %v", prefix, err)
 			}
 			return email, id

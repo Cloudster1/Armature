@@ -320,10 +320,10 @@ func readWeek(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*WorkingWeek, 
 	var calendarID *uuid.UUID
 	var raw []byte
 	err := tx.QueryRow(ctx, `
-		SELECT m.org_role, s.calendar_id, s.minutes
-		FROM org_member m
-		LEFT JOIN member_schedule s ON s.user_id = m.user_id
-		WHERE m.user_id = $1`, userID).Scan(&role, &calendarID, &raw)
+		SELECT u.standing, s.calendar_id, s.minutes
+		FROM app_user u
+		LEFT JOIN member_schedule s ON s.user_id = u.id
+		WHERE u.id = $1 AND u.standing IS NOT NULL`, userID).Scan(&role, &calendarID, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotAMember
 	}

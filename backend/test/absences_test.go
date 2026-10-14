@@ -244,9 +244,9 @@ func TestAnAbsenceListFromADayRunsOnAndSaysWhenItIsCut(t *testing.T) {
 		// One more absence than a list holds, each a single day, the far one among them.
 		if _, err := h.super.Exec(context.Background(), `
 			INSERT INTO absence (user_id, starts_on, ends_on)
-			SELECT m.user_id, d::date, d::date
-			FROM org_member m, generate_series(current_date + 1, current_date + $2::int + 1, interval '1 day') d
-			WHERE m.user_id = $1 AND d::date <> $3::date
+			SELECT u.id, d::date, d::date
+			FROM app_user u, generate_series(current_date + 1, current_date + $2::int + 1, interval '1 day') d
+			WHERE u.id = $1 AND d::date <> $3::date
 			LIMIT $2`, adaID, availability.MaxOpenAbsences, farAhead); err != nil {
 			t.Fatal(err)
 		}
@@ -337,8 +337,7 @@ func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
 	t.Run("only somebody who works here is away from it", func(t *testing.T) {
 		var customerID uuid.UUID
 		err := h.super.QueryRow(ctx, `
-			WITH made AS (INSERT INTO app_user (email, name) VALUES ($1, 'Sam Customer') RETURNING id)
-			INSERT INTO org_member (user_id, org_role) SELECT id, 'customer' FROM made RETURNING user_id`,
+			INSERT INTO app_user (email, name, standing) VALUES ($1, 'Sam Customer', 'customer') RETURNING id`,
 			h.email(t, "absencecustomer")).Scan(&customerID)
 		if err != nil {
 			t.Fatal(err)
