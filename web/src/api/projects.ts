@@ -211,3 +211,12 @@ export function useArchiveProject() {
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }
+
+/** Restoring brings an archived project and its issues back into every list. */
+export function useRestoreProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => request<void>(`/projects/${key}/restore`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+}

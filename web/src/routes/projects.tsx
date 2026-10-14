@@ -1,13 +1,12 @@
-import { useState, type FormEvent } from "react";
+import { memo, useCallback, useState, type FormEvent } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
-import { useArchiveProject, useCreateProject, useKeyCheck, useProjects, type Project } from "@/api/projects";
+import { useArchiveProject, useCreateProject, useKeyCheck, useProjects, useRestoreProject, type Project } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
 import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, Menu, Page, PageHeader, Skeleton, Switch, Table, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TemplateChooser } from "@/features/projects/TemplateChooser";
 import { RelativeTime } from "@/features/issues/badges";
-import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { HealthTag } from "@/features/projects/StatusStrip";
 
 export const projectsRoute = createRoute({
@@ -21,6 +20,22 @@ function ProjectsPage() {
   const { data, isLoading } = useProjects(showArchived);
   const { data: access } = useAccess();
   const [creating, setCreating] = useState(false);
+  // Archiving deletes nothing and a restore undoes it, so it asks nothing and offers
+  // Undo. Held here, since an archived row leaves the list before Undo is pressed.
+  const { mutate: archive } = useArchiveProject();
+  const { mutate: restore } = useRestoreProject();
+  const toast = useToast();
+  const archiveProject = useCallback(
+    (project: Project) =>
+      archive(project.key, {
+        onSuccess: () => toast.success(`Archived ${project.name}`, { action: { label: "Undo", onClick: () => restore(project.key) } }),
+      }),
+    [archive, restore, toast],
+  );
+  const restoreProject = useCallback(
+    (project: Project) => restore(project.key, { onSuccess: () => toast.success(`Restored ${project.name}`) }),
+    [restore, toast],
+  );
 
   const projects = data?.projects ?? [];
   // Asked of the server rather than guessed from the org role, so that the
@@ -68,7 +83,13 @@ function ProjectsPage() {
           </thead>
           <tbody>
             {projects.map((project) => (
-              <ProjectRow key={project.id} project={project} canAdminister={canAdminister(access, project.key)} />
+              <ProjectRow
+                key={project.id}
+                project={project}
+                canAdminister={canAdminister(access, project.key)}
+                onArchive={archiveProject}
+                onRestore={restoreProject}
+              />
             ))}
           </tbody>
         </Table>
@@ -77,11 +98,20 @@ function ProjectsPage() {
   );
 }
 
-function ProjectRow({ project, canAdminister: admin }: { project: Project; canAdminister: boolean }) {
+// Memoised, since an installation can hold thousands of projects and the page
+// renders again for every archive and restore.
+const ProjectRow = memo(function ProjectRow({
+  project,
+  canAdminister: admin,
+  onArchive,
+  onRestore,
+}: {
+  project: Project;
+  canAdminister: boolean;
+  onArchive: (project: Project) => void;
+  onRestore: (project: Project) => void;
+}) {
   const navigate = useNavigate();
-  const archive = useArchiveProject();
-  const confirm = useConfirm();
-  const toast = useToast();
   const archived = Boolean(project.archivedAt);
   return (
     <tr className="group hover:bg-surface-raised/60" data-project={project.key} data-archived={archived || undefined}>
@@ -103,33 +133,41 @@ function ProjectRow({ project, canAdminister: admin }: { project: Project; canAd
       </Td>
       <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums"><RelativeTime iso={project.updatedAt} /></Td>
       <Td className="text-right">
-        {admin && !archived && (
+        {admin && (
           <Menu
             label={`Actions for ${project.name}`}
             align="end"
             trigger={(props) => (
-              <IconButton icon={<Icon.More />} label={`Actions for ${project.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} />
+              <IconButton
+                icon={<Icon.More />}
+                label={`Actions for ${project.name}`}
+                size="sm"
+                onClick={props.toggle}
+                aria-haspopup={props["aria-haspopup"]}
+                aria-expanded={props["aria-expanded"]}
+                data-project-menu={project.key}
+              />
             )}
-            items={[
-              { label: "Settings", icon: <Icon.Settings />, onSelect: () => navigate({ to: "/projects/$projectKey/settings", params: { projectKey: project.key } }) },
-              {
-                label: "Archive",
-                icon: <Icon.Archive />,
-                danger: true,
-                attrs: { "data-action": "archive-project" },
-                onSelect: async () => {
-                  if (await confirm({ noun: "project", verb: "Archive", body: `${project.name} and its issues leave the lists; nothing is deleted, and it can be shown again with the archived ones.` })) {
-                    archive.mutate(project.key, { onSuccess: () => toast.success(`Archived ${project.name}`) });
-                  }
-                },
-              },
-            ]}
+            items={
+              archived
+                ? [{ label: "Restore", icon: <Icon.Archive />, onSelect: () => onRestore(project), attrs: { "data-action": "restore-project" } }]
+                : [
+                    { label: "Settings", icon: <Icon.Settings />, onSelect: () => navigate({ to: "/projects/$projectKey/settings", params: { projectKey: project.key } }) },
+                    {
+                      label: "Archive",
+                      icon: <Icon.Archive />,
+                      danger: true,
+                      attrs: { "data-action": "archive-project" },
+                      onSelect: () => onArchive(project),
+                    },
+                  ]
+            }
           />
         )}
       </Td>
     </tr>
   );
-}
+});
 
 /** A template key as it reads in a sentence. */
 function templateLabel(key: string): string {

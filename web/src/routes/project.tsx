@@ -24,7 +24,7 @@ function ProjectLayout() {
       <Page width="content">
         <EmptyState
           title={`There is no project ${projectKey}`}
-          description="It may have been archived, or the key in the address is not right."
+          description="Check the key in the address, or ask an administrator for a role in the project."
           action={
             <Link to="/projects" className="text-sm font-medium text-accent hover:underline">
               All projects

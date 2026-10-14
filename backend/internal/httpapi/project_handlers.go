@@ -162,7 +162,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleArchiveProject(w http.ResponseWriter, r *http.Request) {
-	lsn, err := s.Projects.Archive(r.Context(), r.PathValue("projectKey"))
+	lsn, err := s.Projects.Archive(r.Context(), r.PathValue("projectKey"), userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -172,7 +172,7 @@ func (s *Server) handleArchiveProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRestoreProject(w http.ResponseWriter, r *http.Request) {
-	lsn, err := s.Projects.Restore(r.Context(), r.PathValue("projectKey"))
+	lsn, err := s.Projects.Restore(r.Context(), r.PathValue("projectKey"), userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

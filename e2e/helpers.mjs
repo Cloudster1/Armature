@@ -2604,3 +2604,22 @@ export async function changeType(page, typeName) {
   await page.waitForSelector(option, { timeout: WAIT });
   await page.click(option);
 }
+
+/** Opens a row's menu on the projects list and picks one of its actions. */
+export async function pickProjectAction(page, projectKey, action) {
+  await press(page, `[data-project-menu="${projectKey}"]`);
+  await press(page, `[data-action="${action}"]`);
+}
+
+/** Waits for a project's row on the projects list to be there, archived or not. */
+export async function waitForProjectRow(page, projectKey, { archived }) {
+  await page.waitForFunction(
+    (key, want) => {
+      const row = document.querySelector(`[data-project="${key}"]`);
+      return row && row.hasAttribute("data-archived") === want;
+    },
+    { timeout: WAIT },
+    projectKey,
+    archived,
+  );
+}

@@ -491,34 +491,32 @@ func (s *Service) SetWorkflowScheme(ctx context.Context, key string, schemeID *u
 // Archive hides a project without deleting anything. Issues, history and links
 // are all still there, which is what makes it recoverable and what makes it the
 // right default instead of a delete.
-func (s *Service) Archive(ctx context.Context, key string) (db.LSN, error) {
-	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `
-			UPDATE project SET archived_at = now()
-			WHERE key = $1 AND archived_at IS NULL`, NormalizeKey(key))
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() == 0 {
-			return ErrNotFound
-		}
-		return events.Emit(ctx, tx, "project.archived", map[string]any{"key": NormalizeKey(key)})
-	})
+func (s *Service) Archive(ctx context.Context, key string, actor uuid.UUID) (db.LSN, error) {
+	return s.markArchived(ctx, "project.archived", `
+		UPDATE project SET archived_at = now()
+		WHERE key = $1 AND archived_at IS NULL RETURNING id`, key, actor)
 }
 
 // Restore brings an archived project back.
-func (s *Service) Restore(ctx context.Context, key string) (db.LSN, error) {
+func (s *Service) Restore(ctx context.Context, key string, actor uuid.UUID) (db.LSN, error) {
+	return s.markArchived(ctx, "project.restored", `
+		UPDATE project SET archived_at = NULL
+		WHERE key = $1 AND archived_at IS NOT NULL RETURNING id`, key, actor)
+}
+
+// markArchived runs one of the two updates and says who did it, which the
+// audit log keeps for both directions.
+func (s *Service) markArchived(ctx context.Context, topic, update, key string, actor uuid.UUID) (db.LSN, error) {
+	key = NormalizeKey(key)
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `
-			UPDATE project SET archived_at = NULL
-			WHERE key = $1 AND archived_at IS NOT NULL`, NormalizeKey(key))
-		if err != nil {
+		var id uuid.UUID
+		if err := tx.QueryRow(ctx, update, key).Scan(&id); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrNotFound
+			}
 			return err
 		}
-		if tag.RowsAffected() == 0 {
-			return ErrNotFound
-		}
-		return nil
+		return events.Emit(ctx, tx, topic, map[string]any{"projectId": id, "key": key, "actorId": actor})
 	})
 }
 

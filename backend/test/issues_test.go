@@ -146,7 +146,7 @@ func TestProjects(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := ws.projects.Archive(ws.ctx, p.Key); err != nil {
+		if _, err := ws.projects.Archive(ws.ctx, p.Key, ws.actor.UserID); err != nil {
 			t.Fatalf("archive: %v", err)
 		}
 
@@ -182,7 +182,7 @@ func TestProjects(t *testing.T) {
 			t.Errorf("error = %v, want ErrArchived", err)
 		}
 
-		if _, err := ws.projects.Restore(ws.ctx, p.Key); err != nil {
+		if _, err := ws.projects.Restore(ws.ctx, p.Key, ws.actor.UserID); err != nil {
 			t.Fatalf("restore: %v", err)
 		}
 		if _, _, err := ws.issues.Create(ws.ctx, issue.CreateInput{ProjectKey: p.Key, Summary: "back"}, ws.actor); err != nil {

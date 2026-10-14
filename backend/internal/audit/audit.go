@@ -234,6 +234,7 @@ var Copied = map[string]string{
 	"member.joined":                       "user",
 	"project.created":                     "project",
 	"project.archived":                    "project",
+	"project.restored":                    "project",
 	"project.workflow_scheme_changed":     "project",
 	"project.workflow_assignment_changed": "project",
 	"project.status_posted":               "project",

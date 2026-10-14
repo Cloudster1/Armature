@@ -11,6 +11,11 @@ and its tag message, so a change is written here in the branch that makes it.
   made, and the one running; what others share is on All saved searches
   until you star it, so a few dozen shared searches no longer push the
   results down the page (#262).
+- Added: an archived project can be restored from its row in the projects list,
+  with Show archived on, and from its settings page, whose forms stay closed
+  until it is. Archiving no longer asks first; its toast offers Undo, which
+  restores the project. The audit log records who archived and who restored a
+  project (#112).
 - Added: the type in an issue's header is a picker for anybody who may edit
   it, offering the other types at the same level. When the new type's
   workflow has no place for the issue's status, the page says which status
