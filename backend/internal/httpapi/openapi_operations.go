@@ -50,6 +50,8 @@ var operations = []operation{
 		responses: map[int]any{200: env{"status": "", "routing": db.Stats{}}, 503: env{"status": ""}}},
 	{method: "GET", path: "/openapi.json", handler: "handleOpenAPI", tag: "health", summary: "This document.", public: true,
 		responses: ok(openapi.Document{})},
+	{method: "GET", path: "/meta", handler: "handleMeta", tag: "health", summary: "Which build of Armature is answering, the API version it speaks and its capabilities; the commit and build time only for somebody signed in.", public: true,
+		responses: ok(meta{})},
 
 	// Signing up and in.
 	{method: "GET", path: "/auth/signup", handler: "handleSignupOpen", tag: "auth", summary: "Whether signing up would work now, and whether it would set the installation up.", public: true,
@@ -113,7 +115,8 @@ var operations = []operation{
 	{method: "GET", path: "/auth/me", handler: "handleMe", tool: "whoami", toolHelp: "Who the token belongs to, and its scopes and projects.", tag: "auth", summary: "Who is signed in, and the token they called with; null for a browser session.",
 		responses: ok(env{"principal": auth.Principal{}, "limits": limits{}, "token": (*auth.APIToken)(nil)})},
 	{method: "GET", path: "/build", handler: "handleBuild", tag: "health", summary: "Which build of Armature is answering.",
-		responses: ok(env{"build": buildinfo.Info{}})},
+		deprecated: "Read GET /meta instead, which answers the same build. Kept for at least one more release.",
+		responses:  ok(env{"build": buildinfo.Info{}})},
 	// Themes.
 	{method: "GET", path: "/themes", handler: "handleListThemes", tag: "themes", summary: "Themes the caller may use: theirs, then the shared ones.", responses: ok(env{"themes": []theme.Theme{}})},
 	{method: "POST", path: "/themes", handler: "handleCreateTheme", tag: "themes", summary: "Make a theme.", request: theme.Input{}, responses: created(env{"theme": theme.Theme{}})},
