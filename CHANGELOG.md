@@ -7,6 +7,14 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a webhook's envelope carries its version, `version`, and the
+  `X-Armature-Webhook-Version` header says the same, so a receiver can refuse
+  one it does not know before parsing it. An endpoint is registered for a
+  version, the current one, 1, unless `POST /webhooks` names another, and an
+  edit keeps it; a retry or a redelivery keeps the version its body was built
+  in. The envelope, its headers, the versioning rule and every topic's payload
+  are in `docs/webhooks.md`, and the `webhooks` section of the OpenAPI
+  document describes the delivery (#242).
 - Changed: the organization's tables are named for the installation. `org`
   is `installation`, `org_role` is `role`, `org_invite` is `invite` and
   `org_join_request` is `join_request`, with their constraints, indexes,
@@ -17,8 +25,10 @@ here in the branch that makes it.
   `/auth/me` names the installation, its id and name (#218).
 - Deprecated: the `org` of `/auth/me`, which names the same installation,
   read `installation` instead. It goes in the next release, together with
-  the deprecated `orgId` of webhooks, the `member.joined` event and
-  invitations, and the redirects from the old addresses (#218).
+  the deprecated `orgId` of invitations and the redirects from the old
+  addresses. The `orgId` of a webhook's envelope and of the `member.joined`
+  event goes with envelope version 2, and an endpoint registered for version
+  1 keeps getting it for at least one Dynamo release (#218, #242).
 - Upgrade note (#218): a report, export or script that reads the database
   directly and names `org`, `org_member`, `org_role`, `org_invite` or
   `org_join_request` breaks with this release. Read `installation`, `role`,
@@ -54,8 +64,10 @@ here in the branch that makes it.
   `org` field (#218).
 - Deprecated: the `orgId` of a webhook's envelope, of the `member.joined`
   event's payload and of an invitation in the API. Each holds the
-  installation's stable id for one more release, the same id it held
-  before, and a later release removes them; read nothing from them (#218).
+  installation's stable id, the same id it held before; read nothing from
+  them. A later release removes an invitation's. A webhook's go with
+  envelope version 2, and an endpoint registered for version 1 keeps
+  getting them for at least one Dynamo release (#218, #242).
 - Upgrade note (#218): drain the outbox and the event stream before
   upgrading, and do not run workers of both releases side by side. The
   previous release's worker skips an event this release relayed, because it

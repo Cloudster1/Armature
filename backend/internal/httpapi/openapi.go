@@ -23,6 +23,7 @@ import (
 	"github.com/armature/armature/backend/internal/report"
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/theme"
+	"github.com/armature/armature/backend/internal/webhook"
 	"github.com/armature/armature/backend/internal/workflow"
 )
 
@@ -178,8 +179,44 @@ func Spec() *openapi.Document {
 	for _, tag := range openapi.SortedKeys(tags) {
 		doc.Tags = append(doc.Tags, openapi.Tag{Name: tag})
 	}
+	doc.Webhooks = map[string]openapi.PathItem{"event": {"post": webhookDelivery(b)}}
 	doc.Components.Schemas = b.Components()
 	return doc
+}
+
+// webhookDelivery is what an endpoint is posted for each event: a receiver is
+// written against it, so the body and the headers it is signed in are here.
+func webhookDelivery(b *openapi.Builder) *openapi.Operation {
+	b.Descriptions[reflect.TypeOf(webhook.EnvelopeV1{})] = "What an endpoint registered for envelope version 1 is posted."
+	b.FieldOverrides["EnvelopeV1.version"] = &openapi.Schema{Type: "integer", Description: "The envelope version, 1 here; it is the version header's value too."}
+	b.FieldOverrides["EnvelopeV1.payload"] = &openapi.Schema{Type: "object", Description: "The event's own fields, by topic, as docs/webhooks.md lists them."}
+	b.FieldOverrides["EnvelopeV1.occurredAt"] = &openapi.Schema{Type: "string", Format: "date-time", Description: "When the delivery was queued."}
+	header := func(name, description string) openapi.Parameter {
+		return openapi.Parameter{Name: name, In: "header", Required: true, Description: description, Schema: &openapi.Schema{Type: "string"}}
+	}
+	return &openapi.Operation{
+		OperationID: "webhookEvent",
+		Summary:     "What a webhook endpoint is posted for each event it subscribes to.",
+		Description: "A receiver ignores fields and topics it does not know, and refuses an envelope version it does not know. " +
+			"The version rises only for a change that breaks a receiver, and an endpoint keeps the version it was registered for.",
+		Tags: []string{"webhooks"},
+		Parameters: []openapi.Parameter{
+			header(webhook.HeaderEvent, "The topic, as in the body."),
+			header(webhook.HeaderDelivery, "This attempt's id; a retry or a redelivery has its own."),
+			header(webhook.HeaderVersion, "The envelope version of the body, as in its version field."),
+			header(webhook.HeaderSignature, "sha256= and the hex HMAC-SHA256 of the body, keyed with the endpoint's secret."),
+			header(webhook.HeaderTimestamp, "When this attempt was sent, in Unix seconds."),
+			header(webhook.HeaderTimestampedSignature, "sha256= and the hex HMAC-SHA256 of the timestamp, a dot and the body."),
+		},
+		RequestBody: &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
+			"application/json": {Schema: b.SchemaOf(webhook.EnvelopeV1{})},
+		}},
+		Responses: map[string]*openapi.Response{
+			"2XX":     {Description: "Taken: the delivery is done."},
+			"default": {Description: "Not taken: the delivery is tried again later, with backoff, as is one not answered in time."},
+		},
+		Security: []map[string][]string{},
+	}
 }
 
 // rawDescription says what a raw body is when the row does not.

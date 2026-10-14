@@ -11,8 +11,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -58,6 +60,7 @@ type Endpoint struct {
 	URL       string    `json:"url"`
 	Topics    []string  `json:"topics"`
 	Enabled   bool      `json:"enabled"`
+	Version   int       `json:"version"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	// Secret is set only on the answer that made or rotated it.
@@ -97,6 +100,14 @@ const (
 	HeaderSignature            = "X-Armature-Signature-256"
 	HeaderTimestamp            = "X-Armature-Timestamp"
 	HeaderTimestampedSignature = "X-Armature-Signature-Timestamped-256"
+)
+
+// The headers that say what a delivery is. The version is the body's, so a
+// receiver can refuse one it does not know before parsing it.
+const (
+	HeaderEvent    = "X-Armature-Event"
+	HeaderDelivery = "X-Armature-Delivery"
+	HeaderVersion  = "X-Armature-Webhook-Version"
 )
 
 // SignTimestamped signs "{timestamp}.{body}", the time in Unix seconds as the
@@ -192,14 +203,50 @@ func (s *Service) Deliveries(ctx context.Context, endpointID uuid.UUID, limit in
 	return out, err
 }
 
-// envelope is what an endpoint receives. Its orgId is deprecated: it carries the
-// installation's stable id for one more release, then goes (#218).
-type envelope struct {
+// CurrentVersion is the envelope a new endpoint is registered for. It rises
+// only for a change that breaks a receiver, as docs/webhooks.md says.
+const CurrentVersion = 1
+
+// ErrUnknownVersion is an envelope version this release does not send.
+var ErrUnknownVersion = errors.New("there is no such webhook envelope version")
+
+// EnvelopeV1 is what an endpoint on version 1 receives. Its orgId goes with
+// version 2, so an endpoint on 1 keeps it (#218).
+type EnvelopeV1 struct {
+	Version    int             `json:"version"`
 	ID         uuid.UUID       `json:"id"`
 	Topic      string          `json:"topic"`
-	OrgID      uuid.UUID       `json:"orgId"`
+	OrgID      uuid.UUID       `json:"orgId" deprecated:"The installation's stable id, the same in every delivery. Envelope version 2 leaves it out; read nothing from it."`
 	OccurredAt time.Time       `json:"occurredAt"`
 	Payload    json.RawMessage `json:"payload"`
+}
+
+// envelopes builds each version's body. A later version is a row beside 1,
+// and an endpoint on 1 keeps getting 1.
+var envelopes = map[int]func(installationID uuid.UUID, e events.Event, at time.Time) any{
+	1: func(installationID uuid.UUID, e events.Event, at time.Time) any {
+		return EnvelopeV1{Version: 1, ID: e.ID, Topic: e.Topic, OrgID: installationID, OccurredAt: at, Payload: e.Payload}
+	},
+}
+
+// Versions lists the envelope versions this release sends, lowest first.
+func Versions() []int {
+	out := make([]int, 0, len(envelopes))
+	for v := range envelopes {
+		out = append(out, v)
+	}
+	slices.Sort(out)
+	return out
+}
+
+// envelopeFor is the body an endpoint on the version is posted for the event.
+func envelopeFor(version int, installationID uuid.UUID, e events.Event, at time.Time) ([]byte, error) {
+	build, ok := envelopes[version]
+	if !ok {
+		return nil, fmt.Errorf("%w: %d", ErrUnknownVersion, version)
+	}
+	e.Payload = withoutSecrets(e.Payload)
+	return json.Marshal(build(installationID, e, at.UTC()))
 }
 
 // withoutSecrets drops what an event carries for a mail rather than for a
@@ -234,11 +281,22 @@ func (s *Service) Enqueue(ctx context.Context, endpointID uuid.UUID, e events.Ev
 		if err != nil {
 			return err
 		}
-		body, _ := json.Marshal(envelope{ID: e.ID, Topic: e.Topic, OrgID: installationID, OccurredAt: s.now().UTC(), Payload: withoutSecrets(e.Payload)})
+		var version int
+		err = tx.QueryRow(ctx, `SELECT version FROM webhook_endpoint WHERE id = $1`, endpointID).Scan(&version)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		body, err := envelopeFor(version, installationID, e, s.now())
+		if err != nil {
+			return err
+		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
-			VALUES ($1, $2, $3, 1, $4, now())
-			ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`, endpointID, e.ID, e.Topic, body)
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at, version)
+			VALUES ($1, $2, $3, 1, $4, now(), $5)
+			ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`, endpointID, e.ID, e.Topic, body, version)
 		return err
 	})
 }
@@ -271,7 +329,14 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 		return err
 	}
 	for _, id := range ids {
-		if _, err := s.Enqueue(ctx, id, e); err != nil {
+		_, err := s.Enqueue(ctx, id, e)
+		// Only a later release, taken back, leaves an endpoint on a version this
+		// one cannot build; it must not hold up the others.
+		if errors.Is(err, ErrUnknownVersion) {
+			s.log.Warn("webhook endpoint is on an envelope version this release does not send", "endpoint", id, "error", err)
+			continue
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -307,10 +372,10 @@ func (s *Service) Redeliver(ctx context.Context, deliveryID uuid.UUID) (*Deliver
 	var made uuid.UUID
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, `
-			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at, version)
 			SELECT endpoint_id, event_id, topic,
 			       (SELECT max(attempt) FROM webhook_delivery d2 WHERE d2.endpoint_id = d.endpoint_id AND d2.event_id = d.event_id) + 1,
-			       request_body, now()
+			       request_body, now(), version
 			FROM webhook_delivery d WHERE id = $1
 			RETURNING id`, deliveryID).Scan(&made)
 		if errors.Is(err, pgx.ErrNoRows) {
