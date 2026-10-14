@@ -297,7 +297,7 @@ spec:
       terminationGracePeriodSeconds: 40
       containers:
         - name: api
-          image: armature/api:0.1.0
+          image: ghcr.io/cloudster1/armature-api:0.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -413,7 +413,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: render
-          image: armature/render:0.1.0
+          image: ghcr.io/cloudster1/armature-render:0.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -496,7 +496,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: web
-          image: armature/web:0.1.0
+          image: ghcr.io/cloudster1/armature-web:0.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -587,7 +587,7 @@ spec:
       terminationGracePeriodSeconds: 20
       containers:
         - name: worker
-          image: armature/worker:0.1.0
+          image: ghcr.io/cloudster1/armature-worker:0.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -818,7 +818,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrate
-          image: armature/migrate:0.1.0
+          image: ghcr.io/cloudster1/armature-migrate:0.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
