@@ -159,6 +159,51 @@ scenario("Escape in the issue drawer closes only what is on top of it", async ({
   await page.waitForFunction(() => !document.querySelector("[data-issue-panel]"), { timeout: WAIT });
 });
 
+scenario("a board narrows to my cards, says what it hides, and keeps the filter in its address", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  // The scenario's own project stands in for the seeded one, whose cards nobody holds.
+  const key = await createProject(page, "Narrowed", { visit: false });
+  const toDo = await createIssue(page, key, "mine to do", { assignee: "me", visit: false });
+  const asWell = await createIssue(page, key, "mine as well", { assignee: "me", visit: false });
+  await createIssue(page, key, "nobody holds this", { visit: false });
+  const mine = [toDo, asWell].sort().join(" ");
+  await createBoard(page, key, "Second look", "kanban");
+  const shown = () => page.evaluate(() => [...document.querySelectorAll("[data-card]")].map((el) => el.getAttribute("data-card")).sort().join(" "));
+  const showing = (count) => page.waitForFunction((n) => document.querySelectorAll("[data-card]").length === n, { timeout: WAIT }, count);
+
+  await goto(page, `/projects/${key}/board`);
+  await showing(3);
+  await clickButton(page, "Only mine");
+  await showing(2);
+  expect.equal(await shown(), mine, "only my two cards are on the board");
+  expect.equal(await textOf(page, "[data-hidden-cards]"), "1 card hidden by the filters", "the board says one is hidden");
+  expect.equal(
+    await page.$eval('[data-swimlane="To Do"] [data-lane-count]', (el) => el.getAttribute("data-lane-count")),
+    "2 of 3",
+    "the lane still counts the card it hides",
+  );
+
+  // A reload is the link opened again.
+  expect.contains(page.url(), "mine=true", "the filter is in the address");
+  await reload(page);
+  await showing(2);
+  expect.equal(await page.$eval('[data-quick-filter="mine"]', (el) => el.getAttribute("aria-pressed")), "true", "Only mine is still pressed");
+
+  // The filter goes with the board picked, and the address names both.
+  await showBoard(page, "Second look");
+  await showing(2);
+  await page.type('input[aria-label="Filter cards by key or summary"]', "AS WELL");
+  await showing(1);
+  await reload(page);
+  await page.waitForFunction(() => document.querySelector("[data-board-showing]")?.getAttribute("data-board-showing") === "Second look", { timeout: WAIT });
+  await showing(1);
+  expect.equal(await shown(), asWell, "the text matched the summary, ignoring case");
+
+  await clickButton(page, "Clear filters");
+  await showing(3);
+  expect.equal(await page.$("[data-hidden-cards]"), null, "nothing is hidden once cleared");
+});
+
 scenario("an issue opens beside the board and the arrow keys walk the cards", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Carded", { visit: false });

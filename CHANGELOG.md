@@ -12,6 +12,12 @@ and its tag message, so a change is written here in the branch that makes it.
   workflow has no place for the issue's status, the page says which status
   it moves to and asks first; a refusal is shown as the server's sentence,
   and the history reads "changed the type from Task to Bug" (#114).
+- Added: quick filters above a board and a sprint's board: Only mine, an
+  assignee, label, type or epic, and a box matching a card's key or summary.
+  They narrow the cards already loaded and say how many they hide; a lane's
+  count reads "3 of 7" while filtered, since its limit still counts every
+  card. The filter and the board on screen are kept in the address, so a
+  filtered board can be linked (#63).
 - Added: `make release` reads the next version from the commits since the
   last tag when none is given, and prints the rule it applied and the commits
   that decided it; `DRY_RUN=1` prints that and the notes and changes nothing.

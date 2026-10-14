@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from "react";
+import { useMemo, useRef, useState, type DragEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   groupCards,
@@ -15,6 +15,9 @@ import { EmptyState, ErrorBanner, cx, IconButton, useToast } from "@/components/
 import { Icon } from "@/components/icons";
 import { useIssueDrawer, useIssueList } from "@/features/issues/IssueDrawer";
 import { MS_PER_DAY } from "@/features/plan/scale";
+import { useMe } from "@/api/auth";
+import { QuickFilters } from "./QuickFilters";
+import { filterCards, isFiltered, optionsFrom, type QuickFilter } from "./quickFilter";
 
 /** How a sprint's end reads on the board: in days, since that is how a sprint is felt. */
 export function describeEnd(endsOn: string, today = new Date()): string {
@@ -52,11 +55,15 @@ export function BoardView({
   projectKey,
   boardId,
   sprintId,
+  filter,
+  onFilter,
 }: {
   projectKey: string;
   boardId?: string;
   /** Set, the board is one sprint's: its stream's board showing only that sprint's work. */
   sprintId?: string;
+  filter: QuickFilter;
+  onFilter: (filter: QuickFilter) => void;
 }) {
   // A project's first board is addressed by the project, the rest by id, and a
   // sprint's by the sprint. All read the same shape, so the view does not care
@@ -67,6 +74,8 @@ export function BoardView({
   const { data, isLoading, error } = sprintId ? bySprint : boardId ? byID : byProject;
   const move = useMoveCard();
   const toast = useToast();
+  const { data: me } = useMe();
+  const meId = me?.principal.user.id ?? "";
 
   // Refs hold the live drag for the logic, because they update synchronously.
   // The matching state exists only so the board can show what is happening.
@@ -92,8 +101,14 @@ export function BoardView({
     setTarget(null);
   }
 
+  // Each lane's cards the filter lets through. The lane keeps all of them, for
+  // its limit and for ranking a drop beside a card the filter hides.
+  const lanes = data?.board?.swimlanes;
+  const visible = useMemo(() => new Map((lanes ?? []).map((lane) => [lane.id, filterCards(lane.cards, filter, meId)])), [lanes, filter, meId]);
+  const options = useMemo(() => optionsFrom((lanes ?? []).flatMap((lane) => lane.cards)), [lanes]);
+
   // Cards in column order, top to bottom, so the panel's next is the card below.
-  useIssueList((data?.board?.swimlanes ?? []).flatMap((lane) => lane.cards.map((card) => card.key)));
+  useIssueList((lanes ?? []).flatMap((lane) => (visible.get(lane.id) ?? []).map((card) => card.key)));
 
   if (isLoading) return <p className="text-sm text-ink-muted">Loading the board...</p>;
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
@@ -103,6 +118,8 @@ export function BoardView({
 
   const swimlanes = board.swimlanes ?? [];
   const unmapped = board.unmapped ?? [];
+  const filtered = isFiltered(filter);
+  const hidden = swimlanes.reduce((sum, lane) => sum + lane.cards.length - (visible.get(lane.id)?.length ?? 0), 0);
 
   // A scrum board between sprints has nothing to show, and says why rather
   // than drawing four empty columns.
@@ -206,11 +223,15 @@ export function BoardView({
         </div>
       )}
 
+      <QuickFilters filter={filter} onChange={onFilter} options={options} hidden={hidden} />
+
       <div className="flex min-h-[28rem] gap-3 overflow-x-auto pb-2" data-issue-list="">
         {swimlanes.map((swimlane) => (
           <SwimlaneColumn
             key={swimlane.id}
             swimlane={swimlane}
+            cards={visible.get(swimlane.id) ?? swimlane.cards}
+            filtered={filtered}
             groupBy={board.groupBy}
             dragging={dragging}
             target={target}
@@ -228,6 +249,8 @@ export function BoardView({
 
 function SwimlaneColumn({
   swimlane,
+  cards,
+  filtered,
   groupBy,
   dragging,
   target,
@@ -238,6 +261,9 @@ function SwimlaneColumn({
   busy,
 }: {
   swimlane: Swimlane;
+  /** The cards to draw: the lane's own, less what the filter hides. */
+  cards: BoardCard[];
+  filtered: boolean;
   groupBy: "none" | "assignee" | "priority" | "type";
   dragging: Dragging | null;
   target: DropTarget | null;
@@ -249,7 +275,8 @@ function SwimlaneColumn({
 }) {
   const overWip = swimlane.wipLimit > 0 && swimlane.cards.length > swimlane.wipLimit;
   const isTarget = target?.swimlaneId === swimlane.id;
-  const rows = groupCards(swimlane.cards, groupBy);
+  const rows = groupCards(cards, groupBy);
+  const total = swimlane.cards.length;
 
   return (
     <section
@@ -279,13 +306,18 @@ function SwimlaneColumn({
             overWip ? "bg-danger/15 font-medium text-danger" : "text-ink-muted",
           )}
           title={
-            swimlane.wipLimit > 0
-              ? `${swimlane.cards.length} of a ${swimlane.wipLimit} card limit`
-              : `${swimlane.cards.length} cards`
+            filtered
+              ? swimlane.wipLimit > 0
+                ? `${cards.length} shown; the ${swimlane.wipLimit} card limit counts all ${total}`
+                : `${cards.length} of ${total} cards shown`
+              : swimlane.wipLimit > 0
+                ? `${total} of a ${swimlane.wipLimit} card limit`
+                : `${total} cards`
           }
+          data-lane-count={filtered ? `${cards.length} of ${total}` : String(total)}
         >
-          {swimlane.cards.length}
-          {swimlane.wipLimit > 0 && ` / ${swimlane.wipLimit}`}
+          {filtered ? `${cards.length} of ${total}` : total}
+          {!filtered && swimlane.wipLimit > 0 && ` / ${swimlane.wipLimit}`}
         </span>
       </header>
 
@@ -300,8 +332,8 @@ function SwimlaneColumn({
       )}
 
       <div className={cx("flex-1 space-y-2 p-2", busy && "opacity-60")}>
-        {swimlane.cards.length === 0 && (
-          <p className="px-1 py-6 text-center text-xs text-ink-subtle">Drop cards here</p>
+        {cards.length === 0 && (
+          <p className="px-1 py-6 text-center text-xs text-ink-subtle">{total === 0 ? "Drop cards here" : "No card here matches the filters"}</p>
         )}
 
         {rows.map((row) => (
