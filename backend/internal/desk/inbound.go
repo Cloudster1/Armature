@@ -259,7 +259,6 @@ func (n *Inbound) forTheDesk(m *mailin.Message) bool {
 // placement is where a mail landed: the request, under the key it has now
 // rather than the one the mail named, and who the sender is there.
 type placement struct {
-	orgID          uuid.UUID
 	issueID        uuid.UUID
 	key            string
 	userID         uuid.UUID
@@ -282,7 +281,7 @@ func (n *Inbound) place(ctx context.Context, key, from string) (*placement, erro
 	}
 	// A key the request had before it moved, as the subject of a mail sent
 	// then still says.
-	return n.placeWhere(ctx, `i.id IN (SELECT k.issue_id FROM issue_old_key k WHERE k.org_id = p.org_id AND k.key = $2)`,
+	return n.placeWhere(ctx, `i.id IN (SELECT k.issue_id FROM issue_old_key k WHERE k.key = $2)`,
 		from, issue.FormatKey(projectKey, num))
 }
 
@@ -292,14 +291,14 @@ func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...an
 	var out *placement
 	err := n.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT p.org_id, i.id, p.key || '-' || i.key_num, u.id, m.org_role,
+			SELECT i.id, p.key || '-' || i.key_num, u.id, m.org_role,
 			       i.reporter_id = u.id,
 			       EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id AND w.user_id = u.id),
 			       p.trusted_domains
 			FROM project p
 			JOIN issue i ON i.project_id = p.id
 			JOIN app_user u ON u.email = $1 AND u.is_active
-			JOIN org_member m ON m.org_id = p.org_id AND m.user_id = u.id
+			JOIN org_member m ON m.user_id = u.id
 			WHERE p.kind = 'service' AND i.request_type_id IS NOT NULL AND `+which, append([]any{from}, args...)...)
 		if err != nil {
 			return err
@@ -310,7 +309,7 @@ func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...an
 				p        placement
 				watching bool
 			)
-			if err := rows.Scan(&p.orgID, &p.issueID, &p.key, &p.userID, &p.role, &p.reporter, &watching, &p.trustedDomains); err != nil {
+			if err := rows.Scan(&p.issueID, &p.key, &p.userID, &p.role, &p.reporter, &watching, &p.trustedDomains); err != nil {
 				return err
 			}
 			if out == nil && (p.reporter || watching || p.role.IsAgent()) {
@@ -326,13 +325,13 @@ func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...an
 // the sender. Machines are not answered, nor daemons, nor the desk itself.
 func (n *Inbound) finish(ctx context.Context, messageID string, p *placement, outcome Outcome, detail string, m *mailin.Message, bounce Message) (Outcome, error) {
 	_, err := n.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var orgID, issueID, commentID *uuid.UUID
+		var issueID, commentID *uuid.UUID
 		if p != nil {
-			orgID, issueID, commentID = &p.orgID, &p.issueID, p.commentID
+			issueID, commentID = &p.issueID, p.commentID
 		}
 		_, err := tx.Exec(ctx, `
-			UPDATE inbound_mail SET outcome = $2, detail = $3, org_id = $4, issue_id = $5, comment_id = $6
-			WHERE message_id = $1`, messageID, string(outcome), detail, orgID, issueID, commentID)
+			UPDATE inbound_mail SET outcome = $2, detail = $3, issue_id = $4, comment_id = $5
+			WHERE message_id = $1`, messageID, string(outcome), detail, issueID, commentID)
 		return err
 	})
 	if err != nil {

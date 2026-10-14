@@ -161,8 +161,8 @@ func (s *Service) PutRemoteLink(ctx context.Context, key string, in RemoteLinkIn
 		// new page from a retitled one without a second round trip.
 		var inserted bool
 		row := tx.QueryRow(ctx, `
-			INSERT INTO issue_remote_link (org_id, issue_id, url, title, source, icon_url, created_by)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)
+			INSERT INTO issue_remote_link (issue_id, url, title, source, icon_url, created_by)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT (issue_id, url) DO UPDATE
 				SET title = EXCLUDED.title, source = EXCLUDED.source, icon_url = EXCLUDED.icon_url
 			RETURNING id, url, title, source, icon_url, created_by, created_at, updated_at, xmax = 0`,

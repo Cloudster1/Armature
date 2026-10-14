@@ -49,7 +49,7 @@ func (s *Service) SetVersions(ctx context.Context, key string, fix, affects []uu
 				if err != nil {
 					return ErrVersionNotFound
 				}
-				if _, err := tx.Exec(ctx, `INSERT INTO issue_version (org_id, issue_id, version_id, role) VALUES (current_org_id(), $1, $2, $3)`, id, v, set.role); err != nil {
+				if _, err := tx.Exec(ctx, `INSERT INTO issue_version (issue_id, version_id, role) VALUES ($1, $2, $3)`, id, v, set.role); err != nil {
 					if isCheckViolation(err) {
 						return fmt.Errorf("%s is archived and cannot be named", name)
 					}
@@ -126,7 +126,7 @@ func (s *Service) SetComponents(ctx context.Context, key string, ids []uuid.UUID
 // project's, which is answered as not found.
 func (s *Service) putComponents(ctx context.Context, tx db.DBTX, issueID uuid.UUID, ids []uuid.UUID) error {
 	for _, c := range dedupe(ids) {
-		if _, err := tx.Exec(ctx, `INSERT INTO issue_component (org_id, issue_id, component_id) VALUES (current_org_id(), $1, $2)`, issueID, c); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO issue_component (issue_id, component_id) VALUES ($1, $2)`, issueID, c); err != nil {
 			if isCheckViolation(err) || isForeignKey(err) {
 				return ErrComponentNotFound
 			}

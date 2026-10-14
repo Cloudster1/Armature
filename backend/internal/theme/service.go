@@ -272,7 +272,7 @@ func (s *Service) Choose(ctx context.Context, reader uuid.UUID, id *uuid.UUID, b
 			out = t
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO user_theme (org_id, user_id, theme_id) VALUES (current_org_id(), $1, $2)
+			INSERT INTO user_theme (user_id, theme_id) VALUES ($1, $2)
 			ON CONFLICT (user_id) DO UPDATE SET theme_id = EXCLUDED.theme_id`, reader, id)
 		return err
 	})
@@ -338,8 +338,8 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, in Input) (*Theme
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO theme (org_id, owner_id, name, shared, spec)
-			VALUES (current_org_id(), $1, $2, $3, $4) RETURNING id`, owner, name, shared, encoded).Scan(&id)
+			INSERT INTO theme (owner_id, name, shared, spec)
+			VALUES ($1, $2, $3, $4) RETURNING id`, owner, name, shared, encoded).Scan(&id)
 		if isUnique(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicateName, name)
 		}
@@ -518,8 +518,8 @@ func (s *Service) UploadAsset(ctx context.Context, id, actor uuid.UUID, administ
 		}
 		out = Asset{ID: assetID, Name: name, ContentType: contentType, Size: int64(len(data))}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO theme_asset (id, org_id, theme_id, name, content_type, size)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5) RETURNING created_at`,
+			INSERT INTO theme_asset (id, theme_id, name, content_type, size)
+			VALUES ($1, $2, $3, $4, $5) RETURNING created_at`,
 			assetID, id, name, contentType, len(data)).Scan(&out.CreatedAt); err != nil {
 			return fmt.Errorf("record the file: %w", err)
 		}

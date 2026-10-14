@@ -149,8 +149,8 @@ func (s *Service) Create(ctx context.Context, projectKey string, in Input) (*Com
 		}
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO component (org_id, project_id, name, description, lead_id, default_assignee_id)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5) RETURNING id`, projectID, name, description, lead, assignee).Scan(&id)
+			INSERT INTO component (project_id, name, description, lead_id, default_assignee_id)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`, projectID, name, description, lead, assignee).Scan(&id)
 		if isUnique(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicateName, name)
 		}

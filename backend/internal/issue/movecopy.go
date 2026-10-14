@@ -72,8 +72,8 @@ func (s *Service) Clone(ctx context.Context, key string, opts CloneOptions, acto
 	}
 	lsn, err = s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO issue_field_value (org_id, issue_id, field_id, value)
-			SELECT org_id, $2, field_id, value FROM issue_field_value WHERE issue_id = $1`, source.ID, made.ID); err != nil {
+			INSERT INTO issue_field_value (issue_id, field_id, value)
+			SELECT $2, field_id, value FROM issue_field_value WHERE issue_id = $1`, source.ID, made.ID); err != nil {
 			return err
 		}
 		return s.recordHistory(ctx, tx, made.ID, actor.UserID, []Change{{Field: "clonedFrom", To: source.Key}})
@@ -120,8 +120,8 @@ func (s *Service) Clone(ctx context.Context, key string, opts CloneOptions, acto
 func (s *Service) copyLabels(ctx context.Context, from, to uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO issue_label (org_id, issue_id, label_id)
-			SELECT org_id, $2, label_id FROM issue_label WHERE issue_id = $1 ON CONFLICT DO NOTHING`, from, to)
+			INSERT INTO issue_label (issue_id, label_id)
+			SELECT $2, label_id FROM issue_label WHERE issue_id = $1 ON CONFLICT DO NOTHING`, from, to)
 		return err
 	})
 }
@@ -254,7 +254,7 @@ func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Acto
 // issue left, which takes a project deleted and made again, now names this one.
 func keepOldKey(ctx context.Context, tx db.DBTX, issueID uuid.UUID, key string) error {
 	_, err := tx.Exec(ctx, `
-		INSERT INTO issue_old_key (org_id, issue_id, key) VALUES (current_org_id(), $1, $2)
+		INSERT INTO issue_old_key (issue_id, key) VALUES ($1, $2)
 		ON CONFLICT (key) DO UPDATE SET issue_id = EXCLUDED.issue_id, created_at = now()`, issueID, key)
 	if err != nil {
 		return fmt.Errorf("keep the old key %s: %w", key, err)

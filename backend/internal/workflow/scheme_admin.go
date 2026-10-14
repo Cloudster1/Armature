@@ -73,7 +73,7 @@ func (a *Admin) CreateScheme(ctx context.Context, in SchemeInput, actor uuid.UUI
 
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO workflow_scheme (org_id, name) VALUES (current_org_id(), $1) RETURNING id`,
+			INSERT INTO workflow_scheme (name) VALUES ($1) RETURNING id`,
 			in.Name,
 		).Scan(&id)
 		if isUniqueViolation(err) {
@@ -222,8 +222,8 @@ func (a *Admin) checkScheme(ctx context.Context, tx db.DBTX, in *SchemeInput, is
 func writeSchemeItems(ctx context.Context, tx db.DBTX, schemeID uuid.UUID, items []SchemeItemInput) error {
 	for _, item := range items {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO workflow_scheme_item (org_id, scheme_id, issue_type_id, workflow_id)
-			VALUES (current_org_id(), $1, $2, $3)`,
+			INSERT INTO workflow_scheme_item (scheme_id, issue_type_id, workflow_id)
+			VALUES ($1, $2, $3)`,
 			schemeID, item.IssueTypeID, item.WorkflowID)
 		if isForeignKeyViolation(err) {
 			return invalid("that workflow does not exist")

@@ -142,8 +142,8 @@ func (s *Service) CreateIn(ctx context.Context, tx db.DBTX, in CreateInput, acto
 		features []string
 	)
 	err := tx.QueryRow(ctx, `
-		INSERT INTO project (org_id, key, name, description, kind, lead_id, workflow_scheme_id, template, features, planning_method)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO project (key, name, description, kind, lead_id, workflow_scheme_id, template, features, planning_method)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, key, name, description, kind, lead_id, workflow_scheme_id, template, portal_verifies, trusted_domains, features,
 		          planning_method, resource_grouping, created_at, updated_at`,
 		in.Key, in.Name, strings.TrimSpace(in.Description), string(in.Kind), in.LeadID, schemeID, in.Template, featureNames(in.Features), string(in.PlanningMethod),

@@ -115,8 +115,8 @@ func (s *Service) run(ctx context.Context, r Rule, e events.Event, p payload) er
 			}
 		}
 		err = tx.QueryRow(ctx, `
-			INSERT INTO automation_run (org_id, rule_id, event_id, issue_id)
-			VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO automation_run (rule_id, event_id, issue_id)
+			VALUES ($1, $2, $3)
 			ON CONFLICT (rule_id, event_id) DO NOTHING RETURNING id`, r.ID, e.ID, issueID).Scan(&runID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil

@@ -459,8 +459,8 @@ func (s *Service) record(ctx context.Context, projectKey string, actor issue.Act
 	mapping, _ := json.Marshal(report.Mapping)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			INSERT INTO import_job (org_id, project_id, actor_id, mapping, dry_run, report, filename)
-			SELECT current_org_id(), id, $2, $3, $4, $5, $6 FROM project WHERE key = $1 RETURNING id`,
+			INSERT INTO import_job (project_id, actor_id, mapping, dry_run, report, filename)
+			SELECT id, $2, $3, $4, $5, $6 FROM project WHERE key = $1 RETURNING id`,
 			project.NormalizeKey(projectKey), actor.UserID, mapping, report.DryRun, raw, source).Scan(&id)
 	})
 	return id, lsn, err

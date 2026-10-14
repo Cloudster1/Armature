@@ -258,7 +258,7 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 		rows, err := tx.Query(ctx, `
 			SELECT w.user_id FROM issue_watcher w
 			JOIN app_user u ON u.id = w.user_id AND u.is_active
-			JOIN org_member m ON m.user_id = w.user_id AND m.org_id = current_org_id() AND m.org_role <> 'customer'
+			JOIN org_member m ON m.user_id = w.user_id AND m.org_role <> 'customer'
 			WHERE w.issue_id = $1 ORDER BY w.created_at`, s.id)
 		if err != nil {
 			return err
@@ -298,9 +298,9 @@ func (f *FanOut) lookup(ctx context.Context, p payload, topic string) (*subject,
 			var ok, watchOwn bool
 			err := tx.QueryRow(ctx, `
 				SELECT EXISTS (SELECT 1 FROM org_member m JOIN app_user u ON u.id = m.user_id AND u.is_active
-				               WHERE m.user_id = $1 AND m.org_id = current_org_id() AND m.org_role <> 'customer'),
+				               WHERE m.user_id = $1 AND m.org_role <> 'customer'),
 				       COALESCE((SELECT watch_own FROM notification_preference
-				                 WHERE user_id = $1 AND org_id = current_org_id()), true)`, **who).Scan(&ok, &watchOwn)
+				                 WHERE user_id = $1), true)`, **who).Scan(&ok, &watchOwn)
 			if err != nil {
 				return err
 			}
@@ -353,8 +353,8 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, at place, t tel
 			return nil
 		}
 		err := tx.QueryRow(ctx, `
-			INSERT INTO notification (org_id, user_id, issue_id, kind, title, body, link, event_id)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7)
+			INSERT INTO notification (user_id, issue_id, kind, title, body, link, event_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (user_id, event_id, kind) DO NOTHING
 			RETURNING id`, t.user, at.issueID, t.kind, t.title, t.body, at.link, eventID).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -368,7 +368,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, at place, t tel
 			return nil
 		}
 		if prefs.Digest != DigestOff {
-			_, err := tx.Exec(ctx, `INSERT INTO notification_digest (org_id, user_id, notification_id) VALUES (current_org_id(), $1, $2)`, t.user, id)
+			_, err := tx.Exec(ctx, `INSERT INTO notification_digest (user_id, notification_id) VALUES ($1, $2)`, t.user, id)
 			return err
 		}
 		return tx.QueryRow(ctx, `SELECT email FROM app_user WHERE id = $1`, t.user).Scan(&to)

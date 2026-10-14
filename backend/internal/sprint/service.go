@@ -169,8 +169,8 @@ func (s *Service) Create(ctx context.Context, projectKey string, in CreateInput,
 		// New sprints go to the end of the queue, which is where a team adds one.
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO sprint (org_id, project_id, team_id, name, goal, starts_on, ends_on, capacity, position)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7,
+			INSERT INTO sprint (project_id, team_id, name, goal, starts_on, ends_on, capacity, position)
+			VALUES ($1, $2, $3, $4, $5, $6, $7,
 			        COALESCE((SELECT max(position) + 1 FROM sprint WHERE project_id = $1), 0))
 			RETURNING id`,
 			projectID, in.TeamID, in.Name, strings.TrimSpace(in.Goal),

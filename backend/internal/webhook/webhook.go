@@ -236,8 +236,8 @@ func (s *Service) Enqueue(ctx context.Context, endpointID uuid.UUID, e events.Ev
 		}
 		body, _ := json.Marshal(envelope{ID: e.ID, Topic: e.Topic, OrgID: installationID, OccurredAt: s.now().UTC(), Payload: withoutSecrets(e.Payload)})
 		_, err = tx.Exec(ctx, `
-			INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
-			VALUES (current_org_id(), $1, $2, $3, 1, $4, now())
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
+			VALUES ($1, $2, $3, 1, $4, now())
 			ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`, endpointID, e.ID, e.Topic, body)
 		return err
 	})
@@ -307,8 +307,8 @@ func (s *Service) Redeliver(ctx context.Context, deliveryID uuid.UUID) (*Deliver
 	var made uuid.UUID
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, `
-			INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
-			SELECT org_id, endpoint_id, event_id, topic,
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
+			SELECT endpoint_id, event_id, topic,
 			       (SELECT max(attempt) FROM webhook_delivery d2 WHERE d2.endpoint_id = d.endpoint_id AND d2.event_id = d.event_id) + 1,
 			       request_body, now()
 			FROM webhook_delivery d WHERE id = $1

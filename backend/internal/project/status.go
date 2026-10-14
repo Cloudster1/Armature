@@ -99,8 +99,8 @@ func (s *Service) PostUpdate(ctx context.Context, key string, in StatusInput, ac
 		}
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO project_status_update (org_id, project_id, author_id, status, note, target_on)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5) RETURNING id`,
+			INSERT INTO project_status_update (project_id, author_id, status, note, target_on)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
 			pid, actor, string(in.Status), note, target).Scan(&id); err != nil {
 			return fmt.Errorf("post status update: %w", err)
 		}

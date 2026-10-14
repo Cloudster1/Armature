@@ -165,8 +165,8 @@ func (s *Service) Create(ctx context.Context, projectKey string, in Input, actor
 		}
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO automation_rule (org_id, project_id, name, enabled, trigger, conditions, actions, allow_own_events, hourly_cap, created_by)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+			INSERT INTO automation_rule (project_id, name, enabled, trigger, conditions, actions, allow_own_events, hourly_cap, created_by)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
 			projectID, r.Name, r.Enabled, trigger, conditions, actions, r.AllowOwnEvents, r.HourlyCap, actor).Scan(&id)
 		if err != nil && strings.Contains(err.Error(), "automation_rule_name_idx") {
 			return errors.New("a rule with that name is already here")

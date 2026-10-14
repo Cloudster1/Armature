@@ -156,8 +156,8 @@ func (s *Service) follow(ctx context.Context, tx db.DBTX, m measured) error {
 		case !has && goal > 0 && !m.done:
 			// A done issue owes nobody an answer; a pause status starts paused.
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO sla_timer (org_id, issue_id, policy_id, goal_minutes, started_at, running_since)
-				VALUES (current_org_id(), $1, $2, $3, now(), CASE WHEN $4 THEN NULL ELSE now() END)
+				INSERT INTO sla_timer (issue_id, policy_id, goal_minutes, started_at, running_since)
+				VALUES ($1, $2, $3, now(), CASE WHEN $4 THEN NULL ELSE now() END)
 				ON CONFLICT (issue_id, policy_id) DO NOTHING`, m.id, p.id, goal, p.pause[m.statusID]); err != nil {
 				return fmt.Errorf("start timer: %w", err)
 			}

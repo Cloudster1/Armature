@@ -183,8 +183,8 @@ func (s *Service) CreateArticle(ctx context.Context, projectKey string, in Artic
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO kb_article (org_id, project_id, title, body, published, author_id)
-			SELECT current_org_id(), id, $2, $3, $4, $5 FROM project WHERE key = $1 RETURNING id`,
+			INSERT INTO kb_article (project_id, title, body, published, author_id)
+			SELECT id, $2, $3, $4, $5 FROM project WHERE key = $1 RETURNING id`,
 			project.NormalizeKey(projectKey), title, body, published, author).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return project.ErrNotFound
@@ -302,8 +302,8 @@ func (s *Service) CreateCanned(ctx context.Context, projectKey string, in Canned
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO canned_response (org_id, project_id, name, body)
-			SELECT current_org_id(), id, $2, $3 FROM project WHERE key = $1 RETURNING id`, project.NormalizeKey(projectKey), name, body).Scan(&id)
+			INSERT INTO canned_response (project_id, name, body)
+			SELECT id, $2, $3 FROM project WHERE key = $1 RETURNING id`, project.NormalizeKey(projectKey), name, body).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return project.ErrNotFound
 		}
@@ -415,7 +415,7 @@ func invite(ctx context.Context, tx db.DBTX, issueID uuid.UUID) (string, error) 
 		return "", err
 	}
 	tag, err := tx.Exec(ctx, `
-		INSERT INTO csat_rating (org_id, issue_id, token_hash) VALUES (current_org_id(), $1, $2)
+		INSERT INTO csat_rating (issue_id, token_hash) VALUES ($1, $2)
 		ON CONFLICT (issue_id) DO NOTHING`, issueID, digest)
 	if err != nil {
 		if isCheck(err) {
@@ -548,8 +548,8 @@ func (s *Service) SaveCalendar(ctx context.Context, projectKey string, c Calenda
 	hours, _ := json.Marshal(c.Hours)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO business_calendar (org_id, project_id, timezone, hours, holidays)
-			SELECT current_org_id(), id, $2, $3, $4::date[] FROM project WHERE key = $1
+			INSERT INTO business_calendar (project_id, timezone, hours, holidays)
+			SELECT id, $2, $3, $4::date[] FROM project WHERE key = $1
 			ON CONFLICT (project_id) DO UPDATE SET timezone = EXCLUDED.timezone, hours = EXCLUDED.hours, holidays = EXCLUDED.holidays`,
 			project.NormalizeKey(projectKey), c.Timezone, hours, c.Holidays)
 		if err != nil {

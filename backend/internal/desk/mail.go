@@ -244,7 +244,7 @@ func (n *Notifier) Handle(ctx context.Context, e events.Event) error {
 				SELECT COALESCE(au.name, ''), c.body::text, COALESCE(m.org_role <> 'customer', false)
 				FROM issue_comment c
 				LEFT JOIN app_user au ON au.id = c.author_id
-				LEFT JOIN org_member m ON m.user_id = c.author_id AND m.org_id = current_org_id()
+				LEFT JOIN org_member m ON m.user_id = c.author_id
 				WHERE c.id = $1`, p.CommentID).Scan(&agent, &text, &actorIsAgent)
 		})
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && !actorIsAgent) {

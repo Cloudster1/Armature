@@ -36,7 +36,7 @@ SELECT u.id, u.name,
        COALESCE((SELECT a.percent FROM project_allocation a WHERE a.project_id = $1 AND a.user_id = u.id), 100),
        COALESCE((SELECT sum(a.percent) FROM project_allocation a WHERE a.user_id = u.id AND a.project_id <> $1), 0)::int
 FROM app_user u
-JOIN org_member o ON o.user_id = u.id AND o.org_id = current_org_id() AND o.org_role <> 'customer'`
+JOIN org_member o ON o.user_id = u.id AND o.org_role <> 'customer'`
 
 // Allocations lists the shares of a project's people: the members of its
 // teams, the assignees of its open issues, and anybody given a share in it.
@@ -98,8 +98,8 @@ func (s *Service) SetAllocation(ctx context.Context, projectKey string, userID u
 			_, err = tx.Exec(ctx, `DELETE FROM project_allocation WHERE project_id = $1 AND user_id = $2`, projectID, userID)
 		} else {
 			_, err = tx.Exec(ctx, `
-				INSERT INTO project_allocation (org_id, project_id, user_id, percent)
-				VALUES (current_org_id(), $1, $2, $3)
+				INSERT INTO project_allocation (project_id, user_id, percent)
+				VALUES ($1, $2, $3)
 				ON CONFLICT (project_id, user_id) DO UPDATE SET percent = EXCLUDED.percent`, projectID, userID, percent)
 		}
 		if err != nil {

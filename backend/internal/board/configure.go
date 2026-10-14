@@ -54,8 +54,8 @@ func (s *Service) AddSwimlane(ctx context.Context, boardID uuid.UUID, in AddSwim
 		}
 
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO board_swimlane (org_id, board_id, name, position, wip_limit)
-			VALUES (current_org_id(), $1, $2, $3, $4)
+			INSERT INTO board_swimlane (board_id, name, position, wip_limit)
+			VALUES ($1, $2, $3, $4)
 			RETURNING id, name, position, wip_limit`,
 			boardID, name, nextPosition, in.WIPLimit,
 		).Scan(&lane.ID, &lane.Name, &lane.Position, &lane.WIPLimit); err != nil {
@@ -234,8 +234,8 @@ func assignStatuses(ctx context.Context, tx db.DBTX, boardID, swimlaneID uuid.UU
 		}
 
 		_, err = tx.Exec(ctx, `
-			INSERT INTO board_swimlane_status (org_id, board_id, swimlane_id, status_id)
-			VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO board_swimlane_status (board_id, swimlane_id, status_id)
+			VALUES ($1, $2, $3)
 			ON CONFLICT (swimlane_id, status_id) DO NOTHING`, boardID, swimlaneID, statusID)
 
 		var pgErr *pgconn.PgError

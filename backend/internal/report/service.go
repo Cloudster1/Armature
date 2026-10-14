@@ -54,7 +54,7 @@ func (Provisioner) ProvisionProject(ctx context.Context, tx db.DBTX, p *project.
 func provision(ctx context.Context, tx db.DBTX, projectID uuid.UUID, kind project.Kind) error {
 	var id uuid.UUID
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO dashboard (org_id, project_id, name) VALUES (current_org_id(), $1, $2) RETURNING id`,
+		INSERT INTO dashboard (project_id, name) VALUES ($1, $2) RETURNING id`,
 		projectID, DefaultName).Scan(&id); err != nil {
 		return fmt.Errorf("create dashboard: %w", err)
 	}
@@ -187,8 +187,8 @@ func (s *Service) CreateDashboardFrom(ctx context.Context, projectKey string, in
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var kind project.Kind
 		err := tx.QueryRow(ctx, `
-			INSERT INTO dashboard (org_id, project_id, name, position)
-			SELECT current_org_id(), p.id, $2, (SELECT COALESCE(max(position) + 1, 0) FROM dashboard WHERE project_id = p.id)
+			INSERT INTO dashboard (project_id, name, position)
+			SELECT p.id, $2, (SELECT COALESCE(max(position) + 1, 0) FROM dashboard WHERE project_id = p.id)
 			FROM project p WHERE p.key = $1 AND p.archived_at IS NULL
 			RETURNING id, project_id, $1::text, name, position, created_at,
 			          (SELECT kind FROM project WHERE id = project_id)`,
@@ -312,8 +312,8 @@ func (s *Service) AddWidget(ctx context.Context, dashboardID uuid.UUID, in Widge
 			place = `(SELECT COALESCE(min(position) - 1, 0) FROM dashboard_widget WHERE dashboard_id = d.id)`
 		}
 		err := tx.QueryRow(ctx, `
-			INSERT INTO dashboard_widget (org_id, dashboard_id, kind, title, width, position, config)
-			SELECT current_org_id(), d.id, $2, $3, $4, `+place+`, $5
+			INSERT INTO dashboard_widget (dashboard_id, kind, title, width, position, config)
+			SELECT d.id, $2, $3, $4, `+place+`, $5
 			FROM dashboard d WHERE d.id = $1
 			RETURNING id, dashboard_id, kind, title, width, position, config`,
 			dashboardID, string(in.Kind), in.Title, in.Width, config,

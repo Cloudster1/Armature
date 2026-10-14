@@ -176,8 +176,8 @@ func (s *Service) CreateBranch(ctx context.Context, issueKey string, repoID uuid
 	var out Branch
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, `
-			INSERT INTO git_branch (org_id, repository_id, name, url, issue_id, head_sha)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO git_branch (repository_id, name, url, issue_id, head_sha)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (repository_id, name) WHERE deleted_at IS NULL DO UPDATE SET url = EXCLUDED.url, issue_id = EXCLUDED.issue_id,
 			    head_sha = CASE WHEN EXCLUDED.head_sha = '' THEN git_branch.head_sha ELSE EXCLUDED.head_sha END
 			RETURNING id, name, url, head_sha, commit_count, pushed_at, merged_at, created_at`,

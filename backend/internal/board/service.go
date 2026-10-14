@@ -506,8 +506,8 @@ func describe(kind Type) string {
 func createBoard(ctx context.Context, tx db.DBTX, projectID uuid.UUID, in CreateInput, statuses []workflow.Status) (uuid.UUID, error) {
 	var boardID uuid.UUID
 	err := tx.QueryRow(ctx, `
-		INSERT INTO board (org_id, project_id, name, description, type, team_id)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5)
+		INSERT INTO board (project_id, name, description, type, team_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id`,
 		projectID, in.Name, in.Description, string(in.Type), in.TeamID,
 	).Scan(&boardID)
@@ -521,15 +521,15 @@ func createBoard(ctx context.Context, tx db.DBTX, projectID uuid.UUID, in Create
 	for i, status := range statuses {
 		var laneID uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO board_swimlane (org_id, board_id, name, position)
-			VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO board_swimlane (board_id, name, position)
+			VALUES ($1, $2, $3)
 			RETURNING id`, boardID, status.Name, i,
 		).Scan(&laneID); err != nil {
 			return uuid.Nil, fmt.Errorf("create swimlane %q: %w", status.Name, err)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO board_swimlane_status (org_id, board_id, swimlane_id, status_id)
-			VALUES (current_org_id(), $1, $2, $3)`, boardID, laneID, status.ID,
+			INSERT INTO board_swimlane_status (board_id, swimlane_id, status_id)
+			VALUES ($1, $2, $3)`, boardID, laneID, status.ID,
 		); err != nil {
 			return uuid.Nil, fmt.Errorf("map status %q into its swimlane: %w", status.Name, err)
 		}

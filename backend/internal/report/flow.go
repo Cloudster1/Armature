@@ -184,8 +184,8 @@ func (s *Service) reconstructMissingDays(ctx context.Context, projectID uuid.UUI
 			    JOIN issue i ON i.project_id = $1 AND i.created_at < m.day + 1
 			    JOIN issue_type it ON it.id = i.issue_type_id AND `+notSubtask+`
 			)
-			INSERT INTO project_flow_snapshot (org_id, project_id, day, status_id, count, reconstructed)
-			SELECT current_org_id(), $1, day, status_id, count(*), true FROM status_on GROUP BY day, status_id
+			INSERT INTO project_flow_snapshot (project_id, day, status_id, count, reconstructed)
+			SELECT $1, day, status_id, count(*), true FROM status_on GROUP BY day, status_id
 			ON CONFLICT DO NOTHING`, projectID, from, to)
 		return err
 	})
@@ -200,8 +200,8 @@ func (s *Service) WriteFlowSnapshot(ctx context.Context, projectID uuid.UUID, da
 			return err
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO project_flow_snapshot (org_id, project_id, day, status_id, count, reconstructed)
-			SELECT current_org_id(), $1, $2, i.status_id, count(*), false
+			INSERT INTO project_flow_snapshot (project_id, day, status_id, count, reconstructed)
+			SELECT $1, $2, i.status_id, count(*), false
 			FROM issue i JOIN issue_type it ON it.id = i.issue_type_id AND `+notSubtask+`
 			WHERE i.project_id = $1 GROUP BY i.status_id`, projectID, day)
 		return err

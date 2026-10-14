@@ -359,10 +359,10 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actor Actor) (*Iss
 
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO issue (org_id, project_id, key_num, issue_type_id, status_id,
+			INSERT INTO issue (project_id, key_num, issue_type_id, status_id,
 			                   summary, description, priority, assignee_id, reporter_id,
 			                   parent_id, start_date, due_date, estimate, team_id, sprint_id, rank, request_type_id)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 			RETURNING id`,
 			projectID, keyNum, typeID, initial.Status.ID,
 			summary, nullableJSON(in.Description), string(priority),
