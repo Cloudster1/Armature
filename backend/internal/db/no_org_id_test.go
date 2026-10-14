@@ -33,6 +33,7 @@ var orgIDAllowed = map[string]string{
 	"test/installation_default_test.go":                                 "proves the column's default and current_org_id() answer the installation",
 	"test/installation_keys_test.go":                                    "proves no key takes the column into account, with rows of two organizations",
 	"test/triggers_without_organization_test.go":                        "proves no trigger reads the column, with rows of two organizations",
+	"test/schema_without_organization_test.go":                          "looks for the column in the catalog and drops it from a database of its own",
 	"test/events_without_organization_test.go":                          "reads which organization a row the consumer wrote landed in",
 	"test/outbox_test.go TestOutboxRelay":                               "proves the stream's message carries no organization field",
 	"test/sign_in_test.go TestASignInLandsInTheInstallation":            "reads the two session columns 00931 emptied, which step 5 drops",
