@@ -7,6 +7,12 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: `GET /api/v1/meta` says which build answers, as Stator and Exciter
+  do, without a sign-in: the product, the version, the API's own version and
+  its capabilities, for now none. The commit and when it was built are added
+  for somebody signed in. The foot of the sidebar reads it (#238).
+- Deprecated: `GET /api/v1/build`, read `/meta` instead. It keeps answering
+  behind the session for at least one more release (#238).
 - Added: a webhook's envelope carries its version, `version`, and the
   `X-Armature-Webhook-Version` header says the same, so a receiver can refuse
   one it does not know before parsing it. An endpoint is registered for a

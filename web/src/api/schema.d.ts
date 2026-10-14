@@ -708,7 +708,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Which build of Armature is answering. */
+        /**
+         * Which build of Armature is answering.
+         * @deprecated
+         * @description Read GET /meta instead, which answers the same build. Kept for at least one more release.
+         */
         get: operations["build"];
         put?: never;
         post?: never;
@@ -2209,6 +2213,23 @@ export interface paths {
         post?: never;
         /** Let a member go by switching their account off: their sessions and tokens end, and what they did stays theirs. */
         delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which build of Armature is answering, the API version it speaks and its capabilities; the commit and build time only for somebody signed in. */
+        get: operations["meta"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5713,6 +5734,12 @@ export interface components {
             name: string;
             role: string;
         };
+        Meta: {
+            apiVersion: string;
+            build: components["schemas"]["BuildinfoInfo"];
+            capabilities: string[];
+            product: string;
+        };
         Milestone: {
             /** Format: date-time */
             closedAt?: string;
@@ -5822,6 +5849,7 @@ export interface components {
             title: string;
         };
         Operation: {
+            deprecated?: boolean;
             description?: string;
             operationId: string;
             parameters?: components["schemas"]["Parameter"][];
@@ -13322,6 +13350,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    meta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meta"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

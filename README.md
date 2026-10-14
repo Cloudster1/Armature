@@ -543,9 +543,14 @@ changelog's Unreleased section under the new version, renders the chart's
 golden files, and merges that as a `release/x.y.z` branch with a tag `vx.y.z`
 on the merge. It does not push.
 
-A build reports what it is at `GET /api/v1/build` and at the foot of the
+A build reports what it is at `GET /api/v1/meta` and at the foot of the
 sidebar: `0.2.0` on the tag, `0.2.0+3.g1a2b3c4` three commits past it, and
 `0.2.0+dev` when no tag is in reach, as in a shallow clone of a branch.
+`/meta` answers anyone, the way Stator and Exciter answer it, with the
+product, that version, the API's own version (`info.version` of the OpenAPI
+document) and the capabilities; the commit and when it was built are added for
+somebody signed in. `GET /api/v1/build` still answers behind the session and
+is deprecated.
 
 ## Build notes
 

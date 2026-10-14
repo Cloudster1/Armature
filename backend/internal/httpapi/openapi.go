@@ -77,6 +77,9 @@ type operation struct {
 	tool, toolHelp string
 	// rawNote describes a raw body; the git webhook keeps the default.
 	rawNote string
+	// deprecated marks an operation kept for one more release and says what
+	// to call instead.
+	deprecated string
 }
 
 // Spec builds the OpenAPI document from the table.
@@ -89,7 +92,7 @@ func Spec() *openapi.Document {
 		OpenAPI: "3.1.0",
 		Info: openapi.Info{
 			Title:   "Armature",
-			Version: "1",
+			Version: apiVersion,
 			Description: "The tracker's HTTP API. Every endpoint answers JSON; errors share one envelope. " +
 				"Sign in with a session cookie or an API token sent as a bearer token.",
 		},
@@ -173,6 +176,9 @@ func Spec() *openapi.Document {
 			Content: map[string]openapi.MediaType{"application/json": {Schema: errorSchema}}}
 		if op.public {
 			o.Security = []map[string][]string{}
+		}
+		if op.deprecated != "" {
+			o.Deprecated, o.Description = true, op.deprecated
 		}
 		item[strings.ToLower(op.method)] = o
 	}

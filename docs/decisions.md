@@ -2301,8 +2301,24 @@ written against it would break. The application releasing weekly is not news
 to a script calling the API, and a contract number that moved with every
 release would say nothing.
 
-**Reconsider if** the API is published for others to build on, which wants
-its version in the path and the two numbers documented side by side.
+The API is now published for others to build on: Stator and Exciter call it,
+and Dynamo releases the combinations of the three that pass together. So both
+numbers are reported side by side at `GET /api/v1/meta`, in the shape all three
+tools answer: the product, the build, `apiVersion`, which is `info.version` and
+comes from the one constant the document is built with, and the capabilities.
+The version was already in the path as `/api/v1`, and stays there; a breaking
+change would be `/api/v2` and `apiVersion` 2 together.
+
+`/meta` needs no sign-in, because a partner or Dynamo asks it before it has an
+account, if it ever has one. The commit and when it was built are left out
+unless the caller is signed in and not held at enrolment, as at `GET /build`
+before it: the version says which release answers, and the commit behind it
+is nobody else's business. `GET /build` answers as
+before behind the session, marked deprecated in the document, and goes once a
+Dynamo release has read `/meta` instead.
+
+**Reconsider if** an outside caller needs the commit, such as an operator's
+monitoring without an account; a token for it is the way, not an open commit.
 
 ### MCP is the same table, dispatched in process
 

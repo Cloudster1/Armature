@@ -2794,6 +2794,7 @@
       "get": {
         "operationId": "build",
         "summary": "Which build of Armature is answering.",
+        "description": "Read GET /meta instead, which answers the same build. Kept for at least one more release.",
         "tags": [
           "health"
         ],
@@ -2826,7 +2827,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/canned-responses/{responseID}": {
@@ -8971,6 +8973,37 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meta": {
+      "get": {
+        "operationId": "meta",
+        "summary": "Which build of Armature is answering, the API version it speaks and its capabilities; the commit and build time only for somebody signed in.",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -23086,6 +23119,32 @@
           "role"
         ]
       },
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "build": {
+            "$ref": "#/components/schemas/BuildinfoInfo"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "build",
+          "apiVersion",
+          "capabilities"
+        ]
+      },
       "Milestone": {
         "type": "object",
         "properties": {
@@ -23457,6 +23516,9 @@
       "Operation": {
         "type": "object",
         "properties": {
+          "deprecated": {
+            "type": "boolean"
+          },
           "description": {
             "type": "string"
           },
