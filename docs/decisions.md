@@ -1824,7 +1824,8 @@ suite. Armature's groups sit beside the partners' ones, and the seed lets the
 four people in and gives the groups their roles.
 
 Dynamo holds the canonical copy and each tool's is the same file, keys sorted.
-`make realm-check`, which `make test-scripts` and the Conventions workflow run,
+`make realm-check`, which the Conventions workflow runs (not `make test`, which
+must work offline),
 compares the two and fails naming the file to update; while Dynamo has no realm
 yet it says so and passes, and Armature's copy is the one Dynamo will start
 from. The secrets in it are for development only. The seed

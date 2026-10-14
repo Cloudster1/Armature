@@ -57,8 +57,9 @@ so on, and their groups grant their roles here: alice is in
 `scrum-masters`, dave in `readers`. Move somebody between groups in Keycloak
 and their role here follows at their next sign-in. The client secrets in the
 realm (`armature-dev-secret` and the partners' ones) are for development only.
-`make realm-check` compares the realm with Dynamo's canonical copy; `make
-test-scripts` and the Conventions workflow run it too.
+`make realm-check` compares the realm with Dynamo's canonical copy, and the
+Conventions workflow runs it on every pull request. It reaches GitHub, so
+`make test` leaves it out and runs offline.
 
 The stack also runs a Gitea at <http://localhost:3001> (`demo` / the same
 password), and the seed connects the demo project to a repository there. Open
