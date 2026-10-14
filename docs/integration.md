@@ -46,8 +46,10 @@ putting the same url again, taken off, and announced as topics.
 Endpoints subscribed to topics, their deliveries, a redelivery, a test delivery
 and a new secret, each delivery a signed envelope.
 
-The envelope is a JSON object with `id`, `topic`, `occurredAt` and `payload`;
-the payloads are in [`docs/webhooks.md`](webhooks.md). It is signed with the
+The envelope is a JSON object with `version`, `id`, `topic`, `occurredAt` and
+`payload`, and `X-Armature-Webhook-Version` repeats its version; an endpoint
+keeps the version it was registered for. The envelope, its versions and the
+payloads are in [`docs/webhooks.md`](webhooks.md). It is signed with the
 endpoint's secret as `sha256=` and the hex HMAC-SHA256 of the body in
 `X-Armature-Signature-256`, and of `{timestamp}.{body}` in
 `X-Armature-Signature-Timestamped-256`, the Unix seconds in
