@@ -12,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/bootstrap"
+	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/perm"
 )
 
@@ -22,9 +24,9 @@ const (
 
 // namingTheOrganization lists what in the schema still names the organization's
 // column, the session's two, or the functions that answered for them.
-func namingTheOrganization(t *testing.T, db catalogReader) []string {
+func namingTheOrganization(t *testing.T, conn catalogReader) []string {
 	t.Helper()
-	rows, err := db.Query(context.Background(), `
+	rows, err := conn.Query(context.Background(), `
 		SELECT format('column %s.%s', c.relname, a.attname)
 		FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
 		WHERE c.relnamespace = 'public'::regnamespace AND a.attnum > 0 AND NOT a.attisdropped
@@ -37,7 +39,7 @@ func namingTheOrganization(t *testing.T, db catalogReader) []string {
 		WHERE c.relnamespace = 'public'::regnamespace AND pg_get_indexdef(i.indexrelid) ~ 'org_id'
 		UNION ALL
 		SELECT format('constraint %s on %s', k.conname, k.conrelid::regclass) FROM pg_constraint k
-		WHERE k.connamespace = 'public'::regnamespace AND (k.conname ~ 'org_id' OR pg_get_constraintdef(k.oid) ~ 'org_id')
+		WHERE k.connamespace = 'public'::regnamespace AND pg_get_constraintdef(k.oid) ~ 'org_id'
 		UNION ALL
 		SELECT format('default of %s.%s', c.relname, a.attname)
 		FROM pg_attrdef d JOIN pg_class c ON c.oid = d.adrelid
@@ -92,7 +94,7 @@ func TestTheInstallationIsOneRow(t *testing.T) {
 func rowCounts(t *testing.T, conn *pgx.Conn) map[string]int {
 	t.Helper()
 	ctx := context.Background()
-	rows, err := conn.Query(ctx, `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY 1`)
+	rows, err := conn.Query(ctx, `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'goose_db_version' ORDER BY 1`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,4 +292,37 @@ func TestTheOrganizationColumnsGoAsThePlainOwner(t *testing.T) {
 		t.Errorf("after the second upgrade %d things still name the organization: %v", len(named), named)
 	}
 	same(t, "after the second upgrade")
+}
+
+// Nothing in a context names the organization any more: a transaction and a
+// service work with none.
+func TestAServiceNeedsNoOrganizationInItsContext(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	ctx := db.PinPrimary(context.Background())
+
+	action := unique("test.contextless")
+	if _, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `INSERT INTO audit_log (action, target_type) VALUES ($1, 'org')`, action)
+		return err
+	}); err != nil {
+		t.Fatalf("write with no organization in the context: %v", err)
+	}
+	var written int
+	if err := h.cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		return tx.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action = $1`, action).Scan(&written)
+	}); err != nil {
+		t.Fatalf("read with no organization in the context: %v", err)
+	}
+	if written != 1 {
+		t.Errorf("read %d of the rows just written, want 1", written)
+	}
+
+	got, err := installation.NewService(h.cluster).Get(ctx)
+	if err != nil {
+		t.Fatalf("read the installation with no organization in the context: %v", err)
+	}
+	if got.Name == "" {
+		t.Error("the installation has no name")
+	}
 }

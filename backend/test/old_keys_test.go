@@ -274,7 +274,6 @@ func TestOldKeysComeOverFromTheColumnThatKeptOne(t *testing.T) {
 	}
 	var (
 		rows       int
-		keptOrg    uuid.UUID
 		keptIssue  uuid.UUID
 		leftColumn int
 	)
@@ -284,11 +283,11 @@ func TestOldKeysComeOverFromTheColumnThatKeptOne(t *testing.T) {
 	if rows != 1 {
 		t.Fatalf("the table holds %d old keys, want the one the column kept", rows)
 	}
-	if err := super.QueryRow(ctx, `SELECT org_id, issue_id FROM issue_old_key WHERE key = 'OLD-7'`).Scan(&keptOrg, &keptIssue); err != nil {
+	if err := super.QueryRow(ctx, `SELECT issue_id FROM issue_old_key WHERE key = 'OLD-7'`).Scan(&keptIssue); err != nil {
 		t.Fatalf("OLD-7 did not come over: %v", err)
 	}
-	if keptOrg != orgID || keptIssue != movedID {
-		t.Errorf("OLD-7 names %s in %s, want %s in %s", keptIssue, keptOrg, movedID, orgID)
+	if keptIssue != movedID {
+		t.Errorf("OLD-7 names %s, want %s", keptIssue, movedID)
 	}
 	// One place holds the old keys, so a column left behind cannot disagree.
 	if err := super.QueryRow(ctx, `SELECT count(*) FROM information_schema.columns WHERE table_name = 'issue' AND column_name = 'moved_from'`).Scan(&leftColumn); err != nil {

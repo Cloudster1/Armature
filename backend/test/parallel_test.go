@@ -37,7 +37,6 @@ var sequentialTests = map[string]string{
 	"TestKeysAreTheInstallations":                                "creates databases and roles",
 	"TestTheUpgradeRefusesKeysThatCollide":                       "creates databases and roles",
 	"TestTriggersKeepTheirRulesWithoutTheOrganization":           "creates databases and roles",
-	"TestTheInstallationIsFoundWhenARowIsWritten":                "creates databases and roles",
 	"TestTheOrganizationColumnsGoAsThePlainOwner":                "creates databases and roles",
 	"TestOutboxRelay":                                            "relays the whole installation's outbox into the shared stream",
 	"TestOutboxRelayWaitsForTheSlowestGroup":                     "relays the whole installation's outbox into the shared stream",

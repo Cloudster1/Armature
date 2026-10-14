@@ -57,79 +57,62 @@ func orgKeyed(t *testing.T, db catalogReader) []string {
 	return keyed
 }
 
-// An installation holds one organization, so a key unique in it is unique in
-// the installation, and saying so needs no org_id.
-func TestNoKeyOrIndexTakesTheOrganizationIntoAccount(t *testing.T) {
-	t.Parallel()
-	h := newHarness(t)
-	if keyed := orgKeyed(t, h.super); len(keyed) > 0 {
-		t.Errorf("%d keys and indexes still take org_id into account: %v", len(keyed), keyed)
-	}
-}
-
-// Each key is tried with a row of a second organization, straight through SQL.
-// Triggers and foreign keys are off, so a row needs nothing around it.
+// Each key is tried with the same row twice, straight through SQL. Triggers
+// and foreign keys are off, so a row needs nothing around it.
 func TestKeysAreTheInstallations(t *testing.T) {
 	ctx := context.Background()
 	provider, super := ownerDatabase(t, "armature_installation_keys_test", "armature_installation_keys_owner")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("migrate as the owner: %v", err)
 	}
-	var first, second string
-	if err := super.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ('first', 'First') RETURNING id`).Scan(&first); err != nil {
-		t.Fatalf("insert the first organization: %v", err)
-	}
-	if err := super.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ('second', 'Second') RETURNING id`).Scan(&second); err != nil {
-		t.Fatalf("insert the second organization: %v", err)
-	}
 	if _, err := super.Exec(ctx, `SET session_replication_role = replica`); err != nil {
 		t.Fatal(err)
 	}
 
 	cases := []struct{ constraint, insert string }{
-		{"issue_old_key_pkey", `INSERT INTO issue_old_key (org_id, issue_id, key) VALUES ($1, gen_random_uuid(), 'OLD-1')`},
-		{"member_schedule_pkey", `INSERT INTO member_schedule (org_id, user_id) VALUES ($1, '` + somebody + `')`},
-		{"notification_digest_sent_pkey", `INSERT INTO notification_digest_sent (org_id, user_id, last_sent_at) VALUES ($1, '` + somebody + `', now())`},
-		{"notification_preference_pkey", `INSERT INTO notification_preference (org_id, user_id) VALUES ($1, '` + somebody + `')`},
-		{"oidc_provider_pkey", `INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret) VALUES ($1, 'https://idp.test', 'armature', 'secret')`},
-		{"org_join_request_pkey", `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, '` + somebody + `')`},
-		{"org_member_pkey", `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, '` + somebody + `', 'member')`},
-		{"org_role_pkey", `INSERT INTO org_role (org_id, key, name) VALUES ($1, 'auditor', 'Auditor ' || gen_random_uuid())`},
-		{"portal_code_pkey", `INSERT INTO portal_code (org_id, email, code_hash, expires_at) VALUES ($1, 'door@example.test', '\x01', now())`},
-		{"user_theme_pkey", `INSERT INTO user_theme (org_id, user_id) VALUES ($1, '` + somebody + `')`},
-		{"absence_no_overlap", `INSERT INTO absence (org_id, user_id, starts_on, ends_on) VALUES ($1, '` + somebody + `', '2026-03-02', '2026-03-06')`},
-		{"automation_rule_name_idx", `INSERT INTO automation_rule (org_id, project_id, name, trigger, actions) VALUES ($1, '` + aProject + `', 'Nightly', '{"kind": "manual"}', '[{"kind": "comment"}]')`},
-		{"custom_field_installation_name_idx", `INSERT INTO custom_field (org_id, name, kind) VALUES ($1, 'Severity', 'text')`},
-		{"dashboard_template_name_idx", `INSERT INTO dashboard_template (org_id, name) VALUES ($1, 'Weekly')`},
-		{"holiday_calendar_name_idx", `INSERT INTO holiday_calendar (org_id, name) VALUES ($1, 'Bavaria')`},
-		{"holiday_calendar_one_default_idx", `INSERT INTO holiday_calendar (org_id, name, is_default) VALUES ($1, 'Default ' || gen_random_uuid(), true)`},
-		{"issue_arrangement_scope_idx", `INSERT INTO issue_arrangement (org_id, project_id) VALUES ($1, '` + aProject + `')`},
-		{"issue_comment_external_key_idx", `INSERT INTO issue_comment (org_id, issue_id, body, external_key) VALUES ($1, '` + anIssue + `', '{}', 'COMMENT-1')`},
-		{"issue_link_type_name_idx", `INSERT INTO issue_link_type (org_id, name, outward, inward) VALUES ($1, 'Clones', 'clones', 'is cloned by')`},
-		{"issue_status_name_idx", `INSERT INTO issue_status (org_id, name, category) VALUES ($1, 'Waiting', 'todo')`},
-		{"issue_type_name_idx", `INSERT INTO issue_type (org_id, name) VALUES ($1, 'Chore')`},
-		{"issue_worklog_external_key_idx", `INSERT INTO issue_worklog (org_id, issue_id, minutes, external_key) VALUES ($1, '` + anIssue + `', 30, 'WORKLOG-1')`},
-		{"label_name_idx", `INSERT INTO label (org_id, name) VALUES ($1, 'urgent')`},
-		{"org_invite_pending_idx", `INSERT INTO org_invite (org_id, email, org_role, token_hash, expires_at) VALUES ($1, 'new@example.test', 'member', sha256(gen_random_uuid()::text::bytea), now() + interval '1 day')`},
-		{"org_role_name_idx", `INSERT INTO org_role (org_id, key, name) VALUES ($1, 'r' || substr(md5(gen_random_uuid()::text), 1, 12), 'Watcher')`},
-		{"project_key_idx", `INSERT INTO project (org_id, key, name) VALUES ($1, 'SAME', 'Same key')`},
-		{"role_assignment_unique_idx", `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'reader', '` + somebody + `')`},
-		{"theme_owner_name_idx", `INSERT INTO theme (org_id, owner_id, name) VALUES ($1, '` + somebody + `', 'Dusk')`},
-		{"user_group_name_idx", `INSERT INTO user_group (org_id, name) VALUES ($1, 'Support')`},
-		{"user_group_external_ref_idx", `INSERT INTO user_group (org_id, name, source, external_ref) VALUES ($1, 'Group ' || gen_random_uuid(), 'oidc', 'cn=support')`},
-		{"webhook_endpoint_name_idx", `INSERT INTO webhook_endpoint (org_id, name, url, secret) VALUES ($1, 'Chat', 'https://hooks.example.test/chat', 'secret')`},
-		{"workflow_name_idx", `INSERT INTO workflow (org_id, name) VALUES ($1, 'Review')`},
-		{"workflow_scheme_one_default_idx", `INSERT INTO workflow_scheme (org_id, name, is_default) VALUES ($1, 'Default ' || gen_random_uuid(), true)`},
-		{"workflow_scheme_name_idx", `INSERT INTO workflow_scheme (org_id, name) VALUES ($1, 'Scheme')`},
+		{"issue_old_key_pkey", `INSERT INTO issue_old_key (issue_id, key) VALUES (gen_random_uuid(), 'OLD-1')`},
+		{"member_schedule_pkey", `INSERT INTO member_schedule (user_id) VALUES ('` + somebody + `')`},
+		{"notification_digest_sent_pkey", `INSERT INTO notification_digest_sent (user_id, last_sent_at) VALUES ('` + somebody + `', now())`},
+		{"notification_preference_pkey", `INSERT INTO notification_preference (user_id) VALUES ('` + somebody + `')`},
+		{"oidc_provider_pkey", `INSERT INTO oidc_provider (issuer, client_id, client_secret) VALUES ('https://idp.test', 'armature', 'secret')`},
+		{"org_join_request_pkey", `INSERT INTO org_join_request (user_id) VALUES ('` + somebody + `')`},
+		{"org_member_pkey", `INSERT INTO org_member (user_id, org_role) VALUES ('` + somebody + `', 'member')`},
+		{"org_role_pkey", `INSERT INTO org_role (key, name) VALUES ('auditor', 'Auditor ' || gen_random_uuid())`},
+		{"portal_code_pkey", `INSERT INTO portal_code (email, code_hash, expires_at) VALUES ('door@example.test', '\x01', now())`},
+		{"user_theme_pkey", `INSERT INTO user_theme (user_id) VALUES ('` + somebody + `')`},
+		{"absence_no_overlap", `INSERT INTO absence (user_id, starts_on, ends_on) VALUES ('` + somebody + `', '2026-03-02', '2026-03-06')`},
+		{"automation_rule_name_idx", `INSERT INTO automation_rule (project_id, name, trigger, actions) VALUES ('` + aProject + `', 'Nightly', '{"kind": "manual"}', '[{"kind": "comment"}]')`},
+		{"custom_field_installation_name_idx", `INSERT INTO custom_field (name, kind) VALUES ('Severity', 'text')`},
+		{"dashboard_template_name_idx", `INSERT INTO dashboard_template (name) VALUES ('Weekly')`},
+		{"holiday_calendar_name_idx", `INSERT INTO holiday_calendar (name) VALUES ('Bavaria')`},
+		{"holiday_calendar_one_default_idx", `INSERT INTO holiday_calendar (name, is_default) VALUES ('Default ' || gen_random_uuid(), true)`},
+		{"issue_arrangement_scope_idx", `INSERT INTO issue_arrangement (project_id) VALUES ('` + aProject + `')`},
+		{"issue_comment_external_key_idx", `INSERT INTO issue_comment (issue_id, body, external_key) VALUES ('` + anIssue + `', '{}', 'COMMENT-1')`},
+		{"issue_link_type_name_idx", `INSERT INTO issue_link_type (name, outward, inward) VALUES ('Clones', 'clones', 'is cloned by')`},
+		{"issue_status_name_idx", `INSERT INTO issue_status (name, category) VALUES ('Waiting', 'todo')`},
+		{"issue_type_name_idx", `INSERT INTO issue_type (name) VALUES ('Chore')`},
+		{"issue_worklog_external_key_idx", `INSERT INTO issue_worklog (issue_id, minutes, external_key) VALUES ('` + anIssue + `', 30, 'WORKLOG-1')`},
+		{"label_name_idx", `INSERT INTO label (name) VALUES ('urgent')`},
+		{"org_invite_pending_idx", `INSERT INTO org_invite (email, org_role, token_hash, expires_at) VALUES ('new@example.test', 'member', sha256(gen_random_uuid()::text::bytea), now() + interval '1 day')`},
+		{"org_role_name_idx", `INSERT INTO org_role (key, name) VALUES ('r' || substr(md5(gen_random_uuid()::text), 1, 12), 'Watcher')`},
+		{"project_key_idx", `INSERT INTO project (key, name) VALUES ('SAME', 'Same key')`},
+		{"role_assignment_unique_idx", `INSERT INTO role_assignment (role, user_id) VALUES ('reader', '` + somebody + `')`},
+		{"theme_owner_name_idx", `INSERT INTO theme (owner_id, name) VALUES ('` + somebody + `', 'Dusk')`},
+		{"user_group_name_idx", `INSERT INTO user_group (name) VALUES ('Support')`},
+		{"user_group_external_ref_idx", `INSERT INTO user_group (name, source, external_ref) VALUES ('Group ' || gen_random_uuid(), 'oidc', 'cn=support')`},
+		{"webhook_endpoint_name_idx", `INSERT INTO webhook_endpoint (name, url, secret) VALUES ('Chat', 'https://hooks.example.test/chat', 'secret')`},
+		{"workflow_name_idx", `INSERT INTO workflow (name) VALUES ('Review')`},
+		{"workflow_scheme_one_default_idx", `INSERT INTO workflow_scheme (name, is_default) VALUES ('Default ' || gen_random_uuid(), true)`},
+		{"workflow_scheme_name_idx", `INSERT INTO workflow_scheme (name) VALUES ('Scheme')`},
 	}
 	for _, c := range cases {
 		t.Run(c.constraint, func(t *testing.T) {
-			if _, err := super.Exec(ctx, c.insert, first); err != nil {
-				t.Fatalf("the first organization's row: %v", err)
+			if _, err := super.Exec(ctx, c.insert); err != nil {
+				t.Fatalf("the first row: %v", err)
 			}
-			_, err := super.Exec(ctx, c.insert, second)
+			_, err := super.Exec(ctx, c.insert)
 			if err == nil {
-				t.Fatalf("a second organization took the same key past %s", c.constraint)
+				t.Fatalf("a second row took the same key past %s", c.constraint)
 			}
 			if !strings.Contains(err.Error(), c.constraint) {
 				t.Errorf("refused, but not by %s: %v", c.constraint, err)
@@ -137,8 +120,8 @@ func TestKeysAreTheInstallations(t *testing.T) {
 		})
 	}
 
-	// With foreign keys back on, a role is the installation's whichever
-	// organization's row made it; the guard is not what this is about.
+	// With foreign keys back on, an assignment names a role that exists; the
+	// guard is not what this is about.
 	if _, err := super.Exec(ctx, `RESET session_replication_role`); err != nil {
 		t.Fatal(err)
 	}
@@ -150,10 +133,10 @@ func TestKeysAreTheInstallations(t *testing.T) {
 		if err := super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ('auditor@example.test', 'Auditor') RETURNING id`).Scan(&auditorID); err != nil {
 			t.Fatalf("insert a person: %v", err)
 		}
-		if _, err := super.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'auditor', $2)`, second, auditorID); err != nil {
+		if _, err := super.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('auditor', $1)`, auditorID); err != nil {
 			t.Errorf("the installation's auditor role was refused: %v", err)
 		}
-		_, err := super.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'no_such_role', $2)`, first, auditorID)
+		_, err := super.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('no_such_role', $1)`, auditorID)
 		if err == nil || !strings.Contains(err.Error(), "role_assignment_role_fkey") {
 			t.Errorf("a role nobody made was assigned: %v", err)
 		}
