@@ -423,8 +423,8 @@ func (c *Cluster) Stats() Stats {
 	return s
 }
 
-// RefuseSuperuser fails on a superuser or a role made to skip row security: the
-// application needs neither, so either is a deployment mistake.
+// RefuseSuperuser fails when the app role is a superuser or skips row security:
+// the application needs neither, so either is a deployment mistake.
 func (c *Cluster) RefuseSuperuser(ctx context.Context) error {
 	var privileged bool
 	err := c.primary.QueryRow(ctx, `SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user`).Scan(&privileged)
@@ -432,7 +432,7 @@ func (c *Cluster) RefuseSuperuser(ctx context.Context) error {
 		return fmt.Errorf("ask which role this connects as: %w", err)
 	}
 	if privileged {
-		return errors.New("this connects to the database as a role that bypasses row level security; use the application role")
+		return errors.New("this connects to the database as a superuser or a role that bypasses row level security; connect as the application role instead")
 	}
 	return nil
 }
