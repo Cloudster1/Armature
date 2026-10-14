@@ -291,14 +291,13 @@ func (n *Inbound) placeWhere(ctx context.Context, which, from string, args ...an
 	var out *placement
 	err := n.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT i.id, p.key || '-' || i.key_num, u.id, m.org_role,
+			SELECT i.id, p.key || '-' || i.key_num, u.id, u.standing,
 			       i.reporter_id = u.id,
 			       EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id AND w.user_id = u.id),
 			       p.trusted_domains
 			FROM project p
 			JOIN issue i ON i.project_id = p.id
-			JOIN app_user u ON u.email = $1 AND u.is_active
-			JOIN org_member m ON m.user_id = u.id
+			JOIN app_user u ON u.email = $1 AND u.is_active AND u.standing IS NOT NULL
 			WHERE p.kind = 'service' AND i.request_type_id IS NOT NULL AND `+which, append([]any{from}, args...)...)
 		if err != nil {
 			return err

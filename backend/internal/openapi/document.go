@@ -101,6 +101,7 @@ type Schema struct {
 	Items                *Schema            `json:"items,omitempty"`
 	AdditionalProperties *Schema            `json:"additionalProperties,omitempty"`
 	OneOf                []*Schema          `json:"oneOf,omitempty"`
+	Deprecated           bool               `json:"deprecated,omitempty"`
 	// Defs carries the components a schema refers to when it has to stand
 	// alone, outside the document; the document itself never sets it.
 	Defs map[string]*Schema `json:"$defs,omitempty"`

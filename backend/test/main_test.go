@@ -146,12 +146,12 @@ func theInstallation(ctx context.Context, name string) (auth.Org, error) {
 			return err
 		}
 		err := tx.QueryRow(ctx, `
-			SELECT id, slug, name FROM org WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name)
+			SELECT id, slug, name FROM installation WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name)
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
 		org = auth.Org{Name: name, Slug: auth.Slugify(name)}
-		if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, org.Slug, org.Name).Scan(&org.ID); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO installation (slug, name) VALUES ($1, $2) RETURNING id`, org.Slug, org.Name).Scan(&org.ID); err != nil {
 			return fmt.Errorf("make the installation: %w", err)
 		}
 		_, err = bootstrap.Installation(ctx, tx)

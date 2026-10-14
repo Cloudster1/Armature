@@ -213,7 +213,7 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 	link := s.AppBaseURL + "/invite#" + secret
 	mailed := false
 	if s.Mailer != nil {
-		if err := s.Mailer.Send(r.Context(), invitationMail(invite.Email, p.User.Name, p.Org.Name, link)); err != nil {
+		if err := s.Mailer.Send(r.Context(), invitationMail(invite.Email, p.User.Name, p.Installation.Name, link)); err != nil {
 			s.Log.Warn("invitation not mailed", "error", err)
 		} else {
 			mailed = true

@@ -39,8 +39,7 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 		// team; it never rewrites the standing of somebody who is already here.
 		var standing OrgRole
 		err := tx.QueryRow(ctx, `
-			SELECT m.org_role FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE u.email = $1`, email).Scan(&standing)
+			SELECT standing FROM app_user WHERE email = $1 AND standing IS NOT NULL`, email).Scan(&standing)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
@@ -50,14 +49,14 @@ func (s *Service) CreateInvite(ctx context.Context, email string, role OrgRole, 
 		// Re-inviting someone who already has a pending invitation replaces it,
 		// rather than failing on the partial unique index.
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO org_invite (email, org_role, token_hash, invited_by, expires_at)
+			INSERT INTO invite (email, standing, token_hash, invited_by, expires_at)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (email) WHERE accepted_at IS NULL
-			DO UPDATE SET org_role = EXCLUDED.org_role,
+			DO UPDATE SET standing = EXCLUDED.standing,
 			              token_hash = EXCLUDED.token_hash,
 			              invited_by = EXCLUDED.invited_by,
 			              expires_at = EXCLUDED.expires_at
-			RETURNING id, (SELECT id FROM org), created_at`,
+			RETURNING id, (SELECT id FROM installation), created_at`,
 			email, string(role), digest, invitedBy, inv.ExpiresAt,
 		).Scan(&inv.ID, &inv.OrgID, &inv.CreatedAt); err != nil {
 			return err
@@ -75,8 +74,8 @@ func (s *Service) ListInvites(ctx context.Context) ([]Invite, error) {
 	var out []Invite
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT id, (SELECT id FROM org), email, org_role, expires_at, created_at
-			FROM org_invite
+			SELECT id, (SELECT id FROM installation), email, standing, expires_at, created_at
+			FROM invite
 			WHERE accepted_at IS NULL AND expires_at > now()
 			ORDER BY created_at DESC`)
 		if err != nil {
@@ -110,9 +109,9 @@ func (s *Service) PreviewInvite(ctx context.Context, secret string) (*InvitePrev
 	var out InvitePreview
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT o.name, i.email, i.org_role
-			FROM org_invite i
-			JOIN org o ON o.archived_at IS NULL
+			SELECT o.name, i.email, i.standing
+			FROM invite i
+			JOIN installation o ON o.archived_at IS NULL
 			WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.expires_at > now()`,
 			HashToken(secret)).Scan(&out.Installation, &out.Email, &out.Role)
 	})
@@ -132,7 +131,7 @@ func (s *Service) RevokeInvite(ctx context.Context, id uuid.UUID, actor uuid.UUI
 			email string
 			role  OrgRole
 		)
-		err := tx.QueryRow(ctx, `DELETE FROM org_invite WHERE id = $1 AND accepted_at IS NULL RETURNING email, org_role`, id).Scan(&email, &role)
+		err := tx.QueryRow(ctx, `DELETE FROM invite WHERE id = $1 AND accepted_at IS NULL RETURNING email, standing`, id).Scan(&email, &role)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrInviteInvalid
 		}
@@ -185,9 +184,9 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 		// FOR UPDATE on the invite makes acceptance single use even if the link
 		// is opened twice at the same moment.
 		err := tx.QueryRow(ctx, `
-			SELECT i.id, o.id, o.slug, o.name, i.email, i.org_role
-			FROM org_invite i
-			JOIN org o ON o.archived_at IS NULL
+			SELECT i.id, o.id, o.slug, o.name, i.email, i.standing
+			FROM invite i
+			JOIN installation o ON o.archived_at IS NULL
 			WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.expires_at > now()
 			FOR UPDATE OF i`,
 			HashToken(in.Secret),
@@ -255,10 +254,8 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 		// Only a customer is lifted by an invitation; a member already on the
 		// team keeps the standing they have.
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO org_member (user_id, org_role)
-			VALUES ($1, $2)
-			ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role
-			WHERE org_member.org_role = 'customer'`,
+			UPDATE app_user SET standing = $2
+			WHERE id = $1 AND (standing IS NULL OR standing = 'customer')`,
 			userID, string(role),
 		)
 		if err != nil {
@@ -268,11 +265,11 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 			if err := grantJoiningRole(ctx, tx, userID, role); err != nil {
 				return err
 			}
-		} else if err := tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, userID).Scan(&role); err != nil {
+		} else if err := tx.QueryRow(ctx, `SELECT standing FROM app_user WHERE id = $1 AND standing IS NOT NULL`, userID).Scan(&role); err != nil {
 			return err
 		}
 
-		if _, err := tx.Exec(ctx, `UPDATE org_invite SET accepted_at = now() WHERE id = $1`, inviteID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE invite SET accepted_at = now() WHERE id = $1`, inviteID); err != nil {
 			return err
 		}
 
@@ -283,11 +280,11 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 		secret = sessionSecret
 		principal = Principal{
 			User:      User{ID: userID, Email: email, Name: name, Timezone: "UTC", Locale: "en", IsActive: true},
-			Org:       &Org{ID: orgID, Slug: orgSlug, Name: orgName},
 			Role:      role,
 			SessionID: &sessionID,
 			Proof:     proof,
 		}
+		principal.placeIn(Org{ID: orgID, Slug: orgSlug, Name: orgName})
 		if err := writeAudit(ctx, tx, userID, "member.joined", "user", &userID, in.IP); err != nil {
 			return err
 		}

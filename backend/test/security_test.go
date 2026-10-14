@@ -117,7 +117,7 @@ func TestCredentialRevocationTakesEffectImmediately(t *testing.T) {
 		signup := c.signIn(t, h.person(t, "removed", auth.RoleOwner))
 		userID := principalField(t, signup, "principal", "user", "id").(string)
 
-		if _, err := h.super.Exec(ctx, `DELETE FROM org_member WHERE user_id = $1`, userID); err != nil {
+		if _, err := h.super.Exec(ctx, `UPDATE app_user SET standing = NULL WHERE id = $1`, userID); err != nil {
 			t.Fatal(err)
 		}
 

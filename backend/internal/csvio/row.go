@@ -42,7 +42,7 @@ func (s *Service) lookups(ctx context.Context, projectKey string) (*lookups, err
 		// stands for a person who worked here and cannot sign in.
 		people, err := tx.Query(ctx, `
 			SELECT u.id, u.email, u.name FROM app_user u
-			JOIN org_member m ON m.user_id = u.id`)
+			WHERE u.standing IS NOT NULL`)
 		if err != nil {
 			return err
 		}

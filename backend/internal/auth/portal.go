@@ -132,7 +132,7 @@ func findDoor(ctx context.Context, tx db.DBTX, deskKey string) (*Door, error) {
 	d := Door{Desk: &DoorDesk{}}
 	err := tx.QueryRow(ctx, `
 		SELECT o.name, p.key, p.name, NOT p.portal_verifies
-		FROM project p JOIN org o ON o.archived_at IS NULL
+		FROM project p JOIN installation o ON o.archived_at IS NULL
 		WHERE p.key = $1 AND p.kind = 'service' AND p.archived_at IS NULL`, key,
 	).Scan(&d.Installation, &d.Desk.Key, &d.Desk.Name, &d.Desk.Open)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -283,7 +283,7 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		}
 
 		var org Org
-		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM installation WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
 			return err
 		}
 
@@ -298,10 +298,10 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		}
 
 		var role OrgRole
-		err = tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, user.ID).Scan(&role)
+		err = tx.QueryRow(ctx, `SELECT standing FROM app_user WHERE id = $1 AND standing IS NOT NULL`, user.ID).Scan(&role)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			if _, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'customer')`, user.ID); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'customer' WHERE id = $1`, user.ID); err != nil {
 				return fmt.Errorf("make the requester a customer: %w", err)
 			}
 			role = RoleCustomer
@@ -316,7 +316,8 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 			return err
 		}
 		secret = sessionSecret
-		principal = Principal{User: user, Org: &org, Role: role, SessionID: &sessionID, Proof: ProofPortalCode}
+		principal = Principal{User: user, Role: role, SessionID: &sessionID, Proof: ProofPortalCode}
+		principal.placeIn(org)
 		return writeAudit(ctx, tx, user.ID, "auth.portal_code_login", "user", &user.ID, in.IP)
 	})
 	if err != nil {
@@ -347,7 +348,7 @@ func doorAccount(ctx context.Context, tx db.DBTX, email string) (User, error) {
 	var guarded bool
 	err = tx.QueryRow(ctx, `
 		SELECT u.password_hash IS NOT NULL
-		    OR EXISTS (SELECT 1 FROM org_member m WHERE m.user_id = u.id AND m.org_role <> 'customer')
+		    OR coalesce(u.standing <> 'customer', false)
 		FROM app_user u WHERE u.id = $1`, user.ID).Scan(&guarded)
 	if err != nil {
 		return User{}, err
@@ -386,7 +387,7 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 	)
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var org Org
-		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM installation WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
 			return err
 		}
 		var (
@@ -426,10 +427,10 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 		}
 
 		var role OrgRole
-		err = tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, user.ID).Scan(&role)
+		err = tx.QueryRow(ctx, `SELECT standing FROM app_user WHERE id = $1 AND standing IS NOT NULL`, user.ID).Scan(&role)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			if _, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'customer')`, user.ID); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'customer' WHERE id = $1`, user.ID); err != nil {
 				return fmt.Errorf("make the requester a customer: %w", err)
 			}
 			role = RoleCustomer
@@ -444,7 +445,8 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 			return err
 		}
 		secret = sessionSecret
-		principal = Principal{User: user, Org: &org, Role: role, SessionID: &sessionID, PortalDesk: deskKey, PortalDeskID: &deskID, Proof: ProofOpenDoor}
+		principal = Principal{User: user, Role: role, SessionID: &sessionID, PortalDesk: deskKey, PortalDeskID: &deskID, Proof: ProofOpenDoor}
+		principal.placeIn(org)
 		return writeAudit(ctx, tx, user.ID, "auth.portal_open_login", "project", &deskID, in.IP)
 	})
 	if err != nil {

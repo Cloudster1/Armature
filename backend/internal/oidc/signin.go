@@ -41,7 +41,7 @@ func (s *Service) noteJoinRequest(ctx context.Context, identity *Identity) error
 			return err
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO org_join_request (user_id) VALUES ($1)
+			INSERT INTO join_request (user_id) VALUES ($1)
 			ON CONFLICT DO NOTHING`, userID)
 		if err != nil {
 			return fmt.Errorf("note the request to join: %w", err)
@@ -70,7 +70,7 @@ func (s *Service) signIn(ctx context.Context, identity *Identity, ttl time.Durat
 
 		var role string
 		err = tx.QueryRow(ctx, `
-			SELECT org_role FROM org_member WHERE user_id = $1`,
+			SELECT standing FROM app_user WHERE id = $1 AND standing IS NOT NULL`,
 			userID).Scan(&role)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotAMember

@@ -55,7 +55,7 @@ func TestTheFirstAccountSetsTheInstallationUp(t *testing.T) {
 		t.Helper()
 		var n int
 		if err := empty.cluster.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT count(*) FROM org`).Scan(&n)
+			return tx.QueryRow(ctx, `SELECT count(*) FROM installation`).Scan(&n)
 		}); err != nil {
 			t.Fatal(err)
 		}

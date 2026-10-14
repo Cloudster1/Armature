@@ -71,13 +71,12 @@ func isNameRune(r rune) bool {
 	return r == '_' || r == '.' || r == '-' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r > 127
 }
 
-// members lists the organization's people who can be named: everyone with a
+// members lists the installation's people who can be named: everyone with a
 // place here who is not a customer.
 func (s *Service) members(ctx context.Context, tx db.DBTX) ([]Member, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT u.id, u.name, u.email FROM app_user u
-		JOIN org_member m ON m.user_id = u.id
-		WHERE u.is_active AND m.org_role <> 'customer'`)
+		WHERE u.is_active AND u.standing <> 'customer'`)
 	if err != nil {
 		return nil, err
 	}

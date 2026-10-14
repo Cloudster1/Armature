@@ -183,6 +183,12 @@ func (b *Builder) fields(owner, t reflect.Type, into *Schema) {
 			copied := *s
 			schema = &copied
 		}
+		// A field kept for one more release says so, and what to read instead.
+		if why := f.Tag.Get("deprecated"); why != "" {
+			copied := *schema
+			copied.Deprecated, copied.Description = true, why
+			schema = &copied
+		}
 		into.Properties[name] = schema
 		if !omitempty && !overridden {
 			into.Required = append(into.Required, name)

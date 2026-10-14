@@ -144,7 +144,7 @@ function PortalShell() {
       <div className="flex h-full flex-col">
         <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-6">
           <div className="flex items-center gap-5">
-            <span className="text-sm font-semibold text-ink">{principal?.org?.name ?? "Support"}</span>
+            <span className="text-sm font-semibold text-ink">{principal?.installation?.name ?? "Support"}</span>
             <PortalLink to="/portal" exact>
               Your requests
             </PortalLink>

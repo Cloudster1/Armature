@@ -144,10 +144,9 @@ func (s *Server) handleListMembers(w http.ResponseWriter, r *http.Request) {
 	members := []memberView{}
 	err := s.DB.Read(r.Context(), func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT u.id, u.name, u.email, m.org_role, COALESCE(u.avatar_url, '')
-			FROM org_member m
-			JOIN app_user u ON u.id = m.user_id
-			WHERE u.is_active
+			SELECT u.id, u.name, u.email, u.standing, COALESCE(u.avatar_url, '')
+			FROM app_user u
+			WHERE u.is_active AND u.standing IS NOT NULL
 			ORDER BY u.name`)
 		if err != nil {
 			return err

@@ -316,9 +316,8 @@ func (s *Service) actorFor(ctx context.Context, repo *Repository, email string) 
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if email != "" {
 			err := tx.QueryRow(ctx, `
-				SELECT u.id, m.org_role FROM app_user u
-				JOIN org_member m ON m.user_id = u.id
-				WHERE lower(u.email) = lower($1) AND m.org_role <> 'customer'`, email).Scan(&userID, &role)
+				SELECT u.id, u.standing FROM app_user u
+				WHERE lower(u.email) = lower($1) AND u.standing <> 'customer'`, email).Scan(&userID, &role)
 			if err == nil {
 				found = true
 				return nil
@@ -328,9 +327,8 @@ func (s *Service) actorFor(ctx context.Context, repo *Repository, email string) 
 			}
 		}
 		err := tx.QueryRow(ctx, `
-			SELECT u.id, m.org_role FROM git_repository r
-			JOIN app_user u ON u.id = r.connected_by
-			JOIN org_member m ON m.user_id = u.id
+			SELECT u.id, u.standing FROM git_repository r
+			JOIN app_user u ON u.id = r.connected_by AND u.standing IS NOT NULL
 			WHERE r.id = $1`, repo.ID).Scan(&userID, &role)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil

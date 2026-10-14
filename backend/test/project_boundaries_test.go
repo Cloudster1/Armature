@@ -218,7 +218,7 @@ func TestOnlyAnOwnerLetsAnOwnerGo(t *testing.T) {
 	secondID := principalField(t, want(t, secondClient.post("/api/v1/auth/invites/accept", map[string]string{
 		"token": second.Body["token"].(string), "name": "The Second Owner", "password": testPassword,
 	}), http.StatusOK, "they join"), "principal", "user", "id").(string)
-	if _, err := h.super.Exec(context.Background(), `UPDATE org_member SET org_role = 'owner' WHERE user_id = $1`, secondID); err != nil {
+	if _, err := h.super.Exec(context.Background(), `UPDATE app_user SET standing = 'owner' WHERE id = $1`, secondID); err != nil {
 		t.Fatal(err)
 	}
 

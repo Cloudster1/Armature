@@ -40,11 +40,11 @@ LEFT JOIN project p ON p.id = a.project_id
 LEFT JOIN app_user u ON u.id = a.user_id
 LEFT JOIN user_group g ON g.id = a.group_id`
 
-// order reads the way somebody looks for a grant: the organization-wide ones
+// order reads the way somebody looks for a grant: the installation-wide ones
 // first, then by project, and the most powerful role at the top of each.
 const order = `
 ORDER BY (a.project_id IS NOT NULL), p.key,
-         (SELECT r.sort_order FROM org_role r WHERE r.key = a.role), a.role,
+         (SELECT r.sort_order FROM role r WHERE r.key = a.role), a.role,
          COALESCE(g.name, u.name)`
 
 func scanAssignment(row pgx.Row) (*Assignment, error) {
@@ -116,10 +116,10 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 
 	var out *Assignment
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		// The role is the organization's own: what it is called and whether
-		// it answers for the whole organization are its row's to say.
+		// The role is the installation's own: what it is called and whether
+		// it answers for the whole installation are its row's to say.
 		var wholeOrg bool
-		err := tx.QueryRow(ctx, `SELECT org_wide_only FROM org_role WHERE key = $1`, string(in.Role)).Scan(&wholeOrg)
+		err := tx.QueryRow(ctx, `SELECT installation_wide_only FROM role WHERE key = $1`, string(in.Role)).Scan(&wholeOrg)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("%w: %s", ErrRoleNotFound, in.Role)
 		}

@@ -77,7 +77,7 @@ func (s *Service) Absences(ctx context.Context, from time.Time, to *time.Time, u
 // the database refuses both alike.
 func memberStanding(ctx context.Context, tx db.DBTX, userID uuid.UUID) error {
 	var role string
-	err := tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, userID).Scan(&role)
+	err := tx.QueryRow(ctx, `SELECT standing FROM app_user WHERE id = $1 AND standing IS NOT NULL`, userID).Scan(&role)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return ErrNotAMember

@@ -11,7 +11,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/perm"
@@ -115,15 +114,13 @@ func TestTheOrganizationColumnsGoAsThePlainOwner(t *testing.T) {
 	if err := super.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ('acme', 'Acme') RETURNING id`).Scan(&orgID); err != nil {
 		t.Fatalf("set the installation up: %v", err)
 	}
-	setUp, err := super.Begin(ctx)
-	if err != nil {
+	// The bootstrap in Go writes today's schema, so an issue's type and status
+	// are made by hand at this version.
+	var taskType, toDo string
+	if err := super.QueryRow(ctx, `INSERT INTO issue_type (name) VALUES ('Task') RETURNING id`).Scan(&taskType); err != nil {
 		t.Fatal(err)
 	}
-	set, err := bootstrap.Installation(ctx, setUp)
-	if err != nil {
-		t.Fatalf("set the installation up: %v", err)
-	}
-	if err := setUp.Commit(ctx); err != nil {
+	if err := super.QueryRow(ctx, `INSERT INTO issue_status (name, category) VALUES ('To Do', 'todo') RETURNING id`).Scan(&toDo); err != nil {
 		t.Fatal(err)
 	}
 	// Everybody at each standing, one of them switched off, and somebody who
@@ -138,8 +135,7 @@ func TestTheOrganizationColumnsGoAsThePlainOwner(t *testing.T) {
 	exec(t, `INSERT INTO role_assignment (role, user_id) SELECT 'global_administrator', id FROM app_user WHERE email = 'owner@columns.test'`)
 	exec(t, `INSERT INTO project (key, name) VALUES ('COL', 'Columns')`)
 	exec(t, `INSERT INTO issue (project_id, key_num, issue_type_id, status_id, summary, rank)
-		SELECT id, 1, $1, $2, 'Kept', 'a' FROM project WHERE key = 'COL'`,
-		set.IssueTypeIDs[bootstrap.TypeTask], set.StatusIDs[bootstrap.StatusToDo])
+		SELECT id, 1, $1, $2, 'Kept', 'a' FROM project WHERE key = 'COL'`, taskType, toDo)
 	exec(t, `INSERT INTO user_session (user_id, token_hash, expires_at) SELECT id, '\x01', now() + interval '1 day' FROM app_user WHERE email = 'member@columns.test'`)
 	exec(t, `INSERT INTO inbound_mail (message_id, from_email, outcome) VALUES ('<kept@columns.test>', 'someone@columns.test', 'unmatched')`)
 	exec(t, `INSERT INTO portal_code (email, code_hash, expires_at) VALUES ('door@columns.test', '\x01', now() + interval '1 hour')`)

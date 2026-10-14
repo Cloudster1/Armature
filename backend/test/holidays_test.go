@@ -322,8 +322,7 @@ func TestCalendarsAndWeeksHoldEvenThroughSQL(t *testing.T) {
 	t.Run("only somebody who works here has a week", func(t *testing.T) {
 		var customerID uuid.UUID
 		err := h.super.QueryRow(ctx, `
-			WITH made AS (INSERT INTO app_user (email, name) VALUES ($1, 'Sam Customer') RETURNING id)
-			INSERT INTO org_member (user_id, org_role) SELECT id, 'customer' FROM made RETURNING user_id`,
+			INSERT INTO app_user (email, name, standing) VALUES ($1, 'Sam Customer', 'customer') RETURNING id`,
 			h.email(t, "sqlcustomer")).Scan(&customerID)
 		if err != nil {
 			t.Fatal(err)

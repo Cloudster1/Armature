@@ -185,11 +185,11 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 			return err
 		}
 		out.Memberships, err = collect(ctx, tx, `
-			SELECT o.name, o.slug::text, m.org_role,
-			       ARRAY(SELECT g.name FROM group_member gm JOIN user_group g ON g.id = gm.group_id WHERE gm.user_id = m.user_id ORDER BY g.name),
-			       ARRAY(SELECT t.name FROM team_member tm JOIN team t ON t.id = tm.team_id WHERE tm.user_id = m.user_id ORDER BY t.name),
-			       ARRAY(SELECT r.role::text || COALESCE(' on ' || p.key, '') FROM role_assignment r LEFT JOIN project p ON p.id = r.project_id WHERE r.user_id = m.user_id ORDER BY 1)
-			FROM org_member m CROSS JOIN org o WHERE m.user_id = $1 ORDER BY o.name`, userID,
+			SELECT o.name, o.slug::text, u.standing,
+			       ARRAY(SELECT g.name FROM group_member gm JOIN user_group g ON g.id = gm.group_id WHERE gm.user_id = u.id ORDER BY g.name),
+			       ARRAY(SELECT t.name FROM team_member tm JOIN team t ON t.id = tm.team_id WHERE tm.user_id = u.id ORDER BY t.name),
+			       ARRAY(SELECT r.role::text || COALESCE(' on ' || p.key, '') FROM role_assignment r LEFT JOIN project p ON p.id = r.project_id WHERE r.user_id = u.id ORDER BY 1)
+			FROM app_user u CROSS JOIN installation o WHERE u.id = $1 AND u.standing IS NOT NULL ORDER BY o.name`, userID,
 			func(row pgx.Rows) (Membership, error) {
 				var m Membership
 				err := row.Scan(&m.Organization, &m.Slug, &m.Role, &m.Groups, &m.Teams, &m.Roles)
@@ -287,7 +287,7 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 		}
 		out.WorkingHours, err = collect(ctx, tx, `
 			SELECT o.name, COALESCE(c.name, ''), s.minutes FROM member_schedule s
-			CROSS JOIN org o LEFT JOIN holiday_calendar c ON c.id = s.calendar_id
+			CROSS JOIN installation o LEFT JOIN holiday_calendar c ON c.id = s.calendar_id
 			WHERE s.user_id = $1 ORDER BY o.name`, userID,
 			func(row pgx.Rows) (WorkingHours, error) {
 				var x WorkingHours
@@ -299,7 +299,7 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 		}
 		out.Absences, err = collect(ctx, tx, `
 			SELECT o.name, to_char(a.starts_on, 'YYYY-MM-DD'), to_char(a.ends_on, 'YYYY-MM-DD'), a.half_day, COALESCE(u.name, '')
-			FROM absence a CROSS JOIN org o LEFT JOIN app_user u ON u.id = a.created_by
+			FROM absence a CROSS JOIN installation o LEFT JOIN app_user u ON u.id = a.created_by
 			WHERE a.user_id = $1 ORDER BY o.name, a.starts_on`, userID,
 			func(row pgx.Rows) (Absence, error) {
 				var x Absence
@@ -311,7 +311,7 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 		}
 		out.Shares, err = collect(ctx, tx, `
 			SELECT o.name, p.name, a.percent FROM project_allocation a
-			CROSS JOIN org o JOIN project p ON p.id = a.project_id
+			CROSS JOIN installation o JOIN project p ON p.id = a.project_id
 			WHERE a.user_id = $1 ORDER BY o.name, p.name`, userID,
 			func(row pgx.Rows) (Share, error) {
 				var x Share
@@ -395,7 +395,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM member_schedule WHERE user_id = $1`,
 			`DELETE FROM absence WHERE user_id = $1`,
 			`DELETE FROM project_allocation WHERE user_id = $1`,
-			`DELETE FROM org_member WHERE user_id = $1`,
+			`UPDATE app_user SET standing = NULL WHERE id = $1`,
 		} {
 			if _, err := tx.Exec(ctx, q, userID); err != nil {
 				return fmt.Errorf("erase: %w", err)
@@ -406,7 +406,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			sql  string
 			args []any
 		}{
-			{`DELETE FROM org_invite WHERE email = $1`, []any{email}},
+			{`DELETE FROM invite WHERE email = $1`, []any{email}},
 			{`DELETE FROM portal_code WHERE email = $1`, []any{email}},
 			{`UPDATE inbound_mail SET from_email = $2 WHERE from_email = $1`, []any{email, tomb}},
 			{`UPDATE git_commit SET author_email = '', author_name = $2 WHERE author_email = $1`, []any{email, ErasedName}},

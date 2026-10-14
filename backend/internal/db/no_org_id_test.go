@@ -37,7 +37,18 @@ var namesTheOldTables = regexp.MustCompile(`\b` + "org" + `_(member|role|invite|
 
 // oldTablesAllowed names the files, or a file's declarations, that may name an
 // old table, and why: each runs at a version from before the rename.
-var oldTablesAllowed = map[string]string{}
+var oldTablesAllowed = map[string]string{
+	"internal/workflow/rules.go ConditionOrgRole":                                          "is a rule type stored in workflows, which compares a standing",
+	"migrations/backfill_rls_test.go":                                                      "checks migrations written while the organization had row security",
+	"test/installation_tables_test.go":                                                     "renames the tables in a database of its own and looks for the old names",
+	"test/installation_keys_test.go TestTheUpgradeRefusesKeysThatCollide":                  "writes rows of two organizations at a version before 00933",
+	"test/one_installation_migrate_test.go TestTheUpgradeRefusesSeveralOrganizations":      "writes organizations at a version before 00929",
+	"test/owner_migrate_test.go TestMigrationsRunAsPlainOwner":                             "writes organizations at a version before 00929",
+	"test/owner_migrate_test.go expectBackfilled":                                          "reads what migrations made for each organization of a legacy database",
+	"test/old_keys_test.go TestOldKeysComeOverFromTheColumnThatKeptOne":                    "writes rows at a version before the column had a default",
+	"test/row_security_test.go TestRowSecurityGoesAsThePlainOwner":                         "writes rows at a version before the column had a default",
+	"test/schema_without_organization_test.go TestTheOrganizationColumnsGoAsThePlainOwner": "writes rows at a version before the columns went",
+}
 
 // No query names the organization: the tables no longer carry it, and the
 // installation is the only one a row can belong to (#218).

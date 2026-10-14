@@ -26,7 +26,7 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
 	var orgID uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `SELECT id FROM org WHERE slug = $1`, slug).Scan(&orgID); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT id FROM installation WHERE slug = $1`, slug).Scan(&orgID); err != nil {
 		t.Fatal(err)
 	}
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Records", "key": recKey}), http.StatusCreated, "a project")
@@ -107,7 +107,7 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 		var active bool
 		var members int
 		if err := h.super.QueryRow(context.Background(), `
-			SELECT u.is_active, (SELECT count(*) FROM org_member m WHERE m.user_id = u.id)
+			SELECT u.is_active, (u.standing IS NOT NULL)::int
 			FROM app_user u WHERE u.id = $1`, goerID).Scan(&active, &members); err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ func TestPersonalDataHasALifetime(t *testing.T) {
 			t.Fatalf("tombstone = %q %q active=%v", email, name, active)
 		}
 		var members int
-		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM org_member WHERE user_id = $1`, otherID).Scan(&members); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM app_user WHERE id = $1 AND standing IS NOT NULL`, otherID).Scan(&members); err != nil {
 			t.Fatal(err)
 		}
 		if members != 0 {

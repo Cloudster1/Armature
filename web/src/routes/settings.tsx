@@ -34,7 +34,7 @@ function SettingsHub() {
   const { data } = useMe();
   return (
     <Page width="narrow">
-      <PageHeader title="Settings" meta={data?.principal?.org?.name} />
+      <PageHeader title="Settings" meta={data?.principal?.installation?.name} />
       <Group title="You" links={you} />
       <Group title="Everyone" links={everyone} />
     </Page>

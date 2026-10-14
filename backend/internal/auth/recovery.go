@@ -73,8 +73,8 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, ip string) (*
 			// A row without a password that no provider signs in is a portal
 			// customer or a follower named in a mail: there is no account to recover.
 			rows, err := tx.Query(ctx, `
-				SELECT o.slug FROM org_member m, org o, oidc_provider p
-				WHERE m.user_id = $1 AND m.org_role <> 'customer' AND p.enabled AND o.archived_at IS NULL
+				SELECT o.slug FROM app_user u, installation o, oidc_provider p
+				WHERE u.id = $1 AND u.standing <> 'customer' AND p.enabled AND o.archived_at IS NULL
 				ORDER BY o.slug`, userID)
 			if err != nil {
 				return err
@@ -153,7 +153,7 @@ func (s *Service) ResetPassword(ctx context.Context, secret, password, ip string
 // somebody with no membership left has no log to be in.
 func AuditAccount(ctx context.Context, tx db.DBTX, userID uuid.UUID, e audit.Entry) error {
 	var member bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM org_member WHERE user_id = $1)`, userID).Scan(&member); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM app_user WHERE id = $1 AND standing IS NOT NULL)`, userID).Scan(&member); err != nil {
 		return err
 	}
 	if !member {

@@ -77,7 +77,7 @@ func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 	}, ws.actor.UserID)
 	var automationUser uuid.UUID
 	if err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT automation_user_id FROM org`).Scan(&automationUser)
+		return tx.QueryRow(ctx, `SELECT automation_user_id FROM installation`).Scan(&automationUser)
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -26,7 +26,7 @@ var sweeps = []sweep{
 	// The code step of a password sign-in is the same kind of half-done
 	// handshake, so it keeps the same window.
 	{"login-challenges", "login_challenge", "expires_at < $1", func(p Policy) time.Duration { return p.OIDCLogins }},
-	{"invites", "org_invite", "expires_at < $1", func(p Policy) time.Duration { return p.Invites }},
+	{"invites", "invite", "expires_at < $1", func(p Policy) time.Duration { return p.Invites }},
 	{"api-tokens", "api_token", "expires_at < $1", func(p Policy) time.Duration { return p.APITokens }},
 	{"notifications", "notification", "created_at < $1", func(p Policy) time.Duration { return p.Notifications }},
 	{"outbox", "outbox_event", "published_at < $1", func(p Policy) time.Duration { return p.Outbox }},

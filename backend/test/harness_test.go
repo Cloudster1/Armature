@@ -106,7 +106,7 @@ func (h *harness) sweep() {
 	}
 	if len(h.made.emails) > 0 {
 		// Invitations and portal codes are kept by address, not by account.
-		_, _ = h.super.Exec(ctx, `DELETE FROM org_invite WHERE email = ANY($1)`, h.made.emails)
+		_, _ = h.super.Exec(ctx, `DELETE FROM invite WHERE email = ANY($1)`, h.made.emails)
 		_, _ = h.super.Exec(ctx, `DELETE FROM portal_code WHERE email = ANY($1)`, h.made.emails)
 	}
 	// Table by table in sharedLists' order, so a scheme goes before the
@@ -238,7 +238,7 @@ func uniqueKey(prefix string) string {
 // test names in one must not be another test's, and goes when the test ends.
 var sharedLists = []string{
 	"automation_rule", "webhook_endpoint", "dashboard_template", "workflow_scheme", "workflow",
-	"issue_link_type", "custom_field", "label", "user_group", "org_role", "holiday_calendar",
+	"issue_link_type", "custom_field", "label", "user_group", "role", "holiday_calendar",
 	"issue_type", "issue_status",
 }
 
@@ -300,8 +300,8 @@ func (h *harness) person(t *testing.T, name string, role auth.OrgRole) (email st
 			email, name, shared.passwordHash).Scan(&userID); err != nil {
 			return fmt.Errorf("make the account: %w", err)
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)`, userID, role); err != nil {
-			return fmt.Errorf("make the membership: %w", err)
+		if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = $2 WHERE id = $1`, userID, role); err != nil {
+			return fmt.Errorf("give the standing: %w", err)
 		}
 		if role.AppRole() == "" {
 			return nil
@@ -357,11 +357,11 @@ func (h *harness) keepSecondFactorRule(t *testing.T) {
 	t.Helper()
 	orgID := h.installation()
 	var rule string
-	if err := h.super.QueryRow(context.Background(), `SELECT second_factor::text FROM org WHERE id = $1`, orgID).Scan(&rule); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT second_factor::text FROM installation WHERE id = $1`, orgID).Scan(&rule); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if _, err := h.super.Exec(context.Background(), `UPDATE org SET second_factor = $2 WHERE id = $1`, orgID, rule); err != nil {
+		if _, err := h.super.Exec(context.Background(), `UPDATE installation SET second_factor = $2 WHERE id = $1`, orgID, rule); err != nil {
 			t.Errorf("put the second-factor rule back: %v", err)
 		}
 	})
@@ -512,9 +512,7 @@ func (h *harness) joinExisting(t *testing.T, email, role string) uuid.UUID {
 		RETURNING id`, email, nameOf(email)).Scan(&id); err != nil {
 		t.Fatalf("create the account: %v", err)
 	}
-	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)
-		ON CONFLICT (user_id) DO UPDATE SET org_role = EXCLUDED.org_role`, id, role); err != nil {
+	if _, err := h.super.Exec(context.Background(), `UPDATE app_user SET standing = $2 WHERE id = $1`, id, role); err != nil {
 		t.Fatalf("add them to the installation: %v", err)
 	}
 	t.Cleanup(func() {

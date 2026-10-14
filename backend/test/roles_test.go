@@ -67,16 +67,16 @@ func TestTheInstallationEditsItsOwnRoles(t *testing.T) {
 
 	t.Run("SQL refuses the same", func(t *testing.T) {
 		ctx := context.Background()
-		if _, err := h.super.Exec(ctx, `DELETE FROM org_role WHERE key = 'reader'`); err == nil {
+		if _, err := h.super.Exec(ctx, `DELETE FROM role WHERE key = 'reader'`); err == nil {
 			t.Error("SQL deleted a built-in role")
 		}
-		if _, err := h.super.Exec(ctx, `UPDATE org_role SET permissions = '{read}' WHERE key = 'global_administrator'`); err == nil {
+		if _, err := h.super.Exec(ctx, `UPDATE role SET permissions = '{read}' WHERE key = 'global_administrator'`); err == nil {
 			t.Error("SQL let the global administrator stop administering")
 		}
-		if _, err := h.super.Exec(ctx, `UPDATE org_role SET permissions = '{read,fly}' WHERE key = $1`, plannerKey); err == nil {
+		if _, err := h.super.Exec(ctx, `UPDATE role SET permissions = '{read,fly}' WHERE key = $1`, plannerKey); err == nil {
 			t.Error("SQL took a permission that is a word")
 		}
-		if _, err := h.super.Exec(ctx, `UPDATE org_role SET key = 'planner' WHERE key = $1`, plannerKey); err == nil {
+		if _, err := h.super.Exec(ctx, `UPDATE role SET key = 'planner' WHERE key = $1`, plannerKey); err == nil {
 			t.Error("SQL let a role's key change")
 		}
 	})
@@ -134,7 +134,7 @@ func TestTheBuiltInRolesReadAsTheCodeDescribesThem(t *testing.T) {
 	h := newHarness(t)
 	for _, want := range perm.Builtins() {
 		var name, description string
-		if err := h.super.QueryRow(context.Background(), `SELECT name, description FROM org_role WHERE key = $1 AND builtin`, string(want.Key)).Scan(&name, &description); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT name, description FROM role WHERE key = $1 AND builtin`, string(want.Key)).Scan(&name, &description); err != nil {
 			t.Fatalf("read %s: %v", want.Key, err)
 		}
 		if name != want.Name || description != want.Description {

@@ -81,7 +81,7 @@ func TestInvites(t *testing.T) {
 			t.Fatal(err)
 		}
 		if _, err := h.super.Exec(ctx,
-			`UPDATE org_invite SET expires_at = now() - interval '1 second' WHERE id = $1`, invite.ID); err != nil {
+			`UPDATE invite SET expires_at = now() - interval '1 second' WHERE id = $1`, invite.ID); err != nil {
 			t.Fatal(err)
 		}
 
@@ -168,7 +168,7 @@ func TestInvites(t *testing.T) {
 			t.Errorf("accepting gave %v as %q, want the customer's own account lifted to member", creds.Principal.User.ID, creds.Principal.Role)
 		}
 		var roles []string
-		if err := h.super.QueryRow(ctx, `SELECT array_agg(org_role::text) FROM org_member WHERE user_id = $1`, customerID).Scan(&roles); err != nil {
+		if err := h.super.QueryRow(ctx, `SELECT array_agg(standing) FROM app_user WHERE id = $1 AND standing IS NOT NULL`, customerID).Scan(&roles); err != nil {
 			t.Fatal(err)
 		}
 		if len(roles) != 1 || roles[0] != string(auth.RoleMember) {
@@ -297,7 +297,7 @@ func TestAPITokens(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.super.Exec(ctx, `DELETE FROM org_member WHERE user_id = $1`, member.Principal.User.ID); err != nil {
+		if _, err := h.super.Exec(ctx, `UPDATE app_user SET standing = NULL WHERE id = $1`, member.Principal.User.ID); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := svc.Authenticate(ctx, token.Secret); !errors.Is(err, auth.ErrSwitchedOff) {

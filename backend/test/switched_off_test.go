@@ -36,7 +36,7 @@ func TestSomebodyWithoutAMembershipIsSwitchedOff(t *testing.T) {
 	}
 	letGo := func(email string) {
 		t.Helper()
-		if _, err := h.super.Exec(ctx, `DELETE FROM org_member WHERE user_id = (SELECT id FROM app_user WHERE email = $1)`, email); err != nil {
+		if _, err := h.super.Exec(ctx, `UPDATE app_user SET standing = NULL WHERE email = $1`, email); err != nil {
 			t.Fatal(err)
 		}
 	}

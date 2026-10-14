@@ -22,7 +22,7 @@ describe("the signed-in shell", () => {
   // A held session is refused every page, so the shell shows the setup instead
   // of a sidebar full of requests that would all come back refused.
   it("shows only the setup to a session the installation holds", () => {
-    principal = { user: { id: "u1" }, org: { id: "o1", slug: "strict", name: "Strict" }, role: "member", mustEnrol: true };
+    principal = { user: { id: "u1" }, installation: { id: "o1", name: "Strict" }, role: "member", mustEnrol: true };
     render(<AppShell />);
     expect(screen.getByText("held to setting it up")).toBeInTheDocument();
   });

@@ -189,14 +189,9 @@ func Installation(ctx context.Context, tx db.DBTX) (*Result, error) {
 	}
 	var automation uuid.UUID
 	if err := tx.QueryRow(ctx, `
-		WITH made AS (
-			INSERT INTO app_user (email, name, is_active)
-			VALUES ('automation+' || $1::uuid::text || '@armature.invalid', 'Automation', false)
-			RETURNING id
-		), joined AS (
-			INSERT INTO org_member (user_id, org_role) SELECT id, 'member' FROM made
-		)
-		SELECT id FROM made`, id).Scan(&automation); err != nil {
+		INSERT INTO app_user (email, name, is_active, standing)
+		VALUES ('automation+' || $1::uuid::text || '@armature.invalid', 'Automation', false, 'member')
+		RETURNING id`, id).Scan(&automation); err != nil {
 		return nil, fmt.Errorf("create the automation account: %w", err)
 	}
 	if err := installation.SetAutomationUser(ctx, tx, automation); err != nil {
