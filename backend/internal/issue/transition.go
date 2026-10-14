@@ -180,12 +180,17 @@ func (s *Service) announceMove(ctx context.Context, tx db.DBTX, before, after *I
 			return err
 		}
 	}
-	return events.Emit(ctx, tx, events.TopicIssueTransitioned, map[string]any{
+	return events.Emit(ctx, tx, events.TopicIssueTransitioned, movePayload(before, after, transition, actor))
+}
+
+// movePayload is what issue.transitioned tells a subscriber about a move.
+func movePayload(before, after *Issue, transition string, actor Actor) map[string]any {
+	return map[string]any{
 		"issueId":    after.ID,
 		"key":        after.Key,
 		"transition": transition,
 		"fromStatus": before.Status.Name,
 		"toStatus":   after.Status.Name,
 		"actorId":    actor.UserID,
-	})
+	}
 }
