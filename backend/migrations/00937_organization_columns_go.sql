@@ -49,7 +49,7 @@ BEGIN
         IF total > listed THEN
             names := names || format(' and %s more', total - listed);
         END IF;
-        RAISE EXCEPTION 'The organization''s columns go with this release, and this database has % objects that read them: %. Change or drop them so they no longer name org_id, then upgrade again.', total, names
+        RAISE EXCEPTION 'The organization''s columns go with this release, and these read them: %. Change or drop them so they no longer name org_id, then upgrade again.', names
             USING ERRCODE = 'dependent_objects_still_exist';
     END IF;
 END $$;
