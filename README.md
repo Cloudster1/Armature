@@ -23,7 +23,8 @@ This file is how to run it, test it and operate it. What it does is summarised
 below and argued in [`docs/decisions.md`](docs/decisions.md); the whole product
 in pictures is [`docs/screenshots.md`](docs/screenshots.md); what it looks like
 by design is [`docs/design/`](docs/design); what it holds about people is
-[`docs/privacy.md`](docs/privacy.md).
+[`docs/privacy.md`](docs/privacy.md); what it posts to a webhook is
+[`docs/webhooks.md`](docs/webhooks.md).
 
 ## Two commands, nothing installed
 
@@ -141,7 +142,8 @@ shared by link, printed to PDF; CSV export, and a CSV import that keeps another
 tracker's keys, dates, people, hierarchy, sprints, links, comments and worklogs.
 
 **Being told.** One fan-out per event to an inbox and, if the person wants,
-mail; webhooks signed, retried and logged; automation rules that run as an
+mail; webhooks signed, retried and logged, in a versioned envelope
+([`docs/webhooks.md`](docs/webhooks.md)); automation rules that run as an
 account of their own, once per event.
 
 **Themes.** The interface is drawn from named tokens, and a theme is a saved

@@ -18,6 +18,7 @@ type Document struct {
 	Servers    []Server              `json:"servers,omitempty"`
 	Tags       []Tag                 `json:"tags,omitempty"`
 	Paths      map[string]PathItem   `json:"paths"`
+	Webhooks   map[string]PathItem   `json:"webhooks,omitempty"`
 	Components Components            `json:"components"`
 	Security   []map[string][]string `json:"security,omitempty"`
 }

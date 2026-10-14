@@ -162,7 +162,7 @@ func TestScheduledAndManualRuns(t *testing.T) {
 }
 
 // received is one request a receiver kept: the body and the headers it is signed in.
-type received struct{ Body, Signature, Event, Timestamp, Timestamped string }
+type received struct{ Body, Signature, Event, Timestamp, Timestamped, Version string }
 
 // receiver is an endpoint that keeps what it was sent and answers as told.
 type receiver struct {
@@ -177,6 +177,7 @@ func (r *receiver) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.got = append(r.got, received{
 		Body: string(body), Signature: req.Header.Get(webhook.HeaderSignature), Event: req.Header.Get("X-Armature-Event"),
 		Timestamp: req.Header.Get(webhook.HeaderTimestamp), Timestamped: req.Header.Get(webhook.HeaderTimestampedSignature),
+		Version: req.Header.Get(envelopeVersionHeader),
 	})
 	status := r.status
 	r.mu.Unlock()
@@ -239,6 +240,9 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 	if err := json.Unmarshal([]byte(sink.got[0].Body), &envelope); err != nil || envelope.ID != issueMade || !strings.Contains(string(envelope.Payload), "X-1") {
 		t.Errorf("body = %s, want the payload and the event id", sink.got[0].Body)
 	}
+	// The body is what the document promises a receiver, in the version the
+	// header names, so a receiver can decide before it parses.
+	sentInVersion(t, sink.got[0], 1)
 
 	// A failure schedules the next attempt with backoff; the log shows both.
 	sink.status = http.StatusInternalServerError
@@ -270,12 +274,26 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 		t.Errorf("retry = %+v", retry)
 	}
 
+	// The body was frozen when it was queued, so a retry and a redelivery say
+	// the version it was written in, whatever the endpoint is on by then.
+	var retryVersion int
+	if err := h.super.QueryRow(context.Background(), `SELECT version FROM webhook_delivery WHERE id = $1`, retry.ID).Scan(&retryVersion); err != nil || retryVersion != 1 {
+		t.Errorf("the retry is in version %d (%v), want 1", retryVersion, err)
+	}
+	moveEndpointVersion(t, h, made.ID, 2)
+
 	// Redelivery by hand goes now, and succeeds once the endpoint is back.
 	sink.status = http.StatusNoContent
+	before := len(sink.got)
 	again, _, err := hooks.Redeliver(ws.ctx, failed.ID)
 	if err != nil || again.DeliveredAt == nil || again.Attempt != 3 {
 		t.Fatalf("redeliver = %+v %v", again, err)
 	}
+	if len(sink.got) != before+1 {
+		t.Fatalf("the redelivery reached the receiver %d times", len(sink.got)-before)
+	}
+	sentInVersion(t, sink.got[before], 1)
+	moveEndpointVersion(t, h, made.ID, 1)
 	ping, _, err := hooks.Test(ws.ctx, made.ID)
 	if err != nil || ping.DeliveredAt == nil || ping.Topic != webhook.TopicPing {
 		t.Fatalf("test = %+v %v", ping, err)

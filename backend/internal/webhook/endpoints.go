@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -22,13 +23,19 @@ type Input struct {
 	URL     string   `json:"url"`
 	Topics  []string `json:"topics"`
 	Enabled *bool    `json:"enabled,omitempty"`
+	// Version is the envelope it is posted. Left out, a new endpoint gets the
+	// current one and an edit keeps the one it has.
+	Version *int `json:"version,omitempty"`
 }
 
-const selectEndpoints = `SELECT id, name, url, topics, enabled, created_at, updated_at FROM webhook_endpoint`
+// endpointColumns is what scanEndpoint reads, for every select and returning.
+const endpointColumns = `id, name, url, topics, enabled, version, created_at, updated_at`
+
+const selectEndpoints = `SELECT ` + endpointColumns + ` FROM webhook_endpoint`
 
 func scanEndpoint(row pgx.Row) (*Endpoint, error) {
 	var e Endpoint
-	if err := row.Scan(&e.ID, &e.Name, &e.URL, &e.Topics, &e.Enabled, &e.CreatedAt, &e.UpdatedAt); err != nil {
+	if err := row.Scan(&e.ID, &e.Name, &e.URL, &e.Topics, &e.Enabled, &e.Version, &e.CreatedAt, &e.UpdatedAt); err != nil {
 		return nil, err
 	}
 	if e.Topics == nil {
@@ -70,6 +77,15 @@ func validate(in Input) error {
 			return fmt.Errorf("%q is not an event a webhook can take", t)
 		}
 	}
+	if in.Version != nil {
+		if _, ok := envelopes[*in.Version]; !ok {
+			offered := make([]string, 0, len(envelopes))
+			for _, v := range Versions() {
+				offered = append(offered, strconv.Itoa(v))
+			}
+			return fmt.Errorf("there is no webhook envelope version %d. Choose %s, or leave the version out for the current one.", *in.Version, strings.Join(offered, " or "))
+		}
+	}
 	return nil
 }
 
@@ -103,12 +119,16 @@ func (s *Service) Create(ctx context.Context, in Input, actor uuid.UUID) (*Endpo
 	if in.Topics == nil {
 		in.Topics = []string{}
 	}
+	version := CurrentVersion
+	if in.Version != nil {
+		version = *in.Version
+	}
 	var out *Endpoint
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		e, err := scanEndpoint(tx.QueryRow(ctx, `
-			INSERT INTO webhook_endpoint (name, url, secret, topics, enabled)
-			VALUES ($1, $2, $3, $4, true)
-			RETURNING id, name, url, topics, enabled, created_at, updated_at`, strings.TrimSpace(in.Name), in.URL, secret, in.Topics))
+			INSERT INTO webhook_endpoint (name, url, secret, topics, enabled, version)
+			VALUES ($1, $2, $3, $4, true, $5)
+			RETURNING `+endpointColumns, strings.TrimSpace(in.Name), in.URL, secret, in.Topics, version))
 		if isUnique(err) {
 			return errors.New("a webhook with that name is already here")
 		}
@@ -136,9 +156,9 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in Input, actor uuid
 	var out *Endpoint
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		e, err := scanEndpoint(tx.QueryRow(ctx, `
-			UPDATE webhook_endpoint SET name = $2, url = $3, topics = $4, enabled = COALESCE($5, enabled)
+			UPDATE webhook_endpoint SET name = $2, url = $3, topics = $4, enabled = COALESCE($5, enabled), version = COALESCE($6, version)
 			WHERE id = $1
-			RETURNING id, name, url, topics, enabled, created_at, updated_at`, id, strings.TrimSpace(in.Name), in.URL, in.Topics, in.Enabled))
+			RETURNING `+endpointColumns, id, strings.TrimSpace(in.Name), in.URL, in.Topics, in.Enabled, in.Version))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -166,7 +186,7 @@ func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID, actor uuid.UUI
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		e, err := scanEndpoint(tx.QueryRow(ctx, `
 			UPDATE webhook_endpoint SET secret = $2 WHERE id = $1
-			RETURNING id, name, url, topics, enabled, created_at, updated_at`, id, secret))
+			RETURNING `+endpointColumns, id, secret))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -188,7 +208,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		e, err := scanEndpoint(tx.QueryRow(ctx, `
 			DELETE FROM webhook_endpoint WHERE id = $1
-			RETURNING id, name, url, topics, enabled, created_at, updated_at`, id))
+			RETURNING `+endpointColumns, id))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

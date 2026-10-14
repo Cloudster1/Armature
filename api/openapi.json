@@ -18311,6 +18311,92 @@
       }
     }
   },
+  "webhooks": {
+    "event": {
+      "post": {
+        "operationId": "webhookEvent",
+        "summary": "What a webhook endpoint is posted for each event it subscribes to.",
+        "description": "A receiver ignores fields and topics it does not know, and refuses an envelope version it does not know. The version rises only for a change that breaks a receiver, and an endpoint keeps the version it was registered for.",
+        "tags": [
+          "webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "X-Armature-Event",
+            "in": "header",
+            "required": true,
+            "description": "The topic, as in the body.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Armature-Delivery",
+            "in": "header",
+            "required": true,
+            "description": "This attempt's id; a retry or a redelivery has its own.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Armature-Webhook-Version",
+            "in": "header",
+            "required": true,
+            "description": "The envelope version of the body, as in its version field.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Armature-Signature-256",
+            "in": "header",
+            "required": true,
+            "description": "sha256= and the hex HMAC-SHA256 of the body, keyed with the endpoint's secret.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Armature-Timestamp",
+            "in": "header",
+            "required": true,
+            "description": "When this attempt was sent, in Unix seconds.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Armature-Signature-Timestamped-256",
+            "in": "header",
+            "required": true,
+            "description": "sha256= and the hex HMAC-SHA256 of the timestamp, a dot and the body.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvelopeV1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "Taken: the delivery is done."
+          },
+          "default": {
+            "description": "Not taken: the delivery is tried again later, with backoff, as is one not answered in time."
+          }
+        }
+      }
+    }
+  },
   "components": {
     "schemas": {
       "APIError": {
@@ -21216,6 +21302,22 @@
             "items": {
               "$ref": "#/components/schemas/Tag"
             }
+          },
+          "webhooks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Operation"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
           }
         },
         "required": [
@@ -21329,6 +21431,9 @@
           },
           "url": {
             "type": "string"
+          },
+          "version": {
+            "type": "integer"
           }
         },
         "required": [
@@ -21337,6 +21442,7 @@
           "url",
           "topics",
           "enabled",
+          "version",
           "createdAt",
           "updatedAt"
         ]
@@ -21354,6 +21460,46 @@
         "required": [
           "secret",
           "uri"
+        ]
+      },
+      "EnvelopeV1": {
+        "type": "object",
+        "description": "What an endpoint registered for envelope version 1 is posted.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the delivery was queued."
+          },
+          "orgId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The installation's stable id, the same in every delivery. Envelope version 2 leaves it out; read nothing from it.",
+            "deprecated": true
+          },
+          "payload": {
+            "type": "object",
+            "description": "The event's own fields, by topic, as docs/webhooks.md lists them."
+          },
+          "topic": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "description": "The envelope version, 1 here; it is the version header's value too."
+          }
+        },
+        "required": [
+          "version",
+          "id",
+          "topic",
+          "orgId",
+          "occurredAt",
+          "payload"
         ]
       },
       "EpicProgress": {
@@ -28379,6 +28525,9 @@
           },
           "url": {
             "type": "string"
+          },
+          "version": {
+            "type": "integer"
           }
         },
         "required": [
