@@ -12,6 +12,9 @@ here in the branch that makes it.
   `theme-export@1`, `reports@1`, `plan@1` and `calendar@1`, each with what it
   promises in `docs/integration.md`. A test refuses a capability naming an
   operation or a topic the build does not have (#239).
+- Fixed: `api/openapi.json` gives each public operation, `/meta` among them,
+  an empty `security`, so a generated client calls it without credentials
+  instead of reading it as needing a session or a token (#239).
 - Added: `GET /api/v1/meta` says which build answers, as Stator and Exciter
   do, without a sign-in: the product, the version, the API's own version and
   its capabilities, for now none. The commit and when it was built are added
