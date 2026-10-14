@@ -7,6 +7,9 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: ticking a row on the search page no longer moves the rows. The bar
+  for the ticked issues opens below them and stays at the foot of the screen,
+  so a second tick lands on the row it was aimed at.
 - Added: `GET /api/v1/meta` says which build answers, as Stator and Exciter
   do, without a sign-in: the product, the version, the API's own version and
   its capabilities, for now none. The commit and when it was built are added

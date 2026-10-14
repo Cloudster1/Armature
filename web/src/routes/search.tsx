@@ -75,12 +75,6 @@ function SearchPage() {
         </p>
       )}
 
-      {selected.size > 0 && (
-        <div className="mb-3">
-          <BulkBar keys={[...selected]} onClear={() => setSelected(new Set())} />
-        </div>
-      )}
-
       <p className="mb-2 text-sm text-ink-subtle tabular-nums" data-testid="search-count">
         {data ? shownOf(data.total, data.offset, issues.length, "issue") : ""}
       </p>
@@ -94,6 +88,13 @@ function SearchPage() {
         />
       ) : (
         <IssueTable issues={issues} showProject selected={selected} onSelect={setSelected} />
+      )}
+      {/* Below the rows and held at the foot of the screen: opening above them
+          would move the next row out from under the pointer. */}
+      {selected.size > 0 && (
+        <div className="sticky bottom-0 z-10 mt-3 bg-canvas/95 py-2 backdrop-blur">
+          <BulkBar keys={[...selected]} onClear={() => setSelected(new Set())} />
+        </div>
       )}
       {data && <Pager label="Issue pages" total={data.total} offset={data.offset} pageSize={SEARCH_PAGE_SIZE} onChange={turn} />}
     </Page>
