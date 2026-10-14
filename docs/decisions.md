@@ -161,9 +161,14 @@ without one are gone. Migration `00935` gives every `org_id` that must name an
 organization a default, `installation_org_id()`, which reads the one `org`
 row when a row is written. A fresh database has no row when it migrates, so a
 literal would not do, and with two rows the default refuses rather than
-guess. `current_org_id()` answers the same, so the inserts and filters that
-still name it keep working until the next step takes them out. A mail that
-matched no request and a file's tombstone keep naming no organization.
+guess. `current_org_id()` answers the same. No query names either any more:
+a row is written without `org_id`, no filter asks for it, and no function
+passes an organization's id along to reach the installation's rows. A unit
+test reads every string in the Go module and refuses one that names them,
+outside the organization's own tables, which the last step renames, and the
+tests about the column itself. A mail that matched no request and a file's
+tombstone keep naming no organization, and so now does a mail placed on a
+request, since nothing read which organization it was placed in.
 
 The worker's passes ran once per organization, each inside its own; they run
 once over the installation, retention as one statement per kind of row. An
@@ -171,7 +176,8 @@ event names no organization: the stream carries no `org_id`, and what reads an
 event acts in the installation. A webhook's envelope keeps `orgId` for one more
 release, holding the installation's stable id, the id of the `org` row, which
 the last step keeps. It is deprecated, and a later release removes it so that
-receivers do not break on this upgrade. The previous release's consumers skip
+receivers do not break on this upgrade. The `member.joined` event's own
+payload and an invitation in the API keep their `orgId` the same way. The previous release's consumers skip
 an event without an `org_id`, so an upgrade drains the outbox and the stream
 first, and workers of the two releases never run side by side.
 

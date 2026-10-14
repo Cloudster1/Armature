@@ -7,15 +7,22 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: no query names the organization any more. Rows are written
+  without `org_id`, which the installation fills by default, no filter asks
+  for it, and the code passes no organization's id along to reach the
+  installation's rows. The global administrator's built-in description says
+  it administers the installation, where it said the tenant; one an
+  administrator rewrote is kept (#218).
 - Changed: the api and the worker no longer carry the organization. No
   transaction is bound to one, a row written without `org_id` is the
   installation's by default, the worker's passes run once over the
   installation instead of once per organization, events name no
   organization on their way through the stream, and the request log has no
   `org` field (#218).
-- Deprecated: the `orgId` of a webhook's envelope. It holds the
+- Deprecated: the `orgId` of a webhook's envelope, of the `member.joined`
+  event's payload and of an invitation in the API. Each holds the
   installation's stable id for one more release, the same id it held
-  before, and a later release removes it; read nothing from it (#218).
+  before, and a later release removes them; read nothing from them (#218).
 - Upgrade note (#218): drain the outbox and the event stream before
   upgrading, and do not run workers of both releases side by side. The
   previous release's worker skips an event this release relayed, because it
