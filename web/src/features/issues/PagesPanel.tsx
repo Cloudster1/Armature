@@ -2,37 +2,55 @@ import { useState } from "react";
 import { useRemoteLinks, useRemoveRemoteLink, type RemoteLink } from "@/api/remoteLinks";
 import { Button, ErrorBanner } from "@/components/ui";
 
+type Relation = RemoteLink["relation"];
+
+// Each relation under a heading of its own, pages first, since most links are.
+const groups: { relation: Relation; heading: string; noun: string }[] = [
+  { relation: "page", heading: "Pages", noun: "page" },
+  { relation: "requirement", heading: "Requirements", noun: "requirement" },
+];
+
 /**
- * Pages in other applications that are about the issue. They are put here by
- * the application that holds them, so the section only appears once there is one.
+ * Pages and requirements in other applications about the issue, put here by the
+ * application that holds them, so the section only appears once there is one.
  */
 export function PagesPanel({ issueKey, editable }: { issueKey: string; editable: boolean }) {
   const { data, isLoading } = useRemoteLinks(issueKey);
   const remove = useRemoveRemoteLink();
 
   if (isLoading || !data || data.remoteLinks.length === 0) return null;
-  const pages = data.remoteLinks;
+  const links = data.remoteLinks;
 
   return (
-    <section data-testid="pages-panel">
-      <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">Pages ({pages.length})</h2>
+    <section data-testid="pages-panel" className="space-y-4">
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
-      <ul className="divide-y divide-border rounded-md border border-border">
-        {pages.map((page) => (
-          <li key={page.id} className="flex items-center gap-2 px-3 py-1.5 text-sm" data-remote-link={page.url}>
-            <SourceIcon page={page} />
-            <a href={page.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-accent hover:underline">
-              {page.title}
-            </a>
-            <span className="shrink-0 text-xs text-ink-subtle">{page.source}</span>
-            {editable && (
-              <Button variant="link" onClick={() => remove.mutate({ key: issueKey, id: page.id })} aria-label={`Remove the page ${page.title}`} className="text-xs text-ink-subtle hover:text-danger">
-                Remove
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+      {groups.map(({ relation, heading, noun }) => {
+        const held = links.filter((link) => link.relation === relation);
+        if (held.length === 0) return null;
+        return (
+          <div key={relation} data-remote-link-group={relation}>
+            <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">
+              {heading} ({held.length})
+            </h2>
+            <ul aria-label={heading} className="divide-y divide-border rounded-md border border-border">
+              {held.map((link) => (
+                <li key={link.id} className="flex items-center gap-2 px-3 py-1.5 text-sm" data-remote-link={link.url}>
+                  <SourceIcon page={link} />
+                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-accent hover:underline">
+                    {link.title}
+                  </a>
+                  <span className="shrink-0 text-xs text-ink-subtle">{link.source}</span>
+                  {editable && (
+                    <Button variant="link" onClick={() => remove.mutate({ key: issueKey, id: link.id })} aria-label={`Remove the ${noun} ${link.title}`} className="text-xs text-ink-subtle hover:text-danger">
+                      Remove
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </section>
   );
 }

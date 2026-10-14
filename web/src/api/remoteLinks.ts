@@ -3,7 +3,7 @@ import { useMutation } from "./mutation";
 import { request } from "./client";
 import type { components } from "./schema";
 
-/** A page in another application that is about an issue, kept in step by its address. */
+/** A page or requirement in another application about an issue, kept in step by its address. */
 export type RemoteLink = components["schemas"]["RemoteLink"];
 
 export const remoteLinksQueryKey = ["remote-links"] as const;

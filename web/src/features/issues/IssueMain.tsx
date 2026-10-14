@@ -59,7 +59,7 @@ export function IssueMain({ issue, editable, me, isDesk, places }: { issue: Issu
       <Section id="links" hidden>
         <LinksPanel issueKey={issue.key} editable={editable} />
       </Section>
-      <Section id="pages" hidden>
+      <Section id="pages" title="References" hidden>
         <PagesPanel issueKey={issue.key} editable={editable} />
       </Section>
       <Section id="watchers" hidden>

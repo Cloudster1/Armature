@@ -7,6 +7,14 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: `GET /api/v1/meta` lists the integration capabilities a partner checks
+  for by name: `issue-embed@1`, `remote-links@1`, `webhooks@1`,
+  `theme-export@1`, `reports@1`, `plan@1` and `calendar@1`, each with what it
+  promises in `docs/integration.md`. A test refuses a capability naming an
+  operation or a topic the build does not have (#239).
+- Fixed: `api/openapi.json` gives each public operation, `/meta` among them,
+  an empty `security`, so a generated client calls it without credentials
+  instead of reading it as needing a session or a token (#239).
 - Fixed: ticking a row on the search page no longer moves the rows. The bar
   for the ticked issues opens below them and stays at the foot of the screen,
   so a second tick lands on the row it was aimed at.
@@ -30,6 +38,13 @@ here in the branch that makes it.
   subscriber keeps an issue's category without reading it again. Nothing is
   taken away, so a subscriber that ignores them goes on as before;
   `docs/webhooks.md` lists the topic's fields (#224).
+- Added: a remote link says what it is to its issue. `relation` on a
+  remote link, its request and the `issue.remote_link.added` and
+  `issue.remote_link.removed` payloads is `page` or `requirement`; a new
+  link sent without one is a page, and a resend that leaves it out keeps
+  the one the link has. The issue page heads requirements apart from pages,
+  pages first, and its rail names the section References. `/meta` lists
+  `remote-link-relations@1`, so a partner can tell before it sends one (#223).
 - Changed: the organization's tables are named for the installation. `org`
   is `installation`, `org_role` is `role`, `org_invite` is `invite` and
   `org_join_request` is `join_request`, with their constraints, indexes,

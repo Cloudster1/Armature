@@ -287,37 +287,42 @@ serialScenario("a label is listed for everyone and renamed everywhere", async ({
   await page.waitForSelector(`[data-labels] [data-label="${blocker}"]`, { timeout: WAIT });
 });
 
-scenario("a page another application puts on an issue is listed under Pages", async ({ page }) => {
+scenario("a page another application puts on an issue is listed under Pages, a requirement under Requirements", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Specced", { visit: false });
   const issueKey = await createIssue(page, key, "the checkout flow", { type: "Story", visit: false });
   const secret = await createToken(page, "Page sync");
   const spec = "https://wiki.example.com/pages/checkout";
+  const requirement = "https://req.example.com/requirements/R-7";
 
   // The application syncs over the API with a token, and sends the same page
   // twice: the second time it has been retitled.
-  const put = (title) =>
+  const put = (body) =>
     page.evaluate(
-      async (bearer, target, url, pageTitle) => {
+      async (bearer, target, link) => {
         const response = await fetch(`/api/v1/issues/${target}/remote-links`, {
           method: "POST",
           headers: { Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ url, title: pageTitle, source: "Stator" }),
+          body: JSON.stringify(link),
         });
         return response.status;
       },
       secret,
       issueKey,
-      spec,
-      title,
+      body,
     );
-  expect.equal(await put("Checkout spec"), 201, "the page is put on the issue");
-  expect.equal(await put("Checkout spec, second draft"), 200, "the same page again is retitled");
+  expect.equal(await put({ url: spec, title: "Checkout spec", source: "Stator" }), 201, "the page is put on the issue");
+  expect.equal(await put({ url: spec, title: "Checkout spec, second draft", source: "Stator" }), 200, "the same page again is retitled");
+  expect.equal(await put({ url: requirement, title: "R-7 Pay by card", source: "Exciter", relation: "requirement" }), 201, "a requirement is traced to the issue");
 
   await goto(page, `/issues/${issueKey}`);
-  const row = `[data-testid="pages-panel"] [data-remote-link="${spec}"]`;
+  const row = `[data-testid="pages-panel"] [data-remote-link-group="page"] [data-remote-link="${spec}"]`;
+  const traced = `[data-testid="pages-panel"] [data-remote-link-group="requirement"] [data-remote-link="${requirement}"]`;
   await page.waitForSelector(row, { timeout: WAIT });
-  expect.equal(await page.$$eval("[data-remote-link]", (rows) => rows.length), 1, "one row for the page");
+  await page.waitForSelector(traced, { timeout: WAIT });
+  expect.equal(await page.$$eval("[data-remote-link-group=page] [data-remote-link]", (rows) => rows.length), 1, "one row for the page");
+  expect.equal(await page.$$eval('[data-testid="pages-panel"] h2', (hs) => hs.map((h) => h.textContent.trim()).join(" | ")), "Pages (1) | Requirements (1)", "pages and requirements are headed apart, pages first");
+  expect.contains(await textOf(page, traced), "Exciter", "the requirement names where it lives");
   const link = await page.$eval(`${row} a`, (a) => ({ text: a.textContent.trim(), href: a.getAttribute("href"), target: a.getAttribute("target"), rel: a.getAttribute("rel") }));
   expect.equal(link.text, "Checkout spec, second draft", "the row carries the latest title");
   expect.equal(link.href, spec, "and goes to the page");
@@ -325,8 +330,10 @@ scenario("a page another application puts on an issue is listed under Pages", as
   expect.contains(link.rel, "noopener", "without handing the page this one");
   expect.contains(await textOf(page, row), "Stator", "the row names where the page lives");
 
-  // Somebody who edits the issue can take the page off, and the section goes with it.
+  // Somebody who edits the issue can take each off, and the section goes with the last.
   await page.click(`${row} button[aria-label="Remove the page Checkout spec, second draft"]`);
+  await page.waitForFunction(() => !document.querySelector("[data-remote-link-group=page]"), { timeout: WAIT });
+  await page.click(`${traced} button[aria-label="Remove the requirement R-7 Pay by card"]`);
   await page.waitForFunction(() => !document.querySelector('[data-testid="pages-panel"]'), { timeout: WAIT });
 });
 

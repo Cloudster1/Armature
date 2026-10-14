@@ -6195,6 +6195,8 @@ export interface components {
             iconUrl: string | null;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            relation: "page" | "requirement";
             source: string;
             title: string;
             /** Format: date-time */
@@ -6203,6 +6205,8 @@ export interface components {
         };
         RemoteLinkRequest: {
             iconUrl?: string;
+            /** @enum {string} */
+            relation?: "page" | "requirement";
             source: string;
             title: string;
             url: string;
