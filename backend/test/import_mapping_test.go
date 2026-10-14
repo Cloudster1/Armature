@@ -22,7 +22,7 @@ func TestAnImportMapsWhatItFinds(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newProject(t, "jiraimport")
 	files := csvio.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster), h.authService())
-	byrne := h.joinExisting(t, ws, "ada.byrne@example.test", "member")
+	byrne := h.joinExisting(t, "ada.byrne@example.test", "member")
 
 	data := jiraExport(t, h)
 

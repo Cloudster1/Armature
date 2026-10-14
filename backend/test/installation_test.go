@@ -32,7 +32,7 @@ func TestTheInstallationIsNamedByItsAdministrators(t *testing.T) {
 			t.Errorf("put the installation's name back: %v", err)
 		}
 	})
-	renames := h.auditCount(t, orgID, "installation.renamed")
+	renames := h.auditCount(t, "installation.renamed")
 
 	nameOf := func(c *client) any {
 		t.Helper()
@@ -46,7 +46,7 @@ func TestTheInstallationIsNamedByItsAdministrators(t *testing.T) {
 	if blank := owner.put("/api/v1/installation", map[string]string{"name": "   "}); blank.Status != http.StatusUnprocessableEntity {
 		t.Fatalf("a blank name: %d %s", blank.Status, blank.Raw)
 	}
-	if h.auditCount(t, orgID, "installation.renamed") != renames {
+	if h.auditCount(t, "installation.renamed") != renames {
 		t.Fatal("a refused rename was recorded")
 	}
 
@@ -60,7 +60,7 @@ func TestTheInstallationIsNamedByItsAdministrators(t *testing.T) {
 	if got := principalField(t, member.get("/api/v1/auth/me"), "principal", "org", "name"); got != "The Tracker" {
 		t.Errorf("the member's session still calls it %v", got)
 	}
-	if h.auditCount(t, orgID, "installation.renamed") != renames+1 {
+	if h.auditCount(t, "installation.renamed") != renames+1 {
 		t.Error("the rename was not recorded")
 	}
 }

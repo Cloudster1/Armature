@@ -54,8 +54,8 @@ func TestAGoalOnOverlappingSavedHoursCountsThemOnce(t *testing.T) {
 	ws := h.newProject(t, "overlap")
 	d, p := ws.aDesk(t, h, "Overlap desk")
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO business_calendar (org_id, project_id, timezone, hours, holidays)
-		SELECT org_id, id, 'UTC', '{"mon":[{"from":"09:00","to":"13:00"},{"from":"12:00","to":"17:00"}]}', '{}' FROM project WHERE id = $1`, p.ID); err != nil {
+		INSERT INTO business_calendar (project_id, timezone, hours, holidays)
+		SELECT id, 'UTC', '{"mon":[{"from":"09:00","to":"13:00"},{"from":"12:00","to":"17:00"}]}', '{}' FROM project WHERE id = $1`, p.ID); err != nil {
 		t.Fatal(err)
 	}
 	cal, err := d.Calendar(ws.ctx, p.Key)

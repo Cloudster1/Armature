@@ -524,8 +524,8 @@ func TestADashboardKeepsOneFilter(t *testing.T) {
 
 	t.Run("and SQL refuses a second one too", func(t *testing.T) {
 		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO dashboard_widget (org_id, dashboard_id, kind, title, width, position, config)
-			VALUES ($1, $2, 'filter', 'Sneaky', 2, 99, '{}')`, ws.orgID, dash.ID)
+			INSERT INTO dashboard_widget (dashboard_id, kind, title, width, position, config)
+			VALUES ($1, 'filter', 'Sneaky', 2, 99, '{}')`, dash.ID)
 		if err == nil {
 			t.Fatal("SQL let a dashboard have two filters")
 		}
@@ -893,7 +893,7 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 
 	t.Run("SQL refuses the same name twice", func(t *testing.T) {
 		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO dashboard_template (org_id, name) VALUES ($1, upper($2))`, ws.orgID, ours)
+			INSERT INTO dashboard_template (name) VALUES (upper($1))`, ours)
 		if err == nil {
 			t.Fatal("SQL let a second template take the name")
 		}

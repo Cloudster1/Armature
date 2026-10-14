@@ -221,7 +221,7 @@ func TestWatchOwnDecidesWhoHearsOfTheirOwnIssues(t *testing.T) {
 	ws := h.newProject(t, "watchown")
 	inbox := notify.NewService(h.cluster)
 	member := func(prefix string) (uuid.UUID, issue.Actor) {
-		id := h.joinExisting(t, ws, h.email(t, prefix), "member")
+		id := h.joinExisting(t, h.email(t, prefix), "member")
 		return id, issue.Actor{UserID: id, OrgRole: auth.RoleMember, Perms: perm.NewSet(nil).WithEverything()}
 	}
 	bob, bobActor := member("bobquiet")

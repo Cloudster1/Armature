@@ -51,8 +51,8 @@ func (h *harness) coinType(t *testing.T, ws *workspace, name string) (uuid.UUID,
 	var id uuid.UUID
 	_, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			INSERT INTO issue_type (org_id, name, description, icon, hierarchy_level, position)
-			VALUES (current_org_id(), $1, 'Coined by a test.', 'bug', $2, 99) RETURNING id`,
+			INSERT INTO issue_type (name, description, icon, hierarchy_level, position)
+			VALUES ($1, 'Coined by a test.', 'bug', $2, 99) RETURNING id`,
 			name, bootstrap.LevelStandard).Scan(&id)
 	})
 	if err != nil {
@@ -76,8 +76,8 @@ func (h *harness) statusMoves(t *testing.T, ws *workspace, key string) []string 
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
 		SELECT payload FROM outbox_event
-		WHERE org_id = $1 AND topic = $2 AND payload->>'key' = $3
-		ORDER BY id`, ws.orgID, events.TopicIssueTransitioned, key)
+		WHERE topic = $1 AND payload->>'key' = $2
+		ORDER BY id`, events.TopicIssueTransitioned, key)
 	if err != nil {
 		t.Fatal(err)
 	}

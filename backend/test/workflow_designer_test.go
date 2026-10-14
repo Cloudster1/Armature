@@ -268,7 +268,7 @@ func TestAStatusIsCoinedOnce(t *testing.T) {
 
 	t.Run("and the database refuses the duplicate too", func(t *testing.T) {
 		_, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `INSERT INTO issue_status (org_id, name, category) VALUES (current_org_id(), $1, 'todo')`, strings.ToUpper(reviewing))
+			_, err := tx.Exec(ctx, `INSERT INTO issue_status (name, category) VALUES ($1, 'todo')`, strings.ToUpper(reviewing))
 			return err
 		})
 		if err == nil {

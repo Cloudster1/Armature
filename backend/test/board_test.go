@@ -583,8 +583,8 @@ func TestABoardGainsASwimlaneWhenItsWorkflowGainsAStatus(t *testing.T) {
 	t.Run("and the database refuses a second mapping of the status", func(t *testing.T) {
 		_, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 			_, err := tx.Exec(ctx, `
-				INSERT INTO board_swimlane_status (org_id, board_id, swimlane_id, status_id)
-				VALUES (current_org_id(), $1, $2, $3)`, after.ID, lanes[0].ID, reviewing.ID)
+				INSERT INTO board_swimlane_status (board_id, swimlane_id, status_id)
+				VALUES ($1, $2, $3)`, after.ID, lanes[0].ID, reviewing.ID)
 			return err
 		})
 		if err == nil {

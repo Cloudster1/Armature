@@ -242,10 +242,10 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if err := h.super.QueryRow(context.Background(), `INSERT INTO app_user (email, name) VALUES ($1, 'Customer') RETURNING id`, h.email(t, "customer")).Scan(&customerID); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'customer')`, orgID, customerID); err != nil {
+		if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'customer')`, customerID); err != nil {
 			t.Fatal(err)
 		}
-		_, err := h.super.Exec(context.Background(), `INSERT INTO theme (org_id, owner_id, name, shared) VALUES ($1, $2, 'Theirs', true)`, orgID, customerID)
+		_, err := h.super.Exec(context.Background(), `INSERT INTO theme (owner_id, name, shared) VALUES ($1, 'Theirs', true)`, customerID)
 		if err == nil || !strings.Contains(err.Error(), "customer cannot share") {
 			t.Fatalf("SQL let a customer share: %v", err)
 		}

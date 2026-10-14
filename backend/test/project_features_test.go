@@ -24,8 +24,7 @@ func TestATemplateDecidesAProjectsFeatures(t *testing.T) {
 	fcoKey := h.projectKey(t, "FCO")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signIn(t, h.person(t, "featured", auth.RoleOwner))
-	slug := principalField(t, signedUp, "principal", "org", "slug").(string)
+	owner.signIn(t, h.person(t, "featured", auth.RoleOwner))
 
 	desk := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Helpdesk", "key": fhdKey, "template": "service-desk"}), http.StatusCreated, "a desk"), "project")
 	code := obj(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Code", "key": fcoKey}), http.StatusCreated, "a kanban project"), "project")
@@ -65,14 +64,14 @@ func TestATemplateDecidesAProjectsFeatures(t *testing.T) {
 
 	t.Run("and the database refuses the row whatever the service believed", func(t *testing.T) {
 		var deskID, codeID uuid.UUID
-		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = '`+fhdKey+`' AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug).Scan(&deskID); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = $1`, fhdKey).Scan(&deskID); err != nil {
 			t.Fatal(err)
 		}
-		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = '`+fcoKey+`' AND org_id = (SELECT id FROM org WHERE slug = $1)`, slug).Scan(&codeID); err != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM project WHERE key = $1`, fcoKey).Scan(&codeID); err != nil {
 			t.Fatal(err)
 		}
 		var pgErr *pgconn.PgError
-		_, err := h.super.Exec(context.Background(), `INSERT INTO sprint (org_id, project_id, name) VALUES ((SELECT org_id FROM project WHERE id = $1), $1, 'Sneaked in')`, deskID)
+		_, err := h.super.Exec(context.Background(), `INSERT INTO sprint (project_id, name) VALUES ($1, 'Sneaked in')`, deskID)
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
 			t.Fatalf("a sprint went into a desk: %v", err)
 		}

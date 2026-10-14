@@ -21,7 +21,7 @@ import (
 func signInWith(t *testing.T, h *harness, svc *oidc.Service, ws *workspace, provider *idp, clientID string, claims map[string]any) (*oidc.Session, error) {
 	t.Helper()
 
-	target, err := svc.Start(context.Background(), ws.orgID, "/projects")
+	target, err := svc.Start(context.Background(), "/projects")
 	if err != nil {
 		return nil, err
 	}
@@ -34,11 +34,11 @@ func signInWith(t *testing.T, h *harness, svc *oidc.Service, ws *workspace, prov
 	}
 	provider.says(clientID, echoed)
 
-	orgID, identity, _, err := svc.Exchange(context.Background(), state, "any-code")
+	identity, _, err := svc.Exchange(context.Background(), state, "any-code")
 	if err != nil {
 		return nil, err
 	}
-	return svc.SignIn(context.Background(), orgID, identity, time.Hour, "test", "")
+	return svc.SignIn(context.Background(), identity, time.Hour, "test", "")
 }
 
 // configured wires a stub provider into the installation, which has one, and
@@ -49,7 +49,7 @@ func configured(t *testing.T, h *harness, ws *workspace, provider *idp, createGr
 	clientID := "armature-test"
 	svc := oidc.NewService(h.cluster, "http://localhost:8080/api/v1/auth/oidc/callback")
 
-	if _, _, err := svc.Save(ws.ctx, ws.orgID, oidc.Provider{
+	if _, _, err := svc.Save(ws.ctx, oidc.Provider{
 		Issuer: provider.URL, ClientID: clientID, ClientSecret: "shh",
 		GroupsClaim: "groups", Scopes: "openid profile email",
 		CreateGroups: createGroups, Enabled: true,
@@ -66,7 +66,7 @@ func TestSigningInThroughAProvider(t *testing.T) {
 	svc, clientID := configured(t, h, ws, provider, false)
 
 	email := h.email(t, "ssouser")
-	h.joinExisting(t, ws, email, "member")
+	h.joinExisting(t, email, "member")
 
 	session, err := signInWith(t, h, svc, ws, provider, clientID, map[string]any{
 		"email": email, "name": "SSO Person",
@@ -74,8 +74,8 @@ func TestSigningInThroughAProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sign in: %v", err)
 	}
-	if session.Secret == "" || session.OrgID != ws.orgID {
-		t.Errorf("session = %+v, want one in this organization", session)
+	if session.Secret == "" {
+		t.Errorf("session = %+v, want one with a secret", session)
 	}
 
 	// The session works: it authenticates as the person the token described.
@@ -113,7 +113,7 @@ func TestGroupsFollowTheProvider(t *testing.T) {
 	perms := h.perms()
 
 	email := h.email(t, "claimed")
-	userID := h.joinExisting(t, ws, email, "member")
+	userID := h.joinExisting(t, email, "member")
 
 	// A group tied to the value the provider will send, with a role on it.
 	platform := h.name(t, "platform-engineers")
@@ -182,7 +182,7 @@ func TestAGroupTheProviderNamesCanBeCreatedOnSight(t *testing.T) {
 	svc, clientID := configured(t, h, ws, provider, true)
 
 	email := h.email(t, "autojoined")
-	h.joinExisting(t, ws, email, "member")
+	h.joinExisting(t, email, "member")
 
 	designers := h.name(t, "designers")
 	if _, err := signInWith(t, h, svc, ws, provider, clientID, map[string]any{
@@ -221,7 +221,7 @@ func TestForgedTokensAreRefused(t *testing.T) {
 	svc, clientID := configured(t, h, ws, provider, false)
 
 	email := h.email(t, "victim")
-	h.joinExisting(t, ws, email, "member")
+	h.joinExisting(t, email, "member")
 	good := map[string]any{"email": email, "name": "Victim"}
 
 	t.Run("a token signed with somebody else's key", func(t *testing.T) {
@@ -270,20 +270,20 @@ func TestForgedTokensAreRefused(t *testing.T) {
 	// A token from a real sign-in, replayed against a different one. The nonce
 	// is what makes this fail, and nothing else in the token would.
 	t.Run("a token belonging to a different sign-in", func(t *testing.T) {
-		target, err := svc.Start(context.Background(), ws.orgID, "")
+		target, err := svc.Start(context.Background(), "")
 		if err != nil {
 			t.Fatal(err)
 		}
 		state, _ := stateFrom(t, target)
 
-		elsewhere, err := svc.Start(context.Background(), ws.orgID, "")
+		elsewhere, err := svc.Start(context.Background(), "")
 		if err != nil {
 			t.Fatal(err)
 		}
 		_, otherNonce := stateFrom(t, elsewhere)
 
 		provider.says(clientID, map[string]any{"email": email, "name": "Victim", "nonce": otherNonce})
-		if _, _, _, err := svc.Exchange(context.Background(), state, "code"); err == nil {
+		if _, _, err := svc.Exchange(context.Background(), state, "code"); err == nil {
 			t.Fatal("a token from a different sign-in was accepted")
 		}
 	})
@@ -304,28 +304,28 @@ func TestACallbackMustBelongToASignInThatStartedHere(t *testing.T) {
 	svc, clientID := configured(t, h, ws, provider, false)
 
 	email := h.email(t, "stateful")
-	h.joinExisting(t, ws, email, "member")
+	h.joinExisting(t, email, "member")
 	provider.says(clientID, map[string]any{"email": email, "name": "Stateful"})
 
 	t.Run("an unknown state is refused", func(t *testing.T) {
-		_, _, _, err := svc.Exchange(context.Background(), "never-issued", "any-code")
+		_, _, err := svc.Exchange(context.Background(), "never-issued", "any-code")
 		if !errors.Is(err, oidc.ErrUnknownLogin) {
 			t.Errorf("error = %v, want it refused", err)
 		}
 	})
 
 	t.Run("and a state is good exactly once", func(t *testing.T) {
-		target, err := svc.Start(context.Background(), ws.orgID, "")
+		target, err := svc.Start(context.Background(), "")
 		if err != nil {
 			t.Fatal(err)
 		}
 		state, nonce := stateFrom(t, target)
 		provider.says(clientID, map[string]any{"email": email, "name": "Stateful", "nonce": nonce})
 
-		if _, _, _, err := svc.Exchange(context.Background(), state, "code"); err != nil {
+		if _, _, err := svc.Exchange(context.Background(), state, "code"); err != nil {
 			t.Fatalf("the first exchange: %v", err)
 		}
-		if _, _, _, err := svc.Exchange(context.Background(), state, "code"); !errors.Is(err, oidc.ErrUnknownLogin) {
+		if _, _, err := svc.Exchange(context.Background(), state, "code"); !errors.Is(err, oidc.ErrUnknownLogin) {
 			t.Errorf("error = %v, want the replay refused", err)
 		}
 	})
@@ -337,10 +337,10 @@ func TestSignInIsRefusedWhenTheProviderIsOff(t *testing.T) {
 	provider := newIDP(t)
 	svc, _ := configured(t, h, ws, provider, false)
 
-	if _, err := svc.Disable(ws.ctx, ws.orgID); err != nil {
+	if _, err := svc.Disable(ws.ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.Start(context.Background(), ws.orgID, ""); !errors.Is(err, oidc.ErrNotConfigured) {
+	if _, err := svc.Start(context.Background(), ""); !errors.Is(err, oidc.ErrNotConfigured) {
 		t.Errorf("error = %v, want it refused", err)
 	}
 }
@@ -352,7 +352,7 @@ func TestTheClientSecretIsKeptOutOfSight(t *testing.T) {
 	provider := newIDP(t)
 	svc, clientID := configured(t, h, ws, provider, false)
 
-	saved, _, err := svc.Save(ws.ctx, ws.orgID, oidc.Provider{
+	saved, _, err := svc.Save(ws.ctx, oidc.Provider{
 		Issuer: provider.URL, ClientID: clientID, ClientSecret: "", Enabled: true,
 	}, ws.actor.UserID)
 	if err != nil {

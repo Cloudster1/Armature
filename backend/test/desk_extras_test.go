@@ -51,7 +51,7 @@ func TestArticlesAndCannedResponses(t *testing.T) {
 	if _, _, err := d.CreateArticle(ws.ctx, ws.project.Key, desk.ArticleInput{Title: ptr("Nope")}, ws.actor.UserID); err == nil {
 		t.Error("an article on a software project was accepted by the service")
 	}
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO kb_article (org_id, project_id, title) VALUES ($1, $2, 'x')`, ws.orgID, ws.project.ID); err == nil || !strings.Contains(err.Error(), "service desk") {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO kb_article (project_id, title) VALUES ($1, 'x')`, ws.project.ID); err == nil || !strings.Contains(err.Error(), "service desk") {
 		t.Errorf("the database accepted an article on a software project: %v", err)
 	}
 

@@ -102,9 +102,8 @@ func TestSprintStartsOnlyWhenItCan(t *testing.T) {
 	// The service refuses first, so the last line of defence is the database.
 	t.Run("nor by going round the service", func(t *testing.T) {
 		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO sprint (org_id, project_id, name, state, starts_on, ends_on)
-			VALUES ($1, $2, 'Sneaky', 'active', '2026-04-01', '2026-04-14')`,
-			ws.orgID, ws.project.ID)
+			INSERT INTO sprint (project_id, name, state, starts_on, ends_on)
+			VALUES ($1, 'Sneaky', 'active', '2026-04-01', '2026-04-14')`, ws.project.ID)
 		if err == nil {
 			t.Fatal("SQL started a second sprint in one project")
 		}
@@ -590,8 +589,8 @@ func TestASprintIsSnapshottedDayByDay(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO sprint_snapshot (org_id, project_id, sprint_id, day, scope, done, issues, issues_done, unestimated)
-			VALUES ($1, $2, $3, current_date, 1, 0, 1, 0, 0)`, ws.orgID, projectID, sp.ID)
+			INSERT INTO sprint_snapshot (project_id, sprint_id, day, scope, done, issues, issues_done, unestimated)
+			VALUES ($1, $2, current_date, 1, 0, 1, 0, 0)`, projectID, sp.ID)
 		if err == nil {
 			t.Error("a second row for the same day was accepted")
 		}

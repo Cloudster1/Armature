@@ -80,7 +80,7 @@ func TestADescriptionCanBeWrittenAndCleared(t *testing.T) {
 
 	// Naming somebody in the description brings them onto the issue.
 	colleagueEmail := h.email(t, "named")
-	colleague := h.joinExisting(t, &workspace{orgID: shared.installation.ID}, colleagueEmail, "member")
+	colleague := h.joinExisting(t, colleagueEmail, "member")
 	mention := map[string]any{"type": "doc", "content": []any{map[string]any{"type": "paragraph", "content": []any{
 		map[string]any{"type": "text", "text": "Ask "},
 		map[string]any{"type": "mention", "attrs": map[string]any{"id": colleague.String(), "label": nameOf(colleagueEmail)}},

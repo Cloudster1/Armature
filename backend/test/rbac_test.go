@@ -21,7 +21,7 @@ func (h *harness) perms() *perm.Store { return perm.NewStore(h.cluster) }
 // resolve reads what somebody may do, the way a request does.
 func (h *harness) resolve(t *testing.T, ws *workspace, userID uuid.UUID, owner bool) perm.Set {
 	t.Helper()
-	set, err := h.perms().ResolveFor(ws.ctx, ws.orgID, userID, owner)
+	set, err := h.perms().ResolveFor(ws.ctx, userID, owner)
 	if err != nil {
 		t.Fatalf("resolve permissions: %v", err)
 	}
@@ -40,8 +40,7 @@ func (h *harness) joinAs(t *testing.T, ws *workspace, name, role string) uuid.UU
 		t.Fatalf("create %s: %v", name, err)
 	}
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`,
-		ws.orgID, id, role); err != nil {
+		INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)`, id, role); err != nil {
 		t.Fatalf("add %s to the organization: %v", name, err)
 	}
 	return id
@@ -135,8 +134,7 @@ func TestAccessIsNeverGrantedToAStranger(t *testing.T) {
 
 	t.Run("and SQL refuses it too", func(t *testing.T) {
 		_, err := h.super.Exec(context.Background(), `
-			INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'user', $2)`,
-			ws.orgID, stranger)
+			INSERT INTO role_assignment (role, user_id) VALUES ('user', $1)`, stranger)
 		if err == nil {
 			t.Fatal("SQL granted a role to somebody who is not a member")
 		}
@@ -176,10 +174,10 @@ func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ('owner@lastadmin.test', 'Owner') RETURNING id`).Scan(&ownerID); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, orgID, ownerID); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'owner')`, ownerID); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'global_administrator', $2)`, orgID, ownerID)
+		_, err := tx.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('global_administrator', $1)`, ownerID)
 		return err
 	}); err != nil {
 		t.Fatalf("set the installation up: %v", err)
@@ -214,7 +212,7 @@ func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ('successor@lastadmin.test', 'Successor') RETURNING id`).Scan(&another); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, orgID, another)
+		_, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'member')`, another)
 		return err
 	}); err != nil {
 		t.Fatal(err)

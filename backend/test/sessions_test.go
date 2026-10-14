@@ -35,7 +35,6 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 	signedUp := me.signIn(t, h.person(t, "sessions", auth.RoleOwner))
 	email := principalField(t, signedUp, "principal", "user", "email").(string)
 	userID := principalField(t, signedUp, "principal", "user", "id").(string)
-	orgID := principalField(t, signedUp, "principal", "org", "id").(string)
 	signIn := func(what string) *client {
 		c := api.client(t)
 		want(t, c.post("/api/v1/auth/login", map[string]string{"email": email, "password": testPassword}), http.StatusOK, what)
@@ -118,8 +117,7 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 		var n int
 		if err := h.super.QueryRow(context.Background(), `
 			SELECT count(*) FROM audit_log
-			WHERE org_id = $1 AND action = $2 AND target_id = $3 AND actor_user_id = $4`,
-			orgID, c.action, c.target, userID).Scan(&n); err != nil {
+			WHERE action = $1 AND target_id = $2 AND actor_user_id = $3`, c.action, c.target, userID).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		if n != 1 {
@@ -128,7 +126,7 @@ func TestAPersonEndsTheirOtherSessions(t *testing.T) {
 	}
 	var ended int
 	if err := h.super.QueryRow(context.Background(), `
-		SELECT (data->>'ended')::int FROM audit_log WHERE org_id = $1 AND action = 'auth.sessions_ended' AND actor_user_id = $2`, orgID, userID).Scan(&ended); err != nil {
+		SELECT (data->>'ended')::int FROM audit_log WHERE action = 'auth.sessions_ended' AND actor_user_id = $1`, userID).Scan(&ended); err != nil {
 		t.Fatal(err)
 	}
 	if ended != 2 {

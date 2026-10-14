@@ -29,7 +29,7 @@ func (h *harness) announced(t *testing.T, ws *workspace, topic, key string) even
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
 		SELECT id, topic, payload FROM outbox_event
-		WHERE org_id = $1 AND topic = $2 AND payload->>'key' = $3`, ws.orgID, topic, key)
+		WHERE topic = $1 AND payload->>'key' = $2`, topic, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestEveryIssueThatComesOrGoesIsAnnounced(t *testing.T) {
 	})
 
 	t.Run("an import is announced, marked, and tells nobody", func(t *testing.T) {
-		bob := h.joinExisting(t, ws, h.email(t, "bob"), "member")
+		bob := h.joinExisting(t, h.email(t, "bob"), "member")
 		importer := ws.actor
 		importer.Import = true
 		made, _, err := ws.issues.Import(ws.ctx, issue.ImportInput{

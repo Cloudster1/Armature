@@ -90,8 +90,8 @@ func TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage(t *testing.T) {
 		if err != nil {
 			t.Fatalf("sign in after being let in: %v", err)
 		}
-		if session.OrgID != ws.orgID {
-			t.Fatalf("session in %s, want %s", session.OrgID, ws.orgID)
+		if session.Secret == "" {
+			t.Fatalf("session = %+v, want one with a secret", session)
 		}
 	})
 }

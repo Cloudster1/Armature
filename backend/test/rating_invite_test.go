@@ -57,7 +57,7 @@ func TestOnlyTheReporterIsAskedToRate(t *testing.T) {
 		t.Fatal(err)
 	}
 	watcher := h.email(t, "watchingagent")
-	agent := h.joinExisting(t, ws, watcher, "member")
+	agent := h.joinExisting(t, watcher, "member")
 	if _, _, _, err := ws.issues.AddWatcher(ws.ctx, raised.Key, agent, ws.actor); err != nil {
 		t.Fatal(err)
 	}

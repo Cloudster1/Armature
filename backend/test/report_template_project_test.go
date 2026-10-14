@@ -129,8 +129,7 @@ func TestATemplateLeavesItsProjectsVersionBehind(t *testing.T) {
 		}
 		var id uuid.UUID
 		if err := h.super.QueryRow(context.Background(), `
-			INSERT INTO dashboard_template (org_id, name, widgets) VALUES ($1, $2, $3) RETURNING id`,
-			ws.orgID, h.name(t, "Pinned long ago"), stored).Scan(&id); err != nil {
+			INSERT INTO dashboard_template (name, widgets) VALUES ($1, $2) RETURNING id`, h.name(t, "Pinned long ago"), stored).Scan(&id); err != nil {
 			t.Fatal(err)
 		}
 

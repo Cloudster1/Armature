@@ -24,8 +24,7 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 	pgsKey := h.projectKey(t, "PGS")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	signedUp := owner.signIn(t, h.person(t, "pages", auth.RoleOwner))
-	orgID := obj(t, signedUp, "principal", "org")["id"].(string)
+	owner.signIn(t, h.person(t, "pages", auth.RoleOwner))
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Pages", "key": pgsKey}), http.StatusCreated, "create project")
 	key := obj(t, want(t, owner.post("/api/v1/projects/"+pgsKey+"/issues", map[string]any{"summary": "checkout flow"}), http.StatusCreated, "file issue"), "issue")["key"].(string)
 	path := "/api/v1/issues/" + key + "/remote-links"
@@ -34,8 +33,7 @@ func TestAPageLinkIsKeptInStepByItsAddress(t *testing.T) {
 		t.Helper()
 		var n int
 		if err := h.super.QueryRow(context.Background(), `
-			SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2 AND payload->>'key' = $3`,
-			orgID, topic, key).Scan(&n); err != nil {
+			SELECT count(*) FROM outbox_event WHERE topic = $1 AND payload->>'key' = $2`, topic, key).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
@@ -162,8 +160,8 @@ func TestAPageLinkKeepsToItsIssueEvenThroughSQL(t *testing.T) {
 		} {
 			_, err := h.cluster.Write(home.ctx, func(ctx context.Context, tx db.DBTX) error {
 				_, err := tx.Exec(ctx, `
-					INSERT INTO issue_remote_link (org_id, issue_id, url, title, source)
-					VALUES (current_org_id(), $1, $2, 'By hand', 'Stator')`, mine.ID, address)
+					INSERT INTO issue_remote_link (issue_id, url, title, source)
+					VALUES ($1, $2, 'By hand', 'Stator')`, mine.ID, address)
 				return err
 			})
 			if err == nil || !strings.Contains(err.Error(), "issue_remote_link_url_shape") {
@@ -172,8 +170,8 @@ func TestAPageLinkKeepsToItsIssueEvenThroughSQL(t *testing.T) {
 		}
 		_, err := h.cluster.Write(home.ctx, func(ctx context.Context, tx db.DBTX) error {
 			_, err := tx.Exec(ctx, `
-				INSERT INTO issue_remote_link (org_id, issue_id, url, title, source)
-				VALUES (current_org_id(), $1, $2, 'Twice', 'Stator')`, mine.ID, link.URL)
+				INSERT INTO issue_remote_link (issue_id, url, title, source)
+				VALUES ($1, $2, 'Twice', 'Stator')`, mine.ID, link.URL)
 			return err
 		})
 		if err == nil || !strings.Contains(err.Error(), "issue_remote_link_url_idx") {

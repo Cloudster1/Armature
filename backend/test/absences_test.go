@@ -243,8 +243,8 @@ func TestAnAbsenceListFromADayRunsOnAndSaysWhenItIsCut(t *testing.T) {
 	t.Run("a list with no last day stops at its bound and says it was cut", func(t *testing.T) {
 		// One more absence than a list holds, each a single day, the far one among them.
 		if _, err := h.super.Exec(context.Background(), `
-			INSERT INTO absence (org_id, user_id, starts_on, ends_on)
-			SELECT m.org_id, m.user_id, d::date, d::date
+			INSERT INTO absence (user_id, starts_on, ends_on)
+			SELECT m.user_id, d::date, d::date
 			FROM org_member m, generate_series(current_date + 1, current_date + $2::int + 1, interval '1 day') d
 			WHERE m.user_id = $1 AND d::date <> $3::date
 			LIMIT $2`, adaID, availability.MaxOpenAbsences, farAhead); err != nil {
@@ -271,11 +271,11 @@ func TestAbsencesPastTheirWindowAreSwept(t *testing.T) {
 	ws := h.newProject(t, "absenceretention")
 	ctx := context.Background()
 	for _, q := range []string{
-		`INSERT INTO absence (org_id, user_id, starts_on, ends_on) VALUES ($1, $2, current_date - 500, current_date - 450)`,
-		`INSERT INTO absence (org_id, user_id, starts_on, ends_on) VALUES ($1, $2, current_date - 30, current_date - 20)`,
-		`INSERT INTO absence (org_id, user_id, starts_on, ends_on) VALUES ($1, $2, current_date + 20, current_date + 30)`,
+		`INSERT INTO absence (user_id, starts_on, ends_on) VALUES ($1, current_date - 500, current_date - 450)`,
+		`INSERT INTO absence (user_id, starts_on, ends_on) VALUES ($1, current_date - 30, current_date - 20)`,
+		`INSERT INTO absence (user_id, starts_on, ends_on) VALUES ($1, current_date + 20, current_date + 30)`,
 	} {
-		if _, err := h.super.Exec(ctx, q, ws.orgID, ws.actor.UserID); err != nil {
+		if _, err := h.super.Exec(ctx, q, ws.actor.UserID); err != nil {
 			t.Fatalf("%s: %v", q, err)
 		}
 	}
@@ -305,7 +305,7 @@ func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
 		availability.AbsenceInput{StartsOn: ptr("2026-08-03"), EndsOn: ptr("2026-08-14")}); err != nil {
 		t.Fatal(err)
 	}
-	insert := `INSERT INTO absence (org_id, user_id, starts_on, ends_on, half_day) VALUES ($1, $2, $3::date, $4::date, $5)`
+	insert := `INSERT INTO absence (user_id, starts_on, ends_on, half_day) VALUES ($1, $2::date, $3::date, $4)`
 	refusedAs := func(t *testing.T, err error, code string) {
 		t.Helper()
 		var pgErr *pgconn.PgError
@@ -315,9 +315,9 @@ func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
 	}
 
 	t.Run("one person is away on a day once", func(t *testing.T) {
-		_, err := h.super.Exec(ctx, insert, home.orgID, home.actor.UserID, "2026-08-14", "2026-08-20", false)
+		_, err := h.super.Exec(ctx, insert, home.actor.UserID, "2026-08-14", "2026-08-20", false)
 		refusedAs(t, err, "23P01")
-		_, err = h.super.Exec(ctx, insert, home.orgID, home.actor.UserID, "2026-08-15", "2026-08-20", false)
+		_, err = h.super.Exec(ctx, insert, home.actor.UserID, "2026-08-15", "2026-08-20", false)
 		if err != nil {
 			t.Errorf("the day after the last day away was refused: %v", err)
 		}
@@ -329,7 +329,7 @@ func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
 			"an end before the start":  {"2026-11-03", "2026-11-02"},
 			"longer than a year":       {"2026-01-01", "2027-01-02"},
 		} {
-			_, err := h.super.Exec(ctx, insert, home.orgID, home.actor.UserID, days[0], days[1], name == "a half day over two days")
+			_, err := h.super.Exec(ctx, insert, home.actor.UserID, days[0], days[1], name == "a half day over two days")
 			refusedAs(t, err, "23514")
 		}
 	})
@@ -338,12 +338,12 @@ func TestAbsencesHoldEvenThroughSQL(t *testing.T) {
 		var customerID uuid.UUID
 		err := h.super.QueryRow(ctx, `
 			WITH made AS (INSERT INTO app_user (email, name) VALUES ($1, 'Sam Customer') RETURNING id)
-			INSERT INTO org_member (org_id, user_id, org_role) SELECT $2, id, 'customer' FROM made RETURNING user_id`,
-			h.email(t, "absencecustomer"), home.orgID).Scan(&customerID)
+			INSERT INTO org_member (user_id, org_role) SELECT id, 'customer' FROM made RETURNING user_id`,
+			h.email(t, "absencecustomer")).Scan(&customerID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = h.super.Exec(ctx, insert, home.orgID, customerID, "2026-11-02", "2026-11-02", false)
+		_, err = h.super.Exec(ctx, insert, customerID, "2026-11-02", "2026-11-02", false)
 		refusedAs(t, err, "23514")
 	})
 }

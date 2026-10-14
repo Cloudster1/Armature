@@ -36,7 +36,7 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 	reader := audit.NewService(h.cluster)
 
 	// A grant on the stream, handed over twice.
-	member := h.joinExisting(t, ws, h.email(t, "audited-member"), "member")
+	member := h.joinExisting(t, h.email(t, "audited-member"), "member")
 	granted, _, err := perm.NewStore(h.cluster).Grant(ws.ctx, perm.GrantInput{Role: perm.ProjectAdministrator, ProjectKey: ws.project.Key, UserID: &member}, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
@@ -100,8 +100,8 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 	// Retention keeps a year and no more.
 	ancient := unique("ancient.thing")
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO audit_log (org_id, actor_user_id, action, target_type, created_at)
-		VALUES ($1, $2, $3, 'org', now() - interval '400 days')`, ws.orgID, ws.actor.UserID, ancient); err != nil {
+		INSERT INTO audit_log (actor_user_id, action, target_type, created_at)
+		VALUES ($1, $2, 'org', now() - interval '400 days')`, ws.actor.UserID, ancient); err != nil {
 		t.Fatal(err)
 	}
 	if counts, err := privacy.NewRetention(h.cluster, privacy.DefaultPolicy(), log).Once(context.Background()); err != nil || counts["audit"] < 1 {
@@ -114,7 +114,7 @@ func TestTheAuditLogRecordsWhoDidWhat(t *testing.T) {
 		t.Error("retention took a fresh row")
 	}
 	// A blank action is refused by the database, not only by the writer.
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, ' ', 'org')`, ws.orgID); err == nil {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO audit_log (action, target_type) VALUES (' ', 'org')`); err == nil {
 		t.Error("the database accepted a blank audit action")
 	}
 }
@@ -158,7 +158,7 @@ func TestFieldsOnEveryProjectAreSharedAndPromoted(t *testing.T) {
 	if _, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: strings.ToLower(costName), Kind: field.Text}); err == nil {
 		t.Error("a project field shadowing a field on every project was accepted by the service")
 	}
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO custom_field (org_id, project_id, name, kind) VALUES ($1, $2, $3, 'text')`, ws.orgID, ws.project.ID, strings.ToUpper(costName)); err == nil || !strings.Contains(err.Error(), "already has a field named") {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO custom_field (project_id, name, kind) VALUES ($1, $2, 'text')`, ws.project.ID, strings.ToUpper(costName)); err == nil || !strings.Contains(err.Error(), "already has a field named") {
 		t.Errorf("the database accepted a shadowing field: %v", err)
 	}
 
@@ -235,7 +235,7 @@ func TestStatusUpdatesAndTheCalendar(t *testing.T) {
 	if len(updates) != 2 || updates[0].Status != project.AtRisk || updates[1].Status != project.OnTrack {
 		t.Errorf("updates = %+v", updates)
 	}
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO project_status_update (org_id, project_id, status) VALUES ($1, $2, 'fine')`, ws.orgID, ws.project.ID); err == nil {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO project_status_update (project_id, status) VALUES ($1, 'fine')`, ws.project.ID); err == nil {
 		t.Error("the database accepted a status outside the three words")
 	}
 

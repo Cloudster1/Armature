@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/bootstrap"
@@ -76,7 +75,6 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 		ids[name] = id
 	}
 	made("first", `INSERT INTO org (slug, name) VALUES ('first', 'First') RETURNING id`)
-	made("second", `INSERT INTO org (slug, name) VALUES ('second', 'Second') RETURNING id`)
 	if _, err := super.Exec(ctx, `SELECT org_builtin_roles($1)`, ids["first"]); err != nil {
 		t.Fatal(err)
 	}
@@ -85,13 +83,16 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	set, err := bootstrap.Org(ctx, setUp, uuid.MustParse(ids["first"]))
+	set, err := bootstrap.Installation(ctx, setUp)
 	if err != nil {
 		t.Fatalf("set the installation up: %v", err)
 	}
 	if err := setUp.Commit(ctx); err != nil {
 		t.Fatalf("set the installation up: %v", err)
 	}
+	// The second comes once the installation is set up: its rows name no
+	// organization, and their default refuses to choose between two.
+	made("second", `INSERT INTO org (slug, name) VALUES ('second', 'Second') RETURNING id`)
 	ids["scheme"] = set.WorkflowSchemeID.String()
 	ids["workflow"] = set.WorkflowID.String()
 	ids["bug type"] = set.IssueTypeIDs[bootstrap.TypeBug].String()

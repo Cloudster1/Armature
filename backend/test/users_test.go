@@ -162,21 +162,21 @@ func TestAnAccountTheProviderSignsInGetsNoPasswordHere(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	orgID := principalField(t, owner.signIn(t, h.person(t, "sso-owner", auth.RoleOwner)), "principal", "org", "id").(string)
+	owner.signIn(t, h.person(t, "sso-owner", auth.RoleOwner))
 	ctx := context.Background()
 
 	h.keepProvider(t)
 	if _, err := h.super.Exec(ctx, `
-		INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret)
-		VALUES ($1, 'https://idp.test', 'armature', 'secret')
-		ON CONFLICT (one_row) DO NOTHING`, orgID); err != nil {
+		INSERT INTO oidc_provider (issuer, client_id, client_secret)
+		VALUES ('https://idp.test', 'armature', 'secret')
+		ON CONFLICT (one_row) DO NOTHING`); err != nil {
 		t.Fatalf("configure a provider: %v", err)
 	}
 	var ssoID string
 	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Provider Person') RETURNING id`, h.email(t, "sso")).Scan(&ssoID); err != nil {
 		t.Fatalf("make a provider account: %v", err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, orgID, ssoID); err != nil {
+	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'member')`, ssoID); err != nil {
 		t.Fatalf("add them: %v", err)
 	}
 	h.waitForPrimary(t)
@@ -212,7 +212,6 @@ func TestTheLastActiveAdministratorCannotBeSwitchedOff(t *testing.T) {
 	soleUp := want(t, api.client(t).post("/api/v1/auth/signup", map[string]string{"email": h.email(t, "sole"), "password": testPassword, "name": "Sole"}),
 		http.StatusCreated, "the first account")
 	soleID := principalField(t, soleUp, "principal", "user", "id").(string)
-	orgID := principalField(t, soleUp, "principal", "org", "id").(string)
 	switchOff := func(id string) error {
 		_, err := super.Exec(ctx, `UPDATE app_user SET is_active = false WHERE id = $1`, id)
 		return err
@@ -223,7 +222,7 @@ func TestTheLastActiveAdministratorCannotBeSwitchedOff(t *testing.T) {
 		if err := super.QueryRow(ctx, `INSERT INTO app_user (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id`, email, role, shared.passwordHash).Scan(&id); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, orgID, id, role); err != nil {
+		if _, err := super.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)`, id, role); err != nil {
 			t.Fatal(err)
 		}
 		return id
@@ -246,7 +245,7 @@ func TestTheLastActiveAdministratorCannotBeSwitchedOff(t *testing.T) {
 	// administrator's role without the standing.
 	grantedEmail := h.email(t, "granted")
 	grantedID := join(grantedEmail, "member")
-	if _, err := super.Exec(ctx, `INSERT INTO role_assignment (org_id, role, user_id) VALUES ($1, 'global_administrator', $2)`, orgID, grantedID); err != nil {
+	if _, err := super.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('global_administrator', $1)`, grantedID); err != nil {
 		t.Fatal(err)
 	}
 	granted := api.client(t)

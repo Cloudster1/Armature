@@ -116,10 +116,10 @@ func (h *harness) auditCountBy(t *testing.T, actorID any, action string) int {
 	return n
 }
 
-func (h *harness) auditCount(t *testing.T, orgID any, action string) int {
+func (h *harness) auditCount(t *testing.T, action string) int {
 	t.Helper()
 	var n int
-	if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = $2`, orgID, action).Scan(&n); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE action = $1`, action).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	return n
@@ -510,7 +510,7 @@ func TestASingleSignOnSessionReliesOnItsProvider(t *testing.T) {
 	svc, clientID := configured(t, h, home, provider, false)
 
 	email := h.email(t, "ssofactor")
-	h.joinExisting(t, home, email, "admin")
+	h.joinExisting(t, email, "admin")
 	if _, err := h.super.Exec(ctx, `UPDATE org SET second_factor = 'everyone' WHERE id = $1`, home.orgID); err != nil {
 		t.Fatal(err)
 	}

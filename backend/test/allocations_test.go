@@ -32,7 +32,7 @@ func TestAShareOfThePersonsWeekIsSetPerProject(t *testing.T) {
 	othrKey := h.projectKey(t, "OTHR")
 	api := newAPIServer(t, h)
 	owner := api.client(t)
-	orgID := obj(t, owner.signIn(t, h.person(t, "shares", auth.RoleOwner)), "principal", "org")["id"].(string)
+	owner.signIn(t, h.person(t, "shares", auth.RoleOwner))
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Half", "key": halfKey, "template": "kanban"}), http.StatusCreated, "a project")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Other", "key": othrKey, "template": "kanban"}), http.StatusCreated, "another project")
 	_, adaID := api.namedMember(t, h, owner, "Ada Lovelace")
@@ -137,14 +137,14 @@ func TestAShareOfThePersonsWeekIsSetPerProject(t *testing.T) {
 		var customerID, halfID string
 		if err := h.super.QueryRow(ctx, `
 			WITH made AS (INSERT INTO app_user (email, name) VALUES ($1, 'Sam Customer') RETURNING id)
-			INSERT INTO org_member (org_id, user_id, org_role) SELECT $2, id, 'customer' FROM made RETURNING user_id`,
-			h.email(t, "sharecustomer"), orgID).Scan(&customerID); err != nil {
+			INSERT INTO org_member (user_id, org_role) SELECT id, 'customer' FROM made RETURNING user_id`,
+			h.email(t, "sharecustomer")).Scan(&customerID); err != nil {
 			t.Fatal(err)
 		}
-		if err := h.super.QueryRow(ctx, `SELECT id FROM project WHERE org_id = $1 AND key = '`+halfKey+`'`, orgID).Scan(&halfID); err != nil {
+		if err := h.super.QueryRow(ctx, `SELECT id FROM project WHERE key = $1`, halfKey).Scan(&halfID); err != nil {
 			t.Fatal(err)
 		}
-		_, err = h.super.Exec(ctx, `INSERT INTO project_allocation (org_id, project_id, user_id, percent) VALUES ($1, $2, $3, 50)`, orgID, halfID, customerID)
+		_, err = h.super.Exec(ctx, `INSERT INTO project_allocation (project_id, user_id, percent) VALUES ($1, $2, 50)`, halfID, customerID)
 		refusedAs("a customer", err)
 	})
 }

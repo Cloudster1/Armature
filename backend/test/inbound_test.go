@@ -167,7 +167,7 @@ func TestAReplyByMailBecomesAComment(t *testing.T) {
 	})
 
 	t.Run("a follower at a domain the desk does not trust is bounced", func(t *testing.T) {
-		ben := h.joinExisting(t, ws, "ben-"+run+"@elsewhere.test", "customer")
+		ben := h.joinExisting(t, "ben-"+run+"@elsewhere.test", "customer")
 		if _, _, _, err := ws.issues.AddWatcher(ws.ctx, raised.Key, ben, ws.actor); err != nil {
 			t.Fatal(err)
 		}

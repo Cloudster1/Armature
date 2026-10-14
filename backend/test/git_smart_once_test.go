@@ -110,13 +110,11 @@ func TestASquashCommitDoesNotRepeatTheBranchsCommands(t *testing.T) {
 		}
 
 		_, err := h.super.Exec(ctx, `
-			INSERT INTO git_smart_command (org_id, repository_id, issue_id, command_hash) VALUES ($1, $2, $3, $4)`,
-			ws.orgID, repo.ID, issueID, hash)
+			INSERT INTO git_smart_command (repository_id, issue_id, command_hash) VALUES ($1, $2, $3)`, repo.ID, issueID, hash)
 		refusedAs("the same command twice", "23505", err)
 
 		_, err = h.super.Exec(ctx, `
-			INSERT INTO git_smart_command (org_id, repository_id, issue_id, command_hash) VALUES ($1, $2, $3, $4)`,
-			ws.orgID, repo.ID, issueID, "fixed typo")
+			INSERT INTO git_smart_command (repository_id, issue_id, command_hash) VALUES ($1, $2, $3)`, repo.ID, issueID, "fixed typo")
 		refusedAs("the command's text in place of its hash", "23514", err)
 
 	})

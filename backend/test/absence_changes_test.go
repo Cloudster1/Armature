@@ -26,7 +26,6 @@ type absenceCrew struct {
 	owner, ada, master *client
 	ownerID, ownerName string
 	adaID, masterID    string
-	orgID              uuid.UUID
 	crew               string
 }
 
@@ -36,7 +35,6 @@ func newAbsenceCrew(t *testing.T, h *harness, slug string) *absenceCrew {
 	c := &absenceCrew{api: api, owner: api.client(t), ownerName: slug}
 	signedUp := c.owner.signIn(t, h.person(t, slug, auth.RoleOwner))
 	c.ownerID = principalField(t, signedUp, "principal", "user", "id").(string)
-	c.orgID = uuid.MustParse(principalField(t, signedUp, "principal", "org", "id").(string))
 	key := h.projectKey(t, "AWY")
 	want(t, c.owner.post("/api/v1/projects", map[string]any{"name": "Away", "key": key, "template": "scrum"}), http.StatusCreated, "a project")
 	c.ada, c.adaID = api.namedMember(t, h, c.owner, "Ada Away")
@@ -123,12 +121,12 @@ const absenceNotice = "absence"
 
 // fanOutAbsences hands every absence event about one person to the inbox's
 // fan-out, as the worker would, each twice to show a repeat tells nobody twice.
-func fanOutAbsences(t *testing.T, h *harness, fan *notify.FanOut, orgID uuid.UUID, userID string) int {
+func fanOutAbsences(t *testing.T, h *harness, fan *notify.FanOut, userID string) int {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
 		SELECT id, topic, payload FROM outbox_event
-		WHERE org_id = $1 AND topic LIKE 'absence.%' AND payload->>'userId' = $2
-		ORDER BY created_at, id`, orgID, userID)
+		WHERE topic LIKE 'absence.%' AND payload->>'userId' = $1
+		ORDER BY created_at, id`, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +164,7 @@ func TestThePersonIsToldWhenSomebodyElseTouchesTheirAbsences(t *testing.T) {
 	want(t, c.master.delete("/api/v1/absences/"+byTheMaster), http.StatusNoContent, "Max removes it")
 	c.record(t, c.owner, c.adaID, "2026-11-02", "2026-11-02", "an administrator records one for Ada")
 
-	if n := fanOutAbsences(t, h, fan, c.orgID, c.adaID); n != 5 {
+	if n := fanOutAbsences(t, h, fan, c.adaID); n != 5 {
 		t.Fatalf("%d absence events about Ada, want five", n)
 	}
 	h.waitForPrimary(t)
@@ -213,7 +211,7 @@ func TestThePersonIsToldWhenSomebodyElseTouchesTheirAbsences(t *testing.T) {
 		want(t, c.ada.put("/api/v1/notification-preferences", map[string]any{"digest": "off", "watchOwn": true, "mail": map[string]bool{absenceNotice: false}, "inapp": map[string]bool{}}), http.StatusOK, "Ada turns absence mail off")
 		before := len(mailer.sent)
 		c.record(t, c.master, c.adaID, "2026-12-07", "2026-12-07", "Max records another for Ada")
-		fanOutAbsences(t, h, fan, c.orgID, c.adaID)
+		fanOutAbsences(t, h, fan, c.adaID)
 		if len(mailer.sent) != before {
 			t.Errorf("mailed %+v with absence mail off", mailer.sent[before:])
 		}
@@ -231,12 +229,12 @@ func TestWhoRecordedAnAbsenceHoldsThroughSQL(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newProject(t, "absencerecorder")
 	ctx := context.Background()
-	recorder := h.joinExisting(t, ws, h.email(t, "absencerecorder"), "member")
-	other := h.joinExisting(t, ws, h.email(t, "absencenotrecorder"), "member")
+	recorder := h.joinExisting(t, h.email(t, "absencerecorder"), "member")
+	other := h.joinExisting(t, h.email(t, "absencenotrecorder"), "member")
 	var id uuid.UUID
 	err := h.super.QueryRow(ctx, `
-		INSERT INTO absence (org_id, user_id, starts_on, ends_on, created_by)
-		VALUES ($1, $2, '2026-08-03', '2026-08-14', $3) RETURNING id`, ws.orgID, ws.actor.UserID, recorder).Scan(&id)
+		INSERT INTO absence (user_id, starts_on, ends_on, created_by)
+		VALUES ($1, '2026-08-03', '2026-08-14', $2) RETURNING id`, ws.actor.UserID, recorder).Scan(&id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,11 +272,11 @@ func TestWhoRecordedAnAbsenceHoldsThroughSQL(t *testing.T) {
 	})
 
 	t.Run("an absence notice is a kind the inbox knows, and nothing else gets in", func(t *testing.T) {
-		insert := `INSERT INTO notification (org_id, user_id, kind, title, event_id) VALUES ($1, $2, $3, 'x', gen_random_uuid())`
-		if _, err := h.super.Exec(ctx, insert, ws.orgID, ws.actor.UserID, absenceNotice); err != nil {
+		insert := `INSERT INTO notification (user_id, kind, title, event_id) VALUES ($1, $2, 'x', gen_random_uuid())`
+		if _, err := h.super.Exec(ctx, insert, ws.actor.UserID, absenceNotice); err != nil {
 			t.Errorf("an absence notice was refused: %v", err)
 		}
-		_, err := h.super.Exec(ctx, insert, ws.orgID, ws.actor.UserID, "shouting")
+		_, err := h.super.Exec(ctx, insert, ws.actor.UserID, "shouting")
 		refusedAs(t, err, "23514")
 	})
 }
