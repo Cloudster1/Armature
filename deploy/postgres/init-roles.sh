@@ -1,6 +1,7 @@
 #!/bin/sh
 # Runs once, on first initialisation of the primary. Neither application role
-# is a superuser; armature_admin serves sign-up, sign-in and the outbox relay.
+# is a superuser; armature_admin serves sign-up, sign-in and the outbox relay,
+# and the migrations keep the secret tables from armature_app.
 set -e
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-SQL
