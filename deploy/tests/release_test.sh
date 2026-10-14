@@ -12,6 +12,9 @@ trap 'rm -rf "$scratch"' EXIT
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$scratch/gitconfig"
 export GIT_AUTHOR_NAME=Tester GIT_AUTHOR_EMAIL=tester@armature.test
 export GIT_COMMITTER_NAME=Tester GIT_COMMITTER_EMAIL=tester@armature.test
+# The checkout may be a worktree whose git directory is not mounted, and git
+# refuses to run inside it.
+cd "$scratch" || exit 1
 git config --global init.defaultBranch main
 
 # The stand-ins write down what they were asked, so a test can say what the
@@ -290,7 +293,7 @@ check 'the release left the clone off main' same "$(git rev-parse --abbrev-ref H
 check 'the release moved main' same "$(git rev-parse main)" "$main_before"
 check 'the release moved the remote main' same "$(git -C "$remote" rev-parse main)" "$main_before"
 check 'the release tagged something before its merge' same "$(git tag -l 'v0.2*')$(git -C "$remote" tag -l 'v0.2*')" ''
-check 'the release branch was not pushed' git -C "$remote" rev-parse -q --verify refs/heads/release/v0.2.0
+check 'the release branch was not pushed' git -C "$remote" show-ref -q --verify refs/heads/release/v0.2.0
 check 'the release branch is not one commit on main' same "$(git -C "$remote" rev-parse release/v0.2.0^)" "$main_before"
 check 'the release commit is not named by the convention' \
 	same "$(git -C "$remote" log -1 --format=%s release/v0.2.0)" 'chore(release): v0.2.0'
@@ -363,7 +366,7 @@ fixture v0.1.0
 commit 'feat: add a first page'
 release 0.2.0
 git clone -q "$remote" "$dir/github" 2>/dev/null
-git -C "$dir/github" merge -q --squash origin/release/v0.2.0
+git -C "$dir/github" merge -q --squash origin/release/v0.2.0 >/dev/null
 git -C "$dir/github" commit -q -m 'chore(release): v0.2.0 (#9)'
 git -C "$dir/github" push -q origin main 2>/dev/null
 git pull -q --ff-only

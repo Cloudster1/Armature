@@ -232,8 +232,12 @@ shell: ## Interactive shell in the Go toolchain container
 # VERSION is read here only as the argument; the file of the same name is what
 # the release writes. See deploy/release.sh for what is refused and why.
 .PHONY: release
-release: ## Cut a release from a clean main: make release VERSION=x.y.z (tags, does not push)
-	@sh deploy/release.sh '$(VERSION)'
+release: ## Open the release pull request from an up-to-date main: make release [VERSION=x.y.z] [DRY_RUN=1]
+	@sh deploy/release.sh '$(VERSION)' $(if $(DRY_RUN),--dry-run)
+
+.PHONY: release-tag
+release-tag: ## Tag the merged release pull request and push the tag, which publishes it: make release-tag [DRY_RUN=1]
+	@sh deploy/release.sh tag $(if $(DRY_RUN),--dry-run)
 
 ## ---------- frontend ----------
 
