@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/armature/armature/backend/internal/webhook"
 )
 
 // routed lists every method and path the router serves, in the form the
@@ -216,5 +219,41 @@ func TestTheCheckedInDocumentIsCurrent(t *testing.T) {
 	}
 	if !bytes.Equal(bytes.TrimSpace(checkedIn), bytes.TrimSpace(generated)) {
 		t.Fatal("api/openapi.json is out of date; run make openapi and commit the result")
+	}
+}
+
+// A receiver is generated from the document like any client, so what a
+// delivery carries, body and headers, is described there.
+func TestTheDocumentDescribesAWebhookDelivery(t *testing.T) {
+	doc := Spec()
+	delivery := doc.Webhooks["event"]["post"]
+	if delivery == nil {
+		t.Fatal("the document describes no webhook delivery")
+	}
+	body, err := doc.Resolve(delivery.RequestBody.Content["application/json"].Schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"version", "id", "topic", "orgId", "occurredAt", "payload"} {
+		if !slices.Contains(body.Required, field) {
+			t.Errorf("the envelope does not promise %s", field)
+		}
+	}
+	if !body.Properties["orgId"].Deprecated {
+		t.Error("the envelope's orgId is not marked deprecated")
+	}
+	if got := body.Properties["payload"].Type; got != "object" {
+		t.Errorf("the payload is %v, want an object", got)
+	}
+	headers := map[string]bool{}
+	for _, p := range delivery.Parameters {
+		if p.In == "header" && p.Required {
+			headers[p.Name] = true
+		}
+	}
+	for _, name := range []string{webhook.HeaderEvent, webhook.HeaderDelivery, webhook.HeaderVersion, webhook.HeaderSignature, webhook.HeaderTimestamp, webhook.HeaderTimestampedSignature} {
+		if !headers[name] {
+			t.Errorf("the delivery does not list the header %s", name)
+		}
 	}
 }

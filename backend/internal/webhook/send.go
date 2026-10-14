@@ -207,15 +207,15 @@ func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db
 	var (
 		url, secret, topic string
 		body               []byte
-		attempt            int
+		attempt, version   int
 		endpointID         uuid.UUID
 		eventID            uuid.UUID
 	)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT e.url, e.secret, d.topic, d.request_body, d.attempt, d.endpoint_id, d.event_id
+			SELECT e.url, e.secret, d.topic, d.request_body, d.attempt, d.version, d.endpoint_id, d.event_id
 			FROM webhook_delivery d JOIN webhook_endpoint e ON e.id = d.endpoint_id
-			WHERE d.id = $1`, deliveryID).Scan(&url, &secret, &topic, &body, &attempt, &endpointID, &eventID)
+			WHERE d.id = $1`, deliveryID).Scan(&url, &secret, &topic, &body, &attempt, &version, &endpointID, &eventID)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, 0, false, ErrNotFound
@@ -224,7 +224,7 @@ func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db
 		return nil, 0, false, err
 	}
 
-	status, sendErr := s.post(ctx, url, secret, topic, deliveryID, body)
+	status, sendErr := s.post(ctx, url, secret, topic, version, deliveryID, body)
 	delivered := sendErr == nil && status >= 200 && status < 300
 	var next *time.Time
 	if !delivered && attempt < MaxAttempts {
@@ -255,9 +255,9 @@ func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db
 			}
 			if next != nil {
 				if _, err := tx.Exec(ctx, `
-					INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
-					VALUES ($1, $2, $3, $4, $5, $6)
-					ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`, endpointID, eventID, topic, attempt+1, body, *next); err != nil {
+					INSERT INTO webhook_delivery (endpoint_id, event_id, topic, attempt, request_body, next_attempt_at, version)
+					VALUES ($1, $2, $3, $4, $5, $6, $7)
+					ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`, endpointID, eventID, topic, attempt+1, body, *next, version); err != nil {
 					return err
 				}
 			}
@@ -270,15 +270,16 @@ func (s *Service) send(ctx context.Context, deliveryID uuid.UUID) (*Delivery, db
 }
 
 // post sends one request and returns the status, or the error that stopped it.
-func (s *Service) post(ctx context.Context, url, secret, topic string, deliveryID uuid.UUID, body []byte) (int, error) {
+func (s *Service) post(ctx context.Context, url, secret, topic string, version int, deliveryID uuid.UUID, body []byte) (int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Armature-Webhook")
-	req.Header.Set("X-Armature-Event", topic)
-	req.Header.Set("X-Armature-Delivery", deliveryID.String())
+	req.Header.Set(HeaderEvent, topic)
+	req.Header.Set(HeaderDelivery, deliveryID.String())
+	req.Header.Set(HeaderVersion, strconv.Itoa(version))
 	// Signed as sent, so a retry or a redelivery carries its own time.
 	sent := s.now()
 	req.Header.Set(HeaderSignature, Sign(body, secret))

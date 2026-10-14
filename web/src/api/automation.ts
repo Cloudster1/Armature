@@ -152,6 +152,8 @@ export interface Webhook {
   url: string;
   topics: string[];
   enabled: boolean;
+  /** The envelope version it is posted, the one it was registered for. */
+  version: number;
   createdAt: string;
   updatedAt: string;
   /** Only on the answer that made or rotated it. */
@@ -163,6 +165,8 @@ export interface WebhookInput {
   url: string;
   topics: string[];
   enabled?: boolean;
+  /** Left out, a new webhook gets the current version and an edit keeps its own. */
+  version?: number;
 }
 
 export interface Delivery {

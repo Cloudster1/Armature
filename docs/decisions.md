@@ -172,10 +172,11 @@ request, since nothing read which organization it was placed in.
 The worker's passes ran once per organization, each inside its own; they run
 once over the installation, retention as one statement per kind of row. An
 event names no organization: the stream carries no `org_id`, and what reads an
-event acts in the installation. A webhook's envelope keeps `orgId` for one more
-release, holding the installation's stable id, the id of the `org` row, which
-the last step keeps. It is deprecated, and a later release removes it so that
-receivers do not break on this upgrade. The `member.joined` event's own
+event acts in the installation. A webhook's envelope keeps `orgId`, holding
+the installation's stable id, the id of the `org` row, which the last step
+keeps, so that receivers do not break on this upgrade. It is deprecated, and
+goes with envelope version 2, as [A webhook's envelope has a
+version](#a-webhooks-envelope-has-a-version-and-an-endpoint-keeps-its-own) says. The `member.joined` event's own
 payload and an invitation in the API keep their `orgId` the same way. The previous release's consumers skip
 an event without an `org_id`, so an upgrade drains the outbox and the stream
 first, and workers of the two releases never run side by side.
@@ -250,8 +251,11 @@ way back dates each membership by its account.
 The API keeps its words for one more release. `/auth/me` names the
 installation, its id and name, and still carries `org`, marked deprecated, as
 the webhook envelope, the `member.joined` event and an invitation still carry
-`orgId`. The next release removes all four, with the redirects from the old
-sign-in, desk and settings addresses. `orgWideOnly`, the `org.administer`
+`orgId`. The next release removes `org` and an invitation's `orgId`, with the
+redirects from the old sign-in, desk and settings addresses. Removing a field
+a webhook receiver reads is a break, so the envelope's and the event's `orgId`
+go with envelope version 2, and an endpoint registered for version 1 keeps
+them for at least one Dynamo release (#242). `orgWideOnly`, the `org.administer`
 permission and the `condition.org_role` rule type are part of what clients
 and stored workflows say, and keep their names.
 
@@ -2382,6 +2386,37 @@ five minutes, without counting as an attempt, and the pass goes on without it.
 The pause is written on the deliveries rather than kept in memory, so a restart
 does not forget it and no migration was needed; a test or a redelivery by hand
 still goes at once.
+
+### A webhook's envelope has a version, and an endpoint keeps its own
+
+Receivers are other programs, released on their own schedule; Stator reads
+what Armature posts, and Dynamo releases the combinations that pass. So the
+envelope carries `version`, an integer, and the `X-Armature-Webhook-Version`
+header says the same, so a receiver can refuse a version it does not know
+before parsing (#242). The version rises only for a change that breaks a
+receiver: a field of the envelope or of a payload removed, renamed or changing
+its meaning. Adding a field or a topic does not, because a receiver ignores
+what it does not know.
+
+An endpoint records the version it was registered for, the current one unless
+it names another, and an edit that names none keeps it. When version N+1
+comes, an endpoint on N keeps getting N for at least one Dynamo release; one
+builder per version, in a map, is what lets both be sent at once. A delivery
+records its own version beside its body, since the body is frozen when it is
+queued: a retry or a redelivery sends the header that matches what it carries,
+not what the endpoint moved to since. Version 1 is the envelope as it was, with
+the number added, so no receiver had to change on this upgrade, and `orgId`
+is what version 2 will leave out.
+
+The contract is the document's `webhooks` section, built from the envelope's
+Go type like every other schema, and `docs/webhooks.md` says what each topic's
+payload holds. The integration suite checks every delivery it receives against
+the schema, and the header against the body. Armature only sends this
+envelope; what it receives, a git host's delivery or a call on an incoming
+hook, is the sender's format.
+
+**Reconsider if** receivers want to choose their payload's shape per topic:
+that is a version per topic, which this single number cannot say.
 
 ### A rule runs as an account of its own, once per event
 
