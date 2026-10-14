@@ -135,4 +135,13 @@ describe("the search page", () => {
     rerender(<SearchPage />);
     expect(screen.queryByText(/selected on this page/)).not.toBeInTheDocument();
   });
+
+  // A bar that opened above the rows would push the next row out from under the pointer.
+  it("opens the bar for the ticked rows below them, so no row moves", async () => {
+    render(<SearchPage />);
+    await userEvent.click(screen.getByLabelText("Select every issue on this page"));
+    const bar = screen.getByText("100 selected on this page");
+    const rows = screen.getByRole("table");
+    expect(rows.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
