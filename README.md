@@ -339,7 +339,8 @@ break. The types are feat, fix, docs, chore, refactor, test, perf, ci, build
 and revert, and the release script reads the next version from them. Run
 `make hooks` once in a clone and git refuses a push outside the convention,
 with a sentence saying what to write instead; `make test-scripts`, which
-`make test` runs, tests that rule and lints the workflows.
+`make test` runs, tests that rule and the release script and lints the
+workflows.
 
 ## Operations
 
@@ -524,33 +525,85 @@ They are written for kaniko as much as for docker: no cache mounts, and the Go
 dependencies compiled in a layer of their own that stays cached until an
 import changes, so a commit compiles Armature's own packages and nothing else.
 
-`deploy/Jenkinsfile` is a pipeline that builds all six images with kaniko in
-three pods side by side and pushes them to a registry, with the flags that
-keep kaniko quick: `--snapshot-mode=redo`, `--skip-unused-stages` and a layer
-cache in the registry. Point its parameters at your repository, registry and
-proxy. A release tag `v1.2.3` pushes the images as `1.2.3`, which is the
-chart's `appVersion`, so a chart of a release pulls exactly its images; any
-other build is pushed as `<branch>-<build number>` and never replaces them.
+A release is built on GitHub, from its tag, by the Release workflow
+(`.github/workflows/release.yml`), and published as
+`ghcr.io/cloudster1/armature-<image>` for `api`, `worker`, `migrate`, `seed`,
+`web` and `render`, each tagged with the version and with the full commit
+hash. These are the chart's defaults, so a chart of a release pulls exactly
+its images.
+
+`deploy/Jenkinsfile` is the way to build into a private registry instead: a
+pipeline that builds all six images with kaniko in three pods side by side,
+with the flags that keep kaniko quick: `--snapshot-mode=redo`,
+`--skip-unused-stages` and a layer cache in the registry. Point its
+parameters at your repository, registry and proxy, and the chart's
+`images.<component>.repository` at what it pushes. A release tag `v1.2.3`
+pushes the images as `1.2.3`, the chart's `appVersion`; any other build is
+pushed as `<branch>-<build number>` and never replaces them.
 
 ## Releasing
 
 `VERSION` holds the release the tree is, as semver. While it is below 1.0 a
-minor version may break things and a patch does not.
+minor version may break things and a patch does not. Write what changed under
+`## Unreleased` in `CHANGELOG.md` in the branch that changes it, so a release
+only moves it. Main takes no direct commits, so a release is two steps around
+a pull request:
 
 ```sh
-git switch main && git pull
-# write what changed under "## Unreleased" in CHANGELOG.md, in the branches
-# that change it, so that this step only moves it
-make release VERSION=0.2.0
-git push origin main v0.2.0
+git switch main && git pull --ff-only
+make release DRY_RUN=1     # the version, the rule that chose it, the notes
+make release               # or make release VERSION=0.2.0 to name it
+# review and merge the pull request it opened, then
+git switch main && git pull --ff-only
+make release-tag
 ```
 
-`make release` refuses unless it is on a clean `main`, the version is newer
-than the last tag and the changelog says something. It writes the version
-into `VERSION`, `web/package.json` and its lockfile and the chart, moves the
-changelog's Unreleased section under the new version, renders the chart's
-golden files, commits that as `chore(release): vx.y.z` on a `release/vx.y.z`
-branch and merges it with a tag `vx.y.z` on the merge. It does not push.
+Without `VERSION`, `make release` reads the next version from the commits
+since the last tag, by the convention the Conventions workflow holds them to:
+a break (`!` or a `BREAKING CHANGE:` trailer) raises MAJOR, or MINOR while the
+version is below 1.0.0, a `feat` raises MINOR and anything else PATCH. A merge
+of a pull request counts as its branch's type. It prints the rule it applied
+and the commits that decided it. Before the first tag there is nothing to
+count from, and it asks for the version by hand.
+
+Both steps refuse a checkout that is not `main`, has changes, or is behind or
+ahead of `origin/main`, which they fetch first, so a release is always what
+the remote has. `make release` also refuses a version that is not newer than
+the last tag and an empty `## Unreleased`. It writes the version into
+`VERSION`, `web/package.json` and its lockfile and the chart's `version` and
+`appVersion`, moves the changelog's Unreleased section under the new version,
+renders the chart's golden files and runs the test that holds the five
+together, commits that as `chore(release): vX.Y.Z` on `release/vX.Y.Z`,
+pushes the branch and opens its pull request with `gh`, the notes as its
+body. `make release-tag` checks that `main` is the merge of that branch and
+that `VERSION` agrees, makes the annotated tag `vX.Y.Z` with that changelog
+section as its message, and pushes it. `DRY_RUN=1` prints either step and
+changes nothing.
+
+The tag is pushed from your clone, not by a workflow: a tag a workflow pushes
+with its own `GITHUB_TOKEN` starts no other workflow, and the tag is what
+starts the Release workflow. It checks that the tag is an annotated release of
+`main` whose files carry its version, then:
+
+- builds the six images from the tag with its version, commit and build time,
+  and pushes them to `ghcr.io/cloudster1/armature-<image>:X.Y.Z` and
+  `:<commit>`;
+- packages the chart and pushes it to `oci://ghcr.io/cloudster1/charts`, so
+  the chart of a release is `oci://ghcr.io/cloudster1/charts/armature` at
+  `--version X.Y.Z`;
+- publishes the GitHub release, with the tag message as its notes;
+- sends `repository_dispatch` to `praetorianer777/Dynamo`, event
+  `tool-released` with `{"tool": "armature", "version": "X.Y.Z"}`, so Dynamo
+  can try the release with Stator and Exciter. It needs a token in the
+  repository secret `DYNAMO_DISPATCH_TOKEN` that may dispatch to Dynamo, such
+  as a fine-grained one with Contents read and write there; without it the
+  step says so in a notice and the release is otherwise complete.
+
+Every step survives a re-run of the same tag, so a release that failed halfway
+is finished with "Re-run failed jobs", or with
+`gh workflow run release.yml -f tag=vX.Y.Z` for a tag whose run is gone. The
+packages GitHub creates on the first release are private until made public in
+their settings, once, for a cluster that pulls without a secret.
 
 A build reports what it is at `GET /api/v1/meta` and at the foot of the
 sidebar: `0.2.0` on the tag, `0.2.0+3.g1a2b3c4` three commits past it, and
