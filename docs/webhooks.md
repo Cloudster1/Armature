@@ -1,4 +1,4 @@
-# Webhooks: what an endpoint is posted
+# Webhooks
 
 An administrator adds an endpoint under Settings, Webhooks (`/settings/webhooks`),
 or with `POST /api/v1/webhooks`: a name, an address, and the topics it takes,
@@ -138,11 +138,22 @@ One event per edit, with every field it changed.
 
 ### issue.transitioned
 
-The issue changed status, by a transition or by a change of its type.
+An issue moved from one status to another, through a workflow transition or
+because a type change put it in the new workflow's status.
 
-- `issueId` (uuid), `key` (string), `actorId` (uuid).
-- `transition` (string): the transition's name, or `Type change`.
-- `fromStatus`, `toStatus` (string): the statuses' names.
+| Field | What it holds |
+| --- | --- |
+| `issueId` | the issue's id |
+| `key` | the issue's key, such as `NOJ-7` |
+| `transition` | the name of the transition taken, or `Type change` when a type change moved the issue |
+| `fromStatus` | the name of the status the issue left |
+| `toStatus` | the name of the status the issue is in now |
+| `fromStatusCategory` | the category of the status it left: `todo`, `in_progress` or `done` |
+| `toStatusCategory` | the category of the status it is in now: `todo`, `in_progress` or `done` |
+| `actorId` | the id of the person who moved it |
+
+The categories let a subscriber keep an issue's category without reading the
+issue again.
 
 ### issue.deleted
 
