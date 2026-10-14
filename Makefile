@@ -215,6 +215,15 @@ shell: ## Interactive shell in the Go toolchain container
 		-e GOCACHE=/gocache -e GOMODCACHE=/gomod -e GOFLAGS=-buildvcs=false \
 		-w /src $(GO_IMAGE) sh
 
+# Dynamo holds the suite's realm; each tool's copy has to be the same file, keys
+# order aside. Until Dynamo has one there is nothing to compare, which passes.
+DYNAMO_REALM_URL ?= https://raw.githubusercontent.com/praetorianer777/Dynamo/main/deploy/keycloak/realm.json
+
+.PHONY: realm-check
+realm-check: ## Fail if deploy/keycloak/realm.json differs from Dynamo's canonical realm
+	@docker run --rm -u $(UID):$(GID) -v $(ROOT)/deploy/keycloak:/realm:ro $(NODE_IMAGE) \
+		node /realm/realm-check.mjs '$(DYNAMO_REALM_URL)' /realm/realm.json
+
 ## ---------- release ----------
 
 # VERSION is read here only as the argument; the file of the same name is what

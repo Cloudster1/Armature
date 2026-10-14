@@ -1812,6 +1812,28 @@ address. The api connects to the address it can reach and sends the Host header
 of the address the browser uses. The rewrite is one environment variable, off by
 default, and only the api's requests to the provider go through it.
 
+### The suite signs in through one realm, and Dynamo holds it
+
+Stator, Armature and Exciter each ran a Keycloak realm of their own, with their
+own people and secrets, so one sign-in never carried across and Dynamo could
+not start a single Keycloak for the three. They now import the same file,
+`deploy/keycloak/realm.json`: realm `dynamo`, a client per tool, the same
+redirect patterns and `groups` claim, and the people alice, bob, carol and dave.
+Each tool uses only its own client; the others are there so one file serves the
+suite. Armature's groups sit beside the partners' ones, and the seed lets the
+four people in and gives the groups their roles.
+
+Dynamo holds the canonical copy and each tool's is the same file, keys sorted.
+`make realm-check` compares the two and fails naming the file to update; while
+Dynamo has no realm yet it says so and passes, and Armature's copy is the one
+Dynamo will start from. The secrets in it are for development only. The seed
+and the realm once drifted unnoticed (see the product's name, below), so a unit
+test reads the realm and refuses a seed whose issuer, client, secret, groups or
+people it does not hold.
+
+**Reconsider if** the tools need people or groups the others must not see: then
+each keeps its realm, and Dynamo gives up starting one Keycloak for all three.
+
 ### A read token is refused in the api, before any handler
 
 A token has always been its owner in miniature. The scopes column sat unread

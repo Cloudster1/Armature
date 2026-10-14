@@ -7,6 +7,18 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the stack's Keycloak imports the realm `dynamo` from
+  `deploy/keycloak/realm.json`, the same file Stator and Exciter import, in
+  place of the realm `demo`. Its people are alice, bob, carol and dave, each
+  with the password `<name> password`; Ada, Grace, Alan and Rita sign in with
+  their local accounts only. The seed points single sign-on at the new realm
+  with the development secret `armature-dev-secret`, and a unit test refuses a
+  seed naming what the realm does not hold. `make realm-check` compares the
+  realm with Dynamo's canonical copy (#241).
+- Upgrade note (#241): `make up` imports the new realm. Run `make seed` again,
+  or set the identity provider's issuer to
+  `http://localhost:8180/realms/dynamo` and its secret to
+  `armature-dev-secret` under Settings, Access (#241).
 - Added: `GET /api/v1/meta` lists the integration capabilities a partner checks
   for by name: `issue-embed@1`, `remote-links@1`, `webhooks@1`,
   `theme-export@1`, `reports@1`, `plan@1` and `calendar@1`, each with what it
