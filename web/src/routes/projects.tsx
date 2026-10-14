@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { memo, useCallback, useState, type FormEvent } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useArchiveProject, useCreateProject, useKeyCheck, useProjects, useRestoreProject, type Project } from "@/api/projects";
@@ -22,14 +22,20 @@ function ProjectsPage() {
   const [creating, setCreating] = useState(false);
   // Archiving deletes nothing and a restore undoes it, so it asks nothing and offers
   // Undo. Held here, since an archived row leaves the list before Undo is pressed.
-  const archive = useArchiveProject();
-  const restore = useRestoreProject();
+  const { mutate: archive } = useArchiveProject();
+  const { mutate: restore } = useRestoreProject();
   const toast = useToast();
-  const archiveProject = (project: Project) =>
-    archive.mutate(project.key, {
-      onSuccess: () => toast.success(`Archived ${project.name}`, { action: { label: "Undo", onClick: () => restore.mutate(project.key) } }),
-    });
-  const restoreProject = (project: Project) => restore.mutate(project.key, { onSuccess: () => toast.success(`Restored ${project.name}`) });
+  const archiveProject = useCallback(
+    (project: Project) =>
+      archive(project.key, {
+        onSuccess: () => toast.success(`Archived ${project.name}`, { action: { label: "Undo", onClick: () => restore(project.key) } }),
+      }),
+    [archive, restore, toast],
+  );
+  const restoreProject = useCallback(
+    (project: Project) => restore(project.key, { onSuccess: () => toast.success(`Restored ${project.name}`) }),
+    [restore, toast],
+  );
 
   const projects = data?.projects ?? [];
   // Asked of the server rather than guessed from the org role, so that the
@@ -81,8 +87,8 @@ function ProjectsPage() {
                 key={project.id}
                 project={project}
                 canAdminister={canAdminister(access, project.key)}
-                onArchive={() => archiveProject(project)}
-                onRestore={() => restoreProject(project)}
+                onArchive={archiveProject}
+                onRestore={restoreProject}
               />
             ))}
           </tbody>
@@ -92,7 +98,9 @@ function ProjectsPage() {
   );
 }
 
-function ProjectRow({
+// Memoised, since an installation can hold thousands of projects and the page
+// renders again for every archive and restore.
+const ProjectRow = memo(function ProjectRow({
   project,
   canAdminister: admin,
   onArchive,
@@ -100,8 +108,8 @@ function ProjectRow({
 }: {
   project: Project;
   canAdminister: boolean;
-  onArchive: () => void;
-  onRestore: () => void;
+  onArchive: (project: Project) => void;
+  onRestore: (project: Project) => void;
 }) {
   const navigate = useNavigate();
   const archived = Boolean(project.archivedAt);
@@ -142,7 +150,7 @@ function ProjectRow({
             )}
             items={
               archived
-                ? [{ label: "Restore", icon: <Icon.Archive />, onSelect: onRestore, attrs: { "data-action": "restore-project" } }]
+                ? [{ label: "Restore", icon: <Icon.Archive />, onSelect: () => onRestore(project), attrs: { "data-action": "restore-project" } }]
                 : [
                     { label: "Settings", icon: <Icon.Settings />, onSelect: () => navigate({ to: "/projects/$projectKey/settings", params: { projectKey: project.key } }) },
                     {
@@ -150,7 +158,7 @@ function ProjectRow({
                       icon: <Icon.Archive />,
                       danger: true,
                       attrs: { "data-action": "archive-project" },
-                      onSelect: onArchive,
+                      onSelect: () => onArchive(project),
                     },
                   ]
             }
@@ -159,7 +167,7 @@ function ProjectRow({
       </Td>
     </tr>
   );
-}
+});
 
 /** A template key as it reads in a sentence. */
 function templateLabel(key: string): string {
