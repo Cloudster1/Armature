@@ -1647,7 +1647,8 @@ undone in one click now goes through one dialog: the title is the question, the
 body names what follows, and the button says the verb and the noun, so the
 reader knows what goes before it goes. What can be undone is not asked about: a
 question before a reversible act is friction, and a question before an
-irreversible one is care.
+irreversible one is care. Archiving a project is the undoable kind: it deletes
+nothing, so it happens at once and its toast's Undo restores the project.
 
 ### Creating something takes you to it
 

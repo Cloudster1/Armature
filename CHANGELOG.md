@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: an archived project can be restored from its row in the projects list,
+  with Show archived on, and from its settings page, whose forms stay closed
+  until it is. Archiving no longer asks first; its toast offers Undo, which
+  restores the project. The audit log records who archived and who restored a
+  project (#112).
 - Added: `make release` reads the next version from the commits since the
   last tag when none is given, and prints the rule it applied and the commits
   that decided it; `DRY_RUN=1` prints that and the notes and changes nothing.
