@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/armature/armature/backend/internal/webhook"
 )
 
 // routed lists every method and path the router serves, in the form the
@@ -114,6 +117,56 @@ func TestTheDocumentBuildsAndReferencesResolve(t *testing.T) {
 	}
 }
 
+// An endpoint kept for one more release is marked, with what to call instead,
+// and the one that replaces it is not.
+func TestADeprecatedOperationSaysSo(t *testing.T) {
+	encoded, err := Spec().MarshalIndent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Paths map[string]map[string]struct {
+			Deprecated  bool   `json:"deprecated"`
+			Description string `json:"description"`
+		} `json:"paths"`
+	}
+	if err := json.Unmarshal(encoded, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if old := doc.Paths["/build"]["get"]; !old.Deprecated || !strings.Contains(old.Description, "/meta") {
+		t.Errorf("GET /build = %+v, want it deprecated, pointing at /meta", old)
+	}
+	if doc.Paths["/meta"]["get"].Deprecated {
+		t.Error("GET /meta is what to call instead, not deprecated")
+	}
+}
+
+// A public operation overrides the document's session-or-token rule with an
+// empty one; without it a generated client sends credentials it need not have.
+func TestAPublicOperationNeedsNoCredentials(t *testing.T) {
+	encoded, err := Spec().MarshalIndent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Paths map[string]map[string]struct {
+			Security *[]map[string][]string `json:"security"`
+		} `json:"paths"`
+	}
+	if err := json.Unmarshal(encoded, &doc); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range Catalog() {
+		security := doc.Paths[r.Path][strings.ToLower(r.Method)].Security
+		switch {
+		case r.Public && (security == nil || len(*security) != 0):
+			t.Errorf("%s %s is public, want security: [], got %v", r.Method, r.Path, security)
+		case !r.Public && security != nil:
+			t.Errorf("%s %s needs a session or a token, want the document's security, got %v", r.Method, r.Path, *security)
+		}
+	}
+}
+
 // An installation is one team's, so what the document and the assistant's tools
 // say to a reader speaks of everyone and all projects, never an organization.
 func TestTheDocumentSaysEveryoneNotTheOrganization(t *testing.T) {
@@ -192,5 +245,41 @@ func TestTheCheckedInDocumentIsCurrent(t *testing.T) {
 	}
 	if !bytes.Equal(bytes.TrimSpace(checkedIn), bytes.TrimSpace(generated)) {
 		t.Fatal("api/openapi.json is out of date; run make openapi and commit the result")
+	}
+}
+
+// A receiver is generated from the document like any client, so what a
+// delivery carries, body and headers, is described there.
+func TestTheDocumentDescribesAWebhookDelivery(t *testing.T) {
+	doc := Spec()
+	delivery := doc.Webhooks["event"]["post"]
+	if delivery == nil {
+		t.Fatal("the document describes no webhook delivery")
+	}
+	body, err := doc.Resolve(delivery.RequestBody.Content["application/json"].Schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"version", "id", "topic", "orgId", "occurredAt", "payload"} {
+		if !slices.Contains(body.Required, field) {
+			t.Errorf("the envelope does not promise %s", field)
+		}
+	}
+	if !body.Properties["orgId"].Deprecated {
+		t.Error("the envelope's orgId is not marked deprecated")
+	}
+	if got := body.Properties["payload"].Type; got != "object" {
+		t.Errorf("the payload is %v, want an object", got)
+	}
+	headers := map[string]bool{}
+	for _, p := range delivery.Parameters {
+		if p.In == "header" && p.Required {
+			headers[p.Name] = true
+		}
+	}
+	for _, name := range []string{webhook.HeaderEvent, webhook.HeaderDelivery, webhook.HeaderVersion, webhook.HeaderSignature, webhook.HeaderTimestamp, webhook.HeaderTimestampedSignature} {
+		if !headers[name] {
+			t.Errorf("the delivery does not list the header %s", name)
+		}
 	}
 }

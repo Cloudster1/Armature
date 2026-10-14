@@ -708,7 +708,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Which build of Armature is answering. */
+        /**
+         * Which build of Armature is answering.
+         * @deprecated
+         * @description Read GET /meta instead, which answers the same build. Kept for at least one more release.
+         */
         get: operations["build"];
         put?: never;
         post?: never;
@@ -2209,6 +2213,23 @@ export interface paths {
         post?: never;
         /** Let a member go by switching their account off: their sessions and tokens end, and what they did stays theirs. */
         delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which build of Armature is answering, the API version it speaks and its capabilities; the commit and build time only for somebody signed in. */
+        get: operations["meta"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4327,7 +4348,28 @@ export interface paths {
         trace?: never;
     };
 }
-export type webhooks = Record<string, never>;
+export interface webhooks {
+    event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What a webhook endpoint is posted for each event it subscribes to.
+         * @description A receiver ignores fields and topics it does not know, and refuses an envelope version it does not know. The version rises only for a change that breaks a receiver, and an endpoint keeps the version it was registered for.
+         */
+        post: operations["webhookEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export interface components {
     schemas: {
         APIError: {
@@ -5160,6 +5202,11 @@ export interface components {
             }[];
             servers?: components["schemas"]["Server"][];
             tags?: components["schemas"]["Tag"][];
+            webhooks?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["Operation"] | null;
+                };
+            };
         };
         Door: {
             desk?: components["schemas"]["DoorDesk"];
@@ -5193,10 +5240,32 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             url: string;
+            version: number;
         };
         Enrolment: {
             secret: string;
             uri: string;
+        };
+        /** @description What an endpoint registered for envelope version 1 is posted. */
+        EnvelopeV1: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When the delivery was queued.
+             */
+            occurredAt: string;
+            /**
+             * Format: uuid
+             * @deprecated
+             * @description The installation's stable id, the same in every delivery. Envelope version 2 leaves it out; read nothing from it.
+             */
+            orgId: string;
+            /** @description The event's own fields, by topic, as docs/webhooks.md lists them. */
+            payload: Record<string, never>;
+            topic: string;
+            /** @description The envelope version, 1 here; it is the version header's value too. */
+            version: number;
         };
         EpicProgress: {
             category: string;
@@ -5665,6 +5734,12 @@ export interface components {
             name: string;
             role: string;
         };
+        Meta: {
+            apiVersion: string;
+            build: components["schemas"]["BuildinfoInfo"];
+            capabilities: string[];
+            product: string;
+        };
         Milestone: {
             /** Format: date-time */
             closedAt?: string;
@@ -5774,6 +5849,7 @@ export interface components {
             title: string;
         };
         Operation: {
+            deprecated?: boolean;
             description?: string;
             operationId: string;
             parameters?: components["schemas"]["Parameter"][];
@@ -7155,6 +7231,7 @@ export interface components {
             name: string;
             topics: string[];
             url: string;
+            version?: number;
         };
         Week: {
             created: number;
@@ -13289,6 +13366,35 @@ export interface operations {
             };
         };
     };
+    meta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meta"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     deleteMilestone: {
         parameters: {
             query?: never;
@@ -19281,6 +19387,48 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+        };
+    };
+    webhookEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The topic, as in the body. */
+                "X-Armature-Event": string;
+                /** @description This attempt's id; a retry or a redelivery has its own. */
+                "X-Armature-Delivery": string;
+                /** @description The envelope version of the body, as in its version field. */
+                "X-Armature-Webhook-Version": string;
+                /** @description sha256= and the hex HMAC-SHA256 of the body, keyed with the endpoint's secret. */
+                "X-Armature-Signature-256": string;
+                /** @description When this attempt was sent, in Unix seconds. */
+                "X-Armature-Timestamp": string;
+                /** @description sha256= and the hex HMAC-SHA256 of the timestamp, a dot and the body. */
+                "X-Armature-Signature-Timestamped-256": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvelopeV1"];
+            };
+        };
+        responses: {
+            /** @description Taken: the delivery is done. */
+            "2XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not taken: the delivery is tried again later, with backoff, as is one not answered in time. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

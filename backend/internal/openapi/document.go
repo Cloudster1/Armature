@@ -18,6 +18,7 @@ type Document struct {
 	Servers    []Server              `json:"servers,omitempty"`
 	Tags       []Tag                 `json:"tags,omitempty"`
 	Paths      map[string]PathItem   `json:"paths"`
+	Webhooks   map[string]PathItem   `json:"webhooks,omitempty"`
 	Components Components            `json:"components"`
 	Security   []map[string][]string `json:"security,omitempty"`
 }
@@ -49,7 +50,9 @@ type Operation struct {
 	Parameters  []Parameter           `json:"parameters,omitempty"`
 	RequestBody *RequestBody          `json:"requestBody,omitempty"`
 	Responses   map[string]*Response  `json:"responses"`
-	Security    []map[string][]string `json:"security,omitempty"`
+	// omitzero keeps an empty list, which is how a public operation needs nothing.
+	Security    []map[string][]string `json:"security,omitzero"`
+	Deprecated  bool                  `json:"deprecated,omitempty"`
 }
 
 type Parameter struct {

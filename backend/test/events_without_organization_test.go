@@ -39,8 +39,8 @@ func TestAnEventThatNamesNoOrganizationIsActedOn(t *testing.T) {
 		}
 	})
 
-	// Receivers read orgId, so it stays for a release, deprecated, holding the
-	// installation's id; a later release removes it.
+	// Receivers read orgId, so envelope version 1 keeps it, deprecated, holding
+	// the installation's id; version 2 leaves it out.
 	t.Run("a webhook's envelope names the installation", func(t *testing.T) {
 		hooks := webhook.NewService(h.cluster, log)
 		made, _, err := hooks.Create(ws.ctx, webhook.Input{Name: h.name(t, "Unnamed"), URL: "http://127.0.0.1:1/in", Topics: []string{events.TopicIssueCreated}}, ws.actor.UserID)

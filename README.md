@@ -23,7 +23,8 @@ This file is how to run it, test it and operate it. What it does is summarised
 below and argued in [`docs/decisions.md`](docs/decisions.md); the whole product
 in pictures is [`docs/screenshots.md`](docs/screenshots.md); what it looks like
 by design is [`docs/design/`](docs/design); what it holds about people is
-[`docs/privacy.md`](docs/privacy.md).
+[`docs/privacy.md`](docs/privacy.md); what it posts to a webhook is
+[`docs/webhooks.md`](docs/webhooks.md).
 
 ## Two commands, nothing installed
 
@@ -141,7 +142,8 @@ shared by link, printed to PDF; CSV export, and a CSV import that keeps another
 tracker's keys, dates, people, hierarchy, sprints, links, comments and worklogs.
 
 **Being told.** One fan-out per event to an inbox and, if the person wants,
-mail; webhooks signed, retried and logged; automation rules that run as an
+mail; webhooks signed, retried and logged, in a versioned envelope
+([`docs/webhooks.md`](docs/webhooks.md)); automation rules that run as an
 account of their own, once per event.
 
 **Themes.** The interface is drawn from named tokens, and a theme is a saved
@@ -541,9 +543,16 @@ changelog's Unreleased section under the new version, renders the chart's
 golden files, and merges that as a `release/x.y.z` branch with a tag `vx.y.z`
 on the merge. It does not push.
 
-A build reports what it is at `GET /api/v1/build` and at the foot of the
+A build reports what it is at `GET /api/v1/meta` and at the foot of the
 sidebar: `0.2.0` on the tag, `0.2.0+3.g1a2b3c4` three commits past it, and
 `0.2.0+dev` when no tag is in reach, as in a shallow clone of a branch.
+`/meta` answers anyone, the way Stator and Exciter answer it, with the
+product, that version, the API's own version (`info.version` of the OpenAPI
+document) and the capabilities, the integration features a partner checks for
+by name, listed with what each promises in
+[`docs/integration.md`](docs/integration.md); the commit and when it was built
+are added for somebody signed in. `GET /api/v1/build` still answers behind the session and
+is deprecated.
 
 ## Build notes
 

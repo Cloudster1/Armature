@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
+import type { Build } from "@/api/meta";
 
 const state = {
   mode: "open" as "open" | "rail",
   pathname: "/",
   params: {} as { projectKey?: string },
   projects: [] as Array<{ key: string; name: string }>,
+  build: { version: "0.1.0", commit: "0123456789abcdef", builtAt: "2026-09-28T10:00:00Z" } as Build,
   /** What an older server listed beside the principal; nothing reads it now. */
   organizations: [] as Array<{ orgId: string; orgSlug: string; orgName: string; role: string }>,
 };
@@ -34,7 +36,11 @@ vi.mock("@/api/auth", () => ({
 }));
 vi.mock("@/api/projects", () => ({ useProject: () => ({ data: undefined }), useProjects: () => ({ data: { projects: state.projects } }) }));
 vi.mock("@/api/notifications", () => ({ useUnreadCount: () => ({ data: { unread: 3 } }) }));
-vi.mock("@/api/build", () => ({ useBuild: () => ({ data: { build: { version: "0.1.0", commit: "0123456789abcdef", builtAt: "2026-09-28T10:00:00Z" } } }) }));
+vi.mock("@/api/meta", () => ({
+  useMeta: () => ({
+    data: { product: "armature", build: state.build, apiVersion: "1", capabilities: [] },
+  }),
+}));
 vi.mock("./state", async () => {
   const actual = await vi.importActual<typeof import("./state")>("./state");
   return { ...actual, useSidebarMode: () => [state.mode, toggleMode], useLastProject: (key: string | undefined) => key };
@@ -45,6 +51,7 @@ const { Sidebar } = await import("./Sidebar");
 
 beforeEach(() => {
   localStorage.clear();
+  state.build = { version: "0.1.0", commit: "0123456789abcdef", builtAt: "2026-09-28T10:00:00Z" };
   state.mode = "open";
   state.pathname = "/";
   state.params = {};
@@ -107,6 +114,14 @@ describe("the foot of the map", () => {
     const stamp = document.querySelector("[data-build]")!;
     expect(stamp.textContent).toBe("0.1.0 (0123456)");
     expect(stamp.getAttribute("title")).toContain("commit 0123456789abcdef");
+  });
+
+  it("names the version alone when the server keeps the commit back", () => {
+    state.build = { version: "0.1.0" };
+    render(<Sidebar onNewIssue={() => {}} />);
+    const stamp = document.querySelector("[data-build]")!;
+    expect(stamp.textContent).toBe("0.1.0");
+    expect(stamp.getAttribute("title")).toBeNull();
   });
 });
 
