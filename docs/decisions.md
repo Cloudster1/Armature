@@ -153,6 +153,28 @@ goes grants nothing, and an account that granted itself a role could not be
 deleted where the foreign keys happened to act in that order. Tombstones no
 longer name an organization, which nothing read.
 
+### The code no longer names the organization
+
+Nothing binds a transaction to the organization any more (#218): the tenant
+on the context, the `app.org_id` setting and the refusal of a transaction
+without one are gone. Migration `00935` gives every `org_id` that must name an
+organization a default, `installation_org_id()`, which reads the one `org`
+row when a row is written. A fresh database has no row when it migrates, so a
+literal would not do, and with two rows the default refuses rather than
+guess. `current_org_id()` answers the same, so the inserts and filters that
+still name it keep working until the next step takes them out. A mail that
+matched no request and a file's tombstone keep naming no organization.
+
+The worker's passes ran once per organization, each inside its own; they run
+once over the installation, retention as one statement per kind of row. An
+event names no organization: the stream carries no `org_id`, and what reads an
+event acts in the installation. A webhook's envelope keeps `orgId` for one more
+release, holding the installation's stable id, the id of the `org` row, which
+the last step keeps. It is deprecated, and a later release removes it so that
+receivers do not break on this upgrade. The previous release's consumers skip
+an event without an `org_id`, so an upgrade drains the outbox and the stream
+first, and workers of the two releases never run side by side.
+
 ### One installation is one team's tracker
 
 Armature is self-hosted, and an installation serves one team. Organizations
@@ -180,8 +202,8 @@ row still holds the installation's name and settings, and the tables still
 carry `org_id`. That kept each step shippable with all four test layers
 green. The integration suite works in the one organization too, its tests
 kept apart by people, project keys and names of their own (#217). The schema
-ticket (#218) takes the tenant out in steps: row security went first, and the
-columns follow. The separation row security argued for, between teams, is now
+ticket (#218) takes the tenant out in steps: row security went first, then
+the keys, the triggers and the code's own tenant, and the columns follow. The separation row security argued for, between teams, is now
 between installations.
 
 This supersedes the entries that described organizations as part of the
@@ -1326,9 +1348,8 @@ the dashboard where it is.
 ### A share link is a read that names its tenant
 
 A dashboard on a wall in the lobby has nobody signed in to it. A share link is
-the first anonymous read: a random token whose digest finds the organization and
-the dashboard, after which the ordinary report code runs inside that
-organization. What a visitor can ask is each widget of that one dashboard, by
+the first anonymous read: a random token whose digest finds the dashboard,
+after which the ordinary report code runs. What a visitor can ask is each widget of that one dashboard, by
 id, with the widget's own stored settings; there is no route that takes a kind
 and parameters, so a widget that opens more on a click, like a past sprint's
 curve in Sprint history, offers nothing to click on a shared page. The filter is frozen when the link is made and compiled as the
@@ -1852,9 +1873,8 @@ the sign-in page, the sidebar's switcher and the profile's list are gone, and
 `/auth/me` no longer lists organizations. A session names no organization: it
 acts in the person's own, read from the membership at every request, and the
 database refuses a session row that names one (`00931`). The columns stay,
-empty, until the tenant goes (#218). Were somebody in a second organization, the
-one joined first would be the one, as a password sign-in always chose; since
-#217 not even the integration suite gives anybody a second. A session through
+empty, until the tenant goes (#218). Nobody can be in a second organization:
+since `00933` a membership is keyed by the person alone. A session through
 an open desk door acts in that desk's organization and sees that desk alone.
 
 What made a session reach further is gone with it: `session_reaches`, the
@@ -2209,8 +2229,7 @@ on the issue by their role, so only a watch made on purpose, an assignment or a
 mention reaches them. The desk keeps its own notifier for customers, whose mails
 are worded for people without an account.
 
-A digest is one mail per person and organization, since each organization has
-its own schedule and its own queue. When each one last went is a row in the
+A digest is one mail per person, on their schedule and from their queue. When each one last went is a row in the
 database, not memory in the worker: a restart neither resends nor forgets, and
 the row is claimed in the transaction that sends, so two workers mail it once.
 A daily digest goes at the first pass from 08:00 on that has not sent it that
@@ -2257,7 +2276,7 @@ administrator. The worker copies the administrative topics off the stream, each
 once by its event id, so the log, the webhooks and the rules all say the same
 thing. Issue traffic is left out on purpose: each issue's history already holds
 it, and a log that repeats every transition is one nobody reads. The acts that
-happen before or beside a tenant are written by the act itself, and so are a
+happen before anybody is signed in are written by the act itself, and so are a
 sign-in with a password and the changes to webhooks, rules and invitations,
 which no consumer needs as events. Those entries never hold what the act hands
 out: a rotated secret is recorded as rotated, a rule's incoming address by its

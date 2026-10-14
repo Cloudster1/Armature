@@ -36,7 +36,7 @@ func (h *harness) announced(t *testing.T, ws *workspace, topic, key string) even
 	defer rows.Close()
 	var found []events.Event
 	for rows.Next() {
-		e := events.Event{OrgID: ws.orgID}
+		e := events.Event{}
 		if err := rows.Scan(&e.ID, &e.Topic, &e.Payload); err != nil {
 			t.Fatal(err)
 		}

@@ -20,11 +20,10 @@ func TestInvites(t *testing.T) {
 	ctx := context.Background()
 
 	owner := h.signIn(t, svc, h.person(t, "inviter", auth.RoleOwner))
-	orgCtx := auth.ContextForOrg(ctx, owner.Principal)
 
 	t.Run("a new account can join through an invitation", func(t *testing.T) {
 		invitee := h.email(t, "joiner")
-		invite, token, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		invite, token, _, err := svc.CreateInvite(ctx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatalf("create invite: %v", err)
 		}
@@ -57,7 +56,7 @@ func TestInvites(t *testing.T) {
 
 	t.Run("an invitation cannot be used twice", func(t *testing.T) {
 		invitee := h.email(t, "reuse")
-		_, token, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		_, token, _, err := svc.CreateInvite(ctx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,7 +76,7 @@ func TestInvites(t *testing.T) {
 
 	t.Run("an expired invitation is refused", func(t *testing.T) {
 		invitee := h.email(t, "stale")
-		invite, token, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		invite, token, _, err := svc.CreateInvite(ctx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,11 +104,11 @@ func TestInvites(t *testing.T) {
 
 	t.Run("re-inviting the same address replaces the pending invitation", func(t *testing.T) {
 		invitee := h.email(t, "reinvite")
-		_, firstToken, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		_, firstToken, _, err := svc.CreateInvite(ctx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, secondToken, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleAdmin, owner.Principal.User.ID, time.Hour)
+		_, secondToken, _, err := svc.CreateInvite(ctx, invitee, auth.RoleAdmin, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatalf("second invite: %v", err)
 		}
@@ -135,11 +134,11 @@ func TestInvites(t *testing.T) {
 
 	t.Run("revoking an invitation stops it working", func(t *testing.T) {
 		invitee := h.email(t, "revokeinv")
-		invite, token, _, err := svc.CreateInvite(orgCtx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		invite, token, _, err := svc.CreateInvite(ctx, invitee, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := svc.RevokeInvite(orgCtx, invite.ID, owner.Principal.User.ID); err != nil {
+		if _, err := svc.RevokeInvite(ctx, invite.ID, owner.Principal.User.ID); err != nil {
 			t.Fatalf("revoke: %v", err)
 		}
 		if _, err := svc.AcceptInvite(ctx, auth.AcceptInviteInput{
@@ -152,7 +151,7 @@ func TestInvites(t *testing.T) {
 	t.Run("a desk's customer joins the team with the account they have", func(t *testing.T) {
 		email := h.email(t, "customer")
 		customerID := h.joinExisting(t, &workspace{orgID: owner.Principal.Org.ID}, email, "customer")
-		_, token, _, err := svc.CreateInvite(orgCtx, email, auth.RoleMember, owner.Principal.User.ID, time.Hour)
+		_, token, _, err := svc.CreateInvite(ctx, email, auth.RoleMember, owner.Principal.User.ID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,7 +177,7 @@ func TestInvites(t *testing.T) {
 	})
 
 	t.Run("nobody can be invited as an owner", func(t *testing.T) {
-		if _, _, _, err := svc.CreateInvite(orgCtx, h.email(t, "usurper"), auth.RoleOwner, owner.Principal.User.ID, time.Hour); err == nil {
+		if _, _, _, err := svc.CreateInvite(ctx, h.email(t, "usurper"), auth.RoleOwner, owner.Principal.User.ID, time.Hour); err == nil {
 			t.Error("an owner invitation was accepted, which would let anyone hand over the organization by email")
 		}
 	})
@@ -188,7 +187,7 @@ func TestInvites(t *testing.T) {
 		lister := h.signIn(t, svc, h.person(t, "lister", auth.RoleOwner))
 		// Pinned to the primary: the accept below is read back at once, and
 		// a replica a beat behind would still list the accepted one.
-		listCtx := db.PinPrimary(auth.ContextForOrg(ctx, lister.Principal))
+		listCtx := db.PinPrimary(ctx)
 
 		pending := h.email(t, "pending")
 		if _, _, _, err := svc.CreateInvite(listCtx, pending, auth.RoleMember, lister.Principal.User.ID, time.Hour); err != nil {
@@ -224,11 +223,10 @@ func TestAPITokens(t *testing.T) {
 	ctx := context.Background()
 
 	owner := h.signIn(t, svc, h.person(t, "tokenowner", auth.RoleOwner))
-	orgCtx := auth.ContextForOrg(ctx, owner.Principal)
 	userID := owner.Principal.User.ID
 
 	t.Run("a token authenticates as its owner in its organization", func(t *testing.T) {
-		token, _, err := svc.CreateAPIToken(orgCtx, userID, "continuous integration", nil, nil, nil)
+		token, _, err := svc.CreateAPIToken(ctx, userID, "continuous integration", nil, nil, nil)
 		if err != nil {
 			t.Fatalf("create token: %v", err)
 		}
@@ -252,10 +250,10 @@ func TestAPITokens(t *testing.T) {
 	})
 
 	t.Run("the secret is never readable again", func(t *testing.T) {
-		if _, _, err := svc.CreateAPIToken(orgCtx, userID, "write only", nil, nil, nil); err != nil {
+		if _, _, err := svc.CreateAPIToken(ctx, userID, "write only", nil, nil, nil); err != nil {
 			t.Fatal(err)
 		}
-		tokens, err := svc.ListAPITokens(orgCtx, userID)
+		tokens, err := svc.ListAPITokens(ctx, userID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -267,14 +265,14 @@ func TestAPITokens(t *testing.T) {
 	})
 
 	t.Run("revoking a token stops it working immediately", func(t *testing.T) {
-		token, _, err := svc.CreateAPIToken(orgCtx, userID, "short lived", nil, nil, nil)
+		token, _, err := svc.CreateAPIToken(ctx, userID, "short lived", nil, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if _, err := svc.Authenticate(ctx, token.Secret); err != nil {
 			t.Fatalf("token does not work before revocation: %v", err)
 		}
-		if _, err := svc.RevokeAPIToken(orgCtx, userID, token.ID); err != nil {
+		if _, err := svc.RevokeAPIToken(ctx, userID, token.ID); err != nil {
 			t.Fatalf("revoke: %v", err)
 		}
 		if _, err := svc.Authenticate(ctx, token.Secret); !errors.Is(err, auth.ErrInvalidToken) {
@@ -284,7 +282,7 @@ func TestAPITokens(t *testing.T) {
 
 	t.Run("an expired token does not authenticate", func(t *testing.T) {
 		past := time.Now().Add(-time.Minute)
-		token, _, err := svc.CreateAPIToken(orgCtx, userID, "already expired", nil, nil, &past)
+		token, _, err := svc.CreateAPIToken(ctx, userID, "already expired", nil, nil, &past)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -295,8 +293,7 @@ func TestAPITokens(t *testing.T) {
 
 	t.Run("a token stops working when its owner loses their membership", func(t *testing.T) {
 		member := h.signIn(t, svc, h.person(t, "departing", auth.RoleOwner))
-		memberCtx := auth.ContextForOrg(ctx, member.Principal)
-		token, _, err := svc.CreateAPIToken(memberCtx, member.Principal.User.ID, "outlives membership", nil, nil, nil)
+		token, _, err := svc.CreateAPIToken(ctx, member.Principal.User.ID, "outlives membership", nil, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -309,12 +306,12 @@ func TestAPITokens(t *testing.T) {
 	})
 
 	t.Run("a token cannot be revoked by another user", func(t *testing.T) {
-		token, _, err := svc.CreateAPIToken(orgCtx, userID, "not yours", nil, nil, nil)
+		token, _, err := svc.CreateAPIToken(ctx, userID, "not yours", nil, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		stranger := h.signIn(t, svc, h.person(t, "stranger", auth.RoleOwner))
-		if _, err := svc.RevokeAPIToken(orgCtx, stranger.Principal.User.ID, token.ID); err == nil {
+		if _, err := svc.RevokeAPIToken(ctx, stranger.Principal.User.ID, token.ID); err == nil {
 			t.Error("another user revoked a token that was not theirs")
 		}
 		if _, err := svc.Authenticate(ctx, token.Secret); err != nil {
@@ -323,7 +320,7 @@ func TestAPITokens(t *testing.T) {
 	})
 
 	t.Run("a token name is required", func(t *testing.T) {
-		if _, _, err := svc.CreateAPIToken(orgCtx, userID, "   ", nil, nil, nil); err == nil {
+		if _, _, err := svc.CreateAPIToken(ctx, userID, "   ", nil, nil, nil); err == nil {
 			t.Error("a blank token name was accepted")
 		}
 	})

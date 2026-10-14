@@ -317,37 +317,22 @@ func (s *Service) Runs(ctx context.Context, ruleID uuid.UUID, limit int) ([]Run,
 	return out, err
 }
 
-// ByToken finds the rule behind an incoming hook's address, whichever
-// organization owns it, since the caller has no session.
-func (s *Service) ByToken(ctx context.Context, token string) (*Rule, uuid.UUID, error) {
-	var (
-		out   *Rule
-		orgID uuid.UUID
-	)
+// ByToken finds the rule behind an incoming hook's address, read as the admin
+// role since the caller has no session.
+func (s *Service) ByToken(ctx context.Context, token string) (*Rule, error) {
+	var out *Rule
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `SELECT r.org_id FROM automation_rule r WHERE r.enabled AND r.trigger->>'kind' = $1 AND r.trigger->>'token' = $2 LIMIT 1`, TriggerIncoming, token)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		if !rows.Next() {
+		var err error
+		out, err = scanRule(tx.QueryRow(ctx, selectRules+` WHERE r.enabled AND r.trigger->>'kind' = $1 AND r.trigger->>'token' = $2`, TriggerIncoming, token))
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
-		if err := rows.Scan(&orgID); err != nil {
-			return err
-		}
-		rows.Close()
-		r, err := scanRule(tx.QueryRow(ctx, selectRules+` WHERE r.trigger->>'token' = $1`, token))
-		if err != nil {
-			return err
-		}
-		out = r
-		return nil
+		return err
 	})
 	if err != nil {
-		return nil, uuid.Nil, err
+		return nil, err
 	}
-	return out, orgID, nil
+	return out, nil
 }
 
 // automationActor is who a rule acts as: the organization's automation account.

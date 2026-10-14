@@ -52,9 +52,9 @@ func TestTheAPIRoleNeedsNoOrganizationSet(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	ctx := context.Background()
-	orgID, orgCtx := h.installation()
+	orgID := h.installation()
 	committed := unique("test.unwalled")
-	if _, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
+	if _, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, $2, 'org')`, orgID, committed)
 		return err
 	}); err != nil {

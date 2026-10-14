@@ -120,7 +120,7 @@ func (s *Service) Connect(ctx context.Context, projectKey string, in ConnectInpu
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "vcs.repository.connected", map[string]any{
+		return events.Emit(ctx, tx, "vcs.repository.connected", map[string]any{
 			"repositoryId": id, "projectId": projectID, "host": in.Host, "name": in.Name, "actorId": actor,
 		})
 	})

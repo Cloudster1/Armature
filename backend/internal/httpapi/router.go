@@ -246,7 +246,7 @@ func (s *Server) automationRoutes(r chi.Router) {
 		r.Use(requirePerm(perm.OrgAdminister))
 		r.Get("/automation/rules", s.handleListOrgRules)
 		r.Post("/automation/rules", s.handleCreateOrgRule)
-		// Where events go out. Administering the tenant.
+		// Where events go out. Administering the installation.
 		r.Get("/webhooks", s.handleListWebhooks)
 		r.Post("/webhooks", s.handleCreateWebhook)
 		r.Patch("/webhooks/{endpointID}", s.handleUpdateWebhook)
@@ -561,7 +561,7 @@ func (s *Server) issueRoutes(r chi.Router) {
 
 	// Labels: anyone who edits issues may coin a word by tagging
 	// with it; renaming or removing a word for everyone is
-	// administration of the tenant.
+	// administration of the installation.
 	r.Get("/labels", s.handleListLabels)
 	r.With(requireObjectPerm(perm.IssueWrite)).
 		Post("/labels", s.handleCreateLabel)

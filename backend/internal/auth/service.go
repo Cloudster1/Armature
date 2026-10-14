@@ -15,7 +15,6 @@ import (
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/seal"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Service implements the identity use cases. What runs before anybody is known
@@ -69,10 +68,6 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	return s.authenticateSession(ctx, secret)
 }
 
-// firstJoined picks the membership a session acts in. An installation gives each
-// person one, so the order only keeps the answer stable until the tenant goes (#218).
-const firstJoined = `ORDER BY m.created_at, m.org_id LIMIT 1`
-
 // sessionPrincipalSQL resolves a session to the caller's role in the person's
 // organization, or the desk's for an open door; left joins tell a lost membership apart.
 const sessionPrincipalSQL = `
@@ -86,8 +81,7 @@ LEFT JOIN project pp ON pp.id = s.portal_project_id
 LEFT JOIN LATERAL (
     SELECT m.org_id, m.org_role FROM org_member m
     JOIN org mo ON mo.id = m.org_id AND mo.archived_at IS NULL
-    WHERE m.user_id = u.id AND (pp.id IS NULL OR m.org_id = pp.org_id)
-    ` + firstJoined + `) m ON true
+    WHERE m.user_id = u.id AND (pp.id IS NULL OR m.org_id = pp.org_id)) m ON true
 LEFT JOIN org o ON o.id = m.org_id
 WHERE s.token_hash = $1 AND s.expires_at > now()`
 
@@ -116,7 +110,7 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 		if err != nil || orgID == nil || enrolled || p.Proof == ProofOIDC {
 			return err
 		}
-		read, err := installation.SecondFactor(tenant.WithOrg(ctx, tenant.Org{ID: *orgID}), tx)
+		read, err := installation.SecondFactor(ctx, tx)
 		rule = SecondFactorRule(read)
 		return err
 	})
@@ -297,20 +291,10 @@ func derefString(s *string) string {
 	return *s
 }
 
-// ContextForOrg returns a context scoped to the principal's organization. It is
-// the seam between authentication and data access: handlers get this from the
-// middleware, and command line tools build it directly.
-func ContextForOrg(ctx context.Context, p *Principal) context.Context {
-	if p == nil {
-		return ctx
-	}
-	return tenant.WithOrg(ctx, tenant.Org{ID: p.Org.ID, Slug: p.Org.Slug})
-}
-
 // OrgBySlug finds an organization by the slug in a URL.
 //
 // It runs on the admin path because the caller is not signed in yet: a sign-in
-// has to know which tenant it is for before there is anybody to ask.
+// has to know which organization it is for before there is anybody to ask.
 func (s *Service) OrgBySlug(ctx context.Context, slug string) (*Org, error) {
 	var org Org
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {

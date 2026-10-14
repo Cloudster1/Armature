@@ -13,7 +13,6 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/perm"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // perms builds the permission store over the harness's cluster.
@@ -147,7 +146,7 @@ func TestAccessIsNeverGrantedToAStranger(t *testing.T) {
 	})
 }
 
-// Global administration is administration of the tenant. Scoping it to one
+// Global administration is administration of the installation. Scoping it to one
 // project would read as a smaller thing than it is.
 func TestGlobalAdministrationCannotBeScopedToAProject(t *testing.T) {
 	t.Parallel()
@@ -185,7 +184,7 @@ func TestTheLastGlobalAdministratorCannotBeRevoked(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("set the installation up: %v", err)
 	}
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID, Slug: "lastadmin"}))
+	ctx = db.PinPrimary(ctx)
 	perms := perm.NewStore(own.cluster)
 
 	held, err := perms.Assignments(ctx, "")

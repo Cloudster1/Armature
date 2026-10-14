@@ -44,7 +44,7 @@ func (s *Service) Reply(ctx context.Context, key, text string, customer issue.Ac
 			return comment, moved, nil
 		}
 		told, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-			return events.EmitInTenant(ctx, tx, events.TopicRequestStaysDone, map[string]any{
+			return events.Emit(ctx, tx, events.TopicRequestStaysDone, map[string]any{
 				"key": found.Key, "actorId": customer.UserID, "commentId": comment.ID, "status": found.Status.Name,
 			})
 		})

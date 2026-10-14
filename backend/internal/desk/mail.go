@@ -17,7 +17,6 @@ import (
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/mail"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Mail, Mailer and SMTPMailer live in the mail package now; the desk keeps
@@ -201,10 +200,7 @@ func (n *Notifier) recipients(ctx context.Context, a *about, except uuid.UUID) (
 // agent's public reply, who took it on, its resolution, and being added to
 // follow it. Anything else is not theirs to hear about.
 func (n *Notifier) Handle(ctx context.Context, e events.Event) error {
-	if e.OrgID == uuid.Nil {
-		return nil
-	}
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
+	ctx = db.PinPrimary(ctx)
 
 	switch e.Topic {
 	case events.TopicIssueCreated:

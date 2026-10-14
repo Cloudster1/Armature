@@ -187,7 +187,7 @@ func (s *Service) CreateBranch(ctx context.Context, issueKey string, repoID uuid
 			return fmt.Errorf("record branch: %w", err)
 		}
 		out.Repository = repo.Name
-		return events.EmitInTenant(ctx, tx, "vcs.branch.created", map[string]any{
+		return events.Emit(ctx, tx, "vcs.branch.created", map[string]any{
 			"issueKey": found.Key, "repositoryId": repo.ID, "branch": name, "from": from, "actorId": actor,
 		})
 	})

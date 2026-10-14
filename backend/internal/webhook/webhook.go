@@ -23,8 +23,8 @@ import (
 	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/netguard"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 const (
@@ -192,7 +192,8 @@ func (s *Service) Deliveries(ctx context.Context, endpointID uuid.UUID, limit in
 	return out, err
 }
 
-// envelope is what an endpoint receives.
+// envelope is what an endpoint receives. Its orgId is deprecated: it carries the
+// installation's stable id for one more release, then goes (#218).
 type envelope struct {
 	ID         uuid.UUID       `json:"id"`
 	Topic      string          `json:"topic"`
@@ -228,9 +229,13 @@ func (s *Service) Enqueue(ctx context.Context, endpointID uuid.UUID, e events.Ev
 	if len(e.Payload) == 0 {
 		e.Payload = json.RawMessage(`{}`)
 	}
-	body, _ := json.Marshal(envelope{ID: e.ID, Topic: e.Topic, OrgID: e.OrgID, OccurredAt: s.now().UTC(), Payload: withoutSecrets(e.Payload)})
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `
+		installationID, err := installation.ID(ctx, tx)
+		if err != nil {
+			return err
+		}
+		body, _ := json.Marshal(envelope{ID: e.ID, Topic: e.Topic, OrgID: installationID, OccurredAt: s.now().UTC(), Payload: withoutSecrets(e.Payload)})
+		_, err = tx.Exec(ctx, `
 			INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, attempt, request_body, next_attempt_at)
 			VALUES (current_org_id(), $1, $2, $3, 1, $4, now())
 			ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`, endpointID, e.ID, e.Topic, body)
@@ -242,10 +247,10 @@ func (s *Service) Enqueue(ctx context.Context, endpointID uuid.UUID, e events.Ev
 // topic gets the event queued. The automation's own topics stay inside: an
 // endpoint that took them and posted to an incoming hook would feed itself.
 func (s *Service) Handle(ctx context.Context, e events.Event) error {
-	if e.OrgID == uuid.Nil || e.Topic == "" || strings.HasPrefix(e.Topic, "automation.") {
+	if e.Topic == "" || strings.HasPrefix(e.Topic, "automation.") {
 		return nil
 	}
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
+	ctx = db.PinPrimary(ctx)
 	var ids []uuid.UUID
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `SELECT id FROM webhook_endpoint WHERE enabled AND ($1 = ANY(topics) OR $2 = ANY(topics))`, e.Topic, TopicAny)
@@ -275,7 +280,7 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 
 // Test posts a ping to the endpoint now and returns the attempt as logged.
 func (s *Service) Test(ctx context.Context, endpointID uuid.UUID) (*Delivery, db.LSN, error) {
-	lsn, err := s.Enqueue(ctx, endpointID, events.Event{ID: uuid.New(), OrgID: mustOrg(ctx), Topic: TopicPing, Payload: json.RawMessage(`{"message":"Armature can reach this address."}`)})
+	lsn, err := s.Enqueue(ctx, endpointID, events.Event{ID: uuid.New(), Topic: TopicPing, Payload: json.RawMessage(`{"message":"Armature can reach this address."}`)})
 	if err != nil {
 		return nil, 0, err
 	}
@@ -318,9 +323,4 @@ func (s *Service) Redeliver(ctx context.Context, deliveryID uuid.UUID) (*Deliver
 	}
 	sent, outcome, err := s.attempt(db.PinPrimary(ctx), made)
 	return sent, max(lsn, outcome), err
-}
-
-func mustOrg(ctx context.Context) uuid.UUID {
-	org, _ := tenant.FromContext(ctx)
-	return org.ID
 }

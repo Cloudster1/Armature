@@ -7,7 +7,7 @@ import (
 )
 
 // Scope is the one desk a session that came through an open door may see. It
-// travels on the context like the tenant, since every portal read has to ask.
+// travels on the context, since every portal read has to ask.
 type Scope struct {
 	ProjectID  uuid.UUID
 	ProjectKey string

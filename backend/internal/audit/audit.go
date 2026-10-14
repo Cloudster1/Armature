@@ -1,6 +1,6 @@
 // Package audit is the organization's record of who did what to it: the
 // administrative events copied off the stream, plus the acts the stream never
-// sees because they happen before or beside a tenant, such as a sign-in.
+// sees because they happen before anybody is signed in, such as a sign-in.
 package audit
 
 import (
@@ -19,7 +19,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // MaxPage caps one page of the log, since an export exists for the rest.
@@ -40,6 +39,16 @@ type Entry struct {
 // Write records an entry for an organization inside the caller's transaction,
 // so the act and its record cannot disagree.
 func Write(ctx context.Context, tx db.DBTX, orgID uuid.UUID, e Entry) error {
+	return write(ctx, tx, &orgID, e)
+}
+
+// Record is Write for the installation, which a row that names no organization
+// belongs to (#218).
+func Record(ctx context.Context, tx db.DBTX, e Entry) error {
+	return write(ctx, tx, nil, e)
+}
+
+func write(ctx context.Context, tx db.DBTX, orgID *uuid.UUID, e Entry) error {
 	if strings.TrimSpace(e.Action) == "" {
 		return errors.New("an audit entry needs an action")
 	}
@@ -56,22 +65,13 @@ func Write(ctx context.Context, tx db.DBTX, orgID uuid.UUID, e Entry) error {
 	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO audit_log (org_id, actor_user_id, action, target_type, target_id, data, ip, event_id)
-		VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::inet, $8)
+		VALUES (COALESCE($1, current_org_id()), $2, $3, $4, $5, $6, NULLIF($7, '')::inet, $8)
 		ON CONFLICT (event_id) WHERE event_id IS NOT NULL DO NOTHING`,
 		orgID, actor, e.Action, e.TargetType, e.TargetID, data, e.IP, e.EventID)
 	if err != nil {
 		return fmt.Errorf("write audit log: %w", err)
 	}
 	return nil
-}
-
-// Record is Write for a caller already inside a tenant.
-func Record(ctx context.Context, tx db.DBTX, e Entry) error {
-	org, ok := tenant.FromContext(ctx)
-	if !ok {
-		return errors.New("an audit entry needs an organization")
-	}
-	return Write(ctx, tx, org.ID, e)
 }
 
 // Row is one line of the log as an administrator reads it.
@@ -289,7 +289,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 // event's id is unique in the log.
 func (c *Consumer) Handle(ctx context.Context, e events.Event) error {
 	target, ok := Copied[e.Topic]
-	if !ok || e.OrgID == uuid.Nil || e.ID == uuid.Nil {
+	if !ok || e.ID == uuid.Nil {
 		return nil
 	}
 	var p map[string]any
@@ -306,7 +306,7 @@ func (c *Consumer) Handle(ctx context.Context, e events.Event) error {
 			break
 		}
 	}
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
+	ctx = db.PinPrimary(ctx)
 	_, err := c.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if entry.Actor != uuid.Nil {
 			// The act is copied after the fact; one whose actor is gone by now
@@ -319,7 +319,7 @@ func (c *Consumer) Handle(ctx context.Context, e events.Event) error {
 				entry.Actor = uuid.Nil
 			}
 		}
-		return Write(ctx, tx, e.OrgID, entry)
+		return Record(ctx, tx, entry)
 	})
 	return err
 }

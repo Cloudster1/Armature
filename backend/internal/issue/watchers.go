@@ -12,7 +12,6 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Watcher is somebody who is told about an issue. A mail address is enough to
@@ -129,7 +128,7 @@ func (s *Service) watch(ctx context.Context, tx db.DBTX, issueID uuid.UUID, issu
 	if tag.RowsAffected() == 0 {
 		return "", nil
 	}
-	return secret, events.EmitInTenant(ctx, tx, events.TopicWatcherAdded, map[string]any{
+	return secret, events.Emit(ctx, tx, events.TopicWatcherAdded, map[string]any{
 		"issueId": issueID, "key": issueKey, "userId": userID, "actorId": actor.UserID, "token": secret,
 	})
 }
@@ -152,21 +151,10 @@ func (s *Service) RemoveWatcher(ctx context.Context, key string, userID uuid.UUI
 	})
 }
 
-// Unwatch ends a watching by the token a mail carried. Nobody is signed in,
-// so the token names the organization first, and the row goes inside it.
+// Unwatch ends a watching by the token a mail carried; nobody is signed in.
 func (s *Service) Unwatch(ctx context.Context, token string) (db.LSN, error) {
 	digest := auth.HashToken(token)
-	var orgID uuid.UUID
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT org_id FROM issue_watcher WHERE unwatch_token_hash = $1`, digest).Scan(&orgID)
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, ErrNotWatching
-	}
-	if err != nil {
-		return 0, err
-	}
-	return s.db.Write(db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID})), func(ctx context.Context, tx db.DBTX) error {
+	return s.db.Write(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
 		tag, err := tx.Exec(ctx, `DELETE FROM issue_watcher WHERE unwatch_token_hash = $1`, digest)
 		if err != nil {
 			return err

@@ -8,7 +8,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // absencesPath is the page where a person finds their own absences.
@@ -52,7 +51,7 @@ func (f *FanOut) handleAbsence(ctx context.Context, e events.Event, p payload) e
 	if _, ok := absenceTell(e.Topic, p, ""); !ok {
 		return nil
 	}
-	ctx = db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}))
+	ctx = db.PinPrimary(ctx)
 	var (
 		actor  string
 		member bool

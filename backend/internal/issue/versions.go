@@ -78,7 +78,7 @@ func (s *Service) SetVersions(ctx context.Context, key string, fix, affects []uu
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": id, "key": updated.Key, "changes": changes, "actorId": actor.UserID,
 		})
 	})
@@ -115,7 +115,7 @@ func (s *Service) SetComponents(ctx context.Context, key string, ids []uuid.UUID
 		if err := s.recordHistory(ctx, tx, id, actor.UserID, changes); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
 			"issueId": id, "key": updated.Key, "changes": changes, "actorId": actor.UserID,
 		})
 	})

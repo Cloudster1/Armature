@@ -165,8 +165,8 @@ type AcceptInviteInput struct {
 }
 
 // AcceptInvite consumes an invitation, creating the account if needed, adding
-// the membership and opening a session. It runs before the accepting user has
-// any tenant scope of their own, so it takes the admin path.
+// the membership and opening a session. It runs before the accepting user is
+// signed in, so it takes the admin path.
 func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Credentials, error) {
 	var (
 		principal Principal
@@ -292,7 +292,7 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 		if err := writeAudit(ctx, tx, orgID, userID, "member.joined", "user", &userID, in.IP); err != nil {
 			return err
 		}
-		return events.Emit(ctx, tx, orgID, events.TopicMemberJoined, map[string]any{
+		return events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{
 			"orgId":  orgID,
 			"userId": userID,
 			"role":   role,

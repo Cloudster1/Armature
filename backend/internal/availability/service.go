@@ -139,7 +139,7 @@ func (s *Service) CreateCalendar(ctx context.Context, in CalendarInput, actor uu
 		if out, err = reload(ctx, tx, id); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "holiday_calendar.created", map[string]any{
+		return events.Emit(ctx, tx, "holiday_calendar.created", map[string]any{
 			"id": id, "name": name, "default": makeDefault, "actorId": actor,
 		})
 	})
@@ -188,7 +188,7 @@ func (s *Service) UpdateCalendar(ctx context.Context, id uuid.UUID, in CalendarI
 		if out, err = reload(ctx, tx, id); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "holiday_calendar.updated", map[string]any{
+		return events.Emit(ctx, tx, "holiday_calendar.updated", map[string]any{
 			"id": id, "name": out.Name, "default": out.Default, "actorId": actor,
 		})
 	})
@@ -212,7 +212,7 @@ func (s *Service) DeleteCalendar(ctx context.Context, id uuid.UUID, actor uuid.U
 		if _, err := tx.Exec(ctx, `DELETE FROM holiday_calendar WHERE id = $1`, id); err != nil {
 			return fmt.Errorf("delete holiday calendar: %w", err)
 		}
-		return events.EmitInTenant(ctx, tx, "holiday_calendar.deleted", map[string]any{
+		return events.Emit(ctx, tx, "holiday_calendar.deleted", map[string]any{
 			"id": id, "name": found.Name, "actorId": actor,
 		})
 	})
@@ -238,7 +238,7 @@ func (s *Service) ReplaceDays(ctx context.Context, id uuid.UUID, days []Holiday,
 		if out, err = reload(ctx, tx, id); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "holiday_calendar.days_changed", map[string]any{
+		return events.Emit(ctx, tx, "holiday_calendar.days_changed", map[string]any{
 			"id": id, "days": len(days), "actorId": actor,
 		})
 	})
@@ -269,7 +269,7 @@ func (s *Service) Import(ctx context.Context, id uuid.UUID, file io.Reader, acto
 		if len(out.Days) > MaxDays {
 			return fmt.Errorf("%w: the calendar would hold more than %d days; remove past years first, or import into a new calendar", ErrBadFile, MaxDays)
 		}
-		return events.EmitInTenant(ctx, tx, "holiday_calendar.days_changed", map[string]any{
+		return events.Emit(ctx, tx, "holiday_calendar.days_changed", map[string]any{
 			"id": id, "days": len(out.Days), "imported": len(days), "actorId": actor,
 		})
 	})
@@ -406,7 +406,7 @@ func (s *Service) SaveWorkingWeek(ctx context.Context, userID uuid.UUID, in Week
 		if out, err = readWeek(ctx, tx, userID); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "working_week.saved", map[string]any{
+		return events.Emit(ctx, tx, "working_week.saved", map[string]any{
 			"userId": userID, "calendarId": in.CalendarID, "minutes": minutes, "actorId": actor,
 		})
 	})

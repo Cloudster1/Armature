@@ -174,8 +174,8 @@ at; a reader who just wrote is pinned to a replica caught up past it, or to the
 primary. The API connects as a role that is neither owner nor superuser.
 Inside an installation the walls are projects, kept by the API and by
 triggers on the tables; there is no row level security. The tables still
-carry `org_id` for the one organization kept inside, until the schema drops
-it. Events are written to an outbox table in the
+carry `org_id` until the schema drops it, and a row written without one is
+the installation's by default. Events are written to an outbox table in the
 same transaction as the change and relayed to Redis, so an event never describes
 a transaction that rolled back.
 

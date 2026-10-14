@@ -95,7 +95,7 @@ func TestReplicaDownAtStartJoinsWhenItReturns(t *testing.T) {
 	}
 	t.Cleanup(cluster.Close)
 
-	_, ctx := h.installation()
+	ctx := context.Background()
 	read := func(t *testing.T) {
 		t.Helper()
 		if err := cluster.Read(ctx, func(ctx context.Context, tx db.DBTX) error {

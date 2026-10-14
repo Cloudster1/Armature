@@ -13,7 +13,6 @@ import (
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/installation"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Administrators manage every account of the installation. app_user has no
@@ -130,7 +129,7 @@ func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 func (s *Service) ManagedUsers(ctx context.Context, orgID uuid.UUID, actorRole OrgRole) ([]ManagedUser, error) {
 	out := []ManagedUser{}
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		automation, err := automationOf(ctx, tx, orgID)
+		automation, err := installation.AutomationUser(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -152,7 +151,7 @@ func (s *Service) ManagedUsers(ctx context.Context, orgID uuid.UUID, actorRole O
 }
 
 func readManaged(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, actorRole OrgRole) (managedRow, error) {
-	automation, err := automationOf(ctx, tx, orgID)
+	automation, err := installation.AutomationUser(ctx, tx)
 	if err != nil {
 		return managedRow{}, err
 	}
@@ -161,11 +160,6 @@ func readManaged(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, actor
 		return r, ErrNoSuchUser
 	}
 	return r, err
-}
-
-// automationOf is the organization's automation account, which is never one of its people.
-func automationOf(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*uuid.UUID, error) {
-	return installation.AutomationUser(tenant.WithOrg(ctx, tenant.Org{ID: orgID}), tx)
 }
 
 // guardManaged is what every change to somebody else's account asks first.
@@ -262,7 +256,7 @@ func (s *Service) CreateLocalUser(ctx context.Context, orgID uuid.UUID, in Creat
 		if err := writeAudit(ctx, tx, orgID, actor, "member.created", "user", &userID, ip); err != nil {
 			return err
 		}
-		if err := events.Emit(ctx, tx, orgID, events.TopicMemberJoined, map[string]any{
+		if err := events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{
 			"orgId":  orgID,
 			"userId": userID,
 			"role":   in.Role,
@@ -447,19 +441,16 @@ func endEverySession(ctx context.Context, tx db.DBTX, userID uuid.UUID, keep *uu
 	return nil
 }
 
-// SoleActiveAdministratorOf names an organization the person alone administers
-// while active, or "". A trigger asks the same, so a write that forgets is refused.
+// SoleActiveAdministratorOf names the installation when the person alone
+// administers it while active, or "". A trigger asks the same, so a write that forgets is refused.
 func SoleActiveAdministratorOf(ctx context.Context, tx db.DBTX, userID uuid.UUID) (string, error) {
-	var name string
+	var alone bool
 	err := tx.QueryRow(ctx, `
-		SELECT o.name FROM org_member m JOIN org o ON o.id = m.org_id
-		WHERE m.user_id = $1 AND m.org_role IN ('owner', 'admin') AND o.archived_at IS NULL
-		  AND NOT EXISTS (SELECT 1 FROM org_member x JOIN app_user xu ON xu.id = x.user_id
-		                  WHERE x.org_id = m.org_id AND x.org_role IN ('owner', 'admin')
-		                    AND x.user_id <> $1 AND xu.is_active)
-		ORDER BY o.name LIMIT 1`, userID).Scan(&name)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
+		SELECT EXISTS (SELECT 1 FROM org_member WHERE user_id = $1 AND org_role IN ('owner', 'admin'))
+		   AND NOT EXISTS (SELECT 1 FROM org_member x JOIN app_user xu ON xu.id = x.user_id
+		                   WHERE x.org_role IN ('owner', 'admin') AND x.user_id <> $1 AND xu.is_active)`, userID).Scan(&alone)
+	if err != nil || !alone {
+		return "", err
 	}
-	return name, err
+	return installation.Name(ctx, tx)
 }

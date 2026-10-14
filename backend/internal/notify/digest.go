@@ -14,7 +14,6 @@ import (
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/mail"
 	"github.com/armature/armature/backend/internal/observability"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // DailyDigestHour is when a daily bundle goes out, in the server's clock.
@@ -62,23 +61,21 @@ func (d *Digest) Run(ctx context.Context) error {
 	}
 }
 
-// Once mails everyone whose bundle is due and returns how many went. Finding
-// them crosses tenants; each bundle is read and cleared inside its own.
+// Once mails everyone whose bundle is due and returns how many went.
 func (d *Digest) Once(ctx context.Context) (int, error) {
-	type waiting struct{ orgID, userID uuid.UUID }
-	var found []waiting
+	var found []uuid.UUID
 	err := d.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `SELECT DISTINCT org_id, user_id FROM notification_digest ORDER BY org_id, user_id`)
+		rows, err := tx.Query(ctx, `SELECT DISTINCT user_id FROM notification_digest ORDER BY user_id`)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var w waiting
-			if err := rows.Scan(&w.orgID, &w.userID); err != nil {
+			var userID uuid.UUID
+			if err := rows.Scan(&userID); err != nil {
 				return err
 			}
-			found = append(found, w)
+			found = append(found, userID)
 		}
 		return rows.Err()
 	})
@@ -87,11 +84,10 @@ func (d *Digest) Once(ctx context.Context) (int, error) {
 	}
 	now := d.now()
 	sent := 0
-	for _, w := range found {
-		orgCtx := db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: w.orgID}))
-		ok, err := d.send(orgCtx, w.orgID, w.userID, now)
+	for _, userID := range found {
+		ok, err := d.send(db.PinPrimary(ctx), userID, now)
 		if err != nil {
-			d.log.Warn("could not send a digest", "user", w.userID, "error", err)
+			d.log.Warn("could not send a digest", "user", userID, "error", err)
 			continue
 		}
 		if ok {
@@ -101,7 +97,7 @@ func (d *Digest) Once(ctx context.Context) (int, error) {
 	return sent, nil
 }
 
-// due is given when this organization last sent the bundle. A daily one goes
+// due is given when the bundle last went. A daily one goes
 // at any pass from the digest hour on, so a missed hour does not skip a day.
 func due(digest string, last, now time.Time) bool {
 	switch digest {
@@ -120,12 +116,12 @@ func due(digest string, last, now time.Time) bool {
 // claimDigest moves the record of the last bundle on only if it still says
 // what this pass read, so of two workers in one pass only one mails.
 const claimDigest = `
-	INSERT INTO notification_digest_sent (org_id, user_id, last_sent_at) VALUES ($1, $2, $3)
+	INSERT INTO notification_digest_sent (user_id, last_sent_at) VALUES ($1, $2)
 	ON CONFLICT (user_id) DO UPDATE SET last_sent_at = EXCLUDED.last_sent_at
-	 WHERE notification_digest_sent.last_sent_at IS NOT DISTINCT FROM $4
+	 WHERE notification_digest_sent.last_sent_at IS NOT DISTINCT FROM $3
 	RETURNING true`
 
-func (d *Digest) send(ctx context.Context, orgID, userID uuid.UUID, now time.Time) (bool, error) {
+func (d *Digest) send(ctx context.Context, userID uuid.UUID, now time.Time) (bool, error) {
 	var (
 		prefs Preferences
 		to    string
@@ -175,7 +171,7 @@ func (d *Digest) send(ctx context.Context, orgID, userID uuid.UUID, now time.Tim
 	// queue roll back and the next pass tries again.
 	claimed := false
 	_, err = d.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		err := tx.QueryRow(ctx, claimDigest, orgID, userID, now, last).Scan(&claimed)
+		err := tx.QueryRow(ctx, claimDigest, userID, now, last).Scan(&claimed)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}

@@ -108,12 +108,12 @@ func TestAHangingWebhookDoesNotHoldUpAnotherEndpoint(t *testing.T) {
 	// The hanging endpoint's deliveries are queued first, so they are first
 	// in line as well.
 	for range hangingQueue {
-		if err := hooks.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{}`)}); err != nil {
+		if err := hooks.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{}`)}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	fastEvent := uuid.New()
-	if err := hooks.Handle(context.Background(), events.Event{ID: fastEvent, OrgID: ws.orgID, Topic: events.TopicIssueUpdated, Payload: json.RawMessage(`{}`)}); err != nil {
+	if err := hooks.Handle(context.Background(), events.Event{ID: fastEvent, Topic: events.TopicIssueUpdated, Payload: json.RawMessage(`{}`)}); err != nil {
 		t.Fatal(err)
 	}
 

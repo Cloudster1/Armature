@@ -22,7 +22,7 @@ func TestReadsReachTheReplica(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	_, ctx := h.installation()
+	ctx := context.Background()
 
 	before := h.cluster.Stats()
 	for range 5 {
@@ -53,7 +53,7 @@ func TestReadsReachTheReplica(t *testing.T) {
 func TestWriteReportsThePositionPastItsCommit(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	orgID, ctx := h.installation()
+	orgID, ctx := h.installation(), context.Background()
 
 	var inside db.LSN
 	after, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -83,7 +83,7 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.installation()
+	orgID, ctx := h.installation(), context.Background()
 
 	// Let the replica see the organization itself before we freeze it, so the
 	// only thing it is missing is the write made below.
@@ -173,7 +173,7 @@ func TestLaggingReplicaLeavesTheRotation(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.installation()
+	orgID, ctx := h.installation(), context.Background()
 
 	h.pauseReplay(t)
 
@@ -225,7 +225,7 @@ func TestIdleReplicaStaysHealthy(t *testing.T) {
 	if h.replica == nil {
 		t.Skip("no replica configured")
 	}
-	orgID, ctx := h.installation()
+	orgID, ctx := h.installation(), context.Background()
 
 	lsn, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `

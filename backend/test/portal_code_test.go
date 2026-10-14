@@ -88,7 +88,7 @@ func TestAMailAddressIsEnoughToRaiseARequest(t *testing.T) {
 	}
 	payload, _ := json.Marshal(map[string]any{"key": key, "actorId": requesterID})
 	before := len(api.mailer.sent)
-	if err := api.notifier.Handle(context.Background(), events.Event{OrgID: orgID, Topic: events.TopicIssueCreated, Payload: payload}); err != nil {
+	if err := api.notifier.Handle(context.Background(), events.Event{Topic: events.TopicIssueCreated, Payload: payload}); err != nil {
 		t.Fatal(err)
 	}
 	if len(api.mailer.sent) != before+1 {

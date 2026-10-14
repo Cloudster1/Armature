@@ -17,12 +17,11 @@ const (
 	pool      = 8
 )
 
-// queueFor makes n deliveries to one endpoint of one organization.
+// queueFor makes n deliveries to one endpoint.
 func queueFor(endpoint uuid.UUID, n int) []due {
-	org := uuid.New()
 	out := make([]due, n)
 	for i := range out {
-		out[i] = due{orgID: org, endpointID: endpoint, id: uuid.New()}
+		out[i] = due{endpointID: endpoint, id: uuid.New()}
 	}
 	return out
 }

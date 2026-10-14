@@ -151,7 +151,7 @@ func run() error {
 	if err := seedThemes(ctx, cluster, store, creds, log); err != nil {
 		return err
 	}
-	if err := demo.Holidays(db.PinPrimary(auth.ContextForOrg(ctx, creds.Principal)), cluster, creds.Principal.User.ID, time.Now().UTC()); err != nil {
+	if err := demo.Holidays(db.PinPrimary(ctx), cluster, creds.Principal.User.ID, time.Now().UTC()); err != nil {
 		return err
 	}
 
@@ -172,13 +172,13 @@ const (
 // the provider owns who is in a group, the tracker decides what a group may
 // do. It is safe to run again; what exists is left as it is.
 func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials, log *slog.Logger) error {
-	orgCtx := db.PinPrimary(auth.ContextForOrg(ctx, creds.Principal))
+	ctx = db.PinPrimary(ctx)
 	issuer := keycloakIssuer
 	if fromEnv := os.Getenv("ARMATURE_KEYCLOAK_ISSUER"); fromEnv != "" {
 		issuer = fromEnv
 	}
 	sso := oidc.NewService(cluster, "")
-	if _, _, err := sso.Save(orgCtx, creds.Principal.Org.ID, oidc.Provider{
+	if _, _, err := sso.Save(ctx, creds.Principal.Org.ID, oidc.Provider{
 		Issuer: issuer, ClientID: keycloakClientID, ClientSecret: keycloakClientSecret,
 		GroupsClaim: "groups", Scopes: "openid profile email", CreateGroups: true, Enabled: true,
 	}, creds.Principal.User.ID); err != nil {
@@ -186,7 +186,7 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 	}
 
 	perms := perm.NewStore(cluster)
-	existing, err := perms.Groups(orgCtx)
+	existing, err := perms.Groups(ctx)
 	if err != nil {
 		return err
 	}
@@ -212,11 +212,11 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 		if _, exists := byRef[m.group]; exists {
 			continue
 		}
-		group, _, err := perms.CreateGroup(orgCtx, perm.GroupInput{Name: m.group, Description: m.description, ExternalRef: m.group}, creds.Principal.User.ID)
+		group, _, err := perms.CreateGroup(ctx, perm.GroupInput{Name: m.group, Description: m.description, ExternalRef: m.group}, creds.Principal.User.ID)
 		if err != nil {
 			return fmt.Errorf("group %s: %w", m.group, err)
 		}
-		if _, _, err := perms.Grant(orgCtx, perm.GrantInput{Role: m.role, ProjectKey: m.projectKey, GroupID: &group.ID}, creds.Principal.User.ID); err != nil {
+		if _, _, err := perms.Grant(ctx, perm.GrantInput{Role: m.role, ProjectKey: m.projectKey, GroupID: &group.ID}, creds.Principal.User.ID); err != nil {
 			return fmt.Errorf("grant %s to %s: %w", m.role, m.group, err)
 		}
 		made++
@@ -225,7 +225,7 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 	// Joining by invitation grants the ordinary member role directly. For the
 	// people who sign in through Keycloak that would hide what their groups
 	// grant, so their direct grants go; the owner keeps hers.
-	people, err := membersByEmail(orgCtx, cluster)
+	people, err := membersByEmail(ctx, cluster)
 	if err != nil {
 		return err
 	}
@@ -235,14 +235,14 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 			fromGroups[id] = true
 		}
 	}
-	assignments, err := perms.Assignments(orgCtx, "")
+	assignments, err := perms.Assignments(ctx, "")
 	if err != nil {
 		return err
 	}
 	revoked := 0
 	for _, a := range assignments {
 		if a.UserID != nil && fromGroups[*a.UserID] {
-			if _, err := perms.Revoke(orgCtx, a.ID, creds.Principal.User.ID); err != nil {
+			if _, err := perms.Revoke(ctx, a.ID, creds.Principal.User.ID); err != nil {
 				return fmt.Errorf("revoke the direct grant of %s to %s: %w", a.Role, a.UserName, err)
 			}
 			revoked++
@@ -255,12 +255,11 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 // seedMembers invites and accepts the demo teammates, skipping any that are
 // already there.
 func seedMembers(ctx context.Context, svc *auth.Service, creds *auth.Credentials, teammates []demoUser, log *slog.Logger) error {
-	orgCtx := auth.ContextForOrg(ctx, creds.Principal)
 
 	// Both the invitation and its acceptance upsert, so re-running this simply
 	// confirms the memberships that are already there.
 	for _, u := range teammates {
-		_, token, _, err := svc.CreateInvite(orgCtx, u.email, u.role, creds.Principal.User.ID, 30*24*time.Hour)
+		_, token, _, err := svc.CreateInvite(ctx, u.email, u.role, creds.Principal.User.ID, 30*24*time.Hour)
 		if errors.Is(err, auth.ErrAlreadyMember) {
 			continue
 		}
@@ -289,7 +288,7 @@ func seedMembers(ctx context.Context, svc *auth.Service, creds *auth.Credentials
 // different points in the workflow, so the first thing anybody sees is a
 // product with something in it rather than an empty state.
 func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials, store attachment.Store, log *slog.Logger) error {
-	orgCtx := db.PinPrimary(auth.ContextForOrg(ctx, creds.Principal))
+	ctx = db.PinPrimary(ctx)
 
 	engine := workflow.NewEngine(workflow.NewDefaultRegistry())
 	// The same provisioner the API uses, so the demo project gets a board.
@@ -300,7 +299,7 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 
 	// A scrum project, because the demo runs sprints: its boards show the
 	// sprint in flight, and the kanban board added below shows the contrast.
-	created, _, err := templates.Create(orgCtx, "scrum", project.CreateInput{
+	created, _, err := templates.Create(ctx, "scrum", project.CreateInput{
 		Key:         "CP",
 		Name:        "Customer Portal",
 		Description: "The account area customers sign in to.",
@@ -310,27 +309,27 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 		log.Info("demo project already exists, leaving its issues alone")
 		// What was added to the demo later is topped up, so a stack seeded
 		// before it existed still gets it.
-		keys, err := existingKeys(orgCtx, cluster, "CP")
+		keys, err := existingKeys(ctx, cluster, "CP")
 		if err != nil {
 			return err
 		}
-		if err := seedMilestones(orgCtx, cluster, issues, "CP", keys, actor, log); err != nil {
+		if err := seedMilestones(ctx, cluster, issues, "CP", keys, actor, log); err != nil {
 			return err
 		}
-		return seedGitea(orgCtx, cluster, issues, "CP", keys, actor, log)
+		return seedGitea(ctx, cluster, issues, "CP", keys, actor, log)
 	}
 	if err != nil {
 		return fmt.Errorf("create demo project: %w", err)
 	}
 
-	types, err := issueTypeIDs(orgCtx, cluster)
+	types, err := issueTypeIDs(ctx, cluster)
 	if err != nil {
 		return err
 	}
 
 	// Before any issue exists, so every bug below opens in the workflow the
 	// project chose for bugs rather than in the one it was about to inherit.
-	if err := seedWorkflowOverride(orgCtx, cluster, created.Key, types, actor.UserID, log); err != nil {
+	if err := seedWorkflowOverride(ctx, cluster, created.Key, types, actor.UserID, log); err != nil {
 		return err
 	}
 
@@ -393,14 +392,14 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 		if w.description != "" {
 			in.Description = paragraphs(w.description)
 		}
-		created, _, err := issues.Create(orgCtx, in, actor)
+		created, _, err := issues.Create(ctx, in, actor)
 		if err != nil {
 			return fmt.Errorf("create demo issue %q: %w", w.summary, err)
 		}
 		keys[w.summary] = created.Key
 
 		for _, name := range w.advance {
-			available, err := issues.Transitions(orgCtx, created.Key, actor)
+			available, err := issues.Transitions(ctx, created.Key, actor)
 			if err != nil {
 				return fmt.Errorf("list transitions for %s: %w", created.Key, err)
 			}
@@ -413,7 +412,7 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 			if id == uuid.Nil {
 				return fmt.Errorf("transition %q is not available on %s", name, created.Key)
 			}
-			if _, _, err := issues.Transition(orgCtx, created.Key, issue.TransitionInput{
+			if _, _, err := issues.Transition(ctx, created.Key, issue.TransitionInput{
 				TransitionID: id,
 			}, actor); err != nil {
 				return fmt.Errorf("transition %s through %q: %w", created.Key, name, err)
@@ -422,7 +421,7 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 		log.Info("seeded issue", "key", created.Key, "type", w.typeName, "summary", w.summary)
 	}
 
-	formed, err := seedTeams(orgCtx, cluster, issues, created.Key, keys, actor, log)
+	formed, err := seedTeams(ctx, cluster, issues, created.Key, keys, actor, log)
 	if err != nil {
 		return err
 	}
@@ -431,24 +430,24 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 	// committed to them is theirs. The portal team has a backlog and has not
 	// planned a sprint yet, which is the other half of what teams are for.
 	platform := formed["Platform"]
-	if err := seedSprints(orgCtx, cluster, issues, created.Key, keys, &platform, actor, log); err != nil {
+	if err := seedSprints(ctx, cluster, issues, created.Key, keys, &platform, actor, log); err != nil {
 		return err
 	}
 
-	if err := seedMilestones(orgCtx, cluster, issues, created.Key, keys, actor, log); err != nil {
+	if err := seedMilestones(ctx, cluster, issues, created.Key, keys, actor, log); err != nil {
 		return err
 	}
 
 	// One real dependency, deliberately scheduled too early, so the plan opens
 	// with something worth noticing rather than an unbroken row of green.
-	if _, _, err := issues.AddLink(orgCtx, keys["Add password reset by email"], issue.LinkInput{
+	if _, _, err := issues.AddLink(ctx, keys["Add password reset by email"], issue.LinkInput{
 		TypeName:  issue.LinkTypeBlocks,
 		TargetKey: keys["Session expires without warning the user"],
 	}, actor); err != nil {
 		return fmt.Errorf("link the demo dependency: %w", err)
 	}
 
-	if err := seedAccess(orgCtx, cluster, created.Key, formed, log); err != nil {
+	if err := seedAccess(ctx, cluster, created.Key, formed, log); err != nil {
 		return err
 	}
 
@@ -457,13 +456,13 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 	// empty. Switching that board to kanban puts the two types side by side:
 	// this one shows everything, the team boards show their sprints.
 	boards := board.NewService(cluster, issues)
-	opening, err := boards.ForProject(orgCtx, created.Key)
+	opening, err := boards.ForProject(ctx, created.Key)
 	if err != nil {
 		return fmt.Errorf("find the demo project's board: %w", err)
 	}
 	kanban := board.TypeKanban
 	description := "Every card in the project, whatever sprint it is in."
-	if _, _, err := boards.UpdateBoard(orgCtx, opening.ID, board.UpdateBoardInput{
+	if _, _, err := boards.UpdateBoard(ctx, opening.ID, board.UpdateBoardInput{
 		Type: &kanban, Description: &description,
 	}, actor.UserID); err != nil {
 		return fmt.Errorf("make the demo's opening board kanban: %w", err)
@@ -471,7 +470,7 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 
 	// And a second project from another template, so the list shows what a
 	// template changes rather than one project that could have been anything.
-	if _, _, err := templates.Create(orgCtx, "task-tracking", project.CreateInput{
+	if _, _, err := templates.Create(ctx, "task-tracking", project.CreateInput{
 		Key:         "OPS",
 		Name:        "Office operations",
 		Description: "Everything that keeps the lights on.",
@@ -482,7 +481,7 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 
 	// And a third from the default template, so the list shows all four
 	// shapes and what each leaves out.
-	if _, _, err := templates.Create(orgCtx, "kanban", project.CreateInput{
+	if _, _, err := templates.Create(ctx, "kanban", project.CreateInput{
 		Key:         "WEB",
 		Name:        "Website",
 		Description: "The public site and the blog.",
@@ -491,30 +490,30 @@ func seedWork(ctx context.Context, cluster *db.Cluster, creds *auth.Credentials,
 		return fmt.Errorf("create the kanban demo project: %w", err)
 	}
 
-	if err := seedRepository(orgCtx, cluster, issues, created.Key, keys, actor, log); err != nil {
+	if err := seedRepository(ctx, cluster, issues, created.Key, keys, actor, log); err != nil {
 		return err
 	}
-	if err := seedGitea(orgCtx, cluster, issues, created.Key, keys, actor, log); err != nil {
-		return err
-	}
-
-	if err := seedDesk(orgCtx, cluster, issues, templates, actor, log); err != nil {
+	if err := seedGitea(ctx, cluster, issues, created.Key, keys, actor, log); err != nil {
 		return err
 	}
 
-	if _, _, err := issues.AddComment(orgCtx, "CP-1",
+	if err := seedDesk(ctx, cluster, issues, templates, actor, log); err != nil {
+		return err
+	}
+
+	if _, _, err := issues.AddComment(ctx, "CP-1",
 		issue.TextDocument("Reproduced on staging. The validator rejects anything with a plus sign."),
 		actor); err != nil {
 		return fmt.Errorf("add demo comment: %w", err)
 	}
 
-	if err := seedFields(orgCtx, cluster, created.Key, keys, actor, log); err != nil {
+	if err := seedFields(ctx, cluster, created.Key, keys, actor, log); err != nil {
 		return err
 	}
-	if err := seedTimeAndLabels(orgCtx, cluster, issues, keys, actor, log); err != nil {
+	if err := seedTimeAndLabels(ctx, cluster, issues, keys, actor, log); err != nil {
 		return err
 	}
-	if err := seedAttachment(orgCtx, cluster, store, keys, actor, log); err != nil {
+	if err := seedAttachment(ctx, cluster, store, keys, actor, log); err != nil {
 		return err
 	}
 
@@ -1213,7 +1212,7 @@ func printCredentials(email string) {
 // owner, so the themes page has something to pick before anybody draws one.
 func seedThemes(ctx context.Context, cluster *db.Cluster, store attachment.Store, creds *auth.Credentials, log *slog.Logger) error {
 	themes := theme.NewService(cluster, store)
-	ctx = db.PinPrimary(auth.ContextForOrg(ctx, creds.Principal))
+	ctx = db.PinPrimary(ctx)
 	existing, err := themes.List(ctx, creds.Principal.User.ID)
 	if err != nil {
 		return fmt.Errorf("list themes: %w", err)

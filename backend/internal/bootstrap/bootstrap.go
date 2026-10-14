@@ -16,7 +16,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/installation"
-	"github.com/armature/armature/backend/internal/tenant"
 	"github.com/armature/armature/backend/internal/workflow"
 )
 
@@ -196,8 +195,7 @@ func Org(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Result, error) {
 		SELECT id FROM made`, orgID).Scan(&automation); err != nil {
 		return nil, fmt.Errorf("create the automation account: %w", err)
 	}
-	// The new organization is not yet the tenant of the transaction it is made in.
-	if err := installation.SetAutomationUser(tenant.WithOrg(ctx, tenant.Org{ID: orgID}), tx, automation); err != nil {
+	if err := installation.SetAutomationUser(ctx, tx, automation); err != nil {
 		return nil, err
 	}
 

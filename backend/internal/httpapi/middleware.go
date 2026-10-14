@@ -47,7 +47,6 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
 	"github.com/armature/armature/backend/internal/template"
-	"github.com/armature/armature/backend/internal/tenant"
 	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
@@ -162,7 +161,7 @@ func logging(base *slog.Logger) func(http.Handler) http.Handler {
 				"bytes", rec.bytes,
 			}
 			if p := PrincipalFrom(ctx); p != nil {
-				attrs = append(attrs, "user_id", p.User.ID, "org", p.Org.Slug)
+				attrs = append(attrs, "user_id", p.User.ID)
 			}
 			log.Info("request", attrs...)
 		})
@@ -332,7 +331,7 @@ func writeRefused(method string, p *auth.Principal) bool {
 }
 
 // authenticate resolves the caller from a session cookie or bearer token and
-// puts the principal, the tenant scope and the freshness pin on the context.
+// puts the principal and the freshness pin on the context.
 //
 // It never rejects an unauthenticated request: that is requireAuth's job, so
 // that endpoints like login and health can share the same chain.
@@ -347,7 +346,6 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			switch {
 			case err == nil:
 				ctx = context.WithValue(ctx, ctxPrincipal, principal)
-				ctx = tenant.WithOrg(ctx, tenant.Org{ID: principal.Org.ID, Slug: principal.Org.Slug})
 
 				// One more round trip per authenticated request, so that
 				// every later check is a question of memory. Asking the

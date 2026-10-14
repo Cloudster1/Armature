@@ -142,7 +142,7 @@ func (r *Relay) once(ctx context.Context, limit int) (int, error) {
 	var events []Event
 	_, err := r.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT id, org_id, topic, payload, created_at, coalesce(trace_parent, '')
+			SELECT id, topic, payload, created_at, coalesce(trace_parent, '')
 			FROM outbox_event
 			WHERE published_at IS NULL
 			ORDER BY created_at
@@ -154,7 +154,7 @@ func (r *Relay) once(ctx context.Context, limit int) (int, error) {
 		defer rows.Close()
 		for rows.Next() {
 			var e Event
-			if err := rows.Scan(&e.ID, &e.OrgID, &e.Topic, &e.Payload, &e.CreatedAt, &e.Trace); err != nil {
+			if err := rows.Scan(&e.ID, &e.Topic, &e.Payload, &e.CreatedAt, &e.Trace); err != nil {
 				return err
 			}
 			events = append(events, e)
@@ -219,7 +219,6 @@ func (r *Relay) publish(ctx context.Context, e Event) error {
 		Stream: r.stream,
 		Values: map[string]any{
 			"id":      e.ID.String(),
-			"org_id":  e.OrgID.String(),
 			"topic":   e.Topic,
 			"payload": string(e.Payload),
 			"trace":   e.Trace,
@@ -238,6 +237,5 @@ func FromMessage(msg redis.XMessage) Event {
 	}
 	e := Event{Topic: get("topic"), Payload: json.RawMessage(get("payload")), Trace: get("trace")}
 	e.ID, _ = uuid.Parse(get("id"))
-	e.OrgID, _ = uuid.Parse(get("org_id"))
 	return e
 }

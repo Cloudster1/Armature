@@ -15,7 +15,6 @@ import (
 	"github.com/armature/armature/backend/internal/nql"
 	"github.com/armature/armature/backend/internal/observability"
 	"github.com/armature/armature/backend/internal/perm"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 const (
@@ -75,7 +74,7 @@ func due(schedule string, hour int, weekday *int, lastSent *time.Time, now time.
 	return lastSent == nil || lastSent.Before(moment)
 }
 
-// Once mails every due subscription across organizations and returns how many.
+// Once mails every due subscription and returns how many.
 func (s *Subscriptions) Once(ctx context.Context) (int, error) {
 	type row struct {
 		orgID, id, filterID, userID uuid.UUID
@@ -109,8 +108,7 @@ func (s *Subscriptions) Once(ctx context.Context) (int, error) {
 		if !due(r.schedule, r.hour, r.weekday, r.lastSent, now) {
 			continue
 		}
-		orgCtx := db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: r.orgID}))
-		if err := s.send(orgCtx, r.id, r.filterID, r.userID, r.orgID, now); err != nil {
+		if err := s.send(db.PinPrimary(ctx), r.id, r.filterID, r.userID, r.orgID, now); err != nil {
 			s.log.Warn("could not mail a subscription", "subscription", r.id, "error", err)
 			continue
 		}

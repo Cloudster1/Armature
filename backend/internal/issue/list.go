@@ -354,7 +354,7 @@ func (s *Service) Delete(ctx context.Context, key string, actor Actor) (db.LSN, 
 		if _, err := tx.Exec(ctx, `DELETE FROM issue WHERE id = $1`, doomed.ID); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, events.TopicIssueDeleted, map[string]any{
+		return events.Emit(ctx, tx, events.TopicIssueDeleted, map[string]any{
 			"issueId": doomed.ID,
 			"key":     doomed.Key,
 			"actorId": actor.UserID,

@@ -52,7 +52,7 @@ func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 	eventID := uuid.New()
 	payload, _ := json.Marshal(map[string]any{"key": made.Key, "actorId": ws.actor.UserID, "toStatus": "In Progress"})
 	for range 2 {
-		if err := svc.Handle(context.Background(), events.Event{ID: eventID, OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: payload}); err != nil {
+		if err := svc.Handle(context.Background(), events.Event{ID: eventID, Topic: events.TopicIssueTransitioned, Payload: payload}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -82,7 +82,7 @@ func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 		t.Fatal(err)
 	}
 	own, _ := json.Marshal(map[string]any{"key": made.Key, "actorId": automationUser, "commentId": comments[0].ID})
-	_ = svc.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicCommentAdded, Payload: own})
+	_ = svc.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicCommentAdded, Payload: own})
 	runs, _ = svc.Runs(ws.ctx, commenter.ID, 0)
 	if len(runs) != 1 || runs[0].Outcome != automation.OutcomeSkipped || runs[0].Reason != "actor is automation" {
 		t.Fatalf("runs on own event = %+v, want skipped for the actor", runs)
@@ -91,7 +91,7 @@ func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 	// A condition that fails is a skip that says which.
 	other := ws.newIssue(t, "Still to do")
 	payload, _ = json.Marshal(map[string]any{"key": other.Key, "actorId": ws.actor.UserID})
-	_ = svc.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: payload})
+	_ = svc.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueTransitioned, Payload: payload})
 	runs, _ = svc.Runs(ws.ctx, rule.ID, 0)
 	if len(runs) != 2 || runs[0].Outcome != automation.OutcomeSkipped || !strings.Contains(runs[0].Reason, "does not match") {
 		t.Fatalf("runs after a miss = %+v, want a skip naming the query", runs)
@@ -104,7 +104,7 @@ func TestARuleRunsOncePerEventAndNotOnItself(t *testing.T) {
 	}, ws.actor.UserID)
 	for _, key := range []string{made.Key, other.Key} {
 		raw, _ := json.Marshal(map[string]any{"key": key, "actorId": ws.actor.UserID})
-		_ = svc.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicIssueCreated, Payload: raw})
+		_ = svc.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicIssueCreated, Payload: raw})
 	}
 	runs, _ = svc.Runs(ws.ctx, capped.ID, 0)
 	if len(runs) != 2 || runs[0].Outcome != automation.OutcomeCapped || runs[1].Outcome != automation.OutcomeDone {
@@ -212,12 +212,12 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 	if _, _, err := hooks.Create(ws.ctx, webhook.Input{Name: "Loop", URL: server.URL, Topics: []string{events.TopicAutomationIncoming}}, ws.actor.UserID); err == nil {
 		t.Error("a webhook on an automation topic was accepted")
 	}
-	_ = hooks.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicAutomationIncoming, Payload: json.RawMessage(`{}`)})
+	_ = hooks.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicAutomationIncoming, Payload: json.RawMessage(`{}`)})
 
 	// Subscribed topic is queued and sent; another is not.
 	issueMade := uuid.New()
-	_ = hooks.Handle(context.Background(), events.Event{ID: issueMade, OrgID: ws.orgID, Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{"key":"X-1"}`)})
-	_ = hooks.Handle(context.Background(), events.Event{ID: uuid.New(), OrgID: ws.orgID, Topic: events.TopicCommentAdded, Payload: json.RawMessage(`{}`)})
+	_ = hooks.Handle(context.Background(), events.Event{ID: issueMade, Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{"key":"X-1"}`)})
+	_ = hooks.Handle(context.Background(), events.Event{ID: uuid.New(), Topic: events.TopicCommentAdded, Payload: json.RawMessage(`{}`)})
 	if n, err := hooks.SendDue(context.Background()); err != nil || n < 1 {
 		t.Fatalf("send due: %d %v", n, err)
 	}
@@ -243,7 +243,7 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 	// A failure schedules the next attempt with backoff; the log shows both.
 	sink.status = http.StatusInternalServerError
 	failing := uuid.New()
-	_ = hooks.Handle(context.Background(), events.Event{ID: failing, OrgID: ws.orgID, Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{}`)})
+	_ = hooks.Handle(context.Background(), events.Event{ID: failing, Topic: events.TopicIssueCreated, Payload: json.RawMessage(`{}`)})
 	_, _ = hooks.SendDue(context.Background())
 	deliveries, _ := hooks.Deliveries(ws.ctx, made.ID, 0)
 	var attempts []webhook.Delivery
@@ -293,7 +293,7 @@ func TestAWebhookIsSignedRetriedAndRedelivered(t *testing.T) {
 	moved := ws.newIssue(t, "Moving")
 	viaRule := uuid.New()
 	raw, _ := json.Marshal(map[string]any{"key": moved.Key, "actorId": ws.actor.UserID})
-	_ = rules.Handle(context.Background(), events.Event{ID: viaRule, OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: raw})
+	_ = rules.Handle(context.Background(), events.Event{ID: viaRule, Topic: events.TopicIssueTransitioned, Payload: raw})
 	runs, _ := rules.Runs(ws.ctx, rule.ID, 0)
 	if len(runs) != 1 || runs[0].Outcome != automation.OutcomeDone {
 		t.Fatalf("rule runs = %+v", runs)

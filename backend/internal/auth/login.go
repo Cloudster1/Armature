@@ -106,8 +106,7 @@ func passwordPrincipal(ctx context.Context, tx db.DBTX, userID uuid.UUID) (*Prin
 		SELECT o.id, o.slug, o.name, m.org_role
 		FROM org_member m
 		JOIN org o ON o.id = m.org_id
-		WHERE m.user_id = $1 AND o.archived_at IS NULL
-		`+firstJoined, userID,
+		WHERE m.user_id = $1 AND o.archived_at IS NULL`, userID,
 	).Scan(&org.ID, &org.Slug, &org.Name, &p.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrSwitchedOff

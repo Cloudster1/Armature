@@ -82,7 +82,7 @@ func (s *Service) Start(ctx context.Context, id uuid.UUID, actor uuid.UUID) (*Sp
 				return err
 			}
 		}
-		return events.EmitInTenant(ctx, tx, "sprint.started", map[string]any{
+		return events.Emit(ctx, tx, "sprint.started", map[string]any{
 			"sprintId": id, "projectId": before.ProjectID, "name": before.Name, "actorId": actor,
 		})
 	})
@@ -187,7 +187,7 @@ func (s *Service) Complete(ctx context.Context, id uuid.UUID, in CompleteInput, 
 		}
 		report.Sprint = *closed
 
-		return events.EmitInTenant(ctx, tx, "sprint.completed", map[string]any{
+		return events.Emit(ctx, tx, "sprint.completed", map[string]any{
 			"sprintId": id, "projectId": before.ProjectID, "name": before.Name,
 			"committed": committed, "completed": completed,
 			"carried": report.Carried, "actorId": actor,

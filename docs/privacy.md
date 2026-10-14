@@ -96,9 +96,8 @@ administrator for the tables that belong to nobody in particular.
 - **Redis** holds the event stream, capped, and the read-your-writes marks,
   which expire.
 - **Logs** go to standard output as JSON: request id, trace id, method,
-  route, status, duration, user id, and the installation's internal slug as
-  `org`. Where they go from there, and for how long, is the operator's
-  policy.
+  route, status, duration and user id. Where they go from there, and for how
+  long, is the operator's policy.
 - **Traces and metrics** are on only when asked (`make observe`), held in
   memory by Jaeger and Prometheus with no volume, and carry no addresses,
   names or bound values.

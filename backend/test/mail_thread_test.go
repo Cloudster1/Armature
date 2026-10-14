@@ -55,7 +55,7 @@ func TestMailsAboutOneRequestArriveEncodedInOneThread(t *testing.T) {
 	handle := func(topic string, payload map[string]any) {
 		t.Helper()
 		raw, _ := json.Marshal(payload)
-		if err := notifier.Handle(ctx, events.Event{OrgID: ws.orgID, Topic: topic, Payload: raw}); err != nil {
+		if err := notifier.Handle(ctx, events.Event{Topic: topic, Payload: raw}); err != nil {
 			t.Fatal(err)
 		}
 	}

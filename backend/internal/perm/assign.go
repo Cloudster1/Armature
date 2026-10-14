@@ -162,7 +162,7 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "role.granted", map[string]any{
+		return events.Emit(ctx, tx, "role.granted", map[string]any{
 			"assignmentId": id, "role": in.Role, "projectId": projectID,
 			"userId": in.UserID, "groupId": in.GroupID, "actorId": actor,
 		})
@@ -201,7 +201,7 @@ func (s *Store) Revoke(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.L
 		if _, err := tx.Exec(ctx, `DELETE FROM role_assignment WHERE id = $1`, id); err != nil {
 			return fmt.Errorf("revoke role: %w", err)
 		}
-		return events.EmitInTenant(ctx, tx, "role.revoked", map[string]any{
+		return events.Emit(ctx, tx, "role.revoked", map[string]any{
 			"assignmentId": id, "role": found.Role, "actorId": actor,
 		})
 	})

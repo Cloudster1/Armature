@@ -14,7 +14,6 @@ import (
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/nql"
 	"github.com/armature/armature/backend/internal/project"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Share is a link to one dashboard that needs no sign-in. The token is kept
@@ -132,9 +131,8 @@ func (s *Service) RevokeShare(ctx context.Context, dashboardID, shareID uuid.UUI
 	})
 }
 
-// shareRow is what a token resolves to before any tenant is entered.
+// shareRow is what a token resolves to.
 type shareRow struct {
-	orgID       uuid.UUID
 	id          uuid.UUID
 	dashboardID uuid.UUID
 	name        string
@@ -144,17 +142,17 @@ type shareRow struct {
 	expiresAt   *time.Time
 }
 
-// resolveShare finds the organization a token belongs to. It runs outside
-// any tenant, since the token is the whole of what the caller has.
+// resolveShare finds the link a token belongs to, as the admin role, since the
+// token is the whole of what the caller has.
 func (s *Service) resolveShare(ctx context.Context, token string) (shareRow, error) {
 	digest := auth.HashToken(token)
 	var row shareRow
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT org_id, id, dashboard_id, name, query, created_by, created_at, expires_at
+			SELECT id, dashboard_id, name, query, created_by, created_at, expires_at
 			FROM dashboard_share
 			WHERE token_hash = $1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())`, digest,
-		).Scan(&row.orgID, &row.id, &row.dashboardID, &row.name, &row.query, &row.createdBy, &row.createdAt, &row.expiresAt)
+		).Scan(&row.id, &row.dashboardID, &row.name, &row.query, &row.createdBy, &row.createdAt, &row.expiresAt)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return shareRow{}, ErrShareGone
@@ -162,14 +160,13 @@ func (s *Service) resolveShare(ctx context.Context, token string) (shareRow, err
 	return row, err
 }
 
-// Shared opens a link: the dashboard as its arrangement stands, read in the
-// organization the token names. Nothing is written by opening it.
+// Shared opens a link: the dashboard as its arrangement stands. Nothing is
+// written by opening it.
 func (s *Service) Shared(ctx context.Context, token string) (*SharedView, error) {
 	row, err := s.resolveShare(ctx, token)
 	if err != nil {
 		return nil, err
 	}
-	ctx = tenant.WithOrg(ctx, tenant.Org{ID: row.orgID})
 	out := &SharedView{
 		Share:       Share{ID: row.id, DashboardID: row.dashboardID, Name: row.name, Query: row.query, CreatedAt: row.createdAt, ExpiresAt: row.expiresAt},
 		GeneratedAt: time.Now(),
@@ -204,7 +201,6 @@ func (s *Service) SharedWidget(ctx context.Context, token string, widgetID uuid.
 	if err != nil {
 		return nil, err
 	}
-	ctx = tenant.WithOrg(ctx, tenant.Org{ID: row.orgID})
 	var (
 		projectKey string
 		kind       Kind

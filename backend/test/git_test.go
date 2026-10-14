@@ -641,7 +641,7 @@ func TestATransitionTellsTheOpenPullRequest(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
 		"key": found.Key, "transition": "Start progress", "fromStatus": "To Do", "toStatus": "In Progress",
 	})
-	if err := sync.Handle(context.Background(), events.Event{OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: payload}); err != nil {
+	if err := sync.Handle(context.Background(), events.Event{Topic: events.TopicIssueTransitioned, Payload: payload}); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
 
@@ -656,7 +656,7 @@ func TestATransitionTellsTheOpenPullRequest(t *testing.T) {
 	t.Run("a merged pull request is not told", func(t *testing.T) {
 		deliver(t, svc, repo, "pull_request", `{"action":"closed","pull_request":{"number":9,"title":"`+found.Key+` work","html_url":"u","state":"closed","merged":true,`+
 			`"merged_at":"2026-09-02T10:00:00Z","head":{"ref":"x","sha":"h"},"base":{"ref":"main"},"user":{"login":"ada"}}}`)
-		if err := sync.Handle(context.Background(), events.Event{OrgID: ws.orgID, Topic: events.TopicIssueTransitioned, Payload: payload}); err != nil {
+		if err := sync.Handle(context.Background(), events.Event{Topic: events.TopicIssueTransitioned, Payload: payload}); err != nil {
 			t.Fatal(err)
 		}
 		if got := len(stub.calledWith(http.MethodPost, "/issues/9/comments")); got != 1 {

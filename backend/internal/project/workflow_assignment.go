@@ -62,13 +62,13 @@ func (s *Service) SetWorkflowAssignment(ctx context.Context, key string, issueTy
 		if err != nil {
 			return err
 		}
-		if err := events.EmitInTenant(ctx, tx, "project.workflow_assignment_changed", map[string]any{
+		if err := events.Emit(ctx, tx, "project.workflow_assignment_changed", map[string]any{
 			"projectId": p.ID, "key": p.Key, "issueTypeId": issueTypeID, "workflowId": workflowID, "schemeId": next, "actorId": actor,
 		}); err != nil {
 			return err
 		}
 		if (current.WorkflowSchemeID == nil) != (next == nil) || (next != nil && current.WorkflowSchemeID != nil && *next != *current.WorkflowSchemeID) {
-			return events.EmitInTenant(ctx, tx, "project.workflow_scheme_changed", map[string]any{
+			return events.Emit(ctx, tx, "project.workflow_scheme_changed", map[string]any{
 				"projectId": p.ID, "key": p.Key, "schemeId": next, "actorId": actor,
 			})
 		}

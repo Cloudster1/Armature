@@ -2,10 +2,7 @@ package db
 
 import "context"
 
-type (
-	pinKey    struct{}
-	systemKey struct{}
-)
+type pinKey struct{}
 
 // pin describes a freshness requirement placed on reads made with a context.
 type pin struct {
@@ -42,18 +39,4 @@ func PinLSN(ctx context.Context, lsn LSN) context.Context {
 func pinFrom(ctx context.Context) pin {
 	p, _ := ctx.Value(pinKey{}).(pin)
 	return p
-}
-
-// WithSystem marks ctx as a deliberately un-tenanted context. Without it, any
-// query issued without an organization in context is refused, which is what
-// stops a missing tenant scope from silently reading across every organization.
-// Reserve it for migrations, health checks and background jobs that legitimately
-// span tenants.
-func WithSystem(ctx context.Context) context.Context {
-	return context.WithValue(ctx, systemKey{}, true)
-}
-
-func isSystem(ctx context.Context) bool {
-	v, _ := ctx.Value(systemKey{}).(bool)
-	return v
 }

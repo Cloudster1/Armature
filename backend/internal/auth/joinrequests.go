@@ -77,7 +77,7 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID,
 		if err := writeAudit(ctx, tx, orgID, actor, "member.admitted", "user", &userID, ip); err != nil {
 			return err
 		}
-		if err := events.Emit(ctx, tx, orgID, events.TopicMemberJoined, map[string]any{
+		if err := events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{
 			"orgId":  orgID,
 			"userId": userID,
 			"role":   role,

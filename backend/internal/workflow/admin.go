@@ -69,7 +69,7 @@ func (a *Admin) CreateStatus(ctx context.Context, in StatusInput, actor uuid.UUI
 		if err := tx.QueryRow(ctx, `SELECT position FROM issue_status WHERE id = $1`, id).Scan(&out.Position); err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "status.created", map[string]any{
+		return events.Emit(ctx, tx, "status.created", map[string]any{
 			"statusId": id, "name": in.Name, "category": in.Category, "actorId": actor,
 		})
 	})
@@ -136,7 +136,7 @@ func (a *Admin) CreateWorkflow(ctx context.Context, in GraphInput, actor uuid.UU
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "workflow.created", map[string]any{
+		return events.Emit(ctx, tx, "workflow.created", map[string]any{
 			"workflowId": id, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -197,7 +197,7 @@ func (a *Admin) SaveWorkflow(ctx context.Context, id uuid.UUID, in GraphInput, a
 				}
 			}
 		}
-		return events.EmitInTenant(ctx, tx, "workflow.updated", map[string]any{
+		return events.Emit(ctx, tx, "workflow.updated", map[string]any{
 			"workflowId": id, "name": in.Name, "actorId": actor,
 		})
 	})
@@ -282,7 +282,7 @@ func (a *Admin) CopyWorkflow(ctx context.Context, id uuid.UUID, name string, act
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, "workflow.created", map[string]any{
+		return events.Emit(ctx, tx, "workflow.created", map[string]any{
 			"workflowId": copyID, "name": name, "copiedFrom": id, "actorId": actor,
 		})
 	})
@@ -509,7 +509,7 @@ func (a *Admin) EnsureWorkflow(ctx context.Context, tx db.DBTX, in GraphInput) (
 	if err := a.writeGraph(ctx, tx, id, in); err != nil {
 		return uuid.Nil, err
 	}
-	return id, events.EmitInTenant(ctx, tx, "workflow.created", map[string]any{
+	return id, events.Emit(ctx, tx, "workflow.created", map[string]any{
 		"workflowId": id, "name": in.Name,
 	})
 }
@@ -538,7 +538,7 @@ func (a *Admin) EnsureScheme(ctx context.Context, tx db.DBTX, in SchemeInput) (u
 	if err := writeSchemeItems(ctx, tx, id, in.Items); err != nil {
 		return uuid.Nil, err
 	}
-	return id, events.EmitInTenant(ctx, tx, "workflow.scheme.created", map[string]any{
+	return id, events.Emit(ctx, tx, "workflow.scheme.created", map[string]any{
 		"schemeId": id, "name": in.Name,
 	})
 }

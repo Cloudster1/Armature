@@ -9,7 +9,6 @@ import (
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/observability"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Watch is the worker's half of the clocks: it notices when a running one has
@@ -44,18 +43,13 @@ func (w *Watch) Run(ctx context.Context) error {
 	}
 }
 
-// Once records every breach that has happened since the last look, across
-// every organization, and returns how many.
+// Once records every breach that has happened since the last look, and returns
+// how many.
 func (w *Watch) Once(ctx context.Context) (int, error) {
-	type due struct {
-		orgID, timerID uuid.UUID
-	}
-	var found []due
-	// Finding them crosses tenants, which is what the admin role is for; the
-	// recording of each is done inside its own organization.
+	var found []uuid.UUID
 	err := w.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT org_id, id FROM sla_timer
+			SELECT id FROM sla_timer
 			WHERE running_since IS NOT NULL AND completed_at IS NULL AND breached_at IS NULL
 			  AND elapsed_seconds + EXTRACT(EPOCH FROM now() - running_since) > goal_minutes * 60`)
 		if err != nil {
@@ -63,11 +57,11 @@ func (w *Watch) Once(ctx context.Context) (int, error) {
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var d due
-			if err := rows.Scan(&d.orgID, &d.timerID); err != nil {
+			var id uuid.UUID
+			if err := rows.Scan(&id); err != nil {
 				return err
 			}
-			found = append(found, d)
+			found = append(found, id)
 		}
 		return rows.Err()
 	})
@@ -76,15 +70,14 @@ func (w *Watch) Once(ctx context.Context) (int, error) {
 	}
 
 	recorded := 0
-	for _, d := range found {
-		orgCtx := db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID}))
+	for _, timerID := range found {
 		var happened bool
-		_, err := w.db.Write(orgCtx, func(ctx context.Context, tx db.DBTX) (err error) {
-			happened, err = w.desk.breach(ctx, tx, d.timerID)
+		_, err := w.db.Write(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) (err error) {
+			happened, err = w.desk.breach(ctx, tx, timerID)
 			return err
 		})
 		if err != nil {
-			w.log.Warn("could not record a breach", "timer", d.timerID, "error", err)
+			w.log.Warn("could not record a breach", "timer", timerID, "error", err)
 			continue
 		}
 		// A clock that only counts open hours may be found by wall time and

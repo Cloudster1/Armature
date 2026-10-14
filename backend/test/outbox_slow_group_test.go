@@ -46,11 +46,10 @@ func TestOutboxRelayWaitsForTheSlowestGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, orgCtx := h.installation()
 	topic := unique("test.imported")
-	if _, err := h.cluster.Write(orgCtx, func(ctx context.Context, tx db.DBTX) error {
+	if _, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
 		for i := range eventCount {
-			if err := events.EmitInTenant(ctx, tx, topic, map[string]any{"i": i}); err != nil {
+			if err := events.Emit(ctx, tx, topic, map[string]any{"i": i}); err != nil {
 				return err
 			}
 		}

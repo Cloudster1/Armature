@@ -246,7 +246,7 @@ func (s *Service) RemoveAbsence(ctx context.Context, by Recorder, id uuid.UUID) 
 // emitAbsence says who and by whom, never which days: the stream reaches
 // webhooks and the audit log, and the days are for colleagues to read here.
 func emitAbsence(ctx context.Context, tx db.DBTX, topic string, a *Absence, by Recorder) error {
-	return events.EmitInTenant(ctx, tx, topic, map[string]any{"id": a.ID, "userId": a.UserID, "actorId": by.ID})
+	return events.Emit(ctx, tx, topic, map[string]any{"id": a.ID, "userId": a.UserID, "actorId": by.ID})
 }
 
 // absenceWriteError turns the database's refusal of an overlap into the one

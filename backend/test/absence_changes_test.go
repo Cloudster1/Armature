@@ -134,7 +134,7 @@ func fanOutAbsences(t *testing.T, h *harness, fan *notify.FanOut, orgID uuid.UUI
 	}
 	var found []events.Event
 	for rows.Next() {
-		e := events.Event{OrgID: orgID}
+		e := events.Event{}
 		if err := rows.Scan(&e.ID, &e.Topic, &e.Payload); err != nil {
 			t.Fatal(err)
 		}

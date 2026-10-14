@@ -13,7 +13,6 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/armature/armature/backend/internal/db"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // Handler acts on one event: nil when it is done with, Permanent when another
@@ -216,17 +215,15 @@ func (c *Consumer) deliveries(ctx context.Context, id string) (int64, bool) {
 func (c *Consumer) setAside(ctx context.Context, id string, e Event, attempts int64, cause error) {
 	c.log.Error("an event was set aside unhandled", "group", c.group, "id", id, "event_id", e.ID,
 		"topic", e.Topic, "attempts", attempts, "error", cause)
-	if e.OrgID != uuid.Nil {
-		if err := c.deadLetter(ctx, e, attempts); err != nil {
-			c.log.Warn("an event set aside could not be recorded", "group", c.group, "id", id, "error", err)
-			return
-		}
+	if err := c.deadLetter(ctx, e, attempts); err != nil {
+		c.log.Warn("an event set aside could not be recorded", "group", c.group, "id", id, "error", err)
+		return
 	}
 	c.ack(ctx, id)
 }
 
 // deadLetter writes the audit entry, once per event and group however often a
-// crash before the acknowledgement repeats it. A deleted organization gets none.
+// crash before the acknowledgement repeats it.
 func (c *Consumer) deadLetter(ctx context.Context, e Event, attempts int64) error {
 	data, err := json.Marshal(map[string]any{"group": c.group, "topic": e.Topic, "attempts": attempts})
 	if err != nil {
@@ -236,14 +233,13 @@ func (c *Consumer) deadLetter(ctx context.Context, e Event, attempts int64) erro
 	if e.ID != uuid.Nil {
 		target = &e.ID
 	}
-	_, err = c.db.Write(tenant.WithOrg(ctx, tenant.Org{ID: e.OrgID}), func(ctx context.Context, tx db.DBTX) error {
+	_, err = c.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO audit_log (org_id, action, target_type, target_id, data)
-			SELECT id, $1::text, 'event', $2::uuid, $3::jsonb FROM org
-			WHERE id = current_org_id()
-			  AND NOT EXISTS (
+			INSERT INTO audit_log (action, target_type, target_id, data)
+			SELECT $1::text, 'event', $2::uuid, $3::jsonb
+			WHERE NOT EXISTS (
 			      SELECT 1 FROM audit_log
-			      WHERE org_id = current_org_id() AND action = $1::text AND target_type = 'event'
+			      WHERE action = $1::text AND target_type = 'event'
 			        AND target_id = $2::uuid AND data->>'group' = $4::text)`,
 			ActionDeadLettered, target, data, c.group)
 		return err

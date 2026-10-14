@@ -13,7 +13,7 @@ import (
 )
 
 // Rules: what a project, or the organization, does by itself. Configuring a
-// project's rules is administering the project; the organization's, the tenant.
+// project's rules is administering the project; the organization's, the installation.
 
 // maxIncomingBytes bounds what an incoming hook may post.
 const maxIncomingBytes = 256 << 10
@@ -170,7 +170,7 @@ func (s *Server) handleRunRule(w http.ResponseWriter, r *http.Request) {
 // handleIncomingHook is what a rule's address answers. The token is the whole
 // of the authorization: whoever knows the address may call it.
 func (s *Server) handleIncomingHook(w http.ResponseWriter, r *http.Request) {
-	rule, orgID, err := s.Automation.ByToken(r.Context(), r.PathValue("token"))
+	rule, err := s.Automation.ByToken(r.Context(), r.PathValue("token"))
 	if err != nil {
 		respondError(w, r, ErrNotFound("There is no rule at this address."))
 		return
@@ -184,7 +184,7 @@ func (s *Server) handleIncomingHook(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("The body has to be JSON."))
 		return
 	}
-	if err := s.Automation.Incoming(r.Context(), rule, orgID, body); err != nil {
+	if err := s.Automation.Incoming(r.Context(), rule, body); err != nil {
 		respondError(w, r, err)
 		return
 	}
@@ -196,7 +196,7 @@ type incomingReceipt struct {
 	Accepted bool   `json:"accepted"`
 }
 
-// Webhooks: where the organization's events go. Administering the tenant.
+// Webhooks: where the organization's events go. Administering the installation.
 
 func webhookTopics() []string {
 	out := []string{webhook.TopicAny}

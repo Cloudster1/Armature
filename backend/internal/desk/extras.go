@@ -14,7 +14,6 @@ import (
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/project"
-	"github.com/armature/armature/backend/internal/tenant"
 )
 
 // The desk's extras: what a customer reads before asking, what an agent keeps
@@ -446,9 +445,12 @@ func (s *Service) InviteRating(ctx context.Context, issueID uuid.UUID) (string, 
 // says where the request is first.
 func (s *Service) RatingPage(ctx context.Context, token string) (*RatingPage, error) {
 	digest := auth.HashToken(token)
-	var orgID uuid.UUID
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT org_id FROM csat_rating WHERE token_hash = $1`, digest).Scan(&orgID)
+	var out RatingPage
+	err := s.db.Read(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
+		return tx.QueryRow(ctx, `
+			SELECT p.key || '-' || i.key_num, i.summary, p.name, r.rated_at IS NOT NULL
+			FROM csat_rating r JOIN issue i ON i.id = r.issue_id JOIN project p ON p.id = i.project_id
+			WHERE r.token_hash = $1`, digest).Scan(&out.IssueKey, &out.Summary, &out.Desk, &out.Rated)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrRatingNotFound
@@ -456,14 +458,7 @@ func (s *Service) RatingPage(ctx context.Context, token string) (*RatingPage, er
 	if err != nil {
 		return nil, err
 	}
-	var out RatingPage
-	err = s.db.Read(db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID})), func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `
-			SELECT p.key || '-' || i.key_num, i.summary, p.name, r.rated_at IS NOT NULL
-			FROM csat_rating r JOIN issue i ON i.id = r.issue_id JOIN project p ON p.id = i.project_id
-			WHERE r.token_hash = $1`, digest).Scan(&out.IssueKey, &out.Summary, &out.Desk, &out.Rated)
-	})
-	return &out, err
+	return &out, nil
 }
 
 // Rate records the customer's score, once.
@@ -472,20 +467,14 @@ func (s *Service) Rate(ctx context.Context, token string, score int, comment str
 		return nil, 0, errors.New("a rating is 1 to 5")
 	}
 	digest := auth.HashToken(token)
-	var orgID uuid.UUID
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT org_id FROM csat_rating WHERE token_hash = $1`, digest).Scan(&orgID)
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, 0, ErrRatingNotFound
-	}
-	if err != nil {
-		return nil, 0, err
-	}
 	var out *Rating
-	lsn, err := s.db.Write(db.PinPrimary(tenant.WithOrg(ctx, tenant.Org{ID: orgID})), func(ctx context.Context, tx db.DBTX) error {
+	lsn, err := s.db.Write(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
 		var already bool
-		if err := tx.QueryRow(ctx, `SELECT rated_at IS NOT NULL FROM csat_rating WHERE token_hash = $1 FOR UPDATE`, digest).Scan(&already); err != nil {
+		err := tx.QueryRow(ctx, `SELECT rated_at IS NOT NULL FROM csat_rating WHERE token_hash = $1 FOR UPDATE`, digest).Scan(&already)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrRatingNotFound
+		}
+		if err != nil {
 			return err
 		}
 		if already {
@@ -498,12 +487,11 @@ func (s *Service) Rate(ctx context.Context, token string, score int, comment str
 			RETURNING p.key || '-' || i.key_num`, digest, score, strings.TrimSpace(comment)).Scan(&issueKey); err != nil {
 			return err
 		}
-		var err error
 		out, err = s.rating(ctx, tx, issueKey)
 		if err != nil {
 			return err
 		}
-		return events.EmitInTenant(ctx, tx, TopicRated, map[string]any{"issueKey": issueKey, "score": score})
+		return events.Emit(ctx, tx, TopicRated, map[string]any{"issueKey": issueKey, "score": score})
 	})
 	return out, lsn, err
 }
