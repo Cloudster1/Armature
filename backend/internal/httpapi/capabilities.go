@@ -37,6 +37,15 @@ var integrationCapabilities = []capability{
 		topics: []string{events.TopicRemoteLinkAdded, events.TopicRemoteLinkRemoved},
 	},
 	{
+		name:    "remote-link-relations@1",
+		promise: "A remote link says whether it is a page or a requirement, on the link, the request that puts it and both topics; one sent without it is a page.",
+		operations: []string{
+			"GET /issues/{issueKey}/remote-links",
+			"POST /issues/{issueKey}/remote-links",
+		},
+		topics: []string{events.TopicRemoteLinkAdded, events.TopicRemoteLinkRemoved},
+	},
+	{
 		name:    "webhooks@1",
 		promise: "Endpoints subscribed to topics, their deliveries, a redelivery, a test delivery and a new secret, each delivery a signed envelope.",
 		operations: []string{

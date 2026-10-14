@@ -40,7 +40,8 @@ here in the branch that makes it.
   `issue.remote_link.removed` payloads is `page` or `requirement`; a new
   link sent without one is a page, and a resend that leaves it out keeps
   the one the link has. The issue page heads requirements apart from pages,
-  pages first, and its rail names the section References (#223).
+  pages first, and its rail names the section References. `/meta` lists
+  `remote-link-relations@1`, so a partner can tell before it sends one (#223).
 - Changed: the organization's tables are named for the installation. `org`
   is `installation`, `org_role` is `role`, `org_invite` is `invite` and
   `org_join_request` is `join_request`, with their constraints, indexes,
