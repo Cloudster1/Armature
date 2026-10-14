@@ -90,6 +90,8 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 			}
 			return kept
 		}
+		// Pat reads what Ada's session wrote, so the replica must have it first.
+		h.waitForPrimary(t)
 		seen := want(t, plain.get("/api/v1/absences?from=2026-08-01&to=2026-12-31"), http.StatusOK, "a colleague lists absences")
 		absences := ours(list(t, seen, "absences"))
 		if len(absences) != 2 || seen.Body["from"] != "2026-08-01" || seen.Body["to"] != "2026-12-31" {
@@ -160,6 +162,7 @@ func TestAnAbsenceIsWrittenByThePersonAndByThoseWhoPlanWithThem(t *testing.T) {
 		want(t, plain.patch("/api/v1/absences/"+mine, map[string]any{"endsOn": "2026-08-31"}), http.StatusForbidden, "a colleague moves Ada's")
 		want(t, plain.delete("/api/v1/absences/"+mine), http.StatusForbidden, "a colleague removes Ada's")
 		want(t, master.post("/api/v1/absences", map[string]any{"userId": plainID, "startsOn": "2026-11-09"}), http.StatusForbidden, "a scrum master for somebody on no team of theirs")
+		h.waitForPrimary(t)
 		if hers := list(t, owner.get("/api/v1/absences?from=2026-08-01&to=2026-08-31&userId="+adaID), "absences"); len(hers) != 1 || hers[0].(map[string]any)["endsOn"] != "2026-08-14" {
 			t.Errorf("after the refusals Ada's absence is %v", hers)
 		}
