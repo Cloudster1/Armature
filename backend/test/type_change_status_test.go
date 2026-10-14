@@ -71,8 +71,17 @@ func (ws *workspace) coinStatus(t *testing.T, h *harness, name string, category 
 	return name
 }
 
-// statusMoves reads the issue.transitioned events about an issue as from->to.
-func (h *harness) statusMoves(t *testing.T, ws *workspace, key string) []string {
+// transitioned is an issue.transitioned payload as a subscriber reads it.
+type transitioned struct {
+	FromStatus         string                  `json:"fromStatus"`
+	ToStatus           string                  `json:"toStatus"`
+	FromStatusCategory workflow.StatusCategory `json:"fromStatusCategory"`
+	ToStatusCategory   workflow.StatusCategory `json:"toStatusCategory"`
+	ActorID            uuid.UUID               `json:"actorId"`
+}
+
+// transitions reads the issue.transitioned events about an issue, oldest first.
+func (h *harness) transitions(t *testing.T, ws *workspace, key string) []transitioned {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
 		SELECT payload FROM outbox_event
@@ -82,29 +91,46 @@ func (h *harness) statusMoves(t *testing.T, ws *workspace, key string) []string 
 		t.Fatal(err)
 	}
 	defer rows.Close()
-	var moves []string
+	var out []transitioned
 	for rows.Next() {
 		var raw []byte
 		if err := rows.Scan(&raw); err != nil {
 			t.Fatal(err)
 		}
-		var p struct {
-			FromStatus string    `json:"fromStatus"`
-			ToStatus   string    `json:"toStatus"`
-			ActorID    uuid.UUID `json:"actorId"`
-		}
+		var p transitioned
 		if err := json.Unmarshal(raw, &p); err != nil {
 			t.Fatal(err)
 		}
 		if p.ActorID != ws.actor.UserID {
 			t.Errorf("event %s->%s names actor %s, want %s", p.FromStatus, p.ToStatus, p.ActorID, ws.actor.UserID)
 		}
-		moves = append(moves, p.FromStatus+"->"+p.ToStatus)
+		out = append(out, p)
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatal(err)
 	}
+	return out
+}
+
+// statusMoves reads the issue.transitioned events about an issue as from->to.
+func (h *harness) statusMoves(t *testing.T, ws *workspace, key string) []string {
+	t.Helper()
+	var moves []string
+	for _, p := range h.transitions(t, ws, key) {
+		moves = append(moves, p.FromStatus+"->"+p.ToStatus)
+	}
 	return moves
+}
+
+// categoriesCrossed is the categories the latest move on an issue announced.
+func (h *harness) categoriesCrossed(t *testing.T, ws *workspace, key string) string {
+	t.Helper()
+	all := h.transitions(t, ws, key)
+	if len(all) == 0 {
+		t.Fatalf("no move announced on %s", key)
+	}
+	last := all[len(all)-1]
+	return string(last.FromStatusCategory) + "->" + string(last.ToStatusCategory)
 }
 
 // latestChanges is the newest changelog entry of an issue, field by field.
@@ -203,6 +229,9 @@ func TestATypeChangeThatMovesTheStatusRecordsTheMove(t *testing.T) {
 		if len(moves) != 2 || moves[1] != "Done->"+triage {
 			t.Errorf("issue.transitioned events = %v, want the close and then Done->Triage", moves)
 		}
+		if got := h.categoriesCrossed(t, ws, bug.Key); got != "done->todo" {
+			t.Errorf("the move to Triage crossed categories %s, want done->todo", got)
+		}
 		if len(watcher.moves) != 1 || watcher.moves[0] != bug.Key+": Done->"+triage {
 			t.Errorf("observers heard %v, want the one move to Triage", watcher.moves)
 		}
@@ -243,6 +272,9 @@ func TestATypeChangeThatMovesTheStatusRecordsTheMove(t *testing.T) {
 		}
 		if moves := h.statusMoves(t, ws, task.Key); len(moves) != 1 || moves[0] != "To Do->Done" {
 			t.Errorf("issue.transitioned events = %v, want To Do->Done", moves)
+		}
+		if got := h.categoriesCrossed(t, ws, task.Key); got != "todo->done" {
+			t.Errorf("the move to Done crossed categories %s, want todo->done", got)
 		}
 		if len(watcher.moves) != 1 {
 			t.Errorf("observers heard %v, want the one move to Done", watcher.moves)

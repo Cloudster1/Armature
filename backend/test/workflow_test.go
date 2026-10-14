@@ -76,6 +76,15 @@ func TestTransitions(t *testing.T) {
 		}
 	})
 
+	t.Run("a move names the status categories it crosses", func(t *testing.T) {
+		created := ws.newIssue(t, "say where it went")
+		ws.move(t, h, created.Key, "Start progress")
+
+		if got := h.categoriesCrossed(t, ws, created.Key); got != "todo->in_progress" {
+			t.Errorf("issue.transitioned crossed categories %s, want todo->in_progress", got)
+		}
+	})
+
 	t.Run("a transition that does not leave the current status is refused", func(t *testing.T) {
 		created := ws.newIssue(t, "no shortcuts")
 
