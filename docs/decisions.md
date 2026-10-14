@@ -2353,6 +2353,33 @@ gives a partner one release in which both work. The names are public, as
 list follows the one Dynamo keeps for all three tools
 ([`docs/integration.md`](integration.md)).
 
+### Branches and commits say what kind of change they are, checked by git and by CI
+
+The release script infers the next version from the history, the way Stator's
+and Exciter's do, so every change has to say what kind it is: a branch is
+`<type>/<issue>-<slug>` and a commit subject a Conventional Commit, with `!` or
+a `BREAKING CHANGE:` trailer for a break. A merge carries no type of its own;
+the release script reads one from the branch in `Merge pull request #N from
+<owner>/<type>/...`. One script, `deploy/conventions.sh`, holds the rule, and
+its `type` and `commit` commands print what a subject says, so the release
+script reads subjects exactly as the check judged them.
+
+A hook that only the assistant runs would hold the assistant to the rule and
+nobody else. A versioned git pre-push hook holds anyone who pushes from a clone
+with `make hooks`, and the Conventions workflow holds every pull request,
+including one from a clone that never turned the hook on. The hook runs on the
+host, where nothing is installed, so the script is POSIX sh with git, grep and
+sed only, and its tests run under busybox's.
+
+Only commits not yet on main are judged. The history before the convention is
+plain sentences, and rewriting it would change every hash that issues, pull
+requests and clones point at. The first tag after the convention starts the
+counting, so the release script never has to read the old subjects.
+
+**Reconsider if** the release script has to read a bump from somewhere other
+than the subjects, such as labels on the pull request; then the subjects need
+not carry it and the check can go.
+
 ### MCP is the same table, dispatched in process
 
 A tool is a row of the operation table marked with a name and a sentence, and
