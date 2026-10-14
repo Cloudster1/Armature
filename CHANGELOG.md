@@ -7,6 +7,11 @@ here in the branch that makes it.
 
 ## Unreleased
 
+- Added: branches are named `<type>/<issue>-<slug>` and commit subjects are
+  Conventional Commits, so the release script can read the next version from
+  them. `make hooks` has git refuse a push outside the convention and the
+  Conventions workflow refuses such a pull request, each saying what to write
+  instead; `make release` cuts `release/vX.Y.Z` (#243).
 - Added: `GET /api/v1/meta` lists the integration capabilities a partner checks
   for by name: `issue-embed@1`, `remote-links@1`, `webhooks@1`,
   `theme-export@1`, `reports@1`, `plan@1` and `calendar@1`, each with what it

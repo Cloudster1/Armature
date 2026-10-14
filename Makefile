@@ -8,6 +8,10 @@ NODE_IMAGE ?= node:26-alpine
 # 3.18 at the earliest: the SeaweedFS chart uses the fromToml template
 # function, which older Helm does not define and fails the render on.
 HELM_IMAGE ?= alpine/helm:3.19.0
+# Busybox's sh, grep and sed, the smallest shell the scripts in deploy/ promise
+# to run under, with git for the scratch repositories their tests make.
+SCRIPTS_IMAGE    ?= alpine/git:v2.52.0
+ACTIONLINT_IMAGE ?= rhysd/actionlint:1.7.12
 UID        := $(shell id -u)
 GID        := $(shell id -g)
 ROOT       := $(shell pwd)
@@ -95,8 +99,18 @@ build: ## Compile all backend binaries
 	$(DOCKER_GO) go build ./...
 
 .PHONY: test
-test: ## Run backend unit tests
+test: test-scripts ## Run backend unit tests and the script tests
 	$(DOCKER_GO) go test ./...
+
+.PHONY: test-scripts
+test-scripts: ## Test the scripts in deploy/ and the push hook, and lint the GitHub workflows
+	docker run --rm -t -u $(UID):$(GID) -e HOME=/tmp -v $(ROOT):/src:ro -w /src \
+		--entrypoint sh $(SCRIPTS_IMAGE) deploy/tests/conventions_test.sh
+	docker run --rm -t -u $(UID):$(GID) -v $(ROOT):/src:ro -w /src $(ACTIONLINT_IMAGE) -color
+
+.PHONY: hooks
+hooks: ## Have git refuse a push whose branch name or commit subjects the release script cannot read
+	git config core.hooksPath .githooks
 
 # The integration suite talks to the running compose stack: triggers,
 # streaming replication and replay lag are properties of Postgres itself and

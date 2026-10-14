@@ -328,9 +328,18 @@ and commit the regenerated document and `web/src/api/schema.d.ts`; a unit test
 refuses a stale copy, the integration suite validates every response against it,
 and the last test of the suite refuses a run that left an operation unexercised.
 
-There is no CI. A branch is merged when all four layers have passed on it,
-locally, which [`CLAUDE.md`](CLAUDE.md) states as the working agreement along
-with the house style.
+A branch is merged when all four layers have passed on it, locally, which
+[`CLAUDE.md`](CLAUDE.md) states as the working agreement along with the house
+style. The one check GitHub runs is the Conventions workflow: a branch is
+named `<type>/<issue>-<slug>`, made with
+`gh issue develop <n> --name <type>/<n>-<slug> --base main --checkout`, and
+every commit subject on it is a Conventional Commit,
+`<type>(<scope>): <change>`, with `!` or a `BREAKING CHANGE:` trailer for a
+break. The types are feat, fix, docs, chore, refactor, test, perf, ci, build
+and revert, and the release script reads the next version from them. Run
+`make hooks` once in a clone and git refuses a push outside the convention,
+with a sentence saying what to write instead; `make test-scripts`, which
+`make test` runs, tests that rule and lints the workflows.
 
 ## Operations
 
@@ -540,8 +549,8 @@ git push origin main v0.2.0
 than the last tag and the changelog says something. It writes the version
 into `VERSION`, `web/package.json` and its lockfile and the chart, moves the
 changelog's Unreleased section under the new version, renders the chart's
-golden files, and merges that as a `release/x.y.z` branch with a tag `vx.y.z`
-on the merge. It does not push.
+golden files, commits that as `chore(release): vx.y.z` on a `release/vx.y.z`
+branch and merges it with a tag `vx.y.z` on the merge. It does not push.
 
 A build reports what it is at `GET /api/v1/meta` and at the foot of the
 sidebar: `0.2.0` on the tag, `0.2.0+3.g1a2b3c4` three commits past it, and
