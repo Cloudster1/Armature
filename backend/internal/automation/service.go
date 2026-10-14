@@ -186,7 +186,7 @@ func (s *Service) Create(ctx context.Context, projectKey string, in Input, actor
 // recordRule writes what an administrator did to a rule. The trigger is named
 // by its kind alone, since an incoming hook's token is as good as a password.
 func recordRule(ctx context.Context, tx db.DBTX, action string, r *Rule, actor uuid.UUID) error {
-	return audit.Record(ctx, tx, audit.Entry{Action: action, TargetType: "rule", TargetID: &r.ID, Actor: actor, Data: map[string]any{
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "rule", TargetID: &r.ID, Actor: actor, Data: map[string]any{
 		"name": r.Name, "project": r.ProjectKey, "trigger": r.Trigger.Kind, "enabled": r.Enabled,
 	}})
 }

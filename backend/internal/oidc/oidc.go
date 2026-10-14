@@ -10,15 +10,12 @@ import (
 	"errors"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
-// Provider is one organization's identity provider.
+// Provider is the installation's identity provider.
 type Provider struct {
-	OrgID    uuid.UUID `json:"-"`
-	Issuer   string    `json:"issuer"`
-	ClientID string    `json:"clientId"`
+	Issuer   string `json:"issuer"`
+	ClientID string `json:"clientId"`
 	// ClientSecret is never sent to a client. Whether one is set is, because a
 	// settings page has to be able to say so without revealing it.
 	ClientSecret string `json:"-"`

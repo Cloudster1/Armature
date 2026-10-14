@@ -195,7 +195,7 @@ func (s *Server) handleRemoveMembersSecondFactor(w http.ResponseWriter, r *http.
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	lsn, err := s.Auth.RemoveMembersSecondFactor(r.Context(), p.Org.ID, userID, p.User.ID, p.Role, clientIP(r))
+	lsn, err := s.Auth.RemoveMembersSecondFactor(r.Context(), userID, p.User.ID, p.Role, clientIP(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

@@ -77,22 +77,22 @@ func due(schedule string, hour int, weekday *int, lastSent *time.Time, now time.
 // Once mails every due subscription and returns how many.
 func (s *Subscriptions) Once(ctx context.Context) (int, error) {
 	type row struct {
-		orgID, id, filterID, userID uuid.UUID
-		schedule                    string
-		hour                        int
-		weekday                     *int
-		lastSent                    *time.Time
+		id, filterID, userID uuid.UUID
+		schedule             string
+		hour                 int
+		weekday              *int
+		lastSent             *time.Time
 	}
 	var found []row
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `SELECT org_id, id, filter_id, user_id, schedule, hour, weekday, last_sent_at FROM saved_filter_subscription`)
+		rows, err := tx.Query(ctx, `SELECT id, filter_id, user_id, schedule, hour, weekday, last_sent_at FROM saved_filter_subscription`)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var r row
-			if err := rows.Scan(&r.orgID, &r.id, &r.filterID, &r.userID, &r.schedule, &r.hour, &r.weekday, &r.lastSent); err != nil {
+			if err := rows.Scan(&r.id, &r.filterID, &r.userID, &r.schedule, &r.hour, &r.weekday, &r.lastSent); err != nil {
 				return err
 			}
 			found = append(found, r)
@@ -108,7 +108,7 @@ func (s *Subscriptions) Once(ctx context.Context) (int, error) {
 		if !due(r.schedule, r.hour, r.weekday, r.lastSent, now) {
 			continue
 		}
-		if err := s.send(db.PinPrimary(ctx), r.id, r.filterID, r.userID, r.orgID, now); err != nil {
+		if err := s.send(db.PinPrimary(ctx), r.id, r.filterID, r.userID, now); err != nil {
 			s.log.Warn("could not mail a subscription", "subscription", r.id, "error", err)
 			continue
 		}
@@ -117,7 +117,7 @@ func (s *Subscriptions) Once(ctx context.Context) (int, error) {
 	return sent, nil
 }
 
-func (s *Subscriptions) send(ctx context.Context, subID, filterID, userID, orgID uuid.UUID, now time.Time) error {
+func (s *Subscriptions) send(ctx context.Context, subID, filterID, userID uuid.UUID, now time.Time) error {
 	var (
 		name, query, to string
 		role            *string
@@ -127,7 +127,7 @@ func (s *Subscriptions) send(ctx context.Context, subID, filterID, userID, orgID
 		return tx.QueryRow(ctx, `
 			SELECT f.name, f.query, u.email, m.org_role, (f.owner_id = $2 OR f.shared)
 			FROM saved_filter f JOIN app_user u ON u.id = $2
-			LEFT JOIN org_member m ON m.user_id = u.id AND m.org_id = f.org_id
+			LEFT JOIN org_member m ON m.user_id = u.id
 			WHERE f.id = $1`, filterID, userID).Scan(&name, &query, &to, &role, &visible)
 	})
 	if err != nil {
@@ -149,7 +149,7 @@ func (s *Subscriptions) send(ctx context.Context, subID, filterID, userID, orgID
 	// The mail lists what the reader may read, not what the query finds.
 	f := issue.Filter{Query: compiled}
 	if s.perms != nil {
-		set, err := s.perms.ResolveFor(ctx, orgID, userID, *role == "owner")
+		set, err := s.perms.ResolveFor(ctx, userID, *role == "owner")
 		if err != nil {
 			return err
 		}

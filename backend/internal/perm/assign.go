@@ -44,7 +44,7 @@ LEFT JOIN user_group g ON g.id = a.group_id`
 // first, then by project, and the most powerful role at the top of each.
 const order = `
 ORDER BY (a.project_id IS NOT NULL), p.key,
-         (SELECT r.sort_order FROM org_role r WHERE r.org_id = a.org_id AND r.key = a.role), a.role,
+         (SELECT r.sort_order FROM org_role r WHERE r.key = a.role), a.role,
          COALESCE(g.name, u.name)`
 
 func scanAssignment(row pgx.Row) (*Assignment, error) {
@@ -144,8 +144,8 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO role_assignment (org_id, role, project_id, user_id, group_id, created_by)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO role_assignment (role, project_id, user_id, group_id, created_by)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (role, project_id, user_id, group_id)
 			DO UPDATE SET created_by = EXCLUDED.created_by
 			RETURNING id`,

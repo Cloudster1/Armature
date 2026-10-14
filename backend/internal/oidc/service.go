@@ -18,6 +18,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/installation"
 )
 
 // Service runs the sign-in flow.
@@ -43,15 +44,15 @@ func NewService(cluster *db.Cluster, redirectURL string) *Service {
 	}
 }
 
-// ProviderFor reads one organization's configuration.
-func (s *Service) ProviderFor(ctx context.Context, orgID uuid.UUID) (*Provider, error) {
+// ProviderFor reads the installation's configuration.
+func (s *Service) ProviderFor(ctx context.Context) (*Provider, error) {
 	var p Provider
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT org_id, issuer, client_id, client_secret, groups_claim, scopes,
+			SELECT issuer, client_id, client_secret, groups_claim, scopes,
 			       create_groups, enabled, updated_at
-			FROM oidc_provider WHERE org_id = $1`, orgID,
-		).Scan(&p.OrgID, &p.Issuer, &p.ClientID, &p.ClientSecret, &p.GroupsClaim,
+			FROM oidc_provider`,
+		).Scan(&p.Issuer, &p.ClientID, &p.ClientSecret, &p.GroupsClaim,
 			&p.Scopes, &p.CreateGroups, &p.Enabled, &p.UpdatedAt)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -64,11 +65,11 @@ func (s *Service) ProviderFor(ctx context.Context, orgID uuid.UUID) (*Provider, 
 	return &p, nil
 }
 
-// Save writes an organization's provider configuration.
+// Save writes the installation's provider configuration.
 //
 // An empty secret leaves the stored one alone, so that a settings form which
 // never shows the secret can be submitted without erasing it.
-func (s *Service) Save(ctx context.Context, orgID uuid.UUID, in Provider, actor uuid.UUID) (*Provider, db.LSN, error) {
+func (s *Service) Save(ctx context.Context, in Provider, actor uuid.UUID) (*Provider, db.LSN, error) {
 	in.Issuer = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(in.Issuer), "/"))
 	in.ClientID = strings.TrimSpace(in.ClientID)
 	if in.Issuer == "" || in.ClientID == "" {
@@ -84,8 +85,8 @@ func (s *Service) Save(ctx context.Context, orgID uuid.UUID, in Provider, actor 
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO oidc_provider
-			    (org_id, issuer, client_id, client_secret, groups_claim, scopes, create_groups, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			    (issuer, client_id, client_secret, groups_claim, scopes, create_groups, enabled)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (one_row) DO UPDATE SET
 			    issuer = EXCLUDED.issuer,
 			    client_id = EXCLUDED.client_id,
@@ -96,12 +97,16 @@ func (s *Service) Save(ctx context.Context, orgID uuid.UUID, in Provider, actor 
 			    scopes = EXCLUDED.scopes,
 			    create_groups = EXCLUDED.create_groups,
 			    enabled = EXCLUDED.enabled`,
-			orgID, in.Issuer, in.ClientID, in.ClientSecret, in.GroupsClaim,
+			in.Issuer, in.ClientID, in.ClientSecret, in.GroupsClaim,
 			in.Scopes, in.CreateGroups, in.Enabled)
 		if err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, orgID, audit.Entry{Action: "oidc.saved", TargetType: "org", TargetID: &orgID, Actor: actor, Data: map[string]any{"issuer": in.Issuer, "enabled": in.Enabled}})
+		id, err := installation.ID(ctx, tx)
+		if err != nil {
+			return err
+		}
+		return audit.Write(ctx, tx, audit.Entry{Action: "oidc.saved", TargetType: "org", TargetID: &id, Actor: actor, Data: map[string]any{"issuer": in.Issuer, "enabled": in.Enabled}})
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("save the identity provider: %w", err)
@@ -112,15 +117,15 @@ func (s *Service) Save(ctx context.Context, orgID uuid.UUID, in Provider, actor 
 	delete(s.verifiers, in.Issuer)
 	s.mu.Unlock()
 
-	saved, err := s.ProviderFor(ctx, orgID)
+	saved, err := s.ProviderFor(ctx)
 	return saved, lsn, err
 }
 
 // Disable turns sign-in through the provider off without forgetting how it was
 // configured, so turning it back on is one switch rather than a form.
-func (s *Service) Disable(ctx context.Context, orgID uuid.UUID) (db.LSN, error) {
+func (s *Service) Disable(ctx context.Context) (db.LSN, error) {
 	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `UPDATE oidc_provider SET enabled = false WHERE org_id = $1`, orgID)
+		tag, err := tx.Exec(ctx, `UPDATE oidc_provider SET enabled = false`)
 		if err != nil {
 			return err
 		}
@@ -156,8 +161,8 @@ func (s *Service) discover(ctx context.Context, issuer string) (*coreoidc.Provid
 // The state ties the callback to this attempt and the nonce ties the id token
 // to it. Both are stored rather than signed into a cookie, so that a callback
 // arriving at a different instance is still recognised.
-func (s *Service) Start(ctx context.Context, orgID uuid.UUID, redirect string) (string, error) {
-	provider, err := s.ProviderFor(ctx, orgID)
+func (s *Service) Start(ctx context.Context, redirect string) (string, error) {
+	provider, err := s.ProviderFor(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -186,9 +191,9 @@ func (s *Service) Start(ctx context.Context, orgID uuid.UUID, redirect string) (
 			return err
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO oidc_login (state, org_id, nonce, redirect, expires_at)
-			VALUES ($1, $2, $3, $4, $5)`,
-			state, orgID, nonce, redirect, time.Now().Add(howLongALoginMayTake))
+			INSERT INTO oidc_login (state, nonce, redirect, expires_at)
+			VALUES ($1, $2, $3, $4)`,
+			state, nonce, redirect, time.Now().Add(howLongALoginMayTake))
 		return err
 	}); err != nil {
 		return "", fmt.Errorf("remember this sign-in: %w", err)
@@ -209,10 +214,9 @@ func (s *Service) Start(ctx context.Context, orgID uuid.UUID, redirect string) (
 //
 // The returned redirect is where the browser wanted to end up, carried across
 // the round trip so that a link to a specific issue still lands there.
-func (s *Service) Exchange(ctx context.Context, state, code string) (uuid.UUID, *Identity, string, error) {
+func (s *Service) Exchange(ctx context.Context, state, code string) (*Identity, string, error) {
 	ctx = s.providerContext(ctx)
 	var (
-		orgID    uuid.UUID
 		nonce    string
 		redirect string
 	)
@@ -221,28 +225,28 @@ func (s *Service) Exchange(ctx context.Context, state, code string) (uuid.UUID, 
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, `
 			DELETE FROM oidc_login WHERE state = $1 AND expires_at > now()
-			RETURNING org_id, nonce, redirect`, state,
-		).Scan(&orgID, &nonce, &redirect)
+			RETURNING nonce, redirect`, state,
+		).Scan(&nonce, &redirect)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrUnknownLogin
 		}
 		return err
 	})
 	if err != nil {
-		return uuid.Nil, nil, "", err
+		return nil, "", err
 	}
 
-	provider, err := s.ProviderFor(ctx, orgID)
+	provider, err := s.ProviderFor(ctx)
 	if err != nil {
-		return uuid.Nil, nil, "", err
+		return nil, "", err
 	}
 	if !provider.Enabled {
-		return uuid.Nil, nil, "", ErrNotConfigured
+		return nil, "", ErrNotConfigured
 	}
 
 	discovered, err := s.discover(ctx, provider.Issuer)
 	if err != nil {
-		return uuid.Nil, nil, "", err
+		return nil, "", err
 	}
 
 	config := oauth2.Config{
@@ -254,12 +258,12 @@ func (s *Service) Exchange(ctx context.Context, state, code string) (uuid.UUID, 
 	}
 	tokens, err := config.Exchange(ctx, code)
 	if err != nil {
-		return uuid.Nil, nil, "", fmt.Errorf("exchange the code: %w", err)
+		return nil, "", fmt.Errorf("exchange the code: %w", err)
 	}
 
 	raw, ok := tokens.Extra("id_token").(string)
 	if !ok || raw == "" {
-		return uuid.Nil, nil, "", errors.New("the identity provider returned no id token")
+		return nil, "", errors.New("the identity provider returned no id token")
 	}
 
 	// Verified against the issuer's published keys, for this client, unexpired.
@@ -267,17 +271,17 @@ func (s *Service) Exchange(ctx context.Context, state, code string) (uuid.UUID, 
 	// it was not given, which are the two ways this check is usually skipped.
 	verified, err := discovered.Verifier(&coreoidc.Config{ClientID: provider.ClientID}).Verify(ctx, raw)
 	if err != nil {
-		return uuid.Nil, nil, "", fmt.Errorf("verify the id token: %w", err)
+		return nil, "", fmt.Errorf("verify the id token: %w", err)
 	}
 	if verified.Nonce != nonce {
-		return uuid.Nil, nil, "", errors.New("the id token belongs to a different sign-in")
+		return nil, "", errors.New("the id token belongs to a different sign-in")
 	}
 
 	identity, err := identityFrom(verified, provider.GroupsClaim)
 	if err != nil {
-		return uuid.Nil, nil, "", err
+		return nil, "", err
 	}
-	return orgID, identity, redirect, nil
+	return identity, redirect, nil
 }
 
 // identityFrom reads the claims this product cares about out of a token that

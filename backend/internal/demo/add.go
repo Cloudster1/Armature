@@ -48,7 +48,7 @@ func Add(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip string,
 		return nil, 0, err
 	}
 	lsn, err := cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return audit.Write(ctx, tx, p.Org.ID, audit.Entry{
+		return audit.Write(ctx, tx, audit.Entry{
 			Action: "installation.demo_added", TargetType: "project", TargetID: &made.ID, Actor: p.User.ID, IP: ip,
 			Data: map[string]any{"projects": Keys},
 		})

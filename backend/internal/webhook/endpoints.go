@@ -85,7 +85,7 @@ func auditedAddress(raw string) string {
 
 // record writes what an administrator did to an endpoint, never its secret.
 func record(ctx context.Context, tx db.DBTX, action string, e *Endpoint, actor uuid.UUID) error {
-	return audit.Record(ctx, tx, audit.Entry{Action: action, TargetType: "webhook", TargetID: &e.ID, Actor: actor, Data: map[string]any{
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "webhook", TargetID: &e.ID, Actor: actor, Data: map[string]any{
 		"name": e.Name, "address": auditedAddress(e.URL), "topics": e.Topics, "enabled": e.Enabled,
 	}})
 }

@@ -86,9 +86,6 @@ func codeDigest(email, code string) []byte {
 type Door struct {
 	Installation string    `json:"installation"`
 	Desk         *DoorDesk `json:"desk,omitempty"`
-	// orgID is where the door leads; the address no longer says, so it stays
-	// on this side of the API.
-	orgID uuid.UUID
 }
 
 // DoorDesk is the desk a door names, and whether it lets people in without a code.
@@ -130,14 +127,14 @@ func findDoor(ctx context.Context, tx db.DBTX, deskKey string) (*Door, error) {
 		if org == nil {
 			return nil, ErrNoDesk
 		}
-		return &Door{Installation: org.Name, orgID: org.ID}, nil
+		return &Door{Installation: org.Name}, nil
 	}
 	d := Door{Desk: &DoorDesk{}}
 	err := tx.QueryRow(ctx, `
-		SELECT o.id, o.name, p.key, p.name, NOT p.portal_verifies
-		FROM project p JOIN org o ON o.id = p.org_id
-		WHERE p.key = $1 AND p.kind = 'service' AND p.archived_at IS NULL AND o.archived_at IS NULL`, key,
-	).Scan(&d.orgID, &d.Installation, &d.Desk.Key, &d.Desk.Name, &d.Desk.Open)
+		SELECT o.name, p.key, p.name, NOT p.portal_verifies
+		FROM project p JOIN org o ON o.archived_at IS NULL
+		WHERE p.key = $1 AND p.kind = 'service' AND p.archived_at IS NULL`, key,
+	).Scan(&d.Installation, &d.Desk.Key, &d.Desk.Name, &d.Desk.Open)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNoDesk
 	}
@@ -163,15 +160,14 @@ func (s *Service) IssuePortalCode(ctx context.Context, door *Door, rawEmail stri
 	now := s.now()
 	expiresAt = now.Add(portalCodeTTL)
 
-	orgID := door.orgID
 	_, err = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		// The code is the installation's, whichever desk it was asked at, so it is
 		// refused only when no desk would take the address; that burns no row.
-		if err := desksTrust(ctx, tx, orgID, email); err != nil {
+		if err := desksTrust(ctx, tx, email); err != nil {
 			return err
 		}
 		var requestedAt time.Time
-		err := tx.QueryRow(ctx, `SELECT requested_at FROM portal_code WHERE org_id = $1 AND email = $2 FOR UPDATE`, orgID, email).Scan(&requestedAt)
+		err := tx.QueryRow(ctx, `SELECT requested_at FROM portal_code WHERE email = $1 FOR UPDATE`, email).Scan(&requestedAt)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
@@ -181,13 +177,13 @@ func (s *Service) IssuePortalCode(ctx context.Context, door *Door, rawEmail stri
 		// A fresh code gets fresh attempts, but the hour's count of wrong ones
 		// carries over, so asking again does not buy more guesses.
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO portal_code (org_id, email, code_hash, attempts, requested_at, expires_at, window_attempts, window_started)
-			VALUES ($1, $2, $3, 0, $4, $5, 0, $4)
+			INSERT INTO portal_code (email, code_hash, attempts, requested_at, expires_at, window_attempts, window_started)
+			VALUES ($1, $2, 0, $3, $4, 0, $3)
 			ON CONFLICT (email) DO UPDATE
 			SET code_hash = EXCLUDED.code_hash, attempts = 0, requested_at = EXCLUDED.requested_at, expires_at = EXCLUDED.expires_at,
-			    window_attempts = CASE WHEN portal_code.window_started < $6 THEN 0 ELSE portal_code.window_attempts END,
-			    window_started = CASE WHEN portal_code.window_started < $6 THEN EXCLUDED.window_started ELSE portal_code.window_started END`,
-			orgID, email, codeDigest(email, code), now, expiresAt, now.Add(-portalCodeWindow)); err != nil {
+			    window_attempts = CASE WHEN portal_code.window_started < $5 THEN 0 ELSE portal_code.window_attempts END,
+			    window_started = CASE WHEN portal_code.window_started < $5 THEN EXCLUDED.window_started ELSE portal_code.window_started END`,
+			email, codeDigest(email, code), now, expiresAt, now.Add(-portalCodeWindow)); err != nil {
 			return fmt.Errorf("issue portal code: %w", err)
 		}
 		// Rows nobody redeemed are cleared as a side effect of the next request
@@ -204,18 +200,18 @@ func (s *Service) IssuePortalCode(ctx context.Context, door *Door, rawEmail stri
 // desksTrust refuses an address at a domain none of the installation's desks
 // takes, naming the domains they do. With no desk, or none that names any
 // domain, everyone is taken, as before there were lists.
-func desksTrust(ctx context.Context, tx db.DBTX, orgID uuid.UUID, email string) error {
+func desksTrust(ctx context.Context, tx db.DBTX, email string) error {
 	var (
 		anyDesk, trusted bool
 		union            []string
 	)
 	err := tx.QueryRow(ctx, `
-		SELECT EXISTS (SELECT 1 FROM project WHERE org_id = $1 AND kind = 'service' AND archived_at IS NULL),
-		       EXISTS (SELECT 1 FROM project WHERE org_id = $1 AND kind = 'service' AND archived_at IS NULL
-		                 AND (cardinality(trusted_domains) = 0 OR $2 = ANY(trusted_domains))),
+		SELECT EXISTS (SELECT 1 FROM project WHERE kind = 'service' AND archived_at IS NULL),
+		       EXISTS (SELECT 1 FROM project WHERE kind = 'service' AND archived_at IS NULL
+		                 AND (cardinality(trusted_domains) = 0 OR $1 = ANY(trusted_domains))),
 		       (SELECT coalesce(array_agg(DISTINCT d ORDER BY d), '{}') FROM project p, unnest(p.trusted_domains) AS d
-		         WHERE p.org_id = $1 AND p.kind = 'service' AND p.archived_at IS NULL)`,
-		orgID, project.DomainOf(email)).Scan(&anyDesk, &trusted, &union)
+		         WHERE p.kind = 'service' AND p.archived_at IS NULL)`,
+		project.DomainOf(email)).Scan(&anyDesk, &trusted, &union)
 	if err != nil {
 		return err
 	}
@@ -244,7 +240,6 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		return nil, err
 	}
 	code := strings.TrimSpace(in.Code)
-	orgID := in.Door.orgID
 	var (
 		principal Principal
 		secret    string
@@ -263,7 +258,7 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		)
 		err := tx.QueryRow(ctx, `
 			SELECT code_hash, attempts, expires_at, window_attempts, window_started FROM portal_code
-			WHERE org_id = $1 AND email = $2 FOR UPDATE`, orgID, email).Scan(&digest, &attempts, &codeEnds, &windowAttempts, &windowStarted)
+			WHERE email = $1 FOR UPDATE`, email).Scan(&digest, &attempts, &codeEnds, &windowAttempts, &windowStarted)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrCodeInvalid
 		}
@@ -280,15 +275,15 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 			missed = true
 			_, err := tx.Exec(ctx, `
 				UPDATE portal_code SET attempts = attempts + 1, window_attempts = window_attempts + 1
-				WHERE org_id = $1 AND email = $2`, orgID, email)
+				WHERE email = $1`, email)
 			return err
 		}
-		if _, err := tx.Exec(ctx, `DELETE FROM portal_code WHERE org_id = $1 AND email = $2`, orgID, email); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM portal_code WHERE email = $1`, email); err != nil {
 			return err
 		}
 
 		var org Org
-		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE id = $1 AND archived_at IS NULL`, orgID).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
 			return err
 		}
 
@@ -303,10 +298,10 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		}
 
 		var role OrgRole
-		err = tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE org_id = $1 AND user_id = $2`, org.ID, user.ID).Scan(&role)
+		err = tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, user.ID).Scan(&role)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'customer')`, org.ID, user.ID); err != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'customer')`, user.ID); err != nil {
 				return fmt.Errorf("make the requester a customer: %w", err)
 			}
 			role = RoleCustomer
@@ -322,7 +317,7 @@ func (s *Service) RedeemPortalCode(ctx context.Context, in PortalSessionInput) (
 		}
 		secret = sessionSecret
 		principal = Principal{User: user, Org: &org, Role: role, SessionID: &sessionID, Proof: ProofPortalCode}
-		return writeAudit(ctx, tx, org.ID, user.ID, "auth.portal_code_login", "user", &user.ID, in.IP)
+		return writeAudit(ctx, tx, user.ID, "auth.portal_code_login", "user", &user.ID, in.IP)
 	})
 	if err != nil {
 		return nil, err
@@ -391,7 +386,7 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 	)
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var org Org
-		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE id = $1 AND archived_at IS NULL`, in.Door.orgID).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE archived_at IS NULL`).Scan(&org.ID, &org.Slug, &org.Name); err != nil {
 			return err
 		}
 		var (
@@ -402,8 +397,8 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 		)
 		err := tx.QueryRow(ctx, `
 			SELECT id, key, portal_verifies, trusted_domains FROM project
-			WHERE org_id = $1 AND key = $2 AND kind = 'service' AND archived_at IS NULL`,
-			org.ID, in.Door.Desk.Key).Scan(&deskID, &deskKey, &verifies, &domains)
+			WHERE key = $1 AND kind = 'service' AND archived_at IS NULL`,
+			in.Door.Desk.Key).Scan(&deskID, &deskKey, &verifies, &domains)
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && verifies) {
 			return ErrDoorAsksForCode
 		}
@@ -431,10 +426,10 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 		}
 
 		var role OrgRole
-		err = tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE org_id = $1 AND user_id = $2`, org.ID, user.ID).Scan(&role)
+		err = tx.QueryRow(ctx, `SELECT org_role FROM org_member WHERE user_id = $1`, user.ID).Scan(&role)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'customer')`, org.ID, user.ID); err != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO org_member (user_id, org_role) VALUES ($1, 'customer')`, user.ID); err != nil {
 				return fmt.Errorf("make the requester a customer: %w", err)
 			}
 			role = RoleCustomer
@@ -450,7 +445,7 @@ func (s *Service) OpenPortalSession(ctx context.Context, in OpenSessionInput) (*
 		}
 		secret = sessionSecret
 		principal = Principal{User: user, Org: &org, Role: role, SessionID: &sessionID, PortalDesk: deskKey, PortalDeskID: &deskID, Proof: ProofOpenDoor}
-		return writeAudit(ctx, tx, org.ID, user.ID, "auth.portal_open_login", "project", &deskID, in.IP)
+		return writeAudit(ctx, tx, user.ID, "auth.portal_open_login", "project", &deskID, in.IP)
 	})
 	if err != nil {
 		return nil, err

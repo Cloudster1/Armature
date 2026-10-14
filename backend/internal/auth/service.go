@@ -68,8 +68,8 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	return s.authenticateSession(ctx, secret)
 }
 
-// sessionPrincipalSQL resolves a session to the caller's role in the person's
-// organization, or the desk's for an open door; left joins tell a lost membership apart.
+// sessionPrincipalSQL resolves a session to the caller's role in the
+// installation; left joins tell a lost membership apart.
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
        u.id, u.email, u.name, u.timezone, u.locale, u.is_active, COALESCE(u.avatar_url, ''),
@@ -78,11 +78,8 @@ SELECT s.id, s.last_seen_at, s.proof,
 FROM user_session s
 JOIN app_user u ON u.id = s.user_id
 LEFT JOIN project pp ON pp.id = s.portal_project_id
-LEFT JOIN LATERAL (
-    SELECT m.org_id, m.org_role FROM org_member m
-    JOIN org mo ON mo.id = m.org_id AND mo.archived_at IS NULL
-    WHERE m.user_id = u.id AND (pp.id IS NULL OR m.org_id = pp.org_id)) m ON true
-LEFT JOIN org o ON o.id = m.org_id
+LEFT JOIN org o ON o.archived_at IS NULL
+LEFT JOIN org_member m ON m.user_id = u.id AND o.id IS NOT NULL
 WHERE s.token_hash = $1 AND s.expires_at > now()`
 
 func (s *Service) authenticateSession(ctx context.Context, secret string) (*Principal, error) {
@@ -161,8 +158,8 @@ SELECT t.id, t.scopes,
                       WHERE tp.token_id = t.id ORDER BY p.key), '{}')
 FROM api_token t
 JOIN app_user u ON u.id = t.user_id
-JOIN org o ON o.id = t.org_id AND o.archived_at IS NULL
-LEFT JOIN org_member m ON m.org_id = o.id AND m.user_id = u.id
+JOIN org o ON o.archived_at IS NULL
+LEFT JOIN org_member m ON m.user_id = u.id
 WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())`
 
 func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Principal, error) {
@@ -218,21 +215,21 @@ func (s *Service) Logout(ctx context.Context, sessionID uuid.UUID) error {
 // grantJoiningRole gives somebody the role their standing implies as they join.
 //
 // It runs in the same transaction as the membership, so there is never a moment
-// where a person is a member of an organization they can do nothing in.
-func grantJoiningRole(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, role OrgRole) error {
+// where a person is a member who can do nothing.
+func grantJoiningRole(ctx context.Context, tx db.DBTX, userID uuid.UUID, role OrgRole) error {
 	appRole := role.AppRole()
 	if appRole == "" {
 		return nil
 	}
-	// An organization from before roles were rows may still lack its five;
+	// An installation from before roles were rows may still lack its five;
 	// this adds nothing where they are there.
-	if _, err := tx.Exec(ctx, `SELECT org_builtin_roles($1)`, orgID); err != nil {
-		return fmt.Errorf("make sure the organization has its roles: %w", err)
+	if _, err := tx.Exec(ctx, `SELECT org_builtin_roles(id) FROM org`); err != nil {
+		return fmt.Errorf("make sure the installation has its roles: %w", err)
 	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO role_assignment (org_id, role, user_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT DO NOTHING`, orgID, appRole, userID)
+		INSERT INTO role_assignment (role, user_id)
+		VALUES ($1, $2)
+		ON CONFLICT DO NOTHING`, appRole, userID)
 	if err != nil {
 		return fmt.Errorf("grant the role that comes with joining: %w", err)
 	}
@@ -266,8 +263,8 @@ func insertSessionFor(ctx context.Context, tx db.DBTX, userID uuid.UUID, portalP
 	return id, secret, nil
 }
 
-func writeAudit(ctx context.Context, tx db.DBTX, orgID, actor uuid.UUID, action, targetType string, targetID *uuid.UUID, ip string) error {
-	return audit.Write(ctx, tx, orgID, audit.Entry{Action: action, TargetType: targetType, TargetID: targetID, Actor: actor, IP: ip})
+func writeAudit(ctx context.Context, tx db.DBTX, actor uuid.UUID, action, targetType string, targetID *uuid.UUID, ip string) error {
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: targetType, TargetID: targetID, Actor: actor, IP: ip})
 }
 
 // NormalizeEmail lowercases and trims an address. The column is citext so the

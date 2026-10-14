@@ -12,7 +12,7 @@ import "slices"
 type Role string
 
 const (
-	// GlobalAdministrator administers the tenant: its members, its roles, its
+	// GlobalAdministrator administers the installation: its members, its roles, its
 	// workflows and every project in it.
 	GlobalAdministrator Role = "global_administrator"
 	// ProjectAdministrator configures one project: its boards, its workflow
@@ -63,10 +63,10 @@ const (
 	// ProjectAdminister is a project's own settings, including which workflow
 	// scheme it overrides the organization with.
 	ProjectAdminister Permission = "project.administer"
-	// ProjectCreate is making a new project, which is a tenant level act.
+	// ProjectCreate is making a new project, which is an installation level act.
 	ProjectCreate Permission = "project.create"
 
-	// OrgAdminister is the tenant's own settings: members, invitations, roles,
+	// OrgAdminister is the installation's own settings: members, invitations, roles,
 	// groups, the identity provider and the organization's workflows.
 	OrgAdminister Permission = "org.administer"
 )

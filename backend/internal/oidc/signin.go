@@ -22,10 +22,10 @@ import (
 // a company account in would have no membership at all, only a login page. The
 // refusal is remembered, though, so an administrator can let them in from the
 // Users page instead of typing out an invitation.
-func (s *Service) SignIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
-	session, err := s.signIn(ctx, orgID, identity, ttl, userAgent, ip)
+func (s *Service) SignIn(ctx context.Context, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
+	session, err := s.signIn(ctx, identity, ttl, userAgent, ip)
 	if errors.Is(err, ErrNotAMember) {
-		if noted := s.noteJoinRequest(ctx, orgID, identity); noted != nil {
+		if noted := s.noteJoinRequest(ctx, identity); noted != nil {
 			return nil, noted
 		}
 	}
@@ -34,15 +34,15 @@ func (s *Service) SignIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 
 // noteJoinRequest keeps the account and the request in their own transaction,
 // because the refusal that led here rolled the sign-in's back.
-func (s *Service) noteJoinRequest(ctx context.Context, orgID uuid.UUID, identity *Identity) error {
+func (s *Service) noteJoinRequest(ctx context.Context, identity *Identity) error {
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		userID, err := upsertUser(ctx, tx, identity)
 		if err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)
-			ON CONFLICT DO NOTHING`, orgID, userID)
+			INSERT INTO org_join_request (user_id) VALUES ($1)
+			ON CONFLICT DO NOTHING`, userID)
 		if err != nil {
 			return fmt.Errorf("note the request to join: %w", err)
 		}
@@ -51,7 +51,7 @@ func (s *Service) noteJoinRequest(ctx context.Context, orgID uuid.UUID, identity
 	return err
 }
 
-func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
+func (s *Service) signIn(ctx context.Context, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
 	var out Session
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		userID, err := upsertUser(ctx, tx, identity)
@@ -70,8 +70,8 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 
 		var role string
 		err = tx.QueryRow(ctx, `
-			SELECT org_role FROM org_member WHERE org_id = $1 AND user_id = $2`,
-			orgID, userID).Scan(&role)
+			SELECT org_role FROM org_member WHERE user_id = $1`,
+			userID).Scan(&role)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotAMember
 		}
@@ -79,11 +79,11 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 			return err
 		}
 
-		provider, err := providerIn(ctx, tx, orgID)
+		provider, err := providerIn(ctx, tx)
 		if err != nil {
 			return err
 		}
-		if err := syncGroups(ctx, tx, orgID, userID, identity.Groups, provider.CreateGroups); err != nil {
+		if err := syncGroups(ctx, tx, userID, identity.Groups, provider.CreateGroups); err != nil {
 			return err
 		}
 
@@ -102,9 +102,9 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 			return fmt.Errorf("create session: %w", err)
 		}
 
-		out = Session{UserID: userID, OrgID: orgID, Secret: secret, ExpiresAt: time.Now().Add(ttl)}
+		out = Session{UserID: userID, Secret: secret, ExpiresAt: time.Now().Add(ttl)}
 
-		return audit.Write(ctx, tx, orgID, audit.Entry{Action: "auth.oidc_login", TargetType: "user", TargetID: &userID, Actor: userID, IP: ip})
+		return audit.Write(ctx, tx, audit.Entry{Action: "auth.oidc_login", TargetType: "user", TargetID: &userID, Actor: userID, IP: ip})
 	})
 	if err != nil {
 		return nil, err
@@ -115,7 +115,6 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 // Session is what a completed sign-in hands back to the HTTP layer.
 type Session struct {
 	UserID    uuid.UUID
-	OrgID     uuid.UUID
 	Secret    string
 	ExpiresAt time.Time
 }
@@ -149,14 +148,14 @@ func upsertUser(ctx context.Context, tx db.DBTX, identity *Identity) (uuid.UUID,
 // provider has to stop granting them anything here on their next sign-in, or
 // revoking access there would not revoke it here. Groups maintained by hand are
 // left alone, because the provider has no opinion about them.
-func syncGroups(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claimed []string, create bool) error {
+func syncGroups(ctx context.Context, tx db.DBTX, userID uuid.UUID, claimed []string, create bool) error {
 	if create {
 		for _, ref := range claimed {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO user_group (org_id, name, source, external_ref)
-				VALUES ($1, $2, 'oidc', $2)
+				INSERT INTO user_group (name, source, external_ref)
+				VALUES ($1, 'oidc', $1)
 				ON CONFLICT (external_ref) WHERE external_ref IS NOT NULL DO NOTHING`,
-				orgID, ref); err != nil {
+				ref); err != nil {
 				return fmt.Errorf("create the group %q the provider named: %w", ref, err)
 			}
 		}
@@ -165,10 +164,10 @@ func syncGroups(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claime
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM group_member m
 		USING user_group g
-		WHERE m.group_id = g.id AND m.user_id = $1 AND g.org_id = $2
+		WHERE m.group_id = g.id AND m.user_id = $1
 		  AND g.source = 'oidc'
-		  AND COALESCE(g.external_ref, '') <> ALL($3)`,
-		userID, orgID, claimed); err != nil {
+		  AND COALESCE(g.external_ref, '') <> ALL($2)`,
+		userID, claimed); err != nil {
 		return fmt.Errorf("leave the groups the provider no longer names: %w", err)
 	}
 
@@ -176,21 +175,20 @@ func syncGroups(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claime
 		return nil
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO group_member (org_id, group_id, user_id)
-		SELECT $2, g.id, $1 FROM user_group g
-		WHERE g.org_id = $2 AND g.source = 'oidc' AND g.external_ref = ANY($3)
+		INSERT INTO group_member (group_id, user_id)
+		SELECT g.id, $1 FROM user_group g
+		WHERE g.source = 'oidc' AND g.external_ref = ANY($2)
 		ON CONFLICT DO NOTHING`,
-		userID, orgID, claimed); err != nil {
+		userID, claimed); err != nil {
 		return fmt.Errorf("join the groups the provider names: %w", err)
 	}
 	return nil
 }
 
-func providerIn(ctx context.Context, tx db.DBTX, orgID uuid.UUID) (*Provider, error) {
+func providerIn(ctx context.Context, tx db.DBTX) (*Provider, error) {
 	var p Provider
 	err := tx.QueryRow(ctx, `
-		SELECT groups_claim, create_groups, enabled FROM oidc_provider WHERE org_id = $1`,
-		orgID).Scan(&p.GroupsClaim, &p.CreateGroups, &p.Enabled)
+		SELECT groups_claim, create_groups, enabled FROM oidc_provider`).Scan(&p.GroupsClaim, &p.CreateGroups, &p.Enabled)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotConfigured
 	}

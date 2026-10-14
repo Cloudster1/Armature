@@ -36,7 +36,7 @@ type changePasswordRequest struct {
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
-	users, err := s.Auth.ManagedUsers(r.Context(), p.Org.ID, p.Role)
+	users, err := s.Auth.ManagedUsers(r.Context(), p.Role)
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -51,7 +51,7 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	user, lsn, err := s.Auth.CreateLocalUser(r.Context(), p.Org.ID, auth.CreateLocalUserInput{
+	user, lsn, err := s.Auth.CreateLocalUser(r.Context(), auth.CreateLocalUserInput{
 		Email: req.Email, Name: req.Name, Role: auth.OrgRole(req.Role), Password: req.Password,
 	}, p.User.ID, clientIP(r))
 	if err != nil {
@@ -79,7 +79,7 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		role = &standing
 	}
 	p := PrincipalFrom(r.Context())
-	user, lsn, err := s.Auth.UpdateManagedUser(r.Context(), p.Org.ID, userID,
+	user, lsn, err := s.Auth.UpdateManagedUser(r.Context(), userID,
 		auth.ManagedUserInput{Name: req.Name, Role: role, IsActive: req.IsActive}, p.User.ID, p.Role, clientIP(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
@@ -101,7 +101,7 @@ func (s *Server) handleSetUserPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	lsn, err := s.Auth.SetManagedPassword(r.Context(), p.Org.ID, userID, req.Password, p.User.ID, p.Role, clientIP(r))
+	lsn, err := s.Auth.SetManagedPassword(r.Context(), userID, req.Password, p.User.ID, p.Role, clientIP(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -133,8 +133,7 @@ type admitRequest struct {
 }
 
 func (s *Server) handleListJoinRequests(w http.ResponseWriter, r *http.Request) {
-	p := PrincipalFrom(r.Context())
-	requests, err := s.Auth.JoinRequests(r.Context(), p.Org.ID)
+	requests, err := s.Auth.JoinRequests(r.Context())
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -154,7 +153,7 @@ func (s *Server) handleAdmitJoinRequest(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	user, lsn, err := s.Auth.AdmitJoinRequest(r.Context(), p.Org.ID, userID, auth.OrgRole(req.Role), p.User.ID, clientIP(r))
+	user, lsn, err := s.Auth.AdmitJoinRequest(r.Context(), userID, auth.OrgRole(req.Role), p.User.ID, clientIP(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -170,7 +169,7 @@ func (s *Server) handleDeclineJoinRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	lsn, err := s.Auth.DeclineJoinRequest(r.Context(), p.Org.ID, userID, p.User.ID, clientIP(r))
+	lsn, err := s.Auth.DeclineJoinRequest(r.Context(), userID, p.User.ID, clientIP(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

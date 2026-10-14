@@ -12,6 +12,7 @@ import (
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/installation"
 )
 
 // SignupPolicy says who may sign up. Invitations, single sign-on and
@@ -123,21 +124,6 @@ func installationOrg(ctx context.Context, tx db.DBTX) (*Org, error) {
 	return &org, nil
 }
 
-// InstallationOrg is the organization a sign-in that names none is for, such as
-// single sign-on's; ErrNotAMember before the first account set it up.
-func (s *Service) InstallationOrg(ctx context.Context) (*Org, error) {
-	var org *Org
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var err error
-		org, err = installationOrg(ctx, tx)
-		return err
-	})
-	if err == nil && org == nil {
-		err = ErrNotAMember
-	}
-	return org, err
-}
-
 // SignupInput is the person signing up; the installation is not theirs to name.
 type SignupInput struct {
 	Email     string
@@ -208,7 +194,7 @@ func (s *Service) Signup(ctx context.Context, in SignupInput) (*Credentials, err
 			if org, err = s.setUpInstallation(ctx, tx, userID, in.IP); err != nil {
 				return err
 			}
-		} else if err := joinInstallation(ctx, tx, org.ID, userID, in.IP); err != nil {
+		} else if err := joinInstallation(ctx, tx, userID, in.IP); err != nil {
 			return err
 		}
 
@@ -243,36 +229,44 @@ func (s *Service) setUpInstallation(ctx context.Context, tx db.DBTX, ownerID uui
 		return nil, fmt.Errorf("create the installation: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, org.ID, ownerID); err != nil {
+		INSERT INTO org_member (user_id, org_role) VALUES ($1, 'owner')`, ownerID); err != nil {
 		return nil, fmt.Errorf("create membership: %w", err)
 	}
-	if err := grantJoiningRole(ctx, tx, org.ID, ownerID, RoleOwner); err != nil {
+	if err := grantJoiningRole(ctx, tx, ownerID, RoleOwner); err != nil {
 		return nil, err
 	}
 	// Without statuses, issue types and a workflow there could be no project,
 	// which is the very next thing anybody makes.
-	if _, err := bootstrap.Org(ctx, tx, org.ID); err != nil {
+	if _, err := bootstrap.Installation(ctx, tx); err != nil {
 		return nil, fmt.Errorf("prepare the installation: %w", err)
 	}
-	if err := writeAudit(ctx, tx, org.ID, ownerID, "org.created", "org", &org.ID, ip); err != nil {
+	if err := writeAudit(ctx, tx, ownerID, "org.created", "org", &org.ID, ip); err != nil {
 		return nil, err
 	}
 	return &org, nil
 }
 
 // joinInstallation makes somebody who signed up a plain member.
-func joinInstallation(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, ip string) error {
+func joinInstallation(ctx context.Context, tx db.DBTX, userID uuid.UUID, ip string) error {
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, orgID, userID); err != nil {
+		INSERT INTO org_member (user_id, org_role) VALUES ($1, 'member')`, userID); err != nil {
 		return fmt.Errorf("create membership: %w", err)
 	}
-	if err := grantJoiningRole(ctx, tx, orgID, userID, RoleMember); err != nil {
+	if err := grantJoiningRole(ctx, tx, userID, RoleMember); err != nil {
 		return err
 	}
-	if err := writeAudit(ctx, tx, orgID, userID, "member.joined", "user", &userID, ip); err != nil {
+	if err := writeAudit(ctx, tx, userID, "member.joined", "user", &userID, ip); err != nil {
 		return err
 	}
-	return events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{
-		"orgId": orgID, "userId": userID, "role": RoleMember,
-	})
+	return memberJoined(ctx, tx, userID, RoleMember)
+}
+
+// memberJoined tells the stream somebody is in. Its orgId is the installation's
+// id, deprecated with the webhook envelope's, and a later release drops it.
+func memberJoined(ctx context.Context, tx db.DBTX, userID uuid.UUID, role OrgRole) error {
+	id, err := installation.ID(ctx, tx)
+	if err != nil {
+		return err
+	}
+	return events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{"orgId": id, "userId": userID, "role": role})
 }

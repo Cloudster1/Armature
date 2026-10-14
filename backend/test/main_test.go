@@ -154,7 +154,7 @@ func theInstallation(ctx context.Context, name string) (auth.Org, error) {
 		if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, org.Slug, org.Name).Scan(&org.ID); err != nil {
 			return fmt.Errorf("make the installation: %w", err)
 		}
-		_, err = bootstrap.Org(ctx, tx, org.ID)
+		_, err = bootstrap.Installation(ctx, tx)
 		return err
 	})
 	if err != nil {

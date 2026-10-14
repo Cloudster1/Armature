@@ -43,26 +43,25 @@ SELECT a.role, COALESCE(p.key, '')
 FROM role_assignment a
 LEFT JOIN project p ON p.id = a.project_id
 LEFT JOIN group_member m ON m.group_id = a.group_id AND m.user_id = $1
-WHERE a.org_id = $2
-  AND (a.user_id = $1 OR m.user_id IS NOT NULL)`
+WHERE a.user_id = $1 OR m.user_id IS NOT NULL`
 
-// Resolve returns what one person may do in one organization.
+// Resolve returns what one person may do.
 //
-// The organization's owner is always a global administrator, whatever the
+// The installation's owner is always a global administrator, whatever the
 // assignments say. Roles are data and data can be edited; an owner who has
 // removed their own last administrator role would otherwise have locked
-// themselves out of the tenant they own, with nobody able to let them back in.
-func (s *Store) Resolve(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, owner bool) (Set, error) {
+// themselves out of the installation they own, with nobody able to let them back in.
+func (s *Store) Resolve(ctx context.Context, tx db.DBTX, userID uuid.UUID, owner bool) (Set, error) {
 	var grants []Grant
 	if owner {
 		grants = append(grants, Grant{Role: GlobalAdministrator})
 	}
-	defs, err := definitionsFor(ctx, tx, orgID)
+	defs, err := definitionsFor(ctx, tx)
 	if err != nil {
 		return Set{}, err
 	}
 
-	rows, err := tx.Query(ctx, resolveFor, userID, orgID)
+	rows, err := tx.Query(ctx, resolveFor, userID)
 	if err != nil {
 		return Set{}, fmt.Errorf("resolve permissions: %w", err)
 	}
@@ -87,11 +86,11 @@ func (s *Store) Resolve(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID
 
 // ResolveFor is Resolve on its own connection, for callers outside a
 // transaction.
-func (s *Store) ResolveFor(ctx context.Context, orgID, userID uuid.UUID, owner bool) (Set, error) {
+func (s *Store) ResolveFor(ctx context.Context, userID uuid.UUID, owner bool) (Set, error) {
 	var set Set
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		set, err = s.Resolve(ctx, tx, orgID, userID, owner)
+		set, err = s.Resolve(ctx, tx, userID, owner)
 		return err
 	})
 	return set, err
@@ -234,8 +233,8 @@ func (s *Store) CreateGroup(ctx context.Context, in GroupInput, actor uuid.UUID)
 
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO user_group (org_id, name, description, source, external_ref)
-			VALUES (current_org_id(), $1, $2, $3, $4) RETURNING id`,
+			INSERT INTO user_group (name, description, source, external_ref)
+			VALUES ($1, $2, $3, $4) RETURNING id`,
 			in.Name, in.Description, source, ref,
 		).Scan(&id)
 		if isUniqueViolation(err) {
@@ -290,8 +289,8 @@ func (s *Store) AddToGroup(ctx context.Context, groupID, userID uuid.UUID, actor
 		}
 
 		_, err = tx.Exec(ctx, `
-			INSERT INTO group_member (org_id, group_id, user_id)
-			VALUES (current_org_id(), $1, $2) ON CONFLICT DO NOTHING`, groupID, userID)
+			INSERT INTO group_member (group_id, user_id)
+			VALUES ($1, $2) ON CONFLICT DO NOTHING`, groupID, userID)
 		if isCheckViolation(err) {
 			return ErrNotAMember
 		}

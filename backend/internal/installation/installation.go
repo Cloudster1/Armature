@@ -67,7 +67,7 @@ func (s *Service) Rename(ctx context.Context, actor uuid.UUID, name, ip string) 
 		if err := set(ctx, tx, "name", name); err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, id, audit.Entry{
+		return audit.Write(ctx, tx, audit.Entry{
 			Action: "installation.renamed", TargetType: "installation", TargetID: &id, Actor: actor, IP: ip,
 			Data: map[string]any{"from": before, "to": name},
 		})

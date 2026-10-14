@@ -78,7 +78,7 @@ func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	off := false
-	_, lsn, err := s.Auth.UpdateManagedUser(r.Context(), p.Org.ID, userID, auth.ManagedUserInput{IsActive: &off}, p.User.ID, p.Role, clientIP(r))
+	_, lsn, err := s.Auth.UpdateManagedUser(r.Context(), userID, auth.ManagedUserInput{IsActive: &off}, p.User.ID, p.Role, clientIP(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

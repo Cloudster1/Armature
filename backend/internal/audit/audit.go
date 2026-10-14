@@ -36,19 +36,9 @@ type Entry struct {
 	EventID *uuid.UUID
 }
 
-// Write records an entry for an organization inside the caller's transaction,
-// so the act and its record cannot disagree.
-func Write(ctx context.Context, tx db.DBTX, orgID uuid.UUID, e Entry) error {
-	return write(ctx, tx, &orgID, e)
-}
-
-// Record is Write for the installation, which a row that names no organization
-// belongs to (#218).
-func Record(ctx context.Context, tx db.DBTX, e Entry) error {
-	return write(ctx, tx, nil, e)
-}
-
-func write(ctx context.Context, tx db.DBTX, orgID *uuid.UUID, e Entry) error {
+// Write records an entry inside the caller's transaction, so the act and its
+// record cannot disagree.
+func Write(ctx context.Context, tx db.DBTX, e Entry) error {
 	if strings.TrimSpace(e.Action) == "" {
 		return errors.New("an audit entry needs an action")
 	}
@@ -64,10 +54,10 @@ func write(ctx context.Context, tx db.DBTX, orgID *uuid.UUID, e Entry) error {
 		actor = &e.Actor
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO audit_log (org_id, actor_user_id, action, target_type, target_id, data, ip, event_id)
-		VALUES (COALESCE($1, current_org_id()), $2, $3, $4, $5, $6, NULLIF($7, '')::inet, $8)
+		INSERT INTO audit_log (actor_user_id, action, target_type, target_id, data, ip, event_id)
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::inet, $7)
 		ON CONFLICT (event_id) WHERE event_id IS NOT NULL DO NOTHING`,
-		orgID, actor, e.Action, e.TargetType, e.TargetID, data, e.IP, e.EventID)
+		actor, e.Action, e.TargetType, e.TargetID, data, e.IP, e.EventID)
 	if err != nil {
 		return fmt.Errorf("write audit log: %w", err)
 	}
@@ -319,7 +309,7 @@ func (c *Consumer) Handle(ctx context.Context, e events.Event) error {
 				entry.Actor = uuid.Nil
 			}
 		}
-		return Record(ctx, tx, entry)
+		return Write(ctx, tx, entry)
 	})
 	return err
 }
