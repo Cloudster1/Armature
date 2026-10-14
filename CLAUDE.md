@@ -14,11 +14,20 @@ killed about a second into its run. See "Build notes" in the README.
 `main` is always the working product. Nothing is committed straight to it.
 
 ```sh
-git switch -c feature/<what-it-adds>   # or fix/<what-it-repairs>
+gh issue develop <n> --name <type>/<n>-<slug> --base main --checkout
 make test-all                          # all four layers, on the branch
 git switch main
-git merge --no-ff feature/<what-it-adds>
+git merge --no-ff <type>/<n>-<slug>
 ```
+
+A branch is `<type>/<issue>-<slug>`, such as `fix/250-bulk-bar-keeps-rows-still`,
+and a commit subject is a Conventional Commit, `<type>(<scope>): <change>` in
+lower case, such as `fix(search): open the bar for ticked rows below them`. The
+type is one of feat, fix, docs, chore, refactor, test, perf, ci, build or
+revert; `!` after it, or a `BREAKING CHANGE:` trailer, marks a break. The
+release script reads the next version from them, so `make hooks` once per clone
+has git refuse a push outside them, and the Conventions workflow refuses a pull
+request; `deploy/conventions.sh` is the rule both use.
 
 The merge commit is kept so the branch stays visible as one unit of work.
 Commits describe a change to the product, not to a file.
