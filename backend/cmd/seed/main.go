@@ -114,15 +114,8 @@ func run() error {
 		return fmt.Errorf("set the installation up as the demo's Ada: %w", err)
 	}
 
-	teammates := []demoUser{
-		// Grace and Alan hold no role over all projects: what they may
-		// do comes from the Keycloak groups they are in, which is the point of
-		// the demo's single sign-on.
-		{email: "grace@armature.test", name: "Grace Hopper", role: auth.RoleMember},
-		{email: "alan@armature.test", name: "Alan Turing", role: auth.RoleMember},
-		{email: "rita@armature.test", name: "Rita Reader", role: auth.RoleMember},
-		{email: "customer@armature.test", name: "Sam Customer", role: auth.RoleCustomer},
-	}
+	teammates := append(append([]demoUser{}, realmPeople...),
+		demoUser{email: "customer@armature.test", name: "Sam Customer", role: auth.RoleCustomer})
 	if err := seedMembers(ctx, svc, creds, teammates, log); err != nil {
 		return err
 	}
@@ -167,6 +160,28 @@ const (
 	keycloakClientSecret = "armature-demo-secret"
 )
 
+// realmPeople are the realm's users. They hold no role over all projects:
+// what they may do comes from their groups there, the point of the demo's single sign-on.
+var realmPeople = []demoUser{
+	{email: "grace@armature.test", name: "Grace Hopper", role: auth.RoleMember},
+	{email: "alan@armature.test", name: "Alan Turing", role: auth.RoleMember},
+	{email: "rita@armature.test", name: "Rita Reader", role: auth.RoleMember},
+}
+
+// realmGroups are the realm's groups and what each grants here: the provider
+// owns who is in a group, the tracker decides what a group may do.
+var realmGroups = []struct {
+	group, description string
+	role               perm.Role
+	projectKey         string
+}{
+	{"armature-administrators", "Runs the tracker itself.", perm.GlobalAdministrator, ""},
+	{"portal-owners", "Owns the Customer Portal project.", perm.ProjectAdministrator, "CP"},
+	{"scrum-masters", "Runs the portal's sprints.", perm.ScrumMaster, "CP"},
+	{"developers", "Works the issues.", perm.User, ""},
+	{"readers", "Looks, and changes nothing.", perm.Reader, ""},
+}
+
 // seedSingleSignOn points the installation at the Keycloak realm the
 // stack runs, and makes the groups the realm's users are in grant roles here:
 // the provider owns who is in a group, the tracker decides what a group may
@@ -196,19 +211,8 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 			byRef[g.ExternalRef] = g.ID
 		}
 	}
-	mapping := []struct {
-		group, description string
-		role               perm.Role
-		projectKey         string
-	}{
-		{"armature-administrators", "Runs the tracker itself.", perm.GlobalAdministrator, ""},
-		{"portal-owners", "Owns the Customer Portal project.", perm.ProjectAdministrator, "CP"},
-		{"scrum-masters", "Runs the portal's sprints.", perm.ScrumMaster, "CP"},
-		{"developers", "Works the issues.", perm.User, ""},
-		{"readers", "Looks, and changes nothing.", perm.Reader, ""},
-	}
 	made := 0
-	for _, m := range mapping {
+	for _, m := range realmGroups {
 		if _, exists := byRef[m.group]; exists {
 			continue
 		}
@@ -230,8 +234,8 @@ func seedSingleSignOn(ctx context.Context, cluster *db.Cluster, creds *auth.Cred
 		return err
 	}
 	fromGroups := map[uuid.UUID]bool{}
-	for _, email := range []string{"grace@armature.test", "alan@armature.test", "rita@armature.test"} {
-		if id, ok := people[email]; ok {
+	for _, u := range realmPeople {
+		if id, ok := people[u.email]; ok {
 			fromGroups[id] = true
 		}
 	}
