@@ -6,9 +6,11 @@ import { useMe } from "@/api/auth";
 import { formatSize, useUploadAttachment, useUploadLimit } from "@/api/attachments";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { useDesks, useFollow, useMyRequests, usePortalArticle, usePortalArticles, useRaiseRequest, useReply, useRequest, useRequestWatchers, useUnfollow, type RequestType } from "@/api/desk";
-import { Button, Card, EmptyState, ErrorBanner, Field, Input, OptionCard, Page, PageHeader, SectionTitle, Select, Table, Td, Th, Textarea } from "@/components/ui";
+import type { Issue } from "@/api/issues";
+import { Button, Card, Checkbox, EmptyState, ErrorBanner, Field, Input, OptionCard, Page, PageHeader, SectionTitle, Select, Table, Td, Th, Textarea } from "@/components/ui";
 import { Avatar, StatusBadge, RelativeTime } from "@/features/issues/badges";
 import { groupByCategory, prefillDetails } from "@/features/desk/templates";
+import { sharedByCompany } from "@/features/desk/company";
 
 /**
  * The customer portal: raise a request, follow it, reply. A customer sees
@@ -101,12 +103,13 @@ function MyRequests() {
   const { data, isLoading } = useMyRequests();
   const { data: session } = useMe();
   const requests = data?.requests ?? [];
+  const shared = data?.shared ?? [];
   // Somebody who came in without a code sees one desk; the heading says which,
   // so a short list is not a surprise.
   const desk = session?.principal?.portalDesk;
 
   return (
-    <Page width="content">
+    <Page width="content" className="space-y-8">
       <PageHeader
         title={desk ? `Your requests at ${desk}` : "Your requests"}
         meta={data ? `${requests.length} request${requests.length === 1 ? "" : "s"}` : undefined}
@@ -130,40 +133,51 @@ function MyRequests() {
           }
         />
       ) : (
-        <Table>
-          <thead>
-            <tr>
-              <Th className="w-24">Reference</Th>
-              <Th>Request</Th>
-              <Th className="w-40">Kind</Th>
-              <Th className="w-40">Status</Th>
-              <Th className="w-24 text-right">Updated</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((r) => (
-              <tr key={r.id} className="group hover:bg-surface-raised/60" data-request={r.key}>
-                <Td className="font-mono text-sm text-ink-muted">{r.key}</Td>
-                <Td className="max-w-0">
-                  <Link
-                    to="/portal/requests/$issueKey"
-                    params={{ issueKey: r.key }}
-                    className="block truncate text-ink group-hover:text-accent"
-                  >
-                    {r.summary}
-                  </Link>
-                </Td>
-                <Td className="text-sm text-ink-muted">{r.requestTypeName ?? ""}</Td>
-                <Td>
-                  <StatusBadge name={r.status.name} category={r.status.category} />
-                </Td>
-                <Td className="text-right text-sm whitespace-nowrap text-ink-subtle"><RelativeTime iso={r.updatedAt} /></Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <RequestTable requests={requests} />
       )}
+      {sharedByCompany(shared).map((group) => (
+        <section key={group.company} data-shared-by={group.company}>
+          <SectionTitle className="mb-2">Shared by {group.company}</SectionTitle>
+          <p className="mb-3 text-sm text-ink-muted">What colleagues raised and chose to share with {group.company}. You can read them, reply and add files.</p>
+          <RequestTable requests={group.requests} showReporter />
+        </section>
+      ))}
     </Page>
+  );
+}
+
+function RequestTable({ requests, showReporter = false }: { requests: Issue[]; showReporter?: boolean }) {
+  return (
+    <Table>
+      <thead>
+        <tr>
+          <Th className="w-24">Reference</Th>
+          <Th>Request</Th>
+          {showReporter && <Th className="w-40">Raised by</Th>}
+          <Th className="w-40">Kind</Th>
+          <Th className="w-40">Status</Th>
+          <Th className="w-24 text-right">Updated</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {requests.map((r) => (
+          <tr key={r.id} className="group hover:bg-surface-raised/60" data-request={r.key}>
+            <Td className="font-mono text-sm text-ink-muted">{r.key}</Td>
+            <Td className="max-w-0">
+              <Link to="/portal/requests/$issueKey" params={{ issueKey: r.key }} className="block truncate text-ink group-hover:text-accent">
+                {r.summary}
+              </Link>
+            </Td>
+            {showReporter && <Td className="text-sm text-ink-muted">{r.reporter?.name ?? ""}</Td>}
+            <Td className="text-sm text-ink-muted">{r.requestTypeName ?? ""}</Td>
+            <Td>
+              <StatusBadge name={r.status.name} category={r.status.category} />
+            </Td>
+            <Td className="text-right text-sm whitespace-nowrap text-ink-subtle"><RelativeTime iso={r.updatedAt} /></Td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 
@@ -176,6 +190,7 @@ function RaiseRequest() {
   const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
   const [raisedKey, setRaisedKey] = useState("");
+  const [share, setShare] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [tooBig, setTooBig] = useState("");
   const picker = useRef<HTMLInputElement>(null);
@@ -213,7 +228,12 @@ function RaiseRequest() {
     if (!chosen || !summary.trim()) return;
     let key: string;
     try {
-      const made = await raise.mutateAsync({ requestTypeId: chosen.id, summary: summary.trim(), description: description.trim() || undefined });
+      const made = await raise.mutateAsync({
+        requestTypeId: chosen.id,
+        summary: summary.trim(),
+        description: description.trim() || undefined,
+        shareWithCompany: Boolean(desk?.company) && share,
+      });
       key = made.request.key;
     } catch {
       return;
@@ -306,6 +326,13 @@ function RaiseRequest() {
               placeholder="Anything that helps: what you did, what happened, what you expected."
             />
 
+            {desk?.company && (
+              <div>
+                <Checkbox label={`Share with ${desk.company.name}`} checked={share} onChange={(e) => setShare(e.target.checked)} data-share-with-company={desk.company.name} />
+                <p className="mt-1 text-xs text-ink-subtle">Your colleagues there can then read it, reply and add files. Nobody else sees it.</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <input ref={picker} type="file" multiple className="sr-only" aria-label="Attach files" onChange={onPick} />
@@ -395,6 +422,8 @@ function RequestPage() {
         }
       />
 
+      <RaisedBy issue={issue} />
+
       <p className="mb-4 flex items-center gap-2 text-sm text-ink-muted" data-request-assignee={issue.assignee?.name ?? ""}>
         {issue.assignee ? (
           <>
@@ -455,6 +484,18 @@ function RequestPage() {
         </form>
       </section>
     </Page>
+  );
+}
+
+/** Who raised a request somebody else reads, and whom it is shared with. */
+function RaisedBy({ issue }: { issue: Issue }) {
+  const { data: session } = useMe();
+  const mine = issue.reporter?.id === session?.principal?.user.id;
+  if (!issue.sharedWithCompany || !issue.company) return null;
+  return (
+    <p className="mb-2 text-sm text-ink-muted" data-request-raised-by={issue.reporter?.name ?? ""}>
+      {mine ? `Shared with ${issue.company.name}.` : `Raised by ${issue.reporter?.name ?? "a colleague"} and shared with ${issue.company.name}.`}
+    </p>
   );
 }
 

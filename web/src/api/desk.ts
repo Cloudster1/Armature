@@ -90,6 +90,33 @@ export interface Desk {
   requestTypes: RequestType[];
   /** Whether answering the desk's mails adds the words to the request. */
   repliesByMail: boolean;
+  /** The customer's company here, which a request can be shared with. */
+  company?: { id: string; name: string };
+}
+
+/** A desk's customers who read the requests a colleague shared with them. */
+export interface Company {
+  id: string;
+  projectId: string;
+  projectKey: string;
+  name: string;
+  /** Where a customer joins from on their first request at the desk. */
+  domains: string[];
+  members: CompanyMember[];
+  createdAt: string;
+}
+
+export interface CompanyMember {
+  userId: string;
+  name: string;
+  email: string;
+  addedAt: string;
+}
+
+/** The portal's two lists: what the customer is on, and what colleagues shared. */
+export interface MyRequests {
+  requests: Issue[];
+  shared: Issue[];
 }
 
 export interface Request {
@@ -116,11 +143,11 @@ export function usePolicies(projectKey: string) {
   });
 }
 
-export function useQueue(projectKey: string, filter: QueueFilter, offset = 0) {
+export function useQueue(projectKey: string, filter: QueueFilter, offset = 0, company = "") {
   return useQuery({
-    queryKey: [...deskQueryKey, "queue", projectKey, filter, offset],
+    queryKey: [...deskQueryKey, "queue", projectKey, filter, offset, company],
     queryFn: () =>
-      request<QueuePage>(`/projects/${projectKey}/queue?filter=${filter}&limit=${QUEUE_PAGE_SIZE}&offset=${offset}`),
+      request<QueuePage>(`/projects/${projectKey}/queue?filter=${filter}&limit=${QUEUE_PAGE_SIZE}&offset=${offset}${company ? `&company=${company}` : ""}`),
     enabled: Boolean(projectKey),
     // A queue is a page people leave open; the clocks on it should move.
     refetchInterval: 30_000,
@@ -305,6 +332,42 @@ export function useSaveBusinessCalendar(projectKey: string) {
   return useDeskMutation((input: BusinessCalendar) => request<{ calendar: BusinessCalendar }>(`/projects/${projectKey}/business-calendar`, { method: "PUT", body: input }));
 }
 
+export function useCompanies(projectKey: string) {
+  return useQuery({
+    queryKey: [...deskQueryKey, "companies", projectKey],
+    queryFn: () => request<{ companies: Company[] }>(`/projects/${projectKey}/companies`),
+    enabled: Boolean(projectKey),
+  });
+}
+
+export function useCreateCompany(projectKey: string) {
+  return useDeskMutation((input: { name: string; domains?: string[] }) =>
+    request<{ company: Company }>(`/projects/${projectKey}/companies`, { method: "POST", body: input }),
+  );
+}
+
+export function useUpdateCompany() {
+  return useDeskMutation(({ id, ...input }: { id: string; name?: string; domains?: string[] }) =>
+    request<{ company: Company }>(`/companies/${id}`, { method: "PATCH", body: input }),
+  );
+}
+
+export function useDeleteCompany() {
+  return useDeskMutation((id: string) => request<void>(`/companies/${id}`, { method: "DELETE" }));
+}
+
+export function useAddCompanyMember() {
+  return useDeskMutation(({ id, email }: { id: string; email: string }) =>
+    request<{ company: Company }>(`/companies/${id}/members`, { method: "POST", body: { email } }),
+  );
+}
+
+export function useRemoveCompanyMember() {
+  return useDeskMutation(({ id, userId }: { id: string; userId: string }) =>
+    request<void>(`/companies/${id}/members/${userId}`, { method: "DELETE" }),
+  );
+}
+
 /** An internal note: a comment the customer is never shown. */
 export function useAddNote() {
   return useDeskMutation(({ key, body }: { key: string; body: Doc }) =>
@@ -324,7 +387,7 @@ export function useDesks() {
 export function useMyRequests() {
   return useQuery({
     queryKey: [...deskQueryKey, "portal", "requests"],
-    queryFn: () => request<{ requests: Issue[] }>("/portal/requests"),
+    queryFn: () => request<MyRequests>("/portal/requests"),
   });
 }
 
@@ -337,7 +400,7 @@ export function useRequest(key: string) {
 }
 
 export function useRaiseRequest() {
-  return useDeskMutation((input: { requestTypeId: string; summary: string; description?: string }) =>
+  return useDeskMutation((input: { requestTypeId: string; summary: string; description?: string; shareWithCompany?: boolean }) =>
     request<{ request: Issue }>("/portal/requests", { method: "POST", body: input }),
   );
 }

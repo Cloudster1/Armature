@@ -24,6 +24,7 @@ export const QUERY_FIELDS: QueryField[] = [
   { name: "sprint", takes: "a sprint name or openSprints()", example: "sprint IN (openSprints())" },
   { name: "team", takes: "a team name", example: "team = Alpha" },
   { name: "milestone", takes: "a milestone name", example: 'milestone = "1.0"' },
+  { name: "company", takes: "a desk's company name", example: "company = Globex" },
   { name: "labels", takes: "label names", example: "labels IN (backend, security)" },
   { name: "fixVersion", takes: "a version name, unreleasedVersions() or releasedVersions()", example: "fixVersion IN (unreleasedVersions())" },
   { name: "affectsVersion", takes: "a version name, unreleasedVersions() or releasedVersions()", example: 'affectsVersion = "1.2"' },

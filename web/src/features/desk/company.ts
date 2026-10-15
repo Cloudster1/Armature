@@ -1,0 +1,24 @@
+import type { Issue } from "@/api/issues";
+import { cleanDomain } from "./DeskExtras";
+
+/** Domains typed as a list: commas or spaces between them, each as the server stores it. */
+export function parseDomains(raw: string): string[] {
+  return [...new Set(raw.split(/[\s,]+/).map(cleanDomain).filter(Boolean))];
+}
+
+/** Where a request came from, as an agent reads it: "Globex, shared" or "Globex". */
+export function companyLine(name: string, shared: boolean): string {
+  return shared ? `${name}, shared` : name;
+}
+
+/** The shared requests by the company they were shared with, in the order they came. */
+export function sharedByCompany(requests: Issue[]): Array<{ company: string; requests: Issue[] }> {
+  const groups: Array<{ company: string; requests: Issue[] }> = [];
+  for (const r of requests) {
+    const company = r.company?.name ?? "";
+    const group = groups.find((g) => g.company === company);
+    if (group) group.requests.push(r);
+    else groups.push({ company, requests: [r] });
+  }
+  return groups;
+}
