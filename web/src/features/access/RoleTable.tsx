@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMembers } from "@/api/issues";
 import {
   permissionWords,
@@ -11,7 +11,8 @@ import {
   type Assignment,
   type Role,
 } from "@/api/access";
-import { Button, Card, cx, EmptyState, ErrorBanner, Select, Table, Td, Th } from "@/components/ui";
+import { Button, Card, clampOffset, cx, EmptyState, ErrorBanner, ListSearch, Pager, Select, SelectInput, shownOf, Table, Td, Th } from "@/components/ui";
+import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { ProjectPicker } from "@/features/projects/ProjectPicker";
 
@@ -23,22 +24,67 @@ import { ProjectPicker } from "@/features/projects/ProjectPicker";
  * this person do that" without anybody having to know the schema.
  */
 export function RoleTable({ projectKey }: { projectKey?: string }) {
-  const { data, isLoading, error } = useAssignments(projectKey);
+  // Held here rather than in the address, like the tab itself: the page is the tab's own.
+  const [q, setQ] = useState("");
+  const [role, setRole] = useState<Role | "">("");
+  const [offset, setOffset] = useState(0);
+  const { data, isLoading, error } = useAssignments({ projectKey, q, role, offset });
+  const { data: roleData } = useRoles();
   const revoke = useRevokeRole();
   const confirm = useConfirm();
   const roleName = useRoleName();
 
   const assignments = data?.assignments ?? [];
   const failure = (error ?? revoke.error) as Error | undefined;
+  const narrowed = Boolean(q || role);
+
+  // Grants leave the list while it is open; a page past the end steps back.
+  useEffect(() => {
+    if (data && offset > 0 && offset >= data.total) setOffset(clampOffset(offset, data.total, ROLE_ASSIGNMENT_PAGE_SIZE));
+  }, [data, offset]);
 
   return (
     <div className="space-y-4">
       <GrantForm projectKey={projectKey} />
 
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <ListSearch
+          aria-label="Find grants"
+          placeholder="Find by person, group or project"
+          value={q}
+          onChange={(text) => {
+            setQ(text);
+            setOffset(0);
+          }}
+          className="w-72"
+          data-assignment-search=""
+        />
+        <SelectInput
+          aria-label="Only this role"
+          controlSize="sm"
+          value={role}
+          onChange={(event) => {
+            setRole(event.target.value);
+            setOffset(0);
+          }}
+        >
+          <option value="">Every role</option>
+          {(roleData?.roles ?? []).map((each) => (
+            <option key={each.role} value={each.role}>
+              {each.name}
+            </option>
+          ))}
+        </SelectInput>
+        {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, assignments.length, "grant")}</span>}
+      </div>
+
       {isLoading && <p className="text-sm text-ink-muted">Loading...</p>}
 
-      {!isLoading && assignments.length === 0 ? (
+      {!isLoading && assignments.length === 0 && narrowed ? (
+        <EmptyState title="No grant matches that" description="Try part of a name or a project key, another role, or clear the search." />
+      ) : !isLoading && assignments.length === 0 ? (
         <EmptyState
           title="Nobody has been given anything yet"
           description="Roles can be given to a person or to a group, over this project or over all projects."
@@ -66,6 +112,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
           </tbody>
         </Table>
       )}
+      {data && <Pager label="Grant pages" total={data.total} offset={data.offset} pageSize={ROLE_ASSIGNMENT_PAGE_SIZE} onChange={setOffset} />}
     </div>
   );
 }

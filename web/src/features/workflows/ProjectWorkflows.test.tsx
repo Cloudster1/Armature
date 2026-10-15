@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import type { Status } from "@/api/issues";
@@ -47,22 +47,32 @@ function detail(id: string, name: string): WorkflowDetail {
   };
 }
 
+const asked = { workflows: [] as unknown[] };
+const workflowRows = [
+  { id: "Default software workflow", name: "Default software workflow", stepCount: 4, transitionCount: 5, schemeCount: 1, inDefault: true },
+  { id: "Bug triage", name: "Bug triage", stepCount: 2, transitionCount: 1, schemeCount: 1, inDefault: false },
+];
+
 vi.mock("@/api/workflows", () => ({
   useProjectWorkflows: () => ({
-    data: { projectKey: "PR", schemeId: state.schemeId, assignments: state.assignments },
+    data: {
+      projectKey: "PR",
+      schemeId: state.schemeId,
+      schemeName: state.schemes.find((scheme) => scheme.id === state.schemeId)?.name,
+      defaultSchemeName: "Default workflow scheme",
+      assignments: state.assignments,
+    },
     isLoading: false,
   }),
-  useSchemes: () => ({ data: { schemes: state.schemes } }),
+  useSchemes: () => ({ data: { schemes: state.schemes, total: state.schemes.length, limit: 20, offset: 0 } }),
   useSetProjectScheme: () => ({ mutate: setProjectScheme, isPending: false, error: null }),
   useSetProjectAssignment: () => ({ mutate: setAssignment, isPending: false, error: null }),
-  useWorkflows: () => ({
-    data: {
-      workflows: [
-        { id: "Default software workflow", name: "Default software workflow", stepCount: 4, transitionCount: 5, schemeCount: 1, inDefault: true },
-        { id: "Bug triage", name: "Bug triage", stepCount: 2, transitionCount: 1, schemeCount: 1, inDefault: false },
-      ],
-    },
-  }),
+  // The server answers what was typed; here, the rows whose name holds it.
+  useWorkflows: (params: { q?: string } = {}) => {
+    asked.workflows.push(params);
+    const found = workflowRows.filter((row) => row.name.toLowerCase().includes((params.q ?? "").toLowerCase()));
+    return { data: { workflows: found, total: found.length, limit: 20, offset: 0 } };
+  },
   useWorkflow: (id: string) => ({ data: detail(id, id), isLoading: false, error: null }),
 }));
 
@@ -246,5 +256,44 @@ describe("ProjectWorkflows", () => {
     render(<ProjectWorkflows projectKey="PR" />);
     const picker = screen.getByLabelText("Workflow scheme");
     expect(within(picker).queryByText("Support workflows")).toBeNull();
+  });
+
+  // The library may hold thousands: a row asks for what was typed and keeps its own by name.
+  it("asks the server for the workflows typed and keeps a row's own workflow offered by its name", async () => {
+    state.schemeId = "s2";
+    state.schemes = [organisation, ownScheme];
+    state.assignments = [
+      assignment("Bug", "Bug triage", { scope: "project", schemeId: "s2", schemeName: "Support workflows", named: true }),
+    ];
+    asked.workflows = [];
+
+    render(<ProjectWorkflows projectKey="PR" />);
+    await userEvent.type(screen.getByLabelText("Find: Workflow for Bug"), "default");
+    await waitFor(() => expect(asked.workflows.at(-1)).toMatchObject({ q: "default" }));
+
+    const bug = screen.getByLabelText("Workflow for Bug") as HTMLSelectElement;
+    expect(bug.value).toBe("Bug triage");
+    expect(within(bug).getByText("Bug triage")).toBeInTheDocument();
+    expect(within(bug).getByText("Default software workflow")).toBeInTheDocument();
+  });
+
+  it("names its own scheme and the default from the project's answer", () => {
+    state.schemeId = "s2";
+    state.schemes = [organisation, ownScheme];
+    state.assignments = [];
+
+    render(<ProjectWorkflows projectKey="PR" />);
+    expect(screen.getByText("This project uses its own scheme, Support workflows.")).toBeInTheDocument();
+    expect(screen.getByText(/still follow Default workflow scheme/)).toBeInTheDocument();
+  });
+
+  it("says there is no other scheme to give yet when the default is the only one", () => {
+    state.schemeId = undefined;
+    state.schemes = [organisation];
+    state.assignments = [];
+
+    render(<ProjectWorkflows projectKey="PR" />);
+    expect(screen.getByText(/There is no other scheme to give it yet/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Workflow scheme")).toBeNull();
   });
 });

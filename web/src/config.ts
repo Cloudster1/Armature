@@ -154,6 +154,21 @@ export const PROJECT_PICKER_RESULTS = 20;
 /** A project search waits this long after the last key, so the server is not asked per letter. */
 export const PROJECT_SEARCH_DELAY_MS = 250;
 
+/** How many workflows or schemes the library shows at once. */
+export const LIBRARY_PAGE_SIZE = 50;
+
+/** How many grants the Roles tab shows at once. */
+export const ROLE_ASSIGNMENT_PAGE_SIZE = 50;
+
+/** How many labels the labels page shows at once. */
+export const LABEL_PAGE_SIZE = 50;
+
+/** How many matches a workflow or scheme picker asks for; typing narrows the rest. */
+export const WORKFLOW_PICKER_RESULTS = 20;
+
+/** A list's search box waits this long after the last key before it asks the server. */
+export const LIST_SEARCH_DELAY_MS = 250;
+
 /** How many results the search page shows of what a query matched. */
 export const SEARCH_PAGE_SIZE = 100;
 

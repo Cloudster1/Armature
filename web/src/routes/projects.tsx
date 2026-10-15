@@ -1,9 +1,9 @@
-import { memo, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { memo, useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useArchiveProject, useCreateProject, useKeyCheck, useProjects, useRestoreProject, type Project } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
-import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, Input, Menu, Page, PageHeader, Pager, Skeleton, Switch, Table, Td, Th, clampOffset, countOf, isPageOffset, useToast } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, ListSearch, Menu, Page, PageHeader, Pager, Skeleton, Switch, Table, Td, Th, clampOffset, countOf, isPageOffset, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TemplateChooser } from "@/features/projects/TemplateChooser";
 import { RelativeTime } from "@/features/issues/badges";
@@ -129,35 +129,13 @@ function ProjectsPage() {
 
 /** The search box over the list; it writes the address once typing pauses, not per letter. */
 function ProjectSearch({ value, onChange }: { value: string; onChange: (text: string) => void }) {
-  const [text, setText] = useState(value);
-  const timer = useRef<number | undefined>(undefined);
-  const latest = useRef(onChange);
-  useEffect(() => {
-    latest.current = onChange;
-  });
-  // A change from elsewhere, such as going back, shows in the box; while typing, the box leads.
-  useEffect(() => {
-    if (timer.current === undefined) setText(value);
-  }, [value]);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  function type(next: string) {
-    setText(next);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      timer.current = undefined;
-      latest.current(next.trim());
-    }, PROJECT_SEARCH_DELAY_MS);
-  }
-
   return (
-    <Input
-      type="search"
-      controlSize="sm"
+    <ListSearch
       aria-label="Find projects"
       placeholder="Find by key or name"
-      value={text}
-      onChange={(event) => type(event.target.value)}
+      value={value}
+      onChange={onChange}
+      delayMs={PROJECT_SEARCH_DELAY_MS}
       className="w-56"
       data-project-search=""
     />

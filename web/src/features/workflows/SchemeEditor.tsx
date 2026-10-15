@@ -1,21 +1,20 @@
 import { useState } from "react";
 import { useIssueTypes } from "@/api/issues";
-import {
-  useCreateScheme,
-  useSaveScheme,
-  type Scheme,
-  type SchemeInput,
-  type WorkflowSummary,
-} from "@/api/workflows";
+import { useCreateScheme, useSaveScheme, type Scheme, type SchemeInput } from "@/api/workflows";
 import { Button, Card, ErrorBanner, Field, SelectInput } from "@/components/ui";
+import { WorkflowPicker } from "./WorkflowPicker";
 
-/** A mapping as the editor holds it. An empty issue type is the fallback. */
+/** A mapping as the editor holds it. An empty issue type is the fallback; an empty workflow is not chosen yet. */
 interface DraftItem {
   issueTypeId: string;
   workflowId: string;
+  workflowName: string;
 }
 
 const FALLBACK = "";
+
+/** A new mapping names no workflow until somebody picks one. */
+const UNCHOSEN: DraftItem = { issueTypeId: FALLBACK, workflowId: "", workflowName: "" };
 
 /**
  * Edits the mappings that make up a scheme.
@@ -25,15 +24,7 @@ const FALLBACK = "";
  * it is allowed to be a short list of disagreements, and everything it leaves
  * out falls through to the organization.
  */
-export function SchemeEditor({
-  scheme,
-  workflows,
-  onDone,
-}: {
-  scheme?: Scheme;
-  workflows: WorkflowSummary[];
-  onDone: () => void;
-}) {
+export function SchemeEditor({ scheme, onDone }: { scheme?: Scheme; onDone: () => void }) {
   const { data: typeData } = useIssueTypes();
   const issueTypes = typeData?.issueTypes ?? [];
 
@@ -43,8 +34,9 @@ export function SchemeEditor({
       ? scheme.items.map((item) => ({
           issueTypeId: item.issueTypeId ?? FALLBACK,
           workflowId: item.workflowId,
+          workflowName: item.workflowName,
         }))
-      : [{ issueTypeId: FALLBACK, workflowId: workflows[0]?.id ?? "" }],
+      : [{ ...UNCHOSEN }],
   );
 
   const create = useCreateScheme();
@@ -102,23 +94,17 @@ export function SchemeEditor({
             <span aria-hidden="true" className="text-ink-subtle">
               uses
             </span>
-            <SelectInput
+            <WorkflowPicker
               aria-label="Workflow"
               value={item.workflowId}
-              onChange={(event) =>
+              chosenName={item.workflowName}
+              leading={!item.workflowId && <option value="">Choose a workflow</option>}
+              onChange={(workflowId, workflowName) =>
                 setItems((current) =>
-                  current.map((each, index) =>
-                    index === at ? { ...each, workflowId: event.target.value } : each,
-                  ),
+                  current.map((each, index) => (index === at ? { ...each, workflowId, workflowName } : each)),
                 )
               }
-            >
-              {workflows.map((workflow) => (
-                <option key={workflow.id} value={workflow.id}>
-                  {workflow.name}
-                </option>
-              ))}
-            </SelectInput>
+            />
             <Button
               variant="ghost"
               size="sm"
@@ -134,10 +120,7 @@ export function SchemeEditor({
         variant="secondary"
         size="sm"
         onClick={() =>
-          setItems((current) => [
-            ...current,
-            { issueTypeId: FALLBACK, workflowId: workflows[0]?.id ?? "" },
-          ])
+          setItems((current) => [...current, { ...UNCHOSEN }])
         }
       >
         Add a mapping
@@ -146,7 +129,7 @@ export function SchemeEditor({
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
 
       <div className="flex gap-2">
-        <Button loading={pending} onClick={submit}>
+        <Button loading={pending} disabled={items.some((item) => !item.workflowId)} onClick={submit}>
           {scheme ? "Save scheme" : "Create scheme"}
         </Button>
         <Button variant="ghost" onClick={onDone}>

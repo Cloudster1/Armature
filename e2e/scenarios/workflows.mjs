@@ -21,6 +21,7 @@ import {
   movesOffered,
   nodePosition,
   openWorkflowDesign,
+  pickBySearch,
   replaceValue,
   revokeAll,
   selectByLabel,
@@ -65,7 +66,7 @@ scenario("a project overrides one issue type and inherits the rest", async ({ pa
   });
 
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", triageScheme);
+  await pickBySearch(page, "#project-scheme", triageScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(
     () => document.body.innerText.includes("This project uses its own scheme"),
@@ -105,7 +106,7 @@ scenario("the project's workflow page draws the workflow each issue type follows
   await createScheme(page, { name: drawnScheme, issueType: "Bug", workflow: triage });
 
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", drawnScheme);
+  await pickBySearch(page, "#project-scheme", drawnScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForSelector('[data-testid="workflow-assignments"] [data-assignment="Bug"]', { timeout: WAIT });
 
@@ -174,7 +175,7 @@ scenario("a project can hand the decision back to the default", async ({ page })
   await createScheme(page, { name: leanScheme, issueType: "Bug", workflow: lean });
 
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", leanScheme);
+  await pickBySearch(page, "#project-scheme", leanScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(
     () => document.body.innerText.includes("This project uses its own scheme"),
@@ -269,7 +270,7 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   // cannot be started without a comment.
   await createScheme(page, { name: drawnScheme, issueType: "Bug", workflow: drawn });
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", drawnScheme);
+  await pickBySearch(page, "#project-scheme", drawnScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(
     () => document.body.innerText.includes("This project uses its own scheme"),
@@ -295,7 +296,7 @@ scenario("deleting a scheme a project uses is refused and says which", async ({ 
   await createScheme(page, { name: leanScheme, issueType: "Bug", workflow: lean });
 
   await goto(page, `/projects/${key}/workflows`);
-  await selectByLabel(page, "#project-scheme", leanScheme);
+  await pickBySearch(page, "#project-scheme", leanScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(
     () => document.body.innerText.includes("This project uses its own scheme"),

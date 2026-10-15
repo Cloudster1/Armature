@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
 import type { Status } from "./issues";
-import { META_STALE_MS } from "@/config";
+import { LIBRARY_PAGE_SIZE, META_STALE_MS } from "@/config";
 
 /**
  * Workflows are configured twice over. The organization keeps one scheme that
@@ -121,16 +121,51 @@ export interface Assignment {
 export interface ProjectWorkflows {
   projectKey: string;
   /** The project's own scheme, absent when it follows the organization. */
-  schemeId?: string;
+  schemeId?: string | null;
+  /** What the project's own scheme is called, absent when it has none. */
+  schemeName?: string;
+  defaultSchemeName: string;
   assignments: Assignment[];
+}
+
+/** One page of a library listing, with how many matched in all. */
+interface Paged {
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface WorkflowPage extends Paged {
+  workflows: WorkflowSummary[];
+}
+
+export interface SchemePage extends Paged {
+  schemes: Scheme[];
+}
+
+export interface LibraryParams {
+  /** Text the name contains. */
+  q?: string;
+  offset?: number;
+  limit?: number;
 }
 
 export const workflowsQueryKey = ["workflows"] as const;
 
-export function useWorkflows() {
+function libraryQuery(path: string, { q = "", offset = 0, limit = LIBRARY_PAGE_SIZE }: LibraryParams) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (q.trim()) params.set("q", q.trim());
+  if (offset) params.set("offset", String(offset));
+  return `${path}?${params}`;
+}
+
+/** A page of the workflows, searched by name; a page stays on screen while the next loads. */
+export function useWorkflows(params: LibraryParams = {}) {
+  const { q = "", offset = 0, limit = LIBRARY_PAGE_SIZE } = params;
   return useQuery({
-    queryKey: workflowsQueryKey,
-    queryFn: () => request<{ workflows: WorkflowSummary[] }>("/workflows"),
+    queryKey: [...workflowsQueryKey, "list", { q: q.trim(), offset, limit }],
+    queryFn: () => request<WorkflowPage>(libraryQuery("/workflows", params)),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -160,10 +195,13 @@ export function useRuleTypes() {
   });
 }
 
-export function useSchemes() {
+/** A page of the schemes, the default first, searched by name. */
+export function useSchemes(params: LibraryParams = {}) {
+  const { q = "", offset = 0, limit = LIBRARY_PAGE_SIZE } = params;
   return useQuery({
-    queryKey: [...workflowsQueryKey, "schemes"],
-    queryFn: () => request<{ schemes: Scheme[] }>("/workflow-schemes"),
+    queryKey: [...workflowsQueryKey, "schemes", { q: q.trim(), offset, limit }],
+    queryFn: () => request<SchemePage>(libraryQuery("/workflow-schemes", params)),
+    placeholderData: keepPreviousData,
   });
 }
 

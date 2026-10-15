@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
-import { LABEL_SUGGESTIONS, META_STALE_MS } from "@/config";
+import { LABEL_PAGE_SIZE, LABEL_SUGGESTIONS } from "@/config";
 import type { LabelColor, LabelRef } from "./issues";
 
 /** A label as the organization keeps it, with how often it is used. */
@@ -15,11 +15,26 @@ export const LABEL_COLORS: LabelColor[] = ["gray", "red", "orange", "amber", "gr
 
 export const labelsQueryKey = ["labels"] as const;
 
-export function useLabels() {
+/** One page of the labels and how many matched in all. */
+export interface LabelPage {
+  labels: Label[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** A page of the labels by name, or of those holding the text with those starting with it first. */
+export function useLabels({ q = "", offset = 0 }: { q?: string; offset?: number } = {}) {
+  const text = q.trim();
   return useQuery({
-    queryKey: labelsQueryKey,
-    queryFn: () => request<{ labels: Label[] }>("/labels"),
-    staleTime: META_STALE_MS,
+    queryKey: [...labelsQueryKey, "page", { q: text, offset }],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: String(LABEL_PAGE_SIZE) });
+      if (text) params.set("q", text);
+      if (offset) params.set("offset", String(offset));
+      return request<LabelPage>(`/labels?${params}`);
+    },
+    placeholderData: keepPreviousData,
   });
 }
 
