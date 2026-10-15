@@ -2,13 +2,13 @@ import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useArrangements } from "@/api/arrange";
 import { LEVEL_STANDARD, useCreateIssue, useIssueTypes, type Issue } from "@/api/issues";
-import { useProjects } from "@/api/projects";
 import { Button, Dialog, ErrorBanner, Field, Select, Skeleton, useToast } from "@/components/ui";
 import { DIALOG_SKELETON_LINES } from "@/config";
 import { namedFields } from "./view/areas";
 import { applyRest, type Leftover } from "./create/apply";
 import { askedPlaces, createBody, emptyDraft, type Draft } from "./create/draft";
 import { renderAsk } from "./create/slots";
+import { ProjectPicker } from "@/features/projects/ProjectPicker";
 
 // One dialog for making an issue from anywhere. It asks for what the project
 // arranged for this issue type, in the order the issue page draws it.
@@ -16,7 +16,6 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
   const create = useCreateIssue();
   const toast = useToast();
   const navigate = useNavigate();
-  const { data: projectData } = useProjects();
   const { data: typeData } = useIssueTypes();
   const [project, setProject] = useState(projectKey ?? "");
   const [typeId, setTypeId] = useState("");
@@ -27,7 +26,6 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
   const [made, setMade] = useState<Issue | null>(null);
   const { data: arranged } = useArrangements(project);
 
-  const projects = projectData?.projects ?? [];
   // Types below the standard level only exist underneath another issue, so
   // they are made from that issue's children panel.
   const types = (typeData?.issueTypes ?? []).filter((type) => type.level >= LEVEL_STANDARD);
@@ -41,7 +39,7 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
 
   useEffect(() => {
     if (!open) return;
-    setProject(projectKey ?? projects[0]?.key ?? "");
+    setProject(projectKey ?? "");
     setDraft(emptyDraft());
     setRefused([]);
     setMade(null);
@@ -111,13 +109,7 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
         {made && refused.length > 0 && <Refused issueKey={made.key} left={refused} />}
         {!projectKey && (
-          <Select label="Project" value={project} onChange={(e) => setProject(e.target.value)}>
-            {projects.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.name} ({p.key})
-              </option>
-            ))}
-          </Select>
+          <ProjectPicker label="Project" value={project} onChange={setProject} />
         )}
         <Field label="Summary" value={draft.summary} onChange={(e) => set({ summary: e.target.value })} autoFocus required placeholder="What needs doing" />
         <Select label="Type" id="issue-type" aria-label="Issue type" value={chosenType} onChange={(e) => setTypeId(e.target.value)}>

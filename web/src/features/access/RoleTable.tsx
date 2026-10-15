@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useMembers } from "@/api/issues";
-import { useProjects } from "@/api/projects";
 import {
   permissionWords,
   useAssignments,
@@ -14,6 +13,7 @@ import {
 } from "@/api/access";
 import { Button, Card, cx, EmptyState, ErrorBanner, Select, Table, Td, Th } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { ProjectPicker } from "@/features/projects/ProjectPicker";
 
 /**
  * Who holds what.
@@ -94,7 +94,6 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
   const { data: roleData } = useRoles();
   const { data: memberData } = useMembers();
   const { data: groupData } = useGroups();
-  const { data: projectData } = useProjects();
   const grant = useGrantRole();
 
   const roles = roleData?.roles ?? [];
@@ -154,20 +153,14 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
         </Select>
 
         <div className={cx(scopeIsFixed && "opacity-55")}>
-          <Select
+          <ProjectPicker
             label="Where"
             aria-label="Where the role applies"
+            none="Every project"
             value={scopeIsFixed ? "" : scope}
             disabled={scopeIsFixed || Boolean(projectKey)}
-            onChange={(event) => setScope(event.target.value)}
-          >
-            <option value="">Every project</option>
-            {(projectData?.projects ?? []).map((project) => (
-              <option key={project.key} value={project.key}>
-                {project.key}
-              </option>
-            ))}
-          </Select>
+            onChange={setScope}
+          />
         </div>
 
         <Button disabled={!subject} loading={grant.isPending} onClick={submit}>

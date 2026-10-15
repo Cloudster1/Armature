@@ -28,7 +28,8 @@ vi.mock("@/api/issues", async () => ({
 
 vi.mock("@/api/projects", async () => ({
   ...(await vi.importActual<typeof import("@/api/projects")>("@/api/projects")),
-  useProjects: () => ({ data: { projects: [{ key: "CP", name: "Customer Portal" }, { key: "OPS", name: "Operations" }] } }),
+  useProject: () => ({ data: undefined }),
+  useProjectSearch: () => ({ data: { projects: [{ key: "CP", name: "Customer Portal" }, { key: "OPS", name: "Operations" }] } }),
 }));
 
 vi.mock("@/api/fields", async () => ({
@@ -78,6 +79,12 @@ describe("MoveDialog", () => {
     expect(items).toEqual(["Platform: Web"]);
     expect(dropped?.textContent).not.toContain("Cost");
     expect(dropped?.textContent).not.toContain("Customer");
+  });
+
+  it("offers every project the search found but the one the issue is in", () => {
+    draw([]);
+    const offered = [...document.querySelectorAll<HTMLOptionElement>("#field-move-project option")].map((option) => option.value);
+    expect(offered).toEqual(["", "OPS"]);
   });
 
   it("says nothing stays behind when only organization fields are answered", () => {

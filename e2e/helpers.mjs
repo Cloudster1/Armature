@@ -142,8 +142,8 @@ export async function createToken(page, name, { readOnly = false, projects = [] 
   await fill(page, "New token name", name);
   if (readOnly) await page.click("#field-can-only-read");
   for (const key of projects) {
-    await page.waitForSelector(`[data-project="${key}"]`, { timeout: WAIT });
-    await page.click(`[data-project="${key}"]`);
+    await pickProject(page, "#field-add-a-project", key);
+    await page.waitForSelector(`[data-token-projects] [data-project="${key}"]`, { timeout: WAIT });
   }
   await submit(page);
   await page.waitForFunction(() => document.body.innerText.includes("Copy this token now"), { timeout: WAIT });
@@ -398,6 +398,19 @@ export async function createProject(page, name, options = {}) {
   return project.key;
 }
 
+/** Makes count projects, "name 1" to "name count", side by side, and returns their keys in key order. */
+export async function createProjects(page, name, count) {
+  const made = await Promise.all(
+    Array.from({ length: count }, (_, i) => callAPI(page, "POST", "/projects", { name: `${name} ${i + 1}`, key: uniqueKey(name) })),
+  );
+  return made.map(({ project }) => project.key).sort();
+}
+
+/** Archives projects, so the many a scenario made leave the list every scenario shares. */
+export async function archiveProjects(page, keys) {
+  await Promise.all(keys.map((key) => callAPI(page, "DELETE", `/projects/${key}`)));
+}
+
 /**
  * Creates a project through the form and returns its key. With no template
  * named the form's default stands, which is whatever the server offers first.
@@ -582,6 +595,23 @@ export async function cardsIn(page, swimlaneName) {
  * Picks the option with this visible text, and fires the change React listens
  * for; setting `value` alone does not.
  */
+/**
+ * Chooses a project in a project picker: types its key into the picker's
+ * search, as a person would among thousands, then picks it from the matches.
+ */
+export async function pickProject(page, selectSelector, projectKey) {
+  const search = await page.waitForSelector(`[data-project-picker]:has(${selectSelector}) [data-project-search]`, { timeout: WAIT });
+  await search.click({ clickCount: 3 });
+  await search.type(projectKey);
+  await page.waitForFunction(
+    (sel, key) => [...(document.querySelector(sel)?.options ?? [])].some((o) => o.value === key),
+    { timeout: WAIT },
+    selectSelector,
+    projectKey,
+  );
+  await page.select(selectSelector, projectKey);
+}
+
 export async function selectByLabel(page, selector, optionText) {
   await page.waitForFunction(
     (sel, text) =>
@@ -1358,7 +1388,7 @@ export async function grantRole(page, { who, role, projectKey }) {
   await selectByLabel(page, 'select[aria-label="Who to grant to"]', who);
   await selectByLabel(page, 'select[aria-label="Role"]', role);
   if (projectKey) {
-    await selectByLabel(page, 'select[aria-label="Where the role applies"]', projectKey);
+    await pickProject(page, 'select[aria-label="Where the role applies"]', projectKey);
   }
   await clickButton(page, "Grant");
 
@@ -2295,8 +2325,7 @@ export async function moveIssue(page, issueKey, targetKey) {
   await page.waitForSelector('[data-action="move"]', { timeout: WAIT });
   await page.click('[data-action="move"]');
   await page.waitForSelector("[data-move-dialog]", { timeout: WAIT });
-  await page.waitForFunction((k) => [...document.querySelectorAll("#field-move-project option")].some((o) => o.value === k), { timeout: WAIT }, targetKey);
-  await page.select("#field-move-project", targetKey);
+  await pickProject(page, "#field-move-project", targetKey);
   await page.click('[data-action="move-go"]');
   await page.waitForFunction((k) => new RegExp(`/issues/${k}-\\d+$`).test(location.pathname), { timeout: WAIT }, targetKey);
   const path = await location_of(page);
@@ -2609,6 +2638,15 @@ export async function changeType(page, typeName) {
 export async function pickProjectAction(page, projectKey, action) {
   await press(page, `[data-project-menu="${projectKey}"]`);
   await press(page, `[data-action="${action}"]`);
+}
+
+/**
+ * Opens the projects list narrowed to one project by its key, as a link with
+ * ?q= would, and waits for its row: the installation holds thousands.
+ */
+export async function openProjectRow(page, projectKey, { archived = false } = {}) {
+  await goto(page, `/projects?q=${encodeURIComponent(projectKey)}${archived ? "&archived=true" : ""}`);
+  await page.waitForSelector(`[data-project="${projectKey}"]`, { timeout: WAIT });
 }
 
 /** Waits for a project's row on the projects list to be there, archived or not. */

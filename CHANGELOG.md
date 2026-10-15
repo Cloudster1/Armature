@@ -14,6 +14,14 @@ and its tag message, so a change is written here in the branch that makes it.
   resolved date leaves by its last change. Upgrading: existing kanban boards
   start leaving out work finished more than 14 days ago; set 0 on a board to
   keep it (#54).
+- Changed: the projects list comes a page at a time, with a search over the
+  key and the name; the page, the search and Show archived are in the
+  address. `GET /api/v1/projects` answers 50 projects unless `limit` asks for
+  up to 200, with `total`, `limit` and `offset`, and takes `q` to find
+  projects by key or name; the assistant's `list_projects` pages the same way.
+  The sidebar's project switcher, the command palette and every project
+  picker ask the server for what was typed instead of loading every project,
+  so an installation of thousands stays fast (#261).
 - Changed: the search page offers as chips only the searches you starred or
   made, and the one running; what others share is on All saved searches
   until you star it, so a few dozen shared searches no longer push the

@@ -221,11 +221,11 @@ func TestStatusUpdatesAndTheCalendar(t *testing.T) {
 	if posted.TargetOn == nil || *posted.TargetOn != target || posted.AuthorName == "" {
 		t.Errorf("posted = %+v", posted)
 	}
-	listed, _ := ws.projects.List(ws.ctx, false)
+	listed, _ := ws.projects.List(ws.ctx, project.ListFilter{Text: ws.project.Key})
 	var found *project.Project
-	for i := range listed {
-		if listed[i].Key == ws.project.Key {
-			found = &listed[i]
+	for i := range listed.Projects {
+		if listed.Projects[i].Key == ws.project.Key {
+			found = &listed.Projects[i]
 		}
 	}
 	if found == nil || found.Status == nil || found.Status.Status != project.AtRisk || found.Status.Note != "The vendor is late." {
@@ -332,7 +332,7 @@ func TestInstallationLevelOverTheAPI(t *testing.T) {
 	want(t, c.post("/api/v1/projects/"+key+"/status-updates", map[string]any{"status": "fine"}), http.StatusUnprocessableEntity, "a status outside the words")
 	want(t, c.post("/api/v1/projects/"+key+"/status-updates", map[string]any{"status": "at_risk", "note": "Vendor late.", "targetOn": "2026-12-24"}), http.StatusCreated, "a status update")
 	want(t, c.get("/api/v1/projects/"+key+"/status-updates"), http.StatusOK, "the history")
-	listed := want(t, c.get("/api/v1/projects"), http.StatusOK, "projects")
+	listed := want(t, c.get("/api/v1/projects?q="+key), http.StatusOK, "projects")
 	var carried bool
 	for _, p := range listed.Body["projects"].([]any) {
 		if pm := p.(map[string]any); pm["key"] == key {

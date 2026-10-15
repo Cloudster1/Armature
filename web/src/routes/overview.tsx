@@ -101,6 +101,11 @@ function Home() {
             </tbody>
           </Table>
         )}
+        {projectData && projectData.total > projects.length && (
+          <p className="mt-2 text-sm text-ink-subtle" data-projects-more>
+            Showing {projects.length} of {projectData.total}. The projects page finds the rest.
+          </p>
+        )}
       </section>
     </Page>
   );

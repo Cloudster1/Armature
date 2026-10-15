@@ -1,7 +1,7 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
-import { META_STALE_MS } from "@/config";
+import { META_STALE_MS, PROJECT_PAGE_SIZE, PROJECT_PICKER_RESULTS } from "@/config";
 
 export type ProjectKind = "software" | "service" | "business";
 
@@ -95,12 +95,41 @@ export function usePostStatusUpdate() {
 
 export const projectsQueryKey = ["projects"] as const;
 
-export function useProjects(includeArchived = false) {
+/** One page of the projects somebody can see, and how many match in all. */
+export interface ProjectPage {
+  projects: Project[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface ProjectListParams {
+  /** Text the key or the name contains. */
+  q?: string;
+  offset?: number;
+  limit?: number;
+  includeArchived?: boolean;
+}
+
+/** A page of projects by key; the server never sends them all at once. */
+export function useProjects({ q = "", offset = 0, limit = PROJECT_PAGE_SIZE, includeArchived = false }: ProjectListParams = {}) {
+  const text = q.trim();
   return useQuery({
-    queryKey: [...projectsQueryKey, { includeArchived }],
-    queryFn: () =>
-      request<{ projects: Project[] }>(`/projects${includeArchived ? "?archived=true" : ""}`),
+    queryKey: [...projectsQueryKey, { q: text, offset, limit, includeArchived }],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (text) params.set("q", text);
+      if (offset) params.set("offset", String(offset));
+      if (includeArchived) params.set("archived", "true");
+      return request<ProjectPage>(`/projects?${params}`);
+    },
+    placeholderData: keepPreviousData,
   });
+}
+
+/** The first projects whose key or name holds the text, for a picker or a switcher. */
+export function useProjectSearch(q: string, limit = PROJECT_PICKER_RESULTS) {
+  return useProjects({ q, limit });
 }
 
 export function useProject(key: string) {

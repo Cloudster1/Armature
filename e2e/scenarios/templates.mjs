@@ -13,9 +13,11 @@ import {
   createSprint,
   expect,
   goto,
+  openProjectRow,
   planSprint,
   signUp,
   startSprint,
+  textOf,
   turnFeature,
   unique,
   WAIT,
@@ -113,7 +115,6 @@ scenario("the Task tracking template gives a project a simple workflow of its ow
   );
   expect.contains(await bodyText(page), "Task tracking workflows", "the scheme the template brought");
 
-  await goto(page, "/projects");
-  await page.waitForFunction(() => document.body.innerText.includes("Chores"), { timeout: WAIT });
-  expect.contains(await bodyText(page), "Task tracking", "the project list says how it was set up");
+  await openProjectRow(page, key);
+  expect.contains(await textOf(page, `[data-project="${key}"]`), "Task tracking", "the project list says how it was set up");
 });

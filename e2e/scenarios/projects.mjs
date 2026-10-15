@@ -31,7 +31,17 @@ import {
   setEditorMode,
   waitForApp,
   waitForProjectRow,
+  openProjectRow,
+  createProjects,
+  archiveProjects,
+  uniqueName,
 } from "../helpers.mjs";
+
+/** A page of the projects list, as PROJECT_PAGE_SIZE in web/src/config.ts has it. */
+const PROJECT_PAGE = 50;
+
+/** The keys on the projects list, in the order it shows them. */
+const listedKeys = (page) => page.$$eval("tr[data-project]", (rows) => rows.map((row) => row.getAttribute("data-project")));
 
 scenario("a project can be created and is listed", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
@@ -39,10 +49,45 @@ scenario("a project can be created and is listed", async ({ page }) => {
   const key = await createProjectThroughForm(page, "Customer Portal");
   expect.truthy(key.length >= 2, `project key ${JSON.stringify(key)} looks wrong`);
 
+  // Found the way a person finds one among thousands: by typing into the search.
   await goto(page, "/projects");
-  const listing = await bodyText(page);
+  await page.type('[aria-label="Find projects"]', key);
+  await page.waitForFunction((k) => new URL(location.href).searchParams.get("q") === k, { timeout: WAIT }, key);
+  await page.waitForSelector(`[data-project="${key}"]`, { timeout: WAIT });
+  const listing = await textOf(page, `[data-project="${key}"]`);
   expect.contains(listing, "Customer Portal", "the project is listed");
   expect.contains(listing, key, "its key is shown");
+});
+
+// Thousands of projects come a page at a time: the search finds them by name or
+// key, and the address keeps both, so a reload or a link opens the same page.
+scenario("the projects page finds projects by name or key and pages through them", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const marker = uniqueName("Paged");
+  const keys = await createProjects(page, marker, PROJECT_PAGE + 1);
+  try {
+    await goto(page, "/projects");
+    await page.type('[aria-label="Find projects"]', marker);
+    await page.waitForFunction((m) => new URL(location.href).searchParams.get("q") === m, { timeout: WAIT }, marker);
+    await page.waitForFunction((range) => document.querySelector("[data-page-range]")?.textContent === range, { timeout: WAIT }, `1 to ${PROJECT_PAGE} of ${keys.length}`);
+    expect.contains(await bodyText(page), `${keys.length} projects`, "the count is of every match, not of the page");
+    expect.equal((await listedKeys(page)).join(","), keys.slice(0, PROJECT_PAGE).join(","), "the first page holds the first matches by key");
+
+    await press(page, '[aria-label="Next page"]');
+    await page.waitForFunction((n) => new URL(location.href).searchParams.get("offset") === String(n), { timeout: WAIT }, PROJECT_PAGE);
+    await page.waitForFunction((k) => document.querySelectorAll("tr[data-project]").length === 1 && document.querySelector(`tr[data-project="${k}"]`), { timeout: WAIT }, keys[PROJECT_PAGE]);
+
+    await reload(page);
+    await page.waitForSelector(`tr[data-project="${keys[PROJECT_PAGE]}"]`, { timeout: WAIT });
+    expect.equal((await listedKeys(page)).join(","), keys[PROJECT_PAGE], "a reload opens the same page of the same search");
+
+    const one = keys[7];
+    await goto(page, `/projects?q=${one.toLowerCase()}`);
+    await page.waitForSelector(`tr[data-project="${one}"]`, { timeout: WAIT });
+    expect.equal((await listedKeys(page)).join(","), one, "a key, in any case, finds its project alone");
+  } finally {
+    await archiveProjects(page, keys);
+  }
 });
 
 scenario("issues get sequential keys within their project", async ({ page }) => {
@@ -263,7 +308,7 @@ scenario("a project's counts follow its issues", async ({ page }) => {
   await createIssue(page, key, "one", { visit: false });
   await createIssue(page, key, "two", { visit: false });
 
-  await goto(page, "/projects");
+  await openProjectRow(page, key);
   const row = await textOf(page, `[data-project="${key}"]`);
   expect.contains(row, "2 open", "open count");
   expect.contains(row, "2 total", "total count");
@@ -303,7 +348,7 @@ scenario("a project's sidebar links to its documentation", async ({ page }) => {
 scenario("an archived project comes back by Undo and by Restore", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Brought back", { visit: false });
-  await goto(page, "/projects");
+  await openProjectRow(page, key);
 
   // The toast lasts seconds, so Undo is pressed as soon as it says the project went.
   await pickProjectAction(page, key, "archive-project");
