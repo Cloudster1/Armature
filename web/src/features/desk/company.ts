@@ -1,4 +1,4 @@
-import type { Issue } from "@/api/issues";
+import type { PortalRequest } from "@/api/desk";
 import { cleanDomain } from "./DeskExtras";
 
 /** Domains typed as a list: commas or spaces between them, each as the server stores it. */
@@ -12,8 +12,8 @@ export function companyLine(name: string, shared: boolean): string {
 }
 
 /** The shared requests by the company they were shared with, in the order they came. */
-export function sharedByCompany(requests: Issue[]): Array<{ company: string; requests: Issue[] }> {
-  const groups: Array<{ company: string; requests: Issue[] }> = [];
+export function sharedByCompany(requests: PortalRequest[]): Array<{ company: string; requests: PortalRequest[] }> {
+  const groups: Array<{ company: string; requests: PortalRequest[] }> = [];
   for (const r of requests) {
     const company = r.company?.name ?? "";
     const group = groups.find((g) => g.company === company);

@@ -842,6 +842,17 @@ func (s *Service) Raise(ctx context.Context, in RaiseInput, customer issue.Actor
 	}, customer)
 }
 
+// RaiseRequest raises as Raise does and answers with what the customer reads
+// of the new request.
+func (s *Service) RaiseRequest(ctx context.Context, in RaiseInput, customer issue.Actor) (*PortalRequest, db.LSN, error) {
+	raised, lsn, err := s.Raise(ctx, in, customer)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := portalRequest(raised, 0)
+	return &out, lsn, nil
+}
+
 // trusts refuses a customer whose address is at a domain the desk does not
 // take, naming the ones it does.
 func (s *Service) trusts(ctx context.Context, projectID, userID uuid.UUID) error {
@@ -862,7 +873,7 @@ func (s *Service) trusts(ctx context.Context, projectID, userID uuid.UUID) error
 }
 
 // MyRequests lists the requests a customer raised or follows, newest first.
-func (s *Service) MyRequests(ctx context.Context, customer uuid.UUID) ([]issue.Issue, error) {
+func (s *Service) MyRequests(ctx context.Context, customer uuid.UUID) ([]PortalRequest, error) {
 	const pageSize = 100
 	filter := issue.Filter{InvolvingUser: &customer, ProjectKind: string(project.KindService)}
 	if scope, ok := ScopeFrom(ctx); ok {
@@ -872,10 +883,7 @@ func (s *Service) MyRequests(ctx context.Context, customer uuid.UUID) ([]issue.I
 	if err != nil {
 		return nil, err
 	}
-	if page.Issues == nil {
-		return []issue.Issue{}, nil
-	}
-	return page.Issues, nil
+	return s.portalRequests(ctx, page.Issues)
 }
 
 // Request reads one request as its customer sees it: the reporter's, a
@@ -890,10 +898,11 @@ func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (
 	if err != nil {
 		return nil, err
 	}
-	if comments == nil {
-		comments = []issue.Comment{}
+	out := &Request{Request: portalRequest(found, len(comments)), Comments: make([]PortalComment, 0, len(comments)), ThroughCompany: throughCompany}
+	for i := range comments {
+		out.Comments = append(out.Comments, portalComment(&comments[i]))
 	}
-	return &Request{Issue: *found, Comments: comments, RequestTypeName: found.RequestTypeName, ThroughCompany: throughCompany}, nil
+	return out, nil
 }
 
 // reach finds a request the customer may open, and says whether only their

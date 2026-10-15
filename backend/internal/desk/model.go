@@ -162,13 +162,11 @@ type QueueRow struct {
 	Csat *int `json:"csat,omitempty"`
 }
 
-// Request is a request as its customer sees it: the issue with only what a
-// customer is told, and the conversation without the notes.
+// Request is a request as its customer opens it: what they read of it, and
+// the conversation without the notes.
 type Request struct {
-	Issue    issue.Issue     `json:"issue"`
-	Comments []issue.Comment `json:"comments"`
-	// RequestTypeName is what they chose when raising it.
-	RequestTypeName string `json:"requestTypeName,omitempty"`
+	Request  PortalRequest   `json:"request"`
+	Comments []PortalComment `json:"comments"`
 	// ThroughCompany says the reader sees it only as a colleague, who is not
 	// shown its followers.
 	ThroughCompany bool `json:"throughCompany,omitempty"`

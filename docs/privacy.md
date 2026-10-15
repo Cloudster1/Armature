@@ -39,7 +39,9 @@ installation does.
   never the internal notes, and is not mailed about it. The followers stay the
   reporter's: a colleague is not shown who follows the request, since the
   reporter chose them and they may be outside the company. Somebody taken out
-  of the company stops seeing it at once.
+  of the company stops seeing it at once. The portal names the people on a
+  request by name and picture; the only addresses it shows are those of the
+  followers the reporter added, and only to the reporter.
 - **Keeping the installation's record.** The audit log says who changed the
   installation's configuration, for its administrators' own review.
 - **Keeping the service working.** Access logs, metrics and traces exist to

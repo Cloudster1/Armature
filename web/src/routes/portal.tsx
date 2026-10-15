@@ -5,8 +5,7 @@ import { appRoute } from "./app";
 import { useMe } from "@/api/auth";
 import { formatSize, useUploadAttachment, useUploadLimit } from "@/api/attachments";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
-import { useDesks, useFollow, useMyRequests, usePortalArticle, usePortalArticles, useRaiseRequest, useReply, useRequest, useRequestWatchers, useUnfollow, type RequestType } from "@/api/desk";
-import type { Issue } from "@/api/issues";
+import { useDesks, useFollow, useMyRequests, usePortalArticle, usePortalArticles, useRaiseRequest, useReply, useRequest, useRequestWatchers, useUnfollow, type PortalRequest, type RequestType } from "@/api/desk";
 import { Button, Card, Checkbox, EmptyState, ErrorBanner, Field, Input, OptionCard, Page, PageHeader, SectionTitle, Select, Table, Td, Th, Textarea } from "@/components/ui";
 import { Avatar, StatusBadge, RelativeTime } from "@/features/issues/badges";
 import { groupByCategory, prefillDetails } from "@/features/desk/templates";
@@ -146,7 +145,7 @@ function MyRequests() {
   );
 }
 
-function RequestTable({ requests, showReporter = false }: { requests: Issue[]; showReporter?: boolean }) {
+function RequestTable({ requests, showReporter = false }: { requests: PortalRequest[]; showReporter?: boolean }) {
   return (
     <Table>
       <thead>
@@ -161,7 +160,7 @@ function RequestTable({ requests, showReporter = false }: { requests: Issue[]; s
       </thead>
       <tbody>
         {requests.map((r) => (
-          <tr key={r.id} className="group hover:bg-surface-raised/60" data-request={r.key}>
+          <tr key={r.key} className="group hover:bg-surface-raised/60" data-request={r.key}>
             <Td className="font-mono text-sm text-ink-muted">{r.key}</Td>
             <Td className="max-w-0">
               <Link to="/portal/requests/$issueKey" params={{ issueKey: r.key }} className="block truncate text-ink group-hover:text-accent">
@@ -404,7 +403,7 @@ function RequestPage() {
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
   if (!data) return null;
 
-  const { issue, comments } = data;
+  const { request: issue, comments } = data;
   const waiting = issue.status.name === "Waiting for customer";
 
   function onSubmit(event: FormEvent) {
@@ -425,7 +424,7 @@ function RequestPage() {
         meta={
           <span className="flex items-center gap-2">
             <span className="font-mono">{issue.key}</span>
-            {data.requestTypeName && <span>· {data.requestTypeName}</span>}
+            {issue.requestTypeName && <span>· {issue.requestTypeName}</span>}
             <span>·</span>
             <StatusBadge name={issue.status.name} category={issue.status.category} />
           </span>
@@ -498,7 +497,7 @@ function RequestPage() {
 }
 
 /** Who raised a request somebody else reads, and whom it is shared with. */
-function RaisedBy({ issue }: { issue: Issue }) {
+function RaisedBy({ issue }: { issue: PortalRequest }) {
   const { data: session } = useMe();
   const mine = issue.reporter?.id === session?.principal?.user.id;
   if (!issue.sharedWithCompany || !issue.company) return null;
@@ -537,9 +536,9 @@ function Followers({ issueKey, reporterId }: { issueKey: string; reporterId?: st
       ) : (
         <ul className="mb-2 divide-y divide-border rounded-md border border-border">
           {watchers.map((w) => (
-            <li key={w.userId} className="flex items-center gap-2 px-3 py-1.5 text-sm" data-request-watcher={w.email}>
+            <li key={w.userId} className="flex items-center gap-2 px-3 py-1.5 text-sm" data-request-watcher={w.email ?? w.name}>
               <Avatar name={w.name} size="sm" />
-              <span className="min-w-0 flex-1 truncate text-ink">{w.email}</span>
+              <span className="min-w-0 flex-1 truncate text-ink">{w.email ?? w.name}</span>
               {(mine || w.userId === me) && (
                 <Button variant="link" className="text-xs text-ink-subtle hover:text-danger" onClick={() => unfollow.mutate({ key: issueKey, userId: w.userId })}>
                   {w.userId === me ? "Stop following" : "Remove"}
