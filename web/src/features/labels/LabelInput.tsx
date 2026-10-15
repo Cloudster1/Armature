@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import type { LabelRef } from "@/api/issues";
 import { useLabelSearch } from "@/api/labels";
 import { Input, cx } from "@/components/ui";
@@ -31,6 +31,7 @@ export function LabelInput({
   controlSize = "md",
   align = "start",
   commitOnBlur = create,
+  onTyping,
   className,
 }: {
   value: string[];
@@ -48,6 +49,8 @@ export function LabelInput({
   controlSize?: ControlSize;
   align?: "start" | "end";
   commitOnBlur?: boolean;
+  /** The word typed but not yet added, for a caller whose button must count it. */
+  onTyping?: (word: string) => void;
   className?: string;
 }) {
   const [draft, setDraft] = useState("");
@@ -60,6 +63,7 @@ export function LabelInput({
   const listId = `${useId()}-labels`;
 
   const typed = draft.trim().replace(/,+$/, "");
+  useEffect(() => onTyping?.(typed), [typed, onTyping]);
   const settled = useDebounced(typed, LABEL_SEARCH_DELAY_MS);
   const { data } = useLabelSearch(settled);
   const found = typed && data ? data.labels : [];

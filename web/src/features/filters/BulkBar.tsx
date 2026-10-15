@@ -19,13 +19,16 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
   const { data: members } = useMembers();
   const [change, setChange] = useState<BulkChange>({});
   const [labels, setLabels] = useState<string[]>([]);
+  const [typing, setTyping] = useState("");
+  // A word typed but not yet added counts, as it does where a blur adds it.
+  const adding = typing && !labels.some((name) => name.toLowerCase() === typing.toLowerCase()) ? [...labels, typing] : labels;
   const [result, setResult] = useState<BulkResult | null>(null);
   const [exporting, setExporting] = useState(false);
   const tooMany = keys.length > BULK_MAX_SELECTION;
 
   function apply() {
     const next: BulkChange = { ...change };
-    if (labels.length) next.addLabels = labels;
+    if (adding.length) next.addLabels = adding;
     edit.mutate(
       { keys, change: next },
       {
@@ -62,7 +65,7 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
               ))}
             </Select>
             <Labelled id="field-bulk-labels" label="Add labels" className="w-48">
-              <LabelInput id="field-bulk-labels" controlSize="sm" placeholder="Type a label" value={labels} onChange={setLabels} />
+              <LabelInput id="field-bulk-labels" controlSize="sm" placeholder="Type a label" value={labels} onChange={setLabels} onTyping={setTyping} />
             </Labelled>
             <Field label="Transition" id="field-bulk-transition" controlSize="sm" value={change.transition ?? ""} onChange={(e) => setChange({ ...change, transition: e.target.value || undefined })} placeholder="Start progress" className="w-40" />
           </div>
@@ -77,7 +80,7 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
             <Button variant="secondary" size="sm" icon={<Icon.Download />} onClick={() => setExporting(true)} data-action="export-selected">
               Export {keys.length} selected
             </Button>
-            <Button size="sm" onClick={apply} loading={edit.isPending} disabled={tooMany || changeIsEmpty({ ...change, addLabels: labels })} data-action="bulk-apply">
+            <Button size="sm" onClick={apply} loading={edit.isPending} disabled={tooMany || changeIsEmpty({ ...change, addLabels: adding })} data-action="bulk-apply">
               Apply to {keys.length}
             </Button>
           </div>

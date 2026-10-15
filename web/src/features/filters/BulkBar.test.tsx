@@ -74,4 +74,16 @@ describe("BulkBar", () => {
     await userEvent.click(screen.getByRole("button", { name: /Apply to 2/ }));
     expect(state.mutate.mock.calls[0]?.[0]).toEqual({ keys: ["CP-1", "CP-2"], change: { addLabels: ["backend", "fresh"] } });
   });
+
+  // The other label fields add a typed word on blur; Apply must not wait for Enter.
+  it("counts a label typed but not yet added, and applies it", async () => {
+    state.mutate = vi.fn();
+    render(<BulkBar keys={["CP-1", "CP-2"]} onClear={() => {}} />);
+    const apply = screen.getByRole("button", { name: /Apply to 2/ });
+    expect(apply).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Add labels"), "pending");
+    expect(apply).toBeEnabled();
+    await userEvent.click(apply);
+    expect(state.mutate.mock.calls[0]?.[0]).toEqual({ keys: ["CP-1", "CP-2"], change: { addLabels: ["pending"] } });
+  });
 });
