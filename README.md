@@ -446,7 +446,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_READ_YOUR_WRITES_TTL` | `30s` | how long a writer is pinned past their write |
 | `ARMATURE_PORTAL_CODE_COOLDOWN` | `1m` | how long an address waits between portal codes |
 | `ARMATURE_DOOR_WINDOW` | `10m` | how long the brakes on portal codes, portal entries, password links, sign-in codes and password or invitation guesses remember an address |
-| `ARMATURE_SMTP_ADDR` | none | the relay; empty turns mail off |
+| `ARMATURE_SMTP_ADDR` / `_USER` / `_PASSWORD` / `_TLS` | none, none, none, `starttls` | the relay and its login; no address turns mail off. `starttls` upgrades whenever the relay offers to and sends no login to one that does not, `implicit` speaks TLS from the first byte (port 465), and `none` never upgrades, so it takes no login |
 | `ARMATURE_MAIL_FROM` | `Armature <no-reply@armature.test>` | the sender |
 | `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off |
 | `ARMATURE_POP3_ADDR` / `_USER` / `_PASSWORD` / `_TLS` / `_INTERVAL` | none, none, none, `false`, `30s` | the mailbox the worker reads replies from |

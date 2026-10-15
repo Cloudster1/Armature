@@ -29,11 +29,11 @@ func TestMailThroughAnUntrustedCertificateNeedsInsecureTLS(t *testing.T) {
 	accepted := fmt.Sprintf("tls-accepted-%s@armature.test", run)
 	from := "Armature <no-reply@armature.test>"
 
-	err := mail.SMTPMailer{Addr: smtpAddr, From: from}.Send(ctx, mail.Mail{To: refused, Subject: "refused", Body: run})
+	err := (&mail.SMTPMailer{Addr: smtpAddr, From: from}).Send(ctx, mail.Mail{To: refused, Subject: "refused", Body: run})
 	if err == nil || !strings.Contains(err.Error(), "certificate") {
 		t.Fatalf("an unsigned certificate should be refused, got %v", err)
 	}
-	if err := (mail.SMTPMailer{Addr: smtpAddr, From: from, InsecureTLS: true}).Send(ctx, mail.Mail{To: accepted, Subject: "accepted", Body: run}); err != nil {
+	if err := (&mail.SMTPMailer{Addr: smtpAddr, From: from, InsecureTLS: true}).Send(ctx, mail.Mail{To: accepted, Subject: "accepted", Body: run}); err != nil {
 		t.Fatalf("with InsecureTLS the relay should take the mail: %v", err)
 	}
 

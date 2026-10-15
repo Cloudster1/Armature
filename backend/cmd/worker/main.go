@@ -143,9 +143,15 @@ func run() error {
 	}
 	// People on ordinary issues hear through the inbox whether or not mail is
 	// on; mail is a copy of the inbox when there is a relay to send it through.
+	var smtpMailer *mail.SMTPMailer
 	var inboxMailer mail.Mailer
 	if cfg.Mail.SMTPAddr != "" {
-		inboxMailer = mail.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From, InsecureTLS: cfg.Mail.InsecureTLS}
+		// One mailer serves every sender, so a refused login is logged once.
+		smtpMailer = &mail.SMTPMailer{
+			Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From, User: cfg.Mail.SMTPUser, Password: cfg.Mail.SMTPPassword,
+			TLS: mail.TLS(cfg.Mail.SMTPTLS), InsecureTLS: cfg.Mail.InsecureTLS, Log: log,
+		}
+		inboxMailer = smtpMailer
 		if cfg.Mail.InsecureTLS {
 			log.Warn("mail accepts any certificate: ARMATURE_MAIL_INSECURE_TLS is set")
 		}
@@ -171,7 +177,7 @@ func run() error {
 	})
 
 	if cfg.Mail.SMTPAddr != "" {
-		mailer := desk.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From, InsecureTLS: cfg.Mail.InsecureTLS}
+		mailer := smtpMailer
 		notifier := desk.NewNotifier(cluster, rdb, mailer, cfg.Mail.AppBaseURL, log).WithInbox(cfg.Mail.Inbox)
 		g.Go(func() error { return notifier.Run(ctx) })
 		// Replies come back to the inbox, which is read over POP3. It needs

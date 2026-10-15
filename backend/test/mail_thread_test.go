@@ -50,7 +50,7 @@ func TestMailsAboutOneRequestArriveEncodedInOneThread(t *testing.T) {
 	}
 
 	const from = "Kundendienst Zürich <no-reply@armature.test>"
-	notifier := desk.NewNotifier(h.cluster, nil, mail.SMTPMailer{Addr: smtpAddr, From: from}, "http://app.test", slog.New(slog.NewTextHandler(os.Stderr, nil))).
+	notifier := desk.NewNotifier(h.cluster, nil, &mail.SMTPMailer{Addr: smtpAddr, From: from}, "http://app.test", slog.New(slog.NewTextHandler(os.Stderr, nil))).
 		WithInbox(inboxAddress)
 	handle := func(topic string, payload map[string]any) {
 		t.Helper()

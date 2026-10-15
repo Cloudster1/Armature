@@ -67,7 +67,7 @@ func TestOnlyTheReporterIsAskedToRate(t *testing.T) {
 	send := mailers{kept}
 	smtpAddr, pop3Addr := os.Getenv("ARMATURE_SMTP_ADDR"), os.Getenv("ARMATURE_POP3_ADDR")
 	if smtpAddr != "" && pop3Addr != "" {
-		send = append(send, desk.SMTPMailer{Addr: smtpAddr, From: "Armature <desk@armature.test>"})
+		send = append(send, &desk.SMTPMailer{Addr: smtpAddr, From: "Armature <desk@armature.test>"})
 	}
 	notifier := desk.NewNotifier(h.cluster, nil, send, "http://app.test", slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	raw, _ := json.Marshal(map[string]any{"key": raised.Key, "transition": "Resolve", "fromStatus": "Waiting for support", "toStatus": "Resolved", "actorId": ws.actor.UserID})
