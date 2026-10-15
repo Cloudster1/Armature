@@ -32,6 +32,7 @@ type: Opaque
 stringData:
   s3-access-key: "key"
   s3-secret-key: "secret"
+  smtp-password: "secret"
 ---
 # Source: armature/templates/configmap-env.yaml
 apiVersion: v1
@@ -84,6 +85,8 @@ data:
   ARMATURE_S3_REGION: "us-east-1"
   ARMATURE_S3_USE_SSL: "true"
   ARMATURE_SMTP_ADDR: "smtp.example.com:587"
+  ARMATURE_SMTP_TLS: "starttls"
+  ARMATURE_SMTP_USER: "armature"
   ARMATURE_MAIL_FROM: "Armature <no-reply@armature.example.com>"
   ARMATURE_MAIL_INSECURE_TLS: "true"
   ARMATURE_MAIL_INBOX: "desk@example.com"
@@ -282,7 +285,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 104ac6f1f3e3f92ec4fbedf42ba79fe02d740862cb35c50ae89197ac7370e341
+        checksum/env: f0dcdd0b0f98ab86df4d71cc129940e69d19504a722f548a2dd6643035d412e6
     spec:
       serviceAccountName: armature
       securityContext:
@@ -342,6 +345,11 @@ spec:
                 secretKeyRef:
                   name: armature-secrets
                   key: s3-secret-key
+            - name: ARMATURE_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: smtp-password
           ports:
             - name: http
               containerPort: 8080
@@ -573,7 +581,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 104ac6f1f3e3f92ec4fbedf42ba79fe02d740862cb35c50ae89197ac7370e341
+        checksum/env: f0dcdd0b0f98ab86df4d71cc129940e69d19504a722f548a2dd6643035d412e6
     spec:
       serviceAccountName: armature
       securityContext:
@@ -632,6 +640,11 @@ spec:
                 secretKeyRef:
                   name: armature-secrets
                   key: s3-secret-key
+            - name: ARMATURE_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: armature-secrets
+                  key: smtp-password
           ports:
             - name: metrics
               containerPort: 9090

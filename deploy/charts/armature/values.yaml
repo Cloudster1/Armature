@@ -192,6 +192,12 @@ mail:
   # Blank turns mail off: no invitations, no digests, no desk notifications,
   # no portal login codes. Everything else works.
   smtpAddr: ""
+  # The relay's login, if it wants one; the password is secrets.smtpPassword.
+  smtpUser: ""
+  # starttls upgrades whenever the relay offers to and sends a login only once
+  # it has. implicit speaks TLS from the first byte, as port 465 does. none
+  # never upgrades, and takes no login.
+  smtpTLS: starttls
   from: Armature <no-reply@armature.example.com>
   # The desk's own address. Required if pop3.addr is set, or the worker
   # refuses to start.
@@ -311,6 +317,7 @@ secrets:
   existingSecret: ""
   s3AccessKey: ""
   s3SecretKey: ""
+  smtpPassword: ""
   pop3Password: ""
   assistantKey: ""
 

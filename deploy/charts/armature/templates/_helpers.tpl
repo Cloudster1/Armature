@@ -248,6 +248,10 @@ ARMATURE_S3_USE_SSL: {{ .Values.s3.useSSL | quote }}
 
 {{- with .Values.mail.smtpAddr }}
 ARMATURE_SMTP_ADDR: {{ . | quote }}
+ARMATURE_SMTP_TLS: {{ $.Values.mail.smtpTLS | quote }}
+{{- with $.Values.mail.smtpUser }}
+ARMATURE_SMTP_USER: {{ . | quote }}
+{{- end }}
 ARMATURE_MAIL_FROM: {{ $.Values.mail.from | quote }}
 {{- end }}
 {{- if .Values.mail.insecureTLS }}
@@ -347,6 +351,13 @@ endpoint is in the shared ConfigMap, and an endpoint without keys is refused. */
 {{- end }}
 {{ include "armature.redisEnv" . }}
 {{- include "armature.s3SecretEnv" . }}
+{{- if and .Values.mail.smtpAddr .Values.mail.smtpUser }}
+- name: ARMATURE_SMTP_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secret }}
+      key: smtp-password
+{{- end }}
 {{- if .Values.mail.pop3.addr }}
 - name: ARMATURE_POP3_PASSWORD
   valueFrom:
