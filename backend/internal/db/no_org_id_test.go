@@ -26,6 +26,7 @@ var orgIDAllowed = map[string]string{
 	"test/installation_keys_test.go orgKeyed":                             "lists the keys that took the column into account before 00933",
 	"test/installation_keys_test.go TestTheUpgradeRefusesKeysThatCollide": "writes rows of two organizations at a version before 00933",
 	"test/outbox_test.go TestOutboxRelay":                                 "proves the stream's message carries no organization field",
+	"test/owner_migrate_test.go TestMigrationsRunAsPlainOwner":            "writes projects and boards at a version before 00933",
 	"test/owner_migrate_test.go expectBackfilled":                         "reads what migrations made for each organization of a legacy database",
 	"test/old_keys_test.go TestOldKeysComeOverFromTheColumnThatKeptOne":   "writes rows at a version before the column had a default",
 	"test/row_security_test.go TestRowSecurityGoesAsThePlainOwner":        "writes rows at a version before the column had a default",

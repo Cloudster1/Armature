@@ -37,6 +37,7 @@ func TestMigrationsRunAsPlainOwner(t *testing.T) {
 	const (
 		beforeInitiative      = 4
 		beforeRoles           = 902
+		beforeResourcePlan    = 910
 		beforeOneInstallation = 928
 	)
 	insertOrg := func(slug string) uuid.UUID {
@@ -56,6 +57,28 @@ func TestMigrationsRunAsPlainOwner(t *testing.T) {
 	}
 	orgs := map[string]uuid.UUID{"early": earliest, "acme": insertOrg("acme")}
 
+	// One project with a scrum board and one without, from before projects
+	// had a planning method.
+	if _, err := provider.UpTo(ctx, beforeResourcePlan); err != nil {
+		t.Fatalf("migrate to %d as the owner: %v", beforeResourcePlan, err)
+	}
+	insertProject := func(key string) uuid.UUID {
+		t.Helper()
+		var id uuid.UUID
+		if err := superFresh.QueryRow(ctx, `INSERT INTO project (org_id, key, name) VALUES ($1, $2, $2) RETURNING id`, orgs["acme"], key).Scan(&id); err != nil {
+			t.Fatalf("insert project %s: %v", key, err)
+		}
+		return id
+	}
+	projects := map[string]string{"SPR": "scrum", "FLO": "kanban"}
+	projectIDs := map[string]uuid.UUID{}
+	for key := range projects {
+		projectIDs[key] = insertProject(key)
+	}
+	if _, err := superFresh.Exec(ctx, `INSERT INTO board (org_id, project_id, name, type) VALUES ($1, $2, 'Sprints', 'scrum')`, orgs["acme"], projectIDs["SPR"]); err != nil {
+		t.Fatalf("insert scrum board: %v", err)
+	}
+
 	if _, err := provider.UpTo(ctx, beforeOneInstallation); err != nil {
 		t.Fatalf("migrate to %d as the owner: %v", beforeOneInstallation, err)
 	}
@@ -65,6 +88,17 @@ func TestMigrationsRunAsPlainOwner(t *testing.T) {
 	}
 	if current != beforeOneInstallation {
 		t.Fatalf("database is at %d, want %d", current, beforeOneInstallation)
+	}
+
+	for key, want := range projects {
+		var method string
+		var resources bool
+		if err := superFresh.QueryRow(ctx, `SELECT planning_method, 'resources' = ANY (features) FROM project WHERE id = $1`, projectIDs[key]).Scan(&method, &resources); err != nil {
+			t.Fatalf("project %s: read its planning: %v", key, err)
+		}
+		if method != want || !resources {
+			t.Errorf("project %s plans by %q with the resource page %v, want %q with it on", key, method, resources, want)
+		}
 	}
 
 	automation := map[string]uuid.UUID{}
@@ -86,8 +120,8 @@ func TestMigrationsRunAsPlainOwner(t *testing.T) {
 		}
 	}
 
-	// The repair lifts row security only for itself.
-	for _, table := range []string{"org", "org_member", "issue_type", "holiday_calendar"} {
+	// The backfills lift row security only for themselves.
+	for _, table := range []string{"org", "org_member", "issue_type", "holiday_calendar", "project", "board"} {
 		var forced bool
 		if err := superFresh.QueryRow(ctx, `SELECT relforcerowsecurity FROM pg_class WHERE oid = $1::regclass`, table).Scan(&forced); err != nil {
 			t.Fatalf("read row security of %s: %v", table, err)
