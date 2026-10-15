@@ -382,9 +382,9 @@ func (s *Service) sharedWith(ctx context.Context, found *issue.Issue, customer u
 
 // SharedRequests lists what colleagues shared with the customer's companies,
 // newest first, less what the customer raised or follows themselves.
-func (s *Service) SharedRequests(ctx context.Context, customer uuid.UUID) ([]issue.Issue, error) {
+func (s *Service) SharedRequests(ctx context.Context, customer uuid.UUID) ([]PortalRequest, error) {
 	if _, open := ScopeFrom(ctx); open {
-		return []issue.Issue{}, nil
+		return []PortalRequest{}, nil
 	}
 	const pageSize = 100
 	page, err := s.issues.List(ctx, issue.Filter{SharedWith: &customer, ProjectKind: string(project.KindService)},
@@ -392,10 +392,7 @@ func (s *Service) SharedRequests(ctx context.Context, customer uuid.UUID) ([]iss
 	if err != nil {
 		return nil, err
 	}
-	if page.Issues == nil {
-		return []issue.Issue{}, nil
-	}
-	return page.Issues, nil
+	return s.portalRequests(ctx, page.Issues)
 }
 
 func deref(s *string) string {

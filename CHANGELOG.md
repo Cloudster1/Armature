@@ -7,6 +7,15 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the portal answers with a shape of its own, holding what a
+  customer reads. A request is its key, summary, description, status and its
+  category, priority, request type, team, company and whether it is shared,
+  its dates and `commentCount`, the replies the customer can read. The
+  assignee, the reporter, the authors of replies and the people who attached
+  a file are named by `id`, `name` and `avatarUrl`. `GET /portal/requests/{key}`
+  answers `{request, comments, throughCompany}`, the request type's name
+  inside `request`. The followers are `userId` and `name`, and `email` only
+  for the reporter, for the people they added (#287).
 - Fixed: a space typed into the project switcher's filter no longer closes
   it, so a project named in two words can be found (#283).
 - Fixed: a label field no longer draws every label everyone has coined. The

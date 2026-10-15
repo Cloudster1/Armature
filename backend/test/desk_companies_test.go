@@ -49,10 +49,10 @@ func raiseAt(t *testing.T, ws *workspace, d *desk.Service, deskKey, summary stri
 	return raised
 }
 
-func requestKeys(issues []issue.Issue) []string {
+func requestKeys(requests []desk.PortalRequest) []string {
 	out := []string{}
-	for _, i := range issues {
-		out = append(out, i.Key)
+	for _, r := range requests {
+		out = append(out, r.Key)
 	}
 	return out
 }
@@ -136,7 +136,7 @@ func TestACompanyReadsWhatAColleagueShared(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(read.Comments) != 1 || read.Comments[0].Internal || !strings.Contains(issue.PlainText(read.Comments[0].Body), "Same here") {
+		if len(read.Comments) != 1 || !strings.Contains(issue.PlainText(read.Comments[0].Body), "Same here") {
 			t.Errorf("the colleague sees %+v, want their reply and no note", read.Comments)
 		}
 		watchers, err := ws.issues.Watchers(ws.ctx, shared.Key)

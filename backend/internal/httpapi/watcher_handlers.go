@@ -103,6 +103,7 @@ func (s *Server) handlePortalFollow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := r.PathValue("issueKey")
+	// Asked first, so nobody but the reporter makes an account by naming an address.
 	if err := s.Desk.MayFollow(r.Context(), key, userFrom(r)); err != nil {
 		respondError(w, r, err)
 		return
@@ -112,7 +113,7 @@ func (s *Server) handlePortalFollow(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	added, _, lsn, err := s.Issues.AddWatcher(r.Context(), key, user.ID, actorFrom(r))
+	added, lsn, err := s.Desk.Follow(r.Context(), key, user.ID, actorFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return

@@ -8,8 +8,6 @@ import { ATTACHMENT_MAX_BYTES } from "@/config";
 /** What the tracker knows about a file on an issue; the bytes are behind attachmentUrl. */
 export interface Attachment {
   id: string;
-  issueId: string;
-  issueKey: string;
   uploader?: UserRef;
   fileName: string;
   contentType: string;

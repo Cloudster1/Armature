@@ -233,7 +233,7 @@ func (s *Server) handlePortalRaise(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("What kind of request is this?"))
 		return
 	}
-	raised, lsn, err := s.Desk.Raise(r.Context(), desk.RaiseInput{
+	raised, lsn, err := s.Desk.RaiseRequest(r.Context(), desk.RaiseInput{
 		RequestTypeID: req.RequestTypeID, Summary: req.Summary, Description: req.Description, ShareWithCompany: req.ShareWithCompany,
 	}, actorFrom(r))
 	if err != nil {
