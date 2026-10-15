@@ -5,7 +5,10 @@ ALTER TABLE project
     ADD COLUMN planning_method text,
     ADD COLUMN resource_grouping text NOT NULL DEFAULT 'team';
 
--- A project with a scrum board runs sprints; everything else flows.
+-- A project with a scrum board runs sprints; everything else flows. Row
+-- security is lifted for the backfills, since forced it shows the owner no rows.
+ALTER TABLE project NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE board NO FORCE ROW LEVEL SECURITY;
 UPDATE project p SET planning_method = CASE
     WHEN EXISTS (SELECT 1 FROM board b WHERE b.project_id = p.id AND b.type = 'scrum') THEN 'scrum'
     ELSE 'kanban'
@@ -27,6 +30,8 @@ ALTER TABLE project ADD CONSTRAINT project_features_known CHECK (
 );
 UPDATE project SET features = array_append(features, 'resources')
 WHERE kind = 'software' AND NOT 'resources' = ANY (features);
+ALTER TABLE board FORCE ROW LEVEL SECURITY;
+ALTER TABLE project FORCE ROW LEVEL SECURITY;
 
 -- +goose Down
 UPDATE project SET features = array_remove(features, 'resources');
