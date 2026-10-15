@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
-import { MENU_GAP_PX } from "@/config";
+import { MENU_GAP_PX, POPOVER_EDGE_PX, POPOVER_MAX_HEIGHT_PX } from "@/config";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -126,12 +126,64 @@ export function nextId(prefix: string): string {
 
 export type AnchoredSide = "top" | "bottom" | "right";
 
+interface Size {
+  width: number;
+  height: number;
+}
+
+/** Where an anchored panel goes, and how tall it may be there before it scrolls. */
+export interface AnchoredBox {
+  top: number;
+  left?: number;
+  right?: number;
+  maxHeight: number;
+}
+
+/**
+ * Below the anchor by default, above when only that side has room, and on
+ * whichever side has more when neither does; the panel scrolls past that.
+ */
+export function anchoredBox(
+  anchor: Pick<DOMRect, "top" | "bottom" | "left" | "right" | "height">,
+  panel: Size,
+  view: Size,
+  { align = "start", side = "bottom" }: { align?: "start" | "end"; side?: AnchoredSide } = {},
+): AnchoredBox {
+  const gap = MENU_GAP_PX;
+  const edge = POPOVER_EDGE_PX;
+  if (side === "right") {
+    const maxHeight = Math.min(POPOVER_MAX_HEIGHT_PX, view.height - 2 * edge);
+    const height = Math.min(panel.height, maxHeight);
+    return {
+      left: Math.min(anchor.right + gap, view.width - panel.width),
+      top: Math.max(edge, Math.min(anchor.top + anchor.height / 2 - height / 2, view.height - edge - height)),
+      maxHeight,
+    };
+  }
+  const below = anchor.bottom + gap;
+  const roomBelow = view.height - edge - below;
+  const roomAbove = anchor.top - gap - edge;
+  const fitsBelow = panel.height <= roomBelow;
+  const fitsAbove = panel.height <= roomAbove;
+  const goesBelow = side === "bottom" ? fitsBelow || (!fitsAbove && roomBelow >= roomAbove) : !fitsAbove && (fitsBelow || roomBelow > roomAbove);
+  const maxHeight = Math.max(0, Math.min(POPOVER_MAX_HEIGHT_PX, goesBelow ? roomBelow : roomAbove));
+  const box: AnchoredBox = { top: goesBelow ? below : anchor.top - gap - Math.min(panel.height, maxHeight), maxHeight };
+  if (align === "end") box.right = Math.max(0, view.width - anchor.right);
+  else box.left = Math.max(0, Math.min(anchor.left, view.width - panel.width));
+  return box;
+}
+
+/** The height a panel's content asks for, even while a max-height holds it shorter. */
+function naturalHeight(panel: HTMLElement): number {
+  return Math.max(panel.offsetHeight, panel.scrollHeight + panel.offsetHeight - panel.clientHeight);
+}
+
 /**
  * Where a panel goes beside the element it belongs to, as fixed viewport
  * coordinates, so it can be drawn at the end of the document where no
- * scrolling box can cut it off. Below the anchor by default, above when the
- * bottom is near; to its right when asked. Recomputed on scroll and resize
- * while open. Hidden until the first measurement so nothing flashes.
+ * scrolling box can cut it off. Recomputed on scroll, resize and a change of
+ * its own size while open; the panel applies the maxHeight and scrolls.
+ * Hidden until the first measurement so nothing flashes.
  */
 export function useAnchored(
   open: boolean,
@@ -144,22 +196,8 @@ export function useAnchored(
     const anchor = anchorRef.current?.getBoundingClientRect();
     const panel = panelRef.current;
     if (!anchor || !panel) return;
-    const gap = MENU_GAP_PX;
-    const width = panel.offsetWidth;
-    const height = panel.offsetHeight;
-    const next: CSSProperties = {};
-    if (side === "right") {
-      next.left = Math.min(anchor.right + gap, window.innerWidth - width);
-      next.top = Math.max(0, Math.min(anchor.top + anchor.height / 2 - height / 2, window.innerHeight - height));
-    } else {
-      const below = anchor.bottom + gap;
-      const above = anchor.top - gap - height;
-      const goesBelow = side === "bottom" ? below + height <= window.innerHeight || above < 0 : above < 0;
-      next.top = goesBelow ? below : Math.max(0, above);
-      if (align === "end") next.right = Math.max(0, window.innerWidth - anchor.right);
-      else next.left = Math.max(0, Math.min(anchor.left, window.innerWidth - width));
-    }
-    setStyle(next);
+    const size = { width: panel.offsetWidth, height: naturalHeight(panel) };
+    setStyle(anchoredBox(anchor, size, { width: window.innerWidth, height: window.innerHeight }, { align, side }));
   }, [anchorRef, panelRef, align, side]);
   useLayoutEffect(() => {
     if (!open) {
@@ -167,12 +205,27 @@ export function useAnchored(
       return;
     }
     place();
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
+    // Scrolling the panel's own list moves nothing it is placed by.
+    const onScroll = (event: Event) => {
+      if (!panelRef.current?.contains(event.target as Node)) place();
     };
-  }, [open, place]);
+    const resized = new ResizeObserver(place);
+    if (panelRef.current) resized.observe(panelRef.current);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      resized.disconnect();
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open, place, panelRef]);
   return style;
+}
+
+/** Scrolls an element into view once it is drawn, so a message lands where the reader is. */
+export function useRevealed(ref: RefObject<HTMLElement | null>, active: boolean) {
+  useEffect(() => {
+    // jsdom has no scrollIntoView.
+    if (active) ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, [ref, active]);
 }

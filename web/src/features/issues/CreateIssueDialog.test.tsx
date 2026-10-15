@@ -247,4 +247,26 @@ describe("CreateIssueDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create issue" }));
     expect(state.created).toHaveBeenCalledTimes(1);
   });
+
+  // The body scrolls on a short window; a refusal at its top would be out of
+  // sight of the button that was just pressed.
+  it("says what did not stick last in the form, above the buttons, and scrolls to it", async () => {
+    const scrolled = vi.fn();
+    const own = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrolled;
+    try {
+      draw();
+      state.created.mockImplementation((_body: unknown, opts: { onSuccess: (r: { issue: { key: string } }) => void }) => opts.onSuccess({ issue: { key: "CP-9" } }));
+      state.request = vi.fn().mockRejectedValue(new Error("Launch has already been reached"));
+      await userEvent.type(screen.getByLabelText("Summary"), "Login loops");
+      await userEvent.selectOptions(screen.getByLabelText("Milestone"), "m1");
+      await userEvent.click(screen.getByRole("button", { name: "Create issue" }));
+
+      const banner = (await screen.findByText(/did not stick/)).closest("[role='alert']")!;
+      expect(document.getElementById("create-issue")!.lastElementChild).toBe(banner);
+      expect(scrolled.mock.contexts).toContain(banner);
+    } finally {
+      Element.prototype.scrollIntoView = own;
+    }
+  });
 });

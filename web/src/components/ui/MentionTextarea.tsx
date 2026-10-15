@@ -124,7 +124,7 @@ export function MentionTextarea({
       />
       {open &&
         createPortal(
-        <div ref={listRef} role="listbox" aria-label="People to mention" data-mention-list style={place} className="fixed z-30 min-w-56 rounded-overlay border border-border bg-surface-overlay p-1 shadow-2">
+        <div ref={listRef} role="listbox" aria-label="People to mention" data-mention-list style={place} className="fixed z-30 min-w-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2">
           {matches.map((person, i) => (
             <div
               key={person.id}

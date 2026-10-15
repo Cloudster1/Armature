@@ -15,6 +15,11 @@ and its tag message, so a change is written here in the branch that makes it.
   Enter or a comma adds one, and Backspace in an empty box takes the last off.
   `GET /labels` takes `q` and `limit` for it; without either it lists every
   label as before (#273).
+- Fixed: a dialog taller than the window, such as New issue with the built-in
+  arrangement on a laptop, keeps its title and buttons in view and scrolls its
+  fields between them; an error it shows sits just above the buttons and is
+  scrolled to. Menus, popovers and the lists of people to mention scroll too,
+  so the project switcher reaches its last project on a short window (#272).
 - Added: a service desk groups its customers into companies, on the desk's
   settings page, by address or by domain: a customer at a company's domain
   joins it with their first request there. Raising a request, a customer may

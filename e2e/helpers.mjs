@@ -1921,9 +1921,10 @@ export async function groupRows(page, title) {
 /** The runner's viewport, and the one the suite goes back to. */
 const DEFAULT_VIEWPORT = { width: 1280, height: 860 };
 
-/** Runs fn at another viewport width and puts the runner's own back afterwards. */
-export async function withViewport(page, width, fn) {
-  await page.setViewport({ width, height: DEFAULT_VIEWPORT.height });
+/** Runs fn at another viewport width, or a { width, height }, and puts the runner's own back afterwards. */
+export async function withViewport(page, size, fn) {
+  const { width, height = DEFAULT_VIEWPORT.height } = typeof size === "number" ? { width: size } : size;
+  await page.setViewport({ width, height });
   try {
     await fn();
   } finally {

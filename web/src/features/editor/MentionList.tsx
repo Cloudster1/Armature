@@ -1,4 +1,5 @@
 import { cx } from "@/components/ui";
+import { MENU_GAP_PX, POPOVER_EDGE_PX, POPOVER_MAX_HEIGHT_PX } from "@/config";
 import type { Mentionable } from "./schema";
 
 /**
@@ -7,13 +8,14 @@ import type { Mentionable } from "./schema";
  */
 export function MentionList({ items, active, rect, onPick, onHover }: { items: Mentionable[]; active: number; rect: DOMRect | null; onPick: (person: Mentionable) => void; onHover: (i: number) => void }) {
   if (items.length === 0 || !rect) return null;
+  const top = rect.bottom + MENU_GAP_PX;
   return (
     <div
       role="listbox"
       aria-label="People to mention"
       data-mention-list
-      className="fixed z-40 min-w-56 rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
-      style={{ left: rect.left, top: rect.bottom + 4 }}
+      className="fixed z-40 min-w-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+      style={{ left: rect.left, top, maxHeight: Math.min(POPOVER_MAX_HEIGHT_PX, window.innerHeight - top - POPOVER_EDGE_PX) }}
     >
       {items.map((person, i) => (
         <div

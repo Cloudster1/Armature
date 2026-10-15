@@ -346,6 +346,18 @@ export const COMMIT_SHORT_LENGTH = 7;
 /** The gap between a menu's trigger and its list, in pixels. */
 export const MENU_GAP_PX = 4;
 
+/** The tallest a menu, popover or list of suggestions grows before it scrolls, in pixels. */
+export const POPOVER_MAX_HEIGHT_PX = 560;
+
+/** The least room a menu or popover leaves between itself and the window's edge, in pixels. */
+export const POPOVER_EDGE_PX = 8;
+
+/** How far down the window a dialog starts, in percent of its height. */
+export const DIALOG_TOP_VH = 12;
+
+/** The least room a dialog leaves below itself, in pixels; its body scrolls rather than pass it. */
+export const DIALOG_BOTTOM_PX = 16;
+
 /** How many wandering points the constellation backdrop draws per million pixels of page. */
 /** How many pieces a click throws, how long each lives, and how hard they fall. */
 export const CONFETTI_PIECES_PER_CLICK = 28;
