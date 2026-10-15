@@ -174,4 +174,16 @@ describe("the project switcher", () => {
     expect(document.querySelector('[data-project-option="AAA"]')).toBeNull();
     expect(document.querySelector('[data-project-option="BBB"]')).not.toBeNull();
   });
+
+  // A box inside a menu item's button is activated by Space, which picks the item and closes the menu.
+  it("keeps the filter box out of the menu's items, so a space is typed and not pressed", async () => {
+    state.projects = [{ key: "CPO", name: "Customer Portal" }];
+    render(<Sidebar onNewIssue={() => {}} />);
+    await userEvent.click(document.querySelector<HTMLElement>("[data-project-switcher]")!);
+    const box = screen.getByLabelText("Filter projects");
+    expect(box.closest('[role="menuitem"], button')).toBeNull();
+    await userEvent.type(box, "customer portal");
+    expect(screen.getByRole("menu", { name: "Switch project" })).toBeInTheDocument();
+    expect(box).toHaveValue("customer portal");
+  });
 });

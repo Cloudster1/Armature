@@ -111,3 +111,24 @@ scenario("the project switcher on a short window scrolls to its last project", a
   }
 });
 
+
+scenario("the project switcher's filter takes a name of two words", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const name = `${uniqueName("Switchable", "-")} Portal`;
+  const key = await createProject(page, name, { visit: false });
+  try {
+    await goto(page, `/projects/${key}`);
+    await page.click("[data-project-switcher]");
+    await page.waitForSelector('[aria-label="Filter projects"]', { timeout: WAIT });
+    await page.type('[aria-label="Filter projects"]', name);
+    await page.waitForSelector(`[data-project-option="${key}"]`, { timeout: WAIT });
+    expect.truthy(await page.$('[role="menu"][aria-label="Switch project"]'), "the menu stays open after the space");
+    expect.equal(
+      await page.$eval('[aria-label="Filter projects"]', (el) => el.value),
+      name,
+      "the box holds the whole name",
+    );
+  } finally {
+    await archiveProjects(page, [key]);
+  }
+});
