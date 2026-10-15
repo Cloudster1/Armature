@@ -5,6 +5,7 @@ package test
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -140,9 +141,11 @@ func TestLabelsAreWordsEveryoneShares(t *testing.T) {
 
 	// Everybody's labels are on the list; these two are the test's own.
 	var labels []any
-	for _, raw := range list(t, want(t, owner.get("/api/v1/labels"), http.StatusOK, "labels"), "labels") {
-		if name := strings.ToLower(raw.(map[string]any)["name"].(string)); name == strings.ToLower(backend) || name == strings.ToLower(urgent) {
-			labels = append(labels, raw)
+	for _, word := range []string{backend, urgent} {
+		for _, raw := range list(t, want(t, owner.get("/api/v1/labels?q="+url.QueryEscape(word)), http.StatusOK, "labels"), "labels") {
+			if strings.EqualFold(raw.(map[string]any)["name"].(string), word) {
+				labels = append(labels, raw)
+			}
 		}
 	}
 	if len(labels) != 2 {
@@ -252,12 +255,13 @@ func TestLabelsAreFoundByWhatIsTyped(t *testing.T) {
 		t.Errorf("a limit past the cap should be held to the cap, not refused")
 	}
 
-	// Without q or limit the answer is every label, as the settings page lists them.
-	every := found(t, "")
-	for _, name := range []string{inside, starts, alsoInside, alsoStarts} {
-		if !strings.Contains(", "+every+", ", ", "+name+", ") {
-			t.Errorf("%s is missing from every label", name)
-		}
+	// A search pages like the plain list, and says how many it holds in all.
+	paged := want(t, owner.get("/api/v1/labels?q="+word+"&limit=2&offset=2"), http.StatusOK, "the second page")
+	if got, wanted := labelNames(t, paged, "labels"), strings.Join([]string{alsoInside, inside}, ", "); got != wanted {
+		t.Errorf("the second page of two = %q, want %q", got, wanted)
+	}
+	if paged.Body["total"] != float64(4) || paged.Body["offset"] != float64(2) {
+		t.Errorf("the second page says total %v and offset %v, want 4 and 2", paged.Body["total"], paged.Body["offset"])
 	}
 }
 

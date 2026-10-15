@@ -154,36 +154,56 @@ type SchemeItem struct {
 // IsFallback reports whether the item is the scheme's catch-all.
 func (i SchemeItem) IsFallback() bool { return i.IssueTypeID == nil }
 
-// ListSchemes returns every scheme in the organization with its mappings.
-func (s *Store) ListSchemes(ctx context.Context, tx db.DBTX) ([]Scheme, error) {
+// SchemePage is one page of schemes plus how many matched in all.
+type SchemePage struct {
+	Schemes []Scheme `json:"schemes"`
+	Total   int      `json:"total"`
+	Limit   int      `json:"limit"`
+	Offset  int      `json:"offset"`
+}
+
+// ListSchemes returns one page of the schemes whose name holds the text, the
+// default first, with the mappings of that page's schemes alone.
+func (s *Store) ListSchemes(ctx context.Context, tx db.DBTX, f ListFilter) (SchemePage, error) {
+	f = f.bounded()
+	page := SchemePage{Schemes: []Scheme{}, Limit: f.Limit, Offset: f.Offset}
+	const matches = `FROM workflow_scheme sc WHERE strpos(lower(sc.name), lower($1)) > 0`
+	if err := tx.QueryRow(ctx, `SELECT count(*) `+matches, f.Text).Scan(&page.Total); err != nil {
+		return SchemePage{}, fmt.Errorf("count schemes: %w", err)
+	}
 	rows, err := tx.Query(ctx, `
+		WITH page AS (SELECT sc.id `+matches+` ORDER BY sc.is_default DESC, sc.name, sc.id LIMIT $2 OFFSET $3)
 		SELECT sc.id, sc.name, sc.is_default,
 		       COALESCE(array_agg(p.key ORDER BY p.key) FILTER (WHERE p.key IS NOT NULL), '{}')
 		FROM workflow_scheme sc
+		JOIN page ON page.id = sc.id
 		LEFT JOIN project p ON p.workflow_scheme_id = sc.id
 		GROUP BY sc.id, sc.name, sc.is_default
-		ORDER BY sc.is_default DESC, sc.name`)
+		ORDER BY sc.is_default DESC, sc.name, sc.id`, f.Text, f.Limit, f.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("list schemes: %w", err)
+		return SchemePage{}, fmt.Errorf("list schemes: %w", err)
 	}
 	defer rows.Close()
 
 	var (
-		out   []Scheme
-		byID  = map[uuid.UUID]int{}
-		empty = []SchemeItem{}
+		ids  []uuid.UUID
+		byID = map[uuid.UUID]int{}
 	)
 	for rows.Next() {
 		var sc Scheme
 		if err := rows.Scan(&sc.ID, &sc.Name, &sc.IsDefault, &sc.Projects); err != nil {
-			return nil, err
+			return SchemePage{}, err
 		}
-		sc.Items = empty
-		byID[sc.ID] = len(out)
-		out = append(out, sc)
+		sc.Items = []SchemeItem{}
+		byID[sc.ID] = len(page.Schemes)
+		ids = append(ids, sc.ID)
+		page.Schemes = append(page.Schemes, sc)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return SchemePage{}, err
+	}
+	if len(ids) == 0 {
+		return page, nil
 	}
 
 	items, err := tx.Query(ctx, `
@@ -191,9 +211,10 @@ func (s *Store) ListSchemes(ctx context.Context, tx db.DBTX) ([]Scheme, error) {
 		FROM workflow_scheme_item i
 		JOIN workflow w ON w.id = i.workflow_id
 		LEFT JOIN issue_type t ON t.id = i.issue_type_id
-		ORDER BY (i.issue_type_id IS NULL), t.hierarchy_level DESC, t.position, t.name`)
+		WHERE i.scheme_id = ANY($1)
+		ORDER BY (i.issue_type_id IS NULL), t.hierarchy_level DESC, t.position, t.name`, ids)
 	if err != nil {
-		return nil, fmt.Errorf("list scheme items: %w", err)
+		return SchemePage{}, fmt.Errorf("list scheme items: %w", err)
 	}
 	defer items.Close()
 
@@ -204,13 +225,49 @@ func (s *Store) ListSchemes(ctx context.Context, tx db.DBTX) ([]Scheme, error) {
 		)
 		if err := items.Scan(&schemeID, &item.IssueTypeID, &item.IssueTypeName,
 			&item.WorkflowID, &item.WorkflowName); err != nil {
-			return nil, err
+			return SchemePage{}, err
 		}
-		if at, ok := byID[schemeID]; ok {
-			out[at].Items = append(out[at].Items, item)
-		}
+		at := byID[schemeID]
+		page.Schemes[at].Items = append(page.Schemes[at].Items, item)
 	}
-	return out, items.Err()
+	return page, items.Err()
+}
+
+// Scheme reads one scheme with its mappings and the projects that name it.
+func (s *Store) Scheme(ctx context.Context, tx db.DBTX, id uuid.UUID) (*Scheme, error) {
+	return loadScheme(ctx, tx, id)
+}
+
+// ProjectWorkflows is a project's workflow page: which workflow each issue type
+// follows there, and the schemes that decided, by name.
+type ProjectWorkflows struct {
+	ProjectKey string `json:"projectKey"`
+	// SchemeID is the project's own scheme, null when it follows the default.
+	SchemeID          *uuid.UUID   `json:"schemeId"`
+	SchemeName        string       `json:"schemeName,omitempty"`
+	DefaultSchemeName string       `json:"defaultSchemeName"`
+	Assignments       []Assignment `json:"assignments"`
+}
+
+// ForProject answers a project's workflow page in one read.
+func (s *Store) ForProject(ctx context.Context, tx db.DBTX, projectID uuid.UUID, projectKey string, own *uuid.UUID) (ProjectWorkflows, error) {
+	out := ProjectWorkflows{ProjectKey: projectKey, SchemeID: own, Assignments: []Assignment{}}
+	resolved, err := s.Assignments(ctx, tx, projectID)
+	if err != nil {
+		return ProjectWorkflows{}, err
+	}
+	if resolved != nil {
+		out.Assignments = resolved
+	}
+	// Named here, so the page need not read every scheme to say which decided.
+	err = tx.QueryRow(ctx, `
+		SELECT COALESCE((SELECT name FROM workflow_scheme WHERE id = $1), ''),
+		       COALESCE((SELECT name FROM workflow_scheme WHERE is_default), '')`, own,
+	).Scan(&out.SchemeName, &out.DefaultSchemeName)
+	if err != nil {
+		return ProjectWorkflows{}, fmt.Errorf("name the schemes: %w", err)
+	}
+	return out, nil
 }
 
 // ProjectStatuses returns every status a project's issues can be in, across all

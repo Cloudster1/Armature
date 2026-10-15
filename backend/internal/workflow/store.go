@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -158,9 +159,52 @@ type Summary struct {
 	InDefault bool `json:"inDefault"`
 }
 
-// List returns every workflow in the organization.
-func (s *Store) List(ctx context.Context, tx db.DBTX) ([]Summary, error) {
+// DefaultPage is a page of workflows or schemes unless asked otherwise; MaxPage
+// is the most one read returns, so a library of thousands never travels at once.
+const (
+	DefaultPage = 50
+	MaxPage     = 200
+)
+
+// ListFilter narrows and pages a listing of workflows or schemes.
+type ListFilter struct {
+	// Text matches the name anywhere in it, case aside.
+	Text   string
+	Limit  int
+	Offset int
+}
+
+// bounded is the filter with its page held to what a read may return.
+func (f ListFilter) bounded() ListFilter {
+	if f.Limit <= 0 || f.Limit > MaxPage {
+		f.Limit = DefaultPage
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+	f.Text = strings.TrimSpace(f.Text)
+	return f
+}
+
+// SummaryPage is one page of workflows plus how many matched in all.
+type SummaryPage struct {
+	Workflows []Summary `json:"workflows"`
+	Total     int       `json:"total"`
+	Limit     int       `json:"limit"`
+	Offset    int       `json:"offset"`
+}
+
+// List returns one page of the workflows whose name holds the text, by name.
+// The page is chosen first, so the per-workflow counts run only for its rows.
+func (s *Store) List(ctx context.Context, tx db.DBTX, f ListFilter) (SummaryPage, error) {
+	f = f.bounded()
+	page := SummaryPage{Workflows: []Summary{}, Limit: f.Limit, Offset: f.Offset}
+	const matches = `FROM workflow w WHERE strpos(lower(w.name), lower($1)) > 0`
+	if err := tx.QueryRow(ctx, `SELECT count(*) `+matches, f.Text).Scan(&page.Total); err != nil {
+		return SummaryPage{}, fmt.Errorf("count workflows: %w", err)
+	}
 	rows, err := tx.Query(ctx, `
+		WITH page AS (SELECT w.id `+matches+` ORDER BY w.name, w.id LIMIT $2 OFFSET $3)
 		SELECT w.id, w.name, w.description,
 		       (SELECT count(*) FROM workflow_step st WHERE st.workflow_id = w.id),
 		       (SELECT count(*) FROM workflow_transition t WHERE t.workflow_id = w.id),
@@ -170,22 +214,22 @@ func (s *Store) List(ctx context.Context, tx db.DBTX) ([]Summary, error) {
 		                 JOIN workflow_scheme sc ON sc.id = i.scheme_id
 		                WHERE i.workflow_id = w.id AND sc.is_default)
 		FROM workflow w
-		ORDER BY w.name`)
+		JOIN page ON page.id = w.id
+		ORDER BY w.name, w.id`, f.Text, f.Limit, f.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("list workflows: %w", err)
+		return SummaryPage{}, fmt.Errorf("list workflows: %w", err)
 	}
 	defer rows.Close()
 
-	var out []Summary
 	for rows.Next() {
 		var s Summary
 		if err := rows.Scan(&s.ID, &s.Name, &s.Description,
 			&s.StepCount, &s.TransitionCount, &s.Schemes, &s.InDefault); err != nil {
-			return nil, err
+			return SummaryPage{}, err
 		}
-		out = append(out, s)
+		page.Workflows = append(page.Workflows, s)
 	}
-	return out, rows.Err()
+	return page, rows.Err()
 }
 
 // ListStatuses returns every status in the organization.

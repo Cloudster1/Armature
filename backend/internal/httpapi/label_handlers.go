@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -11,21 +10,20 @@ import (
 
 // Labels: the organization's words, and which of them an issue carries.
 
-// Without q or limit the answer is every label, which the labels settings page lists.
+// maxLabelOffset bounds how far into the labels a page may start.
+const maxLabelOffset = 1 << 20
+
 func (s *Server) handleListLabels(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	var found []label.Label
-	var err error
-	if query.Has("q") || query.Has("limit") {
-		found, err = s.Labels.Search(r.Context(), strings.TrimSpace(query.Get("q")), queryInt(r, "limit", label.MaxSuggestions, 1, label.MaxSuggestions))
-	} else {
-		found, err = s.Labels.Labels(r.Context())
-	}
+	page, err := s.Labels.List(r.Context(), label.Filter{
+		Text:   r.URL.Query().Get("q"),
+		Limit:  queryInt(r, "limit", label.DefaultPage, 1, label.MaxPage),
+		Offset: queryInt(r, "offset", 0, 0, maxLabelOffset),
+	})
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"labels": found})
+	respondJSON(w, r, http.StatusOK, page)
 }
 
 type labelRequest struct {

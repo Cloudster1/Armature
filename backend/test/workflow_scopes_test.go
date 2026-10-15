@@ -71,15 +71,16 @@ func (h *harness) letGoOfScheme(t *testing.T, id uuid.UUID) {
 // mappings and all, when a test that changes it ends.
 func (h *harness) keepDefaultScheme(t *testing.T, ws *workspace) {
 	t.Helper()
-	var schemes []workflow.Scheme
+	var schemes workflow.SchemePage
 	if err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		schemes, err = ws.store.ListSchemes(ctx, tx)
+		// The default leads the first page.
+		schemes, err = ws.store.ListSchemes(ctx, tx, workflow.ListFilter{Limit: 1})
 		return err
 	}); err != nil {
 		t.Fatal(err)
 	}
-	for _, sc := range schemes {
+	for _, sc := range schemes.Schemes {
 		if !sc.IsDefault {
 			continue
 		}
@@ -396,15 +397,18 @@ func TestASchemeAnArchivedProjectNamesIsStillInUse(t *testing.T) {
 	}
 
 	// And the listing agrees with the refusal, or the reason is invisible.
-	var schemes []workflow.Scheme
+	var schemes workflow.SchemePage
 	if err := h.cluster.Read(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		schemes, err = ws.store.ListSchemes(ctx, tx)
+		schemes, err = ws.store.ListSchemes(ctx, tx, workflow.ListFilter{Text: scheme.Name})
 		return err
 	}); err != nil {
 		t.Fatal(err)
 	}
-	for _, sc := range schemes {
+	if !slices.ContainsFunc(schemes.Schemes, func(sc workflow.Scheme) bool { return sc.ID == scheme.ID }) {
+		t.Fatalf("searching for %s does not list it", scheme.Name)
+	}
+	for _, sc := range schemes.Schemes {
 		if sc.ID == scheme.ID && !slices.Contains(sc.Projects, ws.project.Key) {
 			t.Errorf("the listing says %s is used by %v, but deleting it names %s",
 				sc.Name, sc.Projects, ws.project.Key)

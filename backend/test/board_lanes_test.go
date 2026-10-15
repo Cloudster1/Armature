@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
@@ -276,7 +277,7 @@ func TestALaneForAStatusAddedToTheWorkflowCanBeMovedOffTheEnd(t *testing.T) {
 	held := h.name(t, "On Hold")
 	onHold := idOf(t, want(t, owner.post("/api/v1/statuses", map[string]any{"name": held, "category": "in_progress"}), http.StatusCreated, "coin On Hold"), "status")
 	var defaultID string
-	for _, raw := range list(t, want(t, owner.get("/api/v1/workflows"), http.StatusOK, "the workflows"), "workflows") {
+	for _, raw := range list(t, want(t, owner.get("/api/v1/workflows?q="+url.QueryEscape(bootstrap.DefaultWorkflowName)), http.StatusOK, "the workflows"), "workflows") {
 		if w := raw.(map[string]any); w["name"] == bootstrap.DefaultWorkflowName {
 			defaultID = w["id"].(string)
 		}

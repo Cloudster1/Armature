@@ -24,7 +24,7 @@ func walkWorkflows(t *testing.T, h *harness, c *client, key string, typeID map[s
 	reviewing := h.name(t, "Reviewing")
 	want(t, c.post("/api/v1/statuses", map[string]any{"name": reviewing, "category": "in_progress"}), http.StatusCreated, "coin status")
 	want(t, c.post("/api/v1/statuses", map[string]any{"name": strings.ToLower(reviewing), "category": "todo"}), http.StatusBadRequest, "coin status twice")
-	workflows := list(t, want(t, c.get("/api/v1/workflows"), http.StatusOK, "workflows"), "workflows")
+	workflows := list(t, want(t, c.get("/api/v1/workflows?limit=1"), http.StatusOK, "workflows"), "workflows")
 	workflowID := workflows[0].(map[string]any)["id"].(string)
 	got := want(t, c.get("/api/v1/workflows/"+workflowID), http.StatusOK, "get workflow")
 	graph := graphOf(t, got)
@@ -36,7 +36,8 @@ func walkWorkflows(t *testing.T, h *harness, c *client, key string, typeID map[s
 	authored := want(t, c.post("/api/v1/workflows", graph), http.StatusCreated, "author workflow")
 	authoredID := idOf(t, authored, "workflow")
 
-	schemes := list(t, want(t, c.get("/api/v1/workflow-schemes"), http.StatusOK, "schemes"), "schemes")
+	// The default leads the first page.
+	schemes := list(t, want(t, c.get("/api/v1/workflow-schemes?limit=1"), http.StatusOK, "schemes"), "schemes")
 	var defaultSchemeID string
 	for _, raw := range schemes {
 		if s := raw.(map[string]any); s["isDefault"] == true {
@@ -50,6 +51,7 @@ func walkWorkflows(t *testing.T, h *harness, c *client, key string, typeID map[s
 		"name": schemeName, "items": []map[string]any{{"workflowId": copyID}},
 	}), http.StatusCreated, "create scheme")
 	schemeID := idOf(t, scheme, "scheme")
+	want(t, c.get("/api/v1/workflow-schemes/"+schemeID), http.StatusOK, "one scheme")
 	want(t, c.put("/api/v1/workflow-schemes/"+schemeID, map[string]any{
 		"name": schemeName, "items": []map[string]any{{"workflowId": copyID}, {"issueTypeId": typeID[bootstrap.TypeBug], "workflowId": authoredID}},
 	}), http.StatusOK, "save scheme")

@@ -4,6 +4,7 @@ package test
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -141,7 +142,7 @@ func TestAPIWorkflowScopes(t *testing.T) {
 	})
 
 	t.Run("the listing says which scheme is the default", func(t *testing.T) {
-		resp := owner.get("/api/v1/workflow-schemes")
+		resp := owner.get("/api/v1/workflow-schemes?q=" + url.QueryEscape(scoped))
 		mine := find(t, resp.Body["schemes"], "id", schemeID)
 		if mine["isDefault"] != false {
 			t.Errorf("the project's scheme is marked as the default")

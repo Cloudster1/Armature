@@ -119,7 +119,7 @@ func TestTheWorkflowLibraryIsPaged(t *testing.T) {
 	t.Run("one scheme is read by its id", func(t *testing.T) {
 		got := obj(t, want(t, owner.get("/api/v1/workflow-schemes/"+schemeIDs[1]), http.StatusOK, "one scheme"), "scheme")
 		items := got["items"].([]any)
-		if got["name"] != marker+" scheme a" || len(items) != 1 || items[0].(map[string]any)["workflowName"] != marker+" d" {
+		if got["name"] != marker+" scheme a" || len(items) != 1 || items[0].(map[string]any)["workflowName"] != marker+" a" {
 			t.Errorf("the scheme reads %v", got)
 		}
 		want(t, owner.get("/api/v1/workflow-schemes/"+workflowIDs[0]), http.StatusNotFound, "a scheme that is not there")

@@ -2173,7 +2173,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The labels, with how often each is used. */
+        /** The labels, with how often each is used, a page at a time with how many there are in all. */
         get: operations["listLabels"];
         put?: never;
         /** Coin a label. */
@@ -3429,7 +3429,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Who holds which role where. */
+        /** Who holds which role where, a page at a time, with how many there are in all. */
         get: operations["listAssignments"];
         put?: never;
         /** Grant a role to a person or a group. */
@@ -4299,7 +4299,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Which workflow answers for which issue type. */
+        /** Which workflow answers for which issue type, a page of schemes at a time with the default first, and how many there are in all. */
         get: operations["listSchemes"];
         put?: never;
         /** Make a scheme. */
@@ -4317,7 +4317,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** One scheme with its mappings. */
+        get: operations["getScheme"];
         /** Save a scheme. */
         put: operations["saveScheme"];
         post?: never;
@@ -4352,7 +4353,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The workflows projects can follow. */
+        /** The workflows projects can follow, a page at a time by name, with how many there are in all. */
         get: operations["listWorkflows"];
         put?: never;
         /** Author a workflow. */
@@ -4621,6 +4622,12 @@ export interface components {
             /** Format: uuid */
             userId?: string;
             userName?: string;
+        };
+        AssignmentPage: {
+            assignments: components["schemas"]["Assignment"][];
+            limit: number;
+            offset: number;
+            total: number;
         };
         AssistantStatus: {
             configured: boolean;
@@ -5768,6 +5775,12 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        LabelPage: {
+            labels: components["schemas"]["Label"][];
+            limit: number;
+            offset: number;
+            total: number;
+        };
         LabelRef: {
             /** @enum {string} */
             color: "gray" | "red" | "orange" | "amber" | "green" | "teal" | "blue" | "purple" | "pink";
@@ -6236,6 +6249,14 @@ export interface components {
             /** Format: uuid */
             workflowSchemeId?: string;
         };
+        ProjectWorkflows: {
+            assignments: components["schemas"]["WorkflowAssignment"][];
+            defaultSchemeName: string;
+            projectKey: string;
+            /** Format: uuid */
+            schemeId: string | null;
+            schemeName?: string;
+        };
         Proposal: {
             arguments?: {
                 [key: string]: unknown;
@@ -6684,6 +6705,12 @@ export interface components {
             workflowId: string;
             workflowName: string;
         };
+        SchemePage: {
+            limit: number;
+            offset: number;
+            schemes: components["schemas"]["Scheme"][];
+            total: number;
+        };
         SchemeRequest: {
             items: {
                 /** Format: uuid */
@@ -7008,6 +7035,12 @@ export interface components {
             schemeCount: number;
             stepCount: number;
             transitionCount: number;
+        };
+        SummaryPage: {
+            limit: number;
+            offset: number;
+            total: number;
+            workflows: components["schemas"]["Summary"][];
         };
         Swimlane: {
             cards: components["schemas"]["Card"][];
@@ -13382,10 +13415,11 @@ export interface operations {
     listLabels: {
         parameters: {
             query?: {
-                /** @description Text the name contains; names starting with it come first. With neither q nor limit, every label. */
+                /** @description Text the name contains; names starting with it come first. */
                 q?: string;
-                /** @description 1 to 50; 50 unless said. */
+                /** @description 1 to 200; 50 unless said. */
                 limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -13399,9 +13433,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        labels: components["schemas"]["Label"][];
-                    };
+                    "application/json": components["schemas"]["LabelPage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -16712,11 +16744,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        assignments: components["schemas"]["WorkflowAssignment"][];
-                        projectKey: string;
-                        schemeId: string | null;
-                    };
+                    "application/json": components["schemas"]["ProjectWorkflows"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -16784,11 +16812,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        assignments: components["schemas"]["WorkflowAssignment"][];
-                        projectKey: string;
-                        schemeId: string | null;
-                    };
+                    "application/json": components["schemas"]["ProjectWorkflows"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -17014,8 +17038,15 @@ export interface operations {
     listAssignments: {
         parameters: {
             query?: {
-                /** @description Only grants over this project. */
+                /** @description Text the person, the group, or the project's key or name contains. */
+                q?: string;
+                /** @description Only grants that answer in this project, those over all projects included. */
                 project?: string;
+                /** @description Only grants of this role, by its key. */
+                role?: string;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -17029,9 +17060,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        assignments: components["schemas"]["Assignment"][];
-                    };
+                    "application/json": components["schemas"]["AssignmentPage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -19319,7 +19348,13 @@ export interface operations {
     };
     listSchemes: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Text the name contains. */
+                q?: string;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -19332,9 +19367,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        schemes: components["schemas"]["Scheme"][];
-                    };
+                    "application/json": components["schemas"]["SchemePage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -19363,6 +19396,39 @@ export interface operations {
         responses: {
             /** @description Created */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        scheme: components["schemas"]["Scheme"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getScheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schemeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19480,7 +19546,13 @@ export interface operations {
     };
     listWorkflows: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Text the name contains. */
+                q?: string;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -19493,9 +19565,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        workflows: components["schemas"]["Summary"][];
-                    };
+                    "application/json": components["schemas"]["SummaryPage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

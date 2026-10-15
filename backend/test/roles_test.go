@@ -119,7 +119,7 @@ func TestTheInstallationEditsItsOwnRoles(t *testing.T) {
 		}
 		want(t, owner.delete("/api/v1/roles/"+plannerKey), http.StatusNoContent, "delete")
 		h.waitForPrimary(t)
-		for _, row := range list(t, want(t, owner.get("/api/v1/role-assignments"), http.StatusOK, "assignments"), "assignments") {
+		for _, row := range list(t, want(t, owner.get("/api/v1/role-assignments?role="+plannerKey), http.StatusOK, "assignments"), "assignments") {
 			if row.(map[string]any)["role"] == plannerKey {
 				t.Fatalf("a grant of a deleted role survived: %v", row)
 			}

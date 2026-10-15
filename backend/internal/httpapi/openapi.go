@@ -416,6 +416,13 @@ var (
 	dateParam = &openapi.Schema{Type: "string", Format: "date"}
 )
 
+// pageQuery is a paged listing's parameters: the text it searches, what else
+// narrows it, and the page.
+func pageQuery(text string, narrowing ...param) []param {
+	out := append([]param{{name: "q", description: text}}, narrowing...)
+	return append(out, param{name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, param{name: "offset", schema: intParam})
+}
+
 func none() map[int]any            { return map[int]any{204: nil} }
 func ok(body any) map[int]any      { return map[int]any{200: body} }
 func created(body any) map[int]any { return map[int]any{201: body} }
