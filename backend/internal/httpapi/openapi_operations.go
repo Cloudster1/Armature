@@ -279,6 +279,7 @@ var operations = []operation{
 	{method: "POST", path: "/projects/{projectKey}/restore", handler: "handleRestoreProject", tag: "projects", summary: "Bring an archived project back.", responses: none()},
 	{method: "GET", path: "/projects/{projectKey}/workflows", handler: "handleProjectWorkflows", tag: "workflows", summary: "Which workflow each issue type follows here, and who decided.",
 		responses: ok(env{"projectKey": "", "schemeId": (*string)(nil), "assignments": []workflow.Assignment{}})},
+	{method: "GET", path: "/projects/{projectKey}/statuses", handler: "handleProjectStatuses", tool: "list_project_statuses", toolHelp: "The statuses a project's issues can be in, across the workflows it follows, in workflow order.", tag: "workflows", summary: "The statuses this project's workflows hold, which its boards are made of.", responses: ok(env{"statuses": []workflow.Status{}})},
 	{method: "PUT", path: "/projects/{projectKey}/workflow-scheme", handler: "handleSetProjectScheme", tag: "workflows", summary: "Override the default scheme, or hand the decision back with null.",
 		request: setProjectSchemeRequest{}, responses: ok(env{"project": project.Project{}})},
 	{method: "PUT", path: "/projects/{projectKey}/workflow-assignments/{issueTypeID}", handler: "handleSetProjectAssignment", tag: "workflows", summary: "Decide which workflow one issue type follows here, or hand it back with null.",

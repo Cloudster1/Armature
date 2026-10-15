@@ -11,7 +11,7 @@ import {
 } from "@/api/boards";
 import { Button, Card, Checkbox, Chip, ErrorBanner, Field, Input, cx } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
-import { useStatuses, type Status } from "@/api/issues";
+import { useProjectStatuses, type Status } from "@/api/issues";
 
 const groupings: Array<{ value: Grouping; label: string }> = [
   { value: "none", label: "No rows" },
@@ -24,7 +24,8 @@ const groupings: Array<{ value: Grouping; label: string }> = [
  * screen; a project can have several, so it never looks the board up itself. */
 export function SwimlaneEditor({ boardId }: { boardId: string }) {
   const { data, isLoading } = useBoardById(boardId);
-  const { data: statusData } = useStatuses();
+  // Only the project's workflows can put a card in a state, so only theirs are offered.
+  const { data: statusData } = useProjectStatuses(data?.board?.projectKey ?? "");
   const updateBoard = useUpdateBoard();
   const reorder = useReorderSwimlanes();
   const [adding, setAdding] = useState(false);
@@ -196,6 +197,8 @@ function SwimlaneRow({
   const [wipLimit, setWipLimit] = useState(String(swimlane.wipLimit || ""));
 
   const selected = new Set(swimlane.statuses.map((s) => s.id));
+  // A state the project no longer reaches stays on offer while the lane holds it, so it can be let go.
+  const offered = [...statuses, ...swimlane.statuses.filter((held) => !statuses.some((s) => s.id === held.id))];
 
   function toggleStatus(statusId: string) {
     const next = new Set(selected);
@@ -281,7 +284,7 @@ function SwimlaneRow({
       <fieldset className="mt-3">
         <legend className="text-xs font-medium text-ink-muted">States in this swimlane</legend>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {statuses.map((status) => {
+          {offered.map((status) => {
             const mine = selected.has(status.id);
             const owner = claimedBy.get(status.id);
             const takenByAnother = Boolean(owner) && !mine;
