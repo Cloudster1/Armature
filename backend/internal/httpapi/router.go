@@ -516,6 +516,7 @@ func (s *Server) deskRoutes(r chi.Router) {
 		r.Delete("/canned-responses/{responseID}", s.handleDeleteCanned)
 	})
 	r.Get("/projects/{projectKey}/request-types", s.handleListRequestTypes)
+	r.Get("/projects/{projectKey}/mail-address", s.handleDeskMailAddress)
 	r.Get("/projects/{projectKey}/sla-policies", s.handleListPolicies)
 	r.Get("/projects/{projectKey}/queue", s.handleQueue)
 	r.Get("/issues/{issueKey}/timers", s.handleIssueTimers)

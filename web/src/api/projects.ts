@@ -52,6 +52,8 @@ export interface Project {
   portalVerifies: boolean;
   /** The address domains the desk takes requests from; empty means everyone. */
   trustedDomains: string[];
+  /** What a new mail to the desk's own address becomes; absent when mail raises nothing. */
+  mailRequestTypeId?: string;
   /** The pages the project has, from its template and its administrators. */
   features: Feature[];
   /** What the resource view sets the work against; a scrum project always plans by team. */
@@ -215,6 +217,8 @@ export interface UpdateProjectInput {
   leadId?: string | null;
   portalVerifies?: boolean;
   trustedDomains?: string[];
+  /** Null stops mail raising requests; absent leaves it. */
+  mailRequestTypeId?: string | null;
   features?: Feature[];
   /** An empty string clears the link and its label. */
   docsUrl?: string;

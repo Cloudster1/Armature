@@ -126,3 +126,32 @@ func TestParseRefusesWhatIsNotAMail(t *testing.T) {
 		t.Error("an empty body was taken for a mail")
 	}
 }
+
+// The files a mail carries come out decoded and named, the words stay the
+// body, and a picture inlined in a signature is nobody's file.
+func TestParseKeepsTheFilesAMailCarries(t *testing.T) {
+	mixed := fixture(t, "mixed.eml")
+	if len(mixed.Attachments) != 1 || mixed.Attachments[0].Name != "x.pdf" || mixed.Attachments[0].ContentType != "application/pdf" || string(mixed.Attachments[0].Body) != "%PDF-" {
+		t.Errorf("mixed attachments = %+v, want the one PDF decoded", mixed.Attachments)
+	}
+	files := fixture(t, "files.eml")
+	if files.Text != "It jams on every page." {
+		t.Errorf("text = %q, want the body and not the attached log", files.Text)
+	}
+	got := map[string]string{}
+	for _, a := range files.Attachments {
+		got[a.Name] = string(a.Body)
+	}
+	want := map[string]string{"printer.log": "jam at tray 2 = page 4", "Fotografía.jpg": "\xff\xd8\xff\xe0\x00\x10"}
+	if len(got) != len(want) {
+		t.Errorf("attachments = %v, want %v and no inline logo", got, want)
+	}
+	for name, body := range want {
+		if got[name] != body {
+			t.Errorf("%s = %q, want %q", name, got[name], body)
+		}
+	}
+	if plain := fixture(t, "plain.eml"); len(plain.Attachments) != 0 {
+		t.Errorf("a mail without files has %+v", plain.Attachments)
+	}
+}

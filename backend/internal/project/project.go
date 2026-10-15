@@ -56,6 +56,9 @@ type Project struct {
 	// TrustedDomains are the address domains the desk takes requests from,
 	// at the door and by mail. Empty means everyone; only a desk has any.
 	TrustedDomains []string `json:"trustedDomains"`
+	// MailRequestTypeID is what a new mail to the desk's own address becomes;
+	// nil means mail raises nothing and is answered with the portal's address.
+	MailRequestTypeID *uuid.UUID `json:"mailRequestTypeId,omitempty"`
 	// Features are the pages the project has, decided by its template and
 	// changed by its administrators. Issues, workflow, fields and settings
 	// are not features: every project has them.
@@ -87,6 +90,9 @@ var (
 	ErrArchived = errors.New("this project is archived")
 	// ErrNotADesk is returned when a software project is told to leave its door open.
 	ErrNotADesk = errors.New("only a service desk has a door to leave open")
+	// ErrRequestTypeElsewhere is returned for a mail request type that is not
+	// one of the desk's own.
+	ErrRequestTypeElsewhere = errors.New("that request type is not one of this desk's; choose one of its own")
 )
 
 // keyShape matches the database constraint: two to ten characters, starting

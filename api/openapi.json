@@ -12400,6 +12400,56 @@
         }
       }
     },
+    "/projects/{projectKey}/mail-address": {
+      "get": {
+        "operationId": "deskMailAddress",
+        "summary": "The desk's own address, where a new mail raises a request; empty when the installation reads no mailbox.",
+        "tags": [
+          "service desk"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "address"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{projectKey}/milestones": {
       "get": {
         "operationId": "listMilestones",
@@ -21211,6 +21261,9 @@
           "description": {
             "type": "string"
           },
+          "mailAddress": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -24467,6 +24520,10 @@
           },
           "leadName": {
             "type": "string"
+          },
+          "mailRequestTypeId": {
+            "type": "string",
+            "format": "uuid"
           },
           "name": {
             "type": "string"
@@ -28117,6 +28174,13 @@
             "type": "string"
           },
           "leadId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "mailRequestTypeId": {
             "type": [
               "string",
               "null"

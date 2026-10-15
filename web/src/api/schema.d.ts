@@ -2969,6 +2969,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectKey}/mail-address": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The desk's own address, where a new mail raises a request; empty when the installation reads no mailbox. */
+        get: operations["deskMailAddress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectKey}/milestones": {
         parameters: {
             query?: never;
@@ -5178,6 +5195,7 @@ export interface components {
         };
         Desk: {
             description?: string;
+            mailAddress?: string;
             name: string;
             /** Format: uuid */
             projectId: string;
@@ -6091,6 +6109,8 @@ export interface components {
             /** Format: uuid */
             leadId?: string;
             leadName?: string;
+            /** Format: uuid */
+            mailRequestTypeId?: string;
             name: string;
             openIssueCount: number;
             /** @enum {string} */
@@ -7103,6 +7123,8 @@ export interface components {
             kind?: string;
             /** Format: uuid */
             leadId?: string | null;
+            /** Format: uuid */
+            mailRequestTypeId?: string | null;
             name?: string;
             /** @enum {string} */
             planningMethod?: "scrum" | "kanban";
@@ -15540,6 +15562,39 @@ export interface operations {
                 content: {
                     "application/json": {
                         issue: components["schemas"]["Issue"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deskMailAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        address: string;
                     };
                 };
             };

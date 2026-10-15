@@ -33,6 +33,27 @@ type Service struct {
 	// files is where a request's attachments live; nil means the portal
 	// says files are unavailable rather than failing later.
 	files *attachment.Service
+	// inbox is the address the worker reads, which each desk's own address
+	// is a plus address of.
+	inbox string
+}
+
+// WithInbox names the address the worker reads, so a desk can say its own.
+func (s *Service) WithInbox(address string) *Service {
+	s.inbox = strings.TrimSpace(address)
+	return s
+}
+
+// MailAddress is the desk's own address, or empty when no inbox is read.
+func (s *Service) MailAddress(ctx context.Context, projectKey string) (string, error) {
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		_, err := s.serviceProject(ctx, tx, projectKey)
+		return err
+	})
+	if err != nil || !s.repliesByMail {
+		return "", err
+	}
+	return Address(s.inbox, project.NormalizeKey(projectKey)), nil
 }
 
 // WithAttachments lets customers put files on their requests.
@@ -697,7 +718,7 @@ func (s *Service) Desks(ctx context.Context, viewer issue.Actor) ([]Desk, error)
 	}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT p.id, p.key, p.name, p.description FROM project p
+			SELECT p.id, p.key, p.name, p.description, p.mail_request_type_id IS NOT NULL FROM project p
 			LEFT JOIN app_user u ON u.id = $2
 			WHERE p.kind = 'service' AND p.archived_at IS NULL AND ($1::uuid IS NULL OR p.id = $1)
 			  AND ($3 OR cardinality(p.trusted_domains) = 0 OR lower(split_part(u.email::text, '@', 2)) = ANY(p.trusted_domains))
@@ -707,12 +728,18 @@ func (s *Service) Desks(ctx context.Context, viewer issue.Actor) ([]Desk, error)
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var d Desk
-			if err := rows.Scan(&d.ProjectID, &d.ProjectKey, &d.Name, &d.Description); err != nil {
+			var (
+				d      Desk
+				byMail bool
+			)
+			if err := rows.Scan(&d.ProjectID, &d.ProjectKey, &d.Name, &d.Description, &byMail); err != nil {
 				return err
 			}
 			d.RequestTypes = []RequestType{}
 			d.RepliesByMail = s.repliesByMail
+			if byMail && s.repliesByMail {
+				d.MailAddress = Address(s.inbox, d.ProjectKey)
+			}
 			out = append(out, d)
 		}
 		return rows.Err()

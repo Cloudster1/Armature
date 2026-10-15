@@ -90,6 +90,8 @@ export interface Desk {
   requestTypes: RequestType[];
   /** Whether answering the desk's mails adds the words to the request. */
   repliesByMail: boolean;
+  /** Where a new request may be mailed; absent when this desk raises nothing from mail. */
+  mailAddress?: string;
 }
 
 export interface Request {
@@ -104,6 +106,15 @@ export function useRequestTypes(projectKey: string) {
   return useQuery({
     queryKey: [...deskQueryKey, "request-types", projectKey],
     queryFn: () => request<{ requestTypes: RequestType[] }>(`/projects/${projectKey}/request-types`),
+    enabled: Boolean(projectKey),
+  });
+}
+
+/** The desk's own address, empty when the installation reads no mailbox. */
+export function useDeskMailAddress(projectKey: string) {
+  return useQuery({
+    queryKey: [...deskQueryKey, "mail-address", projectKey],
+    queryFn: () => request<{ address: string }>(`/projects/${projectKey}/mail-address`),
     enabled: Boolean(projectKey),
   });
 }

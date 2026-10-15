@@ -180,6 +180,9 @@ type Desk struct {
 	RequestTypes []RequestType `json:"requestTypes"`
 	// RepliesByMail says the desk reads answers to its mails.
 	RepliesByMail bool `json:"repliesByMail"`
+	// MailAddress is where a new request may be mailed; empty when this desk
+	// raises nothing from mail.
+	MailAddress string `json:"mailAddress,omitempty"`
 }
 
 var (

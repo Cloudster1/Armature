@@ -150,7 +150,7 @@ func run() error {
 	workflowAdmin := workflow.NewAdmin(cluster, workflowStore).WithRegistry(engine.Registry()).WithObserver(board.Follower{})
 	// The desk observes issues for its clocks, so it is made before anything
 	// that creates or moves one is served.
-	deskService := desk.NewService(cluster, issues).RepliesByMail(cfg.Mail.POP3.Addr != "")
+	deskService := desk.NewService(cluster, issues).RepliesByMail(cfg.Mail.POP3.Addr != "").WithInbox(cfg.Mail.Inbox)
 
 	// The portal's codes are mailed by the API itself, while the person waits.
 	// Without SMTP the door says mail is off rather than pretending.
