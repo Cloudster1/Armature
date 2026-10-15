@@ -3,8 +3,7 @@ import { useMutation } from "./mutation";
 import { QUEUE_PAGE_SIZE } from "@/config";
 import { request } from "./client";
 import { meQueryKey } from "./auth";
-import { issuesQueryKey, type Comment, type Doc, type Issue, type Priority } from "./issues";
-import type { Watcher } from "./watchers";
+import { issuesQueryKey, type Comment, type Doc, type Issue, type Priority, type StatusCategory } from "./issues";
 
 /**
  * The service desk: what customers raise through the portal, and the clocks
@@ -115,16 +114,54 @@ export interface CompanyMember {
   addedAt: string;
 }
 
+/** Somebody on a request as the portal names them. */
+export interface PortalPerson {
+  id: string;
+  name: string;
+  /** Where the picture is served from; absent means initials. */
+  avatarUrl?: string;
+}
+
+/** A request as its customer reads it. */
+export interface PortalRequest {
+  key: string;
+  summary: string;
+  description?: Doc;
+  status: { name: string; category: StatusCategory };
+  requestTypeName?: string;
+  /** Who the request type hands it to. */
+  team?: { id: string; name: string };
+  company?: { id: string; name: string };
+  sharedWithCompany: boolean;
+  assignee?: PortalPerson;
+  reporter?: PortalPerson;
+  updatedAt: string;
+}
+
+/** One reply in a request's public conversation. */
+export interface PortalComment {
+  id: string;
+  author?: PortalPerson;
+  body: Doc;
+  createdAt: string;
+}
+
+/** Somebody told about a request; the address only for the people the reporter added. */
+export interface PortalFollower {
+  userId: string;
+  name: string;
+  email?: string;
+}
+
 /** The portal's two lists: what the customer is on, and what colleagues shared. */
 export interface MyRequests {
-  requests: Issue[];
-  shared: Issue[];
+  requests: PortalRequest[];
+  shared: PortalRequest[];
 }
 
 export interface Request {
-  issue: Issue;
-  comments: Comment[];
-  requestTypeName?: string;
+  request: PortalRequest;
+  comments: PortalComment[];
   /** The reader sees it only as a colleague, who is not shown its followers. */
   throughCompany?: boolean;
 }
@@ -418,13 +455,13 @@ export function useRequest(key: string) {
 
 export function useRaiseRequest() {
   return useDeskMutation((input: { requestTypeId: string; summary: string; description?: string; shareWithCompany?: boolean }) =>
-    request<{ request: Issue }>("/portal/requests", { method: "POST", body: input }),
+    request<{ request: PortalRequest }>("/portal/requests", { method: "POST", body: input }),
   );
 }
 
 export function useReply() {
   return useDeskMutation(({ key, text }: { key: string; text: string }) =>
-    request<{ comment: Comment }>(`/portal/requests/${key}/replies`, { method: "POST", body: { text } }),
+    request<{ comment: PortalComment }>(`/portal/requests/${key}/replies`, { method: "POST", body: { text } }),
   );
 }
 
@@ -433,14 +470,14 @@ export function useReply() {
 export function useRequestWatchers(key: string) {
   return useQuery({
     queryKey: [...deskQueryKey, "portal", "watchers", key],
-    queryFn: () => request<{ watchers: Watcher[] }>(`/portal/requests/${key}/watchers`),
+    queryFn: () => request<{ watchers: PortalFollower[] }>(`/portal/requests/${key}/watchers`),
     enabled: Boolean(key),
   });
 }
 
 export function useFollow() {
   return useDeskMutation(({ key, email }: { key: string; email: string }) =>
-    request<{ watcher: Watcher }>(`/portal/requests/${key}/watchers`, { method: "POST", body: { email } }),
+    request<{ watcher: PortalFollower }>(`/portal/requests/${key}/watchers`, { method: "POST", body: { email } }),
   );
 }
 

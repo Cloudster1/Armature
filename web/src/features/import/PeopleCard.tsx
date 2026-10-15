@@ -1,11 +1,9 @@
-import { Card, Input, Labelled, SelectInput, Table, Td, Th } from "@/components/ui";
-import { useMembers } from "@/api/issues";
+import { Card, Input, Labelled, Table, Td, Th } from "@/components/ui";
 import type { ImportPeople, ImportPerson } from "@/api/filters";
+import { PersonPicker } from "@/features/people/PersonPicker";
 
 /** Who the file's names are here. Jira writes a username, not an address. */
 export function PeopleCard({ people, choice, onChange }: { people: ImportPerson[]; choice: ImportPeople; onChange: (choice: ImportPeople) => void }) {
-  const { data } = useMembers();
-  const members = data?.members ?? [];
   if (people.length === 0) return null;
 
   const choices = choice.choices ?? {};
@@ -45,18 +43,20 @@ export function PeopleCard({ people, choice, onChange }: { people: ImportPerson[
               <Td className="text-sm text-ink">{person.name}</Td>
               <Td className="text-sm text-ink-muted">{person.count}</Td>
               <Td>
-                <label htmlFor={`person-${person.name}`} className="sr-only">
-                  Who {person.name} is
-                </label>
-                <SelectInput id={`person-${person.name}`} controlSize="sm" value={valueFor(person)} onChange={(e) => pick(person.name, e.target.value)} data-import-person-choice={person.name}>
-                  <option value="">Leave it empty</option>
+                {/* Each name searches on its own, so a file of fifty names never lists everybody fifty times. */}
+                <PersonPicker
+                  id={`person-${person.name}`}
+                  aria-label={`Who ${person.name} is`}
+                  controlSize="sm"
+                  none="Leave it empty"
+                  optionLabel={(m) => `${m.name} (${m.email})`}
+                  selected={person.member ? { id: person.member, name: person.email ?? person.name } : null}
+                  value={valueFor(person)}
+                  onChange={(value) => pick(person.name, value)}
+                  data-import-person-choice={person.name}
+                >
                   <option value="create">Make an account for them</option>
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.email})
-                    </option>
-                  ))}
-                </SelectInput>
+                </PersonPicker>
               </Td>
             </tr>
           ))}

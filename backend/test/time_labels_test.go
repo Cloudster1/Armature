@@ -94,7 +94,7 @@ func TestTimeIsEstimatedLoggedAndAccounted(t *testing.T) {
 		colleagueID := principalField(t, colleague.get("/api/v1/auth/me"), "principal", "user", "id").(string)
 		var other string
 		for attempt := 0; attempt < 50 && other == ""; attempt++ {
-			for _, raw := range list(t, owner.get("/api/v1/members"), "members") {
+			for _, raw := range list(t, owner.get("/api/v1/members?q="+url.QueryEscape(otherEmail)), "members") {
 				if id := raw.(map[string]any)["id"].(string); id == colleagueID {
 					other = id
 				}

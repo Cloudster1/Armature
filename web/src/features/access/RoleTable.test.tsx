@@ -32,7 +32,7 @@ vi.mock("@/api/access", () => ({
     },
   }),
 }));
-vi.mock("@/api/issues", () => ({ useMembers: () => ({ data: { members: [] } }) }));
+vi.mock("@/features/people/PersonPicker", () => ({ PersonPicker: () => null }));
 vi.mock("@/features/projects/ProjectPicker", () => ({ ProjectPicker: () => null }));
 vi.mock("@/features/shell/ConfirmProvider", () => ({ useConfirm: () => async () => true }));
 

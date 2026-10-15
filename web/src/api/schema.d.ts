@@ -2243,7 +2243,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Everyone with an active account here, and their role. */
+        /** Everyone with an active account here and their role, a page at a time, with how many there are in all. */
         get: operations["listMembers"];
         put?: never;
         post?: never;
@@ -3953,7 +3953,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The accounts, switched off ones included, and what may be done to each. */
+        /** The accounts, switched off ones included, and what may be done to each, a page at a time, with how many there are in all. */
         get: operations["listUsers"];
         put?: never;
         /** Make an account that signs in here with a password. */
@@ -5549,7 +5549,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             memberCount: number;
-            members?: components["schemas"]["Member"][];
+            members?: components["schemas"]["PermMember"][];
             name: string;
             roleCount: number;
             source: string;
@@ -5882,18 +5882,18 @@ export interface components {
             schema?: components["schemas"]["Schema"];
         };
         Member: {
-            email?: string;
-            name: string;
-            /** Format: uuid */
-            userId: string;
-        };
-        MemberView: {
             avatarUrl?: string;
             email: string;
             /** Format: uuid */
             id: string;
             name: string;
             role: string;
+        };
+        MemberPage: {
+            limit: number;
+            members: components["schemas"]["Member"][];
+            offset: number;
+            total: number;
         };
         Meta: {
             apiVersion: string;
@@ -6097,6 +6097,12 @@ export interface components {
         PasswordResetRequest: {
             email: string;
         };
+        PermMember: {
+            email?: string;
+            name: string;
+            /** Format: uuid */
+            userId: string;
+        };
         PermissionView: {
             permission: string;
             words: string;
@@ -6169,12 +6175,43 @@ export interface components {
             projectKey: string;
             useCalendar: boolean;
         };
+        PortalAttachment: {
+            contentType: string;
+            /** Format: date-time */
+            createdAt: string;
+            fileName: string;
+            /** Format: uuid */
+            id: string;
+            size: number;
+            uploader?: components["schemas"]["PortalPerson"];
+        };
         PortalCodeRequest: {
             desk?: string;
             email: string;
         };
+        PortalComment: {
+            author?: components["schemas"]["PortalPerson"];
+            /** @description A JSON value. */
+            body: unknown;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+        };
         PortalFollowRequest: {
             email: string;
+        };
+        PortalFollower: {
+            email?: string;
+            name: string;
+            /** Format: uuid */
+            userId: string;
+        };
+        PortalPerson: {
+            avatarUrl?: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         PortalRaiseRequest: {
             description: string;
@@ -6186,11 +6223,38 @@ export interface components {
         PortalReplyRequest: {
             text: string;
         };
+        PortalRequest: {
+            assignee?: components["schemas"]["PortalPerson"];
+            commentCount: number;
+            company?: components["schemas"]["CompanyRef"];
+            /** Format: date-time */
+            createdAt: string;
+            /** @description A JSON value. */
+            description?: unknown;
+            key: string;
+            /** @enum {string} */
+            priority: "lowest" | "low" | "medium" | "high" | "highest";
+            reporter?: components["schemas"]["PortalPerson"];
+            requestTypeName?: string;
+            /** Format: date-time */
+            resolvedAt?: string;
+            sharedWithCompany: boolean;
+            status: components["schemas"]["PortalStatus"];
+            summary: string;
+            team?: components["schemas"]["TeamRef"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
         PortalSessionRequest: {
             code?: string;
             desk?: string;
             email: string;
             name?: string;
+        };
+        PortalStatus: {
+            /** @enum {string} */
+            category: "todo" | "in_progress" | "done";
+            name: string;
         };
         Preferences: {
             digest: string;
@@ -6471,9 +6535,8 @@ export interface components {
             url: string | null;
         };
         Request: {
-            comments: components["schemas"]["Comment"][];
-            issue: components["schemas"]["Issue"];
-            requestTypeName?: string;
+            comments: components["schemas"]["PortalComment"][];
+            request: components["schemas"]["PortalRequest"];
             throughCompany?: boolean;
         };
         RequestBody: {
@@ -7331,6 +7394,12 @@ export interface components {
             locale: string;
             name: string;
             timezone: string;
+        };
+        UserPage: {
+            limit: number;
+            offset: number;
+            total: number;
+            users: components["schemas"]["ManagedUser"][];
         };
         UserRef: {
             avatarUrl?: string;
@@ -13638,7 +13707,15 @@ export interface operations {
     };
     listMembers: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Text the name or the address contains; names it starts come first. */
+                q?: string;
+                /** @description Leave the service desk's customers out. */
+                staff?: boolean;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -13651,9 +13728,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        members: components["schemas"]["MemberView"][];
-                    };
+                    "application/json": components["schemas"]["MemberPage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -14324,8 +14399,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        requests: components["schemas"]["Issue"][];
-                        shared: components["schemas"]["Issue"][];
+                        requests: components["schemas"]["PortalRequest"][];
+                        shared: components["schemas"]["PortalRequest"][];
                     };
                 };
             };
@@ -14360,7 +14435,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        request: components["schemas"]["Issue"];
+                        request: components["schemas"]["PortalRequest"];
                     };
                 };
             };
@@ -14424,7 +14499,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        attachments: components["schemas"]["Attachment"][];
+                        attachments: components["schemas"]["PortalAttachment"][];
                     };
                 };
             };
@@ -14464,7 +14539,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        attachment: components["schemas"]["Attachment"];
+                        attachment: components["schemas"]["PortalAttachment"];
                     };
                 };
             };
@@ -14501,7 +14576,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        comment: components["schemas"]["Comment"];
+                        comment: components["schemas"]["PortalComment"];
                     };
                 };
             };
@@ -14534,7 +14609,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        watchers: components["schemas"]["Watcher"][];
+                        watchers: components["schemas"]["PortalFollower"][];
                     };
                 };
             };
@@ -14571,7 +14646,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        watcher: components["schemas"]["Watcher"];
+                        watcher: components["schemas"]["PortalFollower"];
                     };
                 };
             };
@@ -18512,7 +18587,13 @@ export interface operations {
     };
     listUsers: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Text the name or the address contains; names it starts come first. */
+                q?: string;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -18525,9 +18606,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        users: components["schemas"]["ManagedUser"][];
-                    };
+                    "application/json": components["schemas"]["UserPage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

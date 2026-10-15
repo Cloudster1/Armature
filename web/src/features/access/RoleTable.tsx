@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useMembers } from "@/api/issues";
 import {
   permissionWords,
   useAssignments,
@@ -15,6 +14,7 @@ import { Button, Card, clampOffset, cx, EmptyState, ErrorBanner, ListSearch, Pag
 import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { ProjectPicker } from "@/features/projects/ProjectPicker";
+import { PersonPicker } from "@/features/people/PersonPicker";
 
 /**
  * Who holds what.
@@ -139,13 +139,10 @@ function AssignmentRow({ assignment, onRevoke }: { assignment: Assignment; onRev
 
 function GrantForm({ projectKey }: { projectKey?: string }) {
   const { data: roleData } = useRoles();
-  const { data: memberData } = useMembers();
   const { data: groupData } = useGroups();
   const grant = useGrantRole();
 
   const roles = roleData?.roles ?? [];
-  // A portal customer holds no seat, so there is nothing to give them.
-  const people = (memberData?.members ?? []).filter((person) => person.role !== "customer");
   const groups = groupData?.groups ?? [];
 
   const [subject, setSubject] = useState("");
@@ -171,8 +168,17 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
   return (
     <Card className="space-y-3 p-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
-        <Select label="Who" aria-label="Who to grant to" value={subject} onChange={(event) => setSubject(event.target.value)}>
-          <option value="">Choose a person or a group</option>
+        {/* A portal customer holds no seat, so there is nothing to give them. */}
+        <PersonPicker
+          label="Who"
+          aria-label="Who to grant to"
+          none="Choose a person or a group"
+          staff
+          group="People"
+          optionValue={(person) => `user:${person.id}`}
+          value={subject}
+          onChange={setSubject}
+        >
           {groups.length > 0 && (
             <optgroup label="Groups">
               {groups.map((group) => (
@@ -182,14 +188,7 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
               ))}
             </optgroup>
           )}
-          <optgroup label="People">
-            {people.map((person) => (
-              <option key={person.id} value={`user:${person.id}`}>
-                {person.name}
-              </option>
-            ))}
-          </optgroup>
-        </Select>
+        </PersonPicker>
 
         <Select label="Role" aria-label="Role" value={role} onChange={(event) => setRole(event.target.value as Role)}>
           {roles.map((each) => (

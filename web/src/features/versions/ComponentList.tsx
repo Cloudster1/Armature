@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { useComponents, useCreateComponent, useDeleteComponent, useUpdateComponent, type Component } from "@/api/versions";
-import { useMembers } from "@/api/issues";
-import { Button, Card, Drawer, EmptyState, ErrorBanner, Field, IconButton, Menu, Select, Table, Td, Th } from "@/components/ui";
+import { Button, Card, Drawer, EmptyState, ErrorBanner, Field, IconButton, Menu, Table, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { PersonPicker, type Chosen } from "@/features/people/PersonPicker";
 
 // A project's parts, each with who looks after it and, when it says so, who
 // new work in it goes to.
@@ -72,19 +72,8 @@ export function ComponentList({ projectKey, canEdit }: { projectKey: string; can
   );
 }
 
-function PersonSelect({ label, id, value, onChange }: { label: string; id: string; value: string; onChange: (id: string) => void }) {
-  const { data } = useMembers();
-  const people = (data?.members ?? []).filter((m) => m.role !== "customer");
-  return (
-    <Select label={label} id={id} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Nobody</option>
-      {people.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.name}
-        </option>
-      ))}
-    </Select>
-  );
+function PersonSelect({ label, id, value, onChange, selected }: { label: string; id: string; value: string; onChange: (id: string) => void; selected?: Chosen }) {
+  return <PersonPicker label={label} id={id} value={value} onChange={onChange} none="Nobody" staff selected={selected} />;
 }
 
 function NewComponent({ projectKey }: { projectKey: string }) {
@@ -148,8 +137,8 @@ function EditComponent({ component, onClose }: { component: Component; onClose: 
         {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
         <Field label="Name" id="field-edit-component-name" required value={name} onChange={(e) => setName(e.target.value)} />
         <Field label="What it is" id="field-edit-component-description" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <PersonSelect label="Lead" id="field-edit-component-lead" value={lead} onChange={setLead} />
-        <PersonSelect label="New work goes to" id="field-edit-component-assignee" value={assignee} onChange={setAssignee} />
+        <PersonSelect label="Lead" id="field-edit-component-lead" value={lead} onChange={setLead} selected={component.lead} />
+        <PersonSelect label="New work goes to" id="field-edit-component-assignee" value={assignee} onChange={setAssignee} selected={component.defaultAssignee} />
         <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
           Save component
         </Button>

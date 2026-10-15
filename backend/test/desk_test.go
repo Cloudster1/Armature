@@ -194,7 +194,7 @@ func TestACustomerRaisesAndFollowsARequest(t *testing.T) {
 			t.Fatal(err)
 		}
 		req, _ = d.Request(ws.ctx, raised.Key, customer.UserID)
-		if len(req.Comments) != 1 || req.Comments[0].Internal {
+		if len(req.Comments) != 1 {
 			t.Errorf("the customer sees %+v, want the one public reply", req.Comments)
 		}
 		first = timerFor(t, mustTimers(t, d, ws, raised.Key), desk.FirstResponse)

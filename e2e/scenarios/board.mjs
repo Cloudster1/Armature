@@ -21,6 +21,7 @@ import {
   openWorkflowDesign,
   reload,
   replaceValue,
+  pickPerson,
   selectByLabel,
   settled,
   signUp,
@@ -249,7 +250,7 @@ scenario("an edit made beside the board shows on its card without a reload", asy
     await page.waitForSelector(`[data-issue-panel="${issueKey}"]`, { timeout: WAIT });
 
     // The assignee and a label, both changed in the panel, reach the card it sits beside.
-    await selectByLabel(page, '[data-issue-panel] select[aria-label="Assignee"]', who.name);
+    await pickPerson(page, '[data-issue-panel] select[aria-label="Assignee"]', who.name);
     await page.waitForSelector(`${card} [title="${who.name}"]`, { timeout: WAIT });
 
     await page.type('[data-issue-panel] input[aria-label="Add a label"]', "backend");

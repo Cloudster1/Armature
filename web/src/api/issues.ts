@@ -545,14 +545,6 @@ export function useCreateStatus() {
   });
 }
 
-export function useMembers() {
-  return useQuery({
-    queryKey: ["members"],
-    queryFn: () => request<{ members: Array<UserRef & { role: string }> }>("/members"),
-    staleTime: 60_000,
-  });
-}
-
 /**
  * Renders a document down to readable text, for previews and for the places
  * that show one line of it. The editor and DocView in features/editor are

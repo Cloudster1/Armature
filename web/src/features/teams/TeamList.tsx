@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { useMembers } from "@/api/issues";
 import {
   useAddTeamMember,
   useCreateTeam,
@@ -13,8 +12,9 @@ import {
 import { useCreateBoard } from "@/api/boards";
 import { holds, useAccess } from "@/api/access";
 import { AbsenceDialog } from "@/features/availability/Absences";
-import { Button, Card, EmptyState, ErrorBanner, Field, Input, SelectInput } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, Input } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { PersonPicker } from "@/features/people/PersonPicker";
 import { Avatar } from "@/features/issues/badges";
 
 /**
@@ -95,7 +95,6 @@ function CapacityField({ team }: { team: Team }) {
 
 function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
   const { data } = useTeam(team.id);
-  const { data: memberData } = useMembers();
   const add = useAddTeamMember();
   const remove = useRemoveTeamMember();
   const deleteTeam = useDeleteTeam();
@@ -108,11 +107,6 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
   const managesTeams = holds(access, "team.manage", projectKey);
 
   const members = data?.team?.members ?? [];
-  const onTeam = new Set(members.map((member) => member.userId));
-  // A portal customer is not somebody who can be put on a team.
-  const available = (memberData?.members ?? []).filter(
-    (person) => !onTeam.has(person.id) && person.role !== "customer",
-  );
   const error = (add.error ?? remove.error ?? deleteTeam.error ?? createBoard.error) as
     | Error
     | undefined;
@@ -190,17 +184,16 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
       </ul>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <label htmlFor={`add-${team.id}`} className="sr-only">
-          Add somebody to {team.name}
-        </label>
-        <SelectInput id={`add-${team.id}`} value={picked} onChange={(event) => setPicked(event.target.value)}>
-          <option value="">Add somebody...</option>
-          {available.map((person) => (
-            <option key={person.id} value={person.id}>
-              {person.name}
-            </option>
-          ))}
-        </SelectInput>
+        {/* A portal customer is not somebody who can be put on a team. */}
+        <PersonPicker
+          id={`add-${team.id}`}
+          aria-label={`Add somebody to ${team.name}`}
+          none="Add somebody..."
+          staff
+          exclude={members.map((member) => member.userId)}
+          value={picked}
+          onChange={setPicked}
+        />
         <Button
           size="sm"
           disabled={!picked}

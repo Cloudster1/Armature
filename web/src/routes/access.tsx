@@ -1,19 +1,13 @@
-import { useState } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { useCallback } from "react";
+import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { GroupList } from "@/features/access/GroupList";
-import { MemberList } from "@/features/access/MemberList";
+import { MemberList, type MembersShown } from "@/features/access/MemberList";
 import { ProviderSettings } from "@/features/access/ProviderSettings";
 import { SecondFactorRequirement } from "@/features/access/SecondFactorRequirement";
 import { RoleMatrix } from "@/features/access/RoleMatrix";
 import { RoleTable } from "@/features/access/RoleTable";
-import { Page, PageHeader, SectionTitle, Tabs } from "@/components/ui";
-
-export const accessRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/access",
-  component: AccessPage,
-});
+import { Page, PageHeader, SectionTitle, Tabs, isPageOffset } from "@/components/ui";
 
 const tabs = [
   { id: "roles", label: "Roles" },
@@ -23,8 +17,34 @@ const tabs = [
   { id: "sign-in", label: "Sign-in" },
 ] as const;
 
+type Tab = (typeof tabs)[number]["id"];
+
+interface AccessSearch extends MembersShown {
+  tab?: Tab;
+}
+
+/** The tab, and the members' search and page, are in the address, so a link opens the same view. */
+export const accessRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/access",
+  validateSearch: (search: Record<string, unknown>): AccessSearch => ({
+    ...(tabs.some((each) => each.id === search.tab && each.id !== "roles") ? { tab: search.tab as Tab } : {}),
+    // A search of digits alone comes back from the address as a number.
+    ...(typeof search.q === "number" ? { q: String(search.q) } : typeof search.q === "string" && search.q !== "" ? { q: search.q } : {}),
+    ...(isPageOffset(search.offset) ? { offset: search.offset } : {}),
+  }),
+  component: AccessPage,
+});
+
 function AccessPage() {
-  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("roles");
+  const { tab = "roles", q, offset } = accessRoute.useSearch();
+  const navigate = useNavigate();
+  const setTab = (next: Tab) => navigate({ to: "/settings/access", search: { tab: next === "roles" ? undefined : next } });
+  const showMembers = useCallback(
+    (next: MembersShown, replace = false) =>
+      navigate({ to: "/settings/access", search: { tab: "members", q: next.q || undefined, offset: next.offset || undefined }, replace }),
+    [navigate],
+  );
 
   return (
     <Page width="content">
@@ -40,7 +60,7 @@ function AccessPage() {
 
       {tab === "roles" && <RoleTable />}
       {tab === "matrix" && <RoleMatrix />}
-      {tab === "members" && <MemberList />}
+      {tab === "members" && <MemberList q={q} offset={offset} show={showMembers} />}
       {tab === "groups" && <GroupList />}
       {tab === "sign-in" && (
         <div className="space-y-4">

@@ -11,6 +11,7 @@ import {
   createProject,
   createProjectThroughForm,
   expect,
+  findMembers,
   fill,
   goto,
   grantRole,
@@ -204,10 +205,9 @@ scenario("an administrator lets a member go by switching them off", async ({ pag
 
   await signIn(page, owner.email, PASSWORD, { visit: false });
   await switchOff(page, member.email);
-  await goto(page, "/settings/access");
-  await page.click('[data-access-tab="Members"]');
-  await page.waitForSelector("[data-member]", { timeout: WAIT });
-  expect.truthy(!(await bodyText(page)).includes(member.name), "the member is gone from the list");
+  // Searched for by name, since the list is a page of thousands.
+  await findMembers(page, member.name);
+  expect.equal(await page.$eval("[data-members-total]", (el) => el.getAttribute("data-members-total")), "0", "the member is gone from the list");
 });
 
 // Reported as "can't log in": the X beside the Member tag was taken for

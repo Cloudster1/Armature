@@ -9146,9 +9146,42 @@
     "/members": {
       "get": {
         "operationId": "listMembers",
-        "summary": "Everyone with an active account here, and their role.",
+        "summary": "Everyone with an active account here and their role, a page at a time, with how many there are in all.",
         "tags": [
           "users"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text the name or the address contains; names it starts come first.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "staff",
+            "in": "query",
+            "description": "Leave the service desk's customers out.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -9156,18 +9189,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "members": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/MemberView"
-                      }
-                    }
-                  },
-                  "required": [
-                    "members"
-                  ]
+                  "$ref": "#/components/schemas/MemberPage"
                 }
               }
             }
@@ -10078,13 +10100,13 @@
                     "requests": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Issue"
+                        "$ref": "#/components/schemas/PortalRequest"
                       }
                     },
                     "shared": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Issue"
+                        "$ref": "#/components/schemas/PortalRequest"
                       }
                     }
                   },
@@ -10133,7 +10155,7 @@
                   "type": "object",
                   "properties": {
                     "request": {
-                      "$ref": "#/components/schemas/Issue"
+                      "$ref": "#/components/schemas/PortalRequest"
                     }
                   },
                   "required": [
@@ -10227,7 +10249,7 @@
                     "attachments": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Attachment"
+                        "$ref": "#/components/schemas/PortalAttachment"
                       }
                     }
                   },
@@ -10295,7 +10317,7 @@
                   "type": "object",
                   "properties": {
                     "attachment": {
-                      "$ref": "#/components/schemas/Attachment"
+                      "$ref": "#/components/schemas/PortalAttachment"
                     }
                   },
                   "required": [
@@ -10355,7 +10377,7 @@
                   "type": "object",
                   "properties": {
                     "comment": {
-                      "$ref": "#/components/schemas/Comment"
+                      "$ref": "#/components/schemas/PortalComment"
                     }
                   },
                   "required": [
@@ -10407,7 +10429,7 @@
                     "watchers": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Watcher"
+                        "$ref": "#/components/schemas/PortalFollower"
                       }
                     }
                   },
@@ -10466,7 +10488,7 @@
                   "type": "object",
                   "properties": {
                     "watcher": {
-                      "$ref": "#/components/schemas/Watcher"
+                      "$ref": "#/components/schemas/PortalFollower"
                     }
                   },
                   "required": [
@@ -16796,9 +16818,34 @@
     "/users": {
       "get": {
         "operationId": "listUsers",
-        "summary": "The accounts, switched off ones included, and what may be done to each.",
+        "summary": "The accounts, switched off ones included, and what may be done to each, a page at a time, with how many there are in all.",
         "tags": [
           "users"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text the name or the address contains; names it starts come first.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -16806,18 +16853,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "users": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ManagedUser"
-                      }
-                    }
-                  },
-                  "required": [
-                    "users"
-                  ]
+                  "$ref": "#/components/schemas/UserPage"
                 }
               }
             }
@@ -22642,7 +22678,7 @@
           "members": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Member"
+              "$ref": "#/components/schemas/PermMember"
             }
           },
           "name": {
@@ -23821,25 +23857,6 @@
       "Member": {
         "type": "object",
         "properties": {
-          "email": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "userId",
-          "name"
-        ]
-      },
-      "MemberView": {
-        "type": "object",
-        "properties": {
           "avatarUrl": {
             "type": "string"
           },
@@ -23862,6 +23879,32 @@
           "name",
           "email",
           "role"
+        ]
+      },
+      "MemberPage": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "members",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "Meta": {
@@ -24570,6 +24613,25 @@
           "email"
         ]
       },
+      "PermMember": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "name"
+        ]
+      },
       "PermissionView": {
         "type": "object",
         "properties": {
@@ -24879,6 +24941,38 @@
           "useCalendar"
         ]
       },
+      "PortalAttachment": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "uploader": {
+            "$ref": "#/components/schemas/PortalPerson"
+          }
+        },
+        "required": [
+          "id",
+          "fileName",
+          "contentType",
+          "size",
+          "createdAt"
+        ]
+      },
       "PortalCodeRequest": {
         "type": "object",
         "properties": {
@@ -24893,6 +24987,30 @@
           "email"
         ]
       },
+      "PortalComment": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/PortalPerson"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "createdAt"
+        ]
+      },
       "PortalFollowRequest": {
         "type": "object",
         "properties": {
@@ -24902,6 +25020,44 @@
         },
         "required": [
           "email"
+        ]
+      },
+      "PortalFollower": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "name"
+        ]
+      },
+      "PortalPerson": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "PortalRaiseRequest": {
@@ -24938,6 +25094,76 @@
           "text"
         ]
       },
+      "PortalRequest": {
+        "type": "object",
+        "properties": {
+          "assignee": {
+            "$ref": "#/components/schemas/PortalPerson"
+          },
+          "commentCount": {
+            "type": "integer"
+          },
+          "company": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "description": "A JSON value."
+          },
+          "key": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "lowest",
+              "low",
+              "medium",
+              "high",
+              "highest"
+            ]
+          },
+          "reporter": {
+            "$ref": "#/components/schemas/PortalPerson"
+          },
+          "requestTypeName": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sharedWithCompany": {
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PortalStatus"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "team": {
+            "$ref": "#/components/schemas/TeamRef"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "key",
+          "summary",
+          "status",
+          "priority",
+          "sharedWithCompany",
+          "createdAt",
+          "updatedAt",
+          "commentCount"
+        ]
+      },
       "PortalSessionRequest": {
         "type": "object",
         "properties": {
@@ -24956,6 +25182,26 @@
         },
         "required": [
           "email"
+        ]
+      },
+      "PortalStatus": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "category"
         ]
       },
       "Preferences": {
@@ -26026,21 +26272,18 @@
           "comments": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Comment"
+              "$ref": "#/components/schemas/PortalComment"
             }
           },
-          "issue": {
-            "$ref": "#/components/schemas/Issue"
-          },
-          "requestTypeName": {
-            "type": "string"
+          "request": {
+            "$ref": "#/components/schemas/PortalRequest"
           },
           "throughCompany": {
             "type": "boolean"
           }
         },
         "required": [
-          "issue",
+          "request",
           "comments"
         ]
       },
@@ -29089,6 +29332,32 @@
           "timezone",
           "locale",
           "isActive"
+        ]
+      },
+      "UserPage": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagedUser"
+            }
+          }
+        },
+        "required": [
+          "users",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "UserRef": {

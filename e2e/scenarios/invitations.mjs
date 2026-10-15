@@ -5,6 +5,7 @@ import {
   bodyText,
   confirm,
   expect,
+  findMembers,
   goto,
   inviteFromMembersPage,
   joinThroughLink,
@@ -37,8 +38,7 @@ scenario("an administrator invites somebody from the members page and they join 
 
   await signIn(page, owner.email);
   await waitForApp(page);
-  await goto(page, "/settings/access");
-  await page.click('[data-access-tab="Members"]');
+  await findMembers(page, who.name);
   await page.waitForSelector(`[data-member="${who.name}"]`, { timeout: WAIT });
   expect.equal(await page.$(`[data-pending-invite="${who.email}"]`), null, "the invitation no longer waits");
 });

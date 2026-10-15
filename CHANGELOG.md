@@ -25,6 +25,27 @@ and its tag message, so a change is written here in the branch that makes it.
   those. A lane given a status no workflow of the project holds is refused
   with a sentence naming it; one it already holds it keeps. The new
   `GET /projects/{key}/statuses` lists a project's statuses (#277).
+- Changed: the portal answers with a shape of its own, holding what a
+  customer reads. A request is its key, summary, description, status and its
+  category, priority, request type, team, company and whether it is shared,
+  its dates and `commentCount`, the replies the customer can read. The
+  assignee, the reporter, the authors of replies and the people who attached
+  a file are named by `id`, `name` and `avatarUrl`. `GET /portal/requests/{key}`
+  answers `{request, comments, throughCompany}`, the request type's name
+  inside `request`. The followers are `userId` and `name`, and `email` only
+  for the reporter, for the people they added (#287).
+- Changed: every place that picks a person searches for them as you type
+  instead of loading everyone: an issue's assignee and reporter, the new issue
+  dialog, watchers, bulk edit, a component's lead and default assignee, a
+  role grant, the group and team cards, a project's lead, a dashboard's
+  assignee filter and each name of an import. Mentions ask the server for the
+  name being typed. The users page and the access page's members come a page
+  at a time with a search over the name and the address, kept in the address,
+  as is the access page's tab. `GET /api/v1/members` and `GET /api/v1/users`
+  answer 50 people unless `limit` asks for up to 200, with `total`, `limit`
+  and `offset`, and take `q` to find people by part of a name or an address,
+  those whose name starts with it first; `staff=true` leaves customers out of
+  the members, and the assistant's `list_members` pages the same way (#274).
 - Fixed: a space typed into the project switcher's filter no longer closes
   it, so a project named in two words can be found (#283).
 - Fixed: a label field no longer draws every label everyone has coined. The

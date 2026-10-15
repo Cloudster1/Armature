@@ -1,7 +1,9 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
 import type { OrgRole } from "./auth";
+import { membersQueryKey } from "./people";
+import { PEOPLE_PAGE_SIZE } from "@/config";
 
 export type SignInMethod = "password" | "provider" | "none";
 
@@ -22,10 +24,26 @@ export interface ManagedUser {
 
 export const usersQueryKey = ["users"] as const;
 
-export function useManagedUsers() {
+/** One page of the accounts that matched, and how many did in all. */
+export interface UserPage {
+  users: ManagedUser[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** A page of the accounts by name, found by part of a name or an address. */
+export function useManagedUsers({ q = "", offset = 0, limit = PEOPLE_PAGE_SIZE }: { q?: string; offset?: number; limit?: number } = {}) {
+  const text = q.trim();
   return useQuery({
-    queryKey: usersQueryKey,
-    queryFn: () => request<{ users: ManagedUser[] }>("/users"),
+    queryKey: [...usersQueryKey, { q: text, offset, limit }],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (text) params.set("q", text);
+      if (offset) params.set("offset", String(offset));
+      return request<UserPage>(`/users?${params}`);
+    },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -36,7 +54,7 @@ function useUserMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>)
     mutationFn: run,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: usersQueryKey });
-      void queryClient.invalidateQueries({ queryKey: ["members"] });
+      void queryClient.invalidateQueries({ queryKey: membersQueryKey });
     },
   });
 }

@@ -39,7 +39,10 @@ vi.mock("@/api/issues", async () => ({
     },
     isLoading: false,
   }),
-  useMembers: () => ({ data: { members: [{ id: "u1", name: "Ada", role: "member" }] }, isLoading: false }),
+}));
+
+vi.mock("@/api/people", () => ({
+  useMemberSearch: () => ({ data: { members: [{ id: "u1", name: "Ada", email: "ada@example.com", role: "member" }], total: 1, limit: 20, offset: 0 }, isLoading: false }),
 }));
 
 vi.mock("@/api/projects", async () => ({

@@ -5,8 +5,8 @@ import userEvent from "@testing-library/user-event";
 vi.mock("@/api/issues", () => ({
   useIssueTypes: () => ({ data: { issueTypes: [{ id: "1", name: "Story" }] } }),
   useStatuses: () => ({ data: { statuses: [{ id: "2", name: "To Do" }] } }),
-  useMembers: () => ({ data: { members: [] } }),
 }));
+vi.mock("@/api/people", () => ({ useMemberSearch: () => ({ data: { members: [], total: 0, limit: 20, offset: 0 } }) }));
 
 const { MappingCard } = await import("./MappingCard");
 const { WordsCard } = await import("./WordsCard");

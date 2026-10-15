@@ -23,7 +23,7 @@ vi.mock("@/api/projects", () => ({
   useArchiveProject: () => ({ mutate: archive, isPending: false, error: null }),
   useRestoreProject: () => ({ mutate: restore, isPending: false, error: null }),
 }));
-vi.mock("@/api/issues", () => ({ useMembers: () => ({ data: { members: [] } }) }));
+vi.mock("@/api/people", () => ({ useMemberSearch: () => ({ data: { members: [], total: 0, limit: 20, offset: 0 } }) }));
 vi.mock("@/api/access", () => ({ useAccess: () => ({ data: undefined }), canAdminister: () => true }));
 // A stand-in for the sections with forms of their own, to see they are closed too.
 vi.mock("@/features/projects/PlanningSettings", () => ({ PlanningSettings: () => <button type="button">Planning control</button> }));

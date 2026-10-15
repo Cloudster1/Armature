@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useIssueTypes, useMembers } from "@/api/issues";
+import { useIssueTypes } from "@/api/issues";
 import { useMilestones } from "@/api/milestones";
 import { useTeams } from "@/api/teams";
 import { Button, Chip, Field, Segmented, Select, Tag } from "@/components/ui";
 import { DASHBOARD_FILTER_WINDOWS } from "@/config";
 import { TypeBadge } from "@/features/issues/badges";
+import { PersonPicker } from "@/features/people/PersonPicker";
 import { caretLine } from "@/features/search/help";
 import { UNASSIGNED, activeCount, composeQuery, type Category, type DateField, type FilterSpec, type SavedQueryLookup } from "./filter";
 import { useSavedFilters } from "@/api/filters";
@@ -44,11 +45,9 @@ export function FilterTile({
   const { data: savedData } = useSavedFilters();
   const { data: typeData } = useIssueTypes();
   const { data: teamData } = useTeams(projectKey);
-  const { data: memberData } = useMembers();
   const { data: milestoneData } = useMilestones(projectKey, true);
   const types = (typeData?.issueTypes ?? []).filter((type) => !type.isSubtask);
   const teams = teamData?.teams ?? [];
-  const members = memberData?.members ?? [];
   const milestones = milestoneData?.milestones ?? [];
   const active = activeCount(spec);
   const dirty = JSON.stringify(spec) !== JSON.stringify(saved);
@@ -95,15 +94,18 @@ export function FilterTile({
             </option>
           ))}
         </Select>
-        <Select label="Assignee" value={spec.assignee} onChange={(event) => onChange({ ...spec, assignee: event.target.value })}>
-          <option value="">Anyone</option>
+        {/* The query names somebody by address, or by name for one without. */}
+        <PersonPicker
+          label="Assignee"
+          none="Anyone"
+          staff
+          optionValue={(member) => member.email || member.name}
+          value={spec.assignee}
+          selected={spec.assignee && spec.assignee !== UNASSIGNED ? { id: spec.assignee, name: spec.assignee } : null}
+          onChange={(assignee) => onChange({ ...spec, assignee })}
+        >
           <option value={UNASSIGNED}>Nobody yet</option>
-          {members.map((member) => (
-            <option key={member.id} value={member.email ?? member.name}>
-              {member.name}
-            </option>
-          ))}
-        </Select>
+        </PersonPicker>
         <Select label="Saved search" id="field-saved-search" value={spec.filterId} onChange={(event) => onChange({ ...spec, filterId: event.target.value })} hint={spec.filterId ? savedQuery(spec.filterId) : undefined}>
           <option value="">None</option>
           {(savedData?.filters ?? []).map((f) => (
