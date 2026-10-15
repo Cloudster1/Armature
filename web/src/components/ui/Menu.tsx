@@ -101,7 +101,7 @@ export function Menu({
           aria-label={label}
           onKeyDown={onKeyDown}
           style={place}
-          className="fixed z-30 min-w-44 rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+          className="fixed z-30 min-w-44 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
         >
           {items.map((item, i) => (
             <button

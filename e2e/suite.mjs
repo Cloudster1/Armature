@@ -38,6 +38,7 @@ const SCENARIO_FILES = [
   "resources",
   "themes",
   "arrange",
+  "overlays",
 ];
 
 for (const name of SCENARIO_FILES) {

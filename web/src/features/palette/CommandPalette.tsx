@@ -9,7 +9,7 @@ import { CATALOGUE, type GuideEntry } from "@/features/guide/catalogue";
 import { useAsk, useAssistantStatus, type AssistantAnswer, type AssistantProposal, type Place } from "@/api/assistant";
 import { AskAnswer } from "./AskAnswer";
 import { Icon, type IconName } from "@/components/icons";
-import { Input, cx } from "@/components/ui";
+import { Input, cx, modalBackdropStyle, modalPanelStyle } from "@/components/ui";
 import { PALETTE_RESULTS } from "@/config";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { pagesFor, projectSetupPages, projectWorkPages } from "@/features/shell/Sidebar";
@@ -193,9 +193,9 @@ export function CommandPalette({
   if (!open) return null;
   let lastGroup = "";
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 p-4 pt-[12vh]" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Command palette" className="w-full max-w-xl overflow-hidden rounded-overlay border border-border bg-surface-overlay shadow-2" data-palette data-palette-mode={mode}>
-        <div className="flex items-center gap-2 border-b border-border px-3">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 px-4" style={modalBackdropStyle} onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label="Command palette" style={modalPanelStyle} className="flex w-full max-w-xl flex-col overflow-hidden rounded-overlay border border-border bg-surface-overlay shadow-2" data-palette data-palette-mode={mode}>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3">
           <Icon.Search className="text-ink-subtle" />
           <Input
             ref={inputRef}
@@ -213,40 +213,43 @@ export function CommandPalette({
           />
           <kbd className="font-mono text-2xs text-ink-subtle">Esc</kbd>
         </div>
-        {(ask.isPending || asked || ask.error) && (
-          <AskAnswer pending={ask.isPending} error={ask.error} answer={asked} proposals={proposals} onGo={goThere} />
-        )}
-        <ul id="palette-results" role="listbox" className="max-h-[50vh] overflow-y-auto p-1">
-          {commands.length === 0 && (
-            <li className="px-3 py-6 text-center text-sm text-ink-subtle" data-palette-empty>
-              {mode === "ask" ? "No answer for that yet. Try the words on the page you mean." : "Nothing matches. Try an issue key like ALP-12."}
-            </li>
+        {/* A long answer scrolls with the list rather than pushing it out of the window. */}
+        <div className="max-h-[50vh] min-h-0 overflow-y-auto">
+          {(ask.isPending || asked || ask.error) && (
+            <AskAnswer pending={ask.isPending} error={ask.error} answer={asked} proposals={proposals} onGo={goThere} />
           )}
-          {commands.map((command, index) => {
-            const Glyph = Icon[command.icon];
-            const heading = command.group !== lastGroup ? command.group : null;
-            lastGroup = command.group;
-            return (
-              <li key={command.id} role="presentation">
-                {heading && <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-ink-subtle uppercase">{heading}</p>}
-                {/* Not a button: the input keeps focus and names the active option through aria-activedescendant. */}
-                <div
-                  role="option"
-                  id={`palette-${command.id}`}
-                  aria-selected={index === active}
-                  onMouseEnter={() => setActive(index)}
-                  onClick={() => command.run()}
-                  data-palette-option={command.id}
-                  className={cx("flex w-full cursor-default items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm", index === active ? "bg-accent-subtle text-ink" : "text-ink hover:bg-surface-raised")}
-                >
-                  <Glyph className="shrink-0 text-ink-muted" />
-                  <span className="min-w-0 flex-1 truncate">{command.label}</span>
-                  {command.detail && <span className={cx("shrink-0 font-mono text-2xs", index === active ? "text-ink-muted" : "text-ink-subtle")}>{command.detail}</span>}
-                </div>
+          <ul id="palette-results" role="listbox" className="p-1">
+            {commands.length === 0 && (
+              <li className="px-3 py-6 text-center text-sm text-ink-subtle" data-palette-empty>
+                {mode === "ask" ? "No answer for that yet. Try the words on the page you mean." : "Nothing matches. Try an issue key like ALP-12."}
               </li>
-            );
-          })}
-        </ul>
+            )}
+            {commands.map((command, index) => {
+              const Glyph = Icon[command.icon];
+              const heading = command.group !== lastGroup ? command.group : null;
+              lastGroup = command.group;
+              return (
+                <li key={command.id} role="presentation">
+                  {heading && <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-ink-subtle uppercase">{heading}</p>}
+                  {/* Not a button: the input keeps focus and names the active option through aria-activedescendant. */}
+                  <div
+                    role="option"
+                    id={`palette-${command.id}`}
+                    aria-selected={index === active}
+                    onMouseEnter={() => setActive(index)}
+                    onClick={() => command.run()}
+                    data-palette-option={command.id}
+                    className={cx("flex w-full cursor-default items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm", index === active ? "bg-accent-subtle text-ink" : "text-ink hover:bg-surface-raised")}
+                  >
+                    <Glyph className="shrink-0 text-ink-muted" />
+                    <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                    {command.detail && <span className={cx("shrink-0 font-mono text-2xs", index === active ? "text-ink-muted" : "text-ink-subtle")}>{command.detail}</span>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </div>,
     document.body,
