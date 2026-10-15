@@ -27,7 +27,7 @@ beforeEach(() => {
       return new Promise((resolve) => posts.push(() => resolve(reply({ comment: { id: `c${posts.length}` } }))));
     }
     if (url.endsWith("/comments")) return Promise.resolve(reply({ comments: [] }));
-    if (url.endsWith("/members")) return Promise.resolve(reply({ members: [] }));
+    if (url.includes("/members?")) return Promise.resolve(reply({ members: [] }));
     if (url.endsWith("/access/me")) return Promise.resolve(reply(noGrants));
     return Promise.resolve(reply({ project: { key: "CP", kind: "software" } }));
   });
@@ -95,7 +95,7 @@ describe("changing a comment", () => {
         return Promise.resolve(reply({ comment: { ...before, body: sent.body, editedAt: "2026-10-02T09:00:00Z" } }));
       }
       if (url.endsWith("/comments")) return Promise.resolve(reply({ comments }));
-      if (url.endsWith("/members")) return Promise.resolve(reply({ members: [] }));
+      if (url.includes("/members?")) return Promise.resolve(reply({ members: [] }));
       if (url.endsWith("/access/me")) return Promise.resolve(reply(access));
       return Promise.resolve(reply({ project: { key: "CP", kind: "software" } }));
     });

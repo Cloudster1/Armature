@@ -24,6 +24,7 @@ import {
   openIssueBeside,
   planSprint,
   reload,
+  pickPerson,
   selectByLabel,
   settled,
   signUp,
@@ -193,7 +194,7 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
   await goto(page, `/issues/${issueKey}`);
 
   // Assign it to the only person there is, and hand the report to them too.
-  await selectByLabel(page, 'select[aria-label="Assignee"]', who.name);
+  await pickPerson(page, 'select[aria-label="Assignee"]', who.name);
   await page.waitForFunction((n) => document.body.innerText.includes(`assigned this to ${n}`), { timeout: WAIT }, who.name);
   await page.waitForSelector('select[aria-label="Reporter"]', { timeout: 10_000 });
 

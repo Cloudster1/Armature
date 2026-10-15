@@ -154,6 +154,15 @@ export const PROJECT_PICKER_RESULTS = 20;
 /** A project search waits this long after the last key, so the server is not asked per letter. */
 export const PROJECT_SEARCH_DELAY_MS = 250;
 
+/** How many people the users page and the access page's members show at once. */
+export const PEOPLE_PAGE_SIZE = 50;
+
+/** How many matches a person picker offers at once; typing narrows the rest. */
+export const PERSON_PICKER_RESULTS = 20;
+
+/** A person search waits this long after the last key, so the server is not asked per letter. */
+export const PERSON_SEARCH_DELAY_MS = 250;
+
 /** How many results the search page shows of what a query matched. */
 export const SEARCH_PAGE_SIZE = 100;
 
@@ -277,11 +286,10 @@ export const SPOTLIGHT_RING_PX = 4;
 /** How long the callout waits for its element to appear after a navigation. */
 export const SPOTLIGHT_WAIT_MS = 3000;
 
-// The inbox: one page of it, how often the bell asks for its count, and the
-// mention picker's thresholds.
+// The inbox: one page of it, how often the bell asks for its count,
+// and how many people the mention picker offers.
 export const INBOX_PAGE_SIZE = 50;
 export const UNREAD_POLL_MS = 30_000;
-export const MENTION_MIN_CHARS = 1;
 export const MENTION_MAX_SUGGESTIONS = 6;
 
 // Rules and webhooks: how many log rows a drawer shows.

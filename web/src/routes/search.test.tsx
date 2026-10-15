@@ -63,11 +63,12 @@ function page(offset: number) {
   return pages.get(offset);
 }
 
+vi.mock("@/api/people", () => ({ useMemberSearch: () => ({ data: { members: [], total: 0, limit: 20, offset: 0 } }) }));
+
 vi.mock("@/api/issues", async () => {
   const actual = await vi.importActual<typeof import("@/api/issues")>("@/api/issues");
   return {
     ...actual,
-    useMembers: () => ({ data: { members: [] } }),
     useIssues: (query: IssueQuery) => {
       asked.push(query);
       return { data: page(query.offset ?? 0), error: null, isLoading: false };

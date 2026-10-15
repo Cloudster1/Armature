@@ -2,15 +2,15 @@ import { useMemo, type FormEvent } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useArchiveProject, useProject, useRestoreProject, useUpdateProject } from "@/api/projects";
-import { useMembers } from "@/api/issues";
 import { canAdminister, useAccess } from "@/api/access";
 import { ApiError } from "@/api/client";
-import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, SectionTitle, Select, Switch, Tag, useToast } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, SectionTitle, Switch, Tag, useToast } from "@/components/ui";
 import { DOCS_LABEL_MAX_LENGTH } from "@/config";
 import { useDraft } from "@/lib/draft";
 import { FEATURES } from "@/features/projects/features";
 import { ShareSettings } from "@/features/projects/ShareSettings";
 import { PlanningSettings } from "@/features/projects/PlanningSettings";
+import { PersonPicker } from "@/features/people/PersonPicker";
 
 export const projectSettingsRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -25,7 +25,6 @@ function ProjectSettingsPage() {
   const { projectKey } = projectSettingsRoute.useParams();
   const { data } = useProject(projectKey);
   const { data: access } = useAccess();
-  const { data: memberData } = useMembers();
   const update = useUpdateProject();
   const toggleFeatures = useUpdateProject();
   const archive = useArchiveProject();
@@ -96,14 +95,15 @@ function ProjectSettingsPage() {
             {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
             <Field label="Project name" required value={name} onChange={(e) => setField("name", e.target.value)} />
             <Field label="Description" rows={3} value={description} onChange={(e) => setField("description", e.target.value)} placeholder="What the project is for, in a sentence." />
-            <Select label="Lead" value={leadId} onChange={(e) => setField("leadId", e.target.value)} hint="A person to ask; nothing is refused on it.">
-              <option value="">Nobody in particular</option>
-              {(memberData?.members ?? []).map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </Select>
+            <PersonPicker
+              label="Lead"
+              value={leadId}
+              onChange={(id) => setField("leadId", id)}
+              none="Nobody in particular"
+              staff
+              selected={project.leadId ? { id: project.leadId, name: project.leadName ?? "" } : null}
+              hint="A person to ask; nothing is refused on it."
+            />
             <Field
               label="Documentation"
               type="url"

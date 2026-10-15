@@ -18,6 +18,9 @@ const members = {
     { id: "ada", name: "Ada", email: "ada@example.com", role: "member" },
     { id: "ben", name: "Ben", email: "ben@example.com", role: "member" },
   ],
+  total: 2,
+  limit: 20,
+  offset: 0,
 };
 
 const notAMember = "That person is not a member here.";
@@ -28,7 +31,7 @@ afterEach(() => {
 
 describe("people on an issue", () => {
   it("says why the server refused an assignee", async () => {
-    serve({ "GET /members": [200, members], "PATCH /issues/CP-4": [404, refusal("not_found", notAMember)] });
+    serve({ "GET /members?limit=20&staff=true": [200, members], "PATCH /issues/CP-4": [404, refusal("not_found", notAMember)] });
     renderInShell(<AssigneeField issue={issue} editable />);
 
     await screen.findByRole("option", { name: "Ben" });
@@ -38,7 +41,7 @@ describe("people on an issue", () => {
   });
 
   it("says why the server refused a reporter", async () => {
-    serve({ "GET /members": [200, members], "PATCH /issues/CP-4": [404, refusal("not_found", notAMember)] });
+    serve({ "GET /members?limit=20": [200, members], "PATCH /issues/CP-4": [404, refusal("not_found", notAMember)] });
     renderInShell(<ReporterField issue={issue} editable />);
 
     await screen.findByRole("option", { name: "Ben" });

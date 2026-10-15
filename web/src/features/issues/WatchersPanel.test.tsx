@@ -10,8 +10,8 @@ vi.mock("@/api/watchers", () => ({
   useAddWatcher: () => ({ mutate: addMutate, error: null, isPending: false }),
   useRemoveWatcher: () => ({ mutate: removeMutate, error: null, isPending: false }),
 }));
-vi.mock("@/api/issues", () => ({
-  useMembers: () => ({ data: { members: [{ id: "ben", name: "Ben", email: "ben@example.com", role: "member" }] } }),
+vi.mock("@/api/people", () => ({
+  useMemberSearch: () => ({ data: { members: [{ id: "ben", name: "Ben", email: "ben@example.com", role: "member" }], total: 1, limit: 20, offset: 0 } }),
 }));
 
 import { WatchersPanel } from "./WatchersPanel";

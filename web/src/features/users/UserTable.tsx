@@ -1,21 +1,29 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useMe } from "@/api/auth";
 import { useManagedUsers, useSetUserPassword, useUpdateUser, type ManagedUser } from "@/api/users";
-import { Button, Dialog, EmptyState, ErrorBanner, Field, IconButton, Menu, Select, Table, Tag, Td, Th, useToast } from "@/components/ui";
+import { Button, Dialog, EmptyState, ErrorBanner, Field, IconButton, Menu, Pager, Select, Table, Tag, Td, Th, clampOffset, countOf, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { WorkingWeekDialog } from "@/features/availability/WorkingWeek";
 import { useRemoveMembersSecondFactor } from "@/api/secondFactor";
+import { PeopleSearch } from "@/features/people/PeopleSearch";
+import { PEOPLE_PAGE_SIZE } from "@/config";
 
 const signsInWords: Record<ManagedUser["signsInWith"], string> = { password: "Password", provider: "Identity provider", none: "Nothing yet" };
 const roleWords: Record<ManagedUser["role"], string> = { owner: "Owner", admin: "Administrator", member: "Member", customer: "Customer" };
 
+/** What the users page shows: a search and where in its matches the page starts. */
+export interface UsersShown {
+  q?: string;
+  offset?: number;
+}
+
 /**
- * Everybody in the installation, and the tools for their accounts: letting
- * somebody go is switching them off here, and switching on brings them back.
+ * Everybody in the installation a page at a time, and the tools for their accounts:
+ * letting somebody go is switching them off here, and switching on brings them back.
  */
-export function UserTable() {
-  const { data, isLoading, error } = useManagedUsers();
+export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (next: UsersShown, replace?: boolean) => void }) {
+  const { data, isLoading, error } = useManagedUsers({ q, offset });
   const { data: me } = useMe();
   const update = useUpdateUser();
   const removeFactor = useRemoveMembersSecondFactor();
@@ -28,9 +36,32 @@ export function UserTable() {
   const users = data?.users ?? [];
   const myID = me?.principal?.user.id;
 
+  // People leave the matches while the page is open; a page past the end steps back.
+  useEffect(() => {
+    if (data && offset > 0 && offset >= data.total) show({ q, offset: clampOffset(offset, data.total, PEOPLE_PAGE_SIZE) }, true);
+  }, [data, offset, q, show]);
+
+  const header = (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <PeopleSearch label="Find users" value={q} onChange={(text) => show({ q: text })} />
+      {data && <span className="text-sm text-ink-muted" data-users-total={data.total}>{countOf(data.total, "account")}</span>}
+    </div>
+  );
+
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
   if (isLoading) return <p className="text-sm text-ink-muted">Loading...</p>;
-  if (users.length === 0) return <EmptyState title="Nobody here yet" description="Make an account above, or invite somebody under Access." />;
+  if (users.length === 0) {
+    return (
+      <div className="space-y-3">
+        {header}
+        {q ? (
+          <EmptyState title="Nobody matches that" description="Try part of their name or their address, or clear the search." />
+        ) : (
+          <EmptyState title="Nobody here yet" description="Make an account above, or invite somebody under Access." />
+        )}
+      </div>
+    );
+  }
 
   async function switchOff(user: ManagedUser) {
     if (await confirm({ noun: "account", verb: "Deactivate", body: `${user.name} can no longer sign in, and every session and token of theirs ends. What they wrote stays.` })) {
@@ -47,6 +78,7 @@ export function UserTable() {
 
   return (
     <div className="space-y-3">
+      {header}
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
       {removeFactor.error && <ErrorBanner>{(removeFactor.error as Error).message}</ErrorBanner>}
       <Table>
@@ -115,6 +147,7 @@ export function UserTable() {
           })}
         </tbody>
       </Table>
+      {data && <Pager label="User pages" total={data.total} offset={data.offset} pageSize={PEOPLE_PAGE_SIZE} onChange={(next) => show({ q, offset: next })} />}
 
       {renaming && <RenameDialog user={renaming} onClose={() => setRenaming(null)} />}
       {changingRole && <RoleDialog user={changingRole} onClose={() => setChangingRole(null)} />}

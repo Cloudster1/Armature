@@ -45,12 +45,14 @@ vi.mock("@/api/issues", async () => ({
   ...(await vi.importActual<typeof import("@/api/issues")>("@/api/issues")),
   useIssue: () => ({ data: { issue: state.issue }, isLoading: false, error: null }),
   useComments: nothing, useHistory: nothing, useTransitions: nothing, useIssueHierarchy: nothing,
-  useMembers: nothing, useIssues: nothing, useStatuses: nothing, useWorklogs: nothing, useIssueTypes: nothing,
+  useIssues: nothing, useStatuses: nothing, useWorklogs: nothing, useIssueTypes: nothing,
   useAddComment: mutation, useTransitionIssue: mutation, useUpdateIssue: mutation,
   useSetParent: mutation, useCreateIssue: mutation, useLogWork: mutation, useDeleteWorklog: mutation,
 }));
 
 vi.mock("@/api/issueReads", () => ({ useParentCandidates: nothing }));
+
+vi.mock("@/api/people", () => ({ useMemberSearch: nothing, useFindMentionable: () => async () => [] }));
 
 vi.mock("@/api/access", async () => ({
   ...(await vi.importActual<typeof import("@/api/access")>("@/api/access")),

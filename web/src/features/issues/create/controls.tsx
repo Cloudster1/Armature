@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { Field } from "@/api/fields";
-import { useMembers } from "@/api/issues";
 import { Checkbox, Chip, Input, Labelled, Select, fieldId } from "@/components/ui";
 import { LabelInput } from "@/features/labels/LabelInput";
+import { PersonPicker } from "@/features/people/PersonPicker";
 import { inputTypeFor, valueFromInput } from "@/features/fields/values";
 import type { Answer } from "./draft";
 
@@ -12,20 +12,9 @@ export interface Named {
   name: string;
 }
 
-/** One of the organization's people, or nobody. */
+/** One of the people here, found by name, or nobody; a reporter may be a customer. */
 export function PersonSelect({ label, value, onPick, customers = false }: { label: string; value: string; onPick: (id: string) => void; customers?: boolean }) {
-  const { data } = useMembers();
-  const people = (data?.members ?? []).filter((member) => customers || member.role !== "customer");
-  return (
-    <Select label={label} value={value} onChange={(e) => onPick(e.target.value)}>
-      <option value="">Nobody</option>
-      {people.map((member) => (
-        <option key={member.id} value={member.id}>
-          {member.name}
-        </option>
-      ))}
-    </Select>
-  );
+  return <PersonPicker label={label} value={value} onChange={onPick} none="Nobody" staff={!customers} />;
 }
 
 /** One of a list, or none of it. */

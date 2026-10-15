@@ -45,7 +45,7 @@ async function recordAbsence(page, scope, from, to) {
 async function grantScrumMaster(page, projectKey, email) {
   await page.evaluate(
     async (key, address) => {
-      const { members } = await (await fetch("/api/v1/members", { credentials: "include" })).json();
+      const { members } = await (await fetch(`/api/v1/members?q=${encodeURIComponent(address)}`, { credentials: "include" })).json();
       const userId = members.find((m) => m.email === address).id;
       const granted = await fetch("/api/v1/role-assignments", {
         method: "POST",

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useBulkEdit, type BulkChange, type BulkResult } from "@/api/filters";
-import { useMembers } from "@/api/issues";
 import { Button, Dialog, ErrorBanner, Field, Labelled, Select, Toolbar } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { BULK_MAX_SELECTION } from "@/config";
 import { LabelInput } from "@/features/labels/LabelInput";
+import { PersonPicker } from "@/features/people/PersonPicker";
 import { ExportDialog, keysQuery } from "./ExportDialog";
 
 /** Whether a change asks for anything; the Apply button waits until it does. */
@@ -16,7 +16,6 @@ export function changeIsEmpty(change: BulkChange): boolean {
 // of them, one Apply, a dialog that lists what was refused, and an Export.
 export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (result: BulkResult) => void; onClear: () => void }) {
   const edit = useBulkEdit();
-  const { data: members } = useMembers();
   const [change, setChange] = useState<BulkChange>({});
   const [labels, setLabels] = useState<string[]>([]);
   const [typing, setTyping] = useState("");
@@ -55,15 +54,18 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
                 </option>
               ))}
             </Select>
-            <Select label="Assignee" id="field-bulk-assignee" controlSize="sm" value={change.assignee === undefined ? "" : change.assignee === null ? "-" : change.assignee} onChange={(e) => setChange({ ...change, assignee: e.target.value === "" ? undefined : e.target.value === "-" ? null : e.target.value })}>
-              <option value="">Leave</option>
+            <PersonPicker
+              label="Assignee"
+              id="field-bulk-assignee"
+              controlSize="sm"
+              staff
+              none="Leave"
+              value={change.assignee === undefined ? "" : change.assignee === null ? "-" : change.assignee}
+              onChange={(value) => setChange({ ...change, assignee: value === "" ? undefined : value === "-" ? null : value })}
+              className="w-48"
+            >
               <option value="-">Nobody</option>
-              {(members?.members ?? []).filter((m) => m.role !== "customer").map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </Select>
+            </PersonPicker>
             <Labelled id="field-bulk-labels" label="Add labels" className="w-48">
               <LabelInput id="field-bulk-labels" controlSize="sm" placeholder="Type a label" value={labels} onChange={setLabels} onTyping={setTyping} />
             </Labelled>

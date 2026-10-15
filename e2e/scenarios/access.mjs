@@ -225,6 +225,9 @@ scenario("every tab of the access page fits a phone", async ({ page }) => {
   }
 
   await page.click('[data-access-tab="Members"]');
+  await page.waitForSelector("[data-people-search]", { timeout: WAIT });
+  await page.click("[data-people-search]");
+  await page.keyboard.sendCharacter(who.name);
   await page.waitForSelector(`[data-member="${who.name}"]`, { timeout: WAIT });
   const nameWidth = await page.$eval(`[data-member="${who.name}"] .truncate`, (el) => el.getBoundingClientRect().width);
   expect.truthy(nameWidth > 40, `the member's name is still readable, ${nameWidth}px wide`);

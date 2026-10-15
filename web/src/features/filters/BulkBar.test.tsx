@@ -15,10 +15,7 @@ vi.mock("@/api/labels", async () => ({
   useLabelSearch: (q: string) => ({ data: q ? { labels: [{ id: "l1", name: "backend", color: "blue", issueCount: 4 }].filter((l) => l.name.includes(q)) } : undefined }),
 }));
 
-vi.mock("@/api/issues", async () => ({
-  ...(await vi.importActual<typeof import("@/api/issues")>("@/api/issues")),
-  useMembers: () => ({ data: { members: [] } }),
-}));
+vi.mock("@/api/people", () => ({ useMemberSearch: () => ({ data: { members: [], total: 0, limit: 20, offset: 0 } }) }));
 
 const { BulkBar, changeIsEmpty } = await import("./BulkBar");
 const { keysQuery } = await import("./ExportDialog");

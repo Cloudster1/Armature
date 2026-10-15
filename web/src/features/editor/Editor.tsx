@@ -6,8 +6,7 @@ import Mention from "@tiptap/extension-mention";
 import { Placeholder } from "@tiptap/extensions";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type { Doc } from "@/api/issues";
-import { MentionTextarea, Segmented, Textarea, cx, controlClass, mentionMatches } from "@/components/ui";
-import { MENTION_MAX_SUGGESTIONS } from "@/config";
+import { MentionTextarea, Segmented, Textarea, cx, controlClass, type FindPeople } from "@/components/ui";
 import { docToMarkdown, markdownToDoc } from "./markdown";
 import { MentionList } from "./MentionList";
 import { HEADING_LEVELS, isEmptyDoc, type DocNode, type Mentionable } from "./schema";
@@ -26,7 +25,8 @@ export interface EditorProps {
   value: Doc | null;
   /** Null when the document says nothing, so a blank description clears. */
   onChange: (doc: Doc | null) => void;
-  people?: Mentionable[];
+  /** Who an at sign may name, asked as somebody types; without it nobody is offered. */
+  findPeople?: FindPeople;
   placeholder?: string;
   autoFocus?: boolean;
   rows?: number;
@@ -51,7 +51,7 @@ const emptyDoc: Doc = { type: "doc", content: [{ type: "paragraph" }] };
  * place, the markdown face edits the text it converts to. Switching converts
  * the draft, so nothing typed is lost, and the choice is kept per browser.
  */
-export function Editor({ id, value, onChange, people, placeholder, autoFocus = false, rows = 4, onSubmit, "aria-label": ariaLabel = "Description", handle }: EditorProps) {
+export function Editor({ id, value, onChange, findPeople, placeholder, autoFocus = false, rows = 4, onSubmit, "aria-label": ariaLabel = "Description", handle }: EditorProps) {
   const [mode, setMode] = useEditorMode();
   const [text, setText] = useState(() => docToMarkdown(value));
   const [suggesting, setSuggesting] = useState<Suggesting | null>(null);
@@ -60,8 +60,8 @@ export function Editor({ id, value, onChange, people, placeholder, autoFocus = f
   const activeRef = useRef(0);
   const submitRef = useRef(onSubmit);
   submitRef.current = onSubmit;
-  const peopleRef = useRef(people ?? []);
-  peopleRef.current = people ?? [];
+  const findRef = useRef(findPeople);
+  findRef.current = findPeople;
 
   const editor = useEditor({
     extensions: [
@@ -72,7 +72,7 @@ export function Editor({ id, value, onChange, people, placeholder, autoFocus = f
         HTMLAttributes: { "data-mention": "" },
         suggestion: {
           char: "@",
-          items: ({ query }) => mentionMatches(peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
+          items: ({ query }) => findRef.current?.(query).catch(() => []) ?? [],
           render: () => ({
             onStart: (props: SuggestionProps<Mentionable>) => show(props),
             onUpdate: (props: SuggestionProps<Mentionable>) => show(props),
@@ -200,7 +200,7 @@ export function Editor({ id, value, onChange, people, placeholder, autoFocus = f
 
   // The markdown face grows with its lines, so nothing typed is out of sight.
   const lines = Math.max(rows, text.split("\n").length + 1);
-  const textarea = people ? (
+  const textarea = findPeople ? (
     <MentionTextarea
       id={id}
       value={text}
@@ -208,7 +208,7 @@ export function Editor({ id, value, onChange, people, placeholder, autoFocus = f
         setText(next);
         onChange(markdownToDoc(next));
       }}
-      people={people}
+      findPeople={findPeople}
       rows={lines}
       placeholder={placeholder}
       autoFocus={autoFocus}

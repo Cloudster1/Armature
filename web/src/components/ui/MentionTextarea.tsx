@@ -1,5 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type TextareaHTMLAttributes } from "react";
-import { MENTION_MAX_SUGGESTIONS, MENTION_MIN_CHARS } from "@/config";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type TextareaHTMLAttributes } from "react";
 import { Textarea } from "./controls";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
@@ -23,14 +22,8 @@ export function mentionQuery(text: string, caret: number): { start: number; quer
   return { start: at, query };
 }
 
-/** The people whose name or address begins with the query, a few at most. */
-export function mentionMatches(people: Mentionable[], query: string): Mentionable[] {
-  const q = query.trim().toLowerCase();
-  if (q.length < MENTION_MIN_CHARS) return people.slice(0, MENTION_MAX_SUGGESTIONS);
-  return people
-    .filter((p) => p.name.toLowerCase().includes(q) || (p.email ?? "").toLowerCase().startsWith(q))
-    .slice(0, MENTION_MAX_SUGGESTIONS);
-}
+/** Asks who the text after an at sign may name, a few at most. */
+export type FindPeople = (query: string) => Promise<Mentionable[]>;
 
 // A textarea that offers names after an at sign. Arrow keys walk the list,
 // Enter or Tab takes one, Escape closes it; the text stays plain, with the
@@ -38,13 +31,13 @@ export function mentionMatches(people: Mentionable[], query: string): Mentionabl
 export function MentionTextarea({
   value,
   onValueChange,
-  people,
+  findPeople,
   className,
   ...rest
 }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange"> & {
   value: string;
   onValueChange: (next: string) => void;
-  people: Mentionable[];
+  findPeople: FindPeople;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [caret, setCaret] = useState(0);
@@ -52,7 +45,23 @@ export function MentionTextarea({
   const [dismissed, setDismissed] = useState<number | null>(null);
 
   const query = useMemo(() => mentionQuery(value, caret), [value, caret]);
-  const matches = useMemo(() => (query ? mentionMatches(people, query.query) : []), [people, query]);
+  const [found, setFound] = useState<Mentionable[]>([]);
+  const asked = query?.query;
+  // The last answer stays while the next is asked, and an answer to older text is dropped.
+  useEffect(() => {
+    if (asked === undefined) return;
+    let current = true;
+    findPeople(asked).then(
+      (people) => current && setFound(people),
+      () => current && setFound([]),
+    );
+    return () => {
+      current = false;
+    };
+  }, [asked, findPeople]);
+  const matches = query ? found : [];
+  // A shorter answer than the last leaves the highlight on its last row.
+  const highlighted = Math.min(active, matches.length - 1);
   const open = query !== null && matches.length > 0 && dismissed !== query.start;
 
   function track(el: HTMLTextAreaElement) {
@@ -98,7 +107,7 @@ export function MentionTextarea({
       case "Enter":
       case "Tab":
         event.preventDefault();
-        take(matches[active]!);
+        take(matches[highlighted]!);
         break;
       case "Escape":
         event.preventDefault();
@@ -129,14 +138,14 @@ export function MentionTextarea({
             <div
               key={person.id}
               role="option"
-              aria-selected={i === active}
+              aria-selected={i === highlighted}
               data-mention-option={person.name}
               onMouseDown={(e) => {
                 e.preventDefault();
                 take(person);
               }}
               onMouseEnter={() => setActive(i)}
-              className={cx("flex cursor-pointer items-baseline gap-2 rounded-control px-2 py-1.5 text-sm", i === active ? "bg-surface-raised text-ink" : "text-ink-muted")}
+              className={cx("flex cursor-pointer items-baseline gap-2 rounded-control px-2 py-1.5 text-sm", i === highlighted ? "bg-surface-raised text-ink" : "text-ink-muted")}
             >
               <span className="font-medium text-ink">{person.name}</span>
               {person.email && <span className="truncate text-xs text-ink-subtle">{person.email}</span>}
