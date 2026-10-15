@@ -177,6 +177,9 @@ func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
 			{"regroup the board", func() response {
 				return reader.patch("/api/v1/boards/"+secondID, map[string]any{"groupBy": "priority"})
 			}},
+			{"keep finished work longer", func() response {
+				return reader.patch("/api/v1/boards/"+secondID, map[string]any{"doneForDays": 30})
+			}},
 		} {
 			if got := attempt.do(); got.Status != http.StatusForbidden {
 				t.Errorf("a reader may %s: got %d, want 403: %s", attempt.what, got.Status, got.Raw)
@@ -184,6 +187,13 @@ func TestEachBoardKeepsItsOwnSwimlanes(t *testing.T) {
 		}
 		if after := laneRows(t, h, secondID); !slices.Equal(after, lanes) {
 			t.Errorf("a refused reader changed the lanes: %v, then %v", lanes, after)
+		}
+		var days int
+		if err := h.super.QueryRow(context.Background(), `SELECT done_for_days FROM board WHERE id = $1`, secondID).Scan(&days); err != nil {
+			t.Fatal(err)
+		}
+		if days != 14 {
+			t.Errorf("a refused reader left the board keeping finished work %d days, want 14", days)
 		}
 	})
 
