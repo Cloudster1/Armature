@@ -756,7 +756,7 @@ where the overwhelmingly common case is one board per team. The cost is that a
 board cannot yet show, say, only bugs.
 
 The type is not a badge. A scrum board draws the running sprint in its stream, a
-kanban board everything in its scope, so choosing it is a real decision and a
+kanban board everything in its scope but work finished long ago, so choosing it is a real decision and a
 scrum board between sprints is deliberately empty. A board with no type takes
 after the project's first board, which is the one the template chose; a project
 with no board at all falls back to kanban, the type that shows work without a
@@ -774,6 +774,20 @@ written through routes that name it (`/boards/{boardID}/swimlanes`, `PATCH
 one board, which was always the first, and the grouping one regrouped every
 board in the project; they are gone rather than kept as a second address for
 the first board.
+
+A kanban board leaves out the work finished more than `board.done_for_days`
+ago, 14 unless somebody changes it, and says how many issues it left out with a
+search that finds them; swimlane limits count only what it draws. Without that
+the done lane grew forever, the board loaded more each week, and a limit on it
+was always broken. The plan keeps the same rule per reader, in the browser,
+because a plan is one person's view of the work; a board is a team's shared
+screen, so its number is set once on the server, by whoever may configure it,
+and the cards it leaves out never cross the wire. 0 means finished work never
+leaves, for a team that wants the old board back. The day is the resolved date,
+and the last change where a workflow sets none, as on the plan; the search link
+spells out the same rule, `resolved < -14d OR (resolved IS EMPTY AND updated <
+-14d)`, built by the server so the two cannot drift. A scrum board and a
+sprint's board leave nothing out: a sprint's finished work is what it delivered.
 
 ### Team capacity is points per week, spread over the days a ticket is scheduled
 

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { MY_DATA_HREF, useEraseMe, useLogout, useMe } from "@/api/auth";
-import { useProject, useProjects, type Feature, type Project } from "@/api/projects";
+import { useProject, useProjectSearch, type Feature, type Project } from "@/api/projects";
 import { hasFeature } from "@/features/projects/features";
 import { Avatar, Button, IconButton, Input, Menu, Tooltip } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
-import { SIDEBAR_WIDTH } from "@/config";
+import { PROJECT_SEARCH_DELAY_MS, SIDEBAR_WIDTH } from "@/config";
+import { useDebounced } from "@/lib/debounce";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { useLastProject, useSidebarGroups, useSidebarMode } from "./state";
 import { useConfirm } from "./ConfirmProvider";
@@ -204,12 +205,14 @@ function pageKind(pathname: string, projectKey: string): string {
 // Switching keeps the page kind: Board stays Board in the other project, so
 // comparing two projects is two clicks and not a search through the sidebar.
 function ProjectSwitcher({ projectKey }: { projectKey: string | undefined }) {
-  const { data } = useProjects();
+  const [filter, setFilter] = useState("");
+  // The server finds the matches, so an installation of thousands lists only a few here.
+  const settled = useDebounced(filter.trim(), PROJECT_SEARCH_DELAY_MS);
+  const { data } = useProjectSearch(settled);
   const { data: current } = useProject(projectKey ?? "");
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [filter, setFilter] = useState("");
-  const projects = (data?.projects ?? []).filter((p) => !filter || `${p.name} ${p.key}`.toLowerCase().includes(filter.toLowerCase()));
+  const projects = data?.projects ?? [];
   const suffix = projectKey ? pageKind(pathname, projectKey) : "";
   const name = current?.project?.name ?? projectKey ?? "Choose a project";
   return (
@@ -232,7 +235,8 @@ function ProjectSwitcher({ projectKey }: { projectKey: string | undefined }) {
       )}
       items={[
         {
-          label: <Input aria-label="Filter projects" value={filter} onChange={(e) => setFilter(e.target.value)} controlSize="sm" placeholder="Filter" onKeyDown={(e) => e.stopPropagation()} />,
+          // The box sits in a menu item: a press on it must not pick the item, which closes the menu.
+          label: <Input aria-label="Filter projects" value={filter} onChange={(e) => setFilter(e.target.value)} controlSize="sm" placeholder="Filter" onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} />,
           onSelect: () => {},
           attrs: { "data-project-filter": "" },
         },

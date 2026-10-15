@@ -5,10 +5,15 @@ package test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/armature/armature/backend/internal/board"
 	"github.com/armature/armature/backend/internal/bootstrap"
@@ -589,6 +594,182 @@ func TestABoardGainsASwimlaneWhenItsWorkflowGainsAStatus(t *testing.T) {
 		})
 		if err == nil {
 			t.Error("the unique index let the status into two lanes")
+		}
+	})
+}
+
+// shownKeys reads the card keys off a board as the API hands it over, lane by lane.
+func shownKeys(board map[string]any) []string {
+	var keys []string
+	for _, raw := range board["swimlanes"].([]any) {
+		for _, card := range raw.(map[string]any)["cards"].([]any) {
+			keys = append(keys, card.(map[string]any)["key"].(string))
+		}
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// foundKeys runs a query through search as the client, sorted.
+func foundKeys(t *testing.T, c *client, query string) []string {
+	t.Helper()
+	var keys []string
+	for _, raw := range list(t, want(t, c.get("/api/v1/issues?q="+url.QueryEscape(query)), http.StatusOK, "search "+query), "issues") {
+		keys = append(keys, raw.(map[string]any)["key"].(string))
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// A kanban board stops drawing work finished more than its number of days ago,
+// says how much it left out and how to find it, and limits only what it draws.
+func TestFinishedWorkLeavesAKanbanBoard(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	ws := h.newProject(t, "leaving")
+	ctx := context.Background()
+
+	closed := func(summary string) *issue.Issue {
+		created := ws.newIssue(t, summary)
+		return ws.move(t, h, created.Key, "Close")
+	}
+	// resolvedAgo dates the resolution, which an ordinary edit then stamps as the last change.
+	resolvedAgo := func(i *issue.Issue, days int) {
+		t.Helper()
+		if _, err := h.super.Exec(ctx, `UPDATE issue SET resolved_at = now() - make_interval(days => $2) WHERE id = $1`, i.ID, days); err != nil {
+			t.Fatalf("date the resolution of %s: %v", i.Key, err)
+		}
+	}
+
+	recent := closed("closed three days ago")
+	resolvedAgo(recent, 3)
+	old := closed("closed a month ago")
+	resolvedAgo(old, 30)
+	// A workflow without a resolving rule leaves the resolution empty; the last change stands in.
+	unresolved := closed("closed a month ago by a workflow that records no resolution")
+	if _, err := h.super.Exec(ctx, `UPDATE issue SET resolved_at = NULL, updated_at = now() - interval '30 days' WHERE id = $1`, unresolved.ID); err != nil {
+		t.Fatal(err)
+	}
+	quiet := closed("closed today, with no resolution recorded")
+	if _, err := h.super.Exec(ctx, `UPDATE issue SET resolved_at = NULL WHERE id = $1`, quiet.ID); err != nil {
+		t.Fatal(err)
+	}
+	// An old subtask was never a card, so it is neither counted nor found by the link.
+	parent := ws.newIssue(t, "parent of an old subtask")
+	sub, _, err := ws.issues.Create(ws.ctx, issue.CreateInput{
+		ProjectKey: ws.project.Key, Summary: "an old subtask", TypeID: h.issueTypeID(t, ws, bootstrap.TypeSubtask), ParentKey: parent.Key,
+	}, ws.actor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ws.move(t, h, sub.Key, "Close")
+	resolvedAgo(sub, 30)
+	open := ws.newIssue(t, "still to do")
+	h.waitForPrimary(t)
+
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signIn(t, ws.owner.Principal.User.Email)
+	opening := func() map[string]any {
+		return obj(t, want(t, owner.get("/api/v1/projects/"+ws.project.Key+"/board"), http.StatusOK, "the board"), "board")
+	}
+	boardID := opening()["id"].(string)
+	setDays := func(t *testing.T, days int) {
+		t.Helper()
+		want(t, owner.patch("/api/v1/boards/"+boardID, map[string]any{"doneForDays": days}), http.StatusOK, fmt.Sprintf("keep finished work %d days", days))
+	}
+
+	t.Run("work finished more than 14 days ago leaves, and is counted", func(t *testing.T) {
+		b := opening()
+		if got := b["doneForDays"]; got != float64(14) {
+			t.Errorf("a new board keeps finished work %v days, want 14", got)
+		}
+		wantKeys := []string{recent.Key, quiet.Key, parent.Key, open.Key}
+		slices.Sort(wantKeys)
+		if got := shownKeys(b); !slices.Equal(got, wantKeys) {
+			t.Errorf("the board shows %v, want %v", got, wantKeys)
+		}
+		if got := b["leftOut"]; got != float64(2) {
+			t.Errorf("the board says it left out %v, want 2", got)
+		}
+	})
+
+	t.Run("the link finds what was left out", func(t *testing.T) {
+		query, _ := opening()["leftOutQuery"].(string)
+		gone := []string{old.Key, unresolved.Key}
+		slices.Sort(gone)
+		if got := foundKeys(t, owner, query); !slices.Equal(got, gone) {
+			t.Errorf("%q finds %v, want %v", query, got, gone)
+		}
+	})
+
+	t.Run("the limit counts what the board shows", func(t *testing.T) {
+		lane := ws.swimlane(t, bootstrap.StatusDone)
+		want(t, owner.patch("/api/v1/boards/"+boardID+"/swimlanes/"+lane.ID.String(), map[string]any{"wipLimit": 2}), http.StatusNoContent, "limit the done lane")
+		lane = ws.swimlane(t, bootstrap.StatusDone)
+		if len(lane.Cards) != 2 || lane.OverWIP() {
+			t.Errorf("the done lane holds %d cards against a limit of 2, over: %v", len(lane.Cards), lane.OverWIP())
+		}
+	})
+
+	t.Run("0 keeps finished work on the board", func(t *testing.T) {
+		setDays(t, 0)
+		b := opening()
+		for _, key := range []string{old.Key, unresolved.Key} {
+			if !slices.Contains(shownKeys(b), key) {
+				t.Errorf("%s left a board that keeps everything", key)
+			}
+		}
+		if b["leftOut"] != float64(0) || b["leftOutQuery"] != nil {
+			t.Errorf("a board that keeps everything says it left out %v, by %v", b["leftOut"], b["leftOutQuery"])
+		}
+		setDays(t, 14)
+	})
+
+	t.Run("a negative number of days is refused, by the database too", func(t *testing.T) {
+		want(t, owner.patch("/api/v1/boards/"+boardID, map[string]any{"doneForDays": -1}), http.StatusUnprocessableEntity, "keep finished work -1 days")
+		_, err := h.super.Exec(ctx, `UPDATE board SET done_for_days = -1 WHERE id = $1`, boardID)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
+			t.Errorf("the database took -1 days: %v", err)
+		}
+	})
+
+	t.Run("a team's board leaves out its own finished work", func(t *testing.T) {
+		platform := ws.newTeam(t, "Platform")
+		ws.hand(t, old.Key, &platform.ID)
+		resolvedAgo(old, 30)
+		teamBoard := ws.boardFor(t, "Platform flow", &platform.ID)
+		h.waitForPrimary(t)
+		b := obj(t, want(t, owner.get("/api/v1/boards/"+teamBoard.ID.String()), http.StatusOK, "the team's board"), "board")
+		query, _ := b["leftOutQuery"].(string)
+		if b["leftOut"] != float64(1) || !strings.Contains(query, `team = "Platform"`) {
+			t.Errorf("the team's board left out %v, by %q", b["leftOut"], query)
+		}
+		if got := foundKeys(t, owner, query); !slices.Equal(got, []string{old.Key}) {
+			t.Errorf("%q finds %v, want only %s", query, got, old.Key)
+		}
+	})
+
+	t.Run("a scrum board and a sprint's board keep their sprint's finished work", func(t *testing.T) {
+		running := ws.runnable(t, ws.project.Key, "Long sprint", nil)
+		sprinted := ws.newIssue(t, "finished a month ago inside the sprint")
+		ws.commit(t, sprinted.Key, &running.ID, nil)
+		resolvedAgo(ws.move(t, h, sprinted.Key, "Close"), 30)
+		ws.start(t, running.ID)
+		scrumID := idOf(t, want(t, owner.post("/api/v1/projects/"+ws.project.Key+"/boards", map[string]any{"name": "Sprinting", "type": "scrum"}), http.StatusCreated, "a scrum board"), "board")
+		h.waitForPrimary(t)
+		for what, path := range map[string]string{
+			"the scrum board":    "/api/v1/boards/" + scrumID,
+			"the sprint's board": "/api/v1/sprints/" + running.ID.String() + "/board",
+		} {
+			b := obj(t, want(t, owner.get(path), http.StatusOK, what), "board")
+			if got := shownKeys(b); !slices.Equal(got, []string{sprinted.Key}) {
+				t.Errorf("%s shows %v, want the sprint's %s", what, got, sprinted.Key)
+			}
+			if b["leftOut"] != float64(0) {
+				t.Errorf("%s says it left out %v", what, b["leftOut"])
+			}
 		}
 	})
 }

@@ -10,6 +10,7 @@ import {
   expect,
   fill,
   goto,
+  openProjectRow,
   grantRole,
   inviteMember,
   keepProvider,
@@ -44,8 +45,9 @@ scenario("a role in one project hides the others", async ({ page }) => {
 
   await signIn(page, who.email);
   await waitForApp(page);
-  await goto(page, "/projects");
-  await page.waitForSelector(`[data-project="${mine}"]`, { timeout: WAIT });
+  await openProjectRow(page, mine);
+  await goto(page, `/projects?q=${theirs}`);
+  await page.waitForFunction(() => document.body.innerText.includes("No project matches that"), { timeout: WAIT });
   expect.equal(await page.$(`[data-project="${theirs}"]`), null, "the other project is not listed");
 
   // Its pages and its work are not there for them, rather than refused.

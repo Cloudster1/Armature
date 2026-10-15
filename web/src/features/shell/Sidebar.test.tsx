@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import type { Build } from "@/api/meta";
@@ -9,6 +9,8 @@ const state = {
   pathname: "/",
   params: {} as { projectKey?: string },
   projects: [] as Array<{ key: string; name: string }>,
+  /** Every text the switcher asked the server for, in order. */
+  searched: [] as string[],
   build: { version: "0.1.0", commit: "0123456789abcdef", builtAt: "2026-09-28T10:00:00Z" } as Build,
   /** What an older server listed beside the principal; nothing reads it now. */
   organizations: [] as Array<{ orgId: string; orgSlug: string; orgName: string; role: string }>,
@@ -34,7 +36,13 @@ vi.mock("@/api/auth", () => ({
   useEraseMe: () => ({ mutate: vi.fn(), isPending: false }),
   MY_DATA_HREF: "/api/v1/auth/me/export",
 }));
-vi.mock("@/api/projects", () => ({ useProject: () => ({ data: undefined }), useProjects: () => ({ data: { projects: state.projects } }) }));
+vi.mock("@/api/projects", () => ({
+  useProject: () => ({ data: undefined }),
+  useProjectSearch: (q: string) => {
+    if (state.searched.at(-1) !== q) state.searched.push(q);
+    return { data: { projects: state.projects.filter((p) => `${p.name} ${p.key}`.toLowerCase().includes(q.toLowerCase())) } };
+  },
+}));
 vi.mock("@/api/notifications", () => ({ useUnreadCount: () => ({ data: { unread: 3 } }) }));
 vi.mock("@/api/meta", () => ({
   useMeta: () => ({
@@ -56,6 +64,7 @@ beforeEach(() => {
   state.pathname = "/";
   state.params = {};
   state.projects = [];
+  state.searched = [];
   state.organizations = [];
   navigate.mockReset();
 });
@@ -149,5 +158,20 @@ describe("the project switcher", () => {
       expect(navigate, from).toHaveBeenCalledWith({ to });
       unmount();
     }
+  });
+
+  // An installation of thousands is never listed whole: what is typed goes to the server.
+  it("asks the server for what is typed, once the typing pauses", async () => {
+    state.projects = [
+      { key: "AAA", name: "Apollo" },
+      { key: "BBB", name: "Borealis" },
+    ];
+    render(<Sidebar onNewIssue={() => {}} />);
+    await userEvent.click(document.querySelector<HTMLElement>("[data-project-switcher]")!);
+    await userEvent.type(screen.getByLabelText("Filter projects"), "bor");
+    await waitFor(() => expect(state.searched.at(-1)).toBe("bor"));
+    expect(state.searched).toEqual(["", "bor"]);
+    expect(document.querySelector('[data-project-option="AAA"]')).toBeNull();
+    expect(document.querySelector('[data-project-option="BBB"]')).not.toBeNull();
   });
 });

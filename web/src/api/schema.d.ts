@@ -2606,7 +2606,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Projects. */
+        /** Projects the caller can see, a page at a time, with how many there are in all. */
         get: operations["listProjects"];
         put?: never;
         /** Make a project from a template. */
@@ -4589,10 +4589,13 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             description?: string;
+            doneForDays: number;
             /** @enum {string} */
             groupBy: "none" | "assignee" | "priority" | "type";
             /** Format: uuid */
             id: string;
+            leftOut: number;
+            leftOutQuery?: string;
             name: string;
             /** Format: uuid */
             projectId: string;
@@ -4610,6 +4613,7 @@ export interface components {
         };
         BoardRequest: {
             description: string | null;
+            doneForDays?: number;
             /** @enum {string|null} */
             groupBy: "none" | "assignee" | "priority" | "type" | null;
             name: string;
@@ -5883,6 +5887,12 @@ export interface components {
             schemeId: string;
             schemeName: string;
             scope: string;
+        };
+        Page: {
+            limit: number;
+            offset: number;
+            projects: components["schemas"]["Project"][];
+            total: number;
         };
         Palette: {
             dark: {
@@ -14319,8 +14329,13 @@ export interface operations {
     listProjects: {
         parameters: {
             query?: {
+                /** @description Text the key or the name contains. */
+                q?: string;
                 /** @description Include archived projects. */
                 archived?: boolean;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -14334,9 +14349,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        projects: components["schemas"]["Project"][];
-                    };
+                    "application/json": components["schemas"]["Page"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

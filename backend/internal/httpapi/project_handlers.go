@@ -60,19 +60,28 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusCreated, map[string]any{"project": created})
 }
 
-func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
-	includeArchived := r.URL.Query().Get("archived") == "true"
+// maxProjectOffset bounds how far into the projects a page may start, as for issues.
+const maxProjectOffset = 1 << 20
 
-	projects, err := s.Projects.List(r.Context(), includeArchived)
+func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	f := project.ListFilter{
+		IncludeArchived: q.Get("archived") == "true",
+		Text:            q.Get("q"),
+		Limit:           queryInt(r, "limit", project.DefaultProjectPage, 1, project.MaxProjectPage),
+		Offset:          queryInt(r, "offset", 0, 0, maxProjectOffset),
+	}
+	if all, keys := PermsFrom(r.Context()).Readable(); !all {
+		f.Scoped = true
+		f.Within = keys
+	}
+
+	page, err := s.Projects.List(r.Context(), f)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	projects = readableProjects(r, projects)
-	if projects == nil {
-		projects = []project.Project{}
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"projects": projects})
+	respondJSON(w, r, http.StatusOK, page)
 }
 
 func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {

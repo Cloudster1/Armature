@@ -1,23 +1,38 @@
-import { memo, useCallback, useState, type FormEvent } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useArchiveProject, useCreateProject, useKeyCheck, useProjects, useRestoreProject, type Project } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
-import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, Menu, Page, PageHeader, Skeleton, Switch, Table, Td, Th, useToast } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, Input, Menu, Page, PageHeader, Pager, Skeleton, Switch, Table, Td, Th, clampOffset, countOf, isPageOffset, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TemplateChooser } from "@/features/projects/TemplateChooser";
 import { RelativeTime } from "@/features/issues/badges";
 import { HealthTag } from "@/features/projects/StatusStrip";
+import { PROJECT_PAGE_SIZE, PROJECT_SEARCH_DELAY_MS } from "@/config";
 
+interface ProjectsSearch {
+  q?: string;
+  offset?: number;
+  archived?: boolean;
+}
+
+/** The filter, the page and whether archived ones show are in the address, so a link reopens the same list. */
 export const projectsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects",
+  validateSearch: (search: Record<string, unknown>): ProjectsSearch => ({
+    // A search of digits alone comes back from the address as a number.
+    ...(typeof search.q === "number" ? { q: String(search.q) } : typeof search.q === "string" && search.q !== "" ? { q: search.q } : {}),
+    ...(isPageOffset(search.offset) ? { offset: search.offset } : {}),
+    ...(search.archived === true || search.archived === "true" ? { archived: true } : {}),
+  }),
   component: ProjectsPage,
 });
 
 function ProjectsPage() {
-  const [showArchived, setShowArchived] = useState(false);
-  const { data, isLoading } = useProjects(showArchived);
+  const { q = "", offset = 0, archived = false } = projectsRoute.useSearch();
+  const navigate = useNavigate();
+  const { data, isLoading } = useProjects({ q, offset, includeArchived: archived });
   const { data: access } = useAccess();
   const [creating, setCreating] = useState(false);
   // Archiving deletes nothing and a restore undoes it, so it asks nothing and offers
@@ -37,6 +52,16 @@ function ProjectsPage() {
     [restore, toast],
   );
 
+  const show = useCallback(
+    (next: ProjectsSearch, replace = false) =>
+      navigate({ to: "/projects", search: { q: next.q || undefined, offset: next.offset || undefined, archived: next.archived || undefined }, replace }),
+    [navigate],
+  );
+  // Projects leave the list while it is open; a page past the end steps back.
+  useEffect(() => {
+    if (data && offset > 0 && offset >= data.total) show({ q, archived, offset: clampOffset(offset, data.total, PROJECT_PAGE_SIZE) }, true);
+  }, [data, offset, q, archived, show]);
+
   const projects = data?.projects ?? [];
   // Asked of the server rather than guessed from the org role, so that the
   // button and the endpoint cannot disagree about who may press it.
@@ -46,10 +71,11 @@ function ProjectsPage() {
     <Page width="content">
       <PageHeader
         title="Projects"
-        meta={data ? `${projects.length} project${projects.length === 1 ? "" : "s"}` : undefined}
+        meta={data ? countOf(data.total, "project") : undefined}
         actions={
           <>
-            <Switch label="Show archived" checked={showArchived} onChange={setShowArchived} data-show-archived="" />
+            <ProjectSearch value={q} onChange={(text) => show({ q: text, archived })} />
+            <Switch label="Show archived" checked={archived} onChange={(on) => show({ q, archived: on })} data-show-archived="" />
             <span className="text-sm text-ink-muted">Show archived</span>
             {canCreate && !creating && <Button onClick={() => setCreating(true)}>New project</Button>}
           </>
@@ -60,6 +86,8 @@ function ProjectsPage() {
 
       {isLoading ? (
         <Skeleton rows={4} />
+      ) : projects.length === 0 && q ? (
+        <EmptyState icon={<Icon.Search />} title="No project matches that" description="Try part of its key or its name, or clear the search." />
       ) : projects.length === 0 && !creating ? (
         <EmptyState
           icon={<Icon.Board />}
@@ -94,12 +122,49 @@ function ProjectsPage() {
           </tbody>
         </Table>
       )}
+      {data && <Pager label="Project pages" total={data.total} offset={data.offset} pageSize={PROJECT_PAGE_SIZE} onChange={(next) => show({ q, archived, offset: next })} />}
     </Page>
   );
 }
 
-// Memoised, since an installation can hold thousands of projects and the page
-// renders again for every archive and restore.
+/** The search box over the list; it writes the address once typing pauses, not per letter. */
+function ProjectSearch({ value, onChange }: { value: string; onChange: (text: string) => void }) {
+  const [text, setText] = useState(value);
+  const timer = useRef<number | undefined>(undefined);
+  const latest = useRef(onChange);
+  useEffect(() => {
+    latest.current = onChange;
+  });
+  // A change from elsewhere, such as going back, shows in the box; while typing, the box leads.
+  useEffect(() => {
+    if (timer.current === undefined) setText(value);
+  }, [value]);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  function type(next: string) {
+    setText(next);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      timer.current = undefined;
+      latest.current(next.trim());
+    }, PROJECT_SEARCH_DELAY_MS);
+  }
+
+  return (
+    <Input
+      type="search"
+      controlSize="sm"
+      aria-label="Find projects"
+      placeholder="Find by key or name"
+      value={text}
+      onChange={(event) => type(event.target.value)}
+      className="w-56"
+      data-project-search=""
+    />
+  );
+}
+
+// Memoised, since the page renders again for every archive and restore.
 const ProjectRow = memo(function ProjectRow({
   project,
   canAdminister: admin,

@@ -10360,17 +10360,40 @@
     "/projects": {
       "get": {
         "operationId": "listProjects",
-        "summary": "Projects.",
+        "summary": "Projects the caller can see, a page at a time, with how many there are in all.",
         "tags": [
           "projects"
         ],
         "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text the key or the name contains.",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "archived",
             "in": "query",
             "description": "Include archived projects.",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
             }
           }
         ],
@@ -10380,18 +10403,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "projects": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Project"
-                      }
-                    }
-                  },
-                  "required": [
-                    "projects"
-                  ]
+                  "$ref": "#/components/schemas/Page"
                 }
               }
             }
@@ -19124,6 +19136,9 @@
           "description": {
             "type": "string"
           },
+          "doneForDays": {
+            "type": "integer"
+          },
           "groupBy": {
             "type": "string",
             "enum": [
@@ -19136,6 +19151,12 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "leftOut": {
+            "type": "integer"
+          },
+          "leftOutQuery": {
+            "type": "string"
           },
           "name": {
             "type": "string"
@@ -19188,6 +19209,8 @@
           "name",
           "type",
           "groupBy",
+          "doneForDays",
+          "leftOut",
           "swimlanes",
           "unmapped",
           "createdAt",
@@ -19202,6 +19225,9 @@
               "string",
               "null"
             ]
+          },
+          "doneForDays": {
+            "type": "integer"
           },
           "groupBy": {
             "type": [
@@ -23680,6 +23706,32 @@
           "schemeId",
           "schemeName",
           "named"
+        ]
+      },
+      "Page": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "projects",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "Palette": {

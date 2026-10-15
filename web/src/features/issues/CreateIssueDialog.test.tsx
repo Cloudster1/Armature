@@ -44,7 +44,8 @@ vi.mock("@/api/issues", async () => ({
 
 vi.mock("@/api/projects", async () => ({
   ...(await vi.importActual<typeof import("@/api/projects")>("@/api/projects")),
-  useProjects: () => ({ data: { projects: [{ key: "CP", name: "Customer Portal" }] }, isLoading: false }),
+  useProject: () => ({ data: undefined }),
+  useProjectSearch: () => ({ data: { projects: [{ key: "CP", name: "Customer Portal" }] }, isLoading: false }),
 }));
 
 vi.mock("@/api/arrange", async () => ({
@@ -104,11 +105,11 @@ const builtIn: Placement[] = [
   { area: "more", slot: "created" },
 ];
 
-function draw(places: Placement[] = builtIn) {
+function draw(places: Placement[] = builtIn, projectKey: string | null = "CP") {
   state.places = places;
   return render(
     <ToastProvider>
-      <CreateIssueDialog open onClose={() => {}} projectKey="CP" />
+      <CreateIssueDialog open onClose={() => {}} projectKey={projectKey ?? undefined} />
     </ToastProvider>,
   );
 }
@@ -168,6 +169,17 @@ describe("CreateIssueDialog", () => {
     draw();
     expect(screen.getByLabelText("Type")).toHaveValue("t-story");
     expect(screen.queryByRole("option", { name: "The project's default" })).not.toBeInTheDocument();
+  });
+
+  // With no project visited yet, the first of thousands is no better a guess than none.
+  it("asks for a project rather than choosing one, when none was visited", async () => {
+    draw(builtIn, null);
+    expect(screen.getByLabelText("Project")).toHaveValue("");
+    await userEvent.type(screen.getByLabelText("Summary"), "Login loops");
+    expect(screen.getByRole("button", { name: "Create issue" })).toBeDisabled();
+    await userEvent.selectOptions(screen.getByLabelText("Project"), "CP");
+    await userEvent.click(screen.getByRole("button", { name: "Create issue" }));
+    expect(state.created.mock.calls[0]?.[0]).toMatchObject({ projectKey: "CP", summary: "Login loops" });
   });
 
   it("sends what the create request can carry", async () => {

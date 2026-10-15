@@ -7,6 +7,21 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a kanban board leaves out work finished more than a number of days
+  ago, set per board beside its swimlanes, 0 keeping it there. The board says
+  how many finished issues it left out and links to a search for them, and a
+  swimlane's limit counts only the cards it shows. A done issue with no
+  resolved date leaves by its last change. Upgrading: existing kanban boards
+  start leaving out work finished more than 14 days ago; set 0 on a board to
+  keep it (#54).
+- Changed: the projects list comes a page at a time, with a search over the
+  key and the name; the page, the search and Show archived are in the
+  address. `GET /api/v1/projects` answers 50 projects unless `limit` asks for
+  up to 200, with `total`, `limit` and `offset`, and takes `q` to find
+  projects by key or name; the assistant's `list_projects` pages the same way.
+  The sidebar's project switcher, the command palette and every project
+  picker ask the server for what was typed instead of loading every project,
+  so an installation of thousands stays fast (#261).
 - Added: mail goes through a relay that wants a login, such as SES, Microsoft
   365 or Gmail. `ARMATURE_SMTP_USER` and `ARMATURE_SMTP_PASSWORD` are sent as
   PLAIN over TLS only, and `ARMATURE_SMTP_TLS` is `starttls` (the default, as

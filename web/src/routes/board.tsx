@@ -61,7 +61,7 @@ function BoardPage() {
             {showing && <Tag data-board-type={showing.type}>{scrum ? "Scrum" : "Kanban"}</Tag>}
           </>
         }
-        meta={scrum ? "Shows the sprint that is running." : "Shows everything in flight."}
+        meta={scrum ? "Shows the sprint that is running." : "Shows the work in flight and what was finished lately."}
         tabs={
           <BoardPicker
             projectKey={projectKey}

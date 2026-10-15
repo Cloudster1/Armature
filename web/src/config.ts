@@ -145,6 +145,15 @@ export const GRAPH_EDGE_BEND = 32;
 /** The grid of unlinked tickets is never narrower than this many boxes. */
 export const GRAPH_MIN_GRID_COLUMNS = 2;
 
+/** How many projects the projects page and the overview show at once. */
+export const PROJECT_PAGE_SIZE = 50;
+
+/** How many matches a project picker, the switcher and the palette ask for. */
+export const PROJECT_PICKER_RESULTS = 20;
+
+/** A project search waits this long after the last key, so the server is not asked per letter. */
+export const PROJECT_SEARCH_DELAY_MS = 250;
+
 /** How many results the search page shows of what a query matched. */
 export const SEARCH_PAGE_SIZE = 100;
 

@@ -266,8 +266,8 @@ var operations = []operation{
 	{method: "DELETE", path: "/workflow-schemes/{schemeID}", handler: "handleDeleteScheme", tag: "workflows", summary: "Delete a scheme no project uses.", responses: none()},
 
 	// Projects.
-	{method: "GET", path: "/projects", handler: "handleListProjects", tool: "list_projects", toolHelp: "The projects the caller can see, with their keys.", tag: "projects", summary: "Projects.",
-		query: []param{{name: "archived", schema: boolParam, description: "Include archived projects."}}, responses: ok(env{"projects": []project.Project{}})},
+	{method: "GET", path: "/projects", handler: "handleListProjects", tool: "list_projects", toolHelp: "The projects the caller can see, with their keys, 50 at a time by key; q finds one by key or name, and offset reads the next page.", tag: "projects", summary: "Projects the caller can see, a page at a time, with how many there are in all.",
+		query: []param{{name: "q", description: "Text the key or the name contains."}, {name: "archived", schema: boolParam, description: "Include archived projects."}, {name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, {name: "offset", schema: intParam}}, responses: ok(project.Page{})},
 	{method: "GET", path: "/project-templates", handler: "handleListTemplates", tag: "projects", summary: "The templates a project can start from.", responses: ok(env{"templates": []template.Template{}})},
 	{method: "GET", path: "/projects/key-check", handler: "handleCheckProjectKey", tag: "projects", summary: "Whether a key is free, or a suggestion from a name.",
 		query:     []param{{name: "key", description: "A key to check."}, {name: "name", description: "A name to suggest a key for; answered with the suggestion alone."}},

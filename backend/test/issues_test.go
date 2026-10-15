@@ -90,14 +90,14 @@ func TestProjects(t *testing.T) {
 	ws := h.newProject(t, "projects")
 
 	t.Run("a project starts empty and is listed", func(t *testing.T) {
-		list, err := ws.projects.List(ws.ctx, false)
+		list, err := ws.projects.List(ws.ctx, project.ListFilter{Text: ws.project.Key})
 		if err != nil {
 			t.Fatal(err)
 		}
 		var listed *project.Project
-		for i := range list {
-			if list[i].Key == ws.project.Key {
-				listed = &list[i]
+		for i := range list.Projects {
+			if list.Projects[i].Key == ws.project.Key {
+				listed = &list.Projects[i]
 			}
 		}
 		if listed == nil {
@@ -150,24 +150,24 @@ func TestProjects(t *testing.T) {
 			t.Fatalf("archive: %v", err)
 		}
 
-		active, err := ws.projects.List(ws.ctx, false)
+		active, err := ws.projects.List(ws.ctx, project.ListFilter{Text: p.Key})
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, item := range active {
+		for _, item := range active.Projects {
 			if item.Key == p.Key {
 				t.Error("an archived project is still in the default listing")
 			}
 		}
 
-		all, err := ws.projects.List(ws.ctx, true)
+		all, err := ws.projects.List(ws.ctx, project.ListFilter{IncludeArchived: true, Text: p.Key})
 		if err != nil {
 			t.Fatal(err)
 		}
 		var found *project.Project
-		for i := range all {
-			if all[i].Key == p.Key {
-				found = &all[i]
+		for i := range all.Projects {
+			if all.Projects[i].Key == p.Key {
+				found = &all.Projects[i]
 			}
 		}
 		if found == nil {

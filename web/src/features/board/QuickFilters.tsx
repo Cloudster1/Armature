@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { BOARD_SEARCH_DELAY_MS } from "@/config";
 import { Avatar, Button, Chip, Input, Popover, Toolbar } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -11,12 +12,15 @@ export function QuickFilters({
   onChange,
   options,
   hidden,
+  leftOut,
 }: {
   filter: QuickFilter;
   onChange: (filter: QuickFilter) => void;
   options: QuickFilterOptions;
   /** How many of the lanes' cards the filter keeps off the board. */
   hidden: number;
+  /** The finished work a kanban board leaves out, with the search that finds it. */
+  leftOut?: { count: number; query: string; days: number };
 }) {
   const [text, setText] = useState(filter.q ?? "");
   const timer = useRef<number | undefined>(undefined);
@@ -85,16 +89,27 @@ export function QuickFilters({
         </>
       }
       end={
-        isFiltered(filter) && (
+        (leftOut || isFiltered(filter)) && (
           <>
-            {hidden > 0 && (
-              <span role="status" className="text-xs text-ink-muted" data-hidden-cards={hidden}>
-                {hidden} card{hidden === 1 ? "" : "s"} hidden by the filters
+            {leftOut && (
+              <span className="text-xs text-ink-muted" data-done-left-out={leftOut.count}>
+                <Link to="/search" search={{ q: leftOut.query }} title={`Finished more than ${leftOut.days} day${leftOut.days === 1 ? "" : "s"} ago. Open them in search.`} className="hover:text-accent hover:underline">
+                  {leftOut.count} finished issue{leftOut.count === 1 ? "" : "s"} left out
+                </Link>
               </span>
             )}
-            <Button size="sm" variant="ghost" onClick={clear}>
-              Clear filters
-            </Button>
+            {isFiltered(filter) && (
+              <>
+                {hidden > 0 && (
+                  <span role="status" className="text-xs text-ink-muted" data-hidden-cards={hidden}>
+                    {hidden} card{hidden === 1 ? "" : "s"} hidden by the filters
+                  </span>
+                )}
+                <Button size="sm" variant="ghost" onClick={clear}>
+                  Clear filters
+                </Button>
+              </>
+            )}
           </>
         )
       }
