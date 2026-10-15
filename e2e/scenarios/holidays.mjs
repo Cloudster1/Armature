@@ -12,6 +12,7 @@ import {
   openMonth,
   PASSWORD,
   press,
+  reload,
   replaceValue,
   scheduleIssue,
   selectByLabel,
@@ -95,4 +96,22 @@ serialScenario("the default calendar's holidays shade the timeline and the proje
   } finally {
     await putBack();
   }
+});
+
+// The default calendar is chosen, which every installation has, so nothing shared changes.
+scenario("a desk takes its days off from a holiday calendar and keeps it after a reload", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Daysdesk", { template: "service-desk", visit: false });
+  await goto(page, `/projects/${key}/service-desk`);
+  await selectByLabel(page, "#field-calendar-holiday-calendar", "Holidays");
+  await clickButton(page, "Set business hours");
+  await page.waitForSelector("[data-goal-calendars]", { timeout: WAIT });
+
+  await reload(page);
+  await page.waitForSelector("#field-calendar-holiday-calendar", { timeout: WAIT });
+  await page.waitForFunction(
+    () => document.querySelector("#field-calendar-holiday-calendar")?.selectedOptions[0]?.textContent.trim() === "Holidays",
+    { timeout: WAIT },
+  );
+  expect.truthy(await page.$("[data-goal-calendars]"), "the hours were saved with the calendar");
 });
