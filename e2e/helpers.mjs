@@ -368,6 +368,12 @@ export async function signUp(page, who = unique("user"), { visit = true, role = 
   return { ...who, org: administrator.org.name };
 }
 
+/** Makes an account at the standing given without signing anybody in as it. */
+export async function makeAccount(who = unique("user"), role = "member") {
+  await administer("POST", "/users", { email: who.email, name: who.name, role, password: PASSWORD });
+  return who;
+}
+
 /**
  * Signs somebody up through the sign-up form, which the development stack
  * keeps open, so they join as a member; lands in the app.

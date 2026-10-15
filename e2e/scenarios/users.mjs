@@ -9,6 +9,7 @@ import {
   expect,
   fill,
   goto,
+  makeAccount,
   PASSWORD,
   press,
   signIn,
@@ -84,4 +85,27 @@ scenario("somebody the provider knows is told who can let them in", async ({ pag
   await page.waitForSelector("[data-new-user]", { timeout: WAIT });
   const waiting = await page.$("[data-join-requests]");
   expect.truthy(waiting === null, "an empty waiting list is drawn");
+});
+
+// The installation the suite shares holds thousands of accounts: the page shows
+// one page of them, and somebody is found by typing part of their name.
+scenario("the users page finds somebody by part of their name, a page at a time", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const who = await makeAccount(unique("findable"));
+
+  await goto(page, "/settings/users");
+  await page.waitForSelector("[data-user]", { timeout: WAIT });
+  expect.truthy(await page.$('nav[aria-label="User pages"]'), "a list longer than a page comes with a pager");
+  const shown = await page.$$eval("[data-user]", (rows) => rows.length);
+  expect.truthy(shown <= 50, `one page of accounts is drawn, not ${shown}`);
+
+  const tail = who.name.split(" ").at(-1);
+  await page.click("[data-people-search]");
+  await page.keyboard.sendCharacter(tail);
+  await page.waitForFunction(
+    (email) => document.querySelectorAll("[data-user]").length === 1 && document.querySelector(`[data-user="${email}"]`),
+    { timeout: WAIT },
+    who.email,
+  );
+  expect.contains(page.url(), `q=${tail}`, "the search is in the address");
 });
