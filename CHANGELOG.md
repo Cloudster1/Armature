@@ -7,6 +7,8 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a space typed into the project switcher's filter no longer closes
+  it, so a project named in two words can be found (#283).
 - Fixed: a dialog taller than the window, such as New issue with the built-in
   arrangement on a laptop, keeps its title and buttons in view and scrolls its
   fields between them; an error it shows sits just above the buttons and is

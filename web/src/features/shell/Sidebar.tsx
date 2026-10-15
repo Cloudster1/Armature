@@ -233,24 +233,21 @@ function ProjectSwitcher({ projectKey }: { projectKey: string | undefined }) {
           {projectKey && <span className="font-mono text-2xs font-normal text-ink-subtle">{projectKey}</span>}
         </Button>
       )}
-      items={[
-        {
-          // The box sits in a menu item: a press on it must not pick the item, which closes the menu.
-          label: <Input aria-label="Filter projects" value={filter} onChange={(e) => setFilter(e.target.value)} controlSize="sm" placeholder="Filter" onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} />,
-          onSelect: () => {},
-          attrs: { "data-project-filter": "" },
-        },
-        ...projects.map((p) => ({
-          label: (
-            <>
-              <span className="min-w-0 flex-1 truncate">{p.name}</span>
-              <span className="font-mono text-2xs text-ink-subtle">{p.key}</span>
-            </>
-          ),
-          onSelect: () => navigate({ to: `/projects/${p.key}${suffix}` as never }),
-          attrs: { "data-project-option": p.key },
-        })),
-      ]}
+      header={
+        <div className="px-1 pb-1" data-project-filter>
+          <Input aria-label="Filter projects" value={filter} onChange={(e) => setFilter(e.target.value)} controlSize="sm" placeholder="Filter" />
+        </div>
+      }
+      items={projects.map((p) => ({
+        label: (
+          <>
+            <span className="min-w-0 flex-1 truncate">{p.name}</span>
+            <span className="font-mono text-2xs text-ink-subtle">{p.key}</span>
+          </>
+        ),
+        onSelect: () => navigate({ to: `/projects/${p.key}${suffix}` as never }),
+        attrs: { "data-project-option": p.key },
+      }))}
     />
   );
 }
