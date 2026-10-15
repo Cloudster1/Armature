@@ -3265,6 +3265,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectKey}/statuses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The statuses this project's workflows hold, which its boards are made of. */
+        get: operations["projectStatuses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectKey}/teams": {
         parameters: {
             query?: never;
@@ -6145,12 +6162,43 @@ export interface components {
             projectKey: string;
             useCalendar: boolean;
         };
+        PortalAttachment: {
+            contentType: string;
+            /** Format: date-time */
+            createdAt: string;
+            fileName: string;
+            /** Format: uuid */
+            id: string;
+            size: number;
+            uploader?: components["schemas"]["PortalPerson"];
+        };
         PortalCodeRequest: {
             desk?: string;
             email: string;
         };
+        PortalComment: {
+            author?: components["schemas"]["PortalPerson"];
+            /** @description A JSON value. */
+            body: unknown;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+        };
         PortalFollowRequest: {
             email: string;
+        };
+        PortalFollower: {
+            email?: string;
+            name: string;
+            /** Format: uuid */
+            userId: string;
+        };
+        PortalPerson: {
+            avatarUrl?: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         PortalRaiseRequest: {
             description: string;
@@ -6162,11 +6210,38 @@ export interface components {
         PortalReplyRequest: {
             text: string;
         };
+        PortalRequest: {
+            assignee?: components["schemas"]["PortalPerson"];
+            commentCount: number;
+            company?: components["schemas"]["CompanyRef"];
+            /** Format: date-time */
+            createdAt: string;
+            /** @description A JSON value. */
+            description?: unknown;
+            key: string;
+            /** @enum {string} */
+            priority: "lowest" | "low" | "medium" | "high" | "highest";
+            reporter?: components["schemas"]["PortalPerson"];
+            requestTypeName?: string;
+            /** Format: date-time */
+            resolvedAt?: string;
+            sharedWithCompany: boolean;
+            status: components["schemas"]["PortalStatus"];
+            summary: string;
+            team?: components["schemas"]["TeamRef"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
         PortalSessionRequest: {
             code?: string;
             desk?: string;
             email: string;
             name?: string;
+        };
+        PortalStatus: {
+            /** @enum {string} */
+            category: "todo" | "in_progress" | "done";
+            name: string;
         };
         Preferences: {
             digest: string;
@@ -6439,9 +6514,8 @@ export interface components {
             url: string | null;
         };
         Request: {
-            comments: components["schemas"]["Comment"][];
-            issue: components["schemas"]["Issue"];
-            requestTypeName?: string;
+            comments: components["schemas"]["PortalComment"][];
+            request: components["schemas"]["PortalRequest"];
             throughCompany?: boolean;
         };
         RequestBody: {
@@ -14293,8 +14367,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        requests: components["schemas"]["Issue"][];
-                        shared: components["schemas"]["Issue"][];
+                        requests: components["schemas"]["PortalRequest"][];
+                        shared: components["schemas"]["PortalRequest"][];
                     };
                 };
             };
@@ -14329,7 +14403,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        request: components["schemas"]["Issue"];
+                        request: components["schemas"]["PortalRequest"];
                     };
                 };
             };
@@ -14393,7 +14467,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        attachments: components["schemas"]["Attachment"][];
+                        attachments: components["schemas"]["PortalAttachment"][];
                     };
                 };
             };
@@ -14433,7 +14507,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        attachment: components["schemas"]["Attachment"];
+                        attachment: components["schemas"]["PortalAttachment"];
                     };
                 };
             };
@@ -14470,7 +14544,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        comment: components["schemas"]["Comment"];
+                        comment: components["schemas"]["PortalComment"];
                     };
                 };
             };
@@ -14503,7 +14577,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        watchers: components["schemas"]["Watcher"][];
+                        watchers: components["schemas"]["PortalFollower"][];
                     };
                 };
             };
@@ -14540,7 +14614,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        watcher: components["schemas"]["Watcher"];
+                        watcher: components["schemas"]["PortalFollower"];
                     };
                 };
             };
@@ -16551,6 +16625,39 @@ export interface operations {
                 content: {
                     "application/json": {
                         update: components["schemas"]["StatusUpdate"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    projectStatuses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        statuses: components["schemas"]["Status"][];
                     };
                 };
             };

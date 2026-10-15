@@ -234,21 +234,27 @@ func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, 
 
 	ctx = db.PinPrimary(ctx)
 	actor := issue.Actor{UserID: p.userID, OrgRole: p.role}
-	var comment *issue.Comment
+	var commentID uuid.UUID
 	switch {
 	case p.role.IsAgent():
 		// Nothing proves a colleague's address, so their mail is filed where
 		// the desk can see it and the customer cannot; they answer in the app.
-		comment, _, err = n.issues.AddNote(ctx, p.key, issue.TextDocument(text), actor)
+		var note *issue.Comment
+		if note, _, err = n.issues.AddNote(ctx, p.key, issue.TextDocument(text), actor); err == nil {
+			commentID = note.ID
+		}
 	default:
 		// The reporter and a follower answer as they would in the portal, so a
 		// reply brings the request back to the desk whoever sends it.
-		comment, _, err = n.desk.Reply(ctx, p.key, text, actor)
+		var reply *PortalComment
+		if reply, _, err = n.desk.Reply(ctx, p.key, text, actor); err == nil {
+			commentID = reply.ID
+		}
 	}
 	if err != nil {
 		return "", fmt.Errorf("comment on %s: %w", p.key, err)
 	}
-	p.commentID = &comment.ID
+	p.commentID = &commentID
 	return n.finish(ctx, messageID, &p, Commented, "", m, Message{})
 }
 

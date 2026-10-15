@@ -373,6 +373,41 @@ scenario("swimlanes can be reconfigured to cover several states", async ({ page 
   expect.contains((await cardsIn(page, "In Progress")).join(","), issueKey, "the card is in the merged lane");
 });
 
+// The editor offered every status in the installation, and its warning counted
+// the ones only other projects' workflows hold.
+scenario("the swimlane editor offers only the states of the project's workflows", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  // Statuses and workflows are everybody's, so these have names nobody else took.
+  const parked = uniqueName("Parked");
+  const elsewhere = uniqueName("Elsewhere");
+  const key = await createProject(page, "Own states", { visit: false });
+
+  // A workflow no project follows, holding a status only it has.
+  await goto(page, "/settings/workflows");
+  await clickButton(page, "New workflow");
+  await page.waitForSelector("#field-name", { timeout: WAIT });
+  await page.type("#field-name", elsewhere);
+  await coinStatus(page, { name: parked, category: "In progress" });
+  await clickButton(page, "Create workflow");
+  await waitForButtonToGo(page, "Create workflow");
+
+  await goto(page, `/projects/${key}/board`);
+  await clickButton(page, "Configure swimlanes");
+  await page.waitForFunction(() => document.querySelector('[data-swimlane-editor] fieldset input[type="checkbox"]'), {
+    timeout: WAIT,
+  });
+
+  const lanes = await page.$$eval("[data-swimlane-editor]", (els) => els.map((el) => el.getAttribute("data-swimlane-editor")).join(", "));
+  const offered = await page.$eval("[data-swimlane-editor]", (el) => [...el.querySelectorAll("fieldset label")].map((l) => l.textContent.trim()).join(", "));
+  expect.equal(offered, lanes, "each lane offers the project's states, one per lane it was built with");
+  expect.notContains(await bodyText(page), parked, "the other workflow's status is not offered");
+  expect.notContains(await bodyText(page), "not on the board", "no state of the project is missing from the board");
+
+  await clickButton(page, "Add swimlane");
+  await page.waitForSelector("#field-new-swimlane-name", { timeout: WAIT });
+  expect.notContains(await bodyText(page), parked, "nor is it offered for a new lane");
+});
+
 scenario("cards in states no swimlane covers are surfaced, not hidden", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Orphans", { visit: false });

@@ -10,6 +10,7 @@ const deleteSwimlane = vi.fn();
 const reorderSwimlanes = vi.fn();
 const updateBoard = vi.fn();
 const useBoardById = vi.fn();
+const useProjectStatuses = vi.fn();
 let reorderPending = false;
 
 function mutation(mutate: ReturnType<typeof vi.fn>) {
@@ -30,7 +31,13 @@ const statuses: Status[] = [
   { id: "s2", name: "Doing", category: "in_progress", position: 1 },
 ];
 
-vi.mock("@/api/issues", () => ({ useStatuses: () => ({ data: { statuses } }) }));
+// Everyone's statuses hold one only another project's workflow has, which the
+// editor must never offer.
+const elsewhere: Status = { id: "s8", name: "Elsewhere", category: "in_progress", position: 8 };
+vi.mock("@/api/issues", () => ({
+  useStatuses: () => ({ data: { statuses: [...statuses, elsewhere] } }),
+  useProjectStatuses: (key: string) => useProjectStatuses(key),
+}));
 vi.mock("@/features/shell/ConfirmProvider", () => ({ useConfirm: () => async () => true }));
 
 const { SwimlaneEditor } = await import("./SwimlaneEditor");
@@ -56,8 +63,9 @@ const teamBoard: Board = {
 };
 
 beforeEach(() => {
-  for (const fn of [addSwimlane, updateSwimlane, deleteSwimlane, reorderSwimlanes, updateBoard, useBoardById]) fn.mockReset();
+  for (const fn of [addSwimlane, updateSwimlane, deleteSwimlane, reorderSwimlanes, updateBoard, useBoardById, useProjectStatuses]) fn.mockReset();
   useBoardById.mockReturnValue({ data: { board: teamBoard }, isLoading: false });
+  useProjectStatuses.mockReturnValue({ data: { statuses } });
   reorderPending = false;
 });
 
@@ -141,5 +149,58 @@ describe("SwimlaneEditor", () => {
     expect(doing.getByRole("button", { name: "Move Doing left" })).toBeDisabled();
     await userEvent.click(doing.getByRole("button", { name: "Move Doing left" }));
     expect(reorderSwimlanes).not.toHaveBeenCalled();
+  });
+
+  // The editor offered every status in the installation, so the warning
+  // counted states no card of the project can ever be in.
+  describe("the states it offers", () => {
+    const blocked: Status = { id: "s3", name: "Blocked", category: "in_progress", position: 2 };
+    const retired: Status = { id: "s9", name: "Retired", category: "done", position: 9 };
+
+    function laneOf(container: HTMLElement, name: string) {
+      return within(container.querySelector(`[data-swimlane-editor="${name}"]`) as HTMLElement);
+    }
+
+    it("are the statuses of the board's project", () => {
+      useProjectStatuses.mockReturnValue({ data: { statuses: [...statuses, blocked] } });
+      const { container } = render(<SwimlaneEditor boardId="b2" />);
+      expect(useProjectStatuses).toHaveBeenCalledWith("CP");
+      const queued = laneOf(container, "Queued");
+      expect(queued.getAllByRole("checkbox").map((box) => box.closest("label")?.textContent)).toEqual(["To Do", "Doing", "Blocked"]);
+    });
+
+    it("count only the project's statuses no lane holds", () => {
+      useProjectStatuses.mockReturnValue({ data: { statuses: [...statuses, blocked] } });
+      render(<SwimlaneEditor boardId="b2" />);
+      expect(screen.getByText("1 state not on the board")).toBeInTheDocument();
+      expect(screen.getByText(/\(Blocked\)\./)).toBeInTheDocument();
+    });
+
+    it("warn of nothing when every one of the project's statuses has a lane", () => {
+      render(<SwimlaneEditor boardId="b2" />);
+      expect(screen.queryByText(/not on the board/)).toBeNull();
+    });
+
+    it("are only the unclaimed ones for a new lane", async () => {
+      useProjectStatuses.mockReturnValue({ data: { statuses: [...statuses, blocked] } });
+      render(<SwimlaneEditor boardId="b2" />);
+      await userEvent.click(screen.getByRole("button", { name: "Add swimlane" }));
+      const offered = within(screen.getByText("States for it (only ones not already on the board)").closest("fieldset")!);
+      expect(offered.getAllByRole("checkbox").map((box) => box.closest("label")?.textContent)).toEqual(["Blocked"]);
+    });
+
+    // A scheme change can leave a lane holding a state the project no longer
+    // reaches; hiding it would leave no way to take it off.
+    it("keep a state the lane holds that the project no longer reaches, so it can be let go", async () => {
+      const held: Board = { ...teamBoard, swimlanes: [{ ...lane("l1", "Queued", 0, statuses[0]!), statuses: [statuses[0]!, retired] }, teamBoard.swimlanes[1]!] };
+      useBoardById.mockReturnValue({ data: { board: held }, isLoading: false });
+      const { container } = render(<SwimlaneEditor boardId="b2" />);
+      const queued = laneOf(container, "Queued");
+      const box = queued.getByRole("checkbox", { name: "Retired" });
+      expect(box).toBeChecked();
+      expect(laneOf(container, "Doing").queryByRole("checkbox", { name: "Retired" })).toBeNull();
+      await userEvent.click(box);
+      expect(updateSwimlane).toHaveBeenCalledWith({ boardId: "b2", swimlaneId: "l1", statusIds: ["s1"] });
+    });
   });
 });

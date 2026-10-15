@@ -7,6 +7,20 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: the swimlane editor offers only the statuses of the workflows the
+  project follows, and its "states not on the board" warning counts only
+  those. A lane given a status no workflow of the project holds is refused
+  with a sentence naming it; one it already holds it keeps. The new
+  `GET /projects/{key}/statuses` lists a project's statuses (#277).
+- Changed: the portal answers with a shape of its own, holding what a
+  customer reads. A request is its key, summary, description, status and its
+  category, priority, request type, team, company and whether it is shared,
+  its dates and `commentCount`, the replies the customer can read. The
+  assignee, the reporter, the authors of replies and the people who attached
+  a file are named by `id`, `name` and `avatarUrl`. `GET /portal/requests/{key}`
+  answers `{request, comments, throughCompany}`, the request type's name
+  inside `request`. The followers are `userId` and `name`, and `email` only
+  for the reporter, for the people they added (#287).
 - Changed: every place that picks a person searches for them as you type
   instead of loading everyone: an issue's assignee and reporter, the new issue
   dialog, watchers, bulk edit, a component's lead and default assignee, a

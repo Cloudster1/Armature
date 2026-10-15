@@ -10104,13 +10104,13 @@
                     "requests": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Issue"
+                        "$ref": "#/components/schemas/PortalRequest"
                       }
                     },
                     "shared": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Issue"
+                        "$ref": "#/components/schemas/PortalRequest"
                       }
                     }
                   },
@@ -10159,7 +10159,7 @@
                   "type": "object",
                   "properties": {
                     "request": {
-                      "$ref": "#/components/schemas/Issue"
+                      "$ref": "#/components/schemas/PortalRequest"
                     }
                   },
                   "required": [
@@ -10253,7 +10253,7 @@
                     "attachments": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Attachment"
+                        "$ref": "#/components/schemas/PortalAttachment"
                       }
                     }
                   },
@@ -10321,7 +10321,7 @@
                   "type": "object",
                   "properties": {
                     "attachment": {
-                      "$ref": "#/components/schemas/Attachment"
+                      "$ref": "#/components/schemas/PortalAttachment"
                     }
                   },
                   "required": [
@@ -10381,7 +10381,7 @@
                   "type": "object",
                   "properties": {
                     "comment": {
-                      "$ref": "#/components/schemas/Comment"
+                      "$ref": "#/components/schemas/PortalComment"
                     }
                   },
                   "required": [
@@ -10433,7 +10433,7 @@
                     "watchers": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Watcher"
+                        "$ref": "#/components/schemas/PortalFollower"
                       }
                     }
                   },
@@ -10492,7 +10492,7 @@
                   "type": "object",
                   "properties": {
                     "watcher": {
-                      "$ref": "#/components/schemas/Watcher"
+                      "$ref": "#/components/schemas/PortalFollower"
                     }
                   },
                   "required": [
@@ -13915,6 +13915,59 @@
                   },
                   "required": [
                     "update"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectKey}/statuses": {
+      "get": {
+        "operationId": "projectStatuses",
+        "summary": "The statuses this project's workflows hold, which its boards are made of.",
+        "tags": [
+          "workflows"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statuses": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Status"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statuses"
                   ]
                 }
               }
@@ -24788,6 +24841,38 @@
           "useCalendar"
         ]
       },
+      "PortalAttachment": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "uploader": {
+            "$ref": "#/components/schemas/PortalPerson"
+          }
+        },
+        "required": [
+          "id",
+          "fileName",
+          "contentType",
+          "size",
+          "createdAt"
+        ]
+      },
       "PortalCodeRequest": {
         "type": "object",
         "properties": {
@@ -24802,6 +24887,30 @@
           "email"
         ]
       },
+      "PortalComment": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/PortalPerson"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "createdAt"
+        ]
+      },
       "PortalFollowRequest": {
         "type": "object",
         "properties": {
@@ -24811,6 +24920,44 @@
         },
         "required": [
           "email"
+        ]
+      },
+      "PortalFollower": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "name"
+        ]
+      },
+      "PortalPerson": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "PortalRaiseRequest": {
@@ -24847,6 +24994,76 @@
           "text"
         ]
       },
+      "PortalRequest": {
+        "type": "object",
+        "properties": {
+          "assignee": {
+            "$ref": "#/components/schemas/PortalPerson"
+          },
+          "commentCount": {
+            "type": "integer"
+          },
+          "company": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "description": "A JSON value."
+          },
+          "key": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "lowest",
+              "low",
+              "medium",
+              "high",
+              "highest"
+            ]
+          },
+          "reporter": {
+            "$ref": "#/components/schemas/PortalPerson"
+          },
+          "requestTypeName": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sharedWithCompany": {
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PortalStatus"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "team": {
+            "$ref": "#/components/schemas/TeamRef"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "key",
+          "summary",
+          "status",
+          "priority",
+          "sharedWithCompany",
+          "createdAt",
+          "updatedAt",
+          "commentCount"
+        ]
+      },
       "PortalSessionRequest": {
         "type": "object",
         "properties": {
@@ -24865,6 +25082,26 @@
         },
         "required": [
           "email"
+        ]
+      },
+      "PortalStatus": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "category"
         ]
       },
       "Preferences": {
@@ -25902,21 +26139,18 @@
           "comments": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Comment"
+              "$ref": "#/components/schemas/PortalComment"
             }
           },
-          "issue": {
-            "$ref": "#/components/schemas/Issue"
-          },
-          "requestTypeName": {
-            "type": "string"
+          "request": {
+            "$ref": "#/components/schemas/PortalRequest"
           },
           "throughCompany": {
             "type": "boolean"
           }
         },
         "required": [
-          "issue",
+          "request",
           "comments"
         ]
       },

@@ -4,8 +4,6 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-
-	"github.com/armature/armature/backend/internal/attachment"
 )
 
 // The portal's files: a customer puts them on their own request and reads the
@@ -16,9 +14,6 @@ func (s *Server) handlePortalAttachments(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		respondError(w, r, err)
 		return
-	}
-	if found == nil {
-		found = []attachment.Attachment{}
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"attachments": found})
 }

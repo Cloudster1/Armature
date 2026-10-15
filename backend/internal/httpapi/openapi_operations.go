@@ -142,21 +142,21 @@ var operations = []operation{
 	{method: "DELETE", path: "/invites/{inviteID}", handler: "handleRevokeInvite", tag: "auth", summary: "Withdraw an invitation.", responses: none()},
 
 	// The portal.
-	{method: "GET", path: "/portal/requests/{issueKey}/watchers", handler: "handlePortalWatchers", tag: "portal", summary: "Who follows a request.", responses: ok(env{"watchers": []issue.Watcher{}})},
-	{method: "POST", path: "/portal/requests/{issueKey}/watchers", handler: "handlePortalFollow", tag: "portal", summary: "Add somebody by address to follow a request.", request: portalFollowRequest{}, responses: created(env{"watcher": issue.Watcher{}})},
+	{method: "GET", path: "/portal/requests/{issueKey}/watchers", handler: "handlePortalWatchers", tag: "portal", summary: "Who follows a request.", responses: ok(env{"watchers": []desk.PortalFollower{}})},
+	{method: "POST", path: "/portal/requests/{issueKey}/watchers", handler: "handlePortalFollow", tag: "portal", summary: "Add somebody by address to follow a request.", request: portalFollowRequest{}, responses: created(env{"watcher": desk.PortalFollower{}})},
 	{method: "DELETE", path: "/portal/requests/{issueKey}/watchers/{userID}", handler: "handlePortalUnfollow", tag: "portal", summary: "Stop somebody following a request.", responses: none()},
-	{method: "GET", path: "/portal/requests/{issueKey}/attachments", handler: "handlePortalAttachments", tag: "portal", summary: "The files on your request, the desk's included.", responses: ok(env{"attachments": []attachment.Attachment{}})},
-	{method: "POST", path: "/portal/requests/{issueKey}/attachments", handler: "handlePortalAttach", tag: "portal", summary: "Put a file on your request, as a multipart part named file.", multipart: true, responses: created(env{"attachment": attachment.Attachment{}})},
+	{method: "GET", path: "/portal/requests/{issueKey}/attachments", handler: "handlePortalAttachments", tag: "portal", summary: "The files on your request, the desk's included.", responses: ok(env{"attachments": []desk.PortalAttachment{}})},
+	{method: "POST", path: "/portal/requests/{issueKey}/attachments", handler: "handlePortalAttach", tag: "portal", summary: "Put a file on your request, as a multipart part named file.", multipart: true, responses: created(env{"attachment": desk.PortalAttachment{}})},
 	{method: "GET", path: "/portal/attachments/{attachmentID}", handler: "handlePortalAttachment", tag: "portal", summary: "The bytes of a file on your request, as a download.", binary: true,
 		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: ok(nil)},
 	{method: "DELETE", path: "/portal/attachments/{attachmentID}", handler: "handlePortalDetach", tag: "portal", summary: "Take back a file you put on your request.", responses: none()},
 	{method: "GET", path: "/portal/desks", handler: "handlePortalDesks", tag: "portal", summary: "The service desks a customer may raise requests with.", responses: ok(env{"desks": []desk.Desk{}})},
 	{method: "POST", path: "/portal/requests", handler: "handlePortalRaise", tag: "portal", summary: "Raise a request.",
-		request: portalRaiseRequest{}, responses: created(env{"request": issue.Issue{}})},
-	{method: "GET", path: "/portal/requests", handler: "handlePortalRequests", tag: "portal", summary: "The caller's own requests, and those colleagues shared with the caller's companies.", responses: ok(env{"requests": []issue.Issue{}, "shared": []issue.Issue{}})},
+		request: portalRaiseRequest{}, responses: created(env{"request": desk.PortalRequest{}})},
+	{method: "GET", path: "/portal/requests", handler: "handlePortalRequests", tag: "portal", summary: "The caller's own requests, and those colleagues shared with the caller's companies.", responses: ok(env{"requests": []desk.PortalRequest{}, "shared": []desk.PortalRequest{}})},
 	{method: "GET", path: "/portal/requests/{issueKey}", handler: "handlePortalRequest", tag: "portal", summary: "One request, with what the desk has said to the customer.", responses: ok(desk.Request{})},
 	{method: "POST", path: "/portal/requests/{issueKey}/replies", handler: "handlePortalReply", tag: "portal", summary: "Reply to the desk.",
-		request: portalReplyRequest{}, responses: created(env{"comment": issue.Comment{}})},
+		request: portalReplyRequest{}, responses: created(env{"comment": desk.PortalComment{}})},
 
 	// Metadata behind the pickers.
 	// Rules and the webhooks they, and the stream, post to.
@@ -281,6 +281,7 @@ var operations = []operation{
 	{method: "POST", path: "/projects/{projectKey}/restore", handler: "handleRestoreProject", tag: "projects", summary: "Bring an archived project back.", responses: none()},
 	{method: "GET", path: "/projects/{projectKey}/workflows", handler: "handleProjectWorkflows", tag: "workflows", summary: "Which workflow each issue type follows here, and who decided.",
 		responses: ok(env{"projectKey": "", "schemeId": (*string)(nil), "assignments": []workflow.Assignment{}})},
+	{method: "GET", path: "/projects/{projectKey}/statuses", handler: "handleProjectStatuses", tool: "list_project_statuses", toolHelp: "The statuses a project's issues can be in, across the workflows it follows, in workflow order.", tag: "workflows", summary: "The statuses this project's workflows hold, which its boards are made of.", responses: ok(env{"statuses": []workflow.Status{}})},
 	{method: "PUT", path: "/projects/{projectKey}/workflow-scheme", handler: "handleSetProjectScheme", tag: "workflows", summary: "Override the default scheme, or hand the decision back with null.",
 		request: setProjectSchemeRequest{}, responses: ok(env{"project": project.Project{}})},
 	{method: "PUT", path: "/projects/{projectKey}/workflow-assignments/{issueTypeID}", handler: "handleSetProjectAssignment", tag: "workflows", summary: "Decide which workflow one issue type follows here, or hand it back with null.",

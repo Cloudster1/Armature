@@ -15,25 +15,38 @@ import (
 // a request that is not theirs is not found, since existence is privileged.
 
 // Attachments lists the files on a customer's request, the desk's included.
-func (s *Service) Attachments(ctx context.Context, key string, customer uuid.UUID) ([]attachment.Attachment, error) {
+func (s *Service) Attachments(ctx context.Context, key string, customer uuid.UUID) ([]PortalAttachment, error) {
 	if s.files == nil {
 		return nil, attachment.ErrUnavailable
 	}
-	if _, err := s.Request(ctx, key, customer); err != nil {
+	if _, _, err := s.reach(ctx, key, customer); err != nil {
 		return nil, err
 	}
-	return s.files.List(ctx, key)
+	found, err := s.files.List(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PortalAttachment, 0, len(found))
+	for i := range found {
+		out = append(out, portalAttachment(&found[i]))
+	}
+	return out, nil
 }
 
 // Attach puts a file on the customer's own request.
-func (s *Service) Attach(ctx context.Context, key string, in attachment.UploadInput, customer issue.Actor) (*attachment.Attachment, db.LSN, error) {
+func (s *Service) Attach(ctx context.Context, key string, in attachment.UploadInput, customer issue.Actor) (*PortalAttachment, db.LSN, error) {
 	if s.files == nil {
 		return nil, 0, attachment.ErrUnavailable
 	}
-	if _, err := s.Request(ctx, key, customer.UserID); err != nil {
+	if _, _, err := s.reach(ctx, key, customer.UserID); err != nil {
 		return nil, 0, err
 	}
-	return s.files.Upload(ctx, key, in, customer)
+	created, lsn, err := s.files.Upload(ctx, key, in, customer)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := portalAttachment(created)
+	return &out, lsn, nil
 }
 
 // OpenAttachment reads a file on the customer's request and its bytes. The
@@ -67,7 +80,7 @@ func (s *Service) customersFile(ctx context.Context, id uuid.UUID, customer uuid
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.Request(ctx, found.IssueKey, customer); err != nil {
+	if _, _, err := s.reach(ctx, found.IssueKey, customer); err != nil {
 		return nil, err
 	}
 	return found, nil

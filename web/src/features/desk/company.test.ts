@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Issue } from "@/api/issues";
+import type { PortalRequest } from "@/api/desk";
 import { companyLine, parseDomains, sharedByCompany } from "./company";
 
 describe("a desk's companies", () => {
@@ -14,7 +14,7 @@ describe("a desk's companies", () => {
   });
 
   it("groups shared requests by company, in the order they came", () => {
-    const of = (key: string, company: string) => ({ key, company: { id: company, name: company } }) as Issue;
+    const of = (key: string, company: string) => ({ key, company: { id: company, name: company } }) as PortalRequest;
     const groups = sharedByCompany([of("A-1", "Globex"), of("A-2", "Initech"), of("A-3", "Globex")]);
     expect(groups.map((g) => [g.company, g.requests.map((r) => r.key)])).toEqual([
       ["Globex", ["A-1", "A-3"]],

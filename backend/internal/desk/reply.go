@@ -20,14 +20,15 @@ const Reopen = "Reopen"
 
 // Reply adds the customer's comment to their own request and hands the request
 // back to the agents when the desk was waiting on them or had finished it.
-func (s *Service) Reply(ctx context.Context, key, text string, customer issue.Actor) (*issue.Comment, db.LSN, error) {
-	if _, err := s.Request(ctx, key, customer.UserID); err != nil {
+func (s *Service) Reply(ctx context.Context, key, text string, customer issue.Actor) (*PortalComment, db.LSN, error) {
+	if _, _, err := s.reach(ctx, key, customer.UserID); err != nil {
 		return nil, 0, err
 	}
-	comment, lsn, err := s.issues.AddComment(ctx, key, issue.TextDocument(text), customer)
+	added, lsn, err := s.issues.AddComment(ctx, key, issue.TextDocument(text), customer)
 	if err != nil {
 		return nil, 0, err
 	}
+	comment := portalComment(added)
 
 	found, err := s.issues.ByKey(ctx, key)
 	if err != nil {
@@ -41,7 +42,7 @@ func (s *Service) Reply(ctx context.Context, key, text string, customer issue.Ac
 	case found.Status.Category == workflow.CategoryDone:
 		// The resolution mail promises that a reply brings the request back.
 		if moved, ok := s.takeWayBack(ctx, key, customer, Reopen, s.leavesDone(ctx)); ok {
-			return comment, moved, nil
+			return &comment, moved, nil
 		}
 		told, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 			return events.Emit(ctx, tx, events.TopicRequestStaysDone, map[string]any{
@@ -53,7 +54,7 @@ func (s *Service) Reply(ctx context.Context, key, text string, customer issue.Ac
 		}
 		lsn = told
 	}
-	return comment, lsn, nil
+	return &comment, lsn, nil
 }
 
 // takeWayBack moves the request as the customer, and says whether it moved. A

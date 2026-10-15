@@ -325,6 +325,33 @@ func (s *Server) handleProjectWorkflows(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// handleProjectStatuses lists the statuses a project's issues can be in, which
+// are the only ones its board's swimlanes can be made of.
+func (s *Server) handleProjectStatuses(w http.ResponseWriter, r *http.Request) {
+	found, err := s.Projects.ByKey(r.Context(), r.PathValue("projectKey"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+
+	statuses := []workflow.Status{}
+	err = s.DB.Read(r.Context(), func(ctx context.Context, tx db.DBTX) error {
+		reachable, err := s.Workflow.Store.ProjectStatuses(ctx, tx, found.ID)
+		if err != nil {
+			return err
+		}
+		if reachable != nil {
+			statuses = reachable
+		}
+		return nil
+	})
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"statuses": statuses})
+}
+
 type setProjectSchemeRequest struct {
 	SchemeID *uuid.UUID `json:"schemeId"`
 }
