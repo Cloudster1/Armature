@@ -519,6 +519,17 @@ export function useStatuses() {
   });
 }
 
+/** The statuses a project's issues can be in, across the workflows it follows;
+ * a board of the project can only be made of these. */
+export function useProjectStatuses(projectKey: string) {
+  return useQuery({
+    queryKey: ["statuses", "project", projectKey],
+    queryFn: () => request<{ statuses: Status[] }>(`/projects/${projectKey}/statuses`),
+    staleTime: META_STALE_MS,
+    enabled: Boolean(projectKey),
+  });
+}
+
 export interface CreateStatusInput {
   name: string;
   category: StatusCategory;

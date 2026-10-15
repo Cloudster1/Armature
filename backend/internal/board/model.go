@@ -170,6 +170,9 @@ var (
 	// ErrStatusClaimed is returned when assigning a status that another
 	// swimlane on the same board already holds.
 	ErrStatusClaimed = errors.New("that status is already in another swimlane")
+	// ErrStatusOutsideWorkflows is returned when a lane is given a status no
+	// workflow of the board's project holds, so no card could ever be in it.
+	ErrStatusOutsideWorkflows = errors.New("is in none of the workflows this project follows; add it to one of them first, or choose one of the project's statuses.")
 	// ErrNoTransition is returned when a card cannot move to a swimlane
 	// because the workflow has no way to get there from where it is.
 	ErrNoTransition = errors.New("the workflow does not allow that move")

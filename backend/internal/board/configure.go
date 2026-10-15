@@ -62,7 +62,11 @@ func (s *Service) AddSwimlane(ctx context.Context, boardID uuid.UUID, in AddSwim
 			return fmt.Errorf("create swimlane: %w", err)
 		}
 
-		if err := assignStatuses(ctx, tx, boardID, lane.ID, in.StatusIDs); err != nil {
+		allowed, err := assignable(ctx, tx, boardID, lane.ID)
+		if err != nil {
+			return err
+		}
+		if err := assignStatuses(ctx, tx, boardID, lane.ID, in.StatusIDs, allowed); err != nil {
 			return err
 		}
 		// The answer carries the states the way the board shows them, so a
@@ -135,10 +139,14 @@ func (s *Service) UpdateSwimlane(ctx context.Context, boardID uuid.UUID, swimlan
 			// Replace the whole set rather than diffing it: the editor sends
 			// the states it wants, and a replacement cannot leave a stale
 			// mapping behind.
+			allowed, err := assignable(ctx, tx, boardID, swimlaneID)
+			if err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `DELETE FROM board_swimlane_status WHERE swimlane_id = $1`, swimlaneID); err != nil {
 				return err
 			}
-			if err := assignStatuses(ctx, tx, boardID, swimlaneID, *in.StatusIDs); err != nil {
+			if err := assignStatuses(ctx, tx, boardID, swimlaneID, *in.StatusIDs, allowed); err != nil {
 				return err
 			}
 		}
@@ -215,8 +223,11 @@ func (s *Service) DeleteSwimlane(ctx context.Context, boardID uuid.UUID, swimlan
 // the swimlane already holding the status could not run afterwards, and the
 // error would have to say "another swimlane" instead of which one. The unique
 // index is still the real guarantee against a race; this is for the message.
-func assignStatuses(ctx context.Context, tx db.DBTX, boardID, swimlaneID uuid.UUID, statusIDs []uuid.UUID) error {
+func assignStatuses(ctx context.Context, tx db.DBTX, boardID, swimlaneID uuid.UUID, statusIDs []uuid.UUID, allowed map[uuid.UUID]bool) error {
 	for _, statusID := range statusIDs {
+		if !allowed[statusID] {
+			return outsideWorkflows(ctx, tx, statusID)
+		}
 		var owner string
 		err := tx.QueryRow(ctx, `
 			SELECT l.name
@@ -251,6 +262,50 @@ func assignStatuses(ctx context.Context, tx db.DBTX, boardID, swimlaneID uuid.UU
 		}
 	}
 	return nil
+}
+
+// assignable is what a lane may be made of: the statuses the board's project
+// can reach, and what the lane holds already, so a scheme change strands nothing.
+func assignable(ctx context.Context, tx db.DBTX, boardID, swimlaneID uuid.UUID) (map[uuid.UUID]bool, error) {
+	var projectID uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT project_id FROM board WHERE id = $1`, boardID).Scan(&projectID); err != nil {
+		return nil, fmt.Errorf("read the board's project: %w", err)
+	}
+	reachable, err := workflow.NewStore().ProjectStatuses(ctx, tx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	allowed := make(map[uuid.UUID]bool, len(reachable))
+	for _, status := range reachable {
+		allowed[status.ID] = true
+	}
+
+	rows, err := tx.Query(ctx, `SELECT status_id FROM board_swimlane_status WHERE swimlane_id = $1`, swimlaneID)
+	if err != nil {
+		return nil, fmt.Errorf("read the lane's statuses: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		allowed[id] = true
+	}
+	return allowed, rows.Err()
+}
+
+// outsideWorkflows names the status a lane was refused, or says there is none.
+func outsideWorkflows(ctx context.Context, tx db.DBTX, statusID uuid.UUID) error {
+	var name string
+	err := tx.QueryRow(ctx, `SELECT name FROM issue_status WHERE id = $1`, statusID).Scan(&name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("no such status: %s", statusID)
+	}
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("%q %w", name, ErrStatusOutsideWorkflows)
 }
 
 // ensureBoard answers a board the caller cannot see the way it answers one
