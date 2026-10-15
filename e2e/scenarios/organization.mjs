@@ -18,6 +18,7 @@ import {
   goto,
   grantRole,
   inviteMember,
+  openProjectRow,
   postStatus,
   removeOrgFields,
   scheduleIssue,
@@ -115,15 +116,14 @@ scenario("an issue on the calendar opens beside it on a click", async ({ page })
 scenario("a project posts a status update and the projects table shows it", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Reported", { visit: false });
-  await goto(page, "/projects");
-  await page.waitForSelector(`[data-project="${key}"]`, { timeout: WAIT });
+  await openProjectRow(page, key);
   expect.contains(await textOf(page, `[data-project="${key}"]`), "Not said", "a fresh project has said nothing");
 
   await postStatus(page, key, "at_risk", "The vendor is late; the first half ships on time.");
   expect.contains(await textOf(page, "[data-status-strip]"), "the first half ships on time", "the strip carries the note");
   await postStatus(page, key, "on_track", "The vendor delivered.");
 
-  await goto(page, "/projects");
+  await openProjectRow(page, key);
   await page.waitForSelector(`[data-project="${key}"] [data-project-status="on_track"]`, { timeout: WAIT });
   await goto(page, `/projects/${key}`);
   await page.waitForSelector('[data-action="status-history"]', { timeout: WAIT });

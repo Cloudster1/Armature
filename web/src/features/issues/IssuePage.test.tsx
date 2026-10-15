@@ -66,7 +66,7 @@ vi.mock("@/api/auth", async () => ({
 vi.mock("@/api/projects", async () => ({
   ...(await vi.importActual<typeof import("@/api/projects")>("@/api/projects")),
   useProject: () => ({ data: { project: { key: "CP", kind: "software" } }, isLoading: false }),
-  useProjects: nothing,
+  useProjectSearch: nothing,
 }));
 
 vi.mock("@/api/fields", async () => ({
