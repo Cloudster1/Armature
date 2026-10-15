@@ -40,6 +40,7 @@ import (
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
+	"github.com/armature/armature/backend/internal/mail"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/notify"
 	"github.com/armature/armature/backend/internal/observability"
@@ -155,7 +156,10 @@ func run() error {
 	// Without SMTP the door says mail is off rather than pretending.
 	var mailer desk.Mailer
 	if cfg.Mail.SMTPAddr != "" {
-		mailer = desk.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From, InsecureTLS: cfg.Mail.InsecureTLS}
+		mailer = &mail.SMTPMailer{
+			Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From, User: cfg.Mail.SMTPUser, Password: cfg.Mail.SMTPPassword,
+			TLS: mail.TLS(cfg.Mail.SMTPTLS), InsecureTLS: cfg.Mail.InsecureTLS, Log: log,
+		}
 		if cfg.Mail.InsecureTLS {
 			log.Warn("mail accepts any certificate: ARMATURE_MAIL_INSECURE_TLS is set")
 		}

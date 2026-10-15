@@ -151,6 +151,57 @@ func TestMailChecksCertificatesUnlessToldNotTo(t *testing.T) {
 	}
 }
 
+// A relay that wants a login takes it over TLS, upgrading as today unless
+// told otherwise; half a login, or one sent in the clear, is refused at start.
+func TestTheRelayLoginIsWholeAndNeverInTheClear(t *testing.T) {
+	t.Setenv("ARMATURE_DB_PRIMARY_URL", "postgres://x")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Mail.SMTPTLS != "starttls" || cfg.Mail.SMTPUser != "" {
+		t.Errorf("TLS = %q, user = %q by default, want starttls and none", cfg.Mail.SMTPTLS, cfg.Mail.SMTPUser)
+	}
+
+	t.Setenv("ARMATURE_SMTP_USER", "armature")
+	t.Setenv("ARMATURE_SMTP_PASSWORD", "secret")
+	for _, mode := range []string{"starttls", "implicit"} {
+		t.Setenv("ARMATURE_SMTP_TLS", mode)
+		if cfg, err = Load(); err != nil {
+			t.Fatalf("a login over %s should load: %v", mode, err)
+		}
+		if cfg.Mail.SMTPUser != "armature" || cfg.Mail.SMTPPassword != "secret" || cfg.Mail.SMTPTLS != mode {
+			t.Errorf("mail = %+v, want the login over %s", cfg.Mail, mode)
+		}
+	}
+
+	t.Setenv("ARMATURE_SMTP_TLS", "none")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "A login is sent only over TLS; set ARMATURE_SMTP_TLS to starttls or implicit.") {
+		t.Errorf("a login without TLS should be refused with the sentence, got %v", err)
+	}
+	t.Setenv("ARMATURE_SMTP_USER", "")
+	t.Setenv("ARMATURE_SMTP_PASSWORD", "")
+	if _, err := Load(); err != nil {
+		t.Errorf("no TLS without a login should load: %v", err)
+	}
+
+	t.Setenv("ARMATURE_SMTP_TLS", "ssl")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), `ARMATURE_SMTP_TLS "ssl" must be starttls, implicit or none`) {
+		t.Errorf("an unknown TLS mode should be refused and named, got %v", err)
+	}
+	t.Setenv("ARMATURE_SMTP_TLS", "")
+
+	t.Setenv("ARMATURE_SMTP_USER", "armature")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ARMATURE_SMTP_PASSWORD is required") {
+		t.Errorf("a user without a password should be refused, got %v", err)
+	}
+	t.Setenv("ARMATURE_SMTP_USER", "")
+	t.Setenv("ARMATURE_SMTP_PASSWORD", "secret")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ARMATURE_SMTP_USER is required") {
+		t.Errorf("a password without a user should be refused, got %v", err)
+	}
+}
+
 // Webhooks are posted side by side; how many at once is a setting with a
 // default, and a pool of none would never post anything, so it is refused.
 func TestWebhookConcurrencyHasADefaultAndIsNeverNone(t *testing.T) {

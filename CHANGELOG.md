@@ -22,6 +22,13 @@ and its tag message, so a change is written here in the branch that makes it.
   The sidebar's project switcher, the command palette and every project
   picker ask the server for what was typed instead of loading every project,
   so an installation of thousands stays fast (#261).
+- Added: mail goes through a relay that wants a login, such as SES, Microsoft
+  365 or Gmail. `ARMATURE_SMTP_USER` and `ARMATURE_SMTP_PASSWORD` are sent as
+  PLAIN over TLS only, and `ARMATURE_SMTP_TLS` is `starttls` (the default, as
+  before), `implicit` for port 465, or `none`. A refused login is logged once
+  as a sentence naming the settings to check, and the mail is tried again.
+  The chart takes `mail.smtpUser`, `mail.smtpTLS` and `secrets.smtpPassword`
+  (#73).
 - Changed: the search page offers as chips only the searches you starred or
   made, and the one running; what others share is on All saved searches
   until you star it, so a few dozen shared searches no longer push the

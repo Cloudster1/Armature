@@ -6,12 +6,17 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
+	"log/slog"
 	"mime"
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
+	"net/textproto"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/armature/armature/backend/internal/observability"
@@ -83,17 +88,42 @@ type Mailer interface {
 	Send(ctx context.Context, m Mail) error
 }
 
-// SMTPMailer sends through a plain SMTP relay, which in development is
-// Mailpit and in production whatever the operator points it at.
+// TLS is how the connection to the relay is protected.
+type TLS string
+
+const (
+	// StartTLS upgrades the connection whenever the relay offers to, and
+	// sends a login only once it has.
+	StartTLS TLS = "starttls"
+	// ImplicitTLS speaks TLS from the first byte, as a relay on port 465 does.
+	ImplicitTLS TLS = "implicit"
+	// NoTLS never upgrades, for a relay beside the product that offers a
+	// certificate nobody can check.
+	NoTLS TLS = "none"
+)
+
+// SMTPMailer sends through an SMTP relay, which in development is Mailpit and
+// in production whatever the operator points it at. It is shared by pointer,
+// so a login the relay refuses is reported once, not once per mail.
 type SMTPMailer struct {
 	Addr string
 	From string
-	// InsecureTLS accepts any certificate the relay offers on STARTTLS: an
-	// expired or self-signed one stops no mail, and protects none either.
+	// User and Password are the login sent as AUTH PLAIN, over TLS only;
+	// without a user nothing is sent.
+	User     string
+	Password string
+	// TLS is StartTLS when empty.
+	TLS TLS
+	// InsecureTLS accepts any certificate the relay offers: an expired or
+	// self-signed one stops no mail, and protects none either.
 	InsecureTLS bool
+	// Log is told of a refused login; nil is slog's default.
+	Log *slog.Logger
+
+	refused atomic.Bool
 }
 
-func (m SMTPMailer) Send(ctx context.Context, msg Mail) error {
+func (m *SMTPMailer) Send(ctx context.Context, msg Mail) error {
 	// The envelope sender is the bare address; the display name belongs in
 	// the header only, and a relay refuses it anywhere else.
 	sender := m.From
@@ -133,17 +163,16 @@ func (m SMTPMailer) Send(ctx context.Context, msg Mail) error {
 	return err
 }
 
-// deliver is smtp.SendMail without authentication, spelled out because
-// SendMail has no way to be told which certificates to accept.
-func (m SMTPMailer) deliver(sender, to string, text []byte) error {
-	c, err := smtp.Dial(m.Addr)
+// deliver is smtp.SendMail spelled out, because SendMail cannot be told which
+// certificates to accept or that TLS comes before the first byte.
+func (m *SMTPMailer) deliver(sender, to string, text []byte) error {
+	c, err := m.dial()
 	if err != nil {
 		return err
 	}
 	defer c.Close()
-	if ok, _ := c.Extension("STARTTLS"); ok {
-		host, _, _ := net.SplitHostPort(m.Addr)
-		if err := c.StartTLS(&tls.Config{ServerName: host, InsecureSkipVerify: m.InsecureTLS}); err != nil {
+	if m.User != "" {
+		if err := m.login(c); err != nil {
 			return err
 		}
 	}
@@ -164,4 +193,68 @@ func (m SMTPMailer) deliver(sender, to string, text []byte) error {
 		return err
 	}
 	return c.Quit()
+}
+
+// dial connects and secures the connection as TLS says. A login is never sent
+// in the clear, so a relay that offers no upgrade is not handed one.
+func (m *SMTPMailer) dial() (*smtp.Client, error) {
+	host, _, _ := net.SplitHostPort(m.Addr)
+	cfg := &tls.Config{ServerName: host, InsecureSkipVerify: m.InsecureTLS, MinVersion: tls.VersionTLS12}
+	if m.TLS == ImplicitTLS {
+		conn, err := tls.Dial("tcp", m.Addr, cfg)
+		if err != nil {
+			return nil, err
+		}
+		c, err := smtp.NewClient(conn, host)
+		if err != nil {
+			conn.Close()
+		}
+		return c, err
+	}
+	c, err := smtp.Dial(m.Addr)
+	if err != nil {
+		return nil, err
+	}
+	if m.TLS == NoTLS {
+		return c, nil
+	}
+	if ok, _ := c.Extension("STARTTLS"); ok {
+		if err := c.StartTLS(cfg); err != nil {
+			c.Close()
+			return nil, err
+		}
+	} else if m.User != "" {
+		c.Close()
+		return nil, fmt.Errorf("The mail server at %s offers no TLS, so the login was not sent; set ARMATURE_SMTP_TLS to implicit if it speaks TLS from the start.", m.Addr)
+	}
+	return c, nil
+}
+
+// login sends AUTH PLAIN. A refused one is logged when it starts being
+// refused and again only after a login has gone through in between.
+func (m *SMTPMailer) login(c *smtp.Client) error {
+	host, _, _ := net.SplitHostPort(m.Addr)
+	err := c.Auth(smtp.PlainAuth("", m.User, m.Password, host))
+	var answer *textproto.Error
+	if errors.As(err, &answer) && answer.Code == codeLoginRefused {
+		refused := fmt.Errorf("The mail server at %s refused the login for %s; check ARMATURE_SMTP_USER and ARMATURE_SMTP_PASSWORD.", m.Addr, m.User)
+		if m.refused.CompareAndSwap(false, true) {
+			m.logger().Error(refused.Error(), "answer", answer.Error())
+		}
+		return refused
+	}
+	if err == nil {
+		m.refused.Store(false)
+	}
+	return err
+}
+
+// codeLoginRefused is the relay's answer to a user or password it does not take.
+const codeLoginRefused = 535
+
+func (m *SMTPMailer) logger() *slog.Logger {
+	if m.Log != nil {
+		return m.Log
+	}
+	return slog.Default()
 }

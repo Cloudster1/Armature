@@ -81,6 +81,11 @@ type DB struct {
 type Mail struct {
 	SMTPAddr string
 	From     string
+	// SMTPUser and SMTPPassword are the relay's login; no user sends none.
+	SMTPUser     string
+	SMTPPassword string
+	// SMTPTLS is starttls, implicit or none.
+	SMTPTLS string
 	// AppBaseURL is where the links in a mail point.
 	AppBaseURL string
 	// Inbox is the address replies go to, and the only address the worker
@@ -217,11 +222,14 @@ func Load() (Config, error) {
 			Timeout: envDur("ARMATURE_ASSISTANT_TIMEOUT", 25*time.Second),
 		},
 		Mail: Mail{
-			SMTPAddr:    env("ARMATURE_SMTP_ADDR", ""),
-			From:        env("ARMATURE_MAIL_FROM", "Armature <no-reply@armature.test>"),
-			AppBaseURL:  strings.TrimSuffix(env("ARMATURE_APP_URL", DevAppURL), "/"),
-			Inbox:       env("ARMATURE_MAIL_INBOX", ""),
-			InsecureTLS: envBool("ARMATURE_MAIL_INSECURE_TLS", false),
+			SMTPAddr:     env("ARMATURE_SMTP_ADDR", ""),
+			SMTPUser:     env("ARMATURE_SMTP_USER", ""),
+			SMTPPassword: env("ARMATURE_SMTP_PASSWORD", ""),
+			SMTPTLS:      env("ARMATURE_SMTP_TLS", "starttls"),
+			From:         env("ARMATURE_MAIL_FROM", "Armature <no-reply@armature.test>"),
+			AppBaseURL:   strings.TrimSuffix(env("ARMATURE_APP_URL", DevAppURL), "/"),
+			Inbox:        env("ARMATURE_MAIL_INBOX", ""),
+			InsecureTLS:  envBool("ARMATURE_MAIL_INSECURE_TLS", false),
 			POP3: POP3{
 				Addr:     env("ARMATURE_POP3_ADDR", ""),
 				User:     env("ARMATURE_POP3_USER", ""),
@@ -314,6 +322,19 @@ func Load() (Config, error) {
 	case "open", "first", "closed":
 	default:
 		problems = append(problems, fmt.Sprintf("ARMATURE_SIGNUP %q must be open, first or closed", c.Auth.Signup))
+	}
+	switch c.Mail.SMTPTLS {
+	case "starttls", "implicit", "none":
+	default:
+		problems = append(problems, fmt.Sprintf("ARMATURE_SMTP_TLS %q must be starttls, implicit or none", c.Mail.SMTPTLS))
+	}
+	switch {
+	case c.Mail.SMTPUser != "" && c.Mail.SMTPPassword == "":
+		problems = append(problems, "ARMATURE_SMTP_PASSWORD is required when ARMATURE_SMTP_USER is set")
+	case c.Mail.SMTPUser == "" && c.Mail.SMTPPassword != "":
+		problems = append(problems, "ARMATURE_SMTP_USER is required when ARMATURE_SMTP_PASSWORD is set; set it to the login the mail server expects")
+	case c.Mail.SMTPUser != "" && c.Mail.SMTPTLS == "none":
+		problems = append(problems, "A login is sent only over TLS; set ARMATURE_SMTP_TLS to starttls or implicit.")
 	}
 	if c.Auth.SecretKey != "" {
 		if key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(c.Auth.SecretKey)); err != nil || len(key) != SecretKeyBytes {

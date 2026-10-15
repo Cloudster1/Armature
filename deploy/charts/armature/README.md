@@ -107,6 +107,7 @@ With `secrets.create: true` the chart renders a Secret from the values. With
 | Key | Contents |
 |---|---|
 | `s3-access-key`, `s3-secret-key` | only if `s3.enabled` |
+| `smtp-password` | only if `mail.smtpUser` is set |
 | `pop3-password` | only if `mail.pop3.addr` is set |
 | `assistant-key` | only if `assistant.url` is set |
 
