@@ -9150,9 +9150,42 @@
     "/members": {
       "get": {
         "operationId": "listMembers",
-        "summary": "Everyone with an active account here, and their role.",
+        "summary": "Everyone with an active account here and their role, a page at a time, with how many there are in all.",
         "tags": [
           "users"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text the name or the address contains; names it starts come first.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "staff",
+            "in": "query",
+            "description": "Leave the service desk's customers out.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -9160,18 +9193,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "members": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/MemberView"
-                      }
-                    }
-                  },
-                  "required": [
-                    "members"
-                  ]
+                  "$ref": "#/components/schemas/MemberPage"
                 }
               }
             }
@@ -16824,9 +16846,34 @@
     "/users": {
       "get": {
         "operationId": "listUsers",
-        "summary": "The accounts, switched off ones included, and what may be done to each.",
+        "summary": "The accounts, switched off ones included, and what may be done to each, a page at a time, with how many there are in all.",
         "tags": [
           "users"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text the name or the address contains; names it starts come first.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -16834,18 +16881,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "users": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ManagedUser"
-                      }
-                    }
-                  },
-                  "required": [
-                    "users"
-                  ]
+                  "$ref": "#/components/schemas/UserPage"
                 }
               }
             }
@@ -22568,7 +22604,7 @@
           "members": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Member"
+              "$ref": "#/components/schemas/PermMember"
             }
           },
           "name": {
@@ -23721,25 +23757,6 @@
       "Member": {
         "type": "object",
         "properties": {
-          "email": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "userId",
-          "name"
-        ]
-      },
-      "MemberView": {
-        "type": "object",
-        "properties": {
           "avatarUrl": {
             "type": "string"
           },
@@ -23762,6 +23779,32 @@
           "name",
           "email",
           "role"
+        ]
+      },
+      "MemberPage": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "members",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "Meta": {
@@ -24468,6 +24511,25 @@
         },
         "required": [
           "email"
+        ]
+      },
+      "PermMember": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "name"
         ]
       },
       "PermissionView": {
@@ -29085,6 +29147,32 @@
           "timezone",
           "locale",
           "isActive"
+        ]
+      },
+      "UserPage": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagedUser"
+            }
+          }
+        },
+        "required": [
+          "users",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "UserRef": {

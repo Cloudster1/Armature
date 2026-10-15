@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mentionMatches, mentionQuery } from "./MentionTextarea";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+import { MentionTextarea, mentionQuery } from "./MentionTextarea";
 
 const people = [
   { id: "1", name: "Ada Lovelace", email: "ada@armature.test" },
@@ -19,13 +22,22 @@ describe("mentionQuery", () => {
   });
 });
 
-describe("mentionMatches", () => {
-  it("offers names and addresses that fit, a few at most", () => {
-    expect(mentionMatches(people, "ad").map((p) => p.name)).toEqual(["Ada Lovelace", "Adam Smith"]);
-    expect(mentionMatches(people, "grace@").map((p) => p.name)).toEqual(["Grace Hopper"]);
-    expect(mentionMatches(people, "zz")).toEqual([]);
-  });
-  it("offers everyone right after the at sign", () => {
-    expect(mentionMatches(people, "")).toHaveLength(3);
+describe("MentionTextarea", () => {
+  it("asks for the words after the at sign and offers the answer", async () => {
+    const asked: string[] = [];
+    const findPeople = async (query: string) => {
+      asked.push(query);
+      return people.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+    };
+    function Harness() {
+      const [text, setText] = useState("");
+      return <MentionTextarea aria-label="Comment" value={text} onValueChange={setText} findPeople={findPeople} />;
+    }
+    render(<Harness />);
+    await userEvent.type(screen.getByLabelText("Comment"), "ping @ad");
+    await waitFor(() => expect(screen.getAllByRole("option").map((o) => o.getAttribute("data-mention-option"))).toEqual(["Ada Lovelace", "Adam Smith"]));
+    expect(asked).toContain("ad");
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByLabelText("Comment")).toHaveValue("ping @Ada Lovelace ");
   });
 });

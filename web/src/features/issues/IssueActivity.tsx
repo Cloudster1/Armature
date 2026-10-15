@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type FormEvent } from "react";
 import { ACTIVITY_FOLD } from "@/config";
-import { type Comment, type Doc, useAddComment, useComments, useDeleteComment, useMembers, useUpdateComment } from "@/api/issues";
+import { type Comment, type Doc, useAddComment, useComments, useDeleteComment, useUpdateComment } from "@/api/issues";
+import { useFindMentionable } from "@/api/people";
 import { canAdminister, useAccess } from "@/api/access";
 import { useAddNote, useCannedResponses, useRenderCanned } from "@/api/desk";
 import { useProject } from "@/api/projects";
@@ -8,7 +9,6 @@ import { Icon } from "@/components/icons";
 import { Button, Checkbox, ErrorBanner, IconButton, Menu, Tag } from "@/components/ui";
 import { DocView } from "@/features/editor/DocView";
 import { Editor, type EditorHandle } from "@/features/editor/Editor";
-import type { Mentionable } from "@/features/editor/schema";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Avatar, RelativeTime } from "./badges";
 import { forgetDraft, keepDraft, readDraft } from "./drafts";
@@ -55,12 +55,6 @@ function projectOf(issueKey: string): string {
   return issueKey.slice(0, issueKey.lastIndexOf("-"));
 }
 
-/** Who a comment can name: the organization's people, not its customers. */
-function useMentionable(): Mentionable[] {
-  const { data: members } = useMembers();
-  // Customers are not named in comments: they are told by the desk, on their terms.
-  return (members?.members ?? []).filter((m) => m.role !== "customer").map((m) => ({ id: m.id, name: m.name, email: m.email }));
-}
 
 // Only the author rewrites a comment; whoever administers the project may also
 // take one down, which the server allows for the same reason.
@@ -105,7 +99,7 @@ function CommentItem({ comment, issueKey, mine, administers }: { comment: Commen
 /** The comment's own words in the editor, saved in place over them. */
 function CommentEditor({ comment, issueKey, close }: { comment: Comment; issueKey: string; close: () => void }) {
   const update = useUpdateComment();
-  const people = useMentionable();
+  const findPeople = useFindMentionable();
   const [draft, setDraft] = useState<Doc | null>(comment.body);
 
   // A refusal stays open with the draft, shown by update.error.
@@ -116,7 +110,7 @@ function CommentEditor({ comment, issueKey, close }: { comment: Comment; issueKe
 
   return (
     <div className="mt-1 space-y-2">
-      <Editor id={`comment-${comment.id}`} value={comment.body} onChange={setDraft} people={people} autoFocus aria-label="Edit comment" onSubmit={save} />
+      <Editor id={`comment-${comment.id}`} value={comment.body} onChange={setDraft} findPeople={findPeople} autoFocus aria-label="Edit comment" onSubmit={save} />
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
       <div className="flex gap-2">
         <Button size="sm" loading={update.isPending} disabled={!draft} onClick={save} data-action="save-comment">
@@ -139,7 +133,8 @@ function CommentForm({ issueKey }: { issueKey: string }) {
   const { data: cannedData } = useCannedResponses(isDesk ? projectKey : "");
   const render = useRenderCanned();
   const canned = cannedData?.responses ?? [];
-  const people = useMentionable();
+  // Customers are not named in comments: they are told by the desk, on their terms.
+  const findPeople = useFindMentionable();
   // A comment half typed on this issue earlier is still here to finish.
   const [opened] = useState(() => readDraft("comment", issueKey)?.doc ?? null);
   const [body, setBody] = useState<Doc | null>(opened);
@@ -184,7 +179,7 @@ function CommentForm({ issueKey }: { issueKey: string }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-2">
-      <Editor id="new-comment" value={opened} onChange={change} people={people} rows={3} placeholder="Add a comment; @ names somebody" aria-label="Add a comment" onSubmit={post} handle={(h) => (editor.current = h)} />
+      <Editor id="new-comment" value={opened} onChange={change} findPeople={findPeople} rows={3} placeholder="Add a comment; @ names somebody" aria-label="Add a comment" onSubmit={post} handle={(h) => (editor.current = h)} />
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm" loading={add.isPending || note.isPending} disabled={!body}>
           {internal ? "Add note" : "Comment"}

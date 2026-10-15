@@ -2243,7 +2243,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Everyone with an active account here, and their role. */
+        /** Everyone with an active account here and their role, a page at a time, with how many there are in all. */
         get: operations["listMembers"];
         put?: never;
         post?: never;
@@ -3953,7 +3953,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The accounts, switched off ones included, and what may be done to each. */
+        /** The accounts, switched off ones included, and what may be done to each, a page at a time, with how many there are in all. */
         get: operations["listUsers"];
         put?: never;
         /** Make an account that signs in here with a password. */
@@ -5542,7 +5542,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             memberCount: number;
-            members?: components["schemas"]["Member"][];
+            members?: components["schemas"]["PermMember"][];
             name: string;
             roleCount: number;
             source: string;
@@ -5869,18 +5869,18 @@ export interface components {
             schema?: components["schemas"]["Schema"];
         };
         Member: {
-            email?: string;
-            name: string;
-            /** Format: uuid */
-            userId: string;
-        };
-        MemberView: {
             avatarUrl?: string;
             email: string;
             /** Format: uuid */
             id: string;
             name: string;
             role: string;
+        };
+        MemberPage: {
+            limit: number;
+            members: components["schemas"]["Member"][];
+            offset: number;
+            total: number;
         };
         Meta: {
             apiVersion: string;
@@ -6083,6 +6083,12 @@ export interface components {
         };
         PasswordResetRequest: {
             email: string;
+        };
+        PermMember: {
+            email?: string;
+            name: string;
+            /** Format: uuid */
+            userId: string;
         };
         PermissionView: {
             permission: string;
@@ -7355,6 +7361,12 @@ export interface components {
             locale: string;
             name: string;
             timezone: string;
+        };
+        UserPage: {
+            limit: number;
+            offset: number;
+            total: number;
+            users: components["schemas"]["ManagedUser"][];
         };
         UserRef: {
             avatarUrl?: string;
@@ -13663,7 +13675,15 @@ export interface operations {
     };
     listMembers: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Text the name or the address contains; names it starts come first. */
+                q?: string;
+                /** @description Leave the service desk's customers out. */
+                staff?: boolean;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -13676,9 +13696,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        members: components["schemas"]["MemberView"][];
-                    };
+                    "application/json": components["schemas"]["MemberPage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -18540,7 +18558,13 @@ export interface operations {
     };
     listUsers: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Text the name or the address contains; names it starts come first. */
+                q?: string;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -18553,9 +18577,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        users: components["schemas"]["ManagedUser"][];
-                    };
+                    "application/json": components["schemas"]["UserPage"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

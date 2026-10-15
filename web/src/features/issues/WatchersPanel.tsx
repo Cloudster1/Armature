@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import { useMembers } from "@/api/issues";
 import { useAddWatcher, useRemoveWatcher, useWatchers } from "@/api/watchers";
-import { Button, ErrorBanner, Input, SelectInput } from "@/components/ui";
+import { Button, ErrorBanner, Input } from "@/components/ui";
+import { PersonPicker } from "@/features/people/PersonPicker";
 import { Avatar } from "./badges";
 
 /**
@@ -10,7 +10,6 @@ import { Avatar } from "./badges";
  */
 export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; editable: boolean; me?: string }) {
   const { data, isLoading } = useWatchers(issueKey);
-  const { data: memberData } = useMembers();
   const add = useAddWatcher();
   const remove = useRemoveWatcher();
   const [adding, setAdding] = useState(false);
@@ -20,7 +19,6 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
   if (isLoading || !data) return null;
   const watchers = data.watchers;
   const watching = Boolean(me && watchers.some((w) => w.userId === me));
-  const members = (memberData?.members ?? []).filter((m) => !watchers.some((w) => w.userId === m.id));
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -57,14 +55,14 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
 
       {adding && (
         <form onSubmit={submit} className="mb-3 flex flex-wrap items-center gap-2" noValidate>
-          <SelectInput aria-label="A member to add" value={memberId} onChange={(event) => setMemberId(event.target.value)} className="max-w-52">
-            <option value="">Somebody here</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </SelectInput>
+          <PersonPicker
+            aria-label="A member to add"
+            none="Somebody here"
+            value={memberId}
+            onChange={setMemberId}
+            exclude={watchers.map((w) => w.userId)}
+            className="max-w-52"
+          />
           <span className="text-sm text-ink-muted">or</span>
           <Input
             aria-label="An address to add"

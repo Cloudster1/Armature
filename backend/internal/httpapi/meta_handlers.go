@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/workflow"
 )
@@ -130,40 +131,25 @@ func (s *Server) handleWorkflowRuleTypes(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// memberView is a person as the assignee picker sees them.
-type memberView struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Role      string    `json:"role"`
-	AvatarURL string    `json:"avatarUrl,omitempty"`
+// maxPeopleOffset bounds how far into the people a page may start, as for issues.
+const maxPeopleOffset = 1 << 20
+
+// peopleFilter reads the search and the page a list of people is asked for.
+func peopleFilter(r *http.Request) auth.PeopleFilter {
+	return auth.PeopleFilter{
+		Text:   r.URL.Query().Get("q"),
+		Staff:  r.URL.Query().Get("staff") == "true",
+		Limit:  queryInt(r, "limit", auth.DefaultPeoplePage, 1, auth.MaxPeoplePage),
+		Offset: queryInt(r, "offset", 0, 0, maxPeopleOffset),
+	}
 }
 
-// handleListMembers backs the assignee picker.
+// handleListMembers backs every person picker, a page of matches at a time.
 func (s *Server) handleListMembers(w http.ResponseWriter, r *http.Request) {
-	members := []memberView{}
-	err := s.DB.Read(r.Context(), func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `
-			SELECT u.id, u.name, u.email, u.standing, COALESCE(u.avatar_url, '')
-			FROM app_user u
-			WHERE u.is_active AND u.standing IS NOT NULL
-			ORDER BY u.name`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var m memberView
-			if err := rows.Scan(&m.ID, &m.Name, &m.Email, &m.Role, &m.AvatarURL); err != nil {
-				return err
-			}
-			members = append(members, m)
-		}
-		return rows.Err()
-	})
+	page, err := s.Auth.Members(r.Context(), peopleFilter(r))
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"members": members})
+	respondJSON(w, r, http.StatusOK, page)
 }

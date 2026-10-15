@@ -25,7 +25,7 @@ export { Avatar, type AvatarSize } from "./Avatar";
 export { Popover } from "./Popover";
 export { Tooltip } from "./Tooltip";
 export { Spotlight } from "./Spotlight";
-export { MentionTextarea, mentionMatches, mentionQuery, type Mentionable } from "./MentionTextarea";
+export { MentionTextarea, mentionQuery, type FindPeople, type Mentionable } from "./MentionTextarea";
 export { Menu, type MenuItem } from "./Menu";
 export { Dialog, ConfirmDialog, Drawer, DockedPanel, isInteractiveTarget, modalBackdropStyle, modalPanelStyle } from "./Dialog";
 export { isEditing } from "./overlay";

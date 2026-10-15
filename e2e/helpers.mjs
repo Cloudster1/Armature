@@ -368,6 +368,12 @@ export async function signUp(page, who = unique("user"), { visit = true, role = 
   return { ...who, org: administrator.org.name };
 }
 
+/** Makes an account at the standing given without signing anybody in as it. */
+export async function makeAccount(who = unique("user"), role = "member") {
+  await administer("POST", "/users", { email: who.email, name: who.name, role, password: PASSWORD });
+  return who;
+}
+
 /**
  * Signs somebody up through the sign-up form, which the development stack
  * keeps open, so they join as a member; lands in the app.
@@ -610,6 +616,30 @@ export async function pickProject(page, selectSelector, projectKey) {
     projectKey,
   );
   await page.select(selectSelector, projectKey);
+}
+
+/**
+ * Chooses a person in a person picker: types their name, or the words given,
+ * into the picker's search, as one would among thousands, then picks them.
+ */
+export async function pickPerson(page, selectSelector, name, words = name) {
+  await page.waitForSelector(selectSelector, { timeout: WAIT });
+  const search = await page.evaluateHandle((sel) => document.querySelector(sel).closest("[data-person-picker]").querySelector("[data-person-search]"), selectSelector);
+  await search.click({ clickCount: 3 });
+  await page.keyboard.sendCharacter(words);
+  await selectByLabel(page, selectSelector, name);
+}
+
+/** Opens the users page searched for one address, as one finds somebody among thousands. */
+export async function findUser(page, email) {
+  await goto(page, `/settings/users?q=${encodeURIComponent(email)}`);
+  await page.waitForSelector(`[data-user="${email}"]`, { timeout: WAIT });
+}
+
+/** Opens the access page's members searched for what is given, by default the name itself. */
+export async function findMembers(page, words) {
+  await goto(page, `/settings/access?tab=members&q=${encodeURIComponent(words)}`);
+  await page.waitForSelector("[data-members-total]", { timeout: WAIT });
 }
 
 export async function selectByLabel(page, selector, optionText) {
@@ -1276,8 +1306,7 @@ export async function setClosedForDays(page, days) {
 export async function joinTeam(page, projectKey, teamName, personName) {
   await goto(page, `/projects/${projectKey}/teams`);
   const card = `[data-team="${teamName}"]`;
-  await page.waitForSelector(`${card} select`, { timeout: WAIT });
-  await selectByLabel(page, `${card} select`, personName);
+  await pickPerson(page, `${card} select`, personName);
   await page.evaluate((sel) => {
     const scope = document.querySelector(sel);
     [...scope.querySelectorAll("button")].find((b) => b.textContent.trim() === "Add")?.click();
@@ -1344,7 +1373,8 @@ export async function createTheme(page, name, { accent } = {}) {
 
 /** Makes a local account on the users page and waits for its row. */
 export async function createLocalUser(page, { email, name, role = "Member", password = PASSWORD }) {
-  await goto(page, "/settings/users");
+  // Searched for the address first, so the new row is on the page among thousands.
+  await goto(page, `/settings/users?q=${encodeURIComponent(email)}`);
   await fill(page, "Email", email);
   await fill(page, "Name", name);
   await selectByLabel(page, "#field-role", role);
@@ -1385,7 +1415,7 @@ export async function grantRole(page, { who, role, projectKey }) {
   await goto(page, "/settings/access");
   await page.waitForSelector('select[aria-label="Who to grant to"]', { timeout: WAIT });
 
-  await selectByLabel(page, 'select[aria-label="Who to grant to"]', who);
+  await pickPerson(page, 'select[aria-label="Who to grant to"]', who);
   await selectByLabel(page, 'select[aria-label="Role"]', role);
   if (projectKey) {
     await pickProject(page, 'select[aria-label="Where the role applies"]', projectKey);
@@ -1744,9 +1774,8 @@ export async function joinThroughLink(page, token, who) {
 
 /** Lets somebody go by switching their account off on the users page, and waits for it to say so. */
 export async function switchOff(page, email) {
-  await goto(page, "/settings/users");
+  await findUser(page, email);
   const menu = `[data-user="${email}"] [data-action="user-menu"]`;
-  await page.waitForSelector(menu, { timeout: WAIT });
   await press(page, menu);
   await press(page, '[data-action="deactivate-user"]');
   await confirm(page);
@@ -2258,7 +2287,7 @@ export async function createComponent(page, projectKey, name, { assignee } = {})
   await goto(page, `/projects/${projectKey}/components`);
   await page.waitForSelector("#field-component-name", { timeout: WAIT });
   await page.type("#field-component-name", name);
-  if (assignee) await selectByLabel(page, "#field-component-assignee", assignee);
+  if (assignee) await pickPerson(page, "#field-component-assignee", assignee);
   await clickButton(page, "Add component");
   await page.waitForSelector(`[data-component="${name}"]`, { timeout: WAIT });
 }

@@ -36,12 +36,16 @@ type changePasswordRequest struct {
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
-	users, err := s.Auth.ManagedUsers(r.Context(), p.Role)
+	page, err := s.Auth.ManagedUsers(r.Context(), p.Role, auth.PeopleFilter{
+		Text:   r.URL.Query().Get("q"),
+		Limit:  queryInt(r, "limit", auth.DefaultPeoplePage, 1, auth.MaxPeoplePage),
+		Offset: queryInt(r, "offset", 0, 0, maxPeopleOffset),
+	})
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"users": users})
+	respondJSON(w, r, http.StatusOK, page)
 }
 
 func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {

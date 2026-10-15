@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { useMembers } from "@/api/issues";
 import {
   useAddToGroup,
   useCreateGroup,
@@ -9,8 +8,9 @@ import {
   useRemoveFromGroup,
   type Group,
 } from "@/api/access";
-import { Button, Card, EmptyState, ErrorBanner, Field, SelectInput } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { PersonPicker } from "@/features/people/PersonPicker";
 
 /**
  * Groups, and who is in them.
@@ -48,7 +48,6 @@ export function GroupList() {
 
 function GroupCard({ group }: { group: Group }) {
   const { data } = useGroup(group.id);
-  const { data: memberData } = useMembers();
   const add = useAddToGroup();
   const remove = useRemoveFromGroup();
   const deleteGroup = useDeleteGroup();
@@ -56,10 +55,6 @@ function GroupCard({ group }: { group: Group }) {
   const [picked, setPicked] = useState("");
 
   const members = data?.group?.members ?? [];
-  const inGroup = new Set(members.map((member) => member.userId));
-  const available = (memberData?.members ?? []).filter(
-    (person) => !inGroup.has(person.id) && person.role !== "customer",
-  );
   const fromProvider = group.source === "oidc";
   const error = (add.error ?? remove.error ?? deleteGroup.error) as Error | undefined;
 
@@ -119,17 +114,15 @@ function GroupCard({ group }: { group: Group }) {
 
       {!fromProvider && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <label htmlFor={`group-add-${group.id}`} className="sr-only">
-            Add somebody to {group.name}
-          </label>
-          <SelectInput id={`group-add-${group.id}`} value={picked} onChange={(event) => setPicked(event.target.value)}>
-            <option value="">Add somebody...</option>
-            {available.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.name}
-              </option>
-            ))}
-          </SelectInput>
+          <PersonPicker
+            id={`group-add-${group.id}`}
+            aria-label={`Add somebody to ${group.name}`}
+            none="Add somebody..."
+            staff
+            exclude={members.map((member) => member.userId)}
+            value={picked}
+            onChange={setPicked}
+          />
           <Button
             size="sm"
             disabled={!picked}

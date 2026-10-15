@@ -8,7 +8,9 @@ import {
   createLocalUser,
   expect,
   fill,
+  findUser,
   goto,
+  makeAccount,
   PASSWORD,
   press,
   signIn,
@@ -36,8 +38,7 @@ scenario("an administrator makes a local user who can sign in, then resets and s
   // Back as the owner: a new password ends their session, and switching them off refuses the door.
   await signIn(page, owner.email);
   await waitForApp(page);
-  await goto(page, "/settings/users");
-  await page.waitForSelector(`[data-user="${who.email}"] [data-action="user-menu"]`, { timeout: WAIT });
+  await findUser(page, who.email);
   await press(page, `[data-user="${who.email}"] [data-action="user-menu"]`);
   await press(page, '[data-action="set-password"]');
   const reset = "a replacement adequate password";
@@ -61,8 +62,7 @@ scenario("an administrator makes a local user who can sign in, then resets and s
 
 scenario("an administrator's own row is not theirs to change here", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
-  await goto(page, "/settings/users");
-  await page.waitForSelector(`[data-user="${owner.email}"]`, { timeout: WAIT });
+  await findUser(page, owner.email);
   await press(page, `[data-user="${owner.email}"] [data-action="user-menu"]`);
   await page.waitForSelector('[data-action="rename-user"]', { timeout: WAIT });
   const disabled = await page.$eval('[data-action="rename-user"]', (el) => el.disabled || el.getAttribute("aria-disabled") === "true");
@@ -84,4 +84,27 @@ scenario("somebody the provider knows is told who can let them in", async ({ pag
   await page.waitForSelector("[data-new-user]", { timeout: WAIT });
   const waiting = await page.$("[data-join-requests]");
   expect.truthy(waiting === null, "an empty waiting list is drawn");
+});
+
+// The installation the suite shares holds thousands of accounts: the page shows
+// one page of them, and somebody is found by typing part of their name.
+scenario("the users page finds somebody by part of their name, a page at a time", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const who = await makeAccount(unique("findable"));
+
+  await goto(page, "/settings/users");
+  await page.waitForSelector("[data-user]", { timeout: WAIT });
+  expect.truthy(await page.$('nav[aria-label="User pages"]'), "a list longer than a page comes with a pager");
+  const shown = await page.$$eval("[data-user]", (rows) => rows.length);
+  expect.truthy(shown <= 50, `one page of accounts is drawn, not ${shown}`);
+
+  const tail = who.name.split(" ").at(-1);
+  await page.click("[data-people-search]");
+  await page.keyboard.sendCharacter(tail);
+  await page.waitForFunction(
+    (email) => document.querySelectorAll("[data-user]").length === 1 && document.querySelector(`[data-user="${email}"]`),
+    { timeout: WAIT },
+    who.email,
+  );
+  expect.contains(page.url(), `q=${tail}`, "the search is in the address");
 });
