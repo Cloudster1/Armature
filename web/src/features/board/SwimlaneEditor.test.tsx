@@ -47,6 +47,8 @@ const teamBoard: Board = {
   name: "Team flow",
   type: "kanban",
   groupBy: "none",
+  doneForDays: 14,
+  leftOut: 0,
   swimlanes: [lane("l1", "Queued", 0, statuses[0]!), lane("l2", "Doing", 1, statuses[1]!)],
   unmapped: [],
   createdAt: "",
@@ -72,6 +74,30 @@ describe("SwimlaneEditor", () => {
     render(<SwimlaneEditor boardId="b2" />);
     await userEvent.click(screen.getByRole("button", { name: "Assignee" }));
     expect(updateBoard).toHaveBeenCalledWith({ id: "b2", groupBy: "assignee" });
+  });
+
+  it("keeps a kanban board's finished work as long as it is told", async () => {
+    render(<SwimlaneEditor boardId="b2" />);
+    const card = within(document.querySelector<HTMLElement>("[data-done-for-days-editor]")!);
+    const days = card.getByLabelText("Finished work stays for");
+    expect(days).toHaveValue(14);
+    expect(days).toHaveAccessibleDescription("0 keeps it on the board.");
+    await userEvent.clear(days);
+    await userEvent.type(days, "30");
+    await userEvent.click(card.getByRole("button", { name: "Save" }));
+    expect(updateBoard).toHaveBeenCalledWith({ id: "b2", doneForDays: 30 });
+
+    await userEvent.clear(days);
+    await userEvent.type(days, "0");
+    await userEvent.click(card.getByRole("button", { name: "Save" }));
+    expect(updateBoard).toHaveBeenLastCalledWith({ id: "b2", doneForDays: 0 });
+  });
+
+  // A scrum board draws its sprint, finished or not, so there is nothing to set.
+  it("offers no such setting on a scrum board", () => {
+    useBoardById.mockReturnValue({ data: { board: { ...teamBoard, type: "scrum" } }, isLoading: false });
+    render(<SwimlaneEditor boardId="b2" />);
+    expect(screen.queryByLabelText("Finished work stays for")).toBeNull();
   });
 
   it("adds a lane to that board", async () => {
