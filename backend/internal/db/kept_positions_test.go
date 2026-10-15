@@ -24,6 +24,8 @@ var discardsAllowed = map[string]string{
 	"desk/inbound_retry.go (*Inbound).claim":        "mail fetched from a mailbox; no request waits on it",
 	"desk/inbound_retry.go (*Inbound).fail":         "mail fetched from a mailbox; no request waits on it",
 	"desk/inbound.go (*Inbound).finish":             "mail fetched from a mailbox; no request waits on it",
+	"desk/inbound_raise.go (*Inbound).raise":        "mail fetched from a mailbox; no request waits on it",
+	"desk/inbound_raise.go (*Inbound).attach":       "mail fetched from a mailbox; no request waits on it",
 	"desk/mail.go (*Notifier).Handle":               "an event consumer; no request waits on it",
 	"desk/watch.go (*Watch).Once":                   "the breach watch; no request waits on it",
 	"events/consumer.go (*Consumer).deadLetter":     "an event consumer; no request waits on it",

@@ -196,6 +196,13 @@ func (n *Inbound) read(ctx context.Context, raw []byte) (Outcome, bool, error) {
 func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, deskKey string, out **placement) (Outcome, error) {
 	key := mailin.IssueKeyIn(m.Subject, m.InReplyTo, m.References)
 	if key == "" {
+		at, err := n.mailDesk(ctx, deskKey)
+		if err != nil {
+			return "", err
+		}
+		if at != nil {
+			return n.raise(ctx, messageID, m, at, out)
+		}
 		return n.finish(ctx, messageID, nil, Unmatched, "no request named", m, unmatchedMessage(n.appURL))
 	}
 	where, err := n.place(ctx, key, m.From)
@@ -381,6 +388,15 @@ func notTrustedMessage(key string, domains []string, from, appURL string) Messag
 		Subject: fmt.Sprintf("[%s] your reply could not be added", key),
 		Body: fmt.Sprintf("%s belongs to a desk that takes requests from addresses at %s only, and this address is at %s.\n\nWrite from an address at one of them, or use the portal at %s\n",
 			key, strings.Join(domains, ", "), project.DomainOf(from), appURL),
+	}
+}
+
+// notTrustedNewMessage tells a sender the desk raises requests for other domains.
+func notTrustedNewMessage(domains []string, from, appURL string) Message {
+	return Message{
+		Subject: "Your mail could not be raised as a request",
+		Body: fmt.Sprintf("This desk takes requests from addresses at %s only, and this address is at %s.\n\nWrite from an address at one of them, or use the portal at %s\n",
+			strings.Join(domains, ", "), project.DomainOf(from), appURL),
 	}
 }
 
