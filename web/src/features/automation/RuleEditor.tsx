@@ -77,7 +77,6 @@ export function RuleEditor({
       }
     >
       <form id="rule-form" onSubmit={onSubmit} className="space-y-5" noValidate>
-        {error && <ErrorBanner>{error}</ErrorBanner>}
         <Field label="Rule name" required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Label moved work" />
 
         <fieldset className="space-y-3">
@@ -225,6 +224,8 @@ export function RuleEditor({
           <Field label="Runs an hour, at most" type="number" min={1} value={String(draft.hourlyCap ?? 100)} onChange={(e) => setDraft({ ...draft, hourlyCap: Number(e.target.value) })} className="w-24" />
           <Checkbox label="Run on the automation's own changes too" checked={draft.allowOwnEvents} onChange={(e) => setDraft({ ...draft, allowOwnEvents: e.target.checked })} className="text-ink-muted" />
         </div>
+        {/* Last, just above the button that caused it, and scrolled to. */}
+        {error && <ErrorBanner reveal>{error}</ErrorBanner>}
       </form>
     </Dialog>
   );

@@ -1,6 +1,6 @@
-import { useCallback, useId, useRef, type ReactNode } from "react";
+import { useCallback, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { DRAWER_WIDTH } from "@/config";
+import { DIALOG_BOTTOM_PX, DIALOG_TOP_VH, DRAWER_WIDTH } from "@/config";
 import { Button, IconButton } from "./Button";
 import { cx } from "./cx";
 import { useEscape, useFocusReturn, useScrollLock } from "./overlay";
@@ -20,6 +20,10 @@ type DialogProps = {
 
 const dialogWidth = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl" };
 
+/** Where a modal sits in the window; with modalPanelStyle its panel never runs past the bottom. */
+export const modalBackdropStyle: CSSProperties = { paddingTop: `${DIALOG_TOP_VH}vh`, paddingBottom: DIALOG_BOTTOM_PX };
+export const modalPanelStyle: CSSProperties = { maxHeight: `calc(100dvh - ${DIALOG_TOP_VH}vh - ${DIALOG_BOTTOM_PX}px)` };
+
 // Modal: the page behind is inert, focus is trapped, Escape closes, and the
 // dialog is portaled last in the DOM so it is on top and easy to find.
 export function Dialog({ open, onClose, title, description, children, footer, size = "md", attrs }: DialogProps) {
@@ -32,7 +36,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
   useFocusReturn(open, ref, true);
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 p-4 pt-[12vh]" onPointerDown={(e) => e.target === e.currentTarget && close()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 px-4" style={modalBackdropStyle} onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div
         ref={ref}
         role="dialog"
@@ -40,9 +44,10 @@ export function Dialog({ open, onClose, title, description, children, footer, si
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         {...attrs}
-        className={cx("w-full rounded-overlay border border-border bg-surface-overlay shadow-2", dialogWidth[size])}
+        style={modalPanelStyle}
+        className={cx("flex w-full flex-col rounded-overlay border border-border bg-surface-overlay shadow-2", dialogWidth[size])}
       >
-        <div className="flex items-start gap-3 px-5 pt-4">
+        <div className="flex shrink-0 items-start gap-3 px-5 pt-4">
           <div className="min-w-0 flex-1">
             <h2 id={titleId} className="text-base font-semibold text-ink">
               {title}
@@ -55,8 +60,17 @@ export function Dialog({ open, onClose, title, description, children, footer, si
           </div>
           <IconButton icon={<Icon.X />} label="Close" size="sm" onClick={close} data-focus-last="" />
         </div>
-        {children && <div className="px-5 py-4">{children}</div>}
-        {footer && <div className="flex justify-end gap-2 border-t border-border px-5 py-3">{footer}</div>}
+        {/* The header and footer stay put and the body scrolls, so the buttons are always in reach. */}
+        {children && (
+          <div className="min-h-0 overflow-y-auto px-5 py-4" data-dialog-body>
+            {children}
+          </div>
+        )}
+        {footer && (
+          <div className="flex shrink-0 justify-end gap-2 border-t border-border px-5 py-3" data-dialog-footer>
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

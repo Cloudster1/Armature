@@ -3,7 +3,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { Avatar, Button, ConfirmDialog, Dialog, DockedPanel, Drawer, Menu, Popover, Skeleton, ToastProvider, Tooltip, useToast } from "./index";
-import { SKELETON_DELAY_MS, TOOLTIP_DELAY_MS } from "@/config";
+import { MENU_GAP_PX, POPOVER_EDGE_PX, POPOVER_MAX_HEIGHT_PX, SKELETON_DELAY_MS, TOOLTIP_DELAY_MS } from "@/config";
+import { anchoredBox } from "./overlay";
 
 describe("Dialog", () => {
   it("is modal, labelled by its title, closes on Escape and returns focus", async () => {
@@ -37,6 +38,74 @@ describe("Dialog", () => {
     screen.getByRole("button", { name: "Two" }).focus();
     await userEvent.tab();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
+  });
+});
+
+// jsdom lays nothing out, so what keeps the buttons in reach is read off the
+// structure: the body is the one box that scrolls, and the footer is outside it.
+describe("Dialog on a short window", () => {
+  it("scrolls its body under a header and footer that stay put", () => {
+    render(
+      <Dialog open onClose={() => {}} title="Many fields" footer={<Button>Create issue</Button>}>
+        <input aria-label="Last field" />
+      </Dialog>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Many fields" });
+    const body = dialog.querySelector<HTMLElement>("[data-dialog-body]")!;
+    expect(dialog).toHaveClass("flex", "flex-col");
+    expect(dialog.style.maxHeight).toMatch(/^calc\(100dvh/);
+    expect(body).toHaveClass("min-h-0", "overflow-y-auto");
+    expect(body).toContainElement(screen.getByLabelText("Last field"));
+    expect(body).not.toContainElement(screen.getByRole("button", { name: "Create issue" }));
+    expect(dialog.querySelector("[data-dialog-footer]")).toHaveClass("shrink-0");
+  });
+});
+
+describe("anchoredBox", () => {
+  const view = { width: 1280, height: 600 };
+  const anchor = (top: number, bottom = top + 30) => ({ top, bottom, left: 100, right: 300, height: bottom - top });
+
+  it("goes below with the room that is left there when it fits", () => {
+    const box = anchoredBox(anchor(100), { width: 200, height: 300 }, view);
+    expect(box.top).toBe(130 + MENU_GAP_PX);
+    expect(box.left).toBe(100);
+    expect(box.maxHeight).toBe(Math.min(POPOVER_MAX_HEIGHT_PX, 600 - POPOVER_EDGE_PX - 130 - MENU_GAP_PX));
+  });
+
+  it("goes above when only that side has room", () => {
+    const box = anchoredBox(anchor(500), { width: 200, height: 300 }, view);
+    expect(box.top).toBe(500 - MENU_GAP_PX - 300);
+    expect(box.maxHeight).toBe(500 - MENU_GAP_PX - POPOVER_EDGE_PX);
+  });
+
+  // The project switcher on a laptop: twenty projects below a trigger high on the page.
+  it("takes the roomier side and scrolls when neither side has room", () => {
+    const below = anchoredBox(anchor(200), { width: 200, height: 900 }, view);
+    expect(below.top).toBe(230 + MENU_GAP_PX);
+    expect(below.maxHeight).toBe(600 - POPOVER_EDGE_PX - 230 - MENU_GAP_PX);
+    const above = anchoredBox(anchor(400), { width: 200, height: 900 }, view);
+    expect(above.maxHeight).toBe(400 - MENU_GAP_PX - POPOVER_EDGE_PX);
+    expect(above.top).toBe(POPOVER_EDGE_PX);
+  });
+
+  it("never grows past the cap on a tall window", () => {
+    const box = anchoredBox(anchor(10), { width: 200, height: 5000 }, { width: 1280, height: 4000 });
+    expect(box.maxHeight).toBe(POPOVER_MAX_HEIGHT_PX);
+  });
+
+  it("opens upward when asked and there is room", () => {
+    const box = anchoredBox(anchor(400), { width: 200, height: 100 }, view, { side: "top" });
+    expect(box.top).toBe(400 - MENU_GAP_PX - 100);
+  });
+
+  it("keeps a panel beside its anchor inside the window", () => {
+    const box = anchoredBox(anchor(580, 590), { width: 200, height: 300 }, view, { side: "right" });
+    expect(box.left).toBe(300 + MENU_GAP_PX);
+    expect(box.top).toBe(600 - POPOVER_EDGE_PX - 300);
+  });
+
+  it("lines up the right edges for an end-aligned panel", () => {
+    expect(anchoredBox(anchor(100), { width: 200, height: 100 }, view, { align: "end" }).right).toBe(1280 - 300);
   });
 });
 

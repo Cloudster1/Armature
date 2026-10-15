@@ -106,8 +106,6 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
       }
     >
       <form id="create-issue" onSubmit={onSubmit} className="space-y-3" noValidate>
-        {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
-        {made && refused.length > 0 && <Refused issueKey={made.key} left={refused} />}
         {!projectKey && (
           <ProjectPicker label="Project" value={project} onChange={setProject} />
         )}
@@ -124,6 +122,9 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
         ) : (
           <Skeleton lines={DIALOG_SKELETON_LINES} />
         )}
+        {/* Last, just above the buttons that caused them, and scrolled to. */}
+        {create.error && <ErrorBanner reveal>{(create.error as Error).message}</ErrorBanner>}
+        {made && refused.length > 0 && <Refused issueKey={made.key} left={refused} />}
       </form>
     </Dialog>
   );
@@ -133,7 +134,7 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
 // on the screen: nothing is quietly lost, which is what the CSV import does.
 function Refused({ issueKey, left }: { issueKey: string; left: Leftover[] }) {
   return (
-    <ErrorBanner>
+    <ErrorBanner reveal>
       <span data-create-refused={issueKey}>
         {issueKey} was created, but this did not stick: {left.map((each) => `${each.what} (${each.why})`).join("; ")}. Close this and set it on the issue.
       </span>{" "}

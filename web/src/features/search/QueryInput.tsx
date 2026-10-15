@@ -353,7 +353,7 @@ export function QueryInput({
 							onClose={() => setHelp(false)}
 							label="What a query can say"
 							align="end"
-							className="max-h-[70vh] w-[64rem] max-w-[calc(100vw-20rem)] overflow-y-auto"
+							className="w-[64rem] max-w-[calc(100vw-20rem)]"
 							trigger={
 								<IconButton
 									icon={<Icon.Info />}
