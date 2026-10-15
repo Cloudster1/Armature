@@ -520,13 +520,22 @@ func (s *Service) UpdatePolicy(ctx context.Context, id uuid.UUID, in PolicyInput
 
 // -------------------------------------------------------------- timers ------
 
+// selectTimer reads the holiday calendar's days with the clock, so a day added
+// there counts from the next reading on.
 const selectTimer = `
 SELECT t.id, t.issue_id, t.policy_id, sp.name, sp.metric, t.goal_minutes, t.started_at,
        t.elapsed_seconds, t.running_since, t.completed_at, t.breached_at,
-       sp.use_calendar, bc.timezone, bc.hours, bc.holidays::text[]
+       sp.use_calendar, bc.timezone, bc.hours, bc.holidays::text[], hd.whole, hd.half
 FROM sla_timer t
 JOIN sla_policy sp ON sp.id = t.policy_id
-LEFT JOIN business_calendar bc ON bc.project_id = sp.project_id`
+LEFT JOIN business_calendar bc ON bc.project_id = sp.project_id
+LEFT JOIN LATERAL (` + linkedDays + `) hd ON sp.use_calendar`
+
+// linkedDays are the whole and the half days of a business calendar's holiday calendar.
+const linkedDays = `
+	SELECT array_agg(h.day::text) FILTER (WHERE NOT h.half_day) AS whole,
+	       array_agg(h.day::text) FILTER (WHERE h.half_day) AS half
+	FROM holiday h WHERE h.calendar_id = bc.holiday_calendar_id`
 
 func (s *Service) scanTimers(rows pgx.Rows) ([]Timer, error) {
 	defer rows.Close()
@@ -551,13 +560,14 @@ func scanTimer(row pgx.Row) (*Timer, error) {
 		timezone    *string
 		hours       []byte
 		holidays    []string
+		whole, half []string
 	)
 	if err := row.Scan(&t.ID, &t.IssueID, &t.PolicyID, &t.PolicyName, &t.Metric, &t.GoalMinutes, &t.StartedAt,
-		&t.elapsedSeconds, &t.RunningSince, &t.CompletedAt, &t.BreachedAt, &useCalendar, &timezone, &hours, &holidays); err != nil {
+		&t.elapsedSeconds, &t.RunningSince, &t.CompletedAt, &t.BreachedAt, &useCalendar, &timezone, &hours, &holidays, &whole, &half); err != nil {
 		return nil, err
 	}
 	if useCalendar && timezone != nil {
-		if cal, err := parseCalendar(*timezone, hours, holidays); err == nil {
+		if cal, err := parseCalendar(*timezone, hours, holidays, whole, half); err == nil {
 			t.calendar = cal
 			t.BusinessHours = true
 		}

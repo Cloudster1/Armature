@@ -5206,7 +5206,7 @@
     "/holiday-calendars/{calendarID}": {
       "delete": {
         "operationId": "deleteHolidayCalendar",
-        "summary": "Delete a calendar that is not the default; the people given it fall back to the default.",
+        "summary": "Delete a calendar that is not the default and no desk takes its days off from; the people given it fall back to the default.",
         "tags": [
           "availability"
         ],
@@ -11266,7 +11266,7 @@
       },
       "put": {
         "operationId": "saveCalendar",
-        "summary": "Set when the desk is open.",
+        "summary": "Set when the desk is open, and the holiday calendar whose days close it beside its own.",
         "tags": [
           "desk"
         ],
@@ -19747,6 +19747,19 @@
       "Calendar": {
         "type": "object",
         "properties": {
+          "holidayCalendarId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "holidayCalendarName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "holidays": {
             "type": "array",
             "items": {
@@ -19769,7 +19782,9 @@
         "required": [
           "timezone",
           "hours",
-          "holidays"
+          "holidays",
+          "holidayCalendarId",
+          "holidayCalendarName"
         ]
       },
       "CalendarItem": {
@@ -22172,6 +22187,12 @@
           "default": {
             "type": "boolean"
           },
+          "desks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -22193,6 +22214,7 @@
           "default",
           "dayCount",
           "peopleCount",
+          "desks",
           "createdAt",
           "updatedAt"
         ]
