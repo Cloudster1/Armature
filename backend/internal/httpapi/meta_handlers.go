@@ -71,21 +71,30 @@ func (s *Server) handleListIssueTypes(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"issueTypes": types})
 }
 
+// maxLibraryOffset bounds how far into the workflows or schemes a page may start.
+const maxLibraryOffset = 1 << 20
+
+// libraryFilter reads the search and the page a workflow or scheme listing asks for.
+func libraryFilter(r *http.Request) workflow.ListFilter {
+	return workflow.ListFilter{
+		Text:   r.URL.Query().Get("q"),
+		Limit:  queryInt(r, "limit", workflow.DefaultPage, 1, workflow.MaxPage),
+		Offset: queryInt(r, "offset", 0, 0, maxLibraryOffset),
+	}
+}
+
 func (s *Server) handleListWorkflows(w http.ResponseWriter, r *http.Request) {
-	var summaries []workflow.Summary
+	var page workflow.SummaryPage
 	err := s.DB.Read(r.Context(), func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		summaries, err = s.Workflow.Store.List(ctx, tx)
+		page, err = s.Workflow.Store.List(ctx, tx, libraryFilter(r))
 		return err
 	})
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	if summaries == nil {
-		summaries = []workflow.Summary{}
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"workflows": summaries})
+	respondJSON(w, r, http.StatusOK, page)
 }
 
 // handleGetWorkflow returns one workflow with its whole graph, which is what

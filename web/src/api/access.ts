@@ -1,6 +1,7 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
+import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
 
 /**
  * Roles are the organization's own: the five it starts with and any it adds,
@@ -155,13 +156,37 @@ export function useGroup(id: string) {
   });
 }
 
-export function useAssignments(projectKey?: string) {
+/** One page of the grants and how many matched in all. */
+export interface AssignmentPage {
+  assignments: Assignment[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AssignmentParams {
+  /** Keeps the grants that answer in this project, those over all projects included. */
+  projectKey?: string;
+  /** Text the person, the group, or the project's key or name holds. */
+  q?: string;
+  role?: Role | "";
+  offset?: number;
+}
+
+/** A page of who holds what; a page stays on screen while the next loads. */
+export function useAssignments({ projectKey = "", q = "", role = "", offset = 0 }: AssignmentParams = {}) {
+  const text = q.trim();
   return useQuery({
-    queryKey: [...accessQueryKey, "assignments", projectKey ?? ""],
-    queryFn: () =>
-      request<{ assignments: Assignment[] }>(
-        `/role-assignments${projectKey ? `?project=${projectKey}` : ""}`,
-      ),
+    queryKey: [...accessQueryKey, "assignments", { projectKey, q: text, role, offset }],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: String(ROLE_ASSIGNMENT_PAGE_SIZE) });
+      if (projectKey) params.set("project", projectKey);
+      if (text) params.set("q", text);
+      if (role) params.set("role", role);
+      if (offset) params.set("offset", String(offset));
+      return request<AssignmentPage>(`/role-assignments?${params}`);
+    },
+    placeholderData: keepPreviousData,
   });
 }
 

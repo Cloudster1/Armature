@@ -31,5 +31,7 @@ export { Dialog, ConfirmDialog, Drawer, DockedPanel, isInteractiveTarget, modalB
 export { isEditing } from "./overlay";
 export { ToastProvider, useToast, type ToastKind, type ToastOptions } from "./Toast";
 export { Pager, clampOffset, countOf, isPageOffset, shownOf } from "./Pager";
+export { ListSearch } from "./ListSearch";
+export { SearchPicker, type PickerOption } from "./SearchPicker";
 export { Tabs, TabPanel, type Tab } from "./Tabs";
 export { Wordmark } from "./Wordmark";

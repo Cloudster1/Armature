@@ -8864,7 +8864,7 @@
     "/labels": {
       "get": {
         "operationId": "listLabels",
-        "summary": "The labels, with how often each is used.",
+        "summary": "The labels, with how often each is used, a page at a time with how many there are in all.",
         "tags": [
           "labels"
         ],
@@ -8872,7 +8872,7 @@
           {
             "name": "q",
             "in": "query",
-            "description": "Text the name contains; names starting with it come first. With neither q nor limit, every label.",
+            "description": "Text the name contains; names starting with it come first.",
             "schema": {
               "type": "string"
             }
@@ -8880,7 +8880,14 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "1 to 50; 50 unless said.",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
             "schema": {
               "type": "integer"
             }
@@ -8892,18 +8899,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "labels": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Label"
-                      }
-                    }
-                  },
-                  "required": [
-                    "labels"
-                  ]
+                  "$ref": "#/components/schemas/LabelPage"
                 }
               }
             }
@@ -14259,29 +14255,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "assignments": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/WorkflowAssignment"
-                      }
-                    },
-                    "projectKey": {
-                      "type": "string"
-                    },
-                    "schemeId": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "assignments",
-                    "projectKey",
-                    "schemeId"
-                  ]
+                  "$ref": "#/components/schemas/ProjectWorkflows"
                 }
               }
             }
@@ -14383,29 +14357,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "assignments": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/WorkflowAssignment"
-                      }
-                    },
-                    "projectKey": {
-                      "type": "string"
-                    },
-                    "schemeId": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "assignments",
-                    "projectKey",
-                    "schemeId"
-                  ]
+                  "$ref": "#/components/schemas/ProjectWorkflows"
                 }
               }
             }
@@ -14728,17 +14680,48 @@
     "/role-assignments": {
       "get": {
         "operationId": "listAssignments",
-        "summary": "Who holds which role where.",
+        "summary": "Who holds which role where, a page at a time, with how many there are in all.",
         "tags": [
           "access"
         ],
         "parameters": [
           {
-            "name": "project",
+            "name": "q",
             "in": "query",
-            "description": "Only grants over this project.",
+            "description": "Text the person, the group, or the project's key or name contains.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "description": "Only grants that answer in this project, those over all projects included.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Only grants of this role, by its key.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
             }
           }
         ],
@@ -14748,18 +14731,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "assignments": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Assignment"
-                      }
-                    }
-                  },
-                  "required": [
-                    "assignments"
-                  ]
+                  "$ref": "#/components/schemas/AssignmentPage"
                 }
               }
             }
@@ -18154,9 +18126,34 @@
     "/workflow-schemes": {
       "get": {
         "operationId": "listSchemes",
-        "summary": "Which workflow answers for which issue type.",
+        "summary": "Which workflow answers for which issue type, a page of schemes at a time with the default first, and how many there are in all.",
         "tags": [
           "workflows"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text the name contains.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -18164,18 +18161,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "schemes": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Scheme"
-                      }
-                    }
-                  },
-                  "required": [
-                    "schemes"
-                  ]
+                  "$ref": "#/components/schemas/SchemePage"
                 }
               }
             }
@@ -18261,6 +18247,54 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getScheme",
+        "summary": "One scheme with its mappings.",
+        "tags": [
+          "workflows"
+        ],
+        "parameters": [
+          {
+            "name": "schemeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scheme": {
+                      "$ref": "#/components/schemas/Scheme"
+                    }
+                  },
+                  "required": [
+                    "scheme"
+                  ]
+                }
+              }
+            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -18371,9 +18405,34 @@
     "/workflows": {
       "get": {
         "operationId": "listWorkflows",
-        "summary": "The workflows projects can follow.",
+        "summary": "The workflows projects can follow, a page at a time by name, with how many there are in all.",
         "tags": [
           "workflows"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text the name contains.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -18381,18 +18440,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "workflows": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Summary"
-                      }
-                    }
-                  },
-                  "required": [
-                    "workflows"
-                  ]
+                  "$ref": "#/components/schemas/SummaryPage"
                 }
               }
             }
@@ -19422,6 +19470,32 @@
         "required": [
           "id",
           "role"
+        ]
+      },
+      "AssignmentPage": {
+        "type": "object",
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Assignment"
+            }
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assignments",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "AssistantStatus": {
@@ -23465,6 +23539,32 @@
           "updatedAt"
         ]
       },
+      "LabelPage": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Label"
+            }
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "labels",
+          "total",
+          "limit",
+          "offset"
+        ]
+      },
       "LabelRef": {
         "type": "object",
         "properties": {
@@ -25371,6 +25471,39 @@
           "updatedAt"
         ]
       },
+      "ProjectWorkflows": {
+        "type": "object",
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowAssignment"
+            }
+          },
+          "defaultSchemeName": {
+            "type": "string"
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "schemeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "schemeName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectKey",
+          "schemeId",
+          "defaultSchemeName",
+          "assignments"
+        ]
+      },
       "Proposal": {
         "type": "object",
         "properties": {
@@ -27004,6 +27137,32 @@
           "workflowName"
         ]
       },
+      "SchemePage": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schemes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scheme"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schemes",
+          "total",
+          "limit",
+          "offset"
+        ]
+      },
       "SchemeRequest": {
         "type": "object",
         "properties": {
@@ -28145,6 +28304,32 @@
           "transitionCount",
           "schemeCount",
           "inDefault"
+        ]
+      },
+      "SummaryPage": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "workflows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Summary"
+            }
+          }
+        },
+        "required": [
+          "workflows",
+          "total",
+          "limit",
+          "offset"
         ]
       },
       "Swimlane": {

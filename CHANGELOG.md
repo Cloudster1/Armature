@@ -7,6 +7,19 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the workflow library, its schemes, the Roles tab and the labels
+  page come a page at a time, each with a search; the library's and the
+  labels page's search and page are in the address, and a link to one
+  workflow opens the library searched for it. A project's workflow page and
+  the scheme editor pick a workflow, and the project's scheme, by searching
+  for it rather than listing them all, and a new mapping names no workflow
+  until one is chosen. `GET /api/v1/workflows`, `/workflow-schemes`,
+  `/role-assignments` and `/labels` answer 50 unless `limit` asks for up to
+  200, with `total`, `limit` and `offset`, and take `q`; the grants also take
+  `role`, and `/labels` with neither `q` nor `limit` no longer lists every
+  label. `GET /workflow-schemes/{id}` reads one scheme, and
+  `GET /projects/{key}/workflows` names the project's scheme and the default
+  (#276).
 - Fixed: the swimlane editor offers only the statuses of the workflows the
   project follows, and its "states not on the board" warning counts only
   those. A lane given a status no workflow of the project holds is refused

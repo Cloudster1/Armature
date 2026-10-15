@@ -20,6 +20,9 @@ export const DEMO_PROJECT_KEY = "LINE";
 /** A day in milliseconds, for the dates the scenarios ask for by offset. */
 const DAY_MS = 86_400_000;
 
+/** The most a paged listing of the API answers at once. */
+const MAX_PAGE = 200;
+
 /** A date this many days from now, written the way a date field reads it. */
 export function day(offset) {
   return new Date(Date.now() + offset * DAY_MS).toISOString().slice(0, 10);
@@ -347,11 +350,21 @@ async function setUpThroughForm({ launch, open }, email, password) {
  * so changing one is for a serial scenario; the ones a scenario makes are its own.
  */
 async function guardSharedWorkflows() {
-  const { workflows } = await administer("GET", "/workflows");
-  const { schemes } = await administer("GET", "/workflow-schemes");
+  const workflows = await everyPage("/workflows", "workflows");
+  const schemes = await everyPage("/workflow-schemes", "schemes");
   const ids = (list) => list.map((each) => each.id).join("|");
   if (workflows.length) guardAlso("PUT|DELETE", new RegExp(`^/workflows/(${ids(workflows)})$`), "a workflow every project may follow");
   if (schemes.length) guardAlso("PUT|DELETE", new RegExp(`^/workflow-schemes/(${ids(schemes)})$`), "a scheme every project may follow");
+}
+
+/** Reads a paged listing to its end as the run's administrator. */
+async function everyPage(path, field) {
+  const all = [];
+  for (;;) {
+    const answer = await administer("GET", `${path}${path.includes("?") ? "&" : "?"}limit=${MAX_PAGE}&offset=${all.length}`);
+    all.push(...answer[field]);
+    if (answer[field].length === 0 || all.length >= answer.total) return all;
+  }
 }
 
 /**
@@ -619,6 +632,17 @@ export async function pickProject(page, selectSelector, projectKey) {
 }
 
 /**
+ * Chooses an option of a searching picker: types its name into the picker's
+ * search, then picks it from the matches the server sent back.
+ */
+export async function pickBySearch(page, selectSelector, optionText) {
+  const search = await page.waitForSelector(`[data-search-picker]:has(${selectSelector}) [data-picker-search]`, { timeout: WAIT });
+  await search.click({ clickCount: 3 });
+  await search.type(optionText);
+  await selectByLabel(page, selectSelector, optionText);
+}
+
+/**
  * Chooses a person in a person picker: types their name, or the words given,
  * into the picker's search, as one would among thousands, then picks them.
  */
@@ -874,18 +898,18 @@ export async function dragConnect(page, from, to) {
   await page.waitForSelector("#field-transition-name", { timeout: WAIT });
 }
 
-/** Opens the designer on the named workflow from the settings list. */
+/** Opens the designer on the named workflow from the settings list, searched for its name. */
 export async function openWorkflowDesign(page, name) {
-  await goto(page, "/settings/workflows");
+  await goto(page, `/settings/workflows?q=${encodeURIComponent(name)}`);
   const edit = `[data-workflow-card="${name}"] [data-action="edit"]`;
   await page.waitForSelector(edit, { timeout: WAIT });
   await page.click(edit);
   await page.waitForSelector("[data-workflow-canvas]", { timeout: WAIT });
 }
 
-/** Deletes a scheme from the library's Schemes tab and confirms. */
+/** Deletes a scheme from the library's Schemes tab, searched for its name, and confirms. */
 export async function deleteScheme(page, name) {
-  await goto(page, "/settings/workflows/schemes");
+  await goto(page, `/settings/workflows/schemes?q=${encodeURIComponent(name)}`);
   const remove = `[data-scheme-card="${name}"] [data-action="delete"]`;
   await page.waitForSelector(remove, { timeout: WAIT });
   await page.click(remove);
@@ -951,7 +975,7 @@ export async function createScheme(page, { name, issueType, workflow }) {
   await page.type("#field-scheme-name", name);
 
   await selectByLabel(page, 'select[aria-label="Issue type"]', issueType);
-  await selectByLabel(page, 'select[aria-label="Workflow"]', workflow);
+  await pickBySearch(page, 'select[aria-label="Workflow"]', workflow);
 
   await clickButton(page, "Create scheme");
   await waitForButtonToGo(page, "Create scheme");
@@ -1422,6 +1446,7 @@ export async function grantRole(page, { who, role, projectKey }) {
   }
   await clickButton(page, "Grant");
 
+  await narrowGrants(page, who);
   await page.waitForFunction(
     (name, where) => {
       const table = document.querySelector('[data-testid="role-assignments"]');
@@ -1435,10 +1460,28 @@ export async function grantRole(page, { who, role, projectKey }) {
   );
 }
 
+/**
+ * Types into the Roles tab's search so it lists the grants naming this text,
+ * and waits until it does: the tab shows one page of the installation's grants.
+ */
+export async function narrowGrants(page, text) {
+  const search = await page.waitForSelector("[data-assignment-search]", { timeout: WAIT });
+  await search.click({ clickCount: 3 });
+  await search.type(text);
+  await page.waitForFunction(
+    (name) => {
+      const rows = [...document.querySelectorAll('[data-testid="role-assignments"] tbody tr')];
+      return (rows.length > 0 && rows.every((row) => row.innerText.includes(name))) || document.body.innerText.includes("No grant matches that");
+    },
+    { timeout: WAIT },
+    text,
+  );
+}
+
 /** Takes every role somebody holds away, so a test can start from nothing. */
 export async function revokeAll(page, who) {
   await goto(page, "/settings/access");
-  await page.waitForSelector('[data-testid="role-assignments"]', { timeout: WAIT });
+  await narrowGrants(page, who);
 
   for (;;) {
     const held = await rolesHeldBy(page, who);
@@ -1897,7 +1940,8 @@ export async function assignWorkflow(page, projectKey, typeName, workflowName) {
   await goto(page, `/projects/${projectKey}/workflows`);
   const control = `select[aria-label="Workflow for ${typeName}"]`;
   await page.waitForSelector(control, { timeout: WAIT });
-  await selectByLabel(page, control, workflowName);
+  if (workflowName === "Follow the default") await selectByLabel(page, control, workflowName);
+  else await pickBySearch(page, control, workflowName);
   const expected = workflowName === "Follow the default" ? "All projects" : workflowName;
   await page.waitForFunction(
     (type, text) => {
@@ -2524,9 +2568,9 @@ export async function demoProjectAdded() {
 
 /** Notes a workflow's whole graph, by name, and returns what saves it back. */
 export async function keepWorkflow(name) {
-  const { workflows } = await administer("GET", "/workflows");
+  const { workflows } = await administer("GET", `/workflows?q=${encodeURIComponent(name)}`);
   const found = workflows.find((each) => each.name === name);
-  if (!found) throw new Error(`There is no workflow called ${name}; name one of ${workflows.map((w) => w.name).join(", ")}.`);
+  if (!found) throw new Error(`There is no workflow called ${name}; check its name on the Workflows page.`);
   const { workflow, rules } = await administer("GET", `/workflows/${found.id}`);
   const statusOf = Object.fromEntries(workflow.steps.map((step) => [step.id, step.status.id]));
   const graph = {
@@ -2593,8 +2637,7 @@ export async function keepSecondFactorRule(page) {
 
 /** Takes a role and every grant of it away again, by the key the matrix shows. */
 export async function removeRole(roleKey) {
-  const { assignments = [] } = await administer("GET", "/role-assignments");
-  for (const each of assignments.filter((a) => a.role === roleKey)) {
+  for (const each of await everyPage(`/role-assignments?role=${encodeURIComponent(roleKey)}`, "assignments")) {
     await administer("DELETE", `/role-assignments/${each.id}`);
   }
   await administer("DELETE", `/roles/${roleKey}`);

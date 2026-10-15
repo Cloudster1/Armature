@@ -39,11 +39,16 @@ func TestAProviderAccountMadeGlobalAdministratorCanAuthorWorkflows(t *testing.T)
 	// The Access page: global administrator granted, the joining role revoked.
 	want(t, owner.post("/api/v1/role-assignments", map[string]any{"role": "global_administrator", "userId": colleagueID}), http.StatusCreated, "grant")
 	h.waitForPrimary(t)
-	for _, row := range list(t, want(t, owner.get("/api/v1/role-assignments"), http.StatusOK, "assignments"), "assignments") {
+	revoked := false
+	for _, row := range list(t, want(t, owner.get("/api/v1/role-assignments?role=user&q="+url.QueryEscape("A Colleague")), http.StatusOK, "assignments"), "assignments") {
 		a := row.(map[string]any)
 		if a["userId"] == colleagueID && a["role"] == "user" {
 			want(t, owner.delete("/api/v1/role-assignments/"+a["id"].(string)), http.StatusNoContent, "revoke user")
+			revoked = true
 		}
+	}
+	if !revoked {
+		t.Fatalf("the colleague's joining role is not among the grants found by their name")
 	}
 
 	session, err := signInWith(t, h, svc, ws, provider, clientID, claims)

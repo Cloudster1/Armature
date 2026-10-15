@@ -1,31 +1,49 @@
-import { useState } from "react";
-import { useDeleteScheme, useSchemes, useSetDefaultScheme, useWorkflows, type Scheme } from "@/api/workflows";
-import { Button, Card, ErrorBanner, IconButton, Stat, Tag } from "@/components/ui";
+import { useEffect, useState } from "react";
+import { useDeleteScheme, useSchemes, useSetDefaultScheme, type LibraryParams, type Scheme } from "@/api/workflows";
+import { Button, Card, EmptyState, ErrorBanner, IconButton, ListSearch, Pager, Stat, Tag, clampOffset, shownOf } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { SchemeEditor } from "@/features/workflows/SchemeEditor";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { LIBRARY_PAGE_SIZE } from "@/config";
 
-/** The schemes that hand workflows to issue types, one card each. */
-export function SchemeCards({ canConfigure }: { canConfigure: boolean }) {
-  const { data } = useSchemes();
-  const { data: workflowData } = useWorkflows();
+interface SchemeCardsProps {
+  q: string;
+  offset: number;
+  /** Shows another search or page; replace keeps the address's history as it is. */
+  onShow: (next: LibraryParams, replace?: boolean) => void;
+  canConfigure: boolean;
+}
+
+/** The schemes that hand workflows to issue types, a page of cards at a time, the default first. */
+export function SchemeCards({ q, offset, onShow, canConfigure }: SchemeCardsProps) {
+  const { data } = useSchemes({ q, offset });
   const [editing, setEditing] = useState<{ open: boolean; scheme?: Scheme }>({ open: false });
   const schemes = data?.schemes ?? [];
-  const workflows = workflowData?.workflows ?? [];
+
+  // Schemes leave the list while it is open; a page past the end steps back.
+  useEffect(() => {
+    if (data && offset > 0 && offset >= data.total) onShow({ q, offset: clampOffset(offset, data.total, LIBRARY_PAGE_SIZE) }, true);
+  }, [data, offset, q, onShow]);
 
   return (
     <section className="space-y-3">
-      {canConfigure && !editing.open && (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <ListSearch aria-label="Find schemes" placeholder="Find by name" value={q} onChange={(text) => onShow({ q: text })} className="w-56" data-library-search="" />
+          {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, schemes.length, "scheme")}</span>}
+        </div>
+        {canConfigure && !editing.open && (
           <Button size="sm" variant="secondary" onClick={() => setEditing({ open: true })}>
             New scheme
           </Button>
-        </div>
-      )}
-      {editing.open && <SchemeEditor scheme={editing.scheme} workflows={workflows} onDone={() => setEditing({ open: false })} />}
+        )}
+      </div>
+      {editing.open && <SchemeEditor scheme={editing.scheme} onDone={() => setEditing({ open: false })} />}
+      {data && schemes.length === 0 && q && <EmptyState icon={<Icon.Search />} title="No scheme matches that" description="Try part of its name, or clear the search." />}
       {schemes.map((scheme) => (
         <SchemeCard key={scheme.id} scheme={scheme} canConfigure={canConfigure} onEdit={() => setEditing({ open: true, scheme })} />
       ))}
+      {data && <Pager label="Scheme pages" total={data.total} offset={data.offset} pageSize={LIBRARY_PAGE_SIZE} onChange={(next) => onShow({ q, offset: next })} />}
     </section>
   );
 }

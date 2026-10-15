@@ -4,6 +4,7 @@ package test
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -141,7 +142,7 @@ func TestAPIWorkflowScopes(t *testing.T) {
 	})
 
 	t.Run("the listing says which scheme is the default", func(t *testing.T) {
-		resp := owner.get("/api/v1/workflow-schemes")
+		resp := owner.get("/api/v1/workflow-schemes?q=" + url.QueryEscape(scoped))
 		mine := find(t, resp.Body["schemes"], "id", schemeID)
 		if mine["isDefault"] != false {
 			t.Errorf("the project's scheme is marked as the default")
@@ -402,4 +403,27 @@ func TestAPIProjectAdministratorMapsOneType(t *testing.T) {
 			t.Errorf("creating a scheme as a project administrator returned %d, want 403", resp.Status)
 		}
 	})
+}
+
+// A workflow with one status and no moves yet is answered with an empty list
+// of transitions, which the API's own description promises, never null.
+func TestAWorkflowWithoutTransitionsListsNone(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signIn(t, h.person(t, "stillness", auth.RoleOwner))
+
+	done := find(t, owner.get("/api/v1/statuses").Body["statuses"], "name", "Done")["id"].(string)
+	created := want(t, owner.post("/api/v1/workflows", map[string]any{
+		"name":  h.name(t, "Standing still"),
+		"steps": []map[string]any{{"statusId": done, "isInitial": true}},
+	}), http.StatusCreated, "a workflow without moves")
+	id := idOf(t, created, "workflow")
+	for what, r := range map[string]response{"made": created, "read back": want(t, owner.get("/api/v1/workflows/"+id), http.StatusOK, "the workflow")} {
+		transitions, ok := obj(t, r, "workflow")["transitions"].([]any)
+		if !ok || len(transitions) != 0 {
+			t.Errorf("%s, the workflow's transitions are %v, want an empty list", what, obj(t, r, "workflow")["transitions"])
+		}
+	}
 }

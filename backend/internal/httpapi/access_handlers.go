@@ -237,16 +237,25 @@ func (s *Server) handleRemoveGroupMember(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, r, http.StatusOK, map[string]any{"group": updated})
 }
 
-// handleListAssignments lists who holds what. A project query narrows it to the
-// roles that answer in that project, organization-wide ones included, because
-// those answer there too.
+// maxAssignmentOffset bounds how far into the grants a page may start.
+const maxAssignmentOffset = 1 << 20
+
+// handleListAssignments lists who holds what, a page at a time. A project query
+// keeps the grants that answer there, installation-wide ones included.
 func (s *Server) handleListAssignments(w http.ResponseWriter, r *http.Request) {
-	found, err := s.Perms.Assignments(r.Context(), r.URL.Query().Get("project"))
+	q := r.URL.Query()
+	page, err := s.Perms.ListAssignments(r.Context(), perm.AssignmentFilter{
+		ProjectKey: q.Get("project"),
+		Text:       q.Get("q"),
+		Role:       perm.Role(q.Get("role")),
+		Limit:      queryInt(r, "limit", perm.DefaultAssignmentPage, 1, perm.MaxAssignmentPage),
+		Offset:     queryInt(r, "offset", 0, 0, maxAssignmentOffset),
+	})
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"assignments": found})
+	respondJSON(w, r, http.StatusOK, page)
 }
 
 type grantRoleRequest struct {

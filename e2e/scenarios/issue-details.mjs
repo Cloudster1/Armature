@@ -33,6 +33,7 @@ import {
   unique,
   uniqueName,
   WAIT,
+  waitForButtonToGo,
   withViewport,
   writeInEditor,
 } from "../helpers.mjs";
@@ -277,7 +278,8 @@ serialScenario("a label is listed for everyone and renamed everywhere", async ({
   await page.keyboard.press("Enter");
   await page.waitForSelector(`[data-labels] [data-label="${urgent}"]`, { timeout: WAIT });
 
-  await goto(page, "/settings/labels");
+  // The installation holds every scenario's words, so the page is searched for this one.
+  await goto(page, `/settings/labels?q=${encodeURIComponent(urgent)}`);
   const row = `[data-label-row="${urgent}"]`;
   await page.waitForSelector(row, { timeout: WAIT });
   await page.evaluate((sel) => {
@@ -287,6 +289,8 @@ serialScenario("a label is listed for everyone and renamed everywhere", async ({
   await page.click(`${row} input`, { clickCount: 3 });
   await page.type(`${row} input`, blocker);
   await clickButton(page, "Save label");
+  await waitForButtonToGo(page, "Save label");
+  await goto(page, `/settings/labels?q=${encodeURIComponent(blocker)}`);
   await page.waitForSelector(`[data-label-row="${blocker}"]`, { timeout: WAIT });
   await goto(page, `/issues/${issueKey}`);
   await page.waitForSelector(`[data-labels] [data-label="${blocker}"]`, { timeout: WAIT });

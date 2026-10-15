@@ -120,6 +120,43 @@ scenario("roles are granted to people and to groups", async ({ page }) => {
   expect.truthy(who.email.length > 0, "the invitation was issued");
 });
 
+// Every scenario's grants share one installation, so the Roles tab shows one
+// page of them, and the one a scenario made is found by typing.
+scenario("the roles tab shows one page of grants and finds one by typing", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Found grant", { visit: false });
+  const crew = uniqueName("Found crew");
+  // Made through the API as this person: the grant, not the form, is what the tab is asked to find.
+  await goto(page, "/");
+  await page.evaluate(async (name, projectKey) => {
+    const send = async (path, body) => {
+      const response = await fetch(`/api/v1${path}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!response.ok) throw new Error(`POST ${path} was refused with ${response.status}`);
+      return response.json();
+    };
+    const { group } = await send("/groups", { name });
+    await send("/role-assignments", { role: "user", projectKey, groupId: group.id });
+  }, crew, key);
+
+  await goto(page, "/settings/access");
+  await page.waitForSelector('[data-testid="role-assignments"] tbody tr', { timeout: WAIT });
+  const shown = await page.$$eval('[data-testid="role-assignments"] tbody tr', (rows) => rows.length);
+  expect.truthy(shown <= 50, `the tab shows one page of grants, not ${shown}`);
+
+  await page.type("[data-assignment-search]", crew);
+  await page.waitForFunction(
+    (name) => {
+      const rows = [...document.querySelectorAll('[data-testid="role-assignments"] tbody tr')];
+      return rows.length === 1 && rows[0].innerText.includes(name);
+    },
+    { timeout: WAIT },
+    crew,
+  );
+  const row = await page.$eval('[data-testid="role-assignments"] tbody tr', (el) => el.innerText);
+  expect.contains(row, key, "the grant found is the one over the scenario's project");
+  expect.contains(await bodyText(page), "1 grant", "and the count says it is the only match");
+});
+
 scenario("global administration cannot be scoped to one project", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   await createProject(page, "Whole tenant", { visit: false });

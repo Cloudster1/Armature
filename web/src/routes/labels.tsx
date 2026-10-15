@@ -1,16 +1,29 @@
-import { useState, type FormEvent } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useAccess } from "@/api/access";
 import { LABEL_COLORS, useDeleteLabel, useLabels, useUpdateLabel, type Label } from "@/api/labels";
 import type { LabelColor } from "@/api/issues";
-import { Button, Choice, EmptyState, ErrorBanner, Field, Page, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Button, Choice, EmptyState, ErrorBanner, Field, ListSearch, Page, PageHeader, Pager, Table, Td, Th, clampOffset, isPageOffset, shownOf } from "@/components/ui";
+import { Icon } from "@/components/icons";
+import { LABEL_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { LabelChip } from "@/features/labels/LabelChip";
 
+interface LabelsSearch {
+  q?: string;
+  offset?: number;
+}
+
+/** The search and the page are in the address, so a link reopens the same list. */
 export const labelsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/labels",
+  validateSearch: (search: Record<string, unknown>): LabelsSearch => ({
+    // A search of digits alone comes back from the address as a number.
+    ...(typeof search.q === "number" ? { q: String(search.q) } : typeof search.q === "string" && search.q !== "" ? { q: search.q } : {}),
+    ...(isPageOffset(search.offset) ? { offset: search.offset } : {}),
+  }),
   component: LabelsPage,
 });
 
@@ -20,12 +33,23 @@ export const labelsRoute = createRoute({
  * or retired.
  */
 function LabelsPage() {
-  const { data, isLoading, error } = useLabels();
+  const { q = "", offset = 0 } = labelsRoute.useSearch();
+  const navigate = useNavigate();
+  const { data, isLoading, error } = useLabels({ q, offset });
   const { data: access } = useAccess();
   const remove = useDeleteLabel();
   const confirm = useConfirm();
   const canAdminister = access?.canAdministerOrg ?? false;
   const labels = data?.labels ?? [];
+
+  const show = useCallback(
+    (next: LabelsSearch, replace = false) => navigate({ to: "/settings/labels", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
+    [navigate],
+  );
+  // Labels leave the list while it is open; a page past the end steps back.
+  useEffect(() => {
+    if (data && offset > 0 && offset >= data.total) show({ q, offset: clampOffset(offset, data.total, LABEL_PAGE_SIZE) }, true);
+  }, [data, offset, q, show]);
 
   return (
     <Page width="narrow">
@@ -38,7 +62,13 @@ function LabelsPage() {
         title="Labels" meta="Words shared by every project. A label is coined the first time somebody puts it on an issue." />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
-      {isLoading ? null : labels.length === 0 ? (
+      <div className="mb-3 flex items-center gap-3">
+        <ListSearch aria-label="Find labels" placeholder="Find a label" value={q} onChange={(text) => show({ q: text })} className="w-56" data-label-search="" />
+        {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, labels.length, "label")}</span>}
+      </div>
+      {isLoading ? null : labels.length === 0 && q ? (
+        <EmptyState icon={<Icon.Search />} title="No label matches that" description="Try part of the word, or clear the search." />
+      ) : labels.length === 0 ? (
         <EmptyState title="No labels yet" description="Type a word into the Labels field on any issue and it appears here." />
       ) : (
         <Table>
@@ -56,6 +86,7 @@ function LabelsPage() {
           </tbody>
         </Table>
       )}
+      {data && <Pager label="Label pages" total={data.total} offset={data.offset} pageSize={LABEL_PAGE_SIZE} onChange={(next) => show({ q, offset: next })} />}
     </Page>
   );
 }

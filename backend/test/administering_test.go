@@ -52,7 +52,7 @@ func TestAdministeringTheProjectDecidesWhatMayBeRemoved(t *testing.T) {
 	issueKey, commentID, worklogID = file()
 	elsewhere := api.asRole(t, h, owner, elsKey, perm.ProjectAdministrator)
 	// As a plain user here they see the issue; what they administer is elsewhere.
-	for _, row := range want(t, owner.get("/api/v1/role-assignments"), http.StatusOK, "assignments").Body["assignments"].([]any) {
+	for _, row := range want(t, owner.get("/api/v1/role-assignments?role="+string(perm.ProjectAdministrator)+"&q="+elsKey), http.StatusOK, "assignments").Body["assignments"].([]any) {
 		a := row.(map[string]any)
 		if a["projectKey"] == elsKey && a["role"] == string(perm.ProjectAdministrator) {
 			want(t, owner.post("/api/v1/role-assignments", map[string]any{"role": string(perm.User), "projectKey": admKey, "userId": a["userId"]}), http.StatusCreated, "user here")

@@ -1,17 +1,10 @@
 import { useState, type MouseEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { canAdminister, useAccess } from "@/api/access";
-import {
-  useProjectWorkflows,
-  useSchemes,
-  useSetProjectAssignment,
-  useSetProjectScheme,
-  useWorkflows,
-  type Assignment,
-  type WorkflowSummary,
-} from "@/api/workflows";
-import { Button, Card, ErrorBanner, SelectInput, Skeleton, cx, isInteractiveTarget } from "@/components/ui";
+import { useProjectWorkflows, useSchemes, useSetProjectAssignment, useSetProjectScheme, type Assignment } from "@/api/workflows";
+import { Button, Card, ErrorBanner, Skeleton, cx, isInteractiveTarget } from "@/components/ui";
 import { ScopeBadge, originExplanation } from "./ScopeBadge";
+import { SchemePicker, WorkflowPicker } from "./WorkflowPicker";
 import { WorkflowGraph } from "./WorkflowGraph";
 
 /** The columns of the assignment table: the three it always has, and the one a decider gets. */
@@ -24,8 +17,6 @@ const COLUMNS_WITH_DECIDE = COLUMNS + 1;
  */
 export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
   const { data, isLoading, error } = useProjectWorkflows(projectKey);
-  const { data: schemeData } = useSchemes();
-  const { data: workflowData } = useWorkflows();
   const { data: access } = useAccess();
   const assign = useSetProjectAssignment();
 
@@ -33,8 +24,6 @@ export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
   // scheme the organization's.
   const canMap = canAdminister(access, projectKey);
   const canConfigure = access?.canAdministerOrg ?? false;
-  const schemes = schemeData?.schemes ?? [];
-  const workflows = workflowData?.workflows ?? [];
   const assignments = data?.assignments ?? [];
 
   // The drawing follows one row; the first until somebody picks another.
@@ -47,8 +36,9 @@ export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
     <div className="space-y-6">
       <SchemeChoice
         projectKey={projectKey}
-        schemeId={data?.schemeId}
-        schemes={schemes}
+        schemeId={data?.schemeId ?? undefined}
+        schemeName={data?.schemeName}
+        defaultSchemeName={data?.defaultSchemeName}
         canConfigure={canConfigure}
       />
 
@@ -88,7 +78,7 @@ export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
                 assignment={assignment}
                 shown={assignment.issueTypeId === shown?.issueTypeId}
                 onShow={() => setPicked(assignment.issueTypeId)}
-                choices={canMap ? workflows : undefined}
+                canDecide={canMap}
                 onDecide={(workflowId) => assign.mutate({ projectKey, issueTypeId: assignment.issueTypeId, workflowId })}
                 deciding={assign.isPending}
               />
@@ -109,15 +99,15 @@ function AssignmentRow({
   assignment,
   shown,
   onShow,
-  choices,
+  canDecide,
   onDecide,
   deciding,
 }: {
   assignment: Assignment;
   shown: boolean;
   onShow: () => void;
-  /** The organization's workflows to choose from; absent when the reader may only look. */
-  choices?: WorkflowSummary[];
+  /** Whether the reader may choose the row's workflow rather than only look. */
+  canDecide: boolean;
   onDecide: (workflowId: string | null) => void;
   deciding: boolean;
 }) {
@@ -143,7 +133,7 @@ function AssignmentRow({
       <td className="px-4 py-2.5">
         <Link
           to="/settings/workflows"
-          search={{ workflow: assignment.workflowId }}
+          search={{ workflow: assignment.workflowId, q: assignment.workflowName }}
           className="text-ink hover:text-accent"
         >
           {assignment.workflowName}
@@ -153,22 +143,16 @@ function AssignmentRow({
         <ScopeBadge origin={assignment.origin} />
         <span className="ml-2 text-xs text-ink-subtle">{originExplanation(assignment.origin)}</span>
       </td>
-      {choices && (
+      {canDecide && (
         <td className="px-4 py-1.5" data-assignment-control>
-          <SelectInput
+          <WorkflowPicker
             aria-label={`Workflow for ${assignment.issueTypeName}`}
-            controlSize="sm"
             value={decided}
+            chosenName={decided ? assignment.workflowName : undefined}
+            leading={canFollow && <option value="">Follow the default</option>}
             disabled={deciding}
-            onChange={(event) => onDecide(event.target.value || null)}
-          >
-            {canFollow && <option value="">Follow the default</option>}
-            {choices.map((workflow) => (
-              <option key={workflow.id} value={workflow.id}>
-                {workflow.name}
-              </option>
-            ))}
-          </SelectInput>
+            onChange={(workflowId) => onDecide(workflowId || null)}
+          />
         </td>
       )}
     </tr>
@@ -178,20 +162,23 @@ function AssignmentRow({
 function SchemeChoice({
   projectKey,
   schemeId,
-  schemes,
+  schemeName,
+  defaultSchemeName,
   canConfigure,
 }: {
   projectKey: string;
   schemeId?: string;
-  schemes: Array<{ id: string; name: string; isDefault: boolean }>;
+  schemeName?: string;
+  defaultSchemeName?: string;
   canConfigure: boolean;
 }) {
   const setScheme = useSetProjectScheme();
-  const [picked, setPicked] = useState("");
+  const [picked, setPicked] = useState({ id: "", name: "" });
+  // One scheme is enough to learn how many there are: the default and this project's own are not on offer.
+  const { data: schemeCount } = useSchemes({ limit: 1 });
 
-  const defaultScheme = schemes.find((scheme) => scheme.isDefault);
-  const own = schemes.find((scheme) => scheme.id === schemeId);
-  const available = schemes.filter((scheme) => !scheme.isDefault && scheme.id !== schemeId);
+  const own = schemeId ? { id: schemeId, name: schemeName ?? "" } : undefined;
+  const others = schemeCount ? schemeCount.total - 1 - (own ? 1 : 0) : 0;
 
   return (
     <Card elevated className="p-4">
@@ -201,7 +188,7 @@ function SchemeChoice({
             This project uses its own scheme, {own.name}.
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            Issue types it does not name still follow {defaultScheme?.name ?? "the default scheme"}.
+            Issue types it does not name still follow {defaultSchemeName || "the default scheme"}.
           </p>
         </>
       ) : (
@@ -210,13 +197,13 @@ function SchemeChoice({
             This project follows the default.
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            Every issue type uses {defaultScheme?.name ?? "the default scheme"}. Give the
+            Every issue type uses {defaultSchemeName || "the default scheme"}. Give the
             project a scheme of its own to disagree about some of them.
           </p>
         </>
       )}
 
-      {canConfigure && available.length === 0 && !own && (
+      {canConfigure && schemeCount && others <= 0 && !own && (
         <p className="mt-2 text-sm text-ink-subtle">
           There is no other scheme to give it yet. Build one under{" "}
           <Link
@@ -230,25 +217,26 @@ function SchemeChoice({
         </p>
       )}
 
-      {canConfigure && (available.length > 0 || own) && (
+      {canConfigure && (others > 0 || own) && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-sm text-ink-muted">Or use an existing scheme:</span>
           <label htmlFor="project-scheme" className="sr-only">
             Workflow scheme
           </label>
-          <SelectInput id="project-scheme" value={picked} onChange={(event) => setPicked(event.target.value)}>
-            <option value="">Choose a scheme...</option>
-            {available.map((scheme) => (
-              <option key={scheme.id} value={scheme.id}>
-                {scheme.name}
-              </option>
-            ))}
-          </SelectInput>
+          <SchemePicker
+            id="project-scheme"
+            aria-label="Workflow scheme"
+            value={picked.id}
+            chosenName={picked.name}
+            exclude={own ? [own.id] : []}
+            leading={<option value="">Choose a scheme...</option>}
+            onChange={(id, name) => setPicked({ id, name })}
+          />
           <Button
             size="sm"
-            disabled={!picked}
+            disabled={!picked.id}
             loading={setScheme.isPending}
-            onClick={() => setScheme.mutate({ projectKey, schemeId: picked })}
+            onClick={() => setScheme.mutate({ projectKey, schemeId: picked.id })}
           >
             Use this scheme
           </Button>

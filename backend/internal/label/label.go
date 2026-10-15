@@ -98,39 +98,49 @@ func scanLabel(row pgx.Row) (*Label, error) {
 	return &l, nil
 }
 
-// Labels lists the organization's labels alphabetically.
-func (s *Service) Labels(ctx context.Context) ([]Label, error) {
-	out := []Label{}
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectLabel+` ORDER BY lower(l.name)`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			l, err := scanLabel(rows)
-			if err != nil {
-				return err
-			}
-			out = append(out, *l)
-		}
-		return rows.Err()
-	})
-	return out, err
+// DefaultPage is a page of labels unless asked otherwise; MaxPage is the most
+// one read returns, so the words of a large installation never travel at once.
+const (
+	DefaultPage = 50
+	MaxPage     = 200
+)
+
+// Filter narrows and pages a listing of labels.
+type Filter struct {
+	// Text matches the name anywhere in it; names starting with it come first.
+	Text   string
+	Limit  int
+	Offset int
 }
 
-// MaxSuggestions caps a search, so a field suggests a few words rather than all of them.
-const MaxSuggestions = 50
+// Page is one page of labels plus how many matched in all.
+type Page struct {
+	Labels []Label `json:"labels"`
+	Total  int     `json:"total"`
+	Limit  int     `json:"limit"`
+	Offset int     `json:"offset"`
+}
 
-// Search lists up to limit labels whose name holds q, case insensitively: names
-// starting with it first, then the rest, each alphabetically.
-func (s *Service) Search(ctx context.Context, q string, limit int) ([]Label, error) {
-	out := []Label{}
+// List returns one page of the labels whose name holds the text, case aside:
+// names starting with it first, then the rest, each alphabetically.
+func (s *Service) List(ctx context.Context, f Filter) (Page, error) {
+	if f.Limit <= 0 || f.Limit > MaxPage {
+		f.Limit = DefaultPage
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+	f.Text = strings.TrimSpace(f.Text)
+	page := Page{Labels: []Label{}, Limit: f.Limit, Offset: f.Offset}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectLabel+`
-WHERE strpos(lower(l.name), lower($1)) > 0
-ORDER BY strpos(lower(l.name), lower($1)) <> 1, lower(l.name)
-LIMIT $2`, q, limit)
+		const matches = ` WHERE strpos(lower(l.name), lower($1)) > 0`
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM label l`+matches, f.Text).Scan(&page.Total); err != nil {
+			return err
+		}
+		// The page is chosen first, so the counts of use run only for its rows.
+		const ordered = ` ORDER BY strpos(lower(l.name), lower($1)) <> 1, lower(l.name), l.id`
+		rows, err := tx.Query(ctx, `WITH page AS (SELECT l.id FROM label l`+matches+ordered+` LIMIT $2 OFFSET $3)`+
+			selectLabel+` JOIN page ON page.id = l.id`+ordered, f.Text, f.Limit, f.Offset)
 		if err != nil {
 			return err
 		}
@@ -140,11 +150,14 @@ LIMIT $2`, q, limit)
 			if err != nil {
 				return err
 			}
-			out = append(out, *l)
+			page.Labels = append(page.Labels, *l)
 		}
 		return rows.Err()
 	})
-	return out, err
+	if err != nil {
+		return Page{}, fmt.Errorf("list labels: %w", err)
+	}
+	return page, nil
 }
 
 // Input describes a label being made or changed.

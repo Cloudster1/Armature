@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -32,13 +33,15 @@ type Assignment struct {
 // ToGroup reports whether the role was granted to a group rather than a person.
 func (a Assignment) ToGroup() bool { return a.GroupID != nil }
 
-const selectAssignment = `
-SELECT a.id, a.role, a.project_id, COALESCE(p.key, ''),
-       a.user_id, COALESCE(u.name, ''), a.group_id, COALESCE(g.name, '')
+const assignmentFrom = `
 FROM role_assignment a
 LEFT JOIN project p ON p.id = a.project_id
 LEFT JOIN app_user u ON u.id = a.user_id
 LEFT JOIN user_group g ON g.id = a.group_id`
+
+const selectAssignment = `
+SELECT a.id, a.role, a.project_id, COALESCE(p.key, ''),
+       a.user_id, COALESCE(u.name, ''), a.group_id, COALESCE(g.name, '')` + assignmentFrom
 
 // order reads the way somebody looks for a grant: the installation-wide ones
 // first, then by project, and the most powerful role at the top of each.
@@ -60,34 +63,113 @@ func scanAssignment(row pgx.Row) (*Assignment, error) {
 	return &a, nil
 }
 
-// Assignments lists who holds what. A project key narrows it to the roles that
-// answer in that project, which includes the organization-wide ones because
-// they answer everywhere.
-func (s *Store) Assignments(ctx context.Context, projectKey string) ([]Assignment, error) {
-	query := selectAssignment
-	args := []any{}
-	if projectKey != "" {
-		query += ` WHERE a.project_id IS NULL OR p.key = $1`
-		args = append(args, projectKey)
-	}
+// DefaultAssignmentPage is a page of grants unless asked otherwise;
+// MaxAssignmentPage is the most one read returns.
+const (
+	DefaultAssignmentPage = 50
+	MaxAssignmentPage     = 200
+)
 
+// AssignmentFilter narrows and pages a listing of grants.
+type AssignmentFilter struct {
+	// ProjectKey keeps the grants that answer in that project, the
+	// installation-wide ones included because they answer everywhere.
+	ProjectKey string
+	// Text matches the person, the group, or the project's key or name.
+	Text   string
+	Role   Role
+	Limit  int
+	Offset int
+}
+
+// AssignmentPage is one page of grants plus how many matched in all.
+type AssignmentPage struct {
+	Assignments []Assignment `json:"assignments"`
+	Total       int          `json:"total"`
+	Limit       int          `json:"limit"`
+	Offset      int          `json:"offset"`
+}
+
+func (f AssignmentFilter) where() (string, []any) {
+	var (
+		clauses []string
+		args    []any
+	)
+	if f.ProjectKey != "" {
+		args = append(args, f.ProjectKey)
+		clauses = append(clauses, fmt.Sprintf("(a.project_id IS NULL OR p.key = $%d)", len(args)))
+	}
+	if f.Role != "" {
+		args = append(args, string(f.Role))
+		clauses = append(clauses, fmt.Sprintf("a.role = $%d", len(args)))
+	}
+	if text := strings.TrimSpace(f.Text); text != "" {
+		args = append(args, text)
+		n := len(args)
+		clauses = append(clauses, fmt.Sprintf("(strpos(lower(COALESCE(u.name, '')), lower($%[1]d)) > 0 OR strpos(lower(COALESCE(g.name, '')), lower($%[1]d)) > 0"+
+			" OR strpos(lower(COALESCE(p.key, '')), lower($%[1]d)) > 0 OR strpos(lower(COALESCE(p.name, '')), lower($%[1]d)) > 0)", n))
+	}
+	if len(clauses) == 0 {
+		return "", nil
+	}
+	return " WHERE " + strings.Join(clauses, " AND "), args
+}
+
+// Assignments lists every grant that answers in a project, or every grant
+// at all for an empty key, for a caller that must see each one.
+func (s *Store) Assignments(ctx context.Context, projectKey string) ([]Assignment, error) {
+	where, args := AssignmentFilter{ProjectKey: projectKey}.where()
 	out := []Assignment{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, query+order, args...)
-		if err != nil {
-			return fmt.Errorf("list role assignments: %w", err)
-		}
-		defer rows.Close()
-		for rows.Next() {
-			a, err := scanAssignment(rows)
-			if err != nil {
-				return err
-			}
-			out = append(out, *a)
-		}
-		return rows.Err()
+		var err error
+		out, err = readAssignments(ctx, tx, selectAssignment+where+order, args...)
+		return err
 	})
 	return out, err
+}
+
+// ListAssignments returns one page of the grants the filter allows, in the
+// order a person looks for one, with how many matched in all.
+func (s *Store) ListAssignments(ctx context.Context, f AssignmentFilter) (AssignmentPage, error) {
+	if f.Limit <= 0 || f.Limit > MaxAssignmentPage {
+		f.Limit = DefaultAssignmentPage
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+	page := AssignmentPage{Limit: f.Limit, Offset: f.Offset}
+	where, args := f.where()
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if err := tx.QueryRow(ctx, `SELECT count(*)`+assignmentFrom+where, args...).Scan(&page.Total); err != nil {
+			return fmt.Errorf("count role assignments: %w", err)
+		}
+		n := len(args)
+		var err error
+		page.Assignments, err = readAssignments(ctx, tx,
+			selectAssignment+where+order+fmt.Sprintf(", a.id LIMIT $%d OFFSET $%d", n+1, n+2), append(args, f.Limit, f.Offset)...)
+		return err
+	})
+	if err != nil {
+		return AssignmentPage{}, err
+	}
+	return page, nil
+}
+
+func readAssignments(ctx context.Context, tx db.DBTX, query string, args ...any) ([]Assignment, error) {
+	rows, err := tx.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list role assignments: %w", err)
+	}
+	defer rows.Close()
+	out := []Assignment{}
+	for rows.Next() {
+		a, err := scanAssignment(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *a)
+	}
+	return out, rows.Err()
 }
 
 // GrantInput names a role, a scope and a subject.

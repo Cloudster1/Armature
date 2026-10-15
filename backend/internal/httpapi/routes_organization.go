@@ -110,6 +110,7 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	r.Get("/workflows/rule-types", s.handleWorkflowRuleTypes)
 	r.Get("/workflows/{workflowID}", s.handleGetWorkflow)
 	r.Get("/workflow-schemes", s.handleListSchemes)
+	r.Get("/workflow-schemes/{schemeID}", s.handleGetScheme)
 
 	// What the roles mean, and what this caller holds. Both are
 	// readable by anyone: a client that cannot ask what it may do

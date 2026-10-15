@@ -184,25 +184,38 @@ func (s *Server) handleDeleteWorkflow(w http.ResponseWriter, r *http.Request) {
 	respondNoContent(w)
 }
 
-// handleListSchemes returns every scheme with its mappings, and says which one
-// the organization answers with.
+// handleListSchemes returns a page of the schemes with their mappings, the
+// default first.
 func (s *Server) handleListSchemes(w http.ResponseWriter, r *http.Request) {
-	schemes := []workflow.Scheme{}
+	var page workflow.SchemePage
 	err := s.DB.Read(r.Context(), func(ctx context.Context, tx db.DBTX) error {
-		found, err := s.Workflow.Store.ListSchemes(ctx, tx)
-		if err != nil {
-			return err
-		}
-		if found != nil {
-			schemes = found
-		}
-		return nil
+		var err error
+		page, err = s.Workflow.Store.ListSchemes(ctx, tx, libraryFilter(r))
+		return err
 	})
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"schemes": schemes})
+	respondJSON(w, r, http.StatusOK, page)
+}
+
+func (s *Server) handleGetScheme(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("schemeID"))
+	if err != nil {
+		respondError(w, r, ErrBadRequest("Invalid scheme id."))
+		return
+	}
+	var found *workflow.Scheme
+	err = s.DB.Read(r.Context(), func(ctx context.Context, tx db.DBTX) error {
+		found, err = s.Workflow.Store.Scheme(ctx, tx, id)
+		return err
+	})
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"scheme": found})
 }
 
 type schemeRequest struct {
@@ -302,27 +315,16 @@ func (s *Server) handleProjectWorkflows(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	assignments := []workflow.Assignment{}
+	var answer workflow.ProjectWorkflows
 	err = s.DB.Read(r.Context(), func(ctx context.Context, tx db.DBTX) error {
-		resolved, err := s.Workflow.Store.Assignments(ctx, tx, found.ID)
-		if err != nil {
-			return err
-		}
-		if resolved != nil {
-			assignments = resolved
-		}
-		return nil
+		answer, err = s.Workflow.Store.ForProject(ctx, tx, found.ID, found.Key, found.WorkflowSchemeID)
+		return err
 	})
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-
-	respondJSON(w, r, http.StatusOK, map[string]any{
-		"projectKey":  found.Key,
-		"schemeId":    found.WorkflowSchemeID,
-		"assignments": assignments,
-	})
+	respondJSON(w, r, http.StatusOK, answer)
 }
 
 // handleProjectStatuses lists the statuses a project's issues can be in, which
@@ -403,24 +405,14 @@ func (s *Server) handleSetProjectAssignment(w http.ResponseWriter, r *http.Reque
 
 	// The answer is read from the primary: the write is a moment old and the
 	// page redraws from this response alone.
-	assignments := []workflow.Assignment{}
+	var answer workflow.ProjectWorkflows
 	err = s.DB.ReadPrimary(r.Context(), func(ctx context.Context, tx db.DBTX) error {
-		resolved, err := s.Workflow.Store.Assignments(ctx, tx, updated.ID)
-		if err != nil {
-			return err
-		}
-		if resolved != nil {
-			assignments = resolved
-		}
-		return nil
+		answer, err = s.Workflow.Store.ForProject(ctx, tx, updated.ID, updated.Key, updated.WorkflowSchemeID)
+		return err
 	})
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{
-		"projectKey":  updated.Key,
-		"schemeId":    updated.WorkflowSchemeID,
-		"assignments": assignments,
-	})
+	respondJSON(w, r, http.StatusOK, answer)
 }
