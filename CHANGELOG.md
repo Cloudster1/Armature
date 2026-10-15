@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: the swimlane editor offers only the statuses of the workflows the
+  project follows, and its "states not on the board" warning counts only
+  those. A lane given a status no workflow of the project holds is refused
+  with a sentence naming it; one it already holds it keeps. The new
+  `GET /projects/{key}/statuses` lists a project's statuses (#277).
 - Changed: the portal answers with a shape of its own, holding what a
   customer reads. A request is its key, summary, description, status and its
   category, priority, request type, team, company and whether it is shared,
