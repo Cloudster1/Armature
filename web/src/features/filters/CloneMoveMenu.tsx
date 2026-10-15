@@ -3,10 +3,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCloneIssue, useMoveIssue } from "@/api/filters";
 import { useIssueFields, type FieldValue } from "@/api/fields";
 import { useStatuses, type Issue } from "@/api/issues";
-import { useProjects } from "@/api/projects";
 import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Menu, Select, useToast, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ExportDialog, keysQuery } from "./ExportDialog";
+import { ProjectPicker } from "@/features/projects/ProjectPicker";
 
 // Copy, move and export behind one More button on the issue's head; a reader
 // is offered only the export. A copy opens; a moved issue gets another key.
@@ -95,13 +95,11 @@ export function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => vo
   const move = useMoveIssue();
   const navigate = useNavigate();
   const toast = useToast();
-  const { data: projects } = useProjects();
   const { data: statuses } = useStatuses();
   const { data: fields } = useIssueFields(issue.key);
   const dropped = droppedOnMove(fields?.values ?? []);
   const [projectKey, setProjectKey] = useState("");
   const [statusId, setStatusId] = useState("");
-  const targets = (projects?.projects ?? []).filter((p) => p.key !== issue.projectKey);
   const needsStatus = (move.error as Error | null)?.message.includes("choose one") ?? false;
   return (
     <Dialog
@@ -139,14 +137,7 @@ export function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => vo
     >
       <div className="space-y-3">
         {move.error && <ErrorBanner>{(move.error as Error).message}</ErrorBanner>}
-        <Select label="Project" id="field-move-project" value={projectKey} onChange={(e) => setProjectKey(e.target.value)}>
-          <option value="">Choose a project</option>
-          {targets.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.name} ({p.key})
-            </option>
-          ))}
-        </Select>
+        <ProjectPicker label="Project" id="field-move-project" value={projectKey} onChange={setProjectKey} exclude={[issue.projectKey]} />
         {dropped.length > 0 && (
           <div className="space-y-1 text-sm" data-move-dropped="">
             <p className="text-ink-muted">These answers belong to fields of {issue.projectKey} alone and are dropped by the move; its history keeps them.</p>

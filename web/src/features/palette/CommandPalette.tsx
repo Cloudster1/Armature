@@ -3,7 +3,7 @@ import { useAccess } from "@/api/access";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import { useIssues } from "@/api/issues";
-import { useProjects } from "@/api/projects";
+import { useProject, useProjectSearch } from "@/api/projects";
 import { answer, looksLikeQuestion } from "@/features/guide/match";
 import { CATALOGUE, type GuideEntry } from "@/features/guide/catalogue";
 import { useAsk, useAssistantStatus, type AssistantAnswer, type AssistantProposal, type Place } from "@/api/assistant";
@@ -66,8 +66,9 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const trimmed = text.trim();
   const looksLikeKey = issueKeyPattern.test(trimmed);
-  const { data: projectData } = useProjects();
-  const features = projectData?.projects.find((p) => p.key === projectKey)?.features;
+  const { data: currentProject } = useProject(projectKey ?? "");
+  const features = currentProject?.project.features;
+  const { data: projectData } = useProjectSearch(trimmed, PALETTE_RESULTS);
   const { data: issueData } = useIssues({ text: trimmed.length >= 2 && !looksLikeKey ? trimmed : undefined, limit: PALETTE_RESULTS, orderBy: "updated" });
 
   useEffect(() => {
@@ -139,11 +140,12 @@ export function CommandPalette({
     }
     const lower = trimmed.toLowerCase();
     const matches = (s: string) => !lower || s.toLowerCase().includes(lower);
+    // Matched again here, since the last answer stays on screen while the next is asked.
     for (const p of projectData?.projects ?? []) {
       if (matches(`${p.name} ${p.key}`)) out.push({ id: `project:${p.key}`, group: "Projects", label: p.name, detail: p.key, icon: "Board", run: () => go(`/projects/${p.key}`) });
     }
     if (projectKey) {
-      for (const page of pagesFor(projectData?.projects.find((p) => p.key === projectKey), [...projectWorkPages, ...projectSetupPages])) {
+      for (const page of pagesFor(currentProject?.project, [...projectWorkPages, ...projectSetupPages])) {
         if (matches(page.label)) out.push({ id: `page:${page.path}`, group: "Pages", label: `${projectKey} / ${page.label}`, icon: page.icon, run: () => go(`/projects/${projectKey}${page.path}`) });
       }
     }
@@ -167,7 +169,7 @@ export function CommandPalette({
     for (const action of actions) if (matches(action.label)) out.push(action);
     if (mode !== "ask") out.push(...answers);
     return out.slice(0, PALETTE_RESULTS * 3);
-  }, [trimmed, looksLikeKey, issueData, projectData, projectKey, mode, canAdministerOrg, assistant?.configured]);
+  }, [trimmed, looksLikeKey, issueData, projectData, currentProject, projectKey, mode, canAdministerOrg, assistant?.configured]);
 
   useEffect(() => setActive(0), [commands.length, trimmed]);
 

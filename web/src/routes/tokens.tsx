@@ -2,9 +2,9 @@ import { useState, type FormEvent } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useApiTokens, useCreateApiToken, useRevokeApiToken } from "@/api/auth";
-import { useProjects } from "@/api/projects";
 import { Button, Card, Checkbox, Chip, EmptyState, ErrorBanner, Field, Page, PageHeader, Select, Tag } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { ProjectPicker } from "@/features/projects/ProjectPicker";
 import { useFormat } from "@/lib/format";
 import { READ_ONLY_SCOPE, TOKEN_DAY_CHOICES, TOKEN_DEFAULT_DAYS } from "@/config";
 
@@ -28,7 +28,6 @@ function TokensPage() {
   const revoke = useRevokeApiToken();
   const format = useFormat();
   const confirm = useConfirm();
-  const { data: projectData } = useProjects();
   const [name, setName] = useState("");
   const [readOnly, setReadOnly] = useState(false);
   const [days, setDays] = useState(TOKEN_DEFAULT_DAYS);
@@ -38,7 +37,6 @@ function TokensPage() {
   const [freshSecret, setFreshSecret] = useState<string | null>(null);
 
   const tokens = data?.tokens ?? [];
-  const choosable = projectData?.projects ?? [];
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -113,32 +111,31 @@ function TokensPage() {
             ))}
             <option value={0}>Never</option>
           </Select>
-          {choosable.length > 0 && (
-            <div data-token-projects>
-              <p className="text-sm font-medium text-ink">Projects</p>
-              <p className="mb-2 text-xs text-ink-subtle">
-                {projects.length === 0
-                  ? "Every project you can reach. Pick some to confine this token to them."
-                  : "This token reaches only what is picked here, and never more than you can."}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {choosable.map((project) => (
-                  <Chip
-                    key={project.key}
-                    pressed={projects.includes(project.key)}
-                    data-project={project.key}
-                    onClick={() =>
-                      setProjects((chosen) =>
-                        chosen.includes(project.key) ? chosen.filter((k) => k !== project.key) : [...chosen, project.key],
-                      )
-                    }
-                  >
-                    {project.key}
+          <div data-token-projects>
+            <p className="text-sm font-medium text-ink">Projects</p>
+            <p className="mb-2 text-xs text-ink-subtle">
+              {projects.length === 0
+                ? "Every project you can reach. Pick some to confine this token to them."
+                : "This token reaches only what is picked here, and never more than you can. Press one to take it off."}
+            </p>
+            {projects.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {projects.map((key) => (
+                  <Chip key={key} pressed data-project={key} onClick={() => setProjects((chosen) => chosen.filter((k) => k !== key))}>
+                    {key}
                   </Chip>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+            <ProjectPicker
+              label="Add a project"
+              value=""
+              none="Choose a project to add"
+              exclude={projects}
+              className="max-w-xs"
+              onChange={(key) => key && setProjects((chosen) => (chosen.includes(key) ? chosen : [...chosen, key]))}
+            />
+          </div>
         </form>
         {create.error && (
           <div className="mt-3">
