@@ -1294,7 +1294,8 @@ as they raise the request, never a default: a colleague who stops by to read
 cannot have been told something the reporter meant for the desk alone. A
 colleague may read the public conversation, reply and attach, as a follower
 may, but is no follower: only the reporter widens who is mailed, so sharing
-tells nobody anything they did not come to look for. Notes stay the agents'.
+tells nobody anything they did not come to look for. Notes stay the agents',
+and the followers the reporter's: a colleague is not shown who they are.
 
 A customer is in one company per desk. One at a company's domain joins it with
 their first request there, and only then, so one an administrator took out is

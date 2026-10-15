@@ -6436,6 +6436,7 @@ export interface components {
             comments: components["schemas"]["Comment"][];
             issue: components["schemas"]["Issue"];
             requestTypeName?: string;
+            throughCompany?: boolean;
         };
         RequestBody: {
             content: {

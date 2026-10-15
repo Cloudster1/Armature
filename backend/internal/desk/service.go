@@ -882,27 +882,9 @@ func (s *Service) MyRequests(ctx context.Context, customer uuid.UUID) ([]issue.I
 // follower's, or a colleague's it was shared with. A request that is not theirs
 // is not found: existence itself is privileged.
 func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (*Request, error) {
-	found, err := s.issues.ByKey(ctx, key)
+	found, throughCompany, err := s.reach(ctx, key, customer)
 	if err != nil {
 		return nil, err
-	}
-	if !allows(ctx, found.ProjectID) {
-		return nil, ErrNotFound
-	}
-	if found.Reporter == nil || found.Reporter.ID != customer {
-		watching, err := s.issues.Watches(ctx, key, customer)
-		if err != nil {
-			return nil, err
-		}
-		shared := false
-		if !watching {
-			if shared, err = s.sharedWith(ctx, found, customer); err != nil {
-				return nil, err
-			}
-		}
-		if !watching && !shared {
-			return nil, ErrNotFound
-		}
 	}
 	comments, err := s.issues.Comments(ctx, key, false)
 	if err != nil {
@@ -911,7 +893,37 @@ func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (
 	if comments == nil {
 		comments = []issue.Comment{}
 	}
-	return &Request{Issue: *found, Comments: comments, RequestTypeName: found.RequestTypeName}, nil
+	return &Request{Issue: *found, Comments: comments, RequestTypeName: found.RequestTypeName, ThroughCompany: throughCompany}, nil
+}
+
+// reach finds a request the customer may open, and says whether only their
+// company lets them, which the followers list is not open to.
+func (s *Service) reach(ctx context.Context, key string, customer uuid.UUID) (*issue.Issue, bool, error) {
+	found, err := s.issues.ByKey(ctx, key)
+	if err != nil {
+		return nil, false, err
+	}
+	if !allows(ctx, found.ProjectID) {
+		return nil, false, ErrNotFound
+	}
+	if found.Reporter != nil && found.Reporter.ID == customer {
+		return found, false, nil
+	}
+	watching, err := s.issues.Watches(ctx, key, customer)
+	if err != nil {
+		return nil, false, err
+	}
+	if watching {
+		return found, false, nil
+	}
+	shared, err := s.sharedWith(ctx, found, customer)
+	if err != nil {
+		return nil, false, err
+	}
+	if !shared {
+		return nil, false, ErrNotFound
+	}
+	return found, true, nil
 }
 
 // IsCustomer reports whether a principal's role is the portal's.

@@ -65,6 +65,7 @@ scenario("a colleague reads in the portal what a customer shared with their comp
   await goto(page, `/portal/requests/${requestKey}`);
   await page.waitForSelector("[data-request-raised-by]", { timeout: WAIT });
   expect.contains(await textOf(page, "[data-request-raised-by]"), "shared with Globex", "the request says whose it is and whom it is shared with");
+  expect.truthy(!(await page.$('[data-testid="followers"]')), "a colleague is not shown who follows it");
   await page.type("#portal-reply", "Same here since nine.");
   await clickButton(page, "Reply");
   await page.waitForFunction(() => document.body.innerText.includes("Same here since nine."), { timeout: WAIT });

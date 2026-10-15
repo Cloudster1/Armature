@@ -169,6 +169,9 @@ type Request struct {
 	Comments []issue.Comment `json:"comments"`
 	// RequestTypeName is what they chose when raising it.
 	RequestTypeName string `json:"requestTypeName,omitempty"`
+	// ThroughCompany says the reader sees it only as a colleague, who is not
+	// shown its followers.
+	ThroughCompany bool `json:"throughCompany,omitempty"`
 }
 
 // Desk is a service project as the portal offers it.

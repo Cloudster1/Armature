@@ -25830,6 +25830,9 @@
           },
           "requestTypeName": {
             "type": "string"
+          },
+          "throughCompany": {
+            "type": "boolean"
           }
         },
         "required": [

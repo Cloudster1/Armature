@@ -456,7 +456,7 @@ function RequestPage() {
 
       {issue.description && <DocView doc={issue.description} size="sm" className="mb-6" />}
 
-      <Followers issueKey={issueKey} reporterId={issue.reporter?.id} />
+      {!data.throughCompany && <Followers issueKey={issueKey} reporterId={issue.reporter?.id} />}
 
       <section>
         <SectionTitle className="mb-2">Conversation</SectionTitle>

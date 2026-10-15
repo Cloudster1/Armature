@@ -153,6 +153,29 @@ func TestACompanyReadsWhatAColleagueShared(t *testing.T) {
 		}
 	})
 
+	t.Run("a colleague is not shown who follows the request", func(t *testing.T) {
+		friend := ws.customerOf(t, h, "friend")
+		if _, _, _, err := ws.issues.AddWatcher(ws.ctx, shared.Key, friend.UserID, reporter); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := d.Followers(ws.ctx, shared.Key, colleague.UserID); !errors.Is(err, desk.ErrNotFound) {
+			t.Errorf("a colleague reading the followers got %v, want not found", err)
+		}
+		read, err := d.Request(ws.ctx, shared.Key, colleague.UserID)
+		if err != nil || !read.ThroughCompany {
+			t.Errorf("the colleague's read = %+v %v, want it marked as through the company", read, err)
+		}
+		for who, reader := range map[string]issue.Actor{"the reporter": reporter, "a follower": friend} {
+			followers, err := d.Followers(ws.ctx, shared.Key, reader.UserID)
+			if err != nil || len(followers) != 1 || followers[0].UserID != friend.UserID {
+				t.Errorf("%s reading the followers = %+v %v, want the one follower", who, followers, err)
+			}
+			if read, _ := d.Request(ws.ctx, shared.Key, reader.UserID); read == nil || read.ThroughCompany {
+				t.Errorf("%s's read is marked as through the company", who)
+			}
+		}
+	})
+
 	t.Run("through an open door there is no company", func(t *testing.T) {
 		door := desk.WithScope(ws.ctx, desk.Scope{ProjectID: p.ID, ProjectKey: p.Key})
 		if _, err := d.Request(door, shared.Key, colleague.UserID); !errors.Is(err, desk.ErrNotFound) {
@@ -509,6 +532,11 @@ func TestCompaniesOverTheAPI(t *testing.T) {
 	want(t, colleague.post("/api/v1/portal/requests/"+requestKey+"/replies", map[string]any{"text": "Same here."}), http.StatusCreated, "the colleague replies")
 	want(t, colleague.upload("/api/v1/portal/requests/"+requestKey+"/attachments", "file", "trace.txt", "text/plain", []byte("timeout")), http.StatusCreated, "the colleague attaches")
 	want(t, colleague.post("/api/v1/portal/requests/"+requestKey+"/watchers", map[string]any{"email": h.email(t, "friend")}), http.StatusForbidden, "the colleague adding a follower")
+	want(t, colleague.get("/api/v1/portal/requests/"+requestKey+"/watchers"), http.StatusNotFound, "the colleague reading the followers")
+	want(t, reporter.get("/api/v1/portal/requests/"+requestKey+"/watchers"), http.StatusOK, "the reporter reading the followers")
+	if read := want(t, colleague.get("/api/v1/portal/requests/"+requestKey), http.StatusOK, "the colleague's read"); read.Body["throughCompany"] != true {
+		t.Errorf("the colleague's read = %s, want it marked as through the company", read.Raw)
+	}
 
 	stranger := api.client(t)
 	stranger.signIn(t, strangerEmail)

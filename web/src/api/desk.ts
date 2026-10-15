@@ -125,6 +125,8 @@ export interface Request {
   issue: Issue;
   comments: Comment[];
   requestTypeName?: string;
+  /** The reader sees it only as a colleague, who is not shown its followers. */
+  throughCompany?: boolean;
 }
 
 export const deskQueryKey = ["desk"] as const;

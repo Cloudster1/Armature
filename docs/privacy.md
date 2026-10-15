@@ -36,8 +36,10 @@ installation does.
   the reporter's company, which its agents see; the reporter chooses, as they
   raise it, whether the other members read it too. A colleague then sees the
   request, its public conversation and its files, and may reply and attach,
-  never the internal notes, and is not mailed about it. Somebody taken out of
-  the company stops seeing it at once.
+  never the internal notes, and is not mailed about it. The followers stay the
+  reporter's: a colleague is not shown who follows the request, since the
+  reporter chose them and they may be outside the company. Somebody taken out
+  of the company stops seeing it at once.
 - **Keeping the installation's record.** The audit log says who changed the
   installation's configuration, for its administrators' own review.
 - **Keeping the service working.** Access logs, metrics and traces exist to
