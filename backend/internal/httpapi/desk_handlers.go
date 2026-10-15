@@ -157,7 +157,12 @@ const maxQueueOffset = 1 << 20
 
 func (s *Server) handleQueue(w http.ResponseWriter, r *http.Request) {
 	page := issue.Page{Limit: queryInt(r, "limit", desk.QueuePageSize, 1, desk.MaxQueuePage), Offset: queryInt(r, "offset", 0, 0, maxQueueOffset)}
-	queue, err := s.Desk.Queue(r.Context(), r.PathValue("projectKey"), desk.QueueFilter(r.URL.Query().Get("filter")), userFrom(r), page)
+	company, err := queryUUID(r.URL.Query(), "company", "company")
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	queue, err := s.Desk.Queue(r.Context(), r.PathValue("projectKey"), desk.QueueFilter(r.URL.Query().Get("filter")), company, userFrom(r), page)
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -214,6 +219,8 @@ type portalRaiseRequest struct {
 	RequestTypeID uuid.UUID `json:"requestTypeId"`
 	Summary       string    `json:"summary"`
 	Description   string    `json:"description"`
+	// ShareWithCompany lets the reporter's colleagues at the desk read it.
+	ShareWithCompany bool `json:"shareWithCompany,omitempty"`
 }
 
 func (s *Server) handlePortalRaise(w http.ResponseWriter, r *http.Request) {
@@ -227,7 +234,7 @@ func (s *Server) handlePortalRaise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	raised, lsn, err := s.Desk.Raise(r.Context(), desk.RaiseInput{
-		RequestTypeID: req.RequestTypeID, Summary: req.Summary, Description: req.Description,
+		RequestTypeID: req.RequestTypeID, Summary: req.Summary, Description: req.Description, ShareWithCompany: req.ShareWithCompany,
 	}, actorFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
@@ -243,7 +250,12 @@ func (s *Server) handlePortalRequests(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"requests": found})
+	shared, err := s.Desk.SharedRequests(r.Context(), userFrom(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"requests": found, "shared": shared})
 }
 
 func (s *Server) handlePortalRequest(w http.ResponseWriter, r *http.Request) {

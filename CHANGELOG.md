@@ -7,6 +7,15 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a service desk groups its customers into companies, on the desk's
+  settings page, by address or by domain: a customer at a company's domain
+  joins it with their first request there. Raising a request, a customer may
+  share it with their company, whose members find it under "Shared by" in the
+  portal and may read it, reply and attach; they never see notes and are not
+  mailed about it. Agents see the company on the request and in the queue,
+  narrow the queue to one company, and query `company = Globex` in search and
+  reports. The export lists a customer's companies and erasure takes them out
+  (#78).
 - Added: customers raise a new request by mailing the desk. Each desk is
   reached at a plus address of the inbox, `support+cp@` for `support@`, shown
   on the service desk page and in the portal. A desk that names a request type

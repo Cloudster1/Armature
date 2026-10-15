@@ -36,7 +36,10 @@ type Filter struct {
 	// InvolvingUser keeps the issues somebody raised or watches, which is what
 	// a portal shows as "your requests".
 	InvolvingUser *uuid.UUID
-	ParentID      *uuid.UUID
+	// SharedWith keeps the requests colleagues shared with a company somebody
+	// is in, less those InvolvingUser would already keep for them.
+	SharedWith *uuid.UUID
+	ParentID   *uuid.UUID
 	// ProjectKind narrows to projects of one kind, which is how the portal
 	// lists a customer's requests across every service desk.
 	ProjectKind string
@@ -277,6 +280,13 @@ func (f Filter) build() (string, []any) {
 		args = append(args, *f.InvolvingUser)
 		n := len(args)
 		clauses = append(clauses, fmt.Sprintf("(i.reporter_id = $%d OR EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id AND w.user_id = $%d))", n, n))
+	}
+	if f.SharedWith != nil {
+		args = append(args, *f.SharedWith)
+		n := len(args)
+		clauses = append(clauses, fmt.Sprintf(`(i.shared_with_company AND i.reporter_id IS DISTINCT FROM $%d
+			AND EXISTS (SELECT 1 FROM customer_company_member m WHERE m.company_id = i.company_id AND m.user_id = $%d)
+			AND NOT EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id AND w.user_id = $%d))`, n, n, n))
 	}
 	if f.ProjectKind != "" {
 		add("p.kind = $%d::project_kind", f.ProjectKind)

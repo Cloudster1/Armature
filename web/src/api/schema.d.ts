@@ -757,6 +757,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/companies/{companyID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a company; what was shared with it is shared no more. */
+        delete: operations["deleteCompany"];
+        options?: never;
+        head?: never;
+        /** Rename a company or change its domains. */
+        patch: operations["updateCompany"];
+        trace?: never;
+    };
+    "/companies/{companyID}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a customer in the company by address. */
+        post: operations["addCompanyMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/companies/{companyID}/members/{userID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a customer out of the company. */
+        delete: operations["removeCompanyMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/components/{componentID}": {
         parameters: {
             query?: never;
@@ -2484,7 +2536,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The caller's own requests. */
+        /** The caller's own requests, and those colleagues shared with the caller's companies. */
         get: operations["portalRequests"];
         put?: never;
         /** Raise a request. */
@@ -2822,6 +2874,24 @@ export interface paths {
         put?: never;
         /** Keep a reply ready; {{customer.name}}, {{issue.key}}, {{issue.summary}} and {{agent.name}} are filled in. */
         post: operations["createCanned"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectKey}/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The desk's companies, each with its customers. */
+        get: operations["listCompanies"];
+        put?: never;
+        /** Add a company; a customer at one of its domains joins on their first request. */
+        post: operations["createCompany"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4922,6 +4992,38 @@ export interface components {
             sha: string;
             url?: string;
         };
+        Company: {
+            /** Format: date-time */
+            createdAt: string;
+            domains: string[];
+            /** Format: uuid */
+            id: string;
+            members: components["schemas"]["CompanyMember"][];
+            name: string;
+            /** Format: uuid */
+            projectId: string;
+            projectKey: string;
+        };
+        CompanyMember: {
+            /** Format: date-time */
+            addedAt: string;
+            email: string;
+            name: string;
+            /** Format: uuid */
+            userId: string;
+        };
+        CompanyMemberRequest: {
+            email: string;
+        };
+        CompanyRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        CompanyRequest: {
+            domains?: string[];
+            name?: string;
+        };
         CompleteSprintRequest: {
             /** Format: uuid */
             moveTo: string | null;
@@ -5197,6 +5299,7 @@ export interface components {
             type: string;
         };
         Desk: {
+            company?: components["schemas"]["CompanyRef"];
             description?: string;
             mailAddress?: string;
             name: string;
@@ -5549,6 +5652,7 @@ export interface components {
             assignee?: components["schemas"]["UserRef"];
             childCount?: number;
             commentCount?: number;
+            company?: components["schemas"]["CompanyRef"];
             components: components["schemas"]["ComponentRef"][];
             /** Format: date-time */
             createdAt: string;
@@ -5584,6 +5688,7 @@ export interface components {
             requestTypeName?: string;
             /** Format: date-time */
             resolvedAt?: string;
+            sharedWithCompany?: boolean;
             sprint?: components["schemas"]["SprintRef"];
             /** Format: uuid */
             sprintId?: string;
@@ -6045,6 +6150,7 @@ export interface components {
             description: string;
             /** Format: uuid */
             requestTypeId: string;
+            shareWithCompany?: boolean;
             summary: string;
         };
         PortalReplyRequest: {
@@ -6330,6 +6436,7 @@ export interface components {
             comments: components["schemas"]["Comment"][];
             issue: components["schemas"]["Issue"];
             requestTypeName?: string;
+            throughCompany?: boolean;
         };
         RequestBody: {
             content: {
@@ -9404,6 +9511,139 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Rendered"];
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                companyID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                companyID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        company: components["schemas"]["Company"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    addCompanyMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                companyID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        company: components["schemas"]["Company"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeCompanyMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                companyID: string;
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -14031,6 +14271,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         requests: components["schemas"]["Issue"][];
+                        shared: components["schemas"]["Issue"][];
                     };
                 };
             };
@@ -15082,6 +15323,76 @@ export interface operations {
             };
         };
     };
+    listCompanies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        companies: components["schemas"]["Company"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        company: components["schemas"]["Company"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listComponents: {
         parameters: {
             query?: never;
@@ -15724,6 +16035,8 @@ export interface operations {
         parameters: {
             query?: {
                 filter?: "open" | "unassigned" | "mine" | "breached" | "all";
+                /** @description Only the requests of this company. */
+                company?: string;
                 /** @description 1 to 200; 50 unless said. */
                 limit?: number;
                 offset?: number;

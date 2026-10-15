@@ -13,10 +13,15 @@ import (
 // customer's, as the reporter or as a follower; a request that is not theirs
 // is not found, since its existence is privileged.
 
-// Followers lists who is told about a customer's request.
+// Followers lists who is told about a customer's request, to its reporter and
+// followers: the reporter chose them, and a colleague has no need of their addresses.
 func (s *Service) Followers(ctx context.Context, key string, customer uuid.UUID) ([]issue.Watcher, error) {
-	if _, err := s.Request(ctx, key, customer); err != nil {
+	_, throughCompany, err := s.reach(ctx, key, customer)
+	if err != nil {
 		return nil, err
+	}
+	if throughCompany {
+		return nil, ErrNotFound
 	}
 	return s.issues.Watchers(ctx, key)
 }

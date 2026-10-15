@@ -169,6 +169,9 @@ type Request struct {
 	Comments []issue.Comment `json:"comments"`
 	// RequestTypeName is what they chose when raising it.
 	RequestTypeName string `json:"requestTypeName,omitempty"`
+	// ThroughCompany says the reader sees it only as a colleague, who is not
+	// shown its followers.
+	ThroughCompany bool `json:"throughCompany,omitempty"`
 }
 
 // Desk is a service project as the portal offers it.
@@ -183,6 +186,8 @@ type Desk struct {
 	// MailAddress is where a new request may be mailed; empty when this desk
 	// raises nothing from mail.
 	MailAddress string `json:"mailAddress,omitempty"`
+	// Company is the customer's company here, which a request can be shared with.
+	Company *issue.CompanyRef `json:"company,omitempty"`
 }
 
 var (

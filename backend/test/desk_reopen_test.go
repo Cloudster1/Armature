@@ -93,7 +93,7 @@ func TestACustomersReplyReopensAResolvedRequest(t *testing.T) {
 		if name, actor := lastMove(t, h, ws, key); name != desk.Reopen || actor != who.UserID {
 			t.Errorf("the request was moved by %q as %s, want Reopen taken as the customer %s", name, actor, who.UserID)
 		}
-		open, err := d.Queue(ws.ctx, p.Key, desk.QueueOpen, ws.actor.UserID, issue.Page{})
+		open, err := d.Queue(ws.ctx, p.Key, desk.QueueOpen, nil, ws.actor.UserID, issue.Page{})
 		if err != nil {
 			t.Fatal(err)
 		}

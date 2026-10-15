@@ -764,6 +764,22 @@ func (s *Service) Desks(ctx context.Context, viewer issue.Actor) ([]Desk, error)
 		}
 		out[i].RequestTypes = types
 	}
+	if _, open := ScopeFrom(ctx); open || !IsCustomer(viewer.OrgRole) {
+		return out, nil
+	}
+	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		for i := range out {
+			company, err := companyAt(ctx, tx, out[i].ProjectID, viewer.UserID, false)
+			if err != nil {
+				return err
+			}
+			out[i].Company = company
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -772,6 +788,9 @@ type RaiseInput struct {
 	RequestTypeID uuid.UUID
 	Summary       string
 	Description   string
+	// ShareWithCompany lets the other members of the reporter's company at
+	// the desk read the request, reply and attach.
+	ShareWithCompany bool
 }
 
 // Raise files a request through a request type, as the customer.
@@ -795,18 +814,31 @@ func (s *Service) Raise(ctx context.Context, in RaiseInput, customer issue.Actor
 			return nil, 0, err
 		}
 	}
+	company, err := s.raisersCompany(ctx, rt.ProjectID, customer)
+	if err != nil {
+		return nil, 0, err
+	}
+	if in.ShareWithCompany && company == nil {
+		return nil, 0, ErrNoCompany
+	}
+	var companyID *uuid.UUID
+	if company != nil {
+		companyID = &company.ID
+	}
 	var description json.RawMessage
 	if text := strings.TrimSpace(in.Description); text != "" {
 		description = issue.TextDocument(text)
 	}
 	return s.issues.Create(ctx, issue.CreateInput{
-		ProjectKey:    rt.ProjectKey,
-		TypeID:        rt.IssueTypeID,
-		Summary:       in.Summary,
-		Description:   description,
-		Priority:      rt.Priority,
-		TeamID:        rt.TeamID,
-		RequestTypeID: &rt.ID,
+		ProjectKey:        rt.ProjectKey,
+		TypeID:            rt.IssueTypeID,
+		Summary:           in.Summary,
+		Description:       description,
+		Priority:          rt.Priority,
+		TeamID:            rt.TeamID,
+		RequestTypeID:     &rt.ID,
+		CompanyID:         companyID,
+		SharedWithCompany: in.ShareWithCompany,
 	}, customer)
 }
 
@@ -846,25 +878,13 @@ func (s *Service) MyRequests(ctx context.Context, customer uuid.UUID) ([]issue.I
 	return page.Issues, nil
 }
 
-// Request reads one request as its customer sees it: the reporter's, or a
-// follower's. A request that is not theirs is not found: existence itself is
-// privileged.
+// Request reads one request as its customer sees it: the reporter's, a
+// follower's, or a colleague's it was shared with. A request that is not theirs
+// is not found: existence itself is privileged.
 func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (*Request, error) {
-	found, err := s.issues.ByKey(ctx, key)
+	found, throughCompany, err := s.reach(ctx, key, customer)
 	if err != nil {
 		return nil, err
-	}
-	if !allows(ctx, found.ProjectID) {
-		return nil, ErrNotFound
-	}
-	if found.Reporter == nil || found.Reporter.ID != customer {
-		watching, err := s.issues.Watches(ctx, key, customer)
-		if err != nil {
-			return nil, err
-		}
-		if !watching {
-			return nil, ErrNotFound
-		}
 	}
 	comments, err := s.issues.Comments(ctx, key, false)
 	if err != nil {
@@ -873,7 +893,37 @@ func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (
 	if comments == nil {
 		comments = []issue.Comment{}
 	}
-	return &Request{Issue: *found, Comments: comments, RequestTypeName: found.RequestTypeName}, nil
+	return &Request{Issue: *found, Comments: comments, RequestTypeName: found.RequestTypeName, ThroughCompany: throughCompany}, nil
+}
+
+// reach finds a request the customer may open, and says whether only their
+// company lets them, which the followers list is not open to.
+func (s *Service) reach(ctx context.Context, key string, customer uuid.UUID) (*issue.Issue, bool, error) {
+	found, err := s.issues.ByKey(ctx, key)
+	if err != nil {
+		return nil, false, err
+	}
+	if !allows(ctx, found.ProjectID) {
+		return nil, false, ErrNotFound
+	}
+	if found.Reporter != nil && found.Reporter.ID == customer {
+		return found, false, nil
+	}
+	watching, err := s.issues.Watches(ctx, key, customer)
+	if err != nil {
+		return nil, false, err
+	}
+	if watching {
+		return found, false, nil
+	}
+	shared, err := s.sharedWith(ctx, found, customer)
+	if err != nil {
+		return nil, false, err
+	}
+	if !shared {
+		return nil, false, ErrNotFound
+	}
+	return found, true, nil
 }
 
 // IsCustomer reports whether a principal's role is the portal's.

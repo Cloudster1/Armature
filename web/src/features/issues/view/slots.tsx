@@ -12,6 +12,7 @@ import { MilestoneField } from "@/features/milestones/MilestoneField";
 import { ComponentField, VersionField } from "@/features/versions/IssueVersionFields";
 import { TeamField } from "@/features/teams/TeamFields";
 import { SlaBadge } from "@/features/desk/SlaBadge";
+import { companyLine } from "@/features/desk/company";
 import { IssueField, IssueFields } from "@/features/fields/IssueFields";
 import { LabelPicker } from "@/features/labels/LabelPicker";
 import { TimeSummary } from "@/features/time/TimeTracking";
@@ -85,9 +86,14 @@ export const slotViews: Record<Slot, (props: SlotProps) => ReactNode> = {
     </Detail>
   ),
   request: ({ issue }) =>
-    issue.requestTypeName ? (
+    issue.requestTypeName || issue.company ? (
       <Detail label="Request">
         <span className="text-ink">{issue.requestTypeName}</span>
+        {issue.company && (
+          <span className="block text-ink-muted" data-request-company={issue.company.name}>
+            {companyLine(issue.company.name, Boolean(issue.sharedWithCompany))}
+          </span>
+        )}
       </Detail>
     ) : null,
   goals: ({ issue }) => <SlaDetails issueKey={issue.key} />,

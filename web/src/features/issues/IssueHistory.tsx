@@ -93,6 +93,7 @@ function describe(field: string, from?: string, to?: string): string {
     case "sprint":
     case "team":
     case "milestone":
+    case "company":
       return to ? `set the ${field} to ${to}` : `cleared the ${field} (${from})`;
     default:
       return `changed ${field} from ${from || "empty"} to ${to || "empty"}`;

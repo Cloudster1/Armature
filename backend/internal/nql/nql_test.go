@@ -135,6 +135,7 @@ func TestCompileBindsEveryValue(t *testing.T) {
 			[]any{"fix", "fix", []string{"2.0"}, []string{"billing"}}},
 		{`affectsVersion IS EMPTY`, `NOT EXISTS (SELECT 1 FROM issue_version iv WHERE iv.issue_id = i.id AND iv.role = $3)`, []any{"affects"}},
 		{`team IS EMPTY AND milestone = M1`, `((i.team_id IS NULL) AND (i.milestone_id IN (SELECT id FROM milestone WHERE lower(name) = ANY($3))))`, []any{[]string{"m1"}}},
+		{`company = Globex`, `(i.company_id IN (SELECT id FROM customer_company WHERE lower(name) = ANY($3)))`, []any{[]string{"globex"}}},
 		{`"Customer" = Globex`,
 			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND lower(v.value #>> '{}') = lower($3))`,
 			[]any{"Globex", "Customer"}},
@@ -217,7 +218,7 @@ func TestCompileRefusesWhatTheCatalogDoesNotKnow(t *testing.T) {
 		want string
 	}{
 		{`assigne = x`, 1, `Unknown field "assigne". Did you mean "assignee"?`},
-		{`bogus IN (1)`, 1, "The fields are affectsVersion, assignee, component, created"},
+		{`bogus IN (1)`, 1, "The fields are affectsVersion, assignee, company, component, created"},
 		{`priority ~ high`, 1, `"~" does not apply to priority. Use =, !=, <, <=, >, >= or IN.`},
 		{`labels < a`, 1, `"<" does not apply to labels`},
 		{`estimate = big`, 12, "estimate is a number, and big is not one"},

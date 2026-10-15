@@ -19,6 +19,7 @@ import { Button, Card, ErrorBanner, Field, Page, PageHeader, SectionTitle, Selec
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { categoriesOf, groupByCategory } from "@/features/desk/templates";
 import { BusinessHours, CannedResponses, Door, KnowledgeBase } from "@/features/desk/DeskExtras";
+import { Companies } from "@/features/desk/Companies";
 import { canAdminister, useAccess } from "@/api/access";
 
 export const serviceDeskRoute = createRoute({
@@ -47,6 +48,7 @@ function ServiceDeskPage() {
       />
       <Door projectKey={projectKey} editable={canAdminister(access, projectKey)} />
       <RequestTypes projectKey={projectKey} />
+      <Companies projectKey={projectKey} editable={canAdminister(access, projectKey)} />
       <Policies projectKey={projectKey} />
       <BusinessHours projectKey={projectKey} />
       <KnowledgeBase projectKey={projectKey} />

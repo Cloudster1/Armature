@@ -1287,6 +1287,29 @@ request stays on it: the list decides who may come in, not who may stay.
 **Reconsider if** a desk asks for per-address lists or a deny list, at which
 point the column becomes a table with a verdict per row.
 
+### Colleagues read what a reporter shared with their company
+
+A desk groups its customers into companies, and sharing is the reporter's choice
+as they raise the request, never a default: a colleague who stops by to read
+cannot have been told something the reporter meant for the desk alone. A
+colleague may read the public conversation, reply and attach, as a follower
+may, but is no follower: only the reporter widens who is mailed, so sharing
+tells nobody anything they did not come to look for. Notes stay the agents',
+and the followers the reporter's: a colleague is not shown who they are.
+
+A customer is in one company per desk. One at a company's domain joins it with
+their first request there, and only then, so one an administrator took out is
+not let back in by the next request. Who sees what is read when they look, so
+somebody who leaves stops seeing at once, and what they shared stays with the
+company. An open door takes an address on trust, so a session through one has
+no company: it neither joins one nor reads what was shared with it. As with
+the rest of the desk, the api decides who sees what, and the keys and
+triggers refuse a company of another desk on a request, sharing with none,
+and a member who works here.
+
+**Reconsider if** a customer needs to be in two companies of one desk, which
+turns the one key per desk and customer into a choice at raise time.
+
 ### A follower is a user, and a mail address is enough to be one
 
 An address becomes a user with no password, the same row a portal code makes, so

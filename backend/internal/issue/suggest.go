@@ -165,6 +165,8 @@ func (s *Service) valueNames(ctx context.Context, field string, in SuggestInput,
 		query, detail = `SELECT name FROM team WHERE lower(name) LIKE $1`+byProject+` ORDER BY name`, "team"
 	case "milestone":
 		query, detail = `SELECT name FROM milestone WHERE lower(name) LIKE $1`+byProject+` ORDER BY name`, "milestone"
+	case "company":
+		query, detail = `SELECT name FROM customer_company WHERE lower(name) LIKE $1`+byProject+` ORDER BY name`, "company"
 	case "labels":
 		query, detail = `SELECT name FROM label WHERE lower(name) LIKE $1 ORDER BY name`, "label"
 	case "fixversion", "affectsversion":

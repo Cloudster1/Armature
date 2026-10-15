@@ -10,6 +10,7 @@ import type { Theme, ThemeExample } from "./themes";
 import type { Build, Meta } from "./meta";
 import type { ActiveSession } from "./auth";
 import type { Absence, Holiday, HolidayCalendar, WorkingWeek } from "./availability";
+import type { Company, Desk } from "./desk";
 
 // The hand written types are what the components render; the generated ones
 // are what the server promises. Each hand written type has to be satisfied by
@@ -42,6 +43,11 @@ describe("the hand written types agree with the document", () => {
     expectTypeOf<Schemas["Holiday"]>().toMatchTypeOf<Holiday>();
     expectTypeOf<Schemas["WorkingWeek"]>().toMatchTypeOf<WorkingWeek>();
     expectTypeOf<Schemas["Absence"]>().toMatchTypeOf<Absence>();
+  });
+
+  it("for a desk's companies", () => {
+    expectTypeOf<Schemas["Company"]>().toMatchTypeOf<Company>();
+    expectTypeOf<Schemas["Desk"]>().toMatchTypeOf<Desk>();
   });
 
   it("for the build", () => {

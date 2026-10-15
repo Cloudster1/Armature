@@ -119,6 +119,10 @@ export interface Issue {
   /** Set on a request raised through the customer portal. */
   requestTypeId?: string;
   requestTypeName?: string;
+  /** The reporter's company at the desk when they raised it. */
+  company?: { id: string; name: string };
+  /** Whether the reporter let the other members of that company read it. */
+  sharedWithCompany?: boolean;
   /** Minutes: how long it was thought to take, how long is left, and the work logged. */
   timeEstimateMinutes?: number;
   timeRemainingMinutes?: number;

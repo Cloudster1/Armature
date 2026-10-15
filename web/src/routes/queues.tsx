@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
-import { useQueue, type QueueFilter } from "@/api/desk";
-import { EmptyState, Page, PageHeader, Pager, Segmented, Table, Td, Th, clampOffset, countOf } from "@/components/ui";
+import { useCompanies, useQueue, type QueueFilter } from "@/api/desk";
+import { EmptyState, Page, PageHeader, Pager, Segmented, SelectInput, Table, Td, Th, clampOffset, countOf } from "@/components/ui";
 import { Avatar, StatusBadge, TypeBadge, RelativeTime } from "@/features/issues/badges";
 import { SlaBadge } from "@/features/desk/SlaBadge";
+import { companyLine } from "@/features/desk/company";
 import { QUEUE_PAGE_SIZE } from "@/config";
 
 export const queuesRoute = createRoute({
@@ -28,7 +29,10 @@ function QueuesPage() {
   const { data: projectData } = useProject(projectKey);
   const [filter, setFilter] = useState<QueueFilter>("open");
   const [offset, setOffset] = useState(0);
-  const { data, isLoading } = useQueue(projectKey, filter, offset);
+  const [company, setCompany] = useState("");
+  const { data, isLoading } = useQueue(projectKey, filter, offset, company);
+  const { data: companyData } = useCompanies(projectKey);
+  const companies = companyData?.companies ?? [];
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
 
@@ -53,8 +57,27 @@ function QueuesPage() {
         title="Queues"
         meta={data ? countOf(total, "request") : undefined}
       />
-      <div className="mb-3">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
         <Segmented label="Queue" value={filter} onChange={choose} options={filters} />
+        {companies.length > 0 && (
+          <SelectInput
+            aria-label="Company"
+            value={company}
+            onChange={(e) => {
+              setCompany(e.target.value);
+              setOffset(0);
+            }}
+            data-queue-company-filter
+            className="w-48"
+          >
+            <option value="">Every company</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </SelectInput>
+        )}
       </div>
 
       {isLoading ? null : rows.length === 0 ? (
@@ -67,6 +90,7 @@ function QueuesPage() {
               <Th className="w-24">Key</Th>
               <Th>Request</Th>
               <Th className="w-36">Kind</Th>
+              <Th className="w-32">Company</Th>
               <Th className="w-32">Team</Th>
               <Th className="w-40">Status</Th>
               <Th className="w-10" aria-label="Assignee" />
@@ -96,6 +120,9 @@ function QueuesPage() {
                     </Link>
                   </Td>
                   <Td className="text-sm text-ink-muted">{row.requestTypeName ?? ""}</Td>
+                  <Td className="text-sm text-ink-muted" data-queue-company={row.issue.company?.name ?? ""}>
+                    {row.issue.company ? companyLine(row.issue.company.name, Boolean(row.issue.sharedWithCompany)) : ""}
+                  </Td>
                   <Td className="text-sm text-ink-muted" data-queue-team={row.issue.team?.name ?? ""}>
                     {row.issue.team?.name ?? ""}
                   </Td>

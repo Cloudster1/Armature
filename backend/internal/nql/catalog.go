@@ -65,6 +65,7 @@ var catalog = []fieldDef{
 	{name: "sprint", kind: fkLookup, column: "i.sprint_id", table: "sprint"},
 	{name: "team", kind: fkLookup, column: "i.team_id", table: "team"},
 	{name: "milestone", kind: fkLookup, column: "i.milestone_id", table: "milestone"},
+	{name: "company", kind: fkLookup, column: "i.company_id", table: "customer_company"},
 	{name: "labels", kind: fkLabels},
 	{name: "fixVersion", kind: fkVersion, role: "fix"},
 	{name: "affectsVersion", kind: fkVersion, role: "affects"},

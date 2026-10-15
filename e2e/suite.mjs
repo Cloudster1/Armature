@@ -17,6 +17,7 @@ const SCENARIO_FILES = [
   "git",
   "desk",
   "desk-mail",
+  "desk-companies",
   "dashboards",
   "issue-details",
   "organization",

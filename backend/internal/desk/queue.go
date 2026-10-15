@@ -68,6 +68,7 @@ WITH q AS (
 	  AND (NOT $3 OR i.assignee_id IS NULL)
 	  AND ($4::uuid IS NULL OR i.assignee_id = $4)
 	  AND (NOT $5 OR COALESCE(u.breached, false))
+	  AND ($9::uuid IS NULL OR i.company_id = $9)
 )
 SELECT (SELECT count(*) FROM q), pg.id, pg.key
 FROM (SELECT 1) one
@@ -77,8 +78,9 @@ LEFT JOIN LATERAL (
 ORDER BY ` + queueRank
 
 // Queue reads one page of a desk's requests, breached first, then least time
-// left. A business hours clock's time left is read by the wall, never later.
-func (s *Service) Queue(ctx context.Context, projectKey string, filter QueueFilter, agent uuid.UUID, page issue.Page) (*QueuePage, error) {
+// left, narrowed to one company's when one is named. A business hours clock's
+// time left is read by the wall, never later.
+func (s *Service) Queue(ctx context.Context, projectKey string, filter QueueFilter, company *uuid.UUID, agent uuid.UUID, page issue.Page) (*QueuePage, error) {
 	var (
 		categories = []string{string(workflow.CategoryTodo), string(workflow.CategoryInProgress)}
 		unassigned bool
@@ -107,7 +109,7 @@ func (s *Service) Queue(ctx context.Context, projectKey string, filter QueueFilt
 		keys []string
 	)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, queueOrder, key, categories, unassigned, assignee, filter == QueueBreached, s.now().UTC(), page.Limit, page.Offset)
+		rows, err := tx.Query(ctx, queueOrder, key, categories, unassigned, assignee, filter == QueueBreached, s.now().UTC(), page.Limit, page.Offset, company)
 		if err != nil {
 			return err
 		}

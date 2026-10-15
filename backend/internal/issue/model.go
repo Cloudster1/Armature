@@ -94,6 +94,12 @@ type TeamRef struct {
 	Name string    `json:"name"`
 }
 
+// CompanyRef is a desk's company as it appears on a request.
+type CompanyRef struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
 // ParentRef is the issue above this one, in as much detail as a breadcrumb, a
 // card or a header needs without a second request.
 type ParentRef struct {
@@ -144,6 +150,10 @@ type Issue struct {
 	// RequestTypeID is set on an issue raised through the customer portal.
 	RequestTypeID   *uuid.UUID `json:"requestTypeId,omitempty"`
 	RequestTypeName string     `json:"requestTypeName,omitempty"`
+	// Company is the reporter's company at the desk when they raised it, and
+	// SharedWithCompany says they let its other members read it.
+	Company           *CompanyRef `json:"company,omitempty"`
+	SharedWithCompany bool        `json:"sharedWithCompany,omitempty"`
 	// Estimate is how much work this is, in whatever unit the team counts in.
 	// Nil is unestimated, which is not the same as an estimate of zero.
 	Estimate *float64 `json:"estimate,omitempty"`

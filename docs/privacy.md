@@ -31,7 +31,15 @@ installation does.
 - **Telling people.** Notifications and mail carry news of the work to the
   people on it; a person chooses, per reason, whether to be told.
 - **Running a service desk.** A customer's address is how a request finds
-  its way back to them; one-time codes let them in without a password.
+  its way back to them; one-time codes let them in without a password. A
+  desk may put customers who work together in a company. The request records
+  the reporter's company, which its agents see; the reporter chooses, as they
+  raise it, whether the other members read it too. A colleague then sees the
+  request, its public conversation and its files, and may reply and attach,
+  never the internal notes, and is not mailed about it. The followers stay the
+  reporter's: a colleague is not shown who follows the request, since the
+  reporter chose them and they may be outside the company. Somebody taken out
+  of the company stops seeing it at once.
 - **Keeping the installation's record.** The audit log says who changed the
   installation's configuration, for its administrators' own review.
 - **Keeping the service working.** Access logs, metrics and traces exist to
@@ -67,6 +75,7 @@ installation does.
 | Pictures | the bucket, `user/<id>/avatar` | the picture | while chosen | removed on request or by erasure |
 | Themes | `theme`, `theme_asset`, `user_theme`, the bucket under `theme/<theme>/<file>` | the maker, the files they uploaded, who chose what | while the theme exists | deleted by the maker or an administrator, and by the maker's erasure, files included |
 | Ratings | `csat_rating` | a score and a free text | with the request | with the issue |
+| Companies | `customer_company`, `customer_company_member`, `issue.company_id` | which desk's company a customer is in, when they joined, and the company a request came from | while the company exists | taken out by a desk administrator, with the company, and by erasure; a request keeps its company until the company goes |
 
 An import adds one column to issues, comments and worklogs: the name the
 tracker they came from called the row, so running the same file twice corrects
@@ -113,7 +122,8 @@ the only one that reads the sign-in and second-factor tables.
   one JSON file: profile, memberships, sessions, tokens, issues reported and
   assigned, comments, worklogs, watches, notifications, saved filters, the
   working weeks set for them, their absences and who recorded each, the
-  shares of their week projects have, and the audit actions they performed. On the profile page it is "Download my
+  shares of their week projects have, the desks' companies they are in, and
+  the audit actions they performed. On the profile page it is "Download my
   data"; a customer finds it under their name in the portal.
 - **Rectification:** the profile page changes the name, the zone, the
   language and the picture, and lists the person's absences from a month
@@ -122,7 +132,7 @@ the only one that reads the sign-in and second-factor tables.
   person in and does not change here.
 - **Erasure:** `DELETE /api/v1/auth/me`, from a browser session only, so a
   leaked token cannot erase its owner. Sessions, tokens, notifications,
-  filters, watches, absences, shares of the week and memberships go; the
+  filters, watches, absences, shares of the week, companies and memberships go; the
   account becomes a tombstone;
   commits and inbound mail carrying the address are pseudonymised. What the
   person wrote stays, attributed to "Former user": the record belongs to the

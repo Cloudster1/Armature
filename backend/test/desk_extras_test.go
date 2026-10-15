@@ -120,7 +120,7 @@ func TestARequestIsRatedOnce(t *testing.T) {
 		t.Error("a second resolution mail carried a new rating link")
 	}
 
-	queue, err := d.Queue(ws.ctx, p.Key, desk.QueueAll, ws.actor.UserID, issue.Page{})
+	queue, err := d.Queue(ws.ctx, p.Key, desk.QueueAll, nil, ws.actor.UserID, issue.Page{})
 	if err != nil {
 		t.Fatal(err)
 	}

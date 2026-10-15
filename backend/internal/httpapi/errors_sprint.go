@@ -7,7 +7,7 @@ import (
 	"github.com/armature/armature/backend/internal/sprint"
 )
 
-// sprintAPIError ends availabilityAPIError's mapping: work refused for being
+// sprintAPIError continues availabilityAPIError's mapping: work refused for being
 // another team's, which the person resolves by handing it over or picking again.
 func sprintAPIError(err error) *APIError {
 	switch {
@@ -16,6 +16,6 @@ func sprintAPIError(err error) *APIError {
 	case errors.Is(err, sprint.ErrOtherTeam):
 		return ErrConflict("Unfinished work stays with its own team. Carry it into one of that team's sprints, or send it back to the backlog.")
 	default:
-		return ErrInternal(err)
+		return companyAPIError(err)
 	}
 }

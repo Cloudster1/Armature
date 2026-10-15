@@ -94,6 +94,7 @@ SELECT i.id, p.key || '-' || i.key_num, i.project_id, p.key,
        i.team_id, COALESCE(tm.name, ''),
        i.milestone_id, COALESCE(ms.name, ''),
        i.request_type_id, COALESCE(rt.name, ''),
+       i.company_id, COALESCE(cc.name, ''), i.shared_with_company,
        i.time_estimate_minutes, i.time_remaining_minutes,
        COALESCE((SELECT sum(w.minutes) FROM issue_worklog w WHERE w.issue_id = i.id), 0)::int,
        COALESCE((SELECT jsonb_agg(jsonb_build_object('id', l.id, 'name', l.name, 'color', l.color) ORDER BY lower(l.name))
@@ -114,6 +115,7 @@ LEFT JOIN issue parent ON parent.id = i.parent_id
 LEFT JOIN issue_type pt ON pt.id = parent.issue_type_id
 LEFT JOIN project pp ON pp.id = parent.project_id
 LEFT JOIN request_type rt ON rt.id = i.request_type_id
+LEFT JOIN customer_company cc ON cc.id = i.company_id
 LEFT JOIN sprint sp ON sp.id = i.sprint_id
 LEFT JOIN team tm ON tm.id = i.team_id
 LEFT JOIN milestone ms ON ms.id = i.milestone_id`
@@ -131,6 +133,8 @@ func scanIssue(row pgx.Row) (*Issue, error) {
 		parentTypeLevel              int
 		sprintName, sprintState      string
 		teamName, milestoneName      string
+		companyID                    *uuid.UUID
+		companyName                  string
 		labels                       []byte
 		fixVersions, affects, comps  []byte
 	)
@@ -149,6 +153,7 @@ func scanIssue(row pgx.Row) (*Issue, error) {
 		&i.TeamID, &teamName,
 		&i.MilestoneID, &milestoneName,
 		&i.RequestTypeID, &i.RequestTypeName,
+		&companyID, &companyName, &i.SharedWithCompany,
 		&i.TimeEstimateMinutes, &i.TimeRemainingMinutes, &i.TimeSpentMinutes, &labels, &fixVersions, &affects, &comps,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -185,6 +190,9 @@ func scanIssue(row pgx.Row) (*Issue, error) {
 	}
 	if i.MilestoneID != nil {
 		i.Milestone = &MilestoneRef{ID: *i.MilestoneID, Name: milestoneName}
+	}
+	if companyID != nil {
+		i.Company = &CompanyRef{ID: *companyID, Name: companyName}
 	}
 	if i.ParentID != nil && parentTypeID != nil {
 		i.Parent = &ParentRef{
@@ -253,6 +261,10 @@ type CreateInput struct {
 	SprintID *uuid.UUID
 	// RequestTypeID says the issue was raised through the portal, and as what.
 	RequestTypeID *uuid.UUID
+	// CompanyID is the reporter's company at the desk, and SharedWithCompany
+	// lets its other members read the request.
+	CompanyID         *uuid.UUID
+	SharedWithCompany bool
 	// ComponentIDs puts the issue in the project's parts as it is created; the
 	// first component with a default assignee takes it when nobody was named.
 	ComponentIDs []uuid.UUID
@@ -361,12 +373,14 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actor Actor) (*Iss
 		err = tx.QueryRow(ctx, `
 			INSERT INTO issue (project_id, key_num, issue_type_id, status_id,
 			                   summary, description, priority, assignee_id, reporter_id,
-			                   parent_id, start_date, due_date, estimate, team_id, sprint_id, rank, request_type_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+			                   parent_id, start_date, due_date, estimate, team_id, sprint_id, rank, request_type_id,
+			                   company_id, shared_with_company)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 			RETURNING id`,
 			projectID, keyNum, typeID, initial.Status.ID,
 			summary, nullableJSON(in.Description), string(priority),
 			assigneeID, actor.UserID, parentID, in.StartDate, in.DueDate, in.Estimate, in.TeamID, in.SprintID, cardRank, in.RequestTypeID,
+			in.CompanyID, in.SharedWithCompany,
 		).Scan(&id)
 		if err != nil {
 			return fmt.Errorf("create issue: %w", err)
