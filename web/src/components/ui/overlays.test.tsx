@@ -206,6 +206,31 @@ describe("Menu", () => {
     expect(pick).not.toHaveBeenCalled();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
+
+  it("keeps a header's box for typing, and leaves it for the items by the arrows", async () => {
+    const pick = vi.fn();
+    function Host() {
+      const [text, setText] = useState("");
+      return (
+        <Menu
+          label="Switch"
+          header={<input aria-label="Filter" value={text} onChange={(e) => setText(e.target.value)} />}
+          trigger={(p) => <button onClick={p.toggle}>Open</button>}
+          items={[{ label: "Apollo", onSelect: pick }]}
+        />
+      );
+    }
+    render(<Host />);
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    const box = screen.getByLabelText("Filter");
+    expect(document.activeElement).toBe(box);
+    await userEvent.keyboard("a b");
+    expect(box).toHaveValue("a b");
+    expect(document.activeElement).toBe(box);
+    expect(pick).not.toHaveBeenCalled();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "Apollo" }));
+  });
 });
 
 describe("Popover", () => {

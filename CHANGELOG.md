@@ -7,6 +7,8 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a space typed into the project switcher's filter no longer closes
+  it, so a project named in two words can be found (#283).
 - Fixed: a label field no longer draws every label everyone has coined. The
   new issue dialog, the issue page, bulk edit's Add labels, a rule's Add a
   label action and the project issue list's label filter show none until

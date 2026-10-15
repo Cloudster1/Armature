@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
-import { focusables, useAnchored, useEscape, useOutsidePress } from "./overlay";
+import { focusables, isEditing, useAnchored, useEscape, useOutsidePress } from "./overlay";
 
 export interface MenuItem {
   label: ReactNode;
@@ -21,12 +21,15 @@ export function Menu({
   trigger,
   items,
   label,
+  header,
   align = "start",
   className,
 }: {
   trigger: (props: { open: boolean; toggle: () => void; "aria-haspopup": "menu"; "aria-expanded": boolean }) => ReactNode;
   items: MenuItem[];
   label: string;
+  /** Drawn above the items and outside them, such as a box that narrows them: inside an item's button, Space would pick it. */
+  header?: ReactNode;
   align?: "start" | "end";
   className?: string;
 }) {
@@ -64,6 +67,8 @@ export function Menu({
     const options = focusables(list);
     const index = options.indexOf(document.activeElement as HTMLElement);
     const go = (i: number) => options[(i + options.length) % options.length]?.focus();
+    // In a box the keys are for typing; only the arrows leave it for the items.
+    if (isEditing(event.target) && event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
@@ -103,6 +108,7 @@ export function Menu({
           style={place}
           className="fixed z-30 min-w-44 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
         >
+          {header}
           {items.map((item, i) => (
             <button
               key={i}
