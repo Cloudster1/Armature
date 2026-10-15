@@ -7,6 +7,14 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: customers raise a new request by mailing the desk. Each desk is
+  reached at a plus address of the inbox, `support+cp@` for `support@`, shown
+  on the service desk page and in the portal. A desk that names a request type
+  for mail turns a new mail there into a request by its sender: the subject is
+  the summary, the words the description, and the files come along. Machines,
+  agents, forged senders and domains the desk does not trust raise nothing; a
+  desk without a mail request type answers as before. Upgrading: the api reads
+  `ARMATURE_MAIL_INBOX` too, to show each desk its address (#72).
 - Added: a kanban board leaves out work finished more than a number of days
   ago, set per board beside its swimlanes, 0 keeping it there. The board says
   how many finished issues it left out and links to a search for them, and a

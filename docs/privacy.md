@@ -59,7 +59,7 @@ installation does.
 | Events | `outbox_event` | actor ids, issue summaries in payloads | until published, then `ARMATURE_RETAIN_OUTBOX` (30 days) | swept; the Redis stream is capped at 10 000 entries |
 | Webhook deliveries | `webhook_delivery` | the event as posted | `ARMATURE_RETAIN_WEBHOOK_DELIVERIES` (30 days) | swept; with the endpoint |
 | Automation runs | `automation_run` | what a rule did | `ARMATURE_RETAIN_AUTOMATION_RUNS` (90 days) | swept; with the rule |
-| Inbound mail | `inbound_mail` | sender address, subject, outcome and why it failed; never the body | `ARMATURE_RETAIN_INBOUND_MAIL` (90 days) | swept; sender pseudonymised by erasure |
+| Inbound mail | `inbound_mail` | sender address, subject, outcome, the request it was a reply to or raised, and why it failed; never the body, which a raised request keeps as its description | `ARMATURE_RETAIN_INBOUND_MAIL` (90 days) | swept; sender pseudonymised by erasure |
 | Outbound mail | nowhere | | not stored | a counter is the only record |
 | Imports | `import_job` | file name, a report that may echo rows | `ARMATURE_RETAIN_IMPORT_JOBS` (90 days) | swept |
 | Audit log | `audit_log` | actor id, action, target, address; an invitation's email address | `ARMATURE_RETAIN_AUDIT` (365 days) | swept; exportable by administrators |
@@ -151,7 +151,11 @@ the only one that reads the sign-in and second-factor tables.
   checks go: a message whose `Authentication-Results` says the sender is
   forged is refused, and one from a colleague's address is filed where only
   the desk sees it. Without such a header nobody checked, and the address is
-  taken at face value, as mail always is.
+  taken at face value, as mail always is. That now goes for new requests too:
+  a desk that raises requests from mail makes an account without a password
+  for a sender at a domain it trusts, and the request is theirs, so a desk
+  with no trusted domains takes a request from any address that claims to be
+  one. The account is erased as any other.
 - Access logs are the operator's to keep or discard; the application does
   not rotate or delete them.
 - Third parties' names and addresses arrive through connected repositories

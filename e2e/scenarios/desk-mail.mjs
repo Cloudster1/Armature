@@ -141,6 +141,37 @@ scenario("a reply by mail lands on the request", async ({ page }) => {
   expect.truthy(!thread.includes("internal note"), "a mailed reply is public");
 });
 
+scenario("a customer raises a request by mailing the desk", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Helpdesk", { template: "service-desk", visit: false });
+
+  // The desk names what new mail becomes, and shows the address to mail.
+  await goto(page, `/projects/${key}/service-desk`);
+  await page.waitForSelector("[data-desk-mail-address]", { timeout: WAIT });
+  const deskAddress = await textOf(page, "[data-desk-mail-address]");
+  expect.equal(deskAddress, `support+${key.toLowerCase()}@armature.test`, "the desk is a plus address of the inbox");
+  await selectByLabel(page, "#field-mail-request-type", "Ask a question");
+  await page.waitForFunction(() => document.body.innerText.includes("New mail raises requests"), { timeout: WAIT });
+  await signOut(page);
+
+  // Somebody with no account mails it, and is sent the receipt.
+  const address = unique("cleo").email;
+  const since = Date.now() - 1000;
+  await sendMail({ from: address, to: deskAddress, subject: "The scanner is offline", body: "It shows a red light since this morning." });
+  const receipt = await mailFor(address, "we have your request", { since, timeout: REPLY_WAIT });
+  const requestKey = receipt.subject.match(/\[([A-Z][A-Z0-9]*-\d+)\]/)?.[1];
+  expect.truthy(requestKey?.startsWith(`${key}-`), "the receipt names a request at the desk");
+
+  // Through the desk's door, the request is theirs in the portal.
+  await enterDesk(page, address, { desk: key });
+  await page.waitForSelector(`[data-request="${requestKey}"]`, { timeout: WAIT });
+  expect.contains(await textOf(page, `[data-request="${requestKey}"]`), "The scanner is offline", "the subject is the summary");
+  expect.contains(await textOf(page, `[data-request="${requestKey}"]`), "Ask a question", "of the desk's mail type");
+  await goto(page, "/portal/new");
+  await chooseDesk(page, key);
+  await page.waitForSelector(`[data-portal-mail-address="${deskAddress}"]`, { timeout: WAIT });
+});
+
 scenario("a person changes their name and time zone and puts a face to it", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   await goto(page, "/settings/profile");

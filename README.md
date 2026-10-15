@@ -448,7 +448,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_DOOR_WINDOW` | `10m` | how long the brakes on portal codes, portal entries, password links, sign-in codes and password or invitation guesses remember an address |
 | `ARMATURE_SMTP_ADDR` / `_USER` / `_PASSWORD` / `_TLS` | none, none, none, `starttls` | the relay and its login; no address turns mail off. `starttls` upgrades whenever the relay offers to and sends no login to one that does not, `implicit` speaks TLS from the first byte (port 465), and `none` never upgrades, so it takes no login |
 | `ARMATURE_MAIL_FROM` | `Armature <no-reply@armature.test>` | the sender |
-| `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off |
+| `ARMATURE_MAIL_INBOX` | none | the address replies come back to; empty turns replies off. Each desk is also reached at a plus address of it, `support+cp@acme.test` for desk CP, where a new mail raises a request when the desk names a request type for mail; the mail host must deliver plus addresses to the inbox. The api reads it too, to show each desk its address |
 | `ARMATURE_POP3_ADDR` / `_USER` / `_PASSWORD` / `_TLS` / `_INTERVAL` | none, none, none, `false`, `30s` | the mailbox the worker reads replies from |
 | `ARMATURE_MAIL_INSECURE_TLS` | `false` | accept any certificate from the relay and the mailbox, for one that has expired or is self-signed |
 | `ARMATURE_S3_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY` / `_SECRET_KEY` / `_REGION` / `_USE_SSL` | none, `armature-attachments`, none, none, `us-east-1`, `false` | the bucket attachments and pictures live in |
