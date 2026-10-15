@@ -2988,6 +2988,203 @@
         }
       }
     },
+    "/companies/{companyID}": {
+      "delete": {
+        "operationId": "deleteCompany",
+        "summary": "Remove a company; what was shared with it is shared no more.",
+        "tags": [
+          "service desk"
+        ],
+        "parameters": [
+          {
+            "name": "companyID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateCompany",
+        "summary": "Rename a company or change its domains.",
+        "tags": [
+          "service desk"
+        ],
+        "parameters": [
+          {
+            "name": "companyID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company": {
+                      "$ref": "#/components/schemas/Company"
+                    }
+                  },
+                  "required": [
+                    "company"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/companies/{companyID}/members": {
+      "post": {
+        "operationId": "addCompanyMember",
+        "summary": "Put a customer in the company by address.",
+        "tags": [
+          "service desk"
+        ],
+        "parameters": [
+          {
+            "name": "companyID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company": {
+                      "$ref": "#/components/schemas/Company"
+                    }
+                  },
+                  "required": [
+                    "company"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/companies/{companyID}/members/{userID}": {
+      "delete": {
+        "operationId": "removeCompanyMember",
+        "summary": "Take a customer out of the company.",
+        "tags": [
+          "service desk"
+        ],
+        "parameters": [
+          {
+            "name": "companyID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/components/{componentID}": {
       "delete": {
         "operationId": "deleteComponent",
@@ -9852,7 +10049,7 @@
     "/portal/requests": {
       "get": {
         "operationId": "portalRequests",
-        "summary": "The caller's own requests.",
+        "summary": "The caller's own requests, and those colleagues shared with the caller's companies.",
         "tags": [
           "portal"
         ],
@@ -9869,10 +10066,17 @@
                       "items": {
                         "$ref": "#/components/schemas/Issue"
                       }
+                    },
+                    "shared": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Issue"
+                      }
                     }
                   },
                   "required": [
-                    "requests"
+                    "requests",
+                    "shared"
                   ]
                 }
               }
@@ -11492,6 +11696,117 @@
         }
       }
     },
+    "/projects/{projectKey}/companies": {
+      "get": {
+        "operationId": "listCompanies",
+        "summary": "The desk's companies, each with its customers.",
+        "tags": [
+          "service desk"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "companies": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Company"
+                      }
+                    }
+                  },
+                  "required": [
+                    "companies"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCompany",
+        "summary": "Add a company; a customer at one of its domains joins on their first request.",
+        "tags": [
+          "service desk"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company": {
+                      "$ref": "#/components/schemas/Company"
+                    }
+                  },
+                  "required": [
+                    "company"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{projectKey}/components": {
       "get": {
         "operationId": "listComponents",
@@ -12598,6 +12913,15 @@
                 "breached",
                 "all"
               ]
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "description": "Only the requests of this company.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20262,6 +20586,116 @@
           "committedAt"
         ]
       },
+      "Company": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompanyMember"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectKey",
+          "name",
+          "domains",
+          "members",
+          "createdAt"
+        ]
+      },
+      "CompanyMember": {
+        "type": "object",
+        "properties": {
+          "addedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "addedAt"
+        ]
+      },
+      "CompanyMemberRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "CompanyRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CompanyRequest": {
+        "type": "object",
+        "properties": {
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "CompleteSprintRequest": {
         "type": "object",
         "properties": {
@@ -21208,6 +21642,9 @@
       "Desk": {
         "type": "object",
         "properties": {
+          "company": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
           "description": {
             "type": "string"
           },
@@ -22455,6 +22892,9 @@
           "commentCount": {
             "type": "integer"
           },
+          "company": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
           "components": {
             "type": "array",
             "items": {
@@ -22560,6 +23000,9 @@
           "resolvedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "sharedWithCompany": {
+            "type": "boolean"
           },
           "sprint": {
             "$ref": "#/components/schemas/SprintRef"
@@ -24224,6 +24667,9 @@
           "requestTypeId": {
             "type": "string",
             "format": "uuid"
+          },
+          "shareWithCompany": {
+            "type": "boolean"
           },
           "summary": {
             "type": "string"

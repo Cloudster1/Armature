@@ -55,6 +55,7 @@ var objectKinds = []objectKind{
 	{"responseID", ofProject("canned_response"), "That canned response was not found."},
 	{"requestTypeID", ofProject("request_type"), "That request type was not found."},
 	{"policyID", ofProject("sla_policy"), "That policy was not found."},
+	{"companyID", ofProject("customer_company"), "That company was not found."},
 	{"fieldID", `SELECT p.key FROM custom_field t LEFT JOIN project p ON p.id = t.project_id WHERE t.id = $1`, "That field was not found."},
 	{"attachmentID", viaIssue("attachment"), "That attachment was not found."},
 	{"ruleID", `SELECT p.key FROM automation_rule t LEFT JOIN project p ON p.id = t.project_id WHERE t.id = $1`, "That rule was not found."},

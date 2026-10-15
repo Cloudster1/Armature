@@ -153,7 +153,7 @@ var operations = []operation{
 	{method: "GET", path: "/portal/desks", handler: "handlePortalDesks", tag: "portal", summary: "The service desks a customer may raise requests with.", responses: ok(env{"desks": []desk.Desk{}})},
 	{method: "POST", path: "/portal/requests", handler: "handlePortalRaise", tag: "portal", summary: "Raise a request.",
 		request: portalRaiseRequest{}, responses: created(env{"request": issue.Issue{}})},
-	{method: "GET", path: "/portal/requests", handler: "handlePortalRequests", tag: "portal", summary: "The caller's own requests.", responses: ok(env{"requests": []issue.Issue{}})},
+	{method: "GET", path: "/portal/requests", handler: "handlePortalRequests", tag: "portal", summary: "The caller's own requests, and those colleagues shared with the caller's companies.", responses: ok(env{"requests": []issue.Issue{}, "shared": []issue.Issue{}})},
 	{method: "GET", path: "/portal/requests/{issueKey}", handler: "handlePortalRequest", tag: "portal", summary: "One request, with what the desk has said to the customer.", responses: ok(desk.Request{})},
 	{method: "POST", path: "/portal/requests/{issueKey}/replies", handler: "handlePortalReply", tag: "portal", summary: "Reply to the desk.",
 		request: portalReplyRequest{}, responses: created(env{"comment": issue.Comment{}})},
@@ -528,7 +528,13 @@ var operations = []operation{
 	{method: "GET", path: "/projects/{projectKey}/sla-policies", handler: "handleListPolicies", tag: "service desk", summary: "The desk's goals per priority.", responses: ok(env{"policies": []desk.Policy{}})},
 	{method: "PATCH", path: "/sla-policies/{policyID}", handler: "handleUpdatePolicy", tag: "service desk", summary: "Change goals or which statuses pause the clock.", request: updatePolicyRequest{}, responses: ok(env{"policy": desk.Policy{}})},
 	{method: "GET", path: "/projects/{projectKey}/queue", handler: "handleQueue", tag: "service desk", summary: "The agents' queue, most urgent first.",
-		query: []param{{name: "filter", schema: &openapi.Schema{Type: "string", Enum: []string{"open", "unassigned", "mine", "breached", "all"}}}, {name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, {name: "offset", schema: intParam}}, responses: ok(desk.QueuePage{})},
+		query: []param{{name: "filter", schema: &openapi.Schema{Type: "string", Enum: []string{"open", "unassigned", "mine", "breached", "all"}}}, {name: "company", schema: uuidParam, description: "Only the requests of this company."}, {name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, {name: "offset", schema: intParam}}, responses: ok(desk.QueuePage{})},
+	{method: "GET", path: "/projects/{projectKey}/companies", handler: "handleListCompanies", tag: "service desk", summary: "The desk's companies, each with its customers.", responses: ok(env{"companies": []desk.Company{}})},
+	{method: "POST", path: "/projects/{projectKey}/companies", handler: "handleCreateCompany", tag: "service desk", summary: "Add a company; a customer at one of its domains joins on their first request.", request: companyRequest{}, responses: created(env{"company": desk.Company{}})},
+	{method: "PATCH", path: "/companies/{companyID}", handler: "handleUpdateCompany", tag: "service desk", summary: "Rename a company or change its domains.", request: companyRequest{}, responses: ok(env{"company": desk.Company{}})},
+	{method: "DELETE", path: "/companies/{companyID}", handler: "handleDeleteCompany", tag: "service desk", summary: "Remove a company; what was shared with it is shared no more.", responses: none()},
+	{method: "POST", path: "/companies/{companyID}/members", handler: "handleAddCompanyMember", tag: "service desk", summary: "Put a customer in the company by address.", request: companyMemberRequest{}, responses: created(env{"company": desk.Company{}})},
+	{method: "DELETE", path: "/companies/{companyID}/members/{userID}", handler: "handleRemoveCompanyMember", tag: "service desk", summary: "Take a customer out of the company.", responses: none()},
 	{method: "GET", path: "/issues/{issueKey}/timers", handler: "handleIssueTimers", tag: "service desk", summary: "The clocks on a request.", responses: ok(env{"timers": []desk.Timer{}})},
 
 	// The Model Context Protocol: this API as tools for an assistant.

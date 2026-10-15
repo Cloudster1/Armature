@@ -540,6 +540,18 @@ func (s *Server) deskRoutes(r chi.Router) {
 	})
 	r.With(requireIssuePerm(perm.IssueWrite)).
 		Post("/issues/{issueKey}/branches", s.handleCreateBranch)
+
+	// Companies: who reads whose shared requests is the desk's to say.
+	r.Get("/projects/{projectKey}/companies", s.handleListCompanies)
+	r.With(requireProjectPerm(perm.ProjectAdminister)).
+		Post("/projects/{projectKey}/companies", s.handleCreateCompany)
+	r.Group(func(r chi.Router) {
+		r.Use(requireObjectPerm(perm.ProjectAdminister))
+		r.Patch("/companies/{companyID}", s.handleUpdateCompany)
+		r.Delete("/companies/{companyID}", s.handleDeleteCompany)
+		r.Post("/companies/{companyID}/members", s.handleAddCompanyMember)
+		r.Delete("/companies/{companyID}/members/{userID}", s.handleRemoveCompanyMember)
+	})
 }
 
 // issueRoutes registers fields, labels, time, files, and the issue itself.

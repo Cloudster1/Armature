@@ -31,7 +31,7 @@ func TestTheQueuePutsTheMostPressingFirst(t *testing.T) {
 
 	queue := func(filter desk.QueueFilter) []desk.QueueRow {
 		t.Helper()
-		page, err := d.Queue(ws.ctx, p.Key, filter, ws.actor.UserID, issue.Page{})
+		page, err := d.Queue(ws.ctx, p.Key, filter, nil, ws.actor.UserID, issue.Page{})
 		if err != nil {
 			t.Fatal(err)
 		}

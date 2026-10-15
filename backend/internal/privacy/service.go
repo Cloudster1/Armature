@@ -88,6 +88,7 @@ type Export struct {
 	WorkingHours  []WorkingHours `json:"workingHours"`
 	Absences      []Absence      `json:"absences"`
 	Shares        []Share        `json:"shares"`
+	Companies     []Company      `json:"companies"`
 }
 
 type Profile struct {
@@ -309,6 +310,18 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (*Export, error)
 		if err != nil {
 			return err
 		}
+		out.Companies, err = collect(ctx, tx, `
+			SELECT p.name, c.name, m.added_at FROM customer_company_member m
+			JOIN customer_company c ON c.id = m.company_id JOIN project p ON p.id = c.project_id
+			WHERE m.user_id = $1 ORDER BY p.name, c.name`, userID,
+			func(row pgx.Rows) (Company, error) {
+				var x Company
+				err := row.Scan(&x.Desk, &x.Company, &x.AddedAt)
+				return x, err
+			})
+		if err != nil {
+			return err
+		}
 		out.Shares, err = collect(ctx, tx, `
 			SELECT o.name, p.name, a.percent FROM project_allocation a
 			CROSS JOIN installation o JOIN project p ON p.id = a.project_id
@@ -395,6 +408,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM member_schedule WHERE user_id = $1`,
 			`DELETE FROM absence WHERE user_id = $1`,
 			`DELETE FROM project_allocation WHERE user_id = $1`,
+			`DELETE FROM customer_company_member WHERE user_id = $1`,
 			`UPDATE app_user SET standing = NULL WHERE id = $1`,
 		} {
 			if _, err := tx.Exec(ctx, q, userID); err != nil {

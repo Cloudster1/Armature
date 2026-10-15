@@ -312,7 +312,7 @@ func TestABreachIsNoticedByTheWatch(t *testing.T) {
 	})
 
 	t.Run("and the breached queue shows it", func(t *testing.T) {
-		queue, err := d.Queue(ws.ctx, p.Key, desk.QueueBreached, ws.actor.UserID, issue.Page{})
+		queue, err := d.Queue(ws.ctx, p.Key, desk.QueueBreached, nil, ws.actor.UserID, issue.Page{})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -68,6 +68,7 @@ var discardsAllowed = map[string]string{
 
 	// A later write in the same request carries a position past this one.
 	"auth/accounts.go (*Service).UserForAddress":      "the watcher added next carries the later position the handler notes",
+	"desk/companies.go (*Service).raisersCompany":     "the request raised next carries the later position the handler notes",
 	"auth/import_member.go (*Service).ImportedMember": "the import's later writes carry the position the handler notes",
 	"demo/plant.go plant":                             "the demo's record, written last, carries the position the handler notes",
 }

@@ -180,6 +180,8 @@ type Desk struct {
 	RequestTypes []RequestType `json:"requestTypes"`
 	// RepliesByMail says the desk reads answers to its mails.
 	RepliesByMail bool `json:"repliesByMail"`
+	// Company is the customer's company here, which a request can be shared with.
+	Company *issue.CompanyRef `json:"company,omitempty"`
 }
 
 var (

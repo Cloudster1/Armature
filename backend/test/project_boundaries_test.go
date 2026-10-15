@@ -165,13 +165,16 @@ func TestAProjectIsAWallInsideTheInstallation(t *testing.T) {
 	})
 
 	t.Run("every route addressed by an id is walled", func(t *testing.T) {
+		deskKey := h.projectKey(t, "FDSK")
+		want(t, owner.post("/api/v1/projects", map[string]any{"name": "Far desk", "key": deskKey, "template": "service-desk"}), http.StatusCreated, "a far desk")
+		company := idOf(t, want(t, owner.post("/api/v1/projects/"+deskKey+"/companies", map[string]any{"name": "Far company"}), http.StatusCreated, "a far company"), "company")
 		ids := map[string]string{
 			"projectKey": farrKey, "issueKey": it.issueKey, "sprintID": it.sprint,
 			"milestoneID": it.milestone, "versionID": it.version, "componentID": it.component,
 			"teamID": it.team, "boardID": it.board, "swimlaneID": it.swimlane,
 			"dashboardID": it.dashboard, "shareID": it.share, "fieldID": it.field,
 			"attachmentID": it.attachment, "ruleID": it.rule, "worklogID": it.worklog,
-			"commentID": it.comment, "linkID": it.link,
+			"commentID": it.comment, "linkID": it.link, "companyID": company,
 		}
 		swept := 0
 		for _, route := range httpapi.Catalog() {

@@ -296,6 +296,13 @@ func nameOfTeam(t *TeamRef) string {
 	return t.Name
 }
 
+func nameOfCompany(c *CompanyRef) string {
+	if c == nil {
+		return ""
+	}
+	return c.Name
+}
+
 func nameOfMilestone(m *MilestoneRef) string {
 	if m == nil {
 		return ""

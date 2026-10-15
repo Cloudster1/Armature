@@ -727,6 +727,22 @@ func (s *Service) Desks(ctx context.Context, viewer issue.Actor) ([]Desk, error)
 		}
 		out[i].RequestTypes = types
 	}
+	if _, open := ScopeFrom(ctx); open || !IsCustomer(viewer.OrgRole) {
+		return out, nil
+	}
+	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		for i := range out {
+			company, err := companyAt(ctx, tx, out[i].ProjectID, viewer.UserID, false)
+			if err != nil {
+				return err
+			}
+			out[i].Company = company
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -735,6 +751,9 @@ type RaiseInput struct {
 	RequestTypeID uuid.UUID
 	Summary       string
 	Description   string
+	// ShareWithCompany lets the other members of the reporter's company at
+	// the desk read the request, reply and attach.
+	ShareWithCompany bool
 }
 
 // Raise files a request through a request type, as the customer.
@@ -758,18 +777,31 @@ func (s *Service) Raise(ctx context.Context, in RaiseInput, customer issue.Actor
 			return nil, 0, err
 		}
 	}
+	company, err := s.raisersCompany(ctx, rt.ProjectID, customer)
+	if err != nil {
+		return nil, 0, err
+	}
+	if in.ShareWithCompany && company == nil {
+		return nil, 0, ErrNoCompany
+	}
+	var companyID *uuid.UUID
+	if company != nil {
+		companyID = &company.ID
+	}
 	var description json.RawMessage
 	if text := strings.TrimSpace(in.Description); text != "" {
 		description = issue.TextDocument(text)
 	}
 	return s.issues.Create(ctx, issue.CreateInput{
-		ProjectKey:    rt.ProjectKey,
-		TypeID:        rt.IssueTypeID,
-		Summary:       in.Summary,
-		Description:   description,
-		Priority:      rt.Priority,
-		TeamID:        rt.TeamID,
-		RequestTypeID: &rt.ID,
+		ProjectKey:        rt.ProjectKey,
+		TypeID:            rt.IssueTypeID,
+		Summary:           in.Summary,
+		Description:       description,
+		Priority:          rt.Priority,
+		TeamID:            rt.TeamID,
+		RequestTypeID:     &rt.ID,
+		CompanyID:         companyID,
+		SharedWithCompany: in.ShareWithCompany,
 	}, customer)
 }
 
@@ -809,9 +841,9 @@ func (s *Service) MyRequests(ctx context.Context, customer uuid.UUID) ([]issue.I
 	return page.Issues, nil
 }
 
-// Request reads one request as its customer sees it: the reporter's, or a
-// follower's. A request that is not theirs is not found: existence itself is
-// privileged.
+// Request reads one request as its customer sees it: the reporter's, a
+// follower's, or a colleague's it was shared with. A request that is not theirs
+// is not found: existence itself is privileged.
 func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (*Request, error) {
 	found, err := s.issues.ByKey(ctx, key)
 	if err != nil {
@@ -825,7 +857,13 @@ func (s *Service) Request(ctx context.Context, key string, customer uuid.UUID) (
 		if err != nil {
 			return nil, err
 		}
+		shared := false
 		if !watching {
+			if shared, err = s.sharedWith(ctx, found, customer); err != nil {
+				return nil, err
+			}
+		}
+		if !watching && !shared {
 			return nil, ErrNotFound
 		}
 	}

@@ -81,7 +81,8 @@ func (s *Service) moveRow(ctx context.Context, tx db.DBTX, before *Issue, target
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL
+		UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL,
+		       company_id = NULL, shared_with_company = false
 		WHERE id = $1`, before.ID, target.id, keyNum, statusID); err != nil {
 		return nil, fmt.Errorf("move %s: %w", before.Key, err)
 	}
@@ -101,6 +102,7 @@ func (s *Service) moveRow(ctx context.Context, tx db.DBTX, before *Issue, target
 		{"sprint", before.Sprint != nil, nameOf(before.Sprint)},
 		{"team", before.Team != nil, nameOfTeam(before.Team)},
 		{"milestone", before.Milestone != nil, nameOfMilestone(before.Milestone)},
+		{"company", before.Company != nil, nameOfCompany(before.Company)},
 		{"fixVersion", len(before.FixVersions) > 0, versionNames(before.FixVersions)},
 		{"affectsVersion", len(before.AffectsVersions) > 0, versionNames(before.AffectsVersions)},
 		{"component", len(before.Components) > 0, componentNames(before.Components)},
