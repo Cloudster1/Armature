@@ -49,9 +49,12 @@ type HolidayCalendar struct {
 	DayCount int       `json:"dayCount"`
 	Days     []Holiday `json:"days,omitempty"`
 	// PeopleCount is how many were given this calendar by name, not by default.
-	PeopleCount int       `json:"peopleCount"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	PeopleCount int `json:"peopleCount"`
+	// Desks are the service desks whose business hours take its days off, which
+	// keep it from being deleted. Only an administrator, who deletes, is told them.
+	Desks     []string  `json:"desks"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // Holiday is one day off on a calendar.
@@ -99,6 +102,28 @@ var (
 	// ErrCustomer is returned for a portal customer, who has no working week or absences here.
 	ErrCustomer = errors.New("a portal customer keeps no working week or absences")
 )
+
+// CalendarInUseError names the desks a calendar is kept for, so the refusal
+// to delete it says where to choose another.
+type CalendarInUseError struct {
+	Calendar string
+	Desks    []string
+}
+
+func (e *CalendarInUseError) Error() string {
+	if len(e.Desks) == 1 {
+		return fmt.Sprintf("%s is the holiday calendar of the %s desk; choose another one on its service desk page first", e.Calendar, e.Desks[0])
+	}
+	return fmt.Sprintf("%s is the holiday calendar of the %s desks; choose another one on their service desk pages first", e.Calendar, inWords(e.Desks))
+}
+
+// inWords lists names the way a sentence does: A, B and C.
+func inWords(names []string) string {
+	if len(names) < 2 {
+		return strings.Join(names, "")
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
+}
 
 func invalid(format string, args ...any) error {
 	return fmt.Errorf("%w: "+format, append([]any{ErrInvalid}, args...)...)

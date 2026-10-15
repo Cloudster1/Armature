@@ -435,6 +435,9 @@ func moreAPIError(err error) *APIError {
 		return ErrConflict("This request was already rated. Thank you.")
 	case errors.Is(err, desk.ErrNoCalendar):
 		return ErrConflict("This project has no business hours yet. Set them under Business hours first.")
+	case errors.Is(err, desk.ErrNoHolidayCalendar):
+		message := "That holiday calendar is not there any more. Choose another one, or None."
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: message, Fields: map[string]string{"holidayCalendarId": message}}
 	case errors.Is(err, desk.ErrNotAService):
 		return ErrConflict("Articles belong to a service desk project.")
 	case errors.Is(err, filter.ErrNotFound):

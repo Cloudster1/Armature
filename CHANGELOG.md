@@ -7,6 +7,15 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a desk's business hours take their days off from a holiday calendar,
+  chosen under Holidays from on the service desk page, beside the desk's own
+  extra days. The clocks skip its days, keep the first half of the open hours
+  on a half day, and follow a change to the calendar from then on. A holiday
+  calendar a desk uses is not deleted; the refusal names the desks, as does
+  the confirmation on the Holidays page. `GET` and `PUT
+  /api/v1/projects/{projectKey}/business-calendar` carry `holidayCalendarId`
+  and `holidayCalendarName`, and a holiday calendar carries `desks` for an
+  administrator (#77).
 - Added: a kanban board leaves out work finished more than a number of days
   ago, set per board beside its swimlanes, 0 keeping it there. The board says
   how many finished issues it left out and links to a search for them, and a

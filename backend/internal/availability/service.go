@@ -26,12 +26,14 @@ const selectCalendar = `
 SELECT c.id, c.name, c.is_default,
        (SELECT count(*) FROM holiday h WHERE h.calendar_id = c.id),
        (SELECT count(*) FROM member_schedule s WHERE s.calendar_id = c.id),
+       ARRAY(SELECT p.name FROM business_calendar bc JOIN project p ON p.id = bc.project_id
+             WHERE bc.holiday_calendar_id = c.id ORDER BY lower(p.name), p.key),
        c.created_at, c.updated_at
 FROM holiday_calendar c`
 
 func scanCalendar(row pgx.Row) (*HolidayCalendar, error) {
 	var c HolidayCalendar
-	err := row.Scan(&c.ID, &c.Name, &c.Default, &c.DayCount, &c.PeopleCount, &c.CreatedAt, &c.UpdatedAt)
+	err := row.Scan(&c.ID, &c.Name, &c.Default, &c.DayCount, &c.PeopleCount, &c.Desks, &c.CreatedAt, &c.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -198,8 +200,8 @@ func (s *Service) UpdateCalendar(ctx context.Context, id uuid.UUID, in CalendarI
 	return out, lsn, nil
 }
 
-// DeleteCalendar removes a calendar that is not the default. The people
-// given it fall back to the default, which is what null means for them.
+// DeleteCalendar removes a calendar that is not the default and no desk takes
+// its days from. The people given it fall back to the default, as null means.
 func (s *Service) DeleteCalendar(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		found, err := scanCalendar(tx.QueryRow(ctx, selectCalendar+` WHERE c.id = $1 FOR UPDATE OF c`, id))
@@ -208,6 +210,9 @@ func (s *Service) DeleteCalendar(ctx context.Context, id uuid.UUID, actor uuid.U
 		}
 		if found.Default {
 			return ErrDefaultCalendar
+		}
+		if len(found.Desks) > 0 {
+			return &CalendarInUseError{Calendar: found.Name, Desks: found.Desks}
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM holiday_calendar WHERE id = $1`, id); err != nil {
 			return fmt.Errorf("delete holiday calendar: %w", err)

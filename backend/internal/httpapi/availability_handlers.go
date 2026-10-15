@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/availability"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // Holiday calendars are read by every agent, since planning shows whose days
@@ -18,6 +19,9 @@ func (s *Server) handleListHolidayCalendars(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		respondError(w, r, err)
 		return
+	}
+	for i := range found {
+		desksForAdministrators(r, &found[i])
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"calendars": found})
 }
@@ -33,7 +37,16 @@ func (s *Server) handleGetHolidayCalendar(w http.ResponseWriter, r *http.Request
 		respondError(w, r, err)
 		return
 	}
+	desksForAdministrators(r, found)
 	respondJSON(w, r, http.StatusOK, map[string]any{"calendar": found})
+}
+
+// desksForAdministrators leaves a calendar's desks to whoever may delete it,
+// since an agent reading the calendars may not see every desk.
+func desksForAdministrators(r *http.Request, c *availability.HolidayCalendar) {
+	if !PermsFrom(r.Context()).CanInOrg(perm.OrgAdminister) {
+		c.Desks = []string{}
+	}
 }
 
 type holidayCalendarRequest struct {

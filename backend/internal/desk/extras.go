@@ -522,14 +522,22 @@ func (s *Service) Rating(ctx context.Context, issueKey string) (*Rating, error) 
 // Calendar is a project's business hours, or nothing yet.
 func (s *Service) Calendar(ctx context.Context, projectKey string) (*Calendar, error) {
 	var (
-		timezone string
-		hours    []byte
-		holidays []string
+		timezone      string
+		hours         []byte
+		holidays      []string
+		linkedID      *uuid.UUID
+		linkedName    *string
+		whole, halves []string
 	)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT bc.timezone, bc.hours, bc.holidays::text[] FROM business_calendar bc JOIN project p ON p.id = bc.project_id WHERE p.key = $1`,
-			project.NormalizeKey(projectKey)).Scan(&timezone, &hours, &holidays)
+			SELECT bc.timezone, bc.hours, bc.holidays::text[], bc.holiday_calendar_id, hc.name, hd.whole, hd.half
+			FROM business_calendar bc
+			JOIN project p ON p.id = bc.project_id
+			LEFT JOIN holiday_calendar hc ON hc.id = bc.holiday_calendar_id
+			LEFT JOIN LATERAL (`+linkedDays+`) hd ON true
+			WHERE p.key = $1`,
+			project.NormalizeKey(projectKey)).Scan(&timezone, &hours, &holidays, &linkedID, &linkedName, &whole, &halves)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNoCalendar
@@ -537,21 +545,40 @@ func (s *Service) Calendar(ctx context.Context, projectKey string) (*Calendar, e
 	if err != nil {
 		return nil, err
 	}
-	return parseCalendar(timezone, hours, holidays)
+	c, err := parseCalendar(timezone, hours, holidays, whole, halves)
+	if err != nil {
+		return nil, err
+	}
+	c.HolidayCalendarID, c.HolidayCalendarName = linkedID, linkedName
+	return c, nil
 }
 
-// SaveCalendar sets a project's hours.
+// SaveCalendar sets a project's hours and the holiday calendar it takes days off from.
 func (s *Service) SaveCalendar(ctx context.Context, projectKey string, c Calendar) (*Calendar, db.LSN, error) {
 	if err := c.Validate(); err != nil {
 		return nil, 0, err
 	}
 	hours, _ := json.Marshal(c.Hours)
+	c.HolidayCalendarName = nil
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if c.HolidayCalendarID != nil {
+			// Held until the save commits, so the calendar is not deleted from under it.
+			var name string
+			err := tx.QueryRow(ctx, `SELECT name FROM holiday_calendar WHERE id = $1 FOR KEY SHARE`, *c.HolidayCalendarID).Scan(&name)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrNoHolidayCalendar
+			}
+			if err != nil {
+				return err
+			}
+			c.HolidayCalendarName = &name
+		}
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO business_calendar (project_id, timezone, hours, holidays)
-			SELECT id, $2, $3, $4::date[] FROM project WHERE key = $1
-			ON CONFLICT (project_id) DO UPDATE SET timezone = EXCLUDED.timezone, hours = EXCLUDED.hours, holidays = EXCLUDED.holidays`,
-			project.NormalizeKey(projectKey), c.Timezone, hours, c.Holidays)
+			INSERT INTO business_calendar (project_id, timezone, hours, holidays, holiday_calendar_id)
+			SELECT id, $2, $3, $4::date[], $5 FROM project WHERE key = $1
+			ON CONFLICT (project_id) DO UPDATE SET timezone = EXCLUDED.timezone, hours = EXCLUDED.hours,
+				holidays = EXCLUDED.holidays, holiday_calendar_id = EXCLUDED.holiday_calendar_id`,
+			project.NormalizeKey(projectKey), c.Timezone, hours, c.Holidays, c.HolidayCalendarID)
 		if err != nil {
 			return err
 		}
