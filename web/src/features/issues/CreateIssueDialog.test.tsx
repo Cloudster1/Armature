@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import type { Placement } from "@/api/arrange";
@@ -87,6 +87,7 @@ vi.mock("@/api/versions", async () => ({
 vi.mock("@/api/labels", async () => ({
   ...(await vi.importActual<typeof import("@/api/labels")>("@/api/labels")),
   useLabels: () => ({ data: { labels: [{ name: "regression" }] }, isLoading: false }),
+  useLabelSearch: (q: string) => ({ data: q ? { labels: [{ id: "l1", name: "regression", color: "red", issueCount: 3 }].filter((l) => l.name.includes(q)) } : undefined }),
 }));
 
 const { ToastProvider } = await import("@/components/ui");
@@ -141,6 +142,15 @@ describe("CreateIssueDialog", () => {
       "Labels",
       "Severity",
     ]);
+  });
+
+  // Labels are everybody's; the form offers one only when its start is typed.
+  it("draws no label until one is typed", async () => {
+    draw();
+    expect(screen.queryByRole("button", { name: "regression" })).not.toBeInTheDocument();
+    expect(screen.queryByText("regression")).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Labels"), "gress");
+    expect(await screen.findByRole("option", { name: "regression" })).toBeInTheDocument();
   });
 
   // A field nobody shows is not a field anybody is asked for.
@@ -203,7 +213,8 @@ describe("CreateIssueDialog", () => {
     await userEvent.selectOptions(screen.getByLabelText("Reporter"), "u1");
     await userEvent.selectOptions(screen.getByLabelText("Milestone"), "m1");
     await userEvent.selectOptions(screen.getByLabelText("Severity"), "High");
-    await userEvent.click(within(screen.getByRole("group", { name: "Labels already in use" })).getByRole("button", { name: "regression" }));
+    await userEvent.type(screen.getByLabelText("Labels"), "reg");
+    await userEvent.click(await screen.findByRole("option", { name: "regression" }));
     await userEvent.click(screen.getByRole("button", { name: "Create issue" }));
 
     await waitFor(() => expect(state.request).toHaveBeenCalledTimes(4));

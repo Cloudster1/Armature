@@ -13381,7 +13381,12 @@ export interface operations {
     };
     listLabels: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Text the name contains; names starting with it come first. With neither q nor limit, every label. */
+                q?: string;
+                /** @description 1 to 50; 50 unless said. */
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;

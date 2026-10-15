@@ -119,6 +119,34 @@ func (s *Service) Labels(ctx context.Context) ([]Label, error) {
 	return out, err
 }
 
+// MaxSuggestions caps a search, so a field suggests a few words rather than all of them.
+const MaxSuggestions = 50
+
+// Search lists up to limit labels whose name holds q, case insensitively: names
+// starting with it first, then the rest, each alphabetically.
+func (s *Service) Search(ctx context.Context, q string, limit int) ([]Label, error) {
+	out := []Label{}
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		rows, err := tx.Query(ctx, selectLabel+`
+WHERE strpos(lower(l.name), lower($1)) > 0
+ORDER BY strpos(lower(l.name), lower($1)) <> 1, lower(l.name)
+LIMIT $2`, q, limit)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			l, err := scanLabel(rows)
+			if err != nil {
+				return err
+			}
+			out = append(out, *l)
+		}
+		return rows.Err()
+	})
+	return out, err
+}
+
 // Input describes a label being made or changed.
 type Input struct {
 	Name  string

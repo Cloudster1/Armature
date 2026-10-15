@@ -4,14 +4,15 @@ import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
 import { useIssues, type StatusCategory } from "@/api/issues";
-import { useLabels } from "@/api/labels";
+import type { LabelRef } from "@/api/issues";
 import { useMilestones } from "@/api/milestones";
 import { IssueTable } from "@/features/issues/IssueTable";
 import { QueryInput } from "@/features/search/QueryInput";
+import { LabelInput } from "@/features/labels/LabelInput";
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
 import { ExportDialog } from "@/features/filters/ExportDialog";
 import { quote } from "@/features/dashboard/filter";
-import { Button, EmptyState, ErrorBanner, Input, Page, PageHeader, Pager, Popover, Segmented, Select, Skeleton, Tag, Toolbar, clampOffset, isPageOffset, shownOf } from "@/components/ui";
+import { Button, EmptyState, ErrorBanner, Input, Labelled, Page, PageHeader, Pager, Popover, Segmented, Select, Skeleton, Tag, Toolbar, clampOffset, isPageOffset, shownOf } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { StatusStrip } from "@/features/projects/StatusStrip";
 import { ISSUE_PAGE_SIZE } from "@/config";
@@ -63,12 +64,11 @@ function ProjectDetail() {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<SearchMode>("words");
   const [query, setQuery] = useState("");
-  const [labelId, setLabelId] = useState("");
+  const [label, setLabel] = useState<LabelRef | null>(null);
   const [milestoneId, setMilestoneId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const { data: labelData } = useLabels();
   const { data: milestoneData } = useMilestones(projectKey, true);
 
   const { data: issueData, isLoading: loadingIssues, error: issueError } = useIssues({
@@ -76,7 +76,7 @@ function ProjectDetail() {
     ...scopeFilters[scope],
     text: mode === "words" ? text.trim() || undefined : undefined,
     q: mode === "query" ? query || undefined : undefined,
-    label: labelId ? [labelId] : undefined,
+    label: label ? [label.id] : undefined,
     milestone: milestoneId || undefined,
     orderBy: "created",
     limit: ISSUE_PAGE_SIZE,
@@ -104,17 +104,16 @@ function ProjectDetail() {
 
   const project = projectData?.project;
   const issues = issueData?.issues ?? [];
-  const activeFilters = Number(Boolean(labelId)) + Number(Boolean(milestoneId));
+  const activeFilters = Number(Boolean(label)) + Number(Boolean(milestoneId));
   const narrowed = Boolean(mode === "words" ? text : query) || activeFilters > 0;
   // The whole page's conditions as one query, for carrying on in Search.
   const asQuery = [`project = ${projectKey}`, mode === "query" && query ? `(${query})` : ""].filter(Boolean).join(" AND ");
-  const labels = labelData?.labels ?? [];
   const milestones = milestoneData?.milestones ?? [];
   const exported = listQuery({
     scope,
     words: mode === "words" ? text : "",
     query: mode === "query" ? query : "",
-    label: labels.find((l) => l.id === labelId)?.name,
+    label: label?.name,
     milestone: milestones.find((m) => m.id === milestoneId)?.name,
   });
 
@@ -171,53 +170,53 @@ function ProjectDetail() {
                 ]}
               />
             </div>
-            {(labels.length > 0 || milestones.length > 0) && (
-              <Popover
-                open={filtersOpen}
-                onClose={() => setFiltersOpen(false)}
-                label="Filters"
-                trigger={
-                  <Button variant="secondary" icon={<Icon.Filter />} onClick={() => setFiltersOpen((o) => !o)} aria-expanded={filtersOpen} data-action="filters">
-                    Filters{activeFilters > 0 && <Tag className="ml-1 bg-accent-subtle text-accent">{activeFilters}</Tag>}
+            <Popover
+              open={filtersOpen}
+              onClose={() => setFiltersOpen(false)}
+              label="Filters"
+              trigger={
+                <Button variant="secondary" icon={<Icon.Filter />} onClick={() => setFiltersOpen((o) => !o)} aria-expanded={filtersOpen} data-action="filters">
+                  Filters{activeFilters > 0 && <Tag className="ml-1 bg-accent-subtle text-accent">{activeFilters}</Tag>}
+                </Button>
+              }
+            >
+              <div className="w-64 space-y-3">
+                <Labelled id="filter-label" label="Label">
+                  <LabelInput
+                    id="filter-label"
+                    aria-label="Filter by label"
+                    mode="one"
+                    create={false}
+                    placeholder="Any label"
+                    value={label ? [label.name] : []}
+                    known={label ? [label] : []}
+                    onChange={(_, chosen) => narrowing(setLabel)(chosen[0] ?? null)}
+                  />
+                </Labelled>
+                {milestones.length > 0 && (
+                  <Select label="Milestone" aria-label="Filter by milestone" id="filter-milestone" value={milestoneId} onChange={(e) => narrowing(setMilestoneId)(e.target.value)}>
+                    <option value="">Any milestone</option>
+                    {milestones.map((milestone) => (
+                      <option key={milestone.id} value={milestone.id}>
+                        {milestone.name} ({milestone.progress.issues})
+                      </option>
+                    ))}
+                  </Select>
+                )}
+                {activeFilters > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={narrowing(() => {
+                      setLabel(null);
+                      setMilestoneId("");
+                    })}
+                  >
+                    Clear filters
                   </Button>
-                }
-              >
-                <div className="w-64 space-y-3">
-                  {labels.length > 0 && (
-                    <Select label="Label" aria-label="Filter by label" id="filter-label" value={labelId} onChange={(e) => narrowing(setLabelId)(e.target.value)}>
-                      <option value="">Any label</option>
-                      {labels.map((label) => (
-                        <option key={label.id} value={label.id}>
-                          {label.name} ({label.issueCount})
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                  {milestones.length > 0 && (
-                    <Select label="Milestone" aria-label="Filter by milestone" id="filter-milestone" value={milestoneId} onChange={(e) => narrowing(setMilestoneId)(e.target.value)}>
-                      <option value="">Any milestone</option>
-                      {milestones.map((milestone) => (
-                        <option key={milestone.id} value={milestone.id}>
-                          {milestone.name} ({milestone.progress.issues})
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                  {activeFilters > 0 && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={narrowing(() => {
-                        setLabelId("");
-                        setMilestoneId("");
-                      })}
-                    >
-                      Clear filters
-                    </Button>
-                  )}
-                </div>
-              </Popover>
-            )}
+                )}
+              </div>
+            </Popover>
           </>
         }
         end={

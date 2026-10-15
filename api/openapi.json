@@ -8868,6 +8868,24 @@
         "tags": [
           "labels"
         ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text the name contains; names starting with it come first. With neither q nor limit, every label.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 50 unless said.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",

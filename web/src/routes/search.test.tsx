@@ -25,6 +25,7 @@ vi.mock("@/api/filters", async () => ({
   useBulkEdit: () => ({ mutate: vi.fn(), isPending: false, error: null }),
 }));
 vi.mock("@/features/filters/SavedFilterBar", () => ({ SavedFilterBar: () => null }));
+vi.mock("@/api/labels", () => ({ useLabelSearch: () => ({ data: undefined }) }));
 vi.mock("@/features/search/QueryInput", () => ({
   QueryInput: ({ value, onSubmit }: { value: string; onSubmit: (query: string) => void }) => (
     <form

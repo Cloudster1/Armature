@@ -1848,7 +1848,7 @@ export async function openFilters(page) {
   await page.waitForSelector('[data-action="filters"]', { timeout: WAIT });
   const open = await page.$eval('[data-action="filters"]', (el) => el.getAttribute("aria-expanded") === "true");
   if (!open) await page.click('[data-action="filters"]');
-  await page.waitForSelector('[data-popover] select', { timeout: WAIT });
+  await page.waitForSelector("[data-popover] input, [data-popover] select", { timeout: WAIT });
 }
 
 /** Opens the plan toolbar's Filters popover, which holds the type chips, the selects and the closed-for days. */
@@ -2183,6 +2183,8 @@ export async function createRule(page, projectKey, { name, trigger, action, valu
     await page.waitForSelector("#field-action-value-0", { timeout: WAIT });
     await page.click("#field-action-value-0", { clickCount: 3 });
     await page.type("#field-action-value-0", value);
+    // A label is a box that suggests: Enter takes the word and closes the list over the form.
+    if (await page.$eval("#field-action-value-0", (el) => el.getAttribute("role") === "combobox")) await page.keyboard.press("Enter");
   }
   if (text !== undefined) {
     await page.waitForSelector("#field-action-text-0", { timeout: WAIT });

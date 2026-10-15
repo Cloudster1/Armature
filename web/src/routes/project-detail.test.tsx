@@ -20,7 +20,7 @@ vi.mock("./project", () => ({ projectRoute: {} }));
 vi.mock("@/lib/format", () => ({ useFormat: () => ({ relative: () => "just now" }) }));
 vi.mock("@/api/projects", () => ({ useProject: () => ({ data: { project: { name: "Portal", openIssueCount: FILED, issueCount: FILED } } }) }));
 vi.mock("@/api/access", () => ({ useAccess: () => ({ data: undefined }), canAdminister: () => false }));
-vi.mock("@/api/labels", () => ({ useLabels: () => ({ data: { labels: [] } }) }));
+vi.mock("@/api/labels", () => ({ useLabelSearch: () => ({ data: undefined }) }));
 vi.mock("@/api/milestones", () => ({ useMilestones: () => ({ data: { milestones: [] } }) }));
 vi.mock("@/features/issues/CreateIssueDialog", () => ({ CreateIssueDialog: () => null }));
 vi.mock("@/features/projects/StatusStrip", () => ({ StatusStrip: () => null }));

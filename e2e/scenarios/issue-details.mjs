@@ -258,7 +258,9 @@ scenario("an issue is assigned, labelled, estimated in time and worked on", asyn
   await goto(page, `/projects/${key}`);
   await page.waitForSelector(`[data-label="${backend}"]`, { timeout: WAIT });
   await openFilters(page);
-  await selectByLabel(page, 'select[aria-label="Filter by label"]', `${urgent} (1)`);
+  await page.type('input[aria-label="Filter by label"]', urgent);
+  await page.waitForSelector(`[role="option"][data-label-option="${urgent}"]`, { timeout: WAIT });
+  await page.click(`[role="option"][data-label-option="${urgent}"]`);
   await page.waitForFunction(() => document.body.innerText.includes("1 issue"), { timeout: WAIT });
 });
 
@@ -287,6 +289,70 @@ serialScenario("a label is listed for everyone and renamed everywhere", async ({
   await page.waitForSelector(`[data-label-row="${blocker}"]`, { timeout: WAIT });
   await goto(page, `/issues/${issueKey}`);
   await page.waitForSelector(`[data-labels] [data-label="${blocker}"]`, { timeout: WAIT });
+});
+
+// Labels are everybody's, so a label field shows none of them until something
+// is typed, then offers the few whose start it is.
+scenario("a label field suggests an existing label as its start is typed, and shows none before", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Suggested", { visit: false });
+  const tagged = await createIssue(page, key, "already carries the word", { visit: false });
+  const later = await createIssue(page, key, "takes the word on its page", { visit: false });
+  const word = uniqueName("frontend", "-");
+  const start = word.slice(0, -2);
+  await goto(page, `/projects/${key}`);
+  await page.evaluate(async (issue, name) => {
+    const tagging = await fetch(`/api/v1/issues/${issue}/labels`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ labels: [name] }),
+    });
+    if (!tagging.ok) throw new Error(`tagging failed: ${tagging.status}`);
+  }, tagged, word);
+  await goto(page, `/projects/${key}`);
+
+  // Typing the start offers it first; Enter adds the one the arrow reached.
+  const suggestedFirst = (box, name) =>
+    page.waitForFunction(
+      (input, wanted) => {
+        const list = document.getElementById(document.querySelector(input)?.getAttribute("aria-controls") ?? "");
+        return list?.querySelector('[role="option"]')?.getAttribute("data-label-option") === wanted;
+      },
+      { timeout: WAIT },
+      box,
+      name,
+    );
+
+  await clickButton(page, "New issue");
+  await page.waitForSelector("[data-create-issue] #create-labels", { timeout: WAIT });
+  await settled(page);
+  expect.equal(await page.$eval("[data-create-issue]", (dialog, name) => dialog.innerText.includes(name), word), false, "the dialog draws no label nobody asked for");
+  await fill(page, "Summary", "picks the word from the suggestions");
+  await page.type("[data-create-issue] #create-labels", start);
+  await suggestedFirst("[data-create-issue] #create-labels", word);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(`[data-create-issue] [data-label="${word}"]`, { timeout: WAIT });
+  await clickButton(page, "Create issue");
+  await page.waitForFunction(() => !document.querySelector("[data-create-issue]"), { timeout: WAIT });
+  const made = await page.evaluate(async (project) => {
+    const found = await (await fetch(`/api/v1/projects/${project}/issues?text=${encodeURIComponent("picks the word")}`, { credentials: "include" })).json();
+    return found.issues.map((issue) => issue.labels.map((l) => l.name));
+  }, key);
+  expect.equal(JSON.stringify(made), JSON.stringify([[word]]), "the issue is made with the label picked");
+
+  // The issue page offers it the same way.
+  await goto(page, `/issues/${later}`);
+  await page.waitForSelector('input[aria-label="Add a label"]', { timeout: WAIT });
+  await page.click('input[aria-label="Add a label"]');
+  expect.equal(await page.$('[role="listbox"]'), null, "focusing the box offers nothing yet");
+  await page.type('input[aria-label="Add a label"]', start);
+  await suggestedFirst('input[aria-label="Add a label"]', word);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(`[data-labels] [data-label="${word}"]`, { timeout: WAIT });
+  await page.waitForFunction((name) => document.body.innerText.includes(`labelled this ${name}`), { timeout: WAIT }, word);
 });
 
 scenario("a page another application puts on an issue is listed under Pages, a requirement under Requirements", async ({ page }) => {

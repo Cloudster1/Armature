@@ -9,6 +9,14 @@ and its tag message, so a change is written here in the branch that makes it.
 
 - Fixed: a space typed into the project switcher's filter no longer closes
   it, so a project named in two words can be found (#283).
+- Fixed: a label field no longer draws every label everyone has coined. The
+  new issue dialog, the issue page, bulk edit's Add labels, a rule's Add a
+  label action and the project issue list's label filter show none until
+  something is typed, then suggest the labels holding it, those starting with
+  it first, and offer to create the typed word. Arrow keys move through them,
+  Enter or a comma adds one, and Backspace in an empty box takes the last off.
+  `GET /labels` takes `q` and `limit` for it; without either it lists every
+  label as before (#273).
 - Fixed: a dialog taller than the window, such as New issue with the built-in
   arrangement on a laptop, keeps its title and buttons in view and scrolls its
   fields between them; an error it shows sits just above the buttons and is

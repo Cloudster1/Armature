@@ -143,7 +143,7 @@ vi.mock("@/api/teams", async () => ({
 
 vi.mock("@/api/labels", async () => ({
   ...(await vi.importActual<typeof import("@/api/labels")>("@/api/labels")),
-  useLabels: nothing, useSetIssueLabels: mutation,
+  useLabels: nothing, useLabelSearch: nothing, useSetIssueLabels: mutation,
 }));
 
 vi.mock("@/api/watchers", async () => ({
