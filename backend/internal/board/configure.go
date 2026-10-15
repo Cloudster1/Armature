@@ -363,6 +363,8 @@ type UpdateBoardInput struct {
 	Type    *Type
 	GroupBy *Grouping
 	TeamID  *(*uuid.UUID)
+	// DoneForDays is how long a kanban board keeps finished work; 0 keeps it.
+	DoneForDays *int
 }
 
 // UpdateBoard changes a board's details, including which team it draws from.
@@ -374,7 +376,7 @@ func (s *Service) UpdateBoard(ctx context.Context, id uuid.UUID, in UpdateBoardI
 			return err
 		}
 
-		name, description, kind, groupBy, teamID := before.Name, before.Description, before.Type, before.GroupBy, before.TeamID
+		name, description, kind, groupBy, teamID, doneForDays := before.Name, before.Description, before.Type, before.GroupBy, before.TeamID, before.DoneForDays
 		if in.Name != nil {
 			if name = strings.TrimSpace(*in.Name); name == "" {
 				return errors.New("a board needs a name")
@@ -398,10 +400,16 @@ func (s *Service) UpdateBoard(ctx context.Context, id uuid.UUID, in UpdateBoardI
 		if in.TeamID != nil {
 			teamID = *in.TeamID
 		}
+		if in.DoneForDays != nil {
+			if *in.DoneForDays < 0 {
+				return ErrBadDoneForDays
+			}
+			doneForDays = *in.DoneForDays
+		}
 
 		_, err = tx.Exec(ctx, `
-			UPDATE board SET name = $2, description = $3, type = $4, group_by = $5, team_id = $6
-			WHERE id = $1`, id, name, description, string(kind), string(groupBy), teamID)
+			UPDATE board SET name = $2, description = $3, type = $4, group_by = $5, team_id = $6, done_for_days = $7
+			WHERE id = $1`, id, name, description, string(kind), string(groupBy), teamID, doneForDays)
 		switch {
 		case isUniqueViolation(err):
 			return ErrNameTaken

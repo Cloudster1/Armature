@@ -7,6 +7,13 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a kanban board leaves out work finished more than a number of days
+  ago, set per board beside its swimlanes, 0 keeping it there. The board says
+  how many finished issues it left out and links to a search for them, and a
+  swimlane's limit counts only the cards it shows. A done issue with no
+  resolved date leaves by its last change. Upgrading: existing kanban boards
+  start leaving out work finished more than 14 days ago; set 0 on a board to
+  keep it (#54).
 - Changed: the search page offers as chips only the searches you starred or
   made, and the one running; what others share is on All saved searches
   until you star it, so a few dozen shared searches no longer push the

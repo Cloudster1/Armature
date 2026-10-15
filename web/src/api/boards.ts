@@ -6,11 +6,8 @@ import type { Issue, ParentRef, Priority, Status, TypeRef, UserRef } from "./iss
 
 export type Grouping = "none" | "assignee" | "priority" | "type";
 
-/**
- * How a board decides which of its work to show. A scrum board draws the sprint
- * that is running in its stream and nothing else; a kanban board draws
- * everything in scope and leans on swimlane limits instead.
- */
+/** A scrum board draws the sprint running in its stream; a kanban board draws its
+ * scope but for work finished long ago, and leans on swimlane limits instead. */
 export type BoardType = "scrum" | "kanban";
 
 /** The running sprint a scrum board is showing. */
@@ -63,6 +60,11 @@ export interface Board {
   /** The team this board draws from; absent is a board over the whole project. */
   teamId?: string;
   teamName?: string;
+  /** How many days a kanban board keeps an issue once it is finished; 0 keeps it for good. */
+  doneForDays: number;
+  /** The finished issues a kanban board left out, and the search that finds them. */
+  leftOut: number;
+  leftOutQuery?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -131,6 +133,7 @@ export interface BoardInput {
   type?: BoardType;
   groupBy?: Grouping;
   teamId?: string | null;
+  doneForDays?: number;
 }
 
 export function useCreateBoard(projectKey: string) {
