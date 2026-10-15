@@ -22,6 +22,7 @@ import {
   reload,
   replaceValue,
   selectByLabel,
+  settled,
   signUp,
   textOf,
   unique,
@@ -536,4 +537,35 @@ scenario("a board made by mistake is renamed, retyped and deleted", async ({ pag
     () => document.querySelector("[data-board-showing]")?.getAttribute("data-board-showing") === "Mistakes board",
     { timeout: WAIT },
   );
+});
+
+// How long a kanban board keeps finished work is set beside its lanes and kept.
+// Work closed today stays; the browser cannot date a closing back, so what is
+// left out after the days is proven by the integration suite.
+scenario("a kanban board keeps finished work for the days it is set to", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Finishing", { visit: false });
+  const issueKey = await createIssue(page, key, "finished today", { visit: false });
+  await goto(page, `/issues/${issueKey}`);
+  await clickButton(page, "Close");
+  await page.waitForFunction(() => document.body.innerText.includes("Done"), { timeout: WAIT });
+
+  await goto(page, `/projects/${key}/board`);
+  await page.waitForSelector(`[data-swimlane="Done"] [data-card="${issueKey}"]`, { timeout: WAIT });
+  expect.equal(await page.$("[data-done-left-out]"), null, "nothing was finished long enough ago to leave");
+
+  await clickButton(page, "Configure swimlanes");
+  await page.waitForSelector("[data-done-for-days-editor] #board-done-for-days", { timeout: WAIT });
+  expect.equal(await page.$eval("#board-done-for-days", (el) => el.value), "14", "a new board keeps finished work two weeks");
+  await replaceValue(page, "#board-done-for-days", "30");
+  await page.evaluate(() =>
+    [...document.querySelectorAll("[data-done-for-days-editor] button")].find((b) => b.textContent.trim() === "Save")?.click(),
+  );
+  await settled(page);
+
+  await reload(page);
+  await clickButton(page, "Configure swimlanes");
+  await page.waitForSelector("[data-done-for-days-editor] #board-done-for-days", { timeout: WAIT });
+  expect.equal(await page.$eval("#board-done-for-days", (el) => el.value), "30", "the days are kept");
+  expect.equal((await cardsIn(page, "Done")).join(","), issueKey, "work finished today is still on the board");
 });
