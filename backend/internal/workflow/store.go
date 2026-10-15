@@ -30,7 +30,8 @@ func NewStore() *Store { return &Store{} }
 // three multiplies the rows by a factor that has to be de-duplicated in Go
 // anyway.
 func (s *Store) Load(ctx context.Context, tx db.DBTX, workflowID uuid.UUID) (*Workflow, error) {
-	var w Workflow
+	// Empty rather than nil, so a workflow without moves answers an empty list.
+	w := Workflow{Steps: []Step{}, Transitions: []Transition{}}
 	err := tx.QueryRow(ctx, `
 		SELECT id, name, description FROM workflow WHERE id = $1`, workflowID,
 	).Scan(&w.ID, &w.Name, &w.Description)
