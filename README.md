@@ -115,7 +115,7 @@ can require it for administrators or for everyone. A project is a wall: what a r
 not found.
 
 **Planning.** Boards (scrum follows the running sprint, kanban shows
-everything), backlogs, sprints per team with capacity, a timeline where epics
+everything but work finished more than a set number of days ago), backlogs, sprints per team with capacity, a timeline where epics
 span their children and dependencies are drawn and checked, milestones and
 versions, and a dependency graph laid out by longest path. Named holiday
 calendars, imported from an .ics file, and a working week per person say which

@@ -12,7 +12,7 @@ const boardTypes: Array<{ value: BoardType; label: string; description: string }
   {
     value: "kanban",
     label: "Kanban",
-    description: "Shows everything in flight. Each swimlane can carry a limit.",
+    description: "Shows the work in flight and what was finished lately. Each swimlane can carry a limit.",
   },
 ];
 

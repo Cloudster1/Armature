@@ -9,7 +9,7 @@ import {
   type Grouping,
   type Swimlane,
 } from "@/api/boards";
-import { Button, Card, Checkbox, Chip, ErrorBanner, Field, cx } from "@/components/ui";
+import { Button, Card, Checkbox, Chip, ErrorBanner, Field, Input, cx } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useStatuses, type Status } from "@/api/issues";
 
@@ -72,6 +72,8 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
         </div>
       </Card>
 
+      {board.type === "kanban" && <FinishedWork key={board.doneForDays} boardId={boardId} days={board.doneForDays} />}
+
       {unclaimed.length > 0 && (
         <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
           <strong className="font-medium text-ink">
@@ -114,6 +116,54 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
         </Button>
       )}
     </div>
+  );
+}
+
+/** How long a kanban board keeps finished work, so its last lane stops growing. */
+function FinishedWork({ boardId, days }: { boardId: string; days: number }) {
+  const update = useUpdateBoard();
+  const [text, setText] = useState(String(days));
+
+  function save(event: FormEvent) {
+    event.preventDefault();
+    update.mutate({ id: boardId, doneForDays: Math.max(0, Math.floor(Number(text) || 0)) });
+  }
+
+  return (
+    <Card className="p-4" data-done-for-days-editor="">
+      <h3 className="text-sm font-medium text-ink">Finished work</h3>
+      <p className="mt-1 text-sm text-ink-muted">
+        A done issue leaves the board this many days after it was finished, so the last lane stays readable. The board links to what it leaves out.
+      </p>
+      {update.error && (
+        <div className="mt-3">
+          <ErrorBanner>{(update.error as Error).message}</ErrorBanner>
+        </div>
+      )}
+      <form onSubmit={save} className="mt-3 flex flex-wrap items-center gap-2">
+        <label htmlFor="board-done-for-days" className="text-sm text-ink-muted">
+          Finished work stays for
+        </label>
+        <Input
+          id="board-done-for-days"
+          type="number"
+          min={0}
+          step={1}
+          inputMode="numeric"
+          aria-describedby="board-done-for-days-hint"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          className="max-w-20 text-right tabular-nums"
+        />
+        <span className="text-sm text-ink-muted">days</span>
+        <Button type="submit" size="sm" variant="secondary" loading={update.isPending}>
+          Save
+        </Button>
+      </form>
+      <p id="board-done-for-days-hint" className="mt-1 text-xs text-ink-subtle">
+        0 keeps it on the board.
+      </p>
+    </Card>
   );
 }
 

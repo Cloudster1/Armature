@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { BOARD_SEARCH_DELAY_MS } from "@/config";
-import { QuickFilters } from "./QuickFilters";
+
+// The link is only an address here; following it is the router's job.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to, search, title }: { children: ReactNode; to: string; search: { q: string }; title?: string }) => (
+    <a href={`${to}?q=${encodeURIComponent(search.q)}`} title={title}>
+      {children}
+    </a>
+  ),
+}));
+
+const { QuickFilters } = await import("./QuickFilters");
 import { EMPTY_QUICK_FILTER, type QuickFilter, type QuickFilterOptions } from "./quickFilter";
 
 const options: QuickFilterOptions = {
@@ -13,13 +23,24 @@ const options: QuickFilterOptions = {
   epics: [],
 };
 
-function Harness({ initial, hidden, onChange }: { initial: QuickFilter; hidden: number; onChange: (filter: QuickFilter) => void }) {
+function Harness({
+  initial,
+  hidden,
+  leftOut,
+  onChange,
+}: {
+  initial: QuickFilter;
+  hidden: number;
+  leftOut?: { count: number; query: string; days: number };
+  onChange: (filter: QuickFilter) => void;
+}) {
   const [filter, setFilter] = useState(initial);
   return (
     <QuickFilters
       filter={filter}
       options={options}
       hidden={hidden}
+      leftOut={leftOut}
       onChange={(next) => {
         onChange(next);
         setFilter(next);
@@ -45,6 +66,24 @@ describe("the quick filters", () => {
     expect(onChange).toHaveBeenLastCalledWith(EMPTY_QUICK_FILTER);
     expect(screen.getByRole("searchbox")).toHaveValue("");
     expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
+  });
+
+  it("say how much finished work the board left out and link to it, filter or not", async () => {
+    const query = "project = CP AND statusCategory = done AND (resolved < -14d OR (resolved IS EMPTY AND updated < -14d))";
+    render(<Harness initial={EMPTY_QUICK_FILTER} hidden={0} leftOut={{ count: 3, query, days: 14 }} onChange={() => {}} />);
+    const link = screen.getByRole("link", { name: "3 finished issues left out" });
+    expect(link).toHaveAttribute("href", `/search?q=${encodeURIComponent(query)}`);
+    expect(link).toHaveAttribute("title", "Finished more than 14 days ago. Open them in search.");
+    expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Only mine" }));
+    expect(screen.getByRole("link", { name: "3 finished issues left out" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+  });
+
+  it("say nothing of finished work a board keeps", () => {
+    render(<Harness initial={{ ...EMPTY_QUICK_FILTER, mine: true }} hidden={1} onChange={() => {}} />);
+    expect(screen.queryByText(/left out/)).toBeNull();
   });
 
   it("turns Only mine on and off", async () => {
