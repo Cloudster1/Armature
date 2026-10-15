@@ -239,17 +239,78 @@ func scanProject(row pgx.Row) (*Project, error) {
 	return &p, nil
 }
 
-// List returns the organization's projects, archived ones only when asked for.
-func (s *Service) List(ctx context.Context, includeArchived bool) ([]Project, error) {
-	var out []Project
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		query := selectProject
-		if !includeArchived {
-			query += ` WHERE p.archived_at IS NULL`
-		}
-		query += ` ORDER BY p.key`
+// DefaultProjectPage is a page of projects unless asked otherwise; MaxProjectPage
+// is the most one read returns, so thousands of projects never travel at once.
+const (
+	DefaultProjectPage = 50
+	MaxProjectPage     = 200
+)
 
-		rows, err := tx.Query(ctx, query)
+// ListFilter narrows and pages the projects a listing returns.
+type ListFilter struct {
+	IncludeArchived bool
+	// Text matches the key or the name, anywhere in either.
+	Text string
+	// Within narrows to the projects somebody may read; Scoped says it applies,
+	// so an empty Within means none rather than all.
+	Within []string
+	Scoped bool
+	Limit  int
+	Offset int
+}
+
+// Page is one page of projects plus how many matched in all.
+type Page struct {
+	Projects []Project `json:"projects"`
+	Total    int       `json:"total"`
+	Limit    int       `json:"limit"`
+	Offset   int       `json:"offset"`
+}
+
+func (f ListFilter) where() (string, []any) {
+	var (
+		clauses []string
+		args    []any
+	)
+	add := func(clause string, value any) {
+		args = append(args, value)
+		clauses = append(clauses, fmt.Sprintf(clause, len(args)))
+	}
+	if !f.IncludeArchived {
+		clauses = append(clauses, "p.archived_at IS NULL")
+	}
+	if f.Scoped {
+		add("p.key = ANY($%d)", append([]string{}, f.Within...))
+	}
+	if text := strings.TrimSpace(f.Text); text != "" {
+		args = append(args, text)
+		clauses = append(clauses, fmt.Sprintf("(p.key ILIKE '%%' || $%d || '%%' OR p.name ILIKE '%%' || $%d || '%%')", len(args), len(args)))
+	}
+	if len(clauses) == 0 {
+		return "", nil
+	}
+	return " WHERE " + strings.Join(clauses, " AND "), args
+}
+
+// List returns one page of the projects the filter allows, ordered by key.
+// The page is chosen first, so the per-project counts run only for its rows.
+func (s *Service) List(ctx context.Context, f ListFilter) (Page, error) {
+	if f.Limit <= 0 || f.Limit > MaxProjectPage {
+		f.Limit = DefaultProjectPage
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+	page := Page{Projects: []Project{}, Limit: f.Limit, Offset: f.Offset}
+	where, args := f.where()
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM project p`+where, args...).Scan(&page.Total); err != nil {
+			return err
+		}
+		n := len(args)
+		query := fmt.Sprintf(`WITH page AS (SELECT p.id FROM project p%s ORDER BY p.key LIMIT $%d OFFSET $%d)`, where, n+1, n+2) +
+			selectProject + ` JOIN page ON page.id = p.id ORDER BY p.key`
+		rows, err := tx.Query(ctx, query, append(args, f.Limit, f.Offset)...)
 		if err != nil {
 			return err
 		}
@@ -260,14 +321,14 @@ func (s *Service) List(ctx context.Context, includeArchived bool) ([]Project, er
 			if err != nil {
 				return err
 			}
-			out = append(out, *p)
+			page.Projects = append(page.Projects, *p)
 		}
 		return rows.Err()
 	})
 	if err != nil {
-		return nil, fmt.Errorf("list projects: %w", err)
+		return Page{}, fmt.Errorf("list projects: %w", err)
 	}
-	return out, nil
+	return page, nil
 }
 
 // ByKey reads one project by its key, which is what appears in URLs.

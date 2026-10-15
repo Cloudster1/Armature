@@ -48,7 +48,7 @@ func TestAProjectIsAWallInsideTheInstallation(t *testing.T) {
 	member := api.asRole(t, h, owner, keyNear, perm.User)
 
 	t.Run("the far project is not there", func(t *testing.T) {
-		listed := list(t, want(t, member.get("/api/v1/projects"), http.StatusOK, "the projects they see"), "projects")
+		listed := list(t, want(t, member.get("/api/v1/projects?q="+farrKey), http.StatusOK, "the projects they see"), "projects")
 		for _, p := range listed {
 			if p.(map[string]any)["key"] == farrKey {
 				t.Fatalf("the far project is listed: %v", listed)

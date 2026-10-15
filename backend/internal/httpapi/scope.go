@@ -168,21 +168,6 @@ func requireObjectPerm(required perm.Permission) func(http.Handler) http.Handler
 	}
 }
 
-// readableProjects drops from a listing the projects the caller may not see.
-func readableProjects(r *http.Request, projects []project.Project) []project.Project {
-	perms := PermsFrom(r.Context())
-	if all, _ := perms.Readable(); all {
-		return projects
-	}
-	kept := make([]project.Project, 0, len(projects))
-	for _, p := range projects {
-		if perms.Can(perm.Read, p.Key) {
-			kept = append(kept, p)
-		}
-	}
-	return kept
-}
-
 // readableFilter narrows a list of issues to the projects the caller may read.
 func readableFilter(r *http.Request, f issue.Filter) issue.Filter {
 	if all, keys := PermsFrom(r.Context()).Readable(); !all {
