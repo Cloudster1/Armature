@@ -133,3 +133,40 @@ func TestPlainTextReadsADocument(t *testing.T) {
 		t.Errorf("a non document should come back as it was, got %q", got)
 	}
 }
+
+// A desk is a plus address of the inbox, its key in any case; the inbox
+// itself, another box and the desk's own sending name no desk or nothing at all.
+func TestADeskIsAPlusAddressOfTheInbox(t *testing.T) {
+	if got := Address("Support <Support@Armature.test>", "CP"); got != "support+cp@armature.test" {
+		t.Errorf("address = %q", got)
+	}
+	if got := Address("", "CP"); got != "" {
+		t.Errorf("without an inbox the address is %q", got)
+	}
+	n := NewInbound(nil, nil, nil, nil, nil, InboundConfig{Address: "support@armature.test", From: "Armature <no-reply@armature.test>"}, nil)
+	cases := []struct {
+		from, to string
+		desk     string
+		ours     bool
+	}{
+		{"ada@example.com", "support+cp@armature.test", "CP", true},
+		{"ada@example.com", "support+Help2@armature.test", "HELP2", true},
+		{"ada@example.com", "support@armature.test", "", true},
+		{"ada@example.com", "support+@armature.test", "", false},
+		{"ada@example.com", "support+cp@elsewhere.test", "", false},
+		{"ada@example.com", "helpdesk+cp@armature.test", "", false},
+		{"ada@example.com", "somebody@armature.test", "", false},
+		{"support+cp@armature.test", "support@armature.test", "", false},
+		{"no-reply@armature.test", "support+cp@armature.test", "", false},
+	}
+	for _, c := range cases {
+		m, err := mailin.Parse([]byte("From: " + c.from + "\r\nTo: " + c.to + "\r\nSubject: hello\r\n\r\nWords."))
+		if err != nil {
+			t.Fatal(err)
+		}
+		desk, ours := n.forTheDesk(m)
+		if desk != c.desk || ours != c.ours {
+			t.Errorf("%s to %s: desk %q, ours %v; want %q, %v", c.from, c.to, desk, ours, c.desk, c.ours)
+		}
+	}
+}

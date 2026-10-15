@@ -22,6 +22,16 @@ func (s *Server) handleListRequestTypes(w http.ResponseWriter, r *http.Request) 
 	respondJSON(w, r, http.StatusOK, map[string]any{"requestTypes": found})
 }
 
+// handleDeskMailAddress answers where a desk is mailed, for its settings to show.
+func (s *Server) handleDeskMailAddress(w http.ResponseWriter, r *http.Request) {
+	address, err := s.Desk.MailAddress(r.Context(), r.PathValue("projectKey"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"address": address})
+}
+
 type createRequestTypeRequest struct {
 	Name            string     `json:"name"`
 	Description     string     `json:"description"`

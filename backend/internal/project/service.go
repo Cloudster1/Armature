@@ -192,7 +192,7 @@ SELECT p.id, p.key, p.name, p.description, p.kind, p.lead_id,
           JOIN issue_status st ON st.id = i.status_id
          WHERE i.project_id = p.id AND st.category <> 'done'),
        p.created_at, p.updated_at, p.archived_at, p.portal_verifies, p.trusted_domains, p.features,
-       COALESCE(p.docs_url, ''), COALESCE(p.docs_label, ''), p.planning_method, p.resource_grouping,
+       COALESCE(p.docs_url, ''), COALESCE(p.docs_label, ''), p.planning_method, p.resource_grouping, p.mail_request_type_id,
        s.id, s.status, s.note, to_char(s.target_on, 'YYYY-MM-DD'), s.author_id, COALESCE(su.name, ''), s.created_at
 FROM project p
 LEFT JOIN app_user u ON u.id = p.lead_id
@@ -220,7 +220,7 @@ func scanProject(row pgx.Row) (*Project, error) {
 		&p.LeadName, &p.WorkflowSchemeID, &p.Template,
 		&p.IssueCount, &p.OpenIssueCount,
 		&p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt, &p.PortalVerifies, &p.TrustedDomains, &features,
-		&p.DocsURL, &p.DocsLabel, &p.PlanningMethod, &p.ResourceGrouping,
+		&p.DocsURL, &p.DocsLabel, &p.PlanningMethod, &p.ResourceGrouping, &p.MailRequestTypeID,
 		&statusID, &health, &note, &target, &author, &authorName, &postedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -354,7 +354,10 @@ type UpdateInput struct {
 	Kind           *Kind
 	PortalVerifies *bool
 	TrustedDomains *[]string
-	Features       *[]string
+	// MailRequestTypeID names what new mail to a desk becomes; a nil inside
+	// stops mail raising requests.
+	MailRequestTypeID **uuid.UUID
+	Features          *[]string
 	// DocsURL and DocsLabel replace the documentation link together; an empty
 	// address clears it. Either absent keeps what the project has.
 	DocsURL   *string
@@ -408,7 +411,11 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput) (*Proj
 			if !in.Kind.Valid() {
 				return fmt.Errorf("%q is not a project kind", *in.Kind)
 			}
-			if _, err := tx.Exec(ctx, `UPDATE project SET kind = $2 WHERE id = $1`, id, string(*in.Kind)); err != nil {
+			// Mail raises requests at a desk alone, so a project that stops
+			// being one stops taking them.
+			if _, err := tx.Exec(ctx, `
+				UPDATE project SET kind = $2, mail_request_type_id = CASE WHEN $2 = 'service' THEN mail_request_type_id END
+				WHERE id = $1`, id, string(*in.Kind)); err != nil {
 				return err
 			}
 		}
@@ -446,6 +453,11 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput) (*Proj
 				WHERE s.user_id = u.id AND s.portal_project_id = $1
 				  AND cardinality($2::text[]) > 0
 				  AND NOT lower(split_part(u.email::text, '@', 2)) = ANY($2)`, id, domains); err != nil {
+				return err
+			}
+		}
+		if in.MailRequestTypeID != nil {
+			if err := setMailRequestType(ctx, tx, id, *in.MailRequestTypeID); err != nil {
 				return err
 			}
 		}
@@ -504,6 +516,29 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput) (*Proj
 		return nil, 0, err
 	}
 	return p, lsn, nil
+}
+
+// setMailRequestType names the request type a desk's new mail becomes. The
+// trigger refuses another project's too; this is the sentence.
+func setMailRequestType(ctx context.Context, tx db.DBTX, projectID uuid.UUID, typeID *uuid.UUID) error {
+	if typeID != nil {
+		var owner uuid.UUID
+		err := tx.QueryRow(ctx, `SELECT project_id FROM request_type WHERE id = $1`, *typeID).Scan(&owner)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && owner != projectID) {
+			return ErrRequestTypeElsewhere
+		}
+		if err != nil {
+			return err
+		}
+	}
+	tag, err := tx.Exec(ctx, `UPDATE project SET mail_request_type_id = $2 WHERE id = $1 AND ($2::uuid IS NULL OR kind = 'service')`, projectID, typeID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotADesk
+	}
+	return nil
 }
 
 // SetWorkflowScheme gives a project a scheme of its own, or takes it away so

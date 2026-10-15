@@ -522,6 +522,7 @@ var operations = []operation{
 
 	// The service desk's agent side.
 	{method: "GET", path: "/projects/{projectKey}/request-types", handler: "handleListRequestTypes", tag: "service desk", summary: "What customers can ask a desk for.", responses: ok(env{"requestTypes": []desk.RequestType{}})},
+	{method: "GET", path: "/projects/{projectKey}/mail-address", handler: "handleDeskMailAddress", tag: "service desk", summary: "The desk's own address, where a new mail raises a request; empty when the installation reads no mailbox.", responses: ok(env{"address": ""})},
 	{method: "POST", path: "/projects/{projectKey}/request-types", handler: "handleCreateRequestType", tag: "service desk", summary: "Add a request type.", request: createRequestTypeRequest{}, responses: created(env{"requestType": desk.RequestType{}})},
 	{method: "PATCH", path: "/request-types/{requestTypeID}", handler: "handleUpdateRequestType", tag: "service desk", summary: "Change a request type: its category, what it becomes, or the team it lands with.", request: updateRequestTypeRequest{}, responses: ok(env{"requestType": desk.RequestType{}})},
 	{method: "DELETE", path: "/request-types/{requestTypeID}", handler: "handleDeleteRequestType", tag: "service desk", summary: "Remove a request type.", responses: none()},
