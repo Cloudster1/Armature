@@ -20,6 +20,11 @@ and its tag message, so a change is written here in the branch that makes it.
   label. `GET /workflow-schemes/{id}` reads one scheme, and
   `GET /projects/{key}/workflows` names the project's scheme and the default
   (#276).
+- Fixed: the swimlane editor offers only the statuses of the workflows the
+  project follows, and its "states not on the board" warning counts only
+  those. A lane given a status no workflow of the project holds is refused
+  with a sentence naming it; one it already holds it keeps. The new
+  `GET /projects/{key}/statuses` lists a project's statuses (#277).
 - Fixed: a space typed into the project switcher's filter no longer closes
   it, so a project named in two words can be found (#283).
 - Fixed: a label field no longer draws every label everyone has coined. The

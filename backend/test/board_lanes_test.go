@@ -324,3 +324,131 @@ func TestALaneForAStatusAddedToTheWorkflowCanBeMovedOffTheEnd(t *testing.T) {
 		t.Errorf("the database holds the lanes as %v, want On Hold at position 0", rows)
 	}
 }
+
+// statusNames lists the names in a list of statuses as the API answers them.
+func statusNames(t *testing.T, r response) []string {
+	t.Helper()
+	var names []string
+	for _, raw := range list(t, r, "statuses") {
+		names = append(names, raw.(map[string]any)["name"].(string))
+	}
+	return names
+}
+
+// laneStatusRows reads which of a board's lanes hold a status straight from
+// the database, so a refused write cannot hide behind a read path.
+func laneStatusRows(t *testing.T, h *harness, boardID, statusID string) int {
+	t.Helper()
+	var held int
+	if err := h.super.QueryRow(context.Background(), `
+		SELECT count(*) FROM board_swimlane_status WHERE board_id = $1 AND status_id = $2`,
+		boardID, statusID).Scan(&held); err != nil {
+		t.Fatalf("read the lanes holding %s: %v", statusID, err)
+	}
+	return held
+}
+
+// The swimlane editor offered every status in the installation, so a lane could
+// be made of a state no issue of the project can ever be in.
+func TestSwimlanesTakeOnlyTheProjectsStatuses(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	ownKey := h.projectKey(t, "OWNST")
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signIn(t, h.person(t, "own statuses", auth.RoleOwner))
+	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Own statuses", "key": ownKey}), http.StatusCreated, "the project")
+
+	// A status only a workflow the project does not follow holds.
+	parked := h.name(t, "Parked")
+	parkedID := idOf(t, want(t, owner.post("/api/v1/statuses", map[string]any{"name": parked, "category": "in_progress"}), http.StatusCreated, "coin Parked"), "status")
+	done := find(t, want(t, owner.get("/api/v1/statuses"), http.StatusOK, "every status").Body["statuses"], "name", bootstrap.StatusDone)["id"].(string)
+	elsewhere := idOf(t, want(t, owner.post("/api/v1/workflows", map[string]any{
+		"name":        h.name(t, "Elsewhere"),
+		"steps":       []map[string]any{{"statusId": parkedID, "isInitial": true}, {"statusId": done}},
+		"transitions": []map[string]any{{"name": "Unpark", "fromStatusId": parkedID, "toStatusId": done}},
+	}), http.StatusCreated, "a workflow holding Parked"), "workflow")
+
+	opening := obj(t, want(t, owner.get("/api/v1/projects/"+ownKey+"/board"), http.StatusOK, "the board"), "board")
+	boardID := opening["id"].(string)
+	firstLane := opening["swimlanes"].([]any)[0].(map[string]any)
+	firstLaneID := firstLane["id"].(string)
+	var laneHolds, built []string
+	for _, raw := range firstLane["statuses"].([]any) {
+		laneHolds = append(laneHolds, raw.(map[string]any)["id"].(string))
+	}
+	for _, raw := range opening["swimlanes"].([]any) {
+		for _, status := range raw.(map[string]any)["statuses"].([]any) {
+			built = append(built, status.(map[string]any)["name"].(string))
+		}
+	}
+
+	t.Run("the project's statuses are those of its workflows", func(t *testing.T) {
+		got := statusNames(t, want(t, owner.get("/api/v1/projects/"+ownKey+"/statuses"), http.StatusOK, "the project's statuses"))
+		if !slices.Equal(got, built) {
+			t.Errorf("the project's statuses are %v, want %v, the ones its board was built from", got, built)
+		}
+		if slices.Contains(got, parked) {
+			t.Errorf("the project's statuses %v hold %s, which only another workflow has", got, parked)
+		}
+		if all := statusNames(t, want(t, owner.get("/api/v1/statuses"), http.StatusOK, "every status")); !slices.Contains(all, parked) {
+			t.Errorf("the installation's statuses lack %s, so its absence above proves nothing", parked)
+		}
+	})
+
+	t.Run("a project the caller cannot read has none to show", func(t *testing.T) {
+		stranger := api.client(t)
+		stranger.signIn(t, h.outsider(t, "stranger"))
+		want(t, stranger.get("/api/v1/projects/"+ownKey+"/statuses"), http.StatusNotFound, "a stranger reads the project's statuses")
+	})
+
+	t.Run("a lane is refused a status outside the project's workflows", func(t *testing.T) {
+		added := owner.post("/api/v1/boards/"+boardID+"/swimlanes", map[string]any{"name": "Parked here", "statusIds": []string{parkedID}})
+		if added.Status != http.StatusUnprocessableEntity {
+			t.Fatalf("adding a lane of %s returned %d, want 422: %s", parked, added.Status, added.Raw)
+		}
+		if message, _ := added.Error()["message"].(string); !strings.Contains(message, parked) || !strings.Contains(message, "add it to one of them") {
+			t.Errorf("message = %q, want it to name %s and say what to do", message, parked)
+		}
+		if names := shownLaneNames(obj(t, owner.get("/api/v1/boards/"+boardID), "board")); slices.Contains(names, "Parked here") {
+			t.Errorf("the refused lane was added anyway: %v", names)
+		}
+
+		edited := owner.patch("/api/v1/boards/"+boardID+"/swimlanes/"+firstLaneID, map[string]any{"statusIds": append(slices.Clone(laneHolds), parkedID)})
+		if edited.Status != http.StatusUnprocessableEntity {
+			t.Fatalf("giving a lane %s returned %d, want 422: %s", parked, edited.Status, edited.Raw)
+		}
+		if held := laneStatusRows(t, h, boardID, parkedID); held != 0 {
+			t.Errorf("%d lanes hold %s in the database after the refusals, want none", held, parked)
+		}
+		if held := laneStatusRows(t, h, boardID, laneHolds[0]); held != 1 {
+			t.Errorf("the refused edit left %d lanes holding the first lane's status, want it kept", held)
+		}
+	})
+
+	types := want(t, owner.get("/api/v1/issue-types"), http.StatusOK, "the issue types")
+	bug := find(t, types.Body["issueTypes"], "name", "Bug")["id"].(string)
+	var lane string
+
+	t.Run("a workflow the project takes on brings its statuses", func(t *testing.T) {
+		want(t, owner.put("/api/v1/projects/"+ownKey+"/workflow-assignments/"+bug, map[string]any{"workflowId": elsewhere}), http.StatusOK, "bugs follow Elsewhere")
+		if got := statusNames(t, want(t, owner.get("/api/v1/projects/"+ownKey+"/statuses"), http.StatusOK, "the project's statuses")); !slices.Contains(got, parked) {
+			t.Errorf("the project's statuses are %v, want %s among them", got, parked)
+		}
+		lane = idOf(t, want(t, owner.post("/api/v1/boards/"+boardID+"/swimlanes", map[string]any{"name": "Parked here", "statusIds": []string{parkedID}}), http.StatusCreated, "a lane of Parked"), "swimlane")
+	})
+
+	// Handing a workflow back must not leave a lane that cannot be saved.
+	t.Run("a lane keeps a status the project no longer reaches", func(t *testing.T) {
+		want(t, owner.put("/api/v1/projects/"+ownKey+"/workflow-assignments/"+bug, map[string]any{"workflowId": nil}), http.StatusOK, "bugs follow the default again")
+		want(t, owner.patch("/api/v1/boards/"+boardID+"/swimlanes/"+lane, map[string]any{"name": "Still parked", "statusIds": []string{parkedID}}), http.StatusNoContent, "save the lane as it is")
+		if held := laneStatusRows(t, h, boardID, parkedID); held != 1 {
+			t.Errorf("%d lanes hold %s after saving it as it was, want 1", held, parked)
+		}
+		want(t, owner.patch("/api/v1/boards/"+boardID+"/swimlanes/"+lane, map[string]any{"statusIds": []string{}}), http.StatusNoContent, "take it off the lane")
+		refused := owner.patch("/api/v1/boards/"+boardID+"/swimlanes/"+lane, map[string]any{"statusIds": []string{parkedID}})
+		if refused.Status != http.StatusUnprocessableEntity {
+			t.Errorf("putting %s back returned %d, want 422 once the lane let go of it: %s", parked, refused.Status, refused.Raw)
+		}
+	})
+}

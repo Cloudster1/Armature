@@ -311,6 +311,8 @@ func (s *Server) projectRoutes(r chi.Router) {
 	// Which workflow each issue type uses here, and whether this
 	// project or the organization decided it.
 	r.Get("/projects/{projectKey}/workflows", s.handleProjectWorkflows)
+	// And the statuses those workflows hold, which a board is made of.
+	r.Get("/projects/{projectKey}/statuses", s.handleProjectStatuses)
 
 	// The whole project as a tree, roots first.
 	r.Get("/projects/{projectKey}/hierarchy", s.handleProjectHierarchy)
