@@ -93,15 +93,18 @@ type managedRow struct {
 	hasProvider bool
 }
 
-// The one shape every read takes. The person is excluded who is not a member,
-// who is the installation's automation account, or who was erased.
+// Who every read takes: not somebody who is no member, the installation's
+// automation account, or somebody erased.
+const managedFromSQL = `
+FROM app_user u
+WHERE u.standing IS NOT NULL AND u.erased_at IS NULL AND u.id IS DISTINCT FROM $1`
+
+// The one shape every read takes.
 const managedSelectSQL = `
 SELECT u.id, u.email::text, u.name, u.standing, u.is_active, u.created_at,
        u.password_hash IS NOT NULL,
        EXISTS (SELECT 1 FROM oidc_provider),
-       EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)
-FROM app_user u
-WHERE u.standing IS NOT NULL AND u.erased_at IS NULL AND u.id IS DISTINCT FROM $1`
+       EXISTS (SELECT 1 FROM user_second_factor f WHERE f.user_id = u.id AND f.confirmed_at IS NOT NULL)` + managedFromSQL
 
 func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	var r managedRow
@@ -120,32 +123,6 @@ func scanManaged(row pgx.Row, actorRole OrgRole) (managedRow, error) {
 	}
 	r.user.Managed = r.user.Role != RoleOwner || actorRole == RoleOwner
 	return r, nil
-}
-
-// ManagedUsers lists the installation's people, switched off ones included,
-// with what an administrator may do to each.
-func (s *Service) ManagedUsers(ctx context.Context, actorRole OrgRole) ([]ManagedUser, error) {
-	out := []ManagedUser{}
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		automation, err := installation.AutomationUser(ctx, tx)
-		if err != nil {
-			return err
-		}
-		rows, err := tx.Query(ctx, managedSelectSQL+` ORDER BY u.name, u.email`, automation)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			r, err := scanManaged(rows, actorRole)
-			if err != nil {
-				return err
-			}
-			out = append(out, r.user)
-		}
-		return rows.Err()
-	})
-	return out, err
 }
 
 func readManaged(ctx context.Context, tx db.DBTX, userID uuid.UUID, actorRole OrgRole) (managedRow, error) {

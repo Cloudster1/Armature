@@ -9,6 +9,7 @@ import (
 	"image/gif"
 	"image/png"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -46,7 +47,8 @@ func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	me := api.client(t)
-	me.signIn(t, h.person(t, "profiled", auth.RoleOwner))
+	myEmail := h.person(t, "profiled", auth.RoleOwner)
+	me.signIn(t, myEmail)
 
 	t.Run("name, time zone and language", func(t *testing.T) {
 		changed := want(t, me.patch("/api/v1/auth/me", map[string]any{"name": "Ada Lovelace", "timezone": "Europe/Berlin", "locale": "de-DE"}), http.StatusOK, "profile")
@@ -93,7 +95,7 @@ func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
 		if got, _ := colleague.download(pictureURL); got.StatusCode != http.StatusOK {
 			t.Errorf("a colleague got %d", got.StatusCode)
 		}
-		members := list(t, want(t, colleague.get("/api/v1/members"), http.StatusOK, "members"), "members")
+		members := list(t, want(t, colleague.get("/api/v1/members?q="+url.QueryEscape(myEmail)), http.StatusOK, "members"), "members")
 		found := false
 		for _, m := range members {
 			if m.(map[string]any)["avatarUrl"] == pictureURL {

@@ -5,6 +5,7 @@ package test
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -22,7 +23,8 @@ func TestAdministratorsManageLocalUsers(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	owner := api.client(t)
-	signedUp := owner.signIn(t, h.person(t, "users-owner", auth.RoleOwner))
+	ownerEmail := h.person(t, "users-owner", auth.RoleOwner)
+	signedUp := owner.signIn(t, ownerEmail)
 	ownerID := principalField(t, signedUp, "principal", "user", "id").(string)
 
 	email := h.email(t, "local")
@@ -43,19 +45,14 @@ func TestAdministratorsManageLocalUsers(t *testing.T) {
 
 	t.Run("the list shows them and what may be done", func(t *testing.T) {
 		h.waitForPrimary(t)
-		listed := want(t, owner.get("/api/v1/users"), http.StatusOK, "list users")
-		found := false
-		for _, row := range list(t, listed, "users") {
-			u := row.(map[string]any)
-			if u["id"] == userID {
-				found = true
-			}
-			if u["id"] == ownerID && u["role"] != "owner" {
+		listed := want(t, owner.get("/api/v1/users?q="+url.QueryEscape(email)), http.StatusOK, "list users")
+		if rows := list(t, listed, "users"); len(rows) != 1 || rows[0].(map[string]any)["id"] != userID {
+			t.Fatalf("the made account is not listed: %s", listed.Raw)
+		}
+		for _, row := range list(t, want(t, owner.get("/api/v1/users?q="+url.QueryEscape(ownerEmail)), http.StatusOK, "list users"), "users") {
+			if u := row.(map[string]any); u["id"] == ownerID && u["role"] != "owner" {
 				t.Errorf("the owner is listed as %v", u["role"])
 			}
-		}
-		if !found {
-			t.Fatalf("the made account is not listed: %s", listed.Raw)
 		}
 	})
 
@@ -138,7 +135,7 @@ func TestAdministratorsManageLocalUsers(t *testing.T) {
 		theirID := obj(t, made, "user")["id"].(string)
 		h.waitForPrimary(t)
 
-		listed := want(t, owner.get("/api/v1/users"), http.StatusOK, "list")
+		listed := want(t, owner.get("/api/v1/users?q="+url.QueryEscape(theirEmail)), http.StatusOK, "list")
 		for _, row := range list(t, listed, "users") {
 			if u := row.(map[string]any); u["id"] == theirID && u["managed"] != true {
 				t.Errorf("a member is not offered as managed: %v", u)
@@ -173,19 +170,17 @@ func TestAnAccountTheProviderSignsInGetsNoPasswordHere(t *testing.T) {
 		t.Fatalf("configure a provider: %v", err)
 	}
 	var ssoID string
-	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Provider Person') RETURNING id`, h.email(t, "sso")).Scan(&ssoID); err != nil {
+	ssoEmail := h.email(t, "sso")
+	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Provider Person') RETURNING id`, ssoEmail).Scan(&ssoID); err != nil {
 		t.Fatalf("make a provider account: %v", err)
 	}
 	if _, err := h.super.Exec(ctx, `UPDATE app_user SET standing = 'member' WHERE id = $1`, ssoID); err != nil {
 		t.Fatalf("add them: %v", err)
 	}
 	h.waitForPrimary(t)
-	listed := want(t, owner.get("/api/v1/users"), http.StatusOK, "list")
-	for _, row := range list(t, listed, "users") {
-		u := row.(map[string]any)
-		if u["id"] == ssoID && u["signsInWith"] != "provider" {
-			t.Errorf("a passwordless account under a provider signs in with %v", u["signsInWith"])
-		}
+	listed := list(t, want(t, owner.get("/api/v1/users?q="+url.QueryEscape(ssoEmail)), http.StatusOK, "list"), "users")
+	if len(listed) != 1 || listed[0].(map[string]any)["signsInWith"] != "provider" {
+		t.Errorf("a passwordless account under a provider is listed as %v, want one signing in with the provider", listed)
 	}
 	if got := owner.put("/api/v1/users/"+ssoID+"/password", map[string]string{"password": testPassword}); got.Status != http.StatusConflict {
 		t.Errorf("a provider account was given a password: %d %s", got.Status, got.Raw)

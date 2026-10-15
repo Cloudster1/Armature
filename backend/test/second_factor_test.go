@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -566,12 +567,12 @@ func TestAnAdministratorTakesAwayALostSecondFactor(t *testing.T) {
 		t.Fatalf("an administrator's own factor went this way: %d %s", got.Status, got.Raw)
 	}
 	h.waitForPrimary(t)
-	if !listedWithFactor(t, owner, userID) {
+	if !listedWithFactor(t, owner, email, userID) {
 		t.Fatal("the users list does not say the factor is on")
 	}
 	want(t, owner.delete("/api/v1/users/"+userID+"/second-factor"), http.StatusNoContent, "take it away")
 	h.waitForPrimary(t)
-	if listedWithFactor(t, owner, userID) {
+	if listedWithFactor(t, owner, email, userID) {
 		t.Fatal("the users list still says the factor is on")
 	}
 	if again := owner.delete("/api/v1/users/" + userID + "/second-factor"); again.Status != http.StatusConflict || again.ErrorCode() != "no_second_factor" {
@@ -604,9 +605,9 @@ func TestWithoutAKeyNoSecondFactorIsSetUp(t *testing.T) {
 }
 
 // listedWithFactor reads the users list for whether somebody has a factor on.
-func listedWithFactor(t *testing.T, owner *client, userID string) bool {
+func listedWithFactor(t *testing.T, owner *client, email, userID string) bool {
 	t.Helper()
-	for _, row := range list(t, want(t, owner.get("/api/v1/users"), http.StatusOK, "list users"), "users") {
+	for _, row := range list(t, want(t, owner.get("/api/v1/users?q="+url.QueryEscape(email)), http.StatusOK, "list users"), "users") {
 		if u := row.(map[string]any); u["id"] == userID {
 			return u["secondFactor"] == true
 		}
