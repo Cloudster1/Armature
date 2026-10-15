@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Calendar is when a desk is open: hours per weekday, days off, and the zone
@@ -15,8 +17,16 @@ import (
 type Calendar struct {
 	Timezone string            `json:"timezone"`
 	Hours    map[string][]Span `json:"hours"`
-	Holidays []string          `json:"holidays"`
-	loc      *time.Location
+	// Holidays are the desk's own days off, closed beside the holiday calendar's.
+	Holidays []string `json:"holidays"`
+	// HolidayCalendarID is the holiday calendar whose days close the desk too,
+	// null for none; its name is sent back and never read.
+	HolidayCalendarID   *uuid.UUID `json:"holidayCalendarId"`
+	HolidayCalendarName *string    `json:"holidayCalendarName"`
+	// linked are that calendar's days as they stand when the clock is read,
+	// true for a half day, so a change to it counts from then on.
+	linked map[string]bool
+	loc    *time.Location
 }
 
 // Span is one open stretch of a day, written as HH:MM.
@@ -24,6 +34,9 @@ type Span struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 }
+
+// dayLayout is how a day off is written.
+const dayLayout = "2006-01-02"
 
 // weekdays are the keys of Hours, Monday first as a week is written.
 var weekdays = []string{"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
@@ -98,7 +111,7 @@ func (c *Calendar) readable() error {
 		c.Holidays = []string{}
 	}
 	for _, h := range c.Holidays {
-		if _, err := time.Parse("2006-01-02", h); err != nil {
+		if _, err := time.Parse(dayLayout, h); err != nil {
 			return fmt.Errorf("%q is not a day written as YYYY-MM-DD", h)
 		}
 	}
@@ -163,23 +176,72 @@ func (c *Calendar) location() *time.Location {
 	return c.loc
 }
 
-func (c *Calendar) isHoliday(day time.Time) bool {
-	key := day.Format("2006-01-02")
-	for _, h := range c.Holidays {
-		if h == key {
-			return true
-		}
+// link takes the named holiday calendar's whole and half days.
+func (c *Calendar) link(whole, half []string) {
+	c.linked = map[string]bool{}
+	for _, d := range whole {
+		c.linked[d] = false
 	}
-	return false
+	for _, d := range half {
+		c.linked[d] = true
+	}
 }
 
-// openSpans are the open stretches of one calendar day, as instants. Spans
-// that overlap are merged, so a minute saved twice is still open only once.
-func (c *Calendar) openSpans(day time.Time) []struct{ from, to time.Time } {
-	if c.isHoliday(day) {
+// closedOn says whether a day is closed, and whether only its second half is.
+func (c *Calendar) closedOn(day time.Time) (closed, halfDay bool) {
+	key := day.Format(dayLayout)
+	for _, h := range c.Holidays {
+		if h == key {
+			return true, false
+		}
+	}
+	halfDay, linked := c.linked[key]
+	return linked && !halfDay, halfDay
+}
+
+// openSpans are the open stretches of one calendar day, as instants: none on
+// a day off, and the first half of the day's open time on a half day.
+func (c *Calendar) openSpans(day time.Time) []openSpan {
+	closed, halfDay := c.closedOn(day)
+	if closed {
 		return nil
 	}
-	var out []struct{ from, to time.Time }
+	spans := c.mergedSpans(day)
+	if halfDay {
+		return firstHalf(spans)
+	}
+	return spans
+}
+
+// openSpan is one open stretch of a particular day.
+type openSpan struct{ from, to time.Time }
+
+// firstHalf keeps the first half of a day's open time, as a person on a half
+// day off works half of what their week holds.
+func firstHalf(spans []openSpan) []openSpan {
+	var open time.Duration
+	for _, s := range spans {
+		open += s.to.Sub(s.from)
+	}
+	left := open / 2
+	var out []openSpan
+	for _, s := range spans {
+		if left <= 0 {
+			break
+		}
+		if s.to.Sub(s.from) > left {
+			s.to = s.from.Add(left)
+		}
+		left -= s.to.Sub(s.from)
+		out = append(out, s)
+	}
+	return out
+}
+
+// mergedSpans are the day's hours as instants. Spans that overlap are merged,
+// so a minute saved twice is still open only once.
+func (c *Calendar) mergedSpans(day time.Time) []openSpan {
+	var out []openSpan
 	for _, s := range sortedSpans(c.Hours[weekdayKey[day.Weekday()]]) {
 		from, err1 := minuteOf(s.From)
 		to, err2 := minuteOf(s.To)
@@ -194,7 +256,7 @@ func (c *Calendar) openSpans(day time.Time) []struct{ from, to time.Time } {
 			}
 			continue
 		}
-		out = append(out, struct{ from, to time.Time }{start, end})
+		out = append(out, openSpan{start, end})
 	}
 	return out
 }
@@ -256,8 +318,13 @@ func (c *Calendar) AddWorking(start time.Time, d time.Duration) time.Time {
 // ErrNoCalendar is returned when a project has not set its hours.
 var ErrNoCalendar = errors.New("this project has no business hours yet")
 
-func parseCalendar(timezone string, hours []byte, holidays []string) (*Calendar, error) {
+// ErrNoHolidayCalendar is returned for hours that name a holiday calendar that is not there.
+var ErrNoHolidayCalendar = errors.New("that holiday calendar is not there")
+
+// parseCalendar reads a saved calendar with the named holiday calendar's whole and half days.
+func parseCalendar(timezone string, hours []byte, holidays, wholeDays, halfDays []string) (*Calendar, error) {
 	c := &Calendar{Timezone: timezone, Holidays: holidays}
+	c.link(wholeDays, halfDays)
 	if err := json.Unmarshal(hours, &c.Hours); err != nil {
 		return nil, err
 	}

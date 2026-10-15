@@ -109,7 +109,7 @@ func TestCalendarRefusesOverlappingHoursOnADay(t *testing.T) {
 
 func TestASavedCalendarWithOverlapsCountsTheOverlapOnce(t *testing.T) {
 	// Saved before overlaps were refused: reading it back must still work.
-	c, err := parseCalendar("UTC", []byte(`{"mon":[{"from":"09:00","to":"13:00"},{"from":"12:00","to":"17:00"}],"tue":[{"from":"08:00","to":"18:00"},{"from":"10:00","to":"11:00"}]}`), nil)
+	c, err := parseCalendar("UTC", []byte(`{"mon":[{"from":"09:00","to":"13:00"},{"from":"12:00","to":"17:00"}],"tue":[{"from":"08:00","to":"18:00"},{"from":"10:00","to":"11:00"}]}`), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("a saved calendar with overlaps could not be read: %v", err)
 	}
@@ -124,5 +124,45 @@ func TestASavedCalendarWithOverlapsCountsTheOverlapOnce(t *testing.T) {
 	// The deadline a goal turns into counts the same hours.
 	if got := c.AddWorking(monday.Add(9*time.Hour), 8*time.Hour); !got.Equal(monday.Add(17 * time.Hour)) {
 		t.Errorf("eight working hours from Monday 09:00 end at %s, want Monday 17:00", got)
+	}
+}
+
+func TestTheNamedHolidayCalendarClosesItsDaysBesideTheDesksOwn(t *testing.T) {
+	c := DefaultCalendar()
+	_ = c.Validate()
+	c.Holidays = []string{"2026-12-28"}
+	c.link([]string{"2026-12-25"}, []string{"2026-12-24"})
+	// Thursday 24 December is a half day, Friday 25 a whole one; Monday 28 is the desk's own.
+	eve := time.Date(2026, 12, 24, 0, 0, 0, 0, time.UTC)
+	if got := c.WorkingDuration(eve, eve.AddDate(0, 0, 1)); got != 4*time.Hour {
+		t.Errorf("the half day = %s, want half of eight hours", got)
+	}
+	if got := c.WorkingDuration(eve.Add(13*time.Hour), eve.Add(17*time.Hour)); got != 0 {
+		t.Errorf("the afternoon of the half day = %s, want closed", got)
+	}
+	if got := c.WorkingDuration(eve, eve.AddDate(0, 0, 6)); got != 4*time.Hour+8*time.Hour {
+		t.Errorf("Thursday to Tuesday = %s, want the half day and Tuesday", got)
+	}
+	// Four working hours from Thursday noon: one before the half day closes, three on Tuesday.
+	if got := c.AddWorking(eve.Add(12*time.Hour), 4*time.Hour); !got.Equal(time.Date(2026, 12, 29, 12, 0, 0, 0, time.UTC)) {
+		t.Errorf("deadline = %s, want Tuesday 12:00", got)
+	}
+}
+
+func TestAHalfHolidayKeepsTheFirstHalfOfASplitDay(t *testing.T) {
+	c := Calendar{Timezone: "UTC", Hours: map[string][]Span{"thu": {{From: "09:00", To: "12:00"}, {From: "13:00", To: "17:00"}}}}
+	_ = c.Validate()
+	c.link(nil, []string{"2026-12-24"})
+	eve := time.Date(2026, 12, 24, 0, 0, 0, 0, time.UTC)
+	if got := c.WorkingDuration(eve, eve.AddDate(0, 0, 1)); got != 3*time.Hour+30*time.Minute {
+		t.Errorf("a half day of seven hours = %s, want 3h30m", got)
+	}
+	if got := c.WorkingDuration(eve.Add(13*time.Hour+30*time.Minute), eve.Add(17*time.Hour)); got != 0 {
+		t.Errorf("after the first half = %s, want closed", got)
+	}
+	// The desk's own list closes the whole day even when the named calendar halves it.
+	c.Holidays = []string{"2026-12-24"}
+	if got := c.WorkingDuration(eve, eve.AddDate(0, 0, 1)); got != 0 {
+		t.Errorf("a day on both lists = %s, want closed", got)
 	}
 }

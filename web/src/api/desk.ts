@@ -321,7 +321,11 @@ export function useIssueRating(issueKey: string, enabled: boolean) {
 export interface BusinessCalendar {
   timezone: string;
   hours: Record<string, Array<{ from: string; to: string }>>;
+  /** The desk's own days off, closed beside the holiday calendar's. */
   holidays: string[];
+  /** The holiday calendar whose days close the desk too; its name is only read. */
+  holidayCalendarId: string | null;
+  holidayCalendarName: string | null;
 }
 
 export function useBusinessCalendar(projectKey: string) {

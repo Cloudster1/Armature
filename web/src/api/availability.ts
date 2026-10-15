@@ -23,6 +23,8 @@ export interface HolidayCalendar {
   /** Only when the calendar is read on its own. */
   days?: Holiday[];
   peopleCount: number;
+  /** The desks whose business hours take its days off; told to an administrator only. */
+  desks: string[];
   createdAt: string;
   updatedAt: string;
 }

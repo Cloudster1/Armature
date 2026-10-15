@@ -16,6 +16,9 @@ func availabilityAPIError(err error) *APIError {
 	if refused := (*availability.MayNotChangeError)(nil); errors.As(err, &refused) {
 		return ErrForbidden(fmt.Sprintf("Only %s or an administrator can change this absence. Ask one of them instead.", refused.Person))
 	}
+	if inUse := (*availability.CalendarInUseError)(nil); errors.As(err, &inUse) {
+		return ErrConflict(inUse.Error() + ".")
+	}
 	switch {
 	case errors.Is(err, project.ErrScrumByTeam):
 		message := "A scrum project plans by team. Switch the project to kanban to plan by person."

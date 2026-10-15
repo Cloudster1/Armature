@@ -1379,7 +1379,7 @@ export interface paths {
         get: operations["getHolidayCalendar"];
         put?: never;
         post?: never;
-        /** Delete a calendar that is not the default; the people given it fall back to the default. */
+        /** Delete a calendar that is not the default and no desk takes its days off from; the people given it fall back to the default. */
         delete: operations["deleteHolidayCalendar"];
         options?: never;
         head?: never;
@@ -2836,7 +2836,7 @@ export interface paths {
         };
         /** When the desk is open, for goals that count only those hours. */
         get: operations["getCalendar"];
-        /** Set when the desk is open. */
+        /** Set when the desk is open, and the holiday calendar whose days close it beside its own. */
         put: operations["saveCalendar"];
         post?: never;
         delete?: never;
@@ -4813,6 +4813,9 @@ export interface components {
             window: number;
         };
         Calendar: {
+            /** Format: uuid */
+            holidayCalendarId: string | null;
+            holidayCalendarName: string | null;
             holidays: string[];
             hours: {
                 [key: string]: components["schemas"]["Span"][];
@@ -5537,6 +5540,7 @@ export interface components {
             dayCount: number;
             days?: components["schemas"]["Holiday"][];
             default: boolean;
+            desks: string[];
             /** Format: uuid */
             id: string;
             name: string;

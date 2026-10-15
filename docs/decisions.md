@@ -962,8 +962,18 @@ table holds unsaved days the import asks before it discards them rather than
 merging the file into a draft the server has not seen.
 
 This is not the service desk's business calendar, which says when a desk is
-open for its clocks and answers a different question. A desk could later point
-its calendar at a holiday calendar instead of keeping a list of its own.
+open for its clocks and answers a different question. A desk's calendar can
+name a holiday calendar, though, so a desk keeps one list with everybody else
+(#77). The days are read whenever a clock is read rather than copied into the
+desk, so a day added to the calendar counts for open clocks from then on; time
+already banked by a pause stays as it was counted. A half day keeps the first
+half of the day's open time, as it halves a person's working day. The desk's
+own list still counts beside it, so a desk adds a day of its own, or empties the
+list to follow the calendar alone. Deleting a calendar a desk names is refused
+with a sentence naming the desks, and a restricting foreign key refuses it too,
+rather than quietly falling back to the desk's own list: a clock that suddenly
+counts Christmas is a breach nobody saw coming. Which desks those are is told to
+an administrator only, who alone deletes, since an agent may not see every desk.
 
 ### An absence says when, never why, and nobody approves it
 

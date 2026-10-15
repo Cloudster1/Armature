@@ -33,7 +33,12 @@ function HolidaysPage() {
   const open = calendars.find((c) => c.id === chosen) ?? calendars[0];
 
   async function onDelete(calendar: HolidayCalendar) {
-    const body = `${calendar.name} and its ${calendar.dayCount} days go. The ${calendar.peopleCount} people given it keep the default instead.`;
+    const one = calendar.desks.length === 1;
+    const kept =
+      calendar.desks.length === 0
+        ? ""
+        : ` The ${inWords(calendar.desks)} ${one ? "desk takes its" : "desks take their"} days off from it; choose another one on ${one ? "its service desk page" : "their service desk pages"} first.`;
+    const body = `${calendar.name} and its ${calendar.dayCount} days go. The ${calendar.peopleCount} people given it keep the default instead.${kept}`;
     if (await confirm({ noun: "calendar", verb: "Delete", body })) {
       remove.mutate(calendar.id, { onSuccess: () => { setChosen(null); toast.success(`Deleted ${calendar.name}`); } });
     }
@@ -118,6 +123,11 @@ function HolidaysPage() {
       {renaming && <RenameDialog calendar={renaming} onClose={() => setRenaming(null)} />}
     </Page>
   );
+}
+
+/** Names in a sentence, as the server writes them: A, B and C. */
+function inWords(names: string[]): string {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 function NewCalendarForm({ onMade }: { onMade: (id: string) => void }) {
