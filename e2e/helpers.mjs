@@ -1848,7 +1848,7 @@ export async function openFilters(page) {
   await page.waitForSelector('[data-action="filters"]', { timeout: WAIT });
   const open = await page.$eval('[data-action="filters"]', (el) => el.getAttribute("aria-expanded") === "true");
   if (!open) await page.click('[data-action="filters"]');
-  await page.waitForSelector('[data-popover] select', { timeout: WAIT });
+  await page.waitForSelector("[data-popover] input, [data-popover] select", { timeout: WAIT });
 }
 
 /** Opens the plan toolbar's Filters popover, which holds the type chips, the selects and the closed-for days. */

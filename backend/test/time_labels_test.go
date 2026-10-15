@@ -214,6 +214,53 @@ func TestLabelsAreWordsEveryoneShares(t *testing.T) {
 	})
 }
 
+// A label field asks for the few labels that hold what was typed, those
+// starting with it first, rather than every label everybody has coined.
+func TestLabelsAreFoundByWhatIsTyped(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signIn(t, h.person(t, "finder", auth.RoleOwner))
+	word := strings.ToLower(unique("word"))
+	inside, starts, alsoInside, alsoStarts := h.name(t, "b"+word), h.name(t, word), h.name(t, "a"+word), h.name(t, word)
+	for _, name := range []string{inside, starts, alsoInside, alsoStarts} {
+		want(t, owner.post("/api/v1/labels", map[string]any{"name": name}), http.StatusCreated, "coin "+name)
+	}
+	first, second := starts, alsoStarts
+	if strings.ToLower(second) < strings.ToLower(first) {
+		first, second = second, first
+	}
+
+	found := func(t *testing.T, query string) string {
+		t.Helper()
+		return labelNames(t, want(t, owner.get("/api/v1/labels?"+query), http.StatusOK, "search "+query), "labels")
+	}
+	if got, wanted := found(t, "q="+word), strings.Join([]string{first, second, alsoInside, inside}, ", "); got != wanted {
+		t.Fatalf("labels holding %s = %q, want those starting with it first: %q", word, got, wanted)
+	}
+	if got, wanted := found(t, "q="+strings.ToUpper(word)), strings.Join([]string{first, second, alsoInside, inside}, ", "); got != wanted {
+		t.Errorf("the search should ignore case: %q, want %q", got, wanted)
+	}
+	if got, wanted := found(t, "q="+word+"&limit=3"), strings.Join([]string{first, second, alsoInside}, ", "); got != wanted {
+		t.Errorf("a limit of 3 = %q, want %q", got, wanted)
+	}
+	if got := found(t, "limit=1"); strings.Contains(got, ", ") || got == "" {
+		t.Errorf("a limit alone should give one label, got %q", got)
+	}
+	if got := found(t, "q="+word+"&limit=100000"); got == "" {
+		t.Errorf("a limit past the cap should be held to the cap, not refused")
+	}
+
+	// Without q or limit the answer is every label, as the settings page lists them.
+	every := found(t, "")
+	for _, name := range []string{inside, starts, alsoInside, alsoStarts} {
+		if !strings.Contains(", "+every+", ", ", "+name+", ") {
+			t.Errorf("%s is missing from every label", name)
+		}
+	}
+}
+
 func labelNames(t *testing.T, r response, keys ...string) string {
 	t.Helper()
 	items := list(t, r, keys...)
