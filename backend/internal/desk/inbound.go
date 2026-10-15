@@ -25,6 +25,8 @@ type Outcome string
 const (
 	// Commented is a reply that became a comment on its request.
 	Commented Outcome = "commented"
+	// Raised is a new mail to a desk's own address that became a request.
+	Raised Outcome = "raised"
 	// Refused is a mail from somebody not on the request; nothing was written
 	// and the sender was told to use the portal.
 	Refused Outcome = "refused"
@@ -156,7 +158,8 @@ func (n *Inbound) read(ctx context.Context, raw []byte) (Outcome, bool, error) {
 		n.log.Warn("unreadable mail left aside", "error", err)
 		return Skipped, false, nil
 	}
-	if !n.forTheDesk(m) {
+	deskKey, ours := n.forTheDesk(m)
+	if !ours {
 		return Skipped, false, nil
 	}
 	messageID := m.MessageID
@@ -181,7 +184,7 @@ func (n *Inbound) read(ctx context.Context, raw []byte) (Outcome, bool, error) {
 	}
 
 	var p *placement
-	outcome, err := n.act(ctx, messageID, m, &p)
+	outcome, err := n.act(ctx, messageID, m, deskKey, &p)
 	if err != nil {
 		return n.fail(ctx, messageID, claim.attempts, p, err)
 	}
@@ -190,9 +193,16 @@ func (n *Inbound) read(ctx context.Context, raw []byte) (Outcome, bool, error) {
 
 // act places a claimed mail and writes what it says. The placement is handed
 // back through out so a failure can be told on the request it was for.
-func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, out **placement) (Outcome, error) {
+func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, deskKey string, out **placement) (Outcome, error) {
 	key := mailin.IssueKeyIn(m.Subject, m.InReplyTo, m.References)
 	if key == "" {
+		at, err := n.mailDesk(ctx, deskKey)
+		if err != nil {
+			return "", err
+		}
+		if at != nil {
+			return n.raise(ctx, messageID, m, at, out)
+		}
 		return n.finish(ctx, messageID, nil, Unmatched, "no request named", m, unmatchedMessage(n.appURL))
 	}
 	where, err := n.place(ctx, key, m.From)
@@ -242,18 +252,21 @@ func (n *Inbound) act(ctx context.Context, messageID string, m *mailin.Message, 
 	return n.finish(ctx, messageID, &p, Commented, "", m, Message{})
 }
 
-// forTheDesk says whether a mail is one to read: addressed to the inbox, and
-// not the desk's own. A shared box, as Mailpit is, holds plenty that is not.
-func (n *Inbound) forTheDesk(m *mailin.Message) bool {
-	if m.From == "" || m.From == n.address || m.From == n.from {
-		return false
+// forTheDesk says whether a mail is one to read, sent to the inbox or a desk's
+// plus address, and names that desk. A shared box, as Mailpit is, holds others.
+func (n *Inbound) forTheDesk(m *mailin.Message) (deskKey string, ours bool) {
+	if m.From == "" || m.From == n.address || m.From == n.from || deskKeyIn(n.address, m.From) != "" {
+		return "", false
 	}
 	for _, to := range m.Recipients {
+		if key := deskKeyIn(n.address, to); key != "" {
+			return key, true
+		}
 		if to == n.address {
-			return true
+			ours = true
 		}
 	}
-	return false
+	return "", ours
 }
 
 // placement is where a mail landed: the request, under the key it has now
@@ -378,10 +391,20 @@ func notTrustedMessage(key string, domains []string, from, appURL string) Messag
 	}
 }
 
+// notTrustedNewMessage tells a sender the desk raises requests for other domains.
+func notTrustedNewMessage(domains []string, from, appURL string) Message {
+	return Message{
+		Subject: "Your mail could not be raised as a request",
+		Body: fmt.Sprintf("This desk takes requests from addresses at %s only, and this address is at %s.\n\nWrite from an address at one of them, or use the portal at %s\n",
+			strings.Join(domains, ", "), project.DomainOf(from), appURL),
+	}
+}
+
 // unmatchedMessage tells a sender their mail named no request.
 func unmatchedMessage(appURL string) Message {
 	return Message{
 		Subject: "Your mail could not be matched to a request",
-		Body:    fmt.Sprintf("We could not tell which request this is about. Reply to a mail from the desk, keeping its subject, or use the portal at %s\n", appURL),
+		Body: fmt.Sprintf("We could not tell which request this is about. Reply to a mail from the desk, keeping its subject, or use the portal at %s\n\nFor something new, write to the desk's own address, as its page in the portal shows it.\n",
+			appURL),
 	}
 }

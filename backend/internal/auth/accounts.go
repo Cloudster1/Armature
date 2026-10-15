@@ -2,7 +2,10 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/db"
 )
@@ -23,6 +26,35 @@ func (s *Service) UserForAddress(ctx context.Context, raw string) (User, error) 
 		return err
 	})
 	return user, err
+}
+
+// CustomerForAddress is UserForAddress for somebody who writes to a desk, in
+// the caller's transaction: an address with no standing becomes a customer's.
+func CustomerForAddress(ctx context.Context, tx db.DBTX, raw string) (User, error) {
+	email, err := ParseAddress(raw)
+	if err != nil {
+		return User{}, err
+	}
+	user, err := upsertUserByAddress(ctx, tx, email)
+	if err != nil {
+		return User{}, err
+	}
+	if !user.IsActive {
+		return User{}, ErrUserInactive
+	}
+	var role OrgRole
+	err = tx.QueryRow(ctx, `SELECT standing FROM app_user WHERE id = $1 AND standing IS NOT NULL`, user.ID).Scan(&role)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'customer' WHERE id = $1`, user.ID); err != nil {
+			return User{}, fmt.Errorf("make %s a customer: %w", email, err)
+		}
+	case err != nil:
+		return User{}, err
+	case role.IsAgent():
+		return User{}, ErrHasAccount
+	}
+	return user, nil
 }
 
 // upsertUserByAddress is the one statement that makes an account-less user:

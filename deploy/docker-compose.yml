@@ -327,9 +327,10 @@ services:
       # Seals authenticator secrets for two-step sign-in. A fixed key, public
       # and good only for a development stack; the integration suite uses it too.
       ARMATURE_SECRET_KEY: ${SECRET_KEY:-YXJtYXR1cmUtZGV2LWtleS1ub3QtYS1zZWNyZXQtMDA=}
-      # Set so the portal can say that answering the desk's mails works; the
-      # worker is what reads the box.
+      # Set so the portal can say that answering the desk's mails works, and
+      # each desk show its own address; the worker is what reads the box.
       ARMATURE_POP3_ADDR: mailpit:1110
+      ARMATURE_MAIL_INBOX: support@armature.test
       # The render service prints pages for PDF export; it reaches the web
       # container by name, so the api only ever hands it a path.
       ARMATURE_RENDER_URL: http://render:8090

@@ -104,6 +104,9 @@ type updateProjectRequest struct {
 	PortalVerifies *bool `json:"portalVerifies,omitempty"`
 	// TrustedDomains replaces the desk's list of address domains; empty means everyone.
 	TrustedDomains *[]string `json:"trustedDomains,omitempty"`
+	// MailRequestTypeID is what a new mail to the desk becomes; null stops
+	// mail raising requests.
+	MailRequestTypeID uuidPatch `json:"mailRequestTypeId,omitempty"`
 	// Features replaces the list of pages the project has.
 	Features *[]string `json:"features,omitempty"`
 	// DocsURL is where the project's documentation lives; an empty string
@@ -159,6 +162,10 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 	if req.LeadID.Set {
 		value := req.LeadID.Value
 		in.LeadID = &value
+	}
+	if req.MailRequestTypeID.Set {
+		value := req.MailRequestTypeID.Value
+		in.MailRequestTypeID = &value
 	}
 
 	updated, lsn, err := s.Projects.Update(r.Context(), r.PathValue("projectKey"), in)

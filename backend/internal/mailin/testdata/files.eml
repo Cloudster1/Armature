@@ -1,0 +1,35 @@
+From: Gus <gus@example.com>
+To: support+help@armature.test
+Subject: The printer jams
+Message-ID: <files@example.com>
+Content-Type: multipart/mixed; boundary="outer"
+
+--outer
+Content-Type: multipart/related; boundary="inner"
+
+--inner
+Content-Type: text/html; charset=utf-8
+
+<p>It jams on every page.</p><img src="cid:logo">
+--inner
+Content-Type: image/png
+Content-ID: <logo>
+Content-Disposition: inline
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgo=
+--inner--
+--outer
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="printer.log"
+Content-Transfer-Encoding: quoted-printable
+
+jam at tray 2 =3D page 4
+--outer
+Content-Type: image/jpeg
+Content-Disposition: attachment; filename="=?utf-8?q?Fotograf=C3=ADa.jpg?="
+Content-Transfer-Encoding: base64
+
+/9j/
+4AAQ
+--outer--

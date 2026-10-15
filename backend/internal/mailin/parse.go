@@ -36,6 +36,15 @@ type Message struct {
 	// AuthResults is what the receiving server made of the sender: the
 	// Authentication-Results header, lowercased, empty when it checked nothing.
 	AuthResults string
+	// Attachments are the parts that came with a name, decoded.
+	Attachments []Attachment
+}
+
+// Attachment is a file that came with a mail.
+type Attachment struct {
+	Name        string
+	ContentType string
+	Body        []byte
 }
 
 // SenderFailedChecks says the receiving server checked who sent this and found
@@ -88,6 +97,7 @@ func Parse(raw []byte) (*Message, error) {
 	} else {
 		out.Text = stripTags(rich)
 	}
+	out.Attachments = attachments(textproto(m.Header), body, decoder)
 	return out, nil
 }
 
@@ -111,11 +121,14 @@ type headerGetter interface{ Get(string) string }
 func textproto(h mail.Header) headerGetter { return h }
 
 // bodyText walks the parts and returns the first plain text and the first HTML
-// it finds, so the caller can prefer the plain one.
+// it finds, so the caller can prefer the plain one. A file is never the body.
 func bodyText(h headerGetter, body []byte) (plain, rich string) {
 	mediaType, params, err := mime.ParseMediaType(h.Get("Content-Type"))
 	if err != nil {
 		mediaType, params = "text/plain", map[string]string{}
+	}
+	if isAttached(h) {
+		return "", ""
 	}
 	switch {
 	case strings.HasPrefix(mediaType, "multipart/"):
@@ -152,15 +165,70 @@ func bodyText(h headerGetter, body []byte) (plain, rich string) {
 	return "", ""
 }
 
-// decodeText undoes the transfer encoding and the charset.
-func decodeText(h headerGetter, body []byte, charset string) string {
+// isAttached says a part is a file sent along, not words: the sender's client
+// marked it so, as every client does for a file.
+func isAttached(h headerGetter) bool {
+	disposition, _, err := mime.ParseMediaType(h.Get("Content-Disposition"))
+	return err == nil && strings.EqualFold(disposition, "attachment")
+}
+
+// attachments walks the parts for the files: a part with a name that is either
+// marked as attached or is no text. An inline picture without a name is a
+// signature's logo, not something the sender meant to send.
+func attachments(h headerGetter, body []byte, decoder *mime.WordDecoder) []Attachment {
+	mediaType, params, err := mime.ParseMediaType(h.Get("Content-Type"))
+	if err != nil {
+		mediaType, params = "application/octet-stream", map[string]string{}
+	}
+	if strings.HasPrefix(mediaType, "multipart/") {
+		boundary := params["boundary"]
+		if boundary == "" {
+			return nil
+		}
+		var out []Attachment
+		reader := multipart.NewReader(bytes.NewReader(body), boundary)
+		for {
+			part, err := reader.NextPart()
+			if err != nil {
+				return out
+			}
+			data, err := io.ReadAll(part)
+			if err != nil {
+				return out
+			}
+			out = append(out, attachments(part.Header, data, decoder)...)
+		}
+	}
+	name := partName(h, params, decoder)
+	text := mediaType == "text/plain" || mediaType == "text/html"
+	if name == "" || (text && !isAttached(h)) {
+		return nil
+	}
+	return []Attachment{{Name: name, ContentType: mediaType, Body: decodeTransfer(h, body)}}
+}
+
+// partName is the file's name: the disposition's, else the older name on the
+// content type, with any RFC 2047 words spelled out.
+func partName(h headerGetter, params map[string]string, decoder *mime.WordDecoder) string {
+	name := params["name"]
+	if _, disposition, err := mime.ParseMediaType(h.Get("Content-Disposition")); err == nil && disposition["filename"] != "" {
+		name = disposition["filename"]
+	}
+	if decoded, err := decoder.DecodeHeader(name); err == nil {
+		name = decoded
+	}
+	return strings.TrimSpace(name)
+}
+
+// decodeTransfer undoes the transfer encoding.
+func decodeTransfer(h headerGetter, body []byte) []byte {
 	var r io.Reader = bytes.NewReader(body)
 	switch strings.ToLower(strings.TrimSpace(h.Get("Content-Transfer-Encoding"))) {
 	case "quoted-printable":
 		r = quotedprintable.NewReader(r)
 	case "base64":
 		r = base64.NewDecoder(base64.StdEncoding, bytes.NewReader(bytes.Map(func(c rune) rune {
-			if c == '\r' || c == '\n' || c == ' ' {
+			if c == '\r' || c == '\n' || c == ' ' || c == '\t' {
 				return -1
 			}
 			return c
@@ -168,8 +236,14 @@ func decodeText(h headerGetter, body []byte, charset string) string {
 	}
 	decoded, err := io.ReadAll(r)
 	if err != nil {
-		decoded = body
+		return body
 	}
+	return decoded
+}
+
+// decodeText undoes the transfer encoding and the charset.
+func decodeText(h headerGetter, body []byte, charset string) string {
+	decoded := decodeTransfer(h, body)
 	text, err := charsetReader(charset, bytes.NewReader(decoded))
 	if err != nil {
 		return string(decoded)

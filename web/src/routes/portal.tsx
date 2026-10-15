@@ -291,6 +291,16 @@ function RaiseRequest() {
 
             <ArticleSearch projectKey={desk?.projectKey} />
 
+            {desk?.mailAddress && (
+              <p className="text-sm text-ink-muted" data-portal-mail-address={desk.mailAddress}>
+                You can also mail this desk at{" "}
+                <a href={`mailto:${desk.mailAddress}`} className="text-accent hover:underline">
+                  {desk.mailAddress}
+                </a>
+                ; the subject becomes the summary and any files come along.
+              </p>
+            )}
+
             <fieldset className="space-y-2">
               <legend className="block text-sm font-medium text-ink-muted">What is it about?</legend>
               <div role="radiogroup" aria-label="Request type" className="space-y-3">

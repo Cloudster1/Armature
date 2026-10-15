@@ -7,7 +7,9 @@ import {
   useCreateCanned,
   useDeleteArticle,
   useDeleteCanned,
+  useDeskMailAddress,
   usePolicies,
+  useRequestTypes,
   useSaveBusinessCalendar,
   useUpdateArticle,
   useUpdateCanned,
@@ -304,11 +306,13 @@ export function doorAddress(origin: string, projectKey: string): string {
   return `${origin}/desk?${new URLSearchParams({ desk: projectKey })}`;
 }
 
-// The desk's public address, whether the door asks for a code, and the
-// domains it trusts. Off, an address is taken on trust, so whoever gives one
-// is a customer of this desk alone; the list narrows that to their domains.
+// The desk's public address, whether the door asks for a code, the domains it
+// trusts and what a new mail becomes. Off, an address is taken on trust, so
+// whoever gives one is a customer of this desk alone; the list narrows that.
 export function Door({ projectKey, editable }: { projectKey: string; editable: boolean }) {
   const { data } = useProject(projectKey);
+  const { data: typeData } = useRequestTypes(projectKey);
+  const { data: mailData } = useDeskMailAddress(projectKey);
   const update = useUpdateProject();
   const toast = useToast();
   const [draft, setDraft] = useState("");
@@ -318,6 +322,8 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
   const verifies = project.portalVerifies;
   const domains = project.trustedDomains ?? [];
   const domainError = update.error instanceof ApiError ? update.error.fields?.trustedDomains : undefined;
+  const requestTypes = typeData?.requestTypes ?? [];
+  const mailAddress = mailData?.address ?? "";
 
   function trust(event: FormEvent) {
     event.preventDefault();
@@ -363,7 +369,7 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
         </div>
         <div className="space-y-2 border-t border-border pt-4" data-trusted-domains>
           <p className="text-sm text-ink">Trusted domains</p>
-          <p className="text-sm text-ink-muted">Empty means any address. Applies to the door and to replies by mail.</p>
+          <p className="text-sm text-ink-muted">Empty means any address. Applies to the door and to mail, replies and new requests alike.</p>
           {domains.length > 0 && (
             <ul className="flex flex-wrap gap-2">
               {domains.map((domain) => (
@@ -396,6 +402,37 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
               </Button>
             </form>
           )}
+        </div>
+        <div className="space-y-2 border-t border-border pt-4" data-mail-requests>
+          <p className="text-sm text-ink">New requests by mail</p>
+          {mailAddress ? (
+            <p className="text-sm text-ink-muted">
+              A mail to <code className="rounded-control bg-surface-raised px-1 font-mono text-xs text-ink" data-desk-mail-address>{mailAddress}</code> that names no request becomes a request of this type, raised by its sender. Agents' mail and automatic replies never do. None answers it with the portal's address instead.
+            </p>
+          ) : (
+            <p className="text-sm text-ink-muted">This installation reads no mailbox, so mail raises no requests here. The type chosen applies once it does.</p>
+          )}
+          <div className="max-w-xs">
+            <Select
+              label="Request type for mail"
+              id="field-mail-request-type"
+              controlSize="sm"
+              value={project.mailRequestTypeId ?? ""}
+              disabled={!editable || update.isPending}
+              data-action="mail-request-type"
+              onChange={(e) => {
+                const chosen = e.target.value;
+                update.mutate({ key: project.key, mailRequestTypeId: chosen || null }, { onSuccess: () => toast.success(chosen ? "New mail raises requests" : "Mail raises no requests") });
+              }}
+            >
+              <option value="">None</option>
+              {requestTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
         {update.error && !domainError && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
       </Card>

@@ -16,6 +16,14 @@ and its tag message, so a change is written here in the branch that makes it.
   narrow the queue to one company, and query `company = Globex` in search and
   reports. The export lists a customer's companies and erasure takes them out
   (#78).
+- Added: customers raise a new request by mailing the desk. Each desk is
+  reached at a plus address of the inbox, `support+cp@` for `support@`, shown
+  on the service desk page and in the portal. A desk that names a request type
+  for mail turns a new mail there into a request by its sender: the subject is
+  the summary, the words the description, and the files come along. Machines,
+  agents, forged senders and domains the desk does not trust raise nothing; a
+  desk without a mail request type answers as before. Upgrading: the api reads
+  `ARMATURE_MAIL_INBOX` too, to show each desk its address (#72).
 - Added: a desk's business hours take their days off from a holiday calendar,
   chosen under Holidays from on the service desk page, beside the desk's own
   extra days. The clocks skip its days, keep the first half of the open hours

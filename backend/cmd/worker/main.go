@@ -138,8 +138,12 @@ func run() error {
 	if _, off := store.(attachment.Unavailable); off {
 		log.Info("attachment reaper is off: neither ARMATURE_S3_ENDPOINT nor ARMATURE_ATTACHMENT_DIR is set")
 	} else {
-		reaper := attachment.NewReaper(attachment.NewService(cluster, store, issues), log)
+		// One service for both, as each observes the issues it is given.
+		files := attachment.NewService(cluster, store, issues).WithMaxSize(cfg.Attachments.MaxBytes)
+		reaper := attachment.NewReaper(files, log)
 		g.Go(func() error { return reaper.Run(ctx) })
+		// A mail that raises a request brings its files along.
+		deskService.WithAttachments(files)
 	}
 	// People on ordinary issues hear through the inbox whether or not mail is
 	// on; mail is a copy of the inbox when there is a relay to send it through.

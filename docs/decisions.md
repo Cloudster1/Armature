@@ -1360,6 +1360,22 @@ reply, move the request back and restart its clocks. A mail marked by
 `Auto-Submitted` (other than `no`), `X-Autoreply`, `X-Autorespond` or a
 `Precedence` of `auto_reply`, `bulk`, `junk` or `list` is recorded as
 `automatic`, taken out of the box and never posted.
+
+A new mail raises a request only where it was sent to a desk (#72). Each desk is
+a plus address of the one inbox, `support+cp@` for `support@`, which every
+common mail host delivers to the inbox itself, so one box serves every desk and
+the address says which. A desk names the request type its mail becomes, and
+without one its mail is answered as unmatched, as all of it was before. The
+bare inbox raises nothing and its answer lists no desk, since that would tell
+anyone who writes which desks there are. Raising follows the reply's rules and
+one more: a machine's mail, a sender the receiving server calls forged and a
+domain the desk does not trust raise nothing, and an agent's mail raises nothing
+either, since nothing proves a colleague's address and a request by an agent is
+filed in the app on the customer's behalf. Otherwise the sender becomes a
+customer without a password, as a follower named by address does, and raises
+the request as they would in the portal, so the receipt is the portal's. The
+account is made only after the domain is trusted, so a stranger's mail leaves
+no trace but its row.
 A mail is deleted only once it is decided. The row is written before the work,
 so an attempt that fails marks it failed with its error and the next poll takes
 it up again; a row another attempt still holds leaves the mail in the box. After
