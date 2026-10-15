@@ -4589,10 +4589,13 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             description?: string;
+            doneForDays: number;
             /** @enum {string} */
             groupBy: "none" | "assignee" | "priority" | "type";
             /** Format: uuid */
             id: string;
+            leftOut: number;
+            leftOutQuery?: string;
             name: string;
             /** Format: uuid */
             projectId: string;
@@ -4610,6 +4613,7 @@ export interface components {
         };
         BoardRequest: {
             description: string | null;
+            doneForDays?: number;
             /** @enum {string|null} */
             groupBy: "none" | "assignee" | "priority" | "type" | null;
             name: string;

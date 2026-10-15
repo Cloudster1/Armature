@@ -229,6 +229,8 @@ type boardRequest struct {
 	Type        *board.Type     `json:"type"`
 	GroupBy     *board.Grouping `json:"groupBy"`
 	TeamID      uuidPatch       `json:"teamId"`
+	// DoneForDays is read on an edit; a new board keeps finished work for the default.
+	DoneForDays *int `json:"doneForDays,omitempty"`
 }
 
 func (s *Server) handleCreateBoard(w http.ResponseWriter, r *http.Request) {
@@ -277,6 +279,7 @@ func (s *Server) handleUpdateBoardByID(w http.ResponseWriter, r *http.Request) {
 	in.Description = req.Description
 	in.Type = req.Type
 	in.GroupBy = req.GroupBy
+	in.DoneForDays = req.DoneForDays
 	if req.TeamID.Set {
 		value := req.TeamID.Value
 		in.TeamID = &value

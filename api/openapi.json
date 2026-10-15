@@ -19124,6 +19124,9 @@
           "description": {
             "type": "string"
           },
+          "doneForDays": {
+            "type": "integer"
+          },
           "groupBy": {
             "type": "string",
             "enum": [
@@ -19136,6 +19139,12 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "leftOut": {
+            "type": "integer"
+          },
+          "leftOutQuery": {
+            "type": "string"
           },
           "name": {
             "type": "string"
@@ -19188,6 +19197,8 @@
           "name",
           "type",
           "groupBy",
+          "doneForDays",
+          "leftOut",
           "swimlanes",
           "unmapped",
           "createdAt",
@@ -19202,6 +19213,9 @@
               "string",
               "null"
             ]
+          },
+          "doneForDays": {
+            "type": "integer"
           },
           "groupBy": {
             "type": [

@@ -39,8 +39,8 @@ func (g Grouping) Valid() bool {
 //
 // The type is behaviour, not a label: a scrum board draws the sprint that is
 // running in its stream and nothing else, so planning happens in the backlog
-// and the board is the commitment. A kanban board draws everything in its scope
-// and relies on swimlane limits to say when too much is in flight.
+// and the board is the commitment. A kanban board draws its scope but for work
+// finished long ago, and relies on swimlane limits to say when too much is in flight.
 type Type string
 
 const (
@@ -81,9 +81,16 @@ type Board struct {
 	Sprint *SprintRef `json:"sprint,omitempty"`
 	// TeamID scopes the board to one team's work. Nil is a board over the whole
 	// project, which is what every project starts with.
-	TeamID    *uuid.UUID `json:"teamId,omitempty"`
-	TeamName  string     `json:"teamName,omitempty"`
-	Swimlanes []Swimlane `json:"swimlanes"`
+	TeamID   *uuid.UUID `json:"teamId,omitempty"`
+	TeamName string     `json:"teamName,omitempty"`
+	// DoneForDays is how long a kanban board keeps an issue once it is
+	// finished, so the done lane stops growing; 0 keeps it for good.
+	DoneForDays int `json:"doneForDays"`
+	// LeftOut counts the finished issues the board no longer draws, and
+	// LeftOutQuery finds them in search; both are empty on a sprint's board.
+	LeftOut      int        `json:"leftOut"`
+	LeftOutQuery string     `json:"leftOutQuery,omitempty"`
+	Swimlanes    []Swimlane `json:"swimlanes"`
 	// Unmapped holds cards whose status no swimlane claims. They would
 	// otherwise vanish from the board, which is the worst possible outcome for
 	// a misconfigured mapping.
@@ -166,6 +173,8 @@ var (
 	// ErrNoTransition is returned when a card cannot move to a swimlane
 	// because the workflow has no way to get there from where it is.
 	ErrNoTransition = errors.New("the workflow does not allow that move")
+	// ErrBadDoneForDays is returned for a negative number of days to keep finished work.
+	ErrBadDoneForDays = errors.New("finished work stays on a board for 0 days or more; 0 keeps it there for good")
 	// ErrLastSwimlane is returned when deleting the only swimlane, which would
 	// leave a board that cannot show anything.
 	ErrLastSwimlane = errors.New("a board needs at least one swimlane")

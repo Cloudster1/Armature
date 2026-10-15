@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -90,7 +91,7 @@ const boardOrder = `(b.team_id IS NOT NULL), b.created_at, b.name`
 // selectBoard is the shared projection for reading one board.
 const selectBoard = `
 SELECT b.id, b.project_id, p.key, b.name, b.description, b.type, b.group_by,
-       b.team_id, COALESCE(t.name, ''), b.created_at, b.updated_at
+       b.team_id, COALESCE(t.name, ''), b.done_for_days, b.created_at, b.updated_at
 FROM board b
 JOIN project p ON p.id = b.project_id
 LEFT JOIN team t ON t.id = b.team_id`
@@ -154,7 +155,7 @@ func (s *Service) loadShowing(ctx context.Context, tx db.DBTX, showing *SprintRe
 	var b Board
 	err := tx.QueryRow(ctx, query, args...).Scan(
 		&b.ID, &b.ProjectID, &b.ProjectKey, &b.Name, &b.Description, &b.Type, &b.GroupBy,
-		&b.TeamID, &b.TeamName, &b.CreatedAt, &b.UpdatedAt)
+		&b.TeamID, &b.TeamName, &b.DoneForDays, &b.CreatedAt, &b.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -197,11 +198,23 @@ func (s *Service) loadShowing(ctx context.Context, tx db.DBTX, showing *SprintRe
 		}
 		b.Sprint = running
 		scope.sprint, scope.sprintID = oneSprint, running.ID
+	} else {
+		scope.doneForDays = b.DoneForDays
 	}
 
 	cards, err := s.loadCards(ctx, tx, scope, b.GroupBy)
 	if err != nil {
 		return nil, err
+	}
+	if scope.leavesDone() {
+		if b.LeftOut, err = countLeftOut(ctx, tx, scope); err != nil {
+			return nil, err
+		}
+		if b.LeftOut > 0 {
+			if b.LeftOutQuery, err = leftOutQuery(ctx, tx, &b); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// Place each card in the swimlane that claims its status. Anything left
@@ -328,6 +341,91 @@ type cardScope struct {
 	teamID   *uuid.UUID
 	sprint   sprintFilter
 	sprintID uuid.UUID
+	// doneForDays leaves out work finished longer ago than this; 0 keeps it all.
+	doneForDays int
+}
+
+// leavesDone says whether the reading leaves finished work out, which only a
+// kanban board does: a sprint's work is the sprint's, however old.
+func (c cardScope) leavesDone() bool { return c.sprint == anySprint && c.doneForDays > 0 }
+
+// where is the scope as a condition on issue i, its type t and status st, with
+// the arguments it binds.
+func (c cardScope) where() (string, []any) {
+	args := []any{c.projectID, issue.LevelStandard}
+	where := "i.project_id = $1 AND t.hierarchy_level >= $2"
+	if c.teamID != nil {
+		args = append(args, *c.teamID)
+		where += fmt.Sprintf(" AND i.team_id = $%d", len(args))
+	}
+	switch c.sprint {
+	case noSprint:
+		// Done work in no sprint is history, not something to plan.
+		where += " AND i.sprint_id IS NULL AND st.category <> 'done'"
+	case oneSprint:
+		args = append(args, c.sprintID)
+		where += fmt.Sprintf(" AND i.sprint_id = $%d", len(args))
+	}
+	return where, args
+}
+
+// finishedBefore is done work resolved more than the bound days of 24 hours ago, the
+// last change standing in when a workflow sets no resolved date, as on the plan.
+func finishedBefore(param int) string {
+	return fmt.Sprintf("(st.category = 'done' AND COALESCE(i.resolved_at, i.updated_at) < now() - make_interval(hours => $%d::int * 24))", param)
+}
+
+// countLeftOut counts the finished work a kanban board leaves out, so the
+// board can say how much there is and where to find it.
+func countLeftOut(ctx context.Context, tx db.DBTX, scope cardScope) (int, error) {
+	where, args := scope.where()
+	args = append(args, scope.doneForDays)
+	var n int
+	err := tx.QueryRow(ctx, `
+		SELECT count(*)
+		FROM issue i
+		JOIN issue_type t ON t.id = i.issue_type_id
+		JOIN issue_status st ON st.id = i.status_id
+		WHERE `+where+` AND `+finishedBefore(len(args)), args...).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count the finished work left out: %w", err)
+	}
+	return n, nil
+}
+
+// leftOutQuery is the search for the work a kanban board leaves out, written here
+// so the rule lives in one place. It names the project's subtask types, never cards.
+func leftOutQuery(ctx context.Context, tx db.DBTX, b *Board) (string, error) {
+	days := fmt.Sprintf("-%dd", b.DoneForDays)
+	q := "project = " + b.ProjectKey + " AND statusCategory = done AND (resolved < " + days +
+		" OR (resolved IS EMPTY AND updated < " + days + "))"
+	if b.TeamID != nil {
+		q += " AND team = " + quoteNQL(b.TeamName)
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT t.name FROM issue_type t
+		WHERE t.hierarchy_level < $1 AND EXISTS (SELECT 1 FROM issue i WHERE i.project_id = $2 AND i.issue_type_id = t.id)
+		ORDER BY t.position, t.name`, issue.LevelStandard, b.ProjectID)
+	if err != nil {
+		return "", fmt.Errorf("list the subtask types: %w", err)
+	}
+	subtasks, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return "", fmt.Errorf("list the subtask types: %w", err)
+	}
+	if len(subtasks) > 0 {
+		quoted := make([]string, len(subtasks))
+		for i, name := range subtasks {
+			quoted[i] = quoteNQL(name)
+		}
+		q += " AND type NOT IN (" + strings.Join(quoted, ", ") + ")"
+	}
+	return q, nil
+}
+
+// quoteNQL writes a name as a query string, whatever it holds.
+func quoteNQL(name string) string {
+	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(name) + `"`
 }
 
 // runningSprint finds the sprint a scrum board follows: the one running for its
@@ -353,20 +451,10 @@ func runningSprint(ctx context.Context, tx db.DBTX, projectID uuid.UUID, teamID 
 // The filter is the hierarchy level, not the presence of a parent: a story
 // belonging to an epic is still a card, while a subtask moves with its parent.
 func (s *Service) loadCards(ctx context.Context, tx db.DBTX, scope cardScope, groupBy Grouping) ([]Card, error) {
-	args := []any{scope.projectID, issue.LevelStandard}
-	teamFilter := ""
-	if scope.teamID != nil {
-		args = append(args, *scope.teamID)
-		teamFilter = fmt.Sprintf(" AND i.team_id = $%d", len(args))
-	}
-	sprintFilter := ""
-	switch scope.sprint {
-	case noSprint:
-		// Done work in no sprint is history, not something to plan.
-		sprintFilter = " AND i.sprint_id IS NULL AND st.category <> 'done'"
-	case oneSprint:
-		args = append(args, scope.sprintID)
-		sprintFilter = fmt.Sprintf(" AND i.sprint_id = $%d", len(args))
+	where, args := scope.where()
+	if scope.leavesDone() {
+		args = append(args, scope.doneForDays)
+		where += " AND NOT " + finishedBefore(len(args))
 	}
 
 	rows, err := tx.Query(ctx, `
@@ -388,7 +476,7 @@ func (s *Service) loadCards(ctx context.Context, tx db.DBTX, scope cardScope, gr
 		LEFT JOIN issue parent ON parent.id = i.parent_id
 		LEFT JOIN issue_type pt ON pt.id = parent.issue_type_id
 		LEFT JOIN project pp ON pp.id = parent.project_id
-		WHERE i.project_id = $1 AND t.hierarchy_level >= $2`+teamFilter+sprintFilter+`
+		WHERE `+where+`
 		ORDER BY i.rank`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("load cards: %w", err)
@@ -500,7 +588,7 @@ func describe(kind Type) string {
 	if kind == TypeScrum {
 		return "Shows the sprint that is running. Plan the next one from the backlog."
 	}
-	return "Shows everything in flight. Each swimlane can carry a limit."
+	return "Shows the work in flight and what was finished lately. Each swimlane can carry a limit."
 }
 
 func createBoard(ctx context.Context, tx db.DBTX, projectID uuid.UUID, in CreateInput, statuses []workflow.Status) (uuid.UUID, error) {

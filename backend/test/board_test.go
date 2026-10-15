@@ -674,7 +674,7 @@ func TestFinishedWorkLeavesAKanbanBoard(t *testing.T) {
 		return obj(t, want(t, owner.get("/api/v1/projects/"+ws.project.Key+"/board"), http.StatusOK, "the board"), "board")
 	}
 	boardID := opening()["id"].(string)
-	setDays := func(days int) {
+	setDays := func(t *testing.T, days int) {
 		t.Helper()
 		want(t, owner.patch("/api/v1/boards/"+boardID, map[string]any{"doneForDays": days}), http.StatusOK, fmt.Sprintf("keep finished work %d days", days))
 	}
@@ -713,7 +713,7 @@ func TestFinishedWorkLeavesAKanbanBoard(t *testing.T) {
 	})
 
 	t.Run("0 keeps finished work on the board", func(t *testing.T) {
-		setDays(0)
+		setDays(t, 0)
 		b := opening()
 		for _, key := range []string{old.Key, unresolved.Key} {
 			if !slices.Contains(shownKeys(b), key) {
@@ -723,7 +723,7 @@ func TestFinishedWorkLeavesAKanbanBoard(t *testing.T) {
 		if b["leftOut"] != float64(0) || b["leftOutQuery"] != nil {
 			t.Errorf("a board that keeps everything says it left out %v, by %v", b["leftOut"], b["leftOutQuery"])
 		}
-		setDays(14)
+		setDays(t, 14)
 	})
 
 	t.Run("a negative number of days is refused, by the database too", func(t *testing.T) {
@@ -753,8 +753,9 @@ func TestFinishedWorkLeavesAKanbanBoard(t *testing.T) {
 
 	t.Run("a scrum board and a sprint's board keep their sprint's finished work", func(t *testing.T) {
 		running := ws.runnable(t, ws.project.Key, "Long sprint", nil)
-		ws.commit(t, old.Key, &running.ID, nil)
-		resolvedAgo(old, 30)
+		sprinted := ws.newIssue(t, "finished a month ago inside the sprint")
+		ws.commit(t, sprinted.Key, &running.ID, nil)
+		resolvedAgo(ws.move(t, h, sprinted.Key, "Close"), 30)
 		ws.start(t, running.ID)
 		scrumID := idOf(t, want(t, owner.post("/api/v1/projects/"+ws.project.Key+"/boards", map[string]any{"name": "Sprinting", "type": "scrum"}), http.StatusCreated, "a scrum board"), "board")
 		h.waitForPrimary(t)
@@ -763,8 +764,8 @@ func TestFinishedWorkLeavesAKanbanBoard(t *testing.T) {
 			"the sprint's board": "/api/v1/sprints/" + running.ID.String() + "/board",
 		} {
 			b := obj(t, want(t, owner.get(path), http.StatusOK, what), "board")
-			if got := shownKeys(b); !slices.Equal(got, []string{old.Key}) {
-				t.Errorf("%s shows %v, want the sprint's %s", what, got, old.Key)
+			if got := shownKeys(b); !slices.Equal(got, []string{sprinted.Key}) {
+				t.Errorf("%s shows %v, want the sprint's %s", what, got, sprinted.Key)
 			}
 			if b["leftOut"] != float64(0) {
 				t.Errorf("%s says it left out %v", what, b["leftOut"])
