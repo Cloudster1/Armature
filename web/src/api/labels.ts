@@ -1,7 +1,7 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
-import { META_STALE_MS } from "@/config";
+import { LABEL_SUGGESTIONS, META_STALE_MS } from "@/config";
 import type { LabelColor, LabelRef } from "./issues";
 
 /** A label as the organization keeps it, with how often it is used. */
@@ -20,6 +20,17 @@ export function useLabels() {
     queryKey: labelsQueryKey,
     queryFn: () => request<{ labels: Label[] }>("/labels"),
     staleTime: META_STALE_MS,
+  });
+}
+
+/** The few labels holding the text, those starting with it first; nothing is asked for an empty box. */
+export function useLabelSearch(q: string, limit = LABEL_SUGGESTIONS) {
+  const text = q.trim();
+  return useQuery({
+    queryKey: [...labelsQueryKey, "search", { q: text, limit }],
+    queryFn: () => request<{ labels: Label[] }>(`/labels?${new URLSearchParams({ q: text, limit: String(limit) })}`),
+    enabled: text !== "",
+    placeholderData: keepPreviousData,
   });
 }
 

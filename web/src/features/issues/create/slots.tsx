@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { Placement, Slot } from "@/api/arrange";
 import { PRIORITIES, type Priority } from "@/api/issues";
 import { useProjectFields } from "@/api/fields";
-import { useLabels } from "@/api/labels";
 import { useMilestones } from "@/api/milestones";
 import { useSprints } from "@/api/sprints";
 import { useTeams } from "@/api/teams";
@@ -110,8 +109,7 @@ function ComponentAsk({ draft, set, projectKey }: AskProps) {
 }
 
 function LabelAsk({ draft, set }: AskProps) {
-  const { data } = useLabels();
-  return <LabelPicks chosen={draft.labels} known={(data?.labels ?? []).map((label) => label.name)} onChange={(labels) => set({ labels })} />;
+  return <LabelPicks chosen={draft.labels} onChange={(labels) => set({ labels })} />;
 }
 
 function OneFieldAsk(props: AskProps & { fieldId: string }) {

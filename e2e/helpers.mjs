@@ -2182,6 +2182,8 @@ export async function createRule(page, projectKey, { name, trigger, action, valu
     await page.waitForSelector("#field-action-value-0", { timeout: WAIT });
     await page.click("#field-action-value-0", { clickCount: 3 });
     await page.type("#field-action-value-0", value);
+    // A label is a box that suggests: Enter takes the word and closes the list over the form.
+    if (await page.$eval("#field-action-value-0", (el) => el.getAttribute("role") === "combobox")) await page.keyboard.press("Enter");
   }
   if (text !== undefined) {
     await page.waitForSelector("#field-action-text-0", { timeout: WAIT });

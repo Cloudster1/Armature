@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Field } from "@/api/fields";
 import { useMembers } from "@/api/issues";
 import { Checkbox, Chip, Input, Labelled, Select, fieldId } from "@/components/ui";
+import { LabelInput } from "@/features/labels/LabelInput";
 import { inputTypeFor, valueFromInput } from "@/features/fields/values";
 import type { Answer } from "./draft";
 
@@ -62,37 +63,11 @@ export function ManyOf({ label, options, chosen, onChange }: { label: string; op
   );
 }
 
-/** Words rather than ids: a label the organization does not have yet is coined here. */
-export function LabelPicks({ chosen, known, onChange }: { chosen: string[]; known: string[]; onChange: (names: string[]) => void }) {
-  const [typed, setTyped] = useState("");
-  function add(name: string) {
-    const word = name.trim();
-    if (word === "" || chosen.includes(word)) return;
-    onChange([...chosen, word]);
-    setTyped("");
-  }
+/** Words rather than ids: a label nobody has used yet is coined here. */
+export function LabelPicks({ chosen, onChange }: { chosen: string[]; onChange: (names: string[]) => void }) {
   return (
     <Labelled id="create-labels" label="Labels">
-      <div className="space-y-1.5">
-        <Input
-          id="create-labels"
-          value={typed}
-          placeholder="A word, then Enter"
-          onChange={(e) => setTyped(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-            e.preventDefault();
-            add(typed);
-          }}
-        />
-        <div role="group" aria-label="Labels already in use" className="flex flex-wrap gap-1.5">
-          {[...new Set([...chosen, ...known])].map((name) => (
-            <Chip key={name} pressed={chosen.includes(name)} onClick={() => onChange(chosen.includes(name) ? chosen.filter((each) => each !== name) : [...chosen, name])}>
-              {name}
-            </Chip>
-          ))}
-        </div>
-      </div>
+      <LabelInput id="create-labels" placeholder="Type a label, then Enter" value={chosen} onChange={onChange} />
     </Labelled>
   );
 }

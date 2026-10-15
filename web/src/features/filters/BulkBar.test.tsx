@@ -3,9 +3,16 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BULK_MAX_SELECTION } from "@/config";
 
+const state = { mutate: vi.fn() };
+
 vi.mock("@/api/filters", async () => ({
   ...(await vi.importActual<typeof import("@/api/filters")>("@/api/filters")),
-  useBulkEdit: () => ({ mutate: vi.fn(), isPending: false, error: null }),
+  useBulkEdit: () => ({ mutate: state.mutate, isPending: false, error: null }),
+}));
+
+vi.mock("@/api/labels", async () => ({
+  ...(await vi.importActual<typeof import("@/api/labels")>("@/api/labels")),
+  useLabelSearch: (q: string) => ({ data: q ? { labels: [{ id: "l1", name: "backend", color: "blue", issueCount: 4 }].filter((l) => l.name.includes(q)) } : undefined }),
 }));
 
 vi.mock("@/api/issues", async () => ({
@@ -56,5 +63,15 @@ describe("BulkBar", () => {
     expect(exporting).toBeEnabled();
     await userEvent.click(exporting);
     expect(exportedQuery()).toBe(keysQuery(keys));
+  });
+
+  // Labels are picked from what the typing suggests, and only added: removing them in bulk is #91.
+  it("adds the labels picked in the box to every ticked row", async () => {
+    render(<BulkBar keys={["CP-1", "CP-2"]} onClear={() => {}} />);
+    await userEvent.type(screen.getByLabelText("Add labels"), "back");
+    await userEvent.click(await screen.findByRole("option", { name: "backend" }));
+    await userEvent.type(screen.getByLabelText("Add labels"), "fresh{Enter}");
+    await userEvent.click(screen.getByRole("button", { name: /Apply to 2/ }));
+    expect(state.mutate.mock.calls[0]?.[0]).toEqual({ keys: ["CP-1", "CP-2"], change: { addLabels: ["backend", "fresh"] } });
   });
 });

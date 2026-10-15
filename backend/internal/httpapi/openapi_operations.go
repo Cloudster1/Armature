@@ -339,7 +339,8 @@ var operations = []operation{
 	{method: "PUT", path: "/issues/{issueKey}/fields/{fieldID}", handler: "handleSetIssueField", tag: "fields", summary: "Answer a field, or clear it with null.", request: setIssueFieldRequest{}, responses: ok(env{"value": field.Value{}})},
 
 	// Labels and time.
-	{method: "GET", path: "/labels", handler: "handleListLabels", tool: "list_labels", toolHelp: "The labels and how often each is used.", tag: "labels", summary: "The labels, with how often each is used.", responses: ok(env{"labels": []label.Label{}})},
+	{method: "GET", path: "/labels", handler: "handleListLabels", tool: "list_labels", toolHelp: "The labels and how often each is used.", tag: "labels", summary: "The labels, with how often each is used.",
+		query: []param{{name: "q", description: "Text the name contains; names starting with it come first. With neither q nor limit, every label."}, {name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(label.MaxSuggestions) + "; " + strconv.Itoa(label.MaxSuggestions) + " unless said."}}, responses: ok(env{"labels": []label.Label{}})},
 	{method: "POST", path: "/labels", handler: "handleCreateLabel", tag: "labels", summary: "Coin a label.", request: labelRequest{}, responses: created(env{"label": label.Label{}})},
 	{method: "PATCH", path: "/labels/{labelID}", handler: "handleUpdateLabel", tag: "labels", summary: "Rename or recolour a label everywhere.", request: labelRequest{}, responses: ok(env{"label": label.Label{}})},
 	{method: "DELETE", path: "/labels/{labelID}", handler: "handleDeleteLabel", tag: "labels", summary: "Remove a label from every issue.", responses: none()},

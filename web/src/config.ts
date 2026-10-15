@@ -245,6 +245,12 @@ export const SUGGEST_RESULTS = 6;
 /** The search bar asks for suggestions from the first character; an empty box shows what was searched before. */
 export const SUGGEST_MIN_CHARS = 1;
 
+/** How many labels a label field offers for what was typed: a few to pick from, never the whole list. */
+export const LABEL_SUGGESTIONS = 8;
+
+/** A label field waits this long after the last key before asking the server. */
+export const LABEL_SEARCH_DELAY_MS = 150;
+
 /** The one token scope the api enforces: such a token reads and never writes. */
 export const READ_ONLY_SCOPE = "read";
 

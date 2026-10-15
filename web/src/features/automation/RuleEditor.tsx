@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import type { Action, Condition, Rule, RuleDescriptor, RuleInput, Trigger, Webhook } from "@/api/automation";
-import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Select } from "@/components/ui";
+import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Labelled, Select } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { LabelInput } from "@/features/labels/LabelInput";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -186,8 +187,13 @@ export function RuleEditor({
                       <Field label="Value" id={`field-action-value-${i}`} required value={a.value ?? ""} onChange={(e) => setAction(i, { value: e.target.value })} placeholder="high" />
                     </div>
                   )}
-                  {(a.kind === "transition" || a.kind === "assign" || a.kind === "add_label") && (
-                    <Field label={a.kind === "transition" ? "Transition" : a.kind === "assign" ? "Who" : "Label"} id={`field-action-value-${i}`} required value={a.value ?? ""} onChange={(e) => setAction(i, { value: e.target.value })} />
+                  {(a.kind === "transition" || a.kind === "assign") && (
+                    <Field label={a.kind === "transition" ? "Transition" : "Who"} id={`field-action-value-${i}`} required value={a.value ?? ""} onChange={(e) => setAction(i, { value: e.target.value })} />
+                  )}
+                  {a.kind === "add_label" && (
+                    <Labelled id={`field-action-value-${i}`} label="Label">
+                      <LabelInput id={`field-action-value-${i}`} mode="one" value={a.value ? [a.value] : []} onChange={(names) => setAction(i, { value: names[0] })} />
+                    </Labelled>
                   )}
                   {(a.kind === "add_comment" || a.kind === "create_subissue" || a.kind === "create_issue") && (
                     <Field label={a.kind === "add_comment" ? "Comment" : "Summary"} id={`field-action-text-${i}`} required rows={2} value={a.text ?? ""} onChange={(e) => setAction(i, { text: e.target.value })} />

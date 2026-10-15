@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useBulkEdit, type BulkChange, type BulkResult } from "@/api/filters";
 import { useMembers } from "@/api/issues";
-import { Button, Dialog, ErrorBanner, Field, Select, Toolbar } from "@/components/ui";
+import { Button, Dialog, ErrorBanner, Field, Labelled, Select, Toolbar } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { BULK_MAX_SELECTION } from "@/config";
+import { LabelInput } from "@/features/labels/LabelInput";
 import { ExportDialog, keysQuery } from "./ExportDialog";
 
 /** Whether a change asks for anything; the Apply button waits until it does. */
@@ -17,15 +18,14 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
   const edit = useBulkEdit();
   const { data: members } = useMembers();
   const [change, setChange] = useState<BulkChange>({});
-  const [labels, setLabels] = useState("");
+  const [labels, setLabels] = useState<string[]>([]);
   const [result, setResult] = useState<BulkResult | null>(null);
   const [exporting, setExporting] = useState(false);
   const tooMany = keys.length > BULK_MAX_SELECTION;
 
   function apply() {
     const next: BulkChange = { ...change };
-    const words = labels.split(/[;,]/).map((l) => l.trim()).filter(Boolean);
-    if (words.length) next.addLabels = words;
+    if (labels.length) next.addLabels = labels;
     edit.mutate(
       { keys, change: next },
       {
@@ -61,7 +61,9 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
                 </option>
               ))}
             </Select>
-            <Field label="Add labels" id="field-bulk-labels" controlSize="sm" value={labels} onChange={(e) => setLabels(e.target.value)} placeholder="a; b" className="w-36" />
+            <Labelled id="field-bulk-labels" label="Add labels" className="w-48">
+              <LabelInput id="field-bulk-labels" controlSize="sm" placeholder="Type a label" value={labels} onChange={setLabels} />
+            </Labelled>
             <Field label="Transition" id="field-bulk-transition" controlSize="sm" value={change.transition ?? ""} onChange={(e) => setChange({ ...change, transition: e.target.value || undefined })} placeholder="Start progress" className="w-40" />
           </div>
         }
@@ -75,7 +77,7 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
             <Button variant="secondary" size="sm" icon={<Icon.Download />} onClick={() => setExporting(true)} data-action="export-selected">
               Export {keys.length} selected
             </Button>
-            <Button size="sm" onClick={apply} loading={edit.isPending} disabled={tooMany || changeIsEmpty({ ...change, addLabels: labels.trim() ? [labels] : [] })} data-action="bulk-apply">
+            <Button size="sm" onClick={apply} loading={edit.isPending} disabled={tooMany || changeIsEmpty({ ...change, addLabels: labels })} data-action="bulk-apply">
               Apply to {keys.length}
             </Button>
           </div>

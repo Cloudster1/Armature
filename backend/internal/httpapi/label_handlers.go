@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -10,8 +11,16 @@ import (
 
 // Labels: the organization's words, and which of them an issue carries.
 
+// Without q or limit the answer is every label, which the labels settings page lists.
 func (s *Server) handleListLabels(w http.ResponseWriter, r *http.Request) {
-	found, err := s.Labels.Labels(r.Context())
+	query := r.URL.Query()
+	var found []label.Label
+	var err error
+	if query.Has("q") || query.Has("limit") {
+		found, err = s.Labels.Search(r.Context(), strings.TrimSpace(query.Get("q")), queryInt(r, "limit", label.MaxSuggestions, 1, label.MaxSuggestions))
+	} else {
+		found, err = s.Labels.Labels(r.Context())
+	}
 	if err != nil {
 		respondError(w, r, err)
 		return
