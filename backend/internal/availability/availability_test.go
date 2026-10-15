@@ -2,6 +2,7 @@ package availability
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -125,6 +126,19 @@ func TestACalendarsDaysAreCheckedAndPutInOrder(t *testing.T) {
 	} {
 		if _, err := NormalizeDays(days); !errors.Is(err, ErrInvalid) {
 			t.Errorf("%s: error = %v, want it refused", name, err)
+		}
+	}
+}
+
+func TestTheRefusalToDeleteACalendarNamesItsDesks(t *testing.T) {
+	for desks, want := range map[string]string{
+		"Front":           "Bank holidays is the holiday calendar of the Front desk; choose another one on its service desk page first",
+		"Front,People":    "Bank holidays is the holiday calendar of the Front and People desks; choose another one on their service desk pages first",
+		"Front,HR,People": "Bank holidays is the holiday calendar of the Front, HR and People desks; choose another one on their service desk pages first",
+	} {
+		err := &CalendarInUseError{Calendar: "Bank holidays", Desks: strings.Split(desks, ",")}
+		if got := err.Error(); got != want {
+			t.Errorf("%s: got %q, want %q", desks, got, want)
 		}
 	}
 }

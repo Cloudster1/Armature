@@ -204,6 +204,18 @@ func TestAHolidayCalendarADeskUsesIsNotDeleted(t *testing.T) {
 		}
 	}
 
+	// An agent reading the calendars is not told the desks, which they may not see.
+	member := api.client(t)
+	member.signIn(t, h.person(t, "deskdeletemember", auth.RoleMember))
+	for _, raw := range list(t, want(t, member.get("/api/v1/holiday-calendars"), http.StatusOK, "a member lists the calendars"), "calendars") {
+		if c := raw.(map[string]any); c["id"] == bank && len(c["desks"].([]any)) != 0 {
+			t.Errorf("a member is told the desks %v", c["desks"])
+		}
+	}
+	if read := obj(t, want(t, member.get("/api/v1/holiday-calendars/"+bank), http.StatusOK, "a member reads the calendar"), "calendar"); len(read["desks"].([]any)) != 0 {
+		t.Errorf("a member reading the calendar is told the desks %v", read["desks"])
+	}
+
 	refused := want(t, owner.delete("/api/v1/holiday-calendars/"+bank), http.StatusConflict, "delete a calendar two desks use")
 	if message, _ := refused.Error()["message"].(string); message != name+" is the holiday calendar of the Front and People desks; choose another one on their service desk pages first." {
 		t.Errorf("the refusal reads %q", message)
@@ -212,8 +224,8 @@ func TestAHolidayCalendarADeskUsesIsNotDeleted(t *testing.T) {
 	// The database refuses it too, past the service.
 	_, err := h.super.Exec(context.Background(), `DELETE FROM holiday_calendar WHERE id = $1`, bank)
 	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) || pgErr.Code != "23503" {
-		t.Errorf("deleting through SQL = %v, want a foreign key violation", err)
+	if !errors.As(err, &pgErr) || pgErr.Code != "23001" {
+		t.Errorf("deleting through SQL = %v, want the restricting foreign key to refuse it", err)
 	}
 
 	want(t, owner.put("/api/v1/projects/"+people+"/business-calendar", hoursFrom(nil)), http.StatusOK, "one desk lets go")

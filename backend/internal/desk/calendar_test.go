@@ -109,7 +109,7 @@ func TestCalendarRefusesOverlappingHoursOnADay(t *testing.T) {
 
 func TestASavedCalendarWithOverlapsCountsTheOverlapOnce(t *testing.T) {
 	// Saved before overlaps were refused: reading it back must still work.
-	c, err := parseCalendar("UTC", []byte(`{"mon":[{"from":"09:00","to":"13:00"},{"from":"12:00","to":"17:00"}],"tue":[{"from":"08:00","to":"18:00"},{"from":"10:00","to":"11:00"}]}`), nil)
+	c, err := parseCalendar("UTC", []byte(`{"mon":[{"from":"09:00","to":"13:00"},{"from":"12:00","to":"17:00"}],"tue":[{"from":"08:00","to":"18:00"},{"from":"10:00","to":"11:00"}]}`), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("a saved calendar with overlaps could not be read: %v", err)
 	}

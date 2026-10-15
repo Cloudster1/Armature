@@ -16,11 +16,12 @@ import {
   type BusinessCalendar,
   type CannedResponse,
 } from "@/api/desk";
-import { Button, Card, Checkbox, ErrorBanner, Field, IconButton, Input, SectionTitle, Switch, Table, Tag, Td, Th, useToast } from "@/components/ui";
+import { Button, Card, Checkbox, ErrorBanner, Field, IconButton, Input, SectionTitle, Select, Switch, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { ApiError } from "@/api/client";
 import { useProject, useUpdateProject } from "@/api/projects";
+import { useHolidayCalendars } from "@/api/availability";
 
 // The desk's extras, as sections of its setup page.
 
@@ -38,7 +39,7 @@ export const WEEKDAYS: Array<{ key: string; label: string }> = [
 export function defaultCalendar(timezone: string): BusinessCalendar {
   const hours: BusinessCalendar["hours"] = {};
   for (const d of WEEKDAYS.slice(0, 5)) hours[d.key] = [{ from: "09:00", to: "17:00" }];
-  return { timezone, hours, holidays: [] };
+  return { timezone, hours, holidays: [], holidayCalendarId: null, holidayCalendarName: null };
 }
 
 /** The hours in a sentence: Mon to Fri 09:00 to 17:00 (Europe/Berlin). */
@@ -209,6 +210,7 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
   const save = useSaveBusinessCalendar(projectKey);
   const { data: policyData } = usePolicies(projectKey);
   const updatePolicy = useUpdatePolicy();
+  const { data: holidayCalendars } = useHolidayCalendars();
   const toast = useToast();
   const [draft, setDraft] = useState<BusinessCalendar | null>(null);
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -254,7 +256,25 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
             })}
           </div>
           <Field label="Time zone" id="field-calendar-timezone" value={calendar.timezone} onChange={(e) => setDraft({ ...calendar, timezone: e.target.value })} hint="The zone the hours are read in, such as Europe/Berlin." className="max-w-xs" />
-          <Field label="Days off" id="field-calendar-holidays" value={calendar.holidays.join(", ")} onChange={(e) => setDraft({ ...calendar, holidays: e.target.value.split(",").map((h) => h.trim()).filter(Boolean) })} placeholder="2026-12-25, 2026-12-26" hint="Days written as YYYY-MM-DD, separated by commas." />
+          <Select
+            label="Holidays from"
+            id="field-calendar-holiday-calendar"
+            value={calendar.holidayCalendarId ?? ""}
+            onChange={(e) => {
+              const chosen = holidayCalendars?.calendars.find((c) => c.id === e.target.value);
+              setDraft({ ...calendar, holidayCalendarId: chosen?.id ?? null, holidayCalendarName: chosen?.name ?? null });
+            }}
+            hint="A holiday calendar from Settings, Holidays. The desk is closed on its days, and open half its hours on a half day."
+            className="max-w-xs"
+          >
+            <option value="">None</option>
+            {(holidayCalendars?.calendars ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+          <Field label="Extra days off" id="field-calendar-holidays" value={calendar.holidays.join(", ")} onChange={(e) => setDraft({ ...calendar, holidays: e.target.value.split(",").map((h) => h.trim()).filter(Boolean) })} placeholder="2026-12-25, 2026-12-26" hint="The desk's own, beside the holiday calendar's: days written as YYYY-MM-DD, separated by commas." />
           <Button type="submit" loading={save.isPending} data-action="save-hours">
             {saved ? "Save business hours" : "Set business hours"}
           </Button>
