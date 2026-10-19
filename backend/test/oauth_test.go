@@ -586,6 +586,9 @@ func TestAnExchangedTokenIsNarrowerAndEndsWithItsGrant(t *testing.T) {
 		t.Errorf("the exchanged token = %s", narrow.Raw)
 	}
 	reader := bearer(api, t, narrow.Body["access_token"])
+	if scopes := obj(t, want(t, reader.get("/api/v1/auth/me"), http.StatusOK, "who the narrow token is"), "token")["scopes"].([]any); len(scopes) != 1 || scopes[0] != "read" {
+		t.Errorf("the narrow token says it holds %v", scopes)
+	}
 	if resp := reader.post("/api/v1/issues/"+issueKey+"/comments", map[string]any{"text": "from a run"}); resp.ErrorCode() != "insufficient_scope" {
 		t.Errorf("the narrower token wrote: %d %s", resp.Status, resp.Raw)
 	}

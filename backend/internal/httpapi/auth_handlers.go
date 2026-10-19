@@ -175,6 +175,10 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
+	// A token exchanged from a grant holds its own, narrower scopes.
+	if token != nil && p.App != nil {
+		token.Scopes = p.Scopes
+	}
 	respondJSON(w, r, http.StatusOK, map[string]any{
 		"principal": p,
 		"limits":    limits{UploadBytes: s.Attachments.MaxSize},
