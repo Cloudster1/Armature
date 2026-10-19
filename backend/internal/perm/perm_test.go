@@ -205,6 +205,25 @@ func TestAKeyNeverAdministers(t *testing.T) {
 	}
 }
 
+// A connected app holds what its person may do and the person allowed it.
+func TestAConnectedAppHoldsOnlyTheScopesItWasAllowed(t *testing.T) {
+	person := NewSet([]Grant{orgWide(User), inProject(ProjectAdministrator, here)})
+	app := person.AsKey(nil).Only([]string{string(Read), string(IssueWrite), "webhooks.partner"})
+
+	if !app.Can(Read, elsewhere) || !app.Can(IssueWrite, here) {
+		t.Error("the app lost what it was allowed")
+	}
+	for _, p := range []Permission{IssueTransition, CommentWrite, ProjectAdminister} {
+		if app.CanSomewhere(p) {
+			t.Errorf("the app holds %s, which it was not allowed", p)
+		}
+	}
+	reader := NewSet([]Grant{orgWide(Reader)}).Only([]string{string(Read), string(IssueWrite)})
+	if reader.CanSomewhere(IssueWrite) {
+		t.Error("a scope widened a reader beyond their role")
+	}
+}
+
 func TestAKeyIsConfinedToTheProjectsItNames(t *testing.T) {
 	owner := NewSet([]Grant{orgWide(GlobalAdministrator)})
 	key := owner.AsKey([]string{here})

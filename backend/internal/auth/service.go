@@ -62,7 +62,7 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	if secret == "" {
 		return nil, ErrInvalidToken
 	}
-	if IsAPIToken(secret) {
+	if IsAPIToken(secret) || IsAccessToken(secret) {
 		return s.authenticateAPIToken(ctx, secret)
 	}
 	return s.authenticateSession(ctx, secret)
@@ -148,17 +148,30 @@ func (s *Service) authenticateSession(ctx context.Context, secret string) (*Prin
 	return &p, nil
 }
 
+// apiTokenPrincipalSQL resolves a key or a grant's access token, and an
+// exchanged token through the grant it came from, whose own scopes it carries.
 const apiTokenPrincipalSQL = `
-SELECT t.id, t.scopes,
+WITH presented AS (
+    SELECT t.id, t.scopes FROM api_token t
+    WHERE t.token_hash = $1 AND (t.access_expires_at IS NULL OR t.access_expires_at > now())
+    UNION ALL
+    SELECT x.grant_id, x.scopes FROM oauth_exchanged_token x
+    WHERE x.token_hash = $1 AND x.expires_at > now()
+)
+SELECT t.id, pr.scopes,
        u.id, u.email, u.name, u.timezone, u.locale, u.is_active, COALESCE(u.avatar_url, ''),
        o.id, o.slug, o.name, u.standing,
        COALESCE(ARRAY(SELECT p.key FROM api_token_project tp
                       JOIN project p ON p.id = tp.project_id
-                      WHERE tp.token_id = t.id ORDER BY p.key), '{}')
-FROM api_token t
+                      WHERE tp.token_id = t.id ORDER BY p.key), '{}'),
+       c.id, COALESCE(c.name, ''), COALESCE(c.client_uri, '')
+FROM presented pr
+JOIN api_token t ON t.id = pr.id
 JOIN app_user u ON u.id = t.user_id
 JOIN installation o ON o.archived_at IS NULL
-WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())`
+LEFT JOIN oauth_client c ON c.id = t.client_id
+WHERE (t.expires_at IS NULL OR t.expires_at > now())
+LIMIT 1`
 
 func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Principal, error) {
 	var (
@@ -168,12 +181,15 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 		orgSlug    string
 		orgName    string
 		memberRole *string
+		clientID   *uuid.UUID
+		app        ConnectedApp
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret)).Scan(
 			&tokenID, &p.Scopes,
 			&p.User.ID, &p.User.Email, &p.User.Name, &p.User.Timezone, &p.User.Locale, &p.User.IsActive, &p.User.AvatarURL,
 			&orgID, &orgSlug, &orgName, &memberRole, &p.TokenProjects,
+			&clientID, &app.Name, &app.ClientURI,
 		)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -193,6 +209,10 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 	p.TokenID = &tokenID
 	p.placeIn(Org{ID: orgID, Slug: orgSlug, Name: orgName})
 	p.Role = OrgRole(*memberRole)
+	if clientID != nil {
+		app.ClientID = *clientID
+		p.App = &app
+	}
 
 	_, _ = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `UPDATE api_token SET last_used_at = now() WHERE id = $1`, tokenID)

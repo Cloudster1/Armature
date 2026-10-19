@@ -35,6 +35,7 @@ import (
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/notify"
+	"github.com/armature/armature/backend/internal/oauth"
 	"github.com/armature/armature/backend/internal/observability"
 	"github.com/armature/armature/backend/internal/oidc"
 	"github.com/armature/armature/backend/internal/perm"
@@ -248,7 +249,9 @@ type Server struct {
 	Audit    *audit.Service
 	Calendar *calendar.Service
 	// OIDC is nil in a deployment with no identity provider support compiled in.
-	OIDC     *oidc.Service
+	OIDC *oidc.Service
+	// OAuth lets partner tools get a person's token with their consent.
+	OAuth    *oauth.Service
 	Workflow *WorkflowDeps
 	// Profiles keeps people's pictures; nil in a deployment without a bucket.
 	Profiles *profile.Service
@@ -320,14 +323,14 @@ func readOnlyToken(next http.Handler) http.Handler {
 // transports are the POSTs that only carry other calls: MCP and Ask.
 var transports = map[string]bool{mcpAPIPrefix + "/mcp": true, mcpAPIPrefix + "/assistant/ask": true}
 
-// writeRefused says whether a method changes something and the caller's token
-// was made not to.
+// writeRefused says whether a method changes something and the caller's key
+// was made not to. A connected app's scopes are appScope's to judge.
 func writeRefused(method string, p *auth.Principal) bool {
 	switch method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions:
 		return false
 	}
-	return p != nil && p.TokenID != nil && p.HasScope(auth.ScopeRead)
+	return p != nil && p.TokenID != nil && p.App == nil && p.HasScope(auth.ScopeRead)
 }
 
 // authenticate resolves the caller from a session cookie or bearer token and
@@ -358,9 +361,13 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 				}
 				// A key holds less than the person who made it, and the
 				// narrowing happens here so that every guard below reads
-				// it without knowing a key was involved.
+				// it without knowing a key was involved. A connected app
+				// holds only what its scopes name besides.
 				if principal.TokenID != nil {
 					set = set.AsKey(principal.TokenProjects)
+				}
+				if principal.App != nil {
+					set = set.Only(principal.Scopes)
 				}
 				ctx = context.WithValue(ctx, ctxPerms, set)
 				// A session that came through an open door sees one desk.
@@ -419,11 +426,19 @@ func requireSession(next http.Handler) http.Handler {
 	})
 }
 
-// requireAuth rejects anonymous callers.
-func requireAuth(next http.Handler) http.Handler {
+// requireAuth rejects anonymous callers. A bearer that did not hold is told so
+// as RFC 6750 says, and an MCP client is told where to get one (RFC 9728).
+func (s *Server) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if PrincipalFrom(r.Context()) == nil {
-			respondError(w, r, ErrUnauthorized(""))
+			e := ErrUnauthorized("")
+			switch {
+			case r.URL.Path == mcpAPIPrefix+"/mcp":
+				e.header = map[string]string{"WWW-Authenticate": `Bearer resource_metadata="` + strings.TrimRight(s.AppBaseURL, "/") + oauth.ResourceMetadataPath + `"`}
+			case strings.HasPrefix(r.Header.Get("Authorization"), "Bearer "):
+				e.header = map[string]string{"WWW-Authenticate": `Bearer error="invalid_token"`}
+			}
+			respondError(w, r, e)
 			return
 		}
 		next.ServeHTTP(w, r)

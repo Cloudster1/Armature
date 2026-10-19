@@ -43,6 +43,7 @@ import (
 	"github.com/armature/armature/backend/internal/mail"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/notify"
+	"github.com/armature/armature/backend/internal/oauth"
 	"github.com/armature/armature/backend/internal/observability"
 	"github.com/armature/armature/backend/internal/oidc"
 	"github.com/armature/armature/backend/internal/perm"
@@ -195,6 +196,7 @@ func run() error {
 	themes := theme.NewService(cluster, store)
 	labels := label.NewService(cluster)
 	webhooks := webhook.NewService(cluster, log)
+	identityProvider := oidc.NewService(cluster, cfg.Auth.OIDCRedirectURL).WithHTTPClient(oidc.Backchannel(oidc.ParseRewrites(os.Getenv("ARMATURE_OIDC_BACKCHANNEL"))))
 	server := &httpapi.Server{
 		Auth:         accounts,
 		Profiles:     profile.NewService(store, accounts),
@@ -230,18 +232,22 @@ func run() error {
 		Teams:        team.NewService(cluster),
 		Availability: availability.NewService(cluster),
 		Perms:        perm.NewStore(cluster),
-		OIDC:         oidc.NewService(cluster, cfg.Auth.OIDCRedirectURL).WithHTTPClient(oidc.Backchannel(oidc.ParseRewrites(os.Getenv("ARMATURE_OIDC_BACKCHANNEL")))),
-		AppBaseURL:   cfg.Mail.AppBaseURL,
-		Renderer:     renderer(cfg.Render),
-		Assistant:    asker(cfg.Assistant),
-		Workflow:     &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
-		DB:           cluster,
-		Telemetry:    tel,
-		Fresh:        freshness.NewRedisTracker(rdb, cfg.Auth.ReadYourWritesTTL),
-		Log:          log,
-		Secure:       cfg.Auth.SecureCookies,
-		CookieName:   cfg.Auth.SessionCookie,
-		SessionTTL:   cfg.Auth.SessionTTL,
+		OIDC:         identityProvider,
+		OAuth: oauth.NewService(cluster, cfg.Mail.AppBaseURL).
+			WithRegistration(oauth.Registration(cfg.Auth.OAuthRegistration)).
+			WithDevelopment(cfg.Env == "development").
+			WithIdentityProvider(identityProvider),
+		AppBaseURL: cfg.Mail.AppBaseURL,
+		Renderer:   renderer(cfg.Render),
+		Assistant:  asker(cfg.Assistant),
+		Workflow:   &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
+		DB:         cluster,
+		Telemetry:  tel,
+		Fresh:      freshness.NewRedisTracker(rdb, cfg.Auth.ReadYourWritesTTL),
+		Log:        log,
+		Secure:     cfg.Auth.SecureCookies,
+		CookieName: cfg.Auth.SessionCookie,
+		SessionTTL: cfg.Auth.SessionTTL,
 	}
 	// In development the dev server proxies from an origin of its own, so the
 	// origin check would refuse every write it forwards.

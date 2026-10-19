@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "issue-embed@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks@1"]
+  "capabilities": ["calendar@1", "issue-embed@1", "oauth.partner-tokens@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks@1"]
 }
 ```
 
@@ -74,6 +74,20 @@ endpoint's secret as `sha256=` and the hex HMAC-SHA256 of the body in
 - `POST /webhooks/{endpointID}/deliveries/{deliveryID}/redeliver`
 - `POST /webhooks/{endpointID}/test`
 - `POST /webhooks/{endpointID}/rotate-secret`
+
+### `oauth.partner-tokens@1`
+
+A connected app gets a person's token with their consent, by authorization code
+with PKCE, refreshes it, revokes it, and registers itself pending an
+administrator. [Connected apps](oauth.md) is the whole contract.
+
+- `POST /oauth/register`
+- `POST /oauth/token`
+- `POST /oauth/revoke`
+- `GET /oauth/consent`
+- `POST /oauth/consent`
+- `GET /.well-known/oauth-authorization-server`, at the root rather than under `/api/v1`
+- `GET /.well-known/oauth-protected-resource`, likewise
 
 ### `theme-export@1`
 

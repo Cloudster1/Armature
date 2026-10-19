@@ -58,7 +58,10 @@ type operation struct {
 	query   []param
 	// request is the JSON body type; multipart says the body is a file upload
 	// instead; raw says any JSON is accepted.
-	request   any
+	request any
+	// form is a body sent as application/x-www-form-urlencoded, as OAuth's
+	// own endpoints take one; its fields are named as the form names them.
+	form      any
 	multipart bool
 	// parts names the other form parts a multipart handler reads, so a client
 	// generated from the document can send them.
@@ -150,6 +153,10 @@ func Spec() *openapi.Document {
 		case op.raw:
 			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
 				"application/json": {Schema: &openapi.Schema{Description: op.rawDescription()}},
+			}}
+		case op.form != nil:
+			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
+				"application/x-www-form-urlencoded": {Schema: b.SchemaOf(op.form)},
 			}}
 		case op.request != nil:
 			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{

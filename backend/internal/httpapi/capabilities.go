@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/oauth"
 )
 
 // capability is one integration feature a partner checks for by name at /meta,
@@ -57,6 +58,19 @@ var integrationCapabilities = []capability{
 			"POST /webhooks/{endpointID}/deliveries/{deliveryID}/redeliver",
 			"POST /webhooks/{endpointID}/test",
 			"POST /webhooks/{endpointID}/rotate-secret",
+		},
+	},
+	{
+		name:    "oauth.partner-tokens@1",
+		promise: "A connected app gets a person's token with their consent, by authorization code with PKCE, refreshes it, revokes it, and registers itself pending an administrator.",
+		operations: []string{
+			"POST /oauth/register",
+			"POST /oauth/token",
+			"POST /oauth/revoke",
+			"GET /oauth/consent",
+			"POST /oauth/consent",
+			"GET " + oauth.ServerMetadataPath,
+			"GET " + oauth.ResourceMetadataPath,
 		},
 	},
 	{

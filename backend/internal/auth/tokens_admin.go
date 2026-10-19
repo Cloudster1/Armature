@@ -355,16 +355,27 @@ func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, name str
 	return &tok, lsn, nil
 }
 
+// selectAPITokens names a grant after its client, so a rename follows.
 const selectAPITokens = `
-	SELECT t.id, t.name, t.scopes, t.last_used_at, t.expires_at, t.created_at,
+	SELECT t.id, COALESCE(c.name || '` + ConnectedAppSuffix + `', t.name), t.scopes, t.last_used_at, t.expires_at, t.created_at,
 	       COALESCE(ARRAY(SELECT p.key FROM api_token_project tp
 	                      JOIN project p ON p.id = tp.project_id
-	                      WHERE tp.token_id = t.id ORDER BY p.key), '{}')
-	FROM api_token t`
+	                      WHERE tp.token_id = t.id ORDER BY p.key), '{}'),
+	       c.id, COALESCE(c.name, ''), COALESCE(c.client_uri, '')
+	FROM api_token t
+	LEFT JOIN oauth_client c ON c.id = t.client_id`
 
 func scanAPIToken(row pgx.Row) (APIToken, error) {
-	var t APIToken
-	err := row.Scan(&t.ID, &t.Name, &t.Scopes, &t.LastUsedAt, &t.ExpiresAt, &t.CreatedAt, &t.Projects)
+	var (
+		t        APIToken
+		clientID *uuid.UUID
+		app      ConnectedApp
+	)
+	err := row.Scan(&t.ID, &t.Name, &t.Scopes, &t.LastUsedAt, &t.ExpiresAt, &t.CreatedAt, &t.Projects, &clientID, &app.Name, &app.ClientURI)
+	if clientID != nil {
+		app.ClientID = *clientID
+		t.App = &app
+	}
 	return t, err
 }
 
@@ -412,15 +423,20 @@ func (s *Service) CallingToken(ctx context.Context, p *Principal) (*APIToken, er
 	return &t, nil
 }
 
-// RevokeAPIToken deletes one of the caller's tokens.
+// RevokeAPIToken deletes one of the caller's tokens. A connected app's grant
+// goes the same way, its access and refresh tokens with it.
 func (s *Service) RevokeAPIToken(ctx context.Context, userID, tokenID uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM api_token WHERE id = $1 AND user_id = $2`, tokenID, userID)
+		var clientID *uuid.UUID
+		err := tx.QueryRow(ctx, `DELETE FROM api_token WHERE id = $1 AND user_id = $2 RETURNING client_id`, tokenID, userID).Scan(&clientID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInvalidToken
+		}
 		if err != nil {
 			return err
 		}
-		if tag.RowsAffected() == 0 {
-			return ErrInvalidToken
+		if clientID != nil {
+			return audit.Write(ctx, tx, audit.Entry{Action: "oauth.grant.revoked", TargetType: "api_token", TargetID: &tokenID, Actor: userID, Data: map[string]any{"clientId": *clientID}})
 		}
 		return audit.Write(ctx, tx, audit.Entry{Action: "token.revoked", TargetType: "api_token", TargetID: &tokenID, Actor: userID})
 	})

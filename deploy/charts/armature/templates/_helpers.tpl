@@ -223,6 +223,7 @@ ARMATURE_DB_REPLICA_LAG_SAMPLES: {{ .Values.database.pool.replicaLagSamples | qu
 # Sessions and hashing. secureCookies must be true unless env is development,
 # on the worker as much as the api: they share one configuration loader.
 ARMATURE_SIGNUP: {{ .Values.auth.signup | quote }}
+ARMATURE_OAUTH_REGISTRATION: {{ .Values.oauth.registration | quote }}
 ARMATURE_NAME: {{ .Values.auth.installationName | quote }}
 ARMATURE_SESSION_TTL: {{ .Values.auth.sessionTTL | quote }}
 ARMATURE_SESSION_COOKIE: {{ .Values.auth.sessionCookie | quote }}

@@ -44,6 +44,9 @@ var discardsAllowed = map[string]string{
 	"git/smart_once.go (*Service).forgetCommand": "part of a forge's push, which keeps no session",
 	"git/smart_once.go (*Service).recordCommand": "part of a forge's push, which keeps no session",
 	"desk/extras.go (*Service).InviteRating":     "no handler calls it; the tests that do read on the primary",
+	"oauth/clients.go (*Service).Register":       "a partner registering itself keeps no session; the client is read on the primary",
+	"oauth/token.go (*Service).Token":            "a connected app keeps no session; its tokens are read through Authenticate, on the primary",
+	"oauth/token.go (*Service).Revoke":           "a connected app keeps no session; its tokens are read through Authenticate, on the primary",
 
 	// Read back only on the primary, through ReadAdmin or WriteAdmin.
 	"auth/service.go (*Service).Logout":                 "sessions are read through Authenticate, on the primary",

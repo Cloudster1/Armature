@@ -7,6 +7,18 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: partner tools such as Stator, Exciter and Rotor connect a person in
+  one click, with their consent. Armature is an OAuth 2.0 authorization server
+  for them: authorization code with PKCE `S256`, rotating refresh tokens,
+  revocation, token exchange for a narrower and shorter token or for a token
+  of the shared Keycloak realm, and both metadata documents under
+  `/.well-known`. The consent page at `/oauth/authorize` says what the app may
+  do in words; a grant is one row in the person's token list, its scopes
+  narrowing what they may do, and Disconnect ends it. Administrators add apps
+  under Settings, Connected apps, or allow one that registered itself;
+  `ARMATURE_OAUTH_REGISTRATION=closed` (chart `oauth.registration`) keeps
+  registering to them. `/meta` lists `oauth.partner-tokens@1`, and
+  [docs/oauth.md](docs/oauth.md) is the contract (#280).
 - Changed: the workflow library, its schemes, the Roles tab and the labels
   page come a page at a time, each with a search; the library's and the
   labels page's search and page are in the address, and a link to one

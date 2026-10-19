@@ -67,6 +67,7 @@ data:
   # Sessions and hashing. secureCookies must be true unless env is development,
   # on the worker as much as the api: they share one configuration loader.
   ARMATURE_SIGNUP: "first"
+  ARMATURE_OAUTH_REGISTRATION: "approve"
   ARMATURE_NAME: "Armature"
   ARMATURE_SESSION_TTL: "720h"
   ARMATURE_SESSION_COOKIE: "armature_session"
@@ -139,6 +140,18 @@ data:
             proxy_pass http://armature-api:8080;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        location = /.well-known/oauth-authorization-server {
+            proxy_pass http://armature-api:8080;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        location = /.well-known/oauth-protected-resource {
+            proxy_pass http://armature-api:8080;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
         }
@@ -285,7 +298,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: f0dcdd0b0f98ab86df4d71cc129940e69d19504a722f548a2dd6643035d412e6
+        checksum/env: 6cd2e97b15a32c2cce50b66de1964f8c2a5c7749c32a8ad26df34a7d291c4c8e
     spec:
       serviceAccountName: armature
       securityContext:
@@ -489,7 +502,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: web
       annotations:
-        checksum/nginx: 2c4ebde08192fcb0f0934bfcbe0cef8065d3f1b3819644c2900f87f99b005059
+        checksum/nginx: 7ec3eba5cb81741a7f8f8c635e8b40a450a5aa759cf8c4a7d0e12b9a4d168558
     spec:
       serviceAccountName: armature
       # The image is stock nginx, whose master would normally start as root.
@@ -581,7 +594,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: f0dcdd0b0f98ab86df4d71cc129940e69d19504a722f548a2dd6643035d412e6
+        checksum/env: 6cd2e97b15a32c2cce50b66de1964f8c2a5c7749c32a8ad26df34a7d291c4c8e
     spec:
       serviceAccountName: armature
       securityContext:
@@ -693,6 +706,21 @@ spec:
         paths:
           - path: /api
             pathType: Prefix
+            backend:
+              service:
+                name: armature-api
+                port:
+                  name: http
+          # Where a connected app and an MCP client learn how to get a token.
+          - path: /.well-known/oauth-authorization-server
+            pathType: Exact
+            backend:
+              service:
+                name: armature-api
+                port:
+                  name: http
+          - path: /.well-known/oauth-protected-resource
+            pathType: Exact
             backend:
               service:
                 name: armature-api

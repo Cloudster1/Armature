@@ -26,6 +26,7 @@ const everyone: Array<{ to: string; label: string; detail: string; icon: IconNam
   { to: "/settings/labels", label: "Labels", detail: "Words shared by every project.", icon: "Tag" },
   { to: "/settings/automation", label: "Automation", detail: "Rules that watch every project: when something happens, check it, do things.", icon: "Bolt" },
   { to: "/settings/webhooks", label: "Webhooks", detail: "Where events are posted, signed, with a log of every try.", icon: "Hook" },
+  { to: "/settings/connected-apps", label: "Connected apps", detail: "Partner tools people connect in one click, with their consent.", icon: "Key" },
   { to: "/settings/fields", label: "Fields", detail: "What every project records about an issue beyond the standard fields.", icon: "Field" },
   { to: "/settings/audit", label: "Audit log", detail: "Who did what, and when, kept for a year.", icon: "Shield" },
 ];

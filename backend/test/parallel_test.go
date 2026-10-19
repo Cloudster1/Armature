@@ -100,6 +100,7 @@ var sequentialTests = map[string]string{
 	"TestTheInstallationRequiresASecondFactor":                      "changes the second-factor rule every sign-in in the installation is held to",
 	"TestASingleSignOnSessionReliesOnItsProvider":                   "changes the installation's second-factor rule and identity provider",
 	"TestSigningInThroughAProvider":                                 "sets the installation's one identity provider",
+	"TestAnIdentityProviderTokenIsExchangedForAGrant":               "sets the installation's one identity provider",
 	"TestSomebodyWhoWasNeverInvitedIsRefused":                       "sets the installation's one identity provider",
 	"TestGroupsFollowTheProvider":                                   "sets the installation's one identity provider",
 	"TestAGroupTheProviderNamesCanBeCreatedOnSight":                 "sets the installation's one identity provider",

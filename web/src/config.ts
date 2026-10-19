@@ -278,6 +278,15 @@ export const LABEL_SEARCH_DELAY_MS = 150;
 /** The one token scope the api enforces: such a token reads and never writes. */
 export const READ_ONLY_SCOPE = "read";
 
+/** What a connected app may ask for, and what each lets it do, as the consent page words it. */
+export const CONNECTED_APP_SCOPES: Array<{ scope: string; words: string }> = [
+  { scope: "read", words: "See the projects and issues you can see" },
+  { scope: "issue.write", words: "File and edit issues, and link pages to them" },
+  { scope: "issue.transition", words: "Move issues through their workflow" },
+  { scope: "comment.write", words: "Comment on issues" },
+  { scope: "webhooks.partner", words: "Send Armature's events to it, from every project (administrators only)" },
+];
+
 /** How long a new token lasts unless somebody says otherwise, and the choices offered. */
 export const TOKEN_DEFAULT_DAYS = 90;
 export const TOKEN_DAY_CHOICES = [30, 90, 365];
