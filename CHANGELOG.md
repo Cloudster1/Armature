@@ -7,6 +7,9 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: installing the chart with the bundled Postgres no longer fails at
+  the roles Job, whose SQL reached Postgres as `DO $` because Kubernetes
+  reads `$$` in a container's arguments as an escaped `$` (#306).
 - Fixed: a connected app keeps the scopes a person gave it when the same
   person signs in to it again through Keycloak or allows it with fewer scopes.
   A new consent or exchange adds to the grant's scopes instead of replacing
