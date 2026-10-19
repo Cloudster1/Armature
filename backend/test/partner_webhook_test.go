@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -168,7 +169,8 @@ func TestOnlyAnAllowedAppOfAnAdministratorReachesItsWebhook(t *testing.T) {
 		if resp := ada.get("/api/v1/webhooks/partner"); resp.Status != http.StatusForbidden {
 			t.Errorf("a session: %d %s", resp.Status, resp.Raw)
 		}
-		reader := bearer(api, t, connect(t, stator, ada, "read")["access_token"])
+		narrowed := want(t, stator.token(url.Values{"grant_type": {"refresh_token"}, "refresh_token": {connect(t, stator, ada, "read")["refresh_token"].(string)}, "scope": {"read"}}), http.StatusOK, "narrowing to read")
+		reader := bearer(api, t, narrowed.Body["access_token"])
 		resp := reader.get("/api/v1/webhooks/partner")
 		if resp.Status != http.StatusForbidden || resp.ErrorCode() != "insufficient_scope" {
 			t.Errorf("an app without webhooks.partner: %d %s", resp.Status, resp.Raw)

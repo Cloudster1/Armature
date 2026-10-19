@@ -223,14 +223,14 @@ func (s *Service) redeemCode(ctx context.Context, tx db.DBTX, client *Client, fo
 		}
 		return nil, nil, err
 	}
-	out, id, err := s.grant(ctx, tx, client, userID, scopes)
+	out, id, held, err := s.grant(ctx, tx, client, userID, scopes)
 	if err != nil {
 		return nil, nil, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE oauth_code SET used_at = now(), grant_id = $2 WHERE code_hash = $1`, digest, id); err != nil {
 		return nil, nil, err
 	}
-	return out, nil, grantCreated(ctx, tx, id, client.ID, userID, scopes, "consent")
+	return out, nil, grantCreated(ctx, tx, id, client.ID, userID, held, "consent")
 }
 
 // verifies says whether a PKCE verifier hashes to the challenge.
@@ -247,38 +247,44 @@ func verifies(verifier, challenge string) bool {
 	return subtle.ConstantTimeCompare([]byte(base64.RawURLEncoding.EncodeToString(sum[:])), []byte(challenge)) == 1
 }
 
-// grant makes or replaces the person's one grant for the client: new tokens,
-// the scopes asked, and every token of the grant before it ended.
-func (s *Service) grant(ctx context.Context, tx db.DBTX, client *Client, userID uuid.UUID, scopes []string) (*TokenResponse, uuid.UUID, error) {
+// grant makes or renews the person's one grant for the client. A live grant
+// keeps its scopes and gains the ones asked; only a narrower refresh narrows it.
+func (s *Service) grant(ctx context.Context, tx db.DBTX, client *Client, userID uuid.UUID, scopes []string) (*TokenResponse, uuid.UUID, []string, error) {
 	access, accessDigest, err := auth.GeneratePrefixed(auth.AccessTokenPrefix)
 	if err != nil {
-		return nil, uuid.Nil, err
+		return nil, uuid.Nil, nil, err
 	}
 	refresh, refreshDigest, err := auth.GeneratePrefixed(auth.RefreshTokenPrefix)
 	if err != nil {
-		return nil, uuid.Nil, err
+		return nil, uuid.Nil, nil, err
 	}
 	now := s.now()
-	var id uuid.UUID
+	var (
+		id   uuid.UUID
+		held []string
+	)
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at, client_id, refresh_hash, access_expires_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL DO UPDATE SET
-		    name = EXCLUDED.name, token_hash = EXCLUDED.token_hash, scopes = EXCLUDED.scopes,
+		    name = EXCLUDED.name, token_hash = EXCLUDED.token_hash,
+		    scopes = CASE WHEN api_token.expires_at > $9
+		                  THEN ARRAY(SELECT s FROM unnest($10::text[]) s WHERE s = ANY(api_token.scopes || EXCLUDED.scopes))
+		                  ELSE EXCLUDED.scopes END,
 		    expires_at = EXCLUDED.expires_at, refresh_hash = EXCLUDED.refresh_hash,
 		    access_expires_at = EXCLUDED.access_expires_at
-		RETURNING id`,
+		RETURNING id, scopes`,
 		userID, client.Name+auth.ConnectedAppSuffix, accessDigest, scopes, now.Add(RefreshTokenTTL),
-		client.ID, refreshDigest, now.Add(AccessTokenTTL)).Scan(&id); err != nil {
-		return nil, uuid.Nil, err
+		client.ID, refreshDigest, now.Add(AccessTokenTTL), now, Scopes).Scan(&id, &held); err != nil {
+		return nil, uuid.Nil, nil, err
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM oauth_exchanged_token WHERE grant_id = $1`, id); err != nil {
-		return nil, uuid.Nil, err
+		return nil, uuid.Nil, nil, err
 	}
 	return &TokenResponse{
 		AccessToken: access, TokenType: "Bearer", ExpiresIn: int(AccessTokenTTL / time.Second),
-		RefreshToken: refresh, Scope: joinScope(scopes),
-	}, id, nil
+		RefreshToken: refresh, Scope: joinScope(held),
+	}, id, held, nil
 }
 
 // endGrant deletes a grant whose secret was replayed, and says why in the log.
@@ -496,11 +502,11 @@ func (s *Service) fromIdentityProvider(ctx context.Context, tx db.DBTX, client *
 		return nil, oauthError(http.StatusBadRequest, "invalid_grant", fmt.Sprintf(
 			"%s has no Armature account yet. Sign in to Armature once, or ask an administrator to let them in.", identity.Name)), nil
 	}
-	out, id, err := s.grant(ctx, tx, client, userID, scopes)
+	out, id, held, err := s.grant(ctx, tx, client, userID, scopes)
 	if err != nil {
 		return nil, nil, err
 	}
-	return out, nil, grantCreated(ctx, tx, id, client.ID, userID, scopes, "identity_provider")
+	return out, nil, grantCreated(ctx, tx, id, client.ID, userID, held, "identity_provider")
 }
 
 // Revoke is RFC 7009. A grant's access or refresh token ends the whole grant;

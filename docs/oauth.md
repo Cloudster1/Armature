@@ -205,9 +205,11 @@ The audit log records `oauth.client.approved` and `oauth.grant.created`.
 Every secret is 32 random bytes in base64url after its prefix, stored as a
 SHA-256 digest only.
 
-- **One grant per person and app.** A new consent by the same person replaces
-  the grant's scopes and ends its previous tokens, so a partner asks for every
-  scope it needs at once.
+- **One grant per person and app.** A new consent or exchange by the same
+  person ends the grant's previous tokens and adds the scopes asked to the ones
+  it holds, so signing in again or asking for less never drops
+  `webhooks.partner`. A narrower `scope` on refresh is how a grant narrows; a
+  grant that has ended keeps nothing.
 - **Refresh rotates.** Each refresh answers a new access and refresh token and
   ends both previous ones. A rotated refresh token presented again ends the
   grant (RFC 9700 section 4.14.2): a partner refreshes one grant in one place
@@ -298,7 +300,8 @@ subject_token=<the Keycloak access token>&subject_token_type=urn:ietf:params:oau
   Armature once, or ask an administrator to let them in."
 - The answer is a full grant, refresh token included. The administrator who
   named the Keycloak client consented for everybody, so no page is shown, and
-  `webhooks.partner` is never given this way.
+  `webhooks.partner` is never given this way. A grant that holds it from an
+  administrator's consent keeps it.
 - An app without a Keycloak client named is `unauthorized_client`; a partner
   tries the exchange and falls back to the button.
 - Keycloak tokens are not bearers anywhere else: the API takes its own tokens
@@ -447,7 +450,8 @@ proposal's own defaults, so changing one is a change to this page first:
 3. No grace window for refresh: a reused refresh token ends the grant.
 4. Linking a page takes `issue.write`; there is no separate remote link scope.
 5. Personal access tokens take `read` or nothing, as before.
-6. One grant per person and app; a new consent replaces its scopes.
+6. One grant per person and app; a new consent or exchange adds to its scopes
+   (#298), and a narrower refresh narrows them.
 7. 90 days rolling for a grant and an hour for an access token, with no setting.
 8. An administrator naming an app's Keycloak client consents for everybody.
 9. The value to allow is named in the outbound guard's sentence and its `url`

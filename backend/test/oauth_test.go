@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -679,6 +680,45 @@ func TestAnIdentityProviderTokenIsExchangedForAGrant(t *testing.T) {
 			t.Errorf("%s: %d %s, want %s", what, resp.Status, resp.Raw, c.code)
 		}
 	}
+
+	t.Run("a later exchange or a narrower consent keeps the webhook scope", func(t *testing.T) {
+		connected := connect(t, stator, ada, "read issue.write webhooks.partner")
+		if connected["scope"] != "read issue.write webhooks.partner" {
+			t.Fatalf("connecting as an administrator = %v", connected)
+		}
+		again := want(t, exchange(signedIn(nil), "read"), http.StatusOK, "signing in to the partner again")
+		if again.Body["scope"] != "read issue.write webhooks.partner" {
+			t.Errorf("the exchange narrowed the grant to %v", again.Body["scope"])
+		}
+		if resp := stator.token(url.Values{"grant_type": {"refresh_token"}, "refresh_token": {connected["refresh_token"].(string)}}); resp.Body["error"] != "invalid_grant" {
+			t.Errorf("the refresh token before the exchange still works: %d %s", resp.Status, resp.Raw)
+		}
+		narrower := connect(t, stator, ada, "read")
+		if narrower["scope"] != "read issue.write webhooks.partner" {
+			t.Errorf("a narrower consent narrowed the grant to %v", narrower["scope"])
+		}
+		me := want(t, bearer(api, t, narrower["access_token"]).get("/api/v1/auth/me"), http.StatusOK, "who it is")
+		if scopes := fmt.Sprint(obj(t, me, "token")["scopes"]); scopes != "[read issue.write webhooks.partner]" {
+			t.Errorf("the token holds %s", scopes)
+		}
+
+		refreshed := want(t, stator.token(url.Values{"grant_type": {"refresh_token"}, "refresh_token": {narrower["refresh_token"].(string)}, "scope": {"read"}}), http.StatusOK, "narrowing on refresh")
+		if refreshed.Body["scope"] != "read" {
+			t.Errorf("a narrower refresh = %v", refreshed.Body["scope"])
+		}
+		if again := want(t, exchange(signedIn(nil), "read issue.write"), http.StatusOK, "the exchange after narrowing"); again.Body["scope"] != "read issue.write" {
+			t.Errorf("the exchange gave back what the refresh dropped: %v", again.Body["scope"])
+		}
+
+		if _, err := h.super.Exec(context.Background(), `
+			UPDATE api_token SET scopes = '{read,issue.write,webhooks.partner}', expires_at = now() - interval '1 minute'
+			WHERE client_id = $1`, stator.id); err != nil {
+			t.Fatal(err)
+		}
+		if ended := want(t, exchange(signedIn(nil), "read"), http.StatusOK, "the exchange after the grant ended"); ended.Body["scope"] != "read" {
+			t.Errorf("an ended grant's scopes were kept: %v", ended.Body["scope"])
+		}
+	})
 }
 
 func TestRegistrationClosedLeavesConnectingToAdministrators(t *testing.T) {
