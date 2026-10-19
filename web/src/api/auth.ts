@@ -154,6 +154,8 @@ export interface ApiToken {
   expiresAt?: string;
   createdAt: string;
   secret?: string;
+  /** The connected app a grant belongs to; absent for a token made here. */
+  app?: { clientId: string; name: string; clientUri?: string };
 }
 
 export const tokensQueryKey = ["tokens"] as const;

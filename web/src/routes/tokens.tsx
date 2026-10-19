@@ -6,7 +6,8 @@ import { Button, Card, Checkbox, Chip, EmptyState, ErrorBanner, Field, Page, Pag
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { ProjectPicker } from "@/features/projects/ProjectPicker";
 import { useFormat } from "@/lib/format";
-import { READ_ONLY_SCOPE, TOKEN_DAY_CHOICES, TOKEN_DEFAULT_DAYS } from "@/config";
+import { CONNECTED_APP_SCOPES, READ_ONLY_SCOPE, TOKEN_DAY_CHOICES, TOKEN_DEFAULT_DAYS } from "@/config";
+import type { ApiToken } from "@/api/auth";
 
 /** Days from now as the API wants it, or nothing at all for a token that never expires. */
 function expiryFrom(days: number): string | undefined {
@@ -154,7 +155,9 @@ function TokensPage() {
       ) : (
         <Card>
           <ul className="divide-y divide-border">
-            {tokens.map((token) => (
+            {tokens.map((token) => token.app ? (
+              <ConnectedAppRow key={token.id} token={token} disconnecting={revoke.isPending && revoke.variables === token.id} onDisconnect={async () => (await confirm({ noun: "app", verb: "Disconnect", body: `${token.app?.name} can no longer act as you; it asks again if you connect it later.` })) && revoke.mutate(token.id)} />
+            ) : (
               <li key={token.id} className="flex items-center justify-between gap-4 px-5 py-3" data-token={token.name} data-token-scope={token.scopes.includes(READ_ONLY_SCOPE) ? READ_ONLY_SCOPE : undefined} data-token-projects={token.projects.join(",")}>
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
@@ -186,5 +189,30 @@ function TokensPage() {
         </Card>
       )}
     </Page>
+  );
+}
+
+/** A connected app's grant: what it may do in the consent page's words, and Disconnect. */
+function ConnectedAppRow({ token, disconnecting, onDisconnect }: { token: ApiToken; disconnecting: boolean; onDisconnect: () => void }) {
+  const format = useFormat();
+  const words = token.scopes.map((scope) => CONNECTED_APP_SCOPES.find((s) => s.scope === scope)?.words ?? scope);
+  return (
+    <li className="flex items-center justify-between gap-4 px-5 py-3" data-token={token.name} data-connected-app-grant={token.app?.name}>
+      <div className="min-w-0">
+        <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
+          {token.app?.name}
+          <Tag>Connected app</Tag>
+        </p>
+        <p className="text-xs text-ink-subtle">{words.join(" · ")}</p>
+        <p className="text-xs text-ink-subtle">
+          Connected {format.date(token.createdAt)}
+          {token.lastUsedAt ? ` · last used ${format.date(token.lastUsedAt)}` : " · never used"}
+          {token.expiresAt && ` · ends ${format.date(token.expiresAt)} unless it is used`}
+        </p>
+      </div>
+      <Button variant="ghost" size="sm" onClick={onDisconnect} loading={disconnecting} data-action="disconnect-app">
+        Disconnect
+      </Button>
+    </li>
   );
 }

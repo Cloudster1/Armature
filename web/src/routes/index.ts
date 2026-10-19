@@ -20,6 +20,8 @@ import { componentsRoute, releasesRoute } from "./releases";
 import { filtersRoute } from "./filters";
 import { importRoute } from "./import";
 import { webhooksRoute } from "./webhooks";
+import { connectedAppsRoute } from "./connected-apps";
+import { oauthAuthorizeRoute } from "./oauth-authorize";
 import { auditRoute } from "./audit";
 import { orgFieldsRoute } from "./org-fields";
 import { orgIssueArrangementRoute } from "./org-issue-arrangement";
@@ -68,6 +70,7 @@ const routeTree = rootRoute.addChildren([
   unwatchRoute,
   rateRoute,
   sharedRoute,
+  oauthAuthorizeRoute,
   appRoute.addChildren([
     overviewRoute,
     projectsRoute,
@@ -107,6 +110,7 @@ const routeTree = rootRoute.addChildren([
     filtersRoute,
     orgAutomationRoute,
     webhooksRoute,
+    connectedAppsRoute,
     auditRoute,
     orgFieldsRoute,
     orgIssueArrangementRoute,

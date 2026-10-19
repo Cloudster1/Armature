@@ -39,6 +39,7 @@ const SCENARIO_FILES = [
   "themes",
   "arrange",
   "overlays",
+  "connected-apps",
 ];
 
 for (const name of SCENARIO_FILES) {
