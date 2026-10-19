@@ -23,6 +23,12 @@ const (
 	// APITokenPrefix marks personal access tokens so that secret scanners, our
 	// own logs redaction, and support staff can recognise one on sight.
 	APITokenPrefix = "armature_pat_"
+
+	// The secrets a connected app holds, each recognisable the same way.
+	AccessTokenPrefix  = "armature_oat_"
+	RefreshTokenPrefix = "armature_ort_"
+	CodePrefix         = "armature_oac_"
+	ClientSecretPrefix = "armature_ocs_"
 )
 
 // ErrInvalidToken covers an unparseable, unknown, revoked or expired token.
@@ -40,11 +46,16 @@ func GenerateToken() (secret string, digest []byte, err error) {
 
 // GenerateAPIToken returns a prefixed personal access token.
 func GenerateAPIToken() (secret string, digest []byte, err error) {
+	return GeneratePrefixed(APITokenPrefix)
+}
+
+// GeneratePrefixed returns a new secret behind a prefix and its digest.
+func GeneratePrefixed(prefix string) (secret string, digest []byte, err error) {
 	s, _, err := GenerateToken()
 	if err != nil {
 		return "", nil, err
 	}
-	secret = APITokenPrefix + s
+	secret = prefix + s
 	return secret, HashToken(secret), nil
 }
 
@@ -63,4 +74,10 @@ func EqualDigest(a, b []byte) bool {
 // rather than a session token.
 func IsAPIToken(secret string) bool {
 	return strings.HasPrefix(secret, APITokenPrefix)
+}
+
+// IsAccessToken reports whether a presented credential is a connected app's
+// access token.
+func IsAccessToken(secret string) bool {
+	return strings.HasPrefix(secret, AccessTokenPrefix)
 }

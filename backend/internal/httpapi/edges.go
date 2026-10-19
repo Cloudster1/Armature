@@ -38,6 +38,12 @@ func (s *Server) sameSite(allowed []string) func(http.Handler) http.Handler {
 					Message: "That request came from another site."})
 				return
 			}
+			// The OAuth endpoints take forms and read no cookie, so a
+			// cookie riding along talks them into nothing.
+			if formPaths[r.URL.Path] && formBody(r.Header.Get("Content-Type")) {
+				next.ServeHTTP(w, r)
+				return
+			}
 			if kind := r.Header.Get("Content-Type"); kind != "" && !bodyKindAllowed(kind) {
 				respondError(w, r, &APIError{Status: http.StatusUnsupportedMediaType, Code: "unsupported_media_type",
 					Message: "Send JSON, or a file as multipart form data."})
@@ -64,6 +70,15 @@ func carriesCookie(r *http.Request, name string) bool {
 	}
 	_, err := r.Cookie(name)
 	return err == nil
+}
+
+// formPaths are the endpoints that take OAuth's form bodies.
+var formPaths = map[string]bool{"/api/v1/oauth/token": true, "/api/v1/oauth/revoke": true}
+
+// formBody says whether a body is an application/x-www-form-urlencoded form.
+func formBody(contentType string) bool {
+	kind := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	return kind == "application/x-www-form-urlencoded"
 }
 
 func bodyKindAllowed(contentType string) bool {

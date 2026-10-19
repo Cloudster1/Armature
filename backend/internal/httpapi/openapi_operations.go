@@ -26,6 +26,7 @@ import (
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/notify"
+	"github.com/armature/armature/backend/internal/oauth"
 	"github.com/armature/armature/backend/internal/oidc"
 	"github.com/armature/armature/backend/internal/openapi"
 	"github.com/armature/armature/backend/internal/perm"
@@ -135,7 +136,31 @@ var operations = []operation{
 	{method: "GET", path: "/tokens", handler: "handleListAPITokens", tag: "auth", summary: "The caller's personal access tokens.", responses: ok(env{"tokens": []auth.APIToken{}})},
 	{method: "POST", path: "/tokens", handler: "handleCreateAPIToken", tag: "auth", summary: "Make a personal access token; the secret is shown once.",
 		request: createTokenRequest{}, responses: created(env{"token": auth.APIToken{}})},
-	{method: "DELETE", path: "/tokens/{tokenID}", handler: "handleRevokeAPIToken", tag: "auth", summary: "Revoke a token.", responses: none()},
+	{method: "DELETE", path: "/tokens/{tokenID}", handler: "handleRevokeAPIToken", tag: "auth", summary: "Revoke a token; a connected app's grant ends with its access and refresh tokens.", responses: none()},
+
+	// Connected apps: Armature as an OAuth 2.0 authorization server, as docs/oauth.md says.
+	{method: "GET", path: oauth.ServerMetadataPath, handler: "handleServerMetadata", tag: "oauth", summary: "The authorization server's metadata (RFC 8414): every address a connected app needs, and what Armature offers.", public: true,
+		responses: ok(oauth.ServerMetadata{})},
+	{method: "GET", path: oauth.ResourceMetadataPath, handler: "handleResourceMetadata", tag: "oauth", summary: "The API as a protected resource (RFC 9728), for an MCP client finding where to get a token.", public: true,
+		responses: ok(oauth.ResourceMetadata{})},
+	{method: "POST", path: "/oauth/register", handler: "handleOAuthRegister", tag: "oauth", summary: "Register a connected app (RFC 7591); it is pending until an administrator allows it, and goes after a day if nobody does.", public: true,
+		request: oauth.RegistrationRequest{}, responses: map[int]any{201: oauth.RegistrationResponse{}, 400: oauthErrorBody{}, 403: oauthErrorBody{}}},
+	{method: "POST", path: "/oauth/token", handler: "handleOAuthToken", tag: "oauth", summary: "Trade a code, a refresh token or a token to exchange (RFC 8693) for a person's tokens; the app authenticates with HTTP Basic or the form.", public: true,
+		form: tokenRequest{}, responses: map[int]any{200: oauth.TokenResponse{}, 400: oauthErrorBody{}, 401: oauthErrorBody{}}},
+	{method: "POST", path: "/oauth/revoke", handler: "handleOAuthRevoke", tag: "oauth", summary: "Revoke a token (RFC 7009): a grant's access or refresh token ends the grant; every token is answered alike.", public: true,
+		form: revokeRequest{}, responses: map[int]any{200: nil, 400: oauthErrorBody{}, 401: oauthErrorBody{}}},
+	{method: "GET", path: "/oauth/consent", handler: "handleOAuthConsent", tag: "oauth", summary: "What the consent page shows for an /oauth/authorize query, or where the browser goes at once.",
+		query: authorizeQuery, responses: ok(consentAnswer{})},
+	{method: "POST", path: "/oauth/consent", handler: "handleOAuthDecide", tag: "oauth", summary: "Allow or cancel what the consent page showed; the answer is where the browser goes.",
+		request: consentRequest{}, responses: ok(env{"redirectTo": ""})},
+	{method: "GET", path: "/oauth/clients", handler: "handleListOAuthClients", tag: "oauth", summary: "The connected apps, by name, pending ones marked.", responses: ok(env{"clients": []oauth.Client{}})},
+	{method: "POST", path: "/oauth/clients", handler: "handleCreateOAuthClient", tag: "oauth", summary: "Register a connected app by hand, active at once; a confidential one's secret is shown once.",
+		request: oauth.ClientInput{}, responses: created(env{"client": oauth.Client{}})},
+	{method: "PATCH", path: "/oauth/clients/{clientID}", handler: "handleUpdateOAuthClient", tag: "oauth", summary: "Change a connected app; narrowing its scopes narrows every grant of it at once.",
+		request: oauth.ClientChanges{}, responses: ok(env{"client": oauth.Client{}})},
+	{method: "DELETE", path: "/oauth/clients/{clientID}", handler: "handleDeleteOAuthClient", tag: "oauth", summary: "Remove a connected app: every grant of it ends, and its webhook goes with its log.", responses: none()},
+	{method: "POST", path: "/oauth/clients/{clientID}/approve", handler: "handleApproveOAuthClient", tag: "oauth", summary: "Allow a pending app, with the scopes it registered.", responses: ok(env{"client": oauth.Client{}})},
+	{method: "POST", path: "/oauth/clients/{clientID}/rotate-secret", handler: "handleRotateOAuthClientSecret", tag: "oauth", summary: "Issue a connected app a new secret; the old one stops at once.", responses: ok(env{"client": oauth.Client{}})},
 	{method: "GET", path: "/invites", handler: "handleListInvites", tag: "auth", summary: "Open invitations.", responses: ok(env{"invites": []auth.Invite{}})},
 	{method: "POST", path: "/invites", handler: "handleCreateInvite", tag: "auth", summary: "Invite somebody: mailed when mail is set up, and the link shown once either way.",
 		request: inviteRequest{}, responses: created(env{"invite": auth.Invite{}, "token": "", "link": "", "mailed": true})},

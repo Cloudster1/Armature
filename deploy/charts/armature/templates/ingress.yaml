@@ -39,6 +39,16 @@ spec:
                 name: {{ include "armature.fullname" . }}-api
                 port:
                   name: http
+          {{- range list "/.well-known/oauth-authorization-server" "/.well-known/oauth-protected-resource" }}
+          # Where a connected app and an MCP client learn how to get a token.
+          - path: {{ . }}
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "armature.fullname" $ }}-api
+                port:
+                  name: http
+          {{- end }}
           - path: /
             pathType: Prefix
             backend:

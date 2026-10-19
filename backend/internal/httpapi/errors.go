@@ -59,6 +59,8 @@ type APIError struct {
 
 	// cause is logged but never sent to the client.
 	cause error
+	// header is sent with the error, such as the scope a token lacked.
+	header map[string]string
 }
 
 func (e *APIError) Error() string {
@@ -143,6 +145,9 @@ func toAPIError(err error) *APIError {
 		return apiErr
 	}
 
+	if e := connectedAppError(err); e != nil {
+		return e
+	}
 	var demoKey *demo.KeyTakenError
 	var queryErr *nql.Error
 	if errors.As(err, &queryErr) {
@@ -526,6 +531,9 @@ func respondError(w http.ResponseWriter, r *http.Request, err error) {
 		log.Debug("request rejected", "code", apiErr.Code, "status", apiErr.Status, "message", apiErr.Message)
 	}
 
+	for name, value := range apiErr.header {
+		w.Header().Set(name, value)
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(apiErr.Status)
 	if encErr := json.NewEncoder(w).Encode(map[string]any{"error": apiErr}); encErr != nil {

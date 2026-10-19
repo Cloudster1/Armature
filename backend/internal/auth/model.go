@@ -90,6 +90,9 @@ type Principal struct {
 	// TokenProjects are the project keys an API token was confined to. Empty
 	// means the token reaches wherever its owner does.
 	TokenProjects []string `json:"-"`
+	// App is the connected app a token was granted to; nil for a key and a
+	// session. Its token's scopes name permissions.
+	App *ConnectedApp `json:"-"`
 	// Proof is how a browser session was opened; empty for an API token.
 	Proof Proof `json:"-"`
 	// MustEnrol holds a session to setting up a second factor, which the
@@ -152,6 +155,17 @@ type Invite struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+// ConnectedApp is the partner tool a grant belongs to.
+type ConnectedApp struct {
+	ClientID  uuid.UUID `json:"clientId"`
+	Name      string    `json:"name"`
+	ClientURI string    `json:"clientUri,omitempty"`
+}
+
+// ConnectedAppSuffix follows a client's name wherever its grant or its webhook
+// is listed beside ones a person made.
+const ConnectedAppSuffix = " (connected app)"
+
 // APIToken is a personal access token. The secret is only ever returned once,
 // at creation.
 type APIToken struct {
@@ -166,6 +180,9 @@ type APIToken struct {
 	Projects []string `json:"projects"`
 	// Secret is populated only by CreateAPIToken.
 	Secret string `json:"secret,omitempty"`
+	// App is set for a connected app's grant, whose expiresAt is when its
+	// refresh token runs out unless it is used.
+	App *ConnectedApp `json:"app,omitempty"`
 }
 
 var (

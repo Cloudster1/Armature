@@ -165,6 +165,9 @@ type Auth struct {
 	// SecretKey seals authenticator secrets, as 32 bytes of base64; empty
 	// turns two-step sign-in off.
 	SecretKey string
+	// OAuthRegistration is approve or closed: whether a partner tool may
+	// register itself, pending an administrator.
+	OAuthRegistration string
 }
 
 // Render names the render service, when there is one.
@@ -279,6 +282,7 @@ func Load() (Config, error) {
 			InstallationName:   env("ARMATURE_NAME", "Armature"),
 			OIDCRedirectURL:    env("ARMATURE_OIDC_REDIRECT_URL", DevOIDCRedirectURL),
 			SecretKey:          env("ARMATURE_SECRET_KEY", ""),
+			OAuthRegistration:  env("ARMATURE_OAUTH_REGISTRATION", "approve"),
 		},
 		Webhooks: Webhooks{
 			Concurrency: envCount("ARMATURE_WEBHOOK_CONCURRENCY", DefaultWebhookConcurrency),
@@ -322,6 +326,11 @@ func Load() (Config, error) {
 	case "open", "first", "closed":
 	default:
 		problems = append(problems, fmt.Sprintf("ARMATURE_SIGNUP %q must be open, first or closed", c.Auth.Signup))
+	}
+	switch c.Auth.OAuthRegistration {
+	case "approve", "closed":
+	default:
+		problems = append(problems, fmt.Sprintf("ARMATURE_OAUTH_REGISTRATION %q must be approve or closed", c.Auth.OAuthRegistration))
 	}
 	switch c.Mail.SMTPTLS {
 	case "starttls", "implicit", "none":

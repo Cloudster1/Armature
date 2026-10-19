@@ -438,6 +438,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_REDIS_URL` | `redis://localhost:6379/0` | the event stream |
 | `ARMATURE_NAME` | `Armature` | what the installation is called when its first account sets it up; administrators rename it afterwards |
 | `ARMATURE_SIGNUP` | `first` | who may sign up: `first` (the first account, which sets the installation up and administers it), `open` (later people too, as members) or `closed` (nobody) |
+| `ARMATURE_OAUTH_REGISTRATION` | `approve` | who may register a connected app: `approve` (anybody, pending until an administrator allows it) or `closed` (administrators alone, under Settings, Connected apps); see [docs/oauth.md](docs/oauth.md) |
 | `ARMATURE_SESSION_TTL` | `720h` | how long a session lives |
 | `ARMATURE_SESSION_COOKIE` | `armature_session` | the cookie's name |
 | `ARMATURE_SECURE_COOKIES` | `false` | required true outside development |

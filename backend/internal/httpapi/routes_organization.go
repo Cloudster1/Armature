@@ -61,6 +61,18 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	r.With(requireSession).Post("/tokens", s.handleCreateAPIToken)
 	r.Delete("/tokens/{tokenID}", s.handleRevokeAPIToken)
 
+	// Connected apps: which partner tools may ask people for a token, which
+	// is the installation's administrators' to say.
+	r.Group(func(r chi.Router) {
+		r.Use(requirePerm(perm.OrgAdminister), requireSession)
+		r.Get("/oauth/clients", s.handleListOAuthClients)
+		r.Post("/oauth/clients", s.handleCreateOAuthClient)
+		r.Patch("/oauth/clients/{clientID}", s.handleUpdateOAuthClient)
+		r.Delete("/oauth/clients/{clientID}", s.handleDeleteOAuthClient)
+		r.Post("/oauth/clients/{clientID}/approve", s.handleApproveOAuthClient)
+		r.Post("/oauth/clients/{clientID}/rotate-secret", s.handleRotateOAuthClientSecret)
+	})
+
 	// Metadata behind the client's pickers.
 	r.Get("/members", s.handleListMembers)
 	r.With(requirePerm(perm.OrgAdminister)).Delete("/members/{userID}", s.handleRemoveMember)

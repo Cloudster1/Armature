@@ -45,6 +45,12 @@ const (
 	// SecondFactorTriesPerWindow brakes wrong sign-in codes from one caller's
 	// address: plenty for mistyping, nowhere near what six digits need.
 	SecondFactorTriesPerWindow = 30
+	// TokenMissesPerWindow brakes refused token requests per app: a guessed
+	// secret, code or refresh token. A partner's own refreshes are not counted.
+	TokenMissesPerWindow = 30
+	// RegistrationsPerWindow brakes apps registering themselves from one
+	// address, each of which an administrator would be shown.
+	RegistrationsPerWindow = 10
 	// throttleMaxKeys bounds what a brake remembers at once.
 	throttleMaxKeys = 10000
 )
@@ -55,6 +61,12 @@ var credentialTries = newThrottle(CredentialTriesPerWindow, DoorWindow)
 // secondFactorTries brakes guessing at codes, by the caller's address at
 // sign-in and by the account on the routes of somebody signed in.
 var secondFactorTries = newThrottle(SecondFactorTriesPerWindow, DoorWindow)
+
+// tokenMisses and registrations brake the OAuth endpoints, per app and per address.
+var (
+	tokenMisses   = newThrottle(TokenMissesPerWindow, DoorWindow)
+	registrations = newThrottle(RegistrationsPerWindow, DoorWindow)
+)
 
 // resetRequests and resetAddresses brake mailing password links, by caller
 // and by mailbox, so the form cannot be used to flood either.
@@ -87,7 +99,7 @@ func SetDoorWindow(d time.Duration) {
 	if d <= 0 {
 		return
 	}
-	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries, resetRequests, resetAddresses, secondFactorTries} {
+	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries, resetRequests, resetAddresses, secondFactorTries, tokenMisses, registrations} {
 		t.mu.Lock()
 		t.window = d
 		t.mu.Unlock()
@@ -104,6 +116,8 @@ func ResetThrottles() {
 	resetRequests.reset()
 	resetAddresses.reset()
 	secondFactorTries.reset()
+	tokenMisses.reset()
+	registrations.reset()
 }
 
 // allow records one request from a key and says whether it was inside the limit.

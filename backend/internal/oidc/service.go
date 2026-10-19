@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -358,4 +359,40 @@ func randomToken() (string, error) {
 		return "", fmt.Errorf("read randomness: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+// VerifyAccessToken checks a person's access token from the installation's
+// provider, issued to authorizedParty for Armature: the provider's issuer and
+// keys, unexpired, azp the partner's client and aud holding Armature's own.
+// The person in it is matched as a sign-in matches them, by verified address.
+func (s *Service) VerifyAccessToken(ctx context.Context, raw, authorizedParty string) (*Identity, error) {
+	ctx = s.providerContext(ctx)
+	provider, err := s.ProviderFor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !provider.Enabled {
+		return nil, ErrNotConfigured
+	}
+	discovered, err := s.discover(ctx, provider.Issuer)
+	if err != nil {
+		return nil, err
+	}
+	verified, err := discovered.Verifier(&coreoidc.Config{SkipClientIDCheck: true}).Verify(ctx, raw)
+	if err != nil {
+		return nil, errors.New("it is not a current token signed by the identity provider")
+	}
+	var claims struct {
+		AuthorizedParty string `json:"azp"`
+	}
+	if err := verified.Claims(&claims); err != nil {
+		return nil, fmt.Errorf("read the token's claims: %w", err)
+	}
+	if claims.AuthorizedParty != authorizedParty {
+		return nil, fmt.Errorf("it was issued to %q, not to the app's Keycloak client", claims.AuthorizedParty)
+	}
+	if !slices.Contains(verified.Audience, provider.ClientID) {
+		return nil, fmt.Errorf("its audience does not hold Armature's client %s; add an audience mapper to the app's Keycloak client", provider.ClientID)
+	}
+	return identityFrom(verified, provider.GroupsClaim)
 }

@@ -37,6 +37,7 @@ import (
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/notify"
+	"github.com/armature/armature/backend/internal/oauth"
 	"github.com/armature/armature/backend/internal/oidc"
 	"github.com/armature/armature/backend/internal/perm"
 	"github.com/armature/armature/backend/internal/plan"
@@ -145,6 +146,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	// The identity provider flow needs to know where the browser comes back
 	// to, which is only known once the server is listening.
 	srv.OIDC = oidc.NewService(h.cluster, ts.URL+"/api/v1/auth/oidc/callback")
+	srv.OAuth = oauth.NewService(h.cluster, srv.AppBaseURL).WithIdentityProvider(srv.OIDC)
 	t.Cleanup(ts.Close)
 	notifier := desk.NewNotifier(h.cluster, nil, mailer, "http://app.test", srv.Log)
 	return &apiServer{Server: ts, harness: h, api: srv, mailer: mailer, notifier: notifier}

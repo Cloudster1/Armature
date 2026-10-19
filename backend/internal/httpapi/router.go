@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/armature/armature/backend/internal/buildinfo"
+	"github.com/armature/armature/backend/internal/oauth"
 	"github.com/armature/armature/backend/internal/perm"
 	"github.com/armature/armature/backend/internal/project"
 )
@@ -33,10 +34,15 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(s.authenticate)
 	r.Use(readOnlyToken)
+	r.Use(appScope(r))
 
 	// Liveness and readiness are deliberately outside authentication.
 	r.Get("/healthz", s.handleLiveness)
 	r.Get("/readyz", s.handleReadiness)
+
+	// Where a partner and an MCP client learn how to get a token.
+	r.Get(oauth.ServerMetadataPath, s.handleServerMetadata)
+	r.Get(oauth.ResourceMetadataPath, s.handleResourceMetadata)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// The API's own description, derived from the code that serves it.
@@ -84,6 +90,15 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Get("/shared/{token}/widgets/{widgetID}", s.handleSharedWidget)
 		r.Get("/shared/{token}/pdf", s.handleSharedPDF)
 
+		// A connected app's side of OAuth: no session, the app proves itself.
+		// The consent page's two calls come from the person's browser and
+		// take a held session to its own answer rather than the generic one.
+		r.Post("/oauth/register", s.handleOAuthRegister)
+		r.Post("/oauth/token", s.handleOAuthToken)
+		r.Post("/oauth/revoke", s.handleOAuthRevoke)
+		r.Get("/oauth/consent", s.handleOAuthConsent)
+		r.Post("/oauth/consent", s.handleOAuthDecide)
+
 		// What a git host calls. No session: the delivery proves itself with
 		// the repository's secret.
 		r.Post("/git/webhooks/{repositoryID}", s.handleWebhook)
@@ -92,7 +107,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 
 		// Anything below here needs a signed-in caller.
 		r.Group(func(r chi.Router) {
-			r.Use(requireAuth)
+			r.Use(s.requireAuth)
 			// A session the installation holds to enrolment reaches little else.
 			r.Use(requireSecondFactor)
 

@@ -290,6 +290,30 @@ func (s Set) AsKey(projects []string) Set {
 	return out
 }
 
+// Only keeps the permissions named and drops the rest, so a connected app's
+// token holds what its person may do and the person allowed it, never more.
+func (s Set) Only(names []string) Set {
+	out := Set{
+		orgWide:   map[Permission]bool{},
+		byProject: map[string]map[Permission]bool{},
+		roles:     slices.Clone(s.roles),
+	}
+	keep := func(p Permission) bool { return slices.Contains(names, string(p)) }
+	for p := range s.orgWide {
+		if keep(p) {
+			out.orgWide[p] = true
+		}
+	}
+	for key, here := range s.byProject {
+		for p := range here {
+			if keep(p) {
+				out.allow(key, p)
+			}
+		}
+	}
+	return out
+}
+
 // allow records one permission in one project, making the inner map on demand.
 func (s Set) allow(projectKey string, p Permission) {
 	here, ok := s.byProject[projectKey]

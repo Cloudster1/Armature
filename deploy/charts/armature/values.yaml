@@ -212,6 +212,13 @@ mail:
     tls: true
     interval: 30s
 
+# Connected apps: partner tools that get a person's token with their consent.
+oauth:
+  # Who may register a connected app. approve: anybody, pending until an
+  # administrator allows it on the consent page. closed: administrators
+  # alone, under Settings, Connected apps.
+  registration: approve
+
 auth:
   # Who may sign up. first: the first account, which sets the installation up
   # and administers it, and nobody after. open: later people too, as members.
