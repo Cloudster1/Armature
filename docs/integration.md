@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "issue-embed@1", "oauth.partner-tokens@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks@1"]
+  "capabilities": ["calendar@1", "issue-embed@1", "oauth.partner-tokens@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
 }
 ```
 
@@ -88,6 +88,19 @@ administrator. [Connected apps](oauth.md) is the whole contract.
 - `POST /oauth/consent`
 - `GET /.well-known/oauth-authorization-server`, at the root rather than under `/api/v1`
 - `GET /.well-known/oauth-protected-resource`, likewise
+
+### `webhooks.partner@1`
+
+A connected app an administrator allowed makes, changes, tests, rotates and
+removes its own webhook endpoint; listed beside `oauth.partner-tokens@1` only.
+[Connected apps](oauth.md#the-partners-own-webhook) says how.
+
+- `GET /webhooks/partner`
+- `POST /webhooks/partner`
+- `PATCH /webhooks/partner`
+- `DELETE /webhooks/partner`
+- `POST /webhooks/partner/rotate-secret`
+- `POST /webhooks/partner/test`
 
 ### `theme-export@1`
 

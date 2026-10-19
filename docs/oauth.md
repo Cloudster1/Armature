@@ -5,7 +5,7 @@ gets that person's token with their consent, in one click, instead of the person
 making a personal access token and pasting it across. Armature is the OAuth 2.0
 authorization server; the partner is a connected app.
 
-This page is the contract partners build against (#280). The route table and
+This page is the contract partners build against (#280, #281). The route table and
 [`api/openapi.json`](../api/openapi.json) are the source of truth for paths,
 fields and types; this page says what they mean.
 
@@ -26,7 +26,10 @@ fields and types; this page says what they mean.
 - An app is registered by an administrator, or registers itself and stays
   pending until an administrator allows it. Nothing a pending app asks for
   works before that.
-- The capability `oauth.partner-tokens@1` in `/api/v1/meta`.
+- An app an administrator allowed may own one webhook endpoint, which it
+  manages itself with a token holding `webhooks.partner`.
+- The capabilities `oauth.partner-tokens@1` and `webhooks.partner@1` in
+  `/api/v1/meta`.
 - The OAuth endpoints answer OAuth's error shape, `{"error", "error_description"}`
   (RFC 6749 section 5.2, RFC 7591 section 3.2.2), and take OAuth's parameter
   names. Everything else answers Armature's envelope.
@@ -50,7 +53,7 @@ to the api. `/oauth/authorize` is a page of the web app.
 | `issue.write` | File and edit issues, and link pages to them | Create and edit issues, their fields, labels, links, remote links, worklogs, attachments and branches |
 | `issue.transition` | Move issues through their workflow | Transitions, and moving a card on a board |
 | `comment.write` | Comment on issues | Comments, internal notes and watchers |
-| `webhooks.partner` | Send Armature's events to {app}, from every project (administrators only) | The app's own webhook, once Armature offers `webhooks.partner@1` |
+| `webhooks.partner` | Send Armature's events to {app}, from every project (administrators only) | The app's own webhook, below |
 
 - A connected app may make the writes the table names and no other. Any other
   write, such as a profile, a theme, a saved filter or anything an
@@ -80,6 +83,7 @@ to the api. `/oauth/authorize` is a page of the web app.
 | `confidential` | True: it authenticates at the token endpoint with a secret. False: a public app, PKCE alone. |
 | `status` | `active`, or `pending` until an administrator allows it. |
 | `keycloakClientId` | The identity provider's client whose tokens may be exchanged for this app's grants. Empty: no exchange. |
+| `webhook` | Its own webhook, `{id, url, topics, enabled}`, or null. |
 | `grants` | How many people have connected it. |
 
 A client secret is `armature_ocs_` and 43 base64url characters, stored as a
@@ -96,7 +100,7 @@ digest and shown once, on creation and on rotation.
 | `PATCH /oauth/clients/{clientID}` | `{client}`; what is left out keeps its value. Narrowing `scopes` narrows every grant of the app at once. |
 | `POST /oauth/clients/{clientID}/approve` | `{client}`; a pending app becomes active, as allowing it on the consent page does |
 | `POST /oauth/clients/{clientID}/rotate-secret` | `{client}` with the new `secret`; the old one stops at once. 409 for a public app. |
-| `DELETE /oauth/clients/{clientID}` | 204; every grant of it ends |
+| `DELETE /oauth/clients/{clientID}` | 204; every grant of it ends, and its webhook goes with its log |
 
 ### Registered by the partner itself
 
@@ -342,6 +346,95 @@ page in front of the consent operations.
 Stator offers its Connect button only when `/meta` lists it, and the manual
 token form otherwise.
 
+## The partner's own webhook
+
+A connected app an administrator allowed sets up the one webhook it needs
+itself, so no secret is copied by hand (#281). Each operation below needs an
+access token of the app (not a session, not a key) whose grant holds
+`webhooks.partner`, of a person who administers Armature when the call is made.
+Otherwise 403 `insufficient_scope` ("Stator was not allowed to manage its
+webhook. An Armature administrator connects it again.") or 403 `forbidden`
+("Ada Lovelace is no longer an Armature administrator. An administrator
+connects Stator again to manage its webhook."). Each acts on the calling app's
+own endpoint only, so another endpoint is never reachable and needs no id.
+
+| Operation | Answers |
+|---|---|
+| `GET /webhooks/partner` | `{webhook}`, or `{webhook: null}` when the app has none |
+| `POST /webhooks/partner` | 201 `{webhook}` with `secret`; 409 `partner_webhook_exists`; 422 on `url`, `topics` |
+| `PATCH /webhooks/partner` | `{webhook}`; `url`, `topics`, `version`, `enabled`, any left out keep their value; 404 when there is none |
+| `POST /webhooks/partner/rotate-secret` | `{webhook}` with the new `secret`; the old one stops at once |
+| `POST /webhooks/partner/test` | `{delivery}`, a ping posted now |
+| `DELETE /webhooks/partner` | 204, also when there was none |
+
+```json
+{
+  "url": "https://stator.example.com/api/v1/armature/webhook",
+  "topics": ["issue.updated", "issue.transitioned", "issue.deleted", "issue.remote_link.added", "issue.remote_link.removed"],
+  "version": 1
+}
+```
+
+- **The endpoint is an ordinary one**: the same envelope, headers,
+  signatures, retries, pauses and log as every endpoint
+  ([webhooks](webhooks.md)), so a receiver written for `webhooks@1` works
+  unchanged. Its topics come back sorted, each once.
+- **Topics are named.** `*` is refused ("Name the topics Stator takes; a
+  connected app cannot take every event."), and so is any `automation.` topic;
+  the rest are what `GET /automation/catalog` lists. `version` is optional and
+  defaults to the current envelope.
+- **Its name** is the app's and " (connected app)", following a rename of the
+  app. One that clashes with a webhook an administrator named so is 409
+  `conflict`: "A webhook called Stator (connected app) is already here. Rename
+  it in Settings, Webhooks, and connect again."
+- **In the administrator's list** an endpoint carries `partner`
+  (`clientId`, `name`), null for one an administrator made, and Settings,
+  Webhooks marks it with the app's name. An administrator may turn it off and
+  on, test it, redeliver, read its log and remove it. Changing its address,
+  topics or version, or rotating its secret, from there is 409
+  `partner_owned`: "Stator manages this webhook. Change it in Stator, or remove
+  it here." A partner that finds its endpoint gone (null on `GET`, 404 on
+  `PATCH`) makes a new one.
+- **It is the app's**, not the administrator's: it stays when the
+  administrator who connected the app leaves, and goes with the app. The
+  database keeps one per app.
+- **The audit log** records `webhook.created`, `webhook.updated`,
+  `webhook.secret_rotated` and `webhook.deleted` as for any endpoint, with the
+  app in the data and the administrator whose token made the call as the
+  actor.
+
+### The outbound guard
+
+On `POST` and on a `PATCH` that changes `url`, Armature resolves the host and
+judges its addresses as the dialer would, before it stores anything; nothing
+is sent. An address inside Armature's own network is 422 `outbound_refused`:
+
+```json
+{
+  "error": {
+    "code": "outbound_refused",
+    "message": "Armature may not reach stator.internal, which is inside its own network. Add stator.internal to network.outboundAllow (ARMATURE_OUTBOUND_ALLOW) and try again.",
+    "fields": { "url": "Add stator.internal to network.outboundAllow (ARMATURE_OUTBOUND_ALLOW)." },
+    "requestId": "..."
+  }
+}
+```
+
+The value named is the address's host, lower case and without the port: the
+name when the address has one, the address itself when it is an IP literal.
+A host that does not resolve is 422 `invalid` on `url`: "stator.example.com
+does not resolve from Armature. Check the address, or Armature's DNS." The
+same check holds for `POST /webhooks` and a `PATCH /webhooks/{endpointID}` that
+changes the address, so the administrator's page learns it too.
+
+## The capability for webhooks
+
+`webhooks.partner@1`: a connected app an administrator allowed makes, changes,
+tests, rotates and removes its own webhook endpoint, by the six operations
+above. It is listed beside `oauth.partner-tokens@1` only. Stator offers the
+administrator's one-step connect when `/meta` lists both, and the manual
+webhook form otherwise.
+
 ## Decided, where the proposal asked
 
 The proposal on #280 left questions open. This build answers them with the
@@ -357,6 +450,12 @@ proposal's own defaults, so changing one is a change to this page first:
 6. One grant per person and app; a new consent replaces its scopes.
 7. 90 days rolling for a grant and an hour for an access token, with no setting.
 8. An administrator naming an app's Keycloak client consents for everybody.
+9. The value to allow is named in the outbound guard's sentence and its `url`
+   field, not in a field of its own.
+10. Managing the partner webhook needs a grant of somebody who administers
+    Armature at the time of the call. The webhook itself is the app's and
+    stays when that administrator leaves; another administrator connects the
+    app again to manage it.
 
 ## Not in this contract
 
