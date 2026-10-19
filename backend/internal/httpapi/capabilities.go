@@ -14,6 +14,8 @@ type capability struct {
 	// operations are "METHOD /path" as the operations table spells them.
 	operations []string
 	topics     []string
+	// grants are token endpoint grant types, as the server metadata lists them.
+	grants []string
 }
 
 // integrationCapabilities may only use names from Dynamo's shared list.
@@ -72,6 +74,14 @@ var integrationCapabilities = []capability{
 			"GET " + oauth.ServerMetadataPath,
 			"GET " + oauth.ResourceMetadataPath,
 		},
+	},
+	{
+		name:    "oauth.token-exchange@1",
+		promise: "A connected app trades a person's access token from the installation's identity provider, its azp the app's Keycloak client and its aud Armature's, for an access and a refresh token within the person's rights, never webhooks.partner.",
+		operations: []string{
+			"POST /oauth/token",
+		},
+		grants: []string{oauth.GrantTokenExchange},
 	},
 	{
 		name:    "webhooks.partner@1",
