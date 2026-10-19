@@ -62,6 +62,7 @@ const (
 	ctxPrincipal
 	ctxPerms
 	ctxWriteRecord
+	ctxPersonPerms
 )
 
 // RequestIDFrom returns the id assigned to this request.
@@ -359,6 +360,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 					respondError(w, r, err)
 					return
 				}
+				ctx = context.WithValue(ctx, ctxPersonPerms, set)
 				// A key holds less than the person who made it, and the
 				// narrowing happens here so that every guard below reads
 				// it without knowing a key was involved. A connected app

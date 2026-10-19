@@ -89,12 +89,17 @@ func (s *Service) authenticate(ctx context.Context, tx db.DBTX, cred Credentials
 	return c, nil
 }
 
-const selectClientsWithSecret = `SELECT ` + clientColumns + `, c.secret_hash FROM oauth_client c`
+const selectClientsWithSecret = `SELECT ` + clientColumns + `, c.secret_hash FROM oauth_client c LEFT JOIN webhook_endpoint w ON w.client_id = c.id`
 
 func scanClientWithSecret(row pgx.Row, digest *[]byte) (*Client, error) {
-	var c Client
+	var (
+		c       Client
+		hookID  *uuid.UUID
+		webhook ClientWebhook
+	)
 	if err := row.Scan(&c.ID, &c.Name, &c.ClientURI, &c.RedirectURIs, &c.Scopes, &c.Confidential, &c.Status,
-		&c.KeycloakClientID, &c.authMethod, &c.CreatedAt, &c.UpdatedAt, &c.Grants, digest); err != nil {
+		&c.KeycloakClientID, &c.authMethod, &c.CreatedAt, &c.UpdatedAt, &c.Grants,
+		&hookID, &webhook.URL, &webhook.Topics, &webhook.Enabled, digest); err != nil {
 		return nil, err
 	}
 	return &c, nil

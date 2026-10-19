@@ -5,7 +5,14 @@ or with `POST /api/v1/webhooks`: a name, an address, and the topics it takes,
 or `*` for every one. Armature then posts one JSON request to the address for
 each event on those topics, signed with the endpoint's secret, which is shown
 once. A rule's "send a webhook" action posts to an endpoint the same way, and
-its deliveries land in the same log.
+its deliveries land in the same log. A connected app an administrator allowed
+sets up an endpoint of its own the same way, marked with its name in the list;
+[connected apps](oauth.md#the-partners-own-webhook) says how.
+
+An address is judged when it is set: one inside Armature's own network is
+refused with 422 `outbound_refused`, naming the value to add to
+`ARMATURE_OUTBOUND_ALLOW` (`network.outboundAllow` in the chart), and one that
+does not resolve is refused with 422 `invalid`.
 
 This page is the contract a receiver is written against. The machine-readable
 half is the `webhooks` section of [`api/openapi.json`](../api/openapi.json),

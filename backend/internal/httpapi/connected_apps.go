@@ -1,13 +1,17 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/armature/armature/backend/internal/netguard"
 	"github.com/armature/armature/backend/internal/oauth"
+	"github.com/armature/armature/backend/internal/perm"
+	"github.com/armature/armature/backend/internal/webhook"
 )
 
 // appWrites are the writes a connected app may make, with the scope each one
@@ -48,6 +52,11 @@ var appWrites = map[string]string{
 	"POST /issues/{issueKey}/notes":                         oauth.ScopeCommentWrite,
 	"POST /issues/{issueKey}/watchers":                      oauth.ScopeCommentWrite,
 	"DELETE /issues/{issueKey}/watchers/{userID}":           oauth.ScopeCommentWrite,
+	"POST /webhooks/partner":                                oauth.ScopeWebhooks,
+	"PATCH /webhooks/partner":                               oauth.ScopeWebhooks,
+	"DELETE /webhooks/partner":                              oauth.ScopeWebhooks,
+	"POST /webhooks/partner/rotate-secret":                  oauth.ScopeWebhooks,
+	"POST /webhooks/partner/test":                           oauth.ScopeWebhooks,
 }
 
 // appScope refuses a connected app a write its grant does not reach. The
@@ -86,12 +95,45 @@ func insufficientScope(message, scope string) *APIError {
 	return e
 }
 
-// connectedAppError maps what the connected apps refuse, or nil for an error
-// of anything else.
+// personPermsFrom is what the caller's person may do before a key or an app
+// narrowed it: a partner manages its webhook only while its person administers.
+func personPermsFrom(ctx context.Context) perm.Set {
+	set, _ := ctx.Value(ctxPersonPerms).(perm.Set)
+	return set
+}
+
+// requirePartner keeps the partner webhook routes to a connected app holding
+// webhooks.partner for a person who administers Armature at the time of the call.
+func requirePartner(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := PrincipalFrom(r.Context())
+		switch {
+		case p == nil:
+			respondError(w, r, ErrUnauthorized(""))
+		case p.App == nil:
+			respondError(w, r, ErrForbidden("Only a connected app manages its own webhook here. Manage webhooks under Settings, Webhooks."))
+		case !p.HasScope(oauth.ScopeWebhooks):
+			respondError(w, r, insufficientScope(p.App.Name+" was not allowed to manage its webhook. An Armature administrator connects it again.", oauth.ScopeWebhooks))
+		case !personPermsFrom(r.Context()).CanInOrg(perm.OrgAdminister):
+			respondError(w, r, ErrForbidden(p.User.Name+" is no longer an Armature administrator. An administrator connects "+p.App.Name+" again to manage its webhook."))
+		default:
+			next.ServeHTTP(w, r)
+		}
+	})
+}
+
+// connectedAppError maps what the connected apps and their webhooks refuse,
+// or nil for an error of anything else.
 func connectedAppError(err error) *APIError {
 	var (
-		fields  *oauth.ValidationError
-		refused *oauth.RefusedError
+		fields   *oauth.ValidationError
+		clash    *oauth.NameClashError
+		refused  *oauth.RefusedError
+		owned    *webhook.PartnerOwnedError
+		taken    *webhook.NameTakenError
+		field    *webhook.FieldError
+		outbound *netguard.RefusedError
+		unknown  *netguard.UnresolvedError
 	)
 	switch {
 	case errors.Is(err, oauth.ErrNotConnected):
@@ -102,8 +144,24 @@ func connectedAppError(err error) *APIError {
 		return ErrConflict("That app is a public client, with no secret to rotate. It proves itself with PKCE alone.")
 	case errors.As(err, &fields):
 		return ErrValidation(fields.Fields)
+	case errors.As(err, &clash):
+		return ErrConflict(capitalize(clash.Error()) + ". Rename that webhook in Settings, Webhooks, or name the app differently.")
 	case errors.As(err, &refused):
 		return ErrForbidden(refused.Sentence)
+	case errors.As(err, &owned):
+		return &APIError{Status: http.StatusConflict, Code: "partner_owned", Message: owned.Error() + "."}
+	case errors.As(err, &taken):
+		return ErrConflict(taken.Error())
+	case errors.As(err, &field):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: field.Sentence, Fields: map[string]string{field.Field: field.Sentence}}
+	case errors.As(err, &outbound):
+		allow := "Add " + outbound.Host + " to network.outboundAllow (" + netguard.AllowEnv + ")"
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "outbound_refused",
+			Message: "Armature may not reach " + outbound.Host + ", which is inside its own network. " + allow + " and try again.",
+			Fields:  map[string]string{"url": allow + "."}}
+	case errors.As(err, &unknown):
+		sentence := unknown.Host + " does not resolve from Armature. Check the address, or Armature's DNS."
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "invalid", Message: sentence, Fields: map[string]string{"url": sentence}}
 	}
 	return nil
 }

@@ -7,6 +7,18 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a connected app an administrator allowed sets up its own webhook,
+  so no secret is copied by hand. With a grant holding `webhooks.partner` of
+  somebody who administers Armature, it makes one endpoint at
+  `/api/v1/webhooks/partner`, its secret shown once, and changes, tests,
+  rotates and removes it; its topics are named, never everything. Settings,
+  Webhooks marks it with the app's name, and an administrator may switch it
+  off, test it or remove it but leaves its address, topics and secret to the
+  app. It goes with the app. `/meta` lists `webhooks.partner@1` (#281).
+- Changed: a webhook's address is judged by the outbound guard when it is
+  set, not on its first delivery: one inside Armature's network is refused
+  with 422 `outbound_refused`, naming what to add to
+  `ARMATURE_OUTBOUND_ALLOW`, and one that does not resolve with 422 `invalid`.
 - Added: partner tools such as Stator, Exciter and Rotor connect a person in
   one click, with their consent. Armature is an OAuth 2.0 authorization server
   for them: authorization code with PKCE `S256`, rotating refresh tokens,

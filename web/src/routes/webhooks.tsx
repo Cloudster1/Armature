@@ -131,8 +131,13 @@ function WebhooksPage() {
           </thead>
           <tbody>
             {hooks.map((h) => (
-              <tr key={h.id} data-webhook={h.name} data-webhook-enabled={h.enabled ? "true" : "false"}>
-                <Td className="font-medium text-ink">{h.name}</Td>
+              <tr key={h.id} data-webhook={h.name} data-webhook-enabled={h.enabled ? "true" : "false"} data-webhook-partner={h.partner?.name}>
+                <Td className="font-medium text-ink">
+                  <span className="flex items-center gap-2">
+                    {h.name}
+                    {h.partner && <Tag title={`${h.partner.name} manages its address, topics and secret.`}>Managed by {h.partner.name}</Tag>}
+                  </span>
+                </Td>
                 <Td className="max-w-xs truncate font-mono text-xs text-ink-muted">{h.url}</Td>
                 <Td className="text-sm text-ink-muted">{h.topics.includes("*") ? "everything" : h.topics.join(", ")}</Td>
                 <Td>
@@ -147,7 +152,8 @@ function WebhooksPage() {
                       { label: "Deliveries", icon: <Icon.Clock />, onSelect: () => setLogOf(h), attrs: { "data-action": "webhook-deliveries" } },
                       { label: "Send a test", icon: <Icon.Bolt />, onSelect: () => test.mutate(h.id, { onSuccess: (r) => toast[r.delivery.deliveredAt ? "success" : "error"](r.delivery.deliveredAt ? `Delivered, ${r.delivery.status}` : `Not delivered: ${r.delivery.error}`) }), attrs: { "data-action": "webhook-test" } },
                       { label: h.enabled ? "Turn off" : "Turn on", icon: h.enabled ? <Icon.EyeOff /> : <Icon.Eye />, onSelect: () => update.mutate({ id: h.id, name: h.name, url: h.url, topics: h.topics, enabled: !h.enabled }), attrs: { "data-action": "webhook-toggle" } },
-                      { label: "Rotate the secret", icon: <Icon.Key />, onSelect: () => rotate.mutate(h.id, { onSuccess: (r) => setFresh({ name: r.webhook.name, secret: r.webhook.secret ?? "" }) }), attrs: { "data-action": "webhook-rotate" } },
+                      // A connected app's own secret is the app's to rotate.
+                      ...(h.partner ? [] : [{ label: "Rotate the secret", icon: <Icon.Key />, onSelect: () => rotate.mutate(h.id, { onSuccess: (r) => setFresh({ name: r.webhook.name, secret: r.webhook.secret ?? "" }) }), attrs: { "data-action": "webhook-rotate" } }]),
                       {
                         label: "Delete",
                         icon: <Icon.Trash />,

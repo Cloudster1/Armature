@@ -158,6 +158,8 @@ export interface Webhook {
   updatedAt: string;
   /** Only on the answer that made or rotated it. */
   secret?: string;
+  /** The connected app that manages it; null for one an administrator made. */
+  partner?: { clientId: string; name: string } | null;
 }
 
 export interface WebhookInput {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/oauth"
 	"github.com/armature/armature/backend/internal/perm"
+	"github.com/armature/armature/backend/internal/webhook"
 )
 
 // The OAuth endpoints answer OAuth's error shape and take OAuth's parameter
@@ -356,6 +357,87 @@ func (s *Server) handleDeleteOAuthClient(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	lsn, err := s.OAuth.DeleteClient(r.Context(), id, PrincipalFrom(r.Context()).User.ID)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondNoContent(w)
+}
+
+// partnerOf is the connected app a partner webhook route acts for.
+func partnerOf(r *http.Request) webhook.App {
+	app := PrincipalFrom(r.Context()).App
+	return webhook.App{ClientID: app.ClientID, Name: app.Name}
+}
+
+func (s *Server) handleGetPartnerWebhook(w http.ResponseWriter, r *http.Request) {
+	endpoint, err := s.Webhooks.PartnerEndpoint(r.Context(), partnerOf(r).ClientID)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"webhook": endpoint})
+}
+
+func (s *Server) handleCreatePartnerWebhook(w http.ResponseWriter, r *http.Request) {
+	var req webhook.PartnerInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	app := partnerOf(r)
+	made, lsn, err := s.Webhooks.CreatePartner(r.Context(), app, req, userFrom(r))
+	if errors.Is(err, webhook.ErrPartnerExists) {
+		respondError(w, r, &APIError{Status: http.StatusConflict, Code: "partner_webhook_exists",
+			Message: app.Name + " has a webhook here already. Change it with PATCH /webhooks/partner, or remove it first."})
+		return
+	}
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusCreated, map[string]any{"webhook": made})
+}
+
+func (s *Server) handleUpdatePartnerWebhook(w http.ResponseWriter, r *http.Request) {
+	var req webhook.PartnerChanges
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	changed, lsn, err := s.Webhooks.UpdatePartner(r.Context(), partnerOf(r), req, userFrom(r))
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusOK, map[string]any{"webhook": changed})
+}
+
+func (s *Server) handleRotatePartnerWebhookSecret(w http.ResponseWriter, r *http.Request) {
+	rotated, lsn, err := s.Webhooks.RotatePartnerSecret(r.Context(), partnerOf(r), userFrom(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusOK, map[string]any{"webhook": rotated})
+}
+
+func (s *Server) handleTestPartnerWebhook(w http.ResponseWriter, r *http.Request) {
+	delivery, lsn, err := s.Webhooks.TestPartner(r.Context(), partnerOf(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusOK, map[string]any{"delivery": delivery})
+}
+
+func (s *Server) handleDeletePartnerWebhook(w http.ResponseWriter, r *http.Request) {
+	lsn, err := s.Webhooks.DeletePartner(r.Context(), partnerOf(r), userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

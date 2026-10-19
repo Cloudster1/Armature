@@ -4378,6 +4378,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/webhooks/partner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The calling connected app's own endpoint, or null when it has none. */
+        get: operations["getPartnerWebhook"];
+        put?: never;
+        /** Make the calling connected app's endpoint; the secret is shown once. */
+        post: operations["createPartnerWebhook"];
+        /** Remove the calling connected app's endpoint and its log, also when there was none. */
+        delete: operations["deletePartnerWebhook"];
+        options?: never;
+        head?: never;
+        /** Change the calling connected app's endpoint; what is left out keeps its value. */
+        patch: operations["updatePartnerWebhook"];
+        trace?: never;
+    };
+    "/webhooks/partner/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue the calling connected app's endpoint a new secret; the old one stops at once. */
+        post: operations["rotatePartnerWebhookSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/partner/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post a ping to the calling connected app's endpoint now. */
+        post: operations["testPartnerWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/webhooks/{endpointID}": {
         parameters: {
             query?: never;
@@ -5155,6 +5209,7 @@ export interface components {
             status: string;
             /** Format: date-time */
             updatedAt: string;
+            webhook: components["schemas"]["ClientWebhook"] | null;
         };
         ClientChanges: {
             clientUri?: string;
@@ -5170,6 +5225,13 @@ export interface components {
             name: string;
             redirectUris: string[];
             scopes: string[];
+        };
+        ClientWebhook: {
+            enabled: boolean;
+            /** Format: uuid */
+            id: string;
+            topics: string[];
+            url: string;
         };
         CloneOptions: {
             links: boolean;
@@ -5623,6 +5685,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            partner: components["schemas"]["Partner"] | null;
             secret?: string;
             topics: string[];
             /** Format: date-time */
@@ -6333,6 +6396,22 @@ export interface components {
         };
         ParentRequest: {
             parentKey: string | null;
+        };
+        Partner: {
+            /** Format: uuid */
+            clientId: string;
+            name: string;
+        };
+        PartnerChanges: {
+            enabled?: boolean;
+            topics?: string[];
+            url?: string;
+            version?: number;
+        };
+        PartnerInput: {
+            topics: string[];
+            url: string;
+            version?: number;
         };
         PasswordResetRequest: {
             email: string;
@@ -19999,6 +20078,196 @@ export interface operations {
                 content: {
                     "application/json": {
                         webhook: components["schemas"]["Endpoint"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getPartnerWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhook: components["schemas"]["Endpoint"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createPartnerWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartnerInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhook: components["schemas"]["Endpoint"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deletePartnerWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updatePartnerWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartnerChanges"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhook: components["schemas"]["Endpoint"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rotatePartnerWebhookSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhook: components["schemas"]["Endpoint"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    testPartnerWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        delivery: components["schemas"]["Delivery"];
                     };
                 };
             };
