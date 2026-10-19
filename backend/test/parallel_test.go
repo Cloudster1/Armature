@@ -110,6 +110,8 @@ var sequentialTests = map[string]string{
 	"TestTheClientSecretIsKeptOutOfSight":                           "sets the installation's one identity provider",
 	"TestAProviderAccountMadeGlobalAdministratorCanAuthorWorkflows": "sets the installation's one identity provider",
 	"TestAStrangerAtTheProviderCanBeLetInFromTheUsersPage":          "sets the installation's one identity provider",
+	"TestAGroupWithARoleLetsSomebodyInAtSignIn":                     "sets the installation's one identity provider",
+	"TestAGroupWithARoleLetsAPartnerConnectSomebodyNew":             "sets the installation's one identity provider",
 	"TestHolidaysAndAbsencesReachTheCalendarAndThePlan":             "sets the default holiday calendar's days, which every plan counts with",
 	"TestTheCalendarMonthCarriesTheDaysOffOfTheSixWeeksItDraws":     "sets the default holiday calendar's days, which every plan counts with",
 	"TestAProjectsFallbackOutranksATenantMappingForTheType":         "changes the default workflow scheme every project inherits",

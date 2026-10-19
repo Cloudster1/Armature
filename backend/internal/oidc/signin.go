@@ -13,6 +13,8 @@ import (
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/installation"
 )
 
 // SignIn turns a verified identity into a session.
@@ -68,19 +70,30 @@ func (s *Service) signIn(ctx context.Context, identity *Identity, ttl time.Durat
 			return auth.ErrUserInactive
 		}
 
+		provider, err := providerIn(ctx, tx)
+		if err != nil {
+			return err
+		}
+
 		var role string
 		err = tx.QueryRow(ctx, `
 			SELECT standing FROM app_user WHERE id = $1 AND standing IS NOT NULL`,
 			userID).Scan(&role)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotAMember
-		}
-		if err != nil {
-			return err
-		}
-
-		provider, err := providerIn(ctx, tx)
-		if err != nil {
+			admitted := false
+			if provider.AdmitByGroup {
+				names, err := mappedGroups(ctx, tx, identity.Groups)
+				if err != nil {
+					return err
+				}
+				if admitted, err = admit(ctx, tx, userID, names, "sign_in"); err != nil {
+					return err
+				}
+			}
+			if !admitted {
+				return ErrNotAMember
+			}
+		} else if err != nil {
 			return err
 		}
 		if err := syncGroups(ctx, tx, userID, identity.Groups, provider.CreateGroups); err != nil {
@@ -110,6 +123,93 @@ func (s *Service) signIn(ctx context.Context, identity *Identity, ttl time.Durat
 		return nil, err
 	}
 	return &out, nil
+}
+
+// AdmitByGroup lets somebody without standing in when the installation admits
+// by group and one of their groups holds a role, and syncs their groups. It
+// leaves anybody else alone and says whether it let them in.
+func AdmitByGroup(ctx context.Context, tx db.DBTX, identity *Identity, via string) (uuid.UUID, bool, error) {
+	provider, err := providerIn(ctx, tx)
+	if errors.Is(err, ErrNotConfigured) {
+		return uuid.Nil, false, nil
+	}
+	if err != nil || !provider.AdmitByGroup {
+		return uuid.Nil, false, err
+	}
+	// Mapped groups are looked for first, so a stranger in none of them is
+	// not given an account by a partner's exchange.
+	names, err := mappedGroups(ctx, tx, identity.Groups)
+	if err != nil || len(names) == 0 {
+		return uuid.Nil, false, err
+	}
+	userID, err := upsertUser(ctx, tx, identity)
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+	var (
+		active   bool
+		standing *string
+	)
+	if err := tx.QueryRow(ctx, `SELECT is_active, standing FROM app_user WHERE id = $1`, userID).Scan(&active, &standing); err != nil {
+		return uuid.Nil, false, err
+	}
+	if !active || standing != nil {
+		return userID, false, nil
+	}
+	admitted, err := admit(ctx, tx, userID, names, via)
+	if err != nil || !admitted {
+		return userID, false, err
+	}
+	return userID, true, syncGroups(ctx, tx, userID, identity.Groups, provider.CreateGroups)
+}
+
+// admit makes a member of somebody without standing when names, their mapped
+// groups, are some. The standing is member: what they may do is the groups'
+// roles, which go when the provider takes them out of the group.
+func admit(ctx context.Context, tx db.DBTX, userID uuid.UUID, names []string, via string) (bool, error) {
+	if len(names) == 0 {
+		return false, nil
+	}
+	tag, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'member' WHERE id = $1 AND standing IS NULL`, userID)
+	if err != nil {
+		return false, fmt.Errorf("admit by group: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return false, nil
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM join_request WHERE user_id = $1`, userID); err != nil {
+		return false, err
+	}
+	if err := audit.Write(ctx, tx, audit.Entry{Action: "member.admitted", TargetType: "user", TargetID: &userID, Actor: userID,
+		Data: map[string]any{"group": names[0], "role": "member", "via": via}}); err != nil {
+		return false, err
+	}
+	id, err := installation.ID(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return true, events.Emit(ctx, tx, events.TopicMemberJoined, map[string]any{"orgId": id, "userId": userID, "role": "member"})
+}
+
+// mappedGroups are the provider's groups among those claimed that hold a role
+// somewhere, by name.
+func mappedGroups(ctx context.Context, tx db.DBTX, claimed []string) ([]string, error) {
+	if len(claimed) == 0 {
+		return nil, nil
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT g.name FROM user_group g
+		WHERE g.source = 'oidc' AND g.external_ref = ANY($1)
+		  AND EXISTS (SELECT 1 FROM role_assignment a WHERE a.group_id = g.id)
+		ORDER BY g.name`, claimed)
+	if err != nil {
+		return nil, fmt.Errorf("find the groups that hold a role: %w", err)
+	}
+	names, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("find the groups that hold a role: %w", err)
+	}
+	return names, nil
 }
 
 // Session is what a completed sign-in hands back to the HTTP layer.
@@ -188,7 +288,7 @@ func syncGroups(ctx context.Context, tx db.DBTX, userID uuid.UUID, claimed []str
 func providerIn(ctx context.Context, tx db.DBTX) (*Provider, error) {
 	var p Provider
 	err := tx.QueryRow(ctx, `
-		SELECT groups_claim, create_groups, enabled FROM oidc_provider`).Scan(&p.GroupsClaim, &p.CreateGroups, &p.Enabled)
+		SELECT groups_claim, create_groups, admit_by_group, enabled FROM oidc_provider`).Scan(&p.GroupsClaim, &p.CreateGroups, &p.AdmitByGroup, &p.Enabled)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotConfigured
 	}

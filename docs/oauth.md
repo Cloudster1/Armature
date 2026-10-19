@@ -298,6 +298,16 @@ subject_token=<the Keycloak access token>&subject_token_type=urn:ietf:params:oau
   finds them. Somebody with no account here, a customer or somebody switched
   off is `invalid_grant`: "Ada Lovelace has no Armature account yet. Sign in to
   Armature once, or ask an administrator to let them in."
+- Where an administrator lets people in by their groups (`admitByGroup` on
+  `PUT /api/v1/oidc-provider`, off by default), somebody with no standing whose
+  token's groups claim names a provider group holding a role is let in here as
+  a member first: the account is made or found by the verified address, they
+  join the provider's groups, and the audit log records `member.admitted` with
+  the group and `via: token_exchange`. So the person is connected at their
+  first sign-in to the partner, without opening Armature. The partner's access
+  token must then carry the groups claim Armature reads (`groups` unless
+  configured otherwise): give its Keycloak client a group membership mapper.
+  Anybody else is still `invalid_grant`, and no account is made for them.
 - The answer is a full grant, refresh token included. The administrator who
   named the Keycloak client consented for everybody, so no page is shown, and
   `webhooks.partner` is never given this way. A grant that holds it from an

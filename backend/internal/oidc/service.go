@@ -51,10 +51,10 @@ func (s *Service) ProviderFor(ctx context.Context) (*Provider, error) {
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
 			SELECT issuer, client_id, client_secret, groups_claim, scopes,
-			       create_groups, enabled, updated_at
+			       create_groups, admit_by_group, enabled, updated_at
 			FROM oidc_provider`,
 		).Scan(&p.Issuer, &p.ClientID, &p.ClientSecret, &p.GroupsClaim,
-			&p.Scopes, &p.CreateGroups, &p.Enabled, &p.UpdatedAt)
+			&p.Scopes, &p.CreateGroups, &p.AdmitByGroup, &p.Enabled, &p.UpdatedAt)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotConfigured
@@ -86,8 +86,8 @@ func (s *Service) Save(ctx context.Context, in Provider, actor uuid.UUID) (*Prov
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO oidc_provider
-			    (issuer, client_id, client_secret, groups_claim, scopes, create_groups, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			    (issuer, client_id, client_secret, groups_claim, scopes, create_groups, enabled, admit_by_group)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			ON CONFLICT (one_row) DO UPDATE SET
 			    issuer = EXCLUDED.issuer,
 			    client_id = EXCLUDED.client_id,
@@ -97,9 +97,10 @@ func (s *Service) Save(ctx context.Context, in Provider, actor uuid.UUID) (*Prov
 			    groups_claim = EXCLUDED.groups_claim,
 			    scopes = EXCLUDED.scopes,
 			    create_groups = EXCLUDED.create_groups,
-			    enabled = EXCLUDED.enabled`,
+			    enabled = EXCLUDED.enabled,
+			    admit_by_group = EXCLUDED.admit_by_group`,
 			in.Issuer, in.ClientID, in.ClientSecret, in.GroupsClaim,
-			in.Scopes, in.CreateGroups, in.Enabled)
+			in.Scopes, in.CreateGroups, in.Enabled, in.AdmitByGroup)
 		if err != nil {
 			return err
 		}
@@ -107,7 +108,7 @@ func (s *Service) Save(ctx context.Context, in Provider, actor uuid.UUID) (*Prov
 		if err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, audit.Entry{Action: "oidc.saved", TargetType: "org", TargetID: &id, Actor: actor, Data: map[string]any{"issuer": in.Issuer, "enabled": in.Enabled}})
+		return audit.Write(ctx, tx, audit.Entry{Action: "oidc.saved", TargetType: "org", TargetID: &id, Actor: actor, Data: map[string]any{"issuer": in.Issuer, "enabled": in.Enabled, "admitByGroup": in.AdmitByGroup}})
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("save the identity provider: %w", err)
