@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a connected app keeps the scopes a person gave it when the same
+  person signs in to it again through Keycloak or allows it with fewer scopes.
+  A new consent or exchange adds to the grant's scopes instead of replacing
+  them, so the app's `webhooks.partner` survives; a narrower `scope` on
+  refresh still narrows the grant (#298).
 - Added: a connected app an administrator allowed sets up its own webhook,
   so no secret is copied by hand. With a grant holding `webhooks.partner` of
   somebody who administers Armature, it makes one endpoint at
