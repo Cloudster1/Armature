@@ -58,6 +58,8 @@ export interface ConnectedApp {
   /** active, or pending until an administrator allows it. */
   status: string;
   keycloakClientId: string;
+  /** The webhook the app set up for itself, if it has. */
+  webhook?: { id: string; url: string; topics: string[]; enabled: boolean } | null;
   grants: number;
   createdAt: string;
   updatedAt: string;

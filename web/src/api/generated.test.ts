@@ -10,6 +10,7 @@ import type { Theme, ThemeExample } from "./themes";
 import type { Build, Meta } from "./meta";
 import type { ActiveSession, ApiToken } from "./auth";
 import type { ConnectedApp, ConsentAnswer } from "./oauth";
+import type { Webhook } from "./automation";
 import type { Absence, Holiday, HolidayCalendar, WorkingWeek } from "./availability";
 import type { Company, Desk } from "./desk";
 
@@ -64,6 +65,7 @@ describe("the hand written types agree with the document", () => {
     expectTypeOf<Schemas["APIToken"]>().toMatchTypeOf<ApiToken>();
     expectTypeOf<Schemas["Client"]>().toMatchTypeOf<ConnectedApp>();
     expectTypeOf<Schemas["ConsentAnswer"]>().toMatchTypeOf<ConsentAnswer>();
+    expectTypeOf<Schemas["Endpoint"]>().toMatchTypeOf<Webhook>();
   });
 });
 

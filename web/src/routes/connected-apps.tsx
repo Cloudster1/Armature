@@ -124,6 +124,12 @@ function ConnectedAppsPage() {
                     {app.status === "pending" && <Tag>Waiting to be allowed</Tag>}
                   </span>
                   <span className="block truncate text-xs text-ink-muted">{app.clientUri || app.redirectUris[0]}</span>
+                  {app.webhook && (
+                    <span className="block truncate text-xs text-ink-muted" data-connected-app-webhook>
+                      Its webhook: {app.webhook.url}, {app.webhook.topics.join(", ")}
+                      {app.webhook.enabled ? "" : " (off)"}
+                    </span>
+                  )}
                 </Td>
                 <Td className="text-sm text-ink-muted">{app.scopes.join(", ")}</Td>
                 <Td className="text-sm text-ink-muted">{app.grants === 1 ? "1 person" : `${app.grants} people`}</Td>
