@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -28,18 +29,27 @@ type Input struct {
 	Version *int `json:"version,omitempty"`
 }
 
-// endpointColumns is what scanEndpoint reads, for every select and returning.
-const endpointColumns = `id, name, url, topics, enabled, version, created_at, updated_at`
+// endpointColumns is what scanEndpoint reads, for every select and returning;
+// the client's name is read beside its id, so a rename shows at once.
+const endpointColumns = `id, name, url, topics, enabled, version, created_at, updated_at,
+	client_id, (SELECT c.name FROM oauth_client c WHERE c.id = client_id)`
 
 const selectEndpoints = `SELECT ` + endpointColumns + ` FROM webhook_endpoint`
 
 func scanEndpoint(row pgx.Row) (*Endpoint, error) {
-	var e Endpoint
-	if err := row.Scan(&e.ID, &e.Name, &e.URL, &e.Topics, &e.Enabled, &e.Version, &e.CreatedAt, &e.UpdatedAt); err != nil {
+	var (
+		e          Endpoint
+		clientID   *uuid.UUID
+		clientName *string
+	)
+	if err := row.Scan(&e.ID, &e.Name, &e.URL, &e.Topics, &e.Enabled, &e.Version, &e.CreatedAt, &e.UpdatedAt, &clientID, &clientName); err != nil {
 		return nil, err
 	}
 	if e.Topics == nil {
 		e.Topics = []string{}
+	}
+	if clientID != nil && clientName != nil {
+		e.Partner = &Partner{ClientID: *clientID, Name: *clientName}
 	}
 	return &e, nil
 }
@@ -99,16 +109,22 @@ func auditedAddress(raw string) string {
 	return u.Scheme + "://" + u.Host
 }
 
-// record writes what an administrator did to an endpoint, never its secret.
+// record writes what an administrator did to an endpoint, never its secret,
+// and which connected app owns it.
 func record(ctx context.Context, tx db.DBTX, action string, e *Endpoint, actor uuid.UUID) error {
-	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "webhook", TargetID: &e.ID, Actor: actor, Data: map[string]any{
-		"name": e.Name, "address": auditedAddress(e.URL), "topics": e.Topics, "enabled": e.Enabled,
-	}})
+	data := map[string]any{"name": e.Name, "address": auditedAddress(e.URL), "topics": e.Topics, "enabled": e.Enabled}
+	if e.Partner != nil {
+		data["clientId"] = e.Partner.ClientID
+	}
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "webhook", TargetID: &e.ID, Actor: actor, Data: data})
 }
 
 // Create makes an endpoint and returns it with the secret, this once.
 func (s *Service) Create(ctx context.Context, in Input, actor uuid.UUID) (*Endpoint, db.LSN, error) {
 	if err := validate(in); err != nil {
+		return nil, 0, err
+	}
+	if err := s.reachable(ctx, in.URL); err != nil {
 		return nil, 0, err
 	}
 	secret, _, err := auth.GenerateToken()
@@ -145,13 +161,29 @@ func (s *Service) Create(ctx context.Context, in Input, actor uuid.UUID) (*Endpo
 	return out, lsn, nil
 }
 
-// Update changes name, address, topics or whether it is on.
+// Update changes name, address, topics or whether it is on. A partner's own
+// endpoint may only be turned off and on here; the partner changes the rest.
 func (s *Service) Update(ctx context.Context, id uuid.UUID, in Input, actor uuid.UUID) (*Endpoint, db.LSN, error) {
 	if err := validate(in); err != nil {
 		return nil, 0, err
 	}
 	if in.Topics == nil {
 		in.Topics = []string{}
+	}
+	current, err := s.endpoint(ctx, id)
+	if err != nil {
+		return nil, 0, err
+	}
+	if current.Partner != nil {
+		if in.URL != current.URL || !sameTopics(in.Topics, current.Topics) || (in.Version != nil && *in.Version != current.Version) {
+			return nil, 0, &PartnerOwnedError{Name: current.Partner.Name}
+		}
+		in.Name = current.Name
+	}
+	if in.URL != current.URL {
+		if err := s.reachable(ctx, in.URL); err != nil {
+			return nil, 0, err
+		}
 	}
 	var out *Endpoint
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -174,9 +206,43 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in Input, actor uuid
 	return out, lsn, err
 }
 
+// endpoint reads one endpoint from the primary, which a change is about to
+// be judged against.
+func (s *Service) endpoint(ctx context.Context, id uuid.UUID) (*Endpoint, error) {
+	var out *Endpoint
+	err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
+		e, err := scanEndpoint(tx.QueryRow(ctx, selectEndpoints+` WHERE id = $1`, id))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		out = e
+		return err
+	})
+	return out, err
+}
+
+func sameTopics(a, b []string) bool {
+	a, b = slices.Clone(a), slices.Clone(b)
+	slices.Sort(a)
+	slices.Sort(b)
+	return slices.Equal(slices.Compact(a), slices.Compact(b))
+}
+
 // RotateSecret issues a new secret; the old one stops working at once. The log
 // records that it rotated and nothing of either secret.
 func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID, actor uuid.UUID) (*Endpoint, db.LSN, error) {
+	current, err := s.endpoint(ctx, id)
+	if err != nil {
+		return nil, 0, err
+	}
+	if current.Partner != nil {
+		return nil, 0, &PartnerOwnedError{Name: current.Partner.Name}
+	}
+	return s.rotate(ctx, id, actor)
+}
+
+// rotate gives an endpoint a new secret, whoever owns it.
+func (s *Service) rotate(ctx context.Context, id uuid.UUID, actor uuid.UUID) (*Endpoint, db.LSN, error) {
 	secret, _, err := auth.GenerateToken()
 	if err != nil {
 		return nil, 0, err

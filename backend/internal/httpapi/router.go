@@ -260,6 +260,17 @@ func (s *Server) automationRoutes(r chi.Router) {
 	r.Get("/automation/catalog", s.handleAutomationCatalog)
 	r.With(requireProjectPerm(perm.ProjectAdminister)).Get("/projects/{projectKey}/automation/rules", s.handleListProjectRules)
 	r.With(requireProjectPerm(perm.ProjectAdminister), s.requireFeature(project.FeatureAutomation)).Post("/projects/{projectKey}/automation/rules", s.handleCreateProjectRule)
+	// A connected app's own endpoint, which it manages while the person it
+	// acts for administers Armature.
+	r.Group(func(r chi.Router) {
+		r.Use(requirePartner)
+		r.Get("/webhooks/partner", s.handleGetPartnerWebhook)
+		r.Post("/webhooks/partner", s.handleCreatePartnerWebhook)
+		r.Patch("/webhooks/partner", s.handleUpdatePartnerWebhook)
+		r.Delete("/webhooks/partner", s.handleDeletePartnerWebhook)
+		r.Post("/webhooks/partner/rotate-secret", s.handleRotatePartnerWebhookSecret)
+		r.Post("/webhooks/partner/test", s.handleTestPartnerWebhook)
+	})
 	r.Group(func(r chi.Router) {
 		r.Use(requirePerm(perm.OrgAdminister))
 		r.Get("/automation/rules", s.handleListOrgRules)

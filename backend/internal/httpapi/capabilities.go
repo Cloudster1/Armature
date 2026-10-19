@@ -74,6 +74,18 @@ var integrationCapabilities = []capability{
 		},
 	},
 	{
+		name:    "webhooks.partner@1",
+		promise: "A connected app an administrator allowed makes, changes, tests, rotates and removes its own webhook endpoint.",
+		operations: []string{
+			"GET /webhooks/partner",
+			"POST /webhooks/partner",
+			"PATCH /webhooks/partner",
+			"DELETE /webhooks/partner",
+			"POST /webhooks/partner/rotate-secret",
+			"POST /webhooks/partner/test",
+		},
+	},
+	{
 		name:    "theme-export@1",
 		promise: "A theme exported as one file with its pictures and fonts, and such a file imported as a theme of the caller's own.",
 		operations: []string{

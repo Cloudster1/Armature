@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -90,6 +91,51 @@ func Reserved(addr netip.Addr) bool {
 		}
 	}
 	return false
+}
+
+// RefusedError is an address the guard would not dial. Host is the value an
+// operator adds to ARMATURE_OUTBOUND_ALLOW to let it through.
+type RefusedError struct{ Host string }
+
+func (e *RefusedError) Error() string { return ErrBlocked.Error() + ": " + e.Host }
+
+func (e *RefusedError) Unwrap() error { return ErrBlocked }
+
+// UnresolvedError is a host name that resolves to nothing from here.
+type UnresolvedError struct{ Host string }
+
+func (e *UnresolvedError) Error() string { return e.Host + " does not resolve" }
+
+// Check resolves an address's host and judges it as the dialer would, before
+// anything is sent: refused only when no address it resolves to may be dialed.
+func Check(ctx context.Context, rawURL string, allow Allow) error {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Hostname() == "" {
+		return fmt.Errorf("%q is not an address", rawURL)
+	}
+	host := strings.ToLower(u.Hostname())
+	if allow.hosts[host] {
+		return nil
+	}
+	if addr, err := netip.ParseAddr(host); err == nil {
+		if Reserved(addr) && !allow.permits(addr.Unmap()) {
+			return &RefusedError{Host: host}
+		}
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, dialTimeout)
+	defer cancel()
+	found, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+	if err != nil || len(found) == 0 {
+		return &UnresolvedError{Host: host}
+	}
+	for _, addr := range found {
+		addr = addr.Unmap()
+		if !Reserved(addr) || allow.permits(addr) {
+			return nil
+		}
+	}
+	return &RefusedError{Host: host}
 }
 
 // Client reaches the internet and nothing else, unless the operator said

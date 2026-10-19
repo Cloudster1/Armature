@@ -32,7 +32,8 @@ type Client struct {
 	Status       string `json:"status"`
 	// KeycloakClientID is the identity provider's client whose tokens may be
 	// exchanged for this client's; empty means no exchange.
-	KeycloakClientID string `json:"keycloakClientId"`
+	KeycloakClientID string         `json:"keycloakClientId"`
+	Webhook          *ClientWebhook `json:"webhook"`
 	// Grants is how many people have connected it.
 	Grants    int       `json:"grants"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -41,6 +42,14 @@ type Client struct {
 	Secret string `json:"secret,omitempty"`
 
 	authMethod string
+}
+
+// ClientWebhook is a client's partner endpoint, for the settings page.
+type ClientWebhook struct {
+	ID      uuid.UUID `json:"id"`
+	URL     string    `json:"url"`
+	Topics  []string  `json:"topics"`
+	Enabled bool      `json:"enabled"`
 }
 
 // Client statuses.
@@ -72,15 +81,25 @@ type ClientChanges struct {
 
 const clientColumns = `c.id, c.name, c.client_uri, c.redirect_uris, c.scopes, c.secret_hash IS NOT NULL, c.status,
 	c.keycloak_client_id, c.auth_method, c.created_at, c.updated_at,
-	(SELECT count(*) FROM api_token t WHERE t.client_id = c.id)`
+	(SELECT count(*) FROM api_token t WHERE t.client_id = c.id),
+	w.id, COALESCE(w.url, ''), COALESCE(w.topics, '{}'), COALESCE(w.enabled, false)`
 
-const selectClients = `SELECT ` + clientColumns + ` FROM oauth_client c`
+const selectClients = `SELECT ` + clientColumns + ` FROM oauth_client c LEFT JOIN webhook_endpoint w ON w.client_id = c.id`
 
 func scanClient(row pgx.Row) (*Client, error) {
-	var c Client
+	var (
+		c       Client
+		hookID  *uuid.UUID
+		webhook ClientWebhook
+	)
 	if err := row.Scan(&c.ID, &c.Name, &c.ClientURI, &c.RedirectURIs, &c.Scopes, &c.Confidential, &c.Status,
-		&c.KeycloakClientID, &c.authMethod, &c.CreatedAt, &c.UpdatedAt, &c.Grants); err != nil {
+		&c.KeycloakClientID, &c.authMethod, &c.CreatedAt, &c.UpdatedAt, &c.Grants,
+		&hookID, &webhook.URL, &webhook.Topics, &webhook.Enabled); err != nil {
 		return nil, err
+	}
+	if hookID != nil {
+		webhook.ID = *hookID
+		c.Webhook = &webhook
 	}
 	return &c, nil
 }
@@ -304,6 +323,9 @@ func (s *Service) UpdateClient(ctx context.Context, id uuid.UUID, in ClientChang
 		if _, err := tx.Exec(ctx, `
 			UPDATE oauth_client SET name = $2, client_uri = $3, redirect_uris = $4, scopes = $5, keycloak_client_id = $6
 			WHERE id = $1`, id, c.Name, c.ClientURI, c.RedirectURIs, c.Scopes, c.KeycloakClientID); err != nil {
+			if isUniqueViolation(err) {
+				return errNameClash(c.Name)
+			}
 			return err
 		}
 		if err := narrowGrants(ctx, tx, id, c.Scopes); err != nil {
@@ -408,6 +430,19 @@ func record(ctx context.Context, tx db.DBTX, action string, c *Client, actor uui
 		"name": c.Name, "clientUri": c.ClientURI, "redirectUris": c.RedirectURIs, "scopes": c.Scopes, "status": c.Status,
 	}})
 }
+
+func isUniqueViolation(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "23505")
+}
+
+// NameClashError is a client renamed onto a webhook already called so.
+type NameClashError struct{ Name string }
+
+func (e *NameClashError) Error() string {
+	return fmt.Sprintf("a webhook called %s%s is already here", e.Name, auth.ConnectedAppSuffix)
+}
+
+func errNameClash(name string) error { return &NameClashError{Name: name} }
 
 // RegistrationRequest is RFC 7591's client metadata, in its names.
 type RegistrationRequest struct {

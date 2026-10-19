@@ -1,6 +1,7 @@
 package netguard
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -64,5 +65,31 @@ func TestAnAllowListReadsHostsAndRanges(t *testing.T) {
 	}
 	if allow.hosts["nonsense/99"] {
 		t.Error("an unreadable entry was kept as a host name")
+	}
+}
+
+// An address is judged when it is set, so a refusal can name the value that
+// lets it through rather than surfacing on the first delivery.
+func TestAnAddressIsCheckedBeforeAnythingIsSent(t *testing.T) {
+	ctx := t.Context()
+	var refused *RefusedError
+	if err := Check(ctx, "http://127.0.0.1:8080/in", ParseAllow("")); !errors.As(err, &refused) || refused.Host != "127.0.0.1" {
+		t.Errorf("a loopback address: %v, want it refused naming 127.0.0.1", err)
+	}
+	if err := Check(ctx, "http://LOCALHOST:8080/in", ParseAllow("")); !errors.As(err, &refused) || refused.Host != "localhost" {
+		t.Errorf("a name for this machine: %v, want it refused naming localhost", err)
+	}
+	if err := Check(ctx, "http://localhost:8080/in", ParseAllow("localhost")); err != nil {
+		t.Errorf("a name the operator allowed was refused: %v", err)
+	}
+	if err := Check(ctx, "http://[::1]/in", ParseAllow("::1")); err != nil {
+		t.Errorf("an address the operator allowed was refused: %v", err)
+	}
+	if err := Check(ctx, "https://93.184.216.34/in", ParseAllow("")); err != nil {
+		t.Errorf("an address on the internet was refused: %v", err)
+	}
+	var unresolved *UnresolvedError
+	if err := Check(ctx, "https://nowhere.invalid/in", ParseAllow("")); !errors.As(err, &unresolved) || unresolved.Host != "nowhere.invalid" {
+		t.Errorf("a name that resolves to nothing: %v", err)
 	}
 }

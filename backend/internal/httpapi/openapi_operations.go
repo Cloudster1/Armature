@@ -206,6 +206,12 @@ var operations = []operation{
 	{method: "GET", path: "/webhooks/{endpointID}/deliveries", handler: "handleWebhookDeliveries", tag: "webhooks", summary: "An endpoint's log, newest first.",
 		query: []param{{name: "limit", schema: intParam, description: "1 to 200."}}, responses: ok(env{"deliveries": []webhook.Delivery{}})},
 	{method: "POST", path: "/webhooks/{endpointID}/deliveries/{deliveryID}/redeliver", handler: "handleRedeliverWebhook", tag: "webhooks", summary: "Try a logged delivery again, now.", responses: ok(env{"delivery": webhook.Delivery{}})},
+	{method: "GET", path: "/webhooks/partner", handler: "handleGetPartnerWebhook", tag: "webhooks", summary: "The calling connected app's own endpoint, or null when it has none.", responses: ok(env{"webhook": (*webhook.Endpoint)(nil)})},
+	{method: "POST", path: "/webhooks/partner", handler: "handleCreatePartnerWebhook", tag: "webhooks", summary: "Make the calling connected app's endpoint; the secret is shown once.", request: webhook.PartnerInput{}, responses: created(env{"webhook": webhook.Endpoint{}})},
+	{method: "PATCH", path: "/webhooks/partner", handler: "handleUpdatePartnerWebhook", tag: "webhooks", summary: "Change the calling connected app's endpoint; what is left out keeps its value.", request: webhook.PartnerChanges{}, responses: ok(env{"webhook": webhook.Endpoint{}})},
+	{method: "DELETE", path: "/webhooks/partner", handler: "handleDeletePartnerWebhook", tag: "webhooks", summary: "Remove the calling connected app's endpoint and its log, also when there was none.", responses: none()},
+	{method: "POST", path: "/webhooks/partner/rotate-secret", handler: "handleRotatePartnerWebhookSecret", tag: "webhooks", summary: "Issue the calling connected app's endpoint a new secret; the old one stops at once.", responses: ok(env{"webhook": webhook.Endpoint{}})},
+	{method: "POST", path: "/webhooks/partner/test", handler: "handleTestPartnerWebhook", tag: "webhooks", summary: "Post a ping to the calling connected app's endpoint now.", responses: ok(env{"delivery": webhook.Delivery{}})},
 	// The inbox: the caller's own, always.
 	{method: "GET", path: "/notifications", handler: "handleInbox", tool: "list_notifications", toolHelp: "What the caller was told about their work, newest first.", tag: "notifications", summary: "What the caller was told, newest first.",
 		query:     []param{{name: "unread", schema: boolParam, description: "Only what is not read yet."}, {name: "limit", schema: intParam, description: "1 to 200."}},

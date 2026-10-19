@@ -63,8 +63,17 @@ type Endpoint struct {
 	Version   int       `json:"version"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	// Partner is the connected app that owns the endpoint, null for one an
+	// administrator made.
+	Partner *Partner `json:"partner"`
 	// Secret is set only on the answer that made or rotated it.
 	Secret string `json:"secret,omitempty"`
+}
+
+// Partner is the connected app an endpoint belongs to.
+type Partner struct {
+	ClientID uuid.UUID `json:"clientId"`
+	Name     string    `json:"name"`
 }
 
 // Delivery is one attempt at one event.
@@ -138,13 +147,28 @@ type Service struct {
 	now    func() time.Time
 	// concurrency is how many deliveries one pass posts at once.
 	concurrency int
+	// allow is what the guard lets through, judged again when an address is set.
+	allow netguard.Allow
 }
 
 func NewService(cluster *db.Cluster, log *slog.Logger) *Service {
+	allow := netguard.FromEnv()
 	return &Service{
-		db: cluster, client: netguard.Client(sendTimeout, netguard.FromEnv()), log: log, now: time.Now,
-		concurrency: config.DefaultWebhookConcurrency,
+		db: cluster, client: netguard.Client(sendTimeout, allow), log: log, now: time.Now,
+		concurrency: config.DefaultWebhookConcurrency, allow: allow,
 	}
+}
+
+// WithAllow sets what an address set on an endpoint is judged against, which
+// a test does to see the guard refuse what its own environment lets through.
+func (s *Service) WithAllow(allow netguard.Allow) *Service {
+	s.allow = allow
+	return s
+}
+
+// reachable refuses an address the guard would not dial, before it is stored.
+func (s *Service) reachable(ctx context.Context, address string) error {
+	return netguard.Check(ctx, address, s.allow)
 }
 
 // WithClient swaps the HTTP client, which a test does to point at itself.

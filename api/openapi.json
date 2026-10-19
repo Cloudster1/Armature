@@ -18396,6 +18396,246 @@
         }
       }
     },
+    "/webhooks/partner": {
+      "delete": {
+        "operationId": "deletePartnerWebhook",
+        "summary": "Remove the calling connected app's endpoint and its log, also when there was none.",
+        "tags": [
+          "webhooks"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getPartnerWebhook",
+        "summary": "The calling connected app's own endpoint, or null when it has none.",
+        "tags": [
+          "webhooks"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhook": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Endpoint"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "webhook"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updatePartnerWebhook",
+        "summary": "Change the calling connected app's endpoint; what is left out keeps its value.",
+        "tags": [
+          "webhooks"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerChanges"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhook": {
+                      "$ref": "#/components/schemas/Endpoint"
+                    }
+                  },
+                  "required": [
+                    "webhook"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPartnerWebhook",
+        "summary": "Make the calling connected app's endpoint; the secret is shown once.",
+        "tags": [
+          "webhooks"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhook": {
+                      "$ref": "#/components/schemas/Endpoint"
+                    }
+                  },
+                  "required": [
+                    "webhook"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/partner/rotate-secret": {
+      "post": {
+        "operationId": "rotatePartnerWebhookSecret",
+        "summary": "Issue the calling connected app's endpoint a new secret; the old one stops at once.",
+        "tags": [
+          "webhooks"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhook": {
+                      "$ref": "#/components/schemas/Endpoint"
+                    }
+                  },
+                  "required": [
+                    "webhook"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/partner/test": {
+      "post": {
+        "operationId": "testPartnerWebhook",
+        "summary": "Post a ping to the calling connected app's endpoint now.",
+        "tags": [
+          "webhooks"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "delivery": {
+                      "$ref": "#/components/schemas/Delivery"
+                    }
+                  },
+                  "required": [
+                    "delivery"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/webhooks/{endpointID}": {
       "delete": {
         "operationId": "deleteWebhook",
@@ -21391,6 +21631,16 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "webhook": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ClientWebhook"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -21402,6 +21652,7 @@
           "confidential",
           "status",
           "keycloakClientId",
+          "webhook",
           "grants",
           "createdAt",
           "updatedAt"
@@ -21465,6 +21716,33 @@
           "name",
           "redirectUris",
           "scopes"
+        ]
+      },
+      "ClientWebhook": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "topics",
+          "enabled"
         ]
       },
       "CloneOptions": {
@@ -23039,6 +23317,16 @@
           "name": {
             "type": "string"
           },
+          "partner": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Partner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "secret": {
             "type": "string"
           },
@@ -23067,7 +23355,8 @@
           "enabled",
           "version",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "partner"
         ]
       },
       "Enrolment": {
@@ -25525,6 +25814,63 @@
         },
         "required": [
           "parentKey"
+        ]
+      },
+      "Partner": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "name"
+        ]
+      },
+      "PartnerChanges": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        }
+      },
+      "PartnerInput": {
+        "type": "object",
+        "properties": {
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "url",
+          "topics"
         ]
       },
       "PasswordResetRequest": {
