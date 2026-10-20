@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a dialog taller than the window, such as New issue with many labels,
+  scrolls like a page. The wheel, touch or keys move it wherever they land,
+  over its title, its buttons or the dimmed page around it. Its title and
+  buttons stay pinned to the window's edges, and on a window too short for
+  that they scroll along with the form (#294).
 - Fixed: installing the chart with the bundled Postgres no longer fails at
   the roles Job, whose SQL reached Postgres as `DO $` because Kubernetes
   reads `$$` in a container's arguments as an escaped `$` (#306).

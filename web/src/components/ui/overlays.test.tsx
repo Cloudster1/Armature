@@ -41,23 +41,37 @@ describe("Dialog", () => {
   });
 });
 
-// jsdom lays nothing out, so what keeps the buttons in reach is read off the
-// structure: the body is the one box that scrolls, and the footer is outside it.
-describe("Dialog on a short window", () => {
-  it("scrolls its body under a header and footer that stay put", () => {
+// jsdom lays nothing out, so what keeps a tall dialog in reach is read off the
+// structure; the browser suite turns the wheel over it.
+describe("Dialog taller than the window", () => {
+  it("sits on a layer that scrolls like a page, with its title and buttons pinned to its edges", () => {
     render(
       <Dialog open onClose={() => {}} title="Many fields" footer={<Button>Create issue</Button>}>
         <input aria-label="Last field" />
       </Dialog>,
     );
     const dialog = screen.getByRole("dialog", { name: "Many fields" });
-    const body = dialog.querySelector<HTMLElement>("[data-dialog-body]")!;
-    expect(dialog).toHaveClass("flex", "flex-col");
-    expect(dialog.style.maxHeight).toMatch(/^calc\(100dvh/);
-    expect(body).toHaveClass("min-h-0", "overflow-y-auto");
-    expect(body).toContainElement(screen.getByLabelText("Last field"));
-    expect(body).not.toContainElement(screen.getByRole("button", { name: "Create issue" }));
-    expect(dialog.querySelector("[data-dialog-footer]")).toHaveClass("shrink-0");
+    const layer = dialog.parentElement!;
+    expect(layer).toHaveAttribute("data-dialog-backdrop");
+    expect(layer).toHaveClass("fixed", "inset-0", "overflow-y-auto", "overscroll-contain");
+    expect(dialog.style.maxHeight).toBe("");
+    expect(dialog.querySelector("[data-dialog-body]")).not.toHaveClass("overflow-y-auto");
+    expect(dialog.querySelector("[data-dialog-header]")).toHaveClass("tall:sticky", "tall:top-0");
+    expect(dialog.querySelector("[data-dialog-footer]")).toHaveClass("tall:sticky", "tall:bottom-0");
+    expect(dialog.querySelector("[data-dialog-footer]")).toContainElement(screen.getByRole("button", { name: "Create issue" }));
+  });
+
+  it("stays open when its scrollbar is pressed and closes on a press beside it", () => {
+    const onClose = vi.fn();
+    render(<Dialog open onClose={onClose} title="Many fields" />);
+    const layer = screen.getByRole("dialog").parentElement!;
+    Object.defineProperty(layer, "clientWidth", { value: 1265 });
+    // jsdom's pointer events carry no coordinates; a mouse event of that type does.
+    const press = (clientX: number) => fireEvent(layer, new MouseEvent("pointerdown", { bubbles: true, clientX }));
+    press(1272);
+    expect(onClose).not.toHaveBeenCalled();
+    press(20);
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });
 
