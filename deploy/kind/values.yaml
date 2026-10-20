@@ -1,0 +1,8 @@
+# On top of values-demo.yaml for the chart install test: the images built from
+# this checkout and loaded into the kind node, never the published ones.
+images:
+  api: { repository: armature-test/api, tag: ci }
+  worker: { repository: armature-test/worker, tag: ci }
+  migrate: { repository: armature-test/migrate, tag: ci }
+  seed: { repository: armature-test/seed, tag: ci }
+  web: { repository: armature-test/web, tag: ci }

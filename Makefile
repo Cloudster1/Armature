@@ -233,6 +233,20 @@ shell: ## Interactive shell in the Go toolchain container
 # order aside. Until Dynamo has one there is nothing to compare, which passes.
 DYNAMO_REALM_URL ?= https://raw.githubusercontent.com/praetorianer777/Dynamo/main/deploy/keycloak/realm.json
 
+# govulncheck reports only the vulnerable code the binaries can reach, which
+# keeps it quiet enough to fail on; npm audit looks at what the web app ships.
+GOVULNCHECK_VERSION ?= v1.8.0
+NPM_AUDIT_LEVEL     ?= high
+
+.PHONY: audit-deps audit-go audit-npm
+audit-deps: audit-go audit-npm ## Look for known vulnerabilities in the Go and npm dependencies (make -k runs both)
+
+audit-go: ## Look for known vulnerabilities the backend can reach
+	$(DOCKER_GO) go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+
+audit-npm: ## Look for known vulnerabilities in what the web app ships
+	$(DOCKER_NODE) npm audit --omit=dev --audit-level=$(NPM_AUDIT_LEVEL)
+
 .PHONY: realm-check
 realm-check: ## Fail if deploy/keycloak/realm.json differs from Dynamo's canonical realm
 	@docker run --rm -u $(UID):$(GID) -v $(ROOT)/deploy/keycloak:/realm:ro $(NODE_IMAGE) \
@@ -355,6 +369,24 @@ helm-template: ## Render the chart into the golden files
 		--set database.replicaHosts={replica.example.com} --set externalRedis.auth=true \
 		--set attachments.persistence.enabled=true > $(GOLDEN)/everything.yaml
 	$(DOCKER_HELM) template armature $(CHART) $(CNPG_ARGS) > $(GOLDEN)/cnpg.yaml
+
+# Too slow for every pull request (it builds the images and starts about a
+# dozen pods); the Chart install workflow runs it when the chart's inputs change.
+CHART_TOOLS_IMAGE ?= armature-chart-tools:local
+
+.PHONY: chart-tools
+chart-tools: ## Build the image with kind, helm and kubectl the chart install test runs in
+	docker build -q -t $(CHART_TOOLS_IMAGE) $(ROOT)/deploy/kind >/dev/null
+
+# The cluster name carries a hash of the checkout, so two clones do not share one.
+.PHONY: test-chart-install
+test-chart-install: chart-tools ## Install and upgrade the demo chart in a throwaway kind cluster: [KEEP_CLUSTER=1]
+	docker run --rm --network host \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(ROOT):/work:ro \
+		-e ARMATURE_BUILD_COMMIT=$$(git rev-parse HEAD) \
+		-e KEEP_CLUSTER -e CLUSTER=armature-chart-install-$$(printf '%s' $(ROOT) | cksum | cut -d' ' -f1) \
+		$(CHART_TOOLS_IMAGE) sh /work/deploy/kind/chart-install-test.sh
 
 .PHONY: helm-check
 helm-check: ## Fail if the rendered chart differs from the committed golden files
