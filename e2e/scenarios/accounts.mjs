@@ -295,6 +295,8 @@ scenario("an API token can be created and revoked", async ({ page }) => {
 
   await page.click('a[href="/settings/tokens"]');
   await waitForPath(page, "/settings/tokens");
+  // The path changes before the list has loaded.
+  await page.waitForFunction(() => document.body.innerText.includes("No tokens yet"), { timeout: WAIT }).catch(() => {});
   expect.contains(await bodyText(page), "No tokens yet", "the list starts empty");
 
   await fill(page, "New token name", "Deploy pipeline");
