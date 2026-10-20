@@ -651,6 +651,14 @@ func TestAnIdentityProviderTokenIsExchangedForAGrant(t *testing.T) {
 			"subject_token_type": {oauth.TokenTypeAccess}, "scope": {scope}})
 	}
 
+	// A partner exchanges at sign-in only when /meta says so, so the name is
+	// held to the grant the metadata lists and the exchange below.
+	if caps := fmt.Sprint(want(t, stator.c.get("/api/v1/meta"), http.StatusOK, "meta").Body["capabilities"]); !strings.Contains(caps, "oauth.token-exchange@1") {
+		t.Fatalf("/meta does not list oauth.token-exchange@1: %s", caps)
+	}
+	if grants := fmt.Sprint(want(t, stator.c.get(oauth.ServerMetadataPath), http.StatusOK, "the metadata").Body["grant_types_supported"]); !strings.Contains(grants, oauth.GrantTokenExchange) {
+		t.Fatalf("the metadata does not list the token exchange: %s", grants)
+	}
 	if resp := exchange(signedIn(nil), "read"); resp.Body["error"] != "unauthorized_client" {
 		t.Errorf("a client with no Keycloak client named: %d %s", resp.Status, resp.Raw)
 	}

@@ -28,8 +28,8 @@ fields and types; this page says what they mean.
   works before that.
 - An app an administrator allowed may own one webhook endpoint, which it
   manages itself with a token holding `webhooks.partner`.
-- The capabilities `oauth.partner-tokens@1` and `webhooks.partner@1` in
-  `/api/v1/meta`.
+- The capabilities `oauth.partner-tokens@1`, `oauth.token-exchange@1` and
+  `webhooks.partner@1` in `/api/v1/meta`.
 - The OAuth endpoints answer OAuth's error shape, `{"error", "error_description"}`
   (RFC 6749 section 5.2, RFC 7591 section 3.2.2), and take OAuth's parameter
   names. Everything else answers Armature's envelope.
@@ -358,6 +358,12 @@ page in front of the consent operations.
 
 Stator offers its Connect button only when `/meta` lists it, and the manual
 token form otherwise.
+
+`oauth.token-exchange@1`: a connected app trades a person's Keycloak access
+token for a grant, as [Token exchange](#token-exchange-rfc-8693) says, with no
+consent page and never `webhooks.partner`. It promises `POST /oauth/token` with
+the token exchange grant. A partner exchanges at the person's sign-in only when
+`/meta` lists it, and offers the Connect button otherwise.
 
 ## The partner's own webhook
 
