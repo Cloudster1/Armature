@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "issue-embed@1", "oauth.partner-tokens@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
+  "capabilities": ["calendar@1", "issue-embed@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
 }
 ```
 
@@ -89,6 +89,19 @@ administrator. [Connected apps](oauth.md) is the whole contract.
 - `GET /.well-known/oauth-authorization-server`, at the root rather than under `/api/v1`
 - `GET /.well-known/oauth-protected-resource`, likewise
 
+### `oauth.token-exchange@1`
+
+A connected app trades a person's access token from the installation's identity
+provider for a grant, with no consent page, so a partner connects the person at
+their sign-in. `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`,
+`subject_token` an access token of Armature's OIDC provider whose `azp` is the
+app's `keycloakClientId` and whose `aud` holds Armature's own client, and the
+app authenticating with its own credentials. The answer is an access and a
+refresh token within the person's rights, never `webhooks.partner`.
+[Connected apps](oauth.md#token-exchange-rfc-8693) says how.
+
+- `POST /oauth/token`, which lists the grant in the server metadata
+
 ### `webhooks.partner@1`
 
 A connected app an administrator allowed makes, changes, tests, rotates and
@@ -156,7 +169,8 @@ versions, holidays and who is away.
 - **The build is held to it.** The list lives in
   `backend/internal/httpapi/capabilities.go`. A unit test refuses a capability
   naming an operation the operations table does not have or a topic
-  `events.Topics` does not list, so renaming or deleting a route fails before
+  `events.Topics` does not list, or a grant the token endpoint does not serve,
+  so renaming or deleting a route fails before
   the build reports a feature it lost. Another refuses a name that is not
   `name@version` or is listed twice.
 

@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: `/meta` lists `oauth.token-exchange@1`, so Stator and Exciter can
+  tell from the capabilities whether to trade a person's Keycloak token for a
+  grant at sign-in. It promises the token exchange at `POST
+  /api/v1/oauth/token` that came with connected apps, answering an access
+  and a refresh token within the person's rights and never
+  `webhooks.partner` (#302).
 - Fixed: a connected app keeps the scopes a person gave it when the same
   person signs in to it again through Keycloak or allows it with fewer scopes.
   A new consent or exchange adds to the grant's scopes instead of replacing

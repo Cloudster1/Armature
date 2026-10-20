@@ -1,5 +1,7 @@
 package oauth
 
+import "slices"
+
 // ServerMetadata is RFC 8414's authorization server metadata.
 type ServerMetadata struct {
 	Issuer                                 string   `json:"issuer"`
@@ -60,6 +62,9 @@ func (s *Service) Server() ServerMetadata {
 	}
 	return m
 }
+
+// GrantTypes are the grants the token endpoint serves.
+func GrantTypes() []string { return slices.Clone(grantTypes) }
 
 // Resource is the API's metadata as a protected resource.
 func (s *Service) Resource() ResourceMetadata {

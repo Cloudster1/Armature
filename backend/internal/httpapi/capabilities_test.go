@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/oauth"
 )
 
 // capabilityName is name@version, as the shared list in Dynamo spells them.
@@ -15,7 +16,7 @@ var capabilityName = regexp.MustCompile(`^[a-z][a-z-]*(\.[a-z][a-z-]*)*@[1-9][0-
 // A partner offers a feature on seeing its name at /meta, so the list is the
 // one docs/integration.md describes, sorted, and nothing else.
 func TestMetaReportsTheIntegrationCapabilities(t *testing.T) {
-	want := []string{"calendar@1", "issue-embed@1", "oauth.partner-tokens@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"}
+	want := []string{"calendar@1", "issue-embed@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"}
 	if got := capabilities(); !slices.Equal(got, want) {
 		t.Errorf("capabilities() = %v, want %v", got, want)
 	}
@@ -35,6 +36,14 @@ func TestEveryCapabilityRestsOnWhatTheBuildHas(t *testing.T) {
 		for _, op := range c.operations {
 			if !routes[op] {
 				t.Errorf("%s relies on %q, which is not in the operations table", c.name, op)
+			}
+		}
+		if len(c.grants) > 0 && !slices.Contains(c.operations, "POST /oauth/token") {
+			t.Errorf("%s relies on grants but not on the token endpoint that serves them", c.name)
+		}
+		for _, grant := range c.grants {
+			if !slices.Contains(oauth.GrantTypes(), grant) {
+				t.Errorf("%s relies on the grant %q, which the token endpoint does not serve", c.name, grant)
 			}
 		}
 		for _, topic := range c.topics {
