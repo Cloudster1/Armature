@@ -13,6 +13,13 @@ and its tag message, so a change is written here in the branch that makes it.
   CPU spent on repeated window changes (GO-2026-6611) and memory spent on
   trailer headers (GO-2026-6603). `x/crypto`, `x/sync`, `x/sys` and `x/text`
   move up with it (#313).
+- Added: GitHub runs the tests, as it does for Stator, Exciter and Rotor. The
+  CI workflow runs `make test`, the web tests and typecheck, the chart's lint
+  and golden render, `make test-integration` and `make test-e2e` side by side
+  on every pull request, on main and nightly. The Chart install workflow
+  installs and upgrades the demo chart in a kind cluster
+  (`make test-chart-install`), and the Deps workflow looks for known
+  vulnerabilities in the Go and npm dependencies (`make audit-deps`) (#311).
 - Fixed: a dialog taller than the window, such as New issue with many labels,
   scrolls like a page. The wheel, touch or keys move it wherever they land,
   over its title, its buttons or the dimmed page around it. Its title and

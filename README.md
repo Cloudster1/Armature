@@ -230,7 +230,11 @@ at length, because each is a way to get it wrong:
 
 `make helm-lint` lints both values files and `make helm-check` fails if the
 rendered manifests differ from the golden files committed under `tests/`, which
-is the same bargain `api/openapi.json` strikes.
+is the same bargain `api/openapi.json` strikes. `make test-chart-install`
+installs the demo chart, built from the checkout, into a throwaway kind
+cluster, checks its Jobs, its workloads and the seeded owner's sign-in, runs
+the seed again as an Argo CD sync would, and upgrades it with no failed
+request; `KEEP_CLUSTER=1` leaves the cluster up.
 
 ## Testing
 
@@ -338,10 +342,16 @@ and commit the regenerated document and `web/src/api/schema.d.ts`; a unit test
 refuses a stale copy, the integration suite validates every response against it,
 and the last test of the suite refuses a run that left an operation unexercised.
 
-A branch is merged when all four layers have passed on it, locally, which
+A branch is merged when all four layers have passed on it, which
 [`CLAUDE.md`](CLAUDE.md) states as the working agreement along with the house
-style. The one check GitHub runs is the Conventions workflow: a branch is
-named `<type>/<issue>-<slug>`, made with
+style. GitHub runs them too, as Stator, Exciter and Rotor do: the CI workflow
+runs each layer and the chart's checks as a job of its own on every pull
+request, on main and nightly, and a run by hand with `runs` repeats them to
+show a flaky test. The Chart install workflow runs `make test-chart-install`
+when something the chart installs changes, and the Deps workflow runs
+`make audit-deps`, govulncheck and npm audit, nightly and when a dependency
+changes; an advisory there is no required check. The Conventions workflow
+checks that a branch is named `<type>/<issue>-<slug>`, made with
 `gh issue develop <n> --name <type>/<n>-<slug> --base main --checkout`, and
 every commit subject on it is a Conventional Commit,
 `<type>(<scope>): <change>`, with `!` or a `BREAKING CHANGE:` trailer for a
