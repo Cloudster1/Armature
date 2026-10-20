@@ -498,6 +498,16 @@ func (s *Service) fromIdentityProvider(ctx context.Context, tx db.DBTX, client *
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil, err
 	}
+	if errors.Is(err, pgx.ErrNoRows) || (active && standing == nil) {
+		admitted, ok, admitErr := oidc.AdmitByGroup(ctx, tx, identity, "token_exchange")
+		if admitErr != nil {
+			return nil, nil, admitErr
+		}
+		if ok {
+			member := string(auth.RoleMember)
+			userID, active, standing, err = admitted, true, &member, nil
+		}
+	}
 	if err != nil || !active || standing == nil || !auth.OrgRole(*standing).IsAgent() {
 		return nil, oauthError(http.StatusBadRequest, "invalid_grant", fmt.Sprintf(
 			"%s has no Armature account yet. Sign in to Armature once, or ask an administrator to let them in.", identity.Name)), nil

@@ -107,7 +107,10 @@ user, reader. Groups can come from the identity provider, replaced at every
 sign-in. The first account to sign up sets the installation up and administers
 it; after that people come in by invitation, by single sign-on, by an
 administrator making their account, or, with `ARMATURE_SIGNUP=open`, by
-signing up as members. An administrator makes local accounts with a password,
+signing up as members. Somebody single sign-on vouches for but nobody let in
+asks to join, unless Settings, Access, Sign-in lets people in by their groups:
+then a provider group that holds a role lets them in as a member, at sign-in
+here or when Stator or Exciter connects them. An administrator makes local accounts with a password,
 resets them and switches them off, which is also how somebody is let go, and
 somebody who forgot their password asks the sign-in page for a link by mail. A person can add two-step sign-in with an
 authenticator app, with recovery codes for a lost phone, and an administrator

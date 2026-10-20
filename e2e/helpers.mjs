@@ -2621,6 +2621,7 @@ export async function keepProvider() {
       groupsClaim: kept.groupsClaim ?? "",
       scopes: kept.scopes ?? "",
       createGroups: kept.createGroups ?? false,
+      admitByGroup: kept.admitByGroup ?? false,
       enabled: was ? was.enabled : false,
     });
   };

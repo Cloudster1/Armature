@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useProvider, useSaveProvider } from "@/api/access";
 import { SSO_START } from "@/api/auth";
 import { BASE } from "@/api/client";
-import { Button, Card, ErrorBanner, Field } from "@/components/ui";
+import { Button, Card, Checkbox, ErrorBanner, Field } from "@/components/ui";
 
 /**
  * The identity provider people sign in through.
@@ -21,6 +21,7 @@ export function ProviderSettings() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [secret, setSecret] = useState("");
   const [claim, setClaim] = useState<string | null>(null);
+  const [admit, setAdmit] = useState<boolean | null>(null);
 
   if (isLoading) return <p className="text-sm text-ink-muted">Loading...</p>;
 
@@ -28,6 +29,7 @@ export function ProviderSettings() {
     issuer: issuer ?? provider?.issuer ?? "",
     clientId: clientId ?? provider?.clientId ?? "",
     groupsClaim: claim ?? provider?.groupsClaim ?? "groups",
+    admitByGroup: admit ?? provider?.admitByGroup ?? false,
   };
 
   return (
@@ -60,6 +62,19 @@ export function ProviderSettings() {
         />
       </div>
 
+      <div className="space-y-1">
+        <Checkbox
+          label="Let people in by their groups"
+          checked={values.admitByGroup}
+          onChange={(event) => setAdmit(event.target.checked)}
+          data-admit-by-group
+        />
+        <p className="pl-6 text-xs text-ink-muted">
+          Somebody signing in here, or through Stator or Exciter, whose group from the provider holds a role is let in
+          as a member with that group's roles. Anybody else still asks to join.
+        </p>
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <Button
           loading={save.isPending}
@@ -71,6 +86,7 @@ export function ProviderSettings() {
               groupsClaim: values.groupsClaim,
               scopes: provider?.scopes ?? "openid profile email",
               createGroups: provider?.createGroups ?? false,
+              admitByGroup: values.admitByGroup,
               enabled: true,
             })
           }
@@ -90,6 +106,7 @@ export function ProviderSettings() {
                 groupsClaim: provider.groupsClaim,
                 scopes: provider.scopes,
                 createGroups: provider.createGroups,
+                admitByGroup: provider.admitByGroup,
                 enabled: false,
               })
             }

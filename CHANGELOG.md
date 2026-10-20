@@ -10,6 +10,21 @@ and its tag message, so a change is written here in the branch that makes it.
 - Fixed: installing the chart with the bundled Postgres no longer fails at
   the roles Job, whose SQL reached Postgres as `DO $` because Kubernetes
   reads `$$` in a container's arguments as an escaped `$` (#306).
+- Added: an administrator may let people in by their groups, under Settings,
+  Access, Sign-in (`admitByGroup` on `PUT /api/v1/oidc-provider`, off by
+  default). Somebody single sign-on vouches for who has no standing yet, and
+  whose provider group holds a role, is then let in as a member with that
+  group's roles instead of asking to join, both at sign-in and when Stator or
+  Exciter exchanges their Keycloak token, so a partner connects somebody who
+  never opened Armature. Anybody in no such group still asks to join, and
+  somebody switched off is refused. The audit log records each as
+  `member.admitted` with the group (#301).
+- Added: `/meta` lists `oauth.token-exchange@1`, so Stator and Exciter can
+  tell from the capabilities whether to trade a person's Keycloak token for a
+  grant at sign-in. It promises the token exchange at `POST
+  /api/v1/oauth/token` that came with connected apps, answering an access
+  and a refresh token within the person's rights and never
+  `webhooks.partner` (#302).
 - Fixed: a connected app keeps the scopes a person gave it when the same
   person signs in to it again through Keycloak or allows it with fewer scopes.
   A new consent or exchange adds to the grant's scopes instead of replacing

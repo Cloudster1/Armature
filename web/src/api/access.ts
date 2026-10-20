@@ -83,6 +83,8 @@ export interface Provider {
   groupsClaim: string;
   scopes: string;
   createGroups: boolean;
+  /** Lets somebody in whose provider group holds a role, without a join request. */
+  admitByGroup: boolean;
   enabled: boolean;
   updatedAt: string;
 }

@@ -6665,6 +6665,7 @@ export interface components {
             tool: string;
         };
         Provider: {
+            admitByGroup: boolean;
             clientId: string;
             createGroups: boolean;
             enabled: boolean;
@@ -7073,6 +7074,7 @@ export interface components {
             metrics: components["schemas"]["SLAMetric"][];
         };
         SaveOIDCProviderRequest: {
+            admitByGroup: boolean;
             clientId: string;
             clientSecret: string;
             createGroups: boolean;
