@@ -387,7 +387,7 @@ export const POPOVER_EDGE_PX = 8;
 /** How far down the window a dialog starts, in percent of its height. */
 export const DIALOG_TOP_VH = 12;
 
-/** The least room a dialog leaves below itself, in pixels; its body scrolls rather than pass it. */
+/** The room a dialog leaves below itself once scrolled to its end, in pixels. */
 export const DIALOG_BOTTOM_PX = 16;
 
 /** How many wandering points the constellation backdrop draws per million pixels of page. */
