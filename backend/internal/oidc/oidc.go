@@ -28,7 +28,10 @@ type Provider struct {
 	// CreateGroups makes a group named by the provider appear on first sight.
 	// Off by default: an empty group grants nothing, and a group appearing on
 	// its own is a surprise in an access settings page.
-	CreateGroups bool      `json:"createGroups"`
+	CreateGroups bool `json:"createGroups"`
+	// AdmitByGroup lets somebody without standing in when one of their groups
+	// holds a role, instead of leaving a join request. Off by default.
+	AdmitByGroup bool      `json:"admitByGroup"`
 	Enabled      bool      `json:"enabled"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }

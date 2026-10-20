@@ -7,6 +7,15 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: an administrator may let people in by their groups, under Settings,
+  Access, Sign-in (`admitByGroup` on `PUT /api/v1/oidc-provider`, off by
+  default). Somebody single sign-on vouches for who has no standing yet, and
+  whose provider group holds a role, is then let in as a member with that
+  group's roles instead of asking to join, both at sign-in and when Stator or
+  Exciter exchanges their Keycloak token, so a partner connects somebody who
+  never opened Armature. Anybody in no such group still asks to join, and
+  somebody switched off is refused. The audit log records each as
+  `member.admitted` with the group (#301).
 - Added: `/meta` lists `oauth.token-exchange@1`, so Stator and Exciter can
   tell from the capabilities whether to trade a person's Keycloak token for a
   grant at sign-in. It promises the token exchange at `POST
