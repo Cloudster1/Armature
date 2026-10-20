@@ -1,0 +1,44 @@
+# Installs the demo chart into a throwaway kind cluster and upgrades it. Apart from CI because it is slow
+# and only a change to what the chart installs can break it. See deploy/kind/chart-install-test.sh.
+name: Chart install
+
+on:
+  pull_request:
+    paths:
+      - deploy/charts/**
+      - deploy/kind/**
+      - deploy/Dockerfile.backend
+      - deploy/Dockerfile.web
+      - backend/migrations/**
+      - backend/cmd/seed/**
+      - .github/workflows/chart-install.yml
+  push:
+    branches: [main]
+    paths:
+      - deploy/charts/**
+      - backend/migrations/**
+  schedule:
+    - cron: "43 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: chart-install-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: install and upgrade
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      # The backend image reads its version from the tags, which a shallow checkout does not carry.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install and upgrade the chart
+        run: make test-chart-install

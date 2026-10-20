@@ -14,6 +14,19 @@ and its tag message, so a change is written here in the branch that makes it.
   run again on an installation it made, by the Job's retry, a second
   `make seed` or an Argo CD sync, tops it up again instead of stopping with
   "set up by somebody other than the demo's Ada" (#314).
+- Fixed: the backend takes `golang.org/x/net` v0.60.0, which fixes four
+  advisories in the HTTP/2 server it serves with: a crash from an HPACK
+  encoder race (GO-2026-6617), a double flow control refund (GO-2026-6612),
+  CPU spent on repeated window changes (GO-2026-6611) and memory spent on
+  trailer headers (GO-2026-6603). `x/crypto`, `x/sync`, `x/sys` and `x/text`
+  move up with it (#313).
+- Added: GitHub runs the tests, as it does for Stator, Exciter and Rotor. The
+  CI workflow runs `make test`, the web tests and typecheck, the chart's lint
+  and golden render, `make test-integration` and `make test-e2e` side by side
+  on every pull request, on main and nightly. The Chart install workflow
+  installs and upgrades the demo chart in a kind cluster
+  (`make test-chart-install`), and the Deps workflow looks for known
+  vulnerabilities in the Go and npm dependencies (`make audit-deps`) (#311).
 - Fixed: a dialog taller than the window, such as New issue with many labels,
   scrolls like a page. The wheel, touch or keys move it wherever they land,
   over its title, its buttons or the dimmed page around it. Its title and

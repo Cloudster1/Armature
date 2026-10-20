@@ -1,0 +1,158 @@
+# The pull request gate: the four layers CLAUDE.md names and the chart's checks,
+# side by side, each through the same make targets a branch runs locally.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 2 * * *"
+  # A run by hand can take the gate several times in a row, so a flaky test shows up as a failure.
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: How many times in a row each job runs its layer (at most 5)
+        type: number
+        default: 1
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  COMPOSE: docker compose -f deploy/docker-compose.yml
+  # How long the stack may take to report every service healthy, in seconds.
+  STACK_WAIT: 300
+
+jobs:
+  gate:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.runs > 1 && 180 || 45 }}
+    strategy:
+      # Every job runs to its end, so a red run still reports every layer.
+      fail-fast: false
+      matrix:
+        include:
+          - name: unit
+            run: make test
+            go-cache: unit
+          - name: web
+            run: make npm ARGS=ci && make npm ARGS="run typecheck" && make npm ARGS="run test"
+            npm-cache: true
+          - name: chart
+            run: make helm-deps helm-lint helm-check
+          - name: integration
+            run: make test-integration
+            go-cache: integration
+            stack: true
+          - name: e2e
+            run: make test-e2e
+            stack: true
+    steps:
+      # The backend image reads its version from the tags, which a shallow checkout does not carry.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Made by the runner's user first: a directory docker makes for a mount belongs to root.
+      - name: Make the cache directories
+        run: mkdir -p .cache/gocache .cache/gomod .cache/npm .cache/e2e
+
+      # Restored on every run, saved only from main: a pull request reads main's caches.
+      - name: Restore the Go module and build cache
+        if: matrix.go-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/gocache
+            .cache/gomod
+          key: go-${{ matrix.go-cache }}-${{ hashFiles('backend/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ matrix.go-cache }}-${{ hashFiles('backend/go.sum') }}-
+            go-${{ matrix.go-cache }}-
+
+      - name: Restore the npm cache
+        if: matrix.npm-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/npm
+          key: npm-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: npm-
+
+      - name: Start the stack
+        if: matrix.stack
+        run: make up
+
+      # make up returns once the services have started, not once they answer.
+      - name: Wait for every service to report healthy
+        if: matrix.stack
+        run: |
+          deadline=$(( $(date +%s) + STACK_WAIT ))
+          while :; do
+            waiting=$($COMPOSE ps --format '{{.Service}} {{.Health}}' | awk '$2 != "" && $2 != "healthy" { printf "%s ", $1 }')
+            [ -z "$waiting" ] && break
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error title=Stack not healthy::After ${STACK_WAIT}s these services are still not healthy: ${waiting% }. Their logs follow."
+              # shellcheck disable=SC2086
+              $COMPOSE logs --tail 100 $waiting
+              exit 1
+            fi
+            sleep 5
+          done
+          $COMPOSE ps
+
+      - name: Run ${{ matrix.name }}
+        env:
+          RUNS: ${{ inputs.runs || 1 }}
+          LAYER: ${{ matrix.run }}
+        run: |
+          if [ "$RUNS" -gt 5 ]; then
+            echo "::error::A run by hand repeats each layer at most 5 times, not $RUNS."
+            exit 1
+          fi
+          for run in $(seq "$RUNS"); do
+            echo "::group::Run $run of $RUNS"
+            sh -c "$LAYER"
+            echo "::endgroup::"
+          done
+
+      # A cancelled run otherwise ends in the middle of a passing test, which reads like a failure of that test.
+      - name: Say why the gate stopped
+        if: cancelled()
+        run: echo "::error title=Gate stopped::The gate was cancelled before it finished, by the job's time limit or by a newer push to this branch. No test failed; if it reached the limit, raise timeout-minutes or make the suite faster."
+
+      - name: Say what the stack logged
+        if: failure() && matrix.stack
+        run: $COMPOSE logs --tail 200 api worker migrate web-e2e
+
+      - name: Save the Go module and build cache
+        if: matrix.go-cache && success() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/gocache
+            .cache/gomod
+          key: go-${{ matrix.go-cache }}-${{ hashFiles('backend/go.sum') }}-${{ github.sha }}
+
+      - name: Save the npm cache
+        if: matrix.npm-cache && success() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/npm
+          key: npm-${{ hashFiles('web/package-lock.json') }}
+
+      # The browser suite's timings, and a screenshot of each scenario that failed.
+      - name: Keep the browser suite's artifacts
+        if: ${{ !cancelled() && matrix.name == 'e2e' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e
+          path: .cache/e2e/
+          retention-days: 7
+          if-no-files-found: ignore
