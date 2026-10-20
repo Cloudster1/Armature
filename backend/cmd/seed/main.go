@@ -134,8 +134,8 @@ func run() error {
 		return err
 	}
 	if s3, ok := store.(*attachment.S3Store); ok {
-		if err := s3.EnsureBucket(ctx); err != nil {
-			return fmt.Errorf("attachment bucket: %w", err)
+		if err := waitForBucket(ctx, s3, bucketWait, bucketRetry, log); err != nil {
+			return err
 		}
 	}
 

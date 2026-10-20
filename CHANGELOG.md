@@ -7,6 +7,10 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: installing the chart with `values-demo.yaml` no longer fails now
+  and then at the seed Job. The seed asked once for the attachment bucket,
+  and on a fresh install SeaweedFS may still be starting and refuse it; the
+  seed now gives the object store two minutes, as it gives Gitea one (#314).
 - Fixed: a dialog taller than the window, such as New issue with many labels,
   scrolls like a page. The wheel, touch or keys move it wherever they land,
   over its title, its buttons or the dimmed page around it. Its title and
