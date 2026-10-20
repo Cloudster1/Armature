@@ -994,7 +994,8 @@ spec:
                 sleep 5
               done
               psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
-              DO $$
+              -- A named tag, not $$: Kubernetes reads $$ in args as an escaped $.
+              DO $roles$
               BEGIN
                   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'armature_app') THEN
                       CREATE ROLE armature_app LOGIN;
@@ -1003,7 +1004,7 @@ spec:
                       CREATE ROLE armature_admin LOGIN;
                   END IF;
               END;
-              $$;
+              $roles$;
               SQL
               # The passwords are set outside the DO block: they change between
               # installs, and ALTER is the only idempotent way to say so.

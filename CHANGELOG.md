@@ -7,6 +7,9 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: installing the chart with the bundled Postgres no longer fails at
+  the roles Job, whose SQL reached Postgres as `DO $` because Kubernetes
+  reads `$$` in a container's arguments as an escaped `$` (#306).
 - Added: an administrator may let people in by their groups, under Settings,
   Access, Sign-in (`admitByGroup` on `PUT /api/v1/oidc-provider`, off by
   default). Somebody single sign-on vouches for who has no standing yet, and
