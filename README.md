@@ -232,8 +232,9 @@ at length, because each is a way to get it wrong:
 rendered manifests differ from the golden files committed under `tests/`, which
 is the same bargain `api/openapi.json` strikes. `make test-chart-install`
 installs the demo chart, built from the checkout, into a throwaway kind
-cluster, checks its Jobs, its workloads and the seeded owner's sign-in, and
-upgrades it with no failed request; `KEEP_CLUSTER=1` leaves the cluster up.
+cluster, checks its Jobs, its workloads and the seeded owner's sign-in, runs
+the seed again as an Argo CD sync would, and upgrades it with no failed
+request; `KEEP_CLUSTER=1` leaves the cluster up.
 
 ## Testing
 

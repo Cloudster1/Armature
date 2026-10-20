@@ -18,6 +18,9 @@ ANSWER_TRIES=30
 DUMP_LINES=40
 WATCH_EVERY=0.5
 WATCH_TIMEOUT=3
+# The second seed may take as long as the first, bucket wait included.
+SEED_TRIES=90
+SEED_EVERY=2
 BUILD_VERSION="$(cat "$ROOT/VERSION")+kind"
 BUILD_COMMIT="${ARMATURE_BUILD_COMMIT:-unknown}"
 WORK="$(mktemp -d)"
@@ -128,6 +131,25 @@ commit="$(curl -fs -b "$JAR" "$URL/api/v1/meta" | jq -r '.build.commit')"
 [ "$commit" = "$BUILD_COMMIT" ] || fail "signed in, /api/v1/meta names commit $commit, want $BUILD_COMMIT"
 ok "the owner the seed made signs in and is told the commit"
 
+say "The seed again"
+# Argo CD runs the seed on every sync, and the Job retries a failed run. A
+# copy of the hook Job, as kubectl create job --from copies only CronJobs.
+kubectl get "job/$RELEASE-seed" -n "$NS" -o json | jq --arg name "$RELEASE-seed-again" '{
+  apiVersion, kind, metadata: { name: $name },
+  spec: (.spec | del(.selector) | del(.template.metadata.labels["controller-uid", "batch.kubernetes.io/controller-uid", "job-name", "batch.kubernetes.io/job-name"]))
+}' | kubectl create -n "$NS" -f - >/dev/null
+state=""
+for _ in $(seq 1 "$SEED_TRIES"); do
+  state="$(kubectl get "job/$RELEASE-seed-again" -n "$NS" -o jsonpath='{.status.conditions[?(@.status=="True")].type}')"
+  case "$state" in *Complete* | *Failed*) break ;; esac
+  sleep "$SEED_EVERY"
+done
+case "$state" in
+  *Complete*) ok "a second seed tops the installation up" ;;
+  *) kubectl logs "job/$RELEASE-seed-again" -n "$NS" --tail="$DUMP_LINES" 2>&1 || true
+     fail "the seed did not run again on the installation it made ($state)" ;;
+esac
+
 say "Upgrade"
 before="$(kubectl get "job/$RELEASE-migrate" -n "$NS" -o jsonpath='{.metadata.uid}')"
 ( while :; do
@@ -148,4 +170,4 @@ failed="$(grep -vc '^200$' "$WORK/health" || true)"
 [ "$failed" = 0 ] || fail "$failed requests failed during the upgrade"
 ok "no request failed while it upgraded ($(wc -l <"$WORK/health" | tr -d ' ') made)"
 
-say "The chart installs, seeds, signs its owner in and upgrades"
+say "The chart installs, seeds twice, signs its owner in and upgrades"
