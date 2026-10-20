@@ -62,7 +62,8 @@ scenario("a request is followed by somebody who was only named", async ({ page }
   await page.waitForSelector(`[data-request-watcher="${follower}"]`, { timeout: WAIT });
 
   // The follower is told, and the mail carries the way out.
-  const told = await mailFor(follower, requestKey, { since });
+  // The request's receipt may reach the new follower too, before or after this.
+  const told = await mailFor(follower, requestKey, { since, saying: "added you" });
   expect.contains(told.text, "added you", "the mail says who did it");
   const stop = told.text.match(/(\/unwatch\?token=[^\s]+)/)?.[1];
   expect.truthy(stop, "and carries a stop link");
