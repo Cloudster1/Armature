@@ -99,17 +99,17 @@ func run() error {
 		Name:     owner.name,
 	})
 	switch {
-	case errors.Is(err, auth.ErrSignupClosed):
-		return errors.New("this installation was set up by somebody other than the demo's Ada; seed an empty one, after make clean and make up")
-	case errors.Is(err, auth.ErrEmailTaken):
-		// The installation survives from an earlier run. Sign in instead and
-		// top up whatever is missing, so that seeding after an upgrade adds the
-		// newer demo data rather than silently doing nothing.
-		log.Info("the installation was seeded before, topping it up")
+	case errors.Is(err, auth.ErrSignupClosed), errors.Is(err, auth.ErrEmailTaken):
+		// Sign-up closes once there is an installation, so an earlier run's
+		// shows up as closed; topping it up lets an upgrade add newer demo data.
 		creds, err = svc.Login(ctx, owner.email, demoPassword, "seed", "")
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			return errors.New("this installation was set up by somebody other than the demo's Ada; seed an empty one, after make clean and make up")
+		}
 		if err != nil {
 			return fmt.Errorf("sign in as the demo's Ada: %w", err)
 		}
+		log.Info("the installation was seeded before, topping it up")
 	case err != nil:
 		return fmt.Errorf("set the installation up as the demo's Ada: %w", err)
 	}
