@@ -7,6 +7,13 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: installing the chart with `values-demo.yaml` no longer fails now
+  and then at the seed Job. The seed asked once for the attachment bucket,
+  and on a fresh install SeaweedFS may still be starting and refuse it; the
+  seed now gives the object store two minutes, as it gives Gitea one. A seed
+  run again on an installation it made, by the Job's retry, a second
+  `make seed` or an Argo CD sync, tops it up again instead of stopping with
+  "set up by somebody other than the demo's Ada" (#314).
 - Fixed: the backend takes `golang.org/x/net` v0.60.0, which fixes four
   advisories in the HTTP/2 server it serves with: a crash from an HPACK
   encoder race (GO-2026-6617), a double flow control refund (GO-2026-6612),
