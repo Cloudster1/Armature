@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: the backend takes `golang.org/x/net` v0.60.0, which fixes four
+  advisories in the HTTP/2 server it serves with: a crash from an HPACK
+  encoder race (GO-2026-6617), a double flow control refund (GO-2026-6612),
+  CPU spent on repeated window changes (GO-2026-6611) and memory spent on
+  trailer headers (GO-2026-6603). `x/crypto`, `x/sync`, `x/sys` and `x/text`
+  move up with it (#313).
 - Added: GitHub runs the tests, as it does for Stator, Exciter and Rotor. The
   CI workflow runs `make test`, the web tests and typecheck, the chart's lint
   and golden render, `make test-integration` and `make test-e2e` side by side
