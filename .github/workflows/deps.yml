@@ -1,0 +1,50 @@
+# The dependency audits: govulncheck and npm audit against what Armature ships. A new advisory must not block
+# unrelated work, so this is no required check; the nightly run says when an upgrade is due.
+name: Deps
+
+on:
+  pull_request:
+    paths:
+      - backend/go.mod
+      - backend/go.sum
+      - web/package.json
+      - web/package-lock.json
+      - .github/workflows/deps.yml
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: deps-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit-deps:
+    name: audit-deps
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Made by the runner's user first: a directory docker makes for a mount belongs to root.
+      - name: Make the cache directories
+        run: mkdir -p .cache/gocache .cache/gomod .cache/npm
+
+      - name: Restore the Go module and build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/gocache
+            .cache/gomod
+          key: go-unit-${{ hashFiles('backend/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-unit-${{ hashFiles('backend/go.sum') }}-
+            go-unit-
+
+      - name: Look for known vulnerabilities in the Go and npm dependencies
+        # -k: one ecosystem's advisory does not hide the other's.
+        run: make -k audit-deps
