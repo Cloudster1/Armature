@@ -367,7 +367,9 @@ helm-template: ## Render the chart into the golden files
 		--set mail.smtpAddr=smtp.example.com:587 --set mail.smtpUser=armature --set secrets.smtpPassword=secret \
 		--set mail.inbox=desk@example.com --set mail.insecureTLS=true \
 		--set database.replicaHosts={replica.example.com} --set externalRedis.auth=true \
-		--set attachments.persistence.enabled=true > $(GOLDEN)/everything.yaml
+		--set attachments.persistence.enabled=true \
+		--set jobs.bootstrap.enabled=true --set bootstrap.admin.email=admin@example.com \
+		--set bootstrap.members[0].email=lead@example.com --set bootstrap.members[0].role=admin > $(GOLDEN)/everything.yaml
 	$(DOCKER_HELM) template armature $(CHART) $(CNPG_ARGS) > $(GOLDEN)/cnpg.yaml
 
 # Too slow for every pull request (it builds the images and starts about a

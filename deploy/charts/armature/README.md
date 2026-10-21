@@ -192,13 +192,37 @@ settle, which takes a minute of restarts on a first install.
 
 ## Who can sign up
 
-`auth.signup` decides what the sign-up page does. `first`, the default, lets
-the first account sign up, which sets the installation up under
+`auth.signup` decides what the sign-up page does. `first` lets the first
+account sign up, which sets the installation up under
 `auth.installationName` and makes that account its administrator, and closes
 the page after it. `open` keeps the page open after the first, and whoever
 signs up later joins as a member. `closed` never offers it. Invitations,
 single sign-on and administrators making accounts bring people in whatever it
-says.
+says. Left blank, it is `closed` with the bootstrap below and `first` without.
+
+## The bootstrap
+
+On an address the world can reach, `first` leaves the installation to whoever
+signs up before you. `jobs.bootstrap.enabled` sets it up without a sign-up,
+after every install and upgrade (under Argo CD, every sync):
+
+- `bootstrap.admin.email` owns an installation the bootstrap sets up. On one
+  set up before, it is added as an administrator next to its owner.
+- Its password is the key `password` of `bootstrap.admin.passwordSecret`. Left
+  blank, the secrets Job makes `<fullname>-bootstrap-admin` with a random one:
+
+  ```sh
+  kubectl get secret armature-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d
+  ```
+
+  It is the first password: one changed in Armature later is kept, and no
+  existing account is changed.
+- `bootstrap.members` lets people in as `admin` or `member` before their first
+  sign-in, which single sign-on matches by email. They get no password anybody
+  knows.
+
+The bootstrap and the demo seed (`jobs.seed.enabled`) exclude each other, and
+`auth.signup: first` is refused with the bootstrap.
 
 ## What is optional
 

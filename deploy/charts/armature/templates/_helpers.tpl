@@ -111,7 +111,7 @@ this shape, and the bundled database and the Jobs read the same ones.
 */}}
 {{- define "armature.credentialSecret" -}}
 {{- $names := .root.Values.secrets.names -}}
-{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "redis" "redis" -}}
+{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "redis" "redis" "bootstrapAdmin" "bootstrap-admin" -}}
 {{- default (printf "%s-%s" (include "armature.fullname" .root) (get $suffix .name)) (get $names .name) -}}
 {{- end -}}
 
@@ -222,7 +222,7 @@ ARMATURE_DB_REPLICA_LAG_SAMPLES: {{ .Values.database.pool.replicaLagSamples | qu
 
 # Sessions and hashing. secureCookies must be true unless env is development,
 # on the worker as much as the api: they share one configuration loader.
-ARMATURE_SIGNUP: {{ .Values.auth.signup | quote }}
+ARMATURE_SIGNUP: {{ .Values.auth.signup | default (ternary "closed" "first" .Values.jobs.bootstrap.enabled) | quote }}
 ARMATURE_OAUTH_REGISTRATION: {{ .Values.oauth.registration | quote }}
 ARMATURE_NAME: {{ .Values.auth.installationName | quote }}
 ARMATURE_SESSION_TTL: {{ .Values.auth.sessionTTL | quote }}

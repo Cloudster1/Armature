@@ -170,4 +170,31 @@ failed="$(grep -vc '^200$' "$WORK/health" || true)"
 [ "$failed" = 0 ] || fail "$failed requests failed during the upgrade"
 ok "no request failed while it upgraded ($(wc -l <"$WORK/health" | tr -d ' ') made)"
 
-say "The chart installs, seeds twice, signs its owner in and upgrades"
+say "The bootstrap on the installation the seed set up"
+# A real install's administrator and members, on an installation set up
+# before, as an earlier install of the umbrella chart was (#324). The demo's
+# open sign-up is closed with it.
+# shellcheck disable=SC2086
+helm upgrade "$RELEASE" "$WORK/chart" -n "$NS" $VALUES --set api.replicas=2 \
+  --set jobs.seed.enabled=false --set jobs.bootstrap.enabled=true --set auth.signup=closed \
+  --set bootstrap.admin.email=boot@armature.test \
+  --set 'bootstrap.members[0].email=lead@armature.test' --set 'bootstrap.members[0].role=admin' \
+  --wait --timeout "$HELM_TIMEOUT" >/dev/null
+[ "$(kubectl get "job/$RELEASE-bootstrap" -n "$NS" -o jsonpath='{.status.succeeded}' 2>/dev/null)" = 1 ] \
+  || { kubectl logs "job/$RELEASE-bootstrap" -n "$NS" --tail="$DUMP_LINES" 2>&1 || true; fail "the bootstrap Job did not succeed"; }
+ok "the bootstrap Job succeeded"
+[ "$(curl -fs "$URL/api/v1/auth/signup" | jq -r .open)" = false ] || fail "sign-up is still open after the bootstrap"
+ok "nobody can sign up"
+password="$(kubectl get secret "$RELEASE-bootstrap-admin" -n "$NS" -o jsonpath='{.data.password}' | base64 -d)"
+BOOT_JAR="$WORK/boot-cookies"
+code="$(curl -s -o /dev/null -w '%{http_code}' -c "$BOOT_JAR" -H 'Content-Type: application/json' \
+  -d "$(jq -n --arg p "$password" '{email: "boot@armature.test", password: $p}')" "$URL/api/v1/auth/login")"
+[ "$code" = 200 ] || fail "the administrator the bootstrap made could not sign in with its Secret's password: $code"
+me="$(curl -fs -b "$BOOT_JAR" "$URL/api/v1/auth/me" | jq -r '.principal.user.email + " " + .principal.role')"
+[ "$me" = "boot@armature.test admin" ] || fail "signed in as [$me], want [boot@armature.test admin]"
+ok "its administrator signs in with the password from its Secret"
+lead="$(curl -fs -b "$BOOT_JAR" "$URL/api/v1/users?q=lead%40armature.test" | jq -r '[.. | objects | select(.email? == "lead@armature.test")][0].role // empty')"
+[ "$lead" = admin ] || fail "the member the bootstrap let in is [$lead], want admin"
+ok "the member it let in is an administrator"
+
+say "The chart installs, seeds twice, signs its owner in, upgrades and bootstraps"

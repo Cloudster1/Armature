@@ -7,6 +7,16 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the chart sets a real installation up without anybody signing up.
+  With `jobs.bootstrap.enabled`, a Job after every install and upgrade makes
+  `bootstrap.admin.email` the installation's owner, or adds it as an
+  administrator to one set up before, with the password from a Secret the
+  chart generates (`<fullname>-bootstrap-admin`) or one you name. It also lets
+  `bootstrap.members` in as admins or members before their first sign-in.
+  Sign-up is then closed by default, so nobody who reaches a new
+  installation first can own it. A rerun changes nothing, and a password
+  changed in Armature is kept (#324).
+
 ## 0.1.0 - 2026-10-21
 
 - Fixed: installing the chart with `values-demo.yaml` no longer fails now
