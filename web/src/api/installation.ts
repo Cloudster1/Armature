@@ -3,6 +3,8 @@ import { useMutation } from "./mutation";
 import { request } from "./client";
 import { meQueryKey } from "./auth";
 import type { Project } from "./projects";
+import type { components } from "./schema";
+import { SUITE_DEMO_POLL_MS } from "@/config";
 
 /** What everybody signed in may read about the installation. */
 export interface Installation {
@@ -36,5 +38,32 @@ export function useAddDemoProject() {
   return useMutation({
     mutationFn: () => request<{ project: Project }>("/installation/demo-project", { method: "POST" }),
     onSuccess: () => queryClient.invalidateQueries(),
+  });
+}
+
+/** How far the suite demo got: the GitHub issues of Armature, Exciter and Stator, which the worker builds. */
+export type SuiteDemo = components["schemas"]["SuiteDemo"];
+
+const suiteDemoQueryKey = ["installation", "suite-demo"] as const;
+
+/** The suite demo, null until somebody added it; asked again while the worker builds it. */
+export function useSuiteDemo(enabled: boolean) {
+  return useQuery({
+    queryKey: suiteDemoQueryKey,
+    queryFn: () => request<{ demo: SuiteDemo | null }>("/installation/suite-demo"),
+    enabled,
+    refetchInterval: (query) => {
+      const state = query.state.data?.demo?.state;
+      return state === "queued" || state === "running" ? SUITE_DEMO_POLL_MS : false;
+    },
+  });
+}
+
+/** Asks the worker for the suite demo; its projects appear as it builds them. */
+export function useAddSuiteDemo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => request<{ demo: SuiteDemo }>("/installation/suite-demo", { method: "POST" }),
+    onSuccess: (data) => queryClient.setQueryData(suiteDemoQueryKey, data),
   });
 }

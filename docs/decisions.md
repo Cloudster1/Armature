@@ -2669,6 +2669,27 @@ each, and would not have tested one installation the way it runs.
 **Reconsider if** the sequential list grows long enough to dominate the run:
 then the shared settings want a scope a test can own, not more tests alone.
 
+### The suite demo is the tools' own issues, from a snapshot (#300)
+
+Exciter's suite demo files the three tools' GitHub issues as requirements and
+links each to the Armature key with the GitHub number, `EXC-261` for
+Cloudster1/Exciter#261, so Armature's part is the same issues under those
+numbers. They come from a snapshot committed to the repository rather than
+from GitHub as the demo is added: adding it needs no network and no token,
+gives every installation the same keys Exciter links to, and a test can hold
+every body to what the tracker shows. The price is a demo as old as its
+snapshot, which `make demo-snapshot` renews; an issue is found again by its
+GitHub address, so a renewed snapshot updates the issues rather than copying
+them. Bodies are Markdown, read by goldmark with GitHub's extensions and
+written as the nodes a description holds; a table becomes its rows and a task
+item keeps its box as text.
+
+The worker builds it, since nearly six hundred issues outlast a request, and
+the page and Exciter's suite seed read how far it got. The seed builds it in
+its own process, so a stack without the worker and the chart's seed Job get it
+too. A dependency that would make an issue block itself is left out with a
+line in the log, as the tracker refuses such a link from anybody.
+
 ## The product's name
 
 ### The name is Armature, and nothing of NoJira was kept working

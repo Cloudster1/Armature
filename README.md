@@ -46,6 +46,18 @@ An installation set up without the seed can be shown with something in it too:
 an administrator adds a made-up plant, two projects with their issues, teams,
 boards and sprints, with "Add the demo project" under Settings, Installation.
 
+The seed also adds the suite demo, and an administrator can add it from the
+same page: the GitHub issues of Armature, Exciter and Stator, pull requests
+left out, as the projects `ARM`, `EXC` and `STA`. Each keeps its GitHub number,
+so `EXC-261` is Cloudster1/Exciter#261, with its body, labels, milestone and
+whether it was closed, and what an issue says it depends on blocks it, across
+projects too. The seed's people report and work them; no GitHub login or
+address is copied. Exciter's and Stator's own suite demos link their
+requirements and pages to these keys: `make suite-up DEMO=1` in Exciter adds
+all three. The issues come from a snapshot in
+`backend/internal/demo/suite`, so adding them needs no network;
+`make demo-snapshot` takes it again on the host, with `gh` signed in.
+
 Or sign in the way a company would: on the sign-in page choose Continue with
 single sign-on. The stack runs a Keycloak at
 <http://localhost:8180> (admin console: `admin` / `admin`) with the realm

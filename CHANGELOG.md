@@ -7,6 +7,16 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the suite demo, the GitHub issues of Armature, Exciter and Stator as
+  the projects `ARM`, `EXC` and `STA`, each under its GitHub number, so
+  Exciter's and Stator's suite demos link to them (`EXC-261` is Exciter's
+  issue 261). It keeps the issues' bodies, labels, milestones and closing
+  dates, and turns "Depends on" into blocking links, across projects too.
+  `make seed` adds it, and an administrator adds it under Settings,
+  Installation, which the worker builds in the background.
+  `GET` and `POST /installation/suite-demo` say how far it got and add it.
+  The issues come from a snapshot in the repository, which
+  `make demo-snapshot` takes again (#300).
 - Added: the chart sets a real installation up without anybody signing up.
   With `jobs.bootstrap.enabled`, a Job after every install and upgrade makes
   `bootstrap.admin.email` the installation's owner, or adds it as an

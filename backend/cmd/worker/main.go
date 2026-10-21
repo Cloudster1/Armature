@@ -21,6 +21,7 @@ import (
 	"github.com/armature/armature/backend/internal/automation"
 	"github.com/armature/armature/backend/internal/config"
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/demo"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/filter"
@@ -116,6 +117,8 @@ func run() error {
 	issues := issue.NewService(cluster, engine, workflow.NewStore())
 	deskService := desk.NewService(cluster, issues)
 	g.Go(func() error { return desk.NewWatch(cluster, deskService, log).Run(ctx) })
+	// The suite demo is hundreds of issues, more than a request has time for.
+	g.Go(func() error { return demo.NewSuiteBuilder(cluster, log).Run(ctx) })
 
 	// The burndown's days: the plan counts, the sprint service writes.
 	sprints := sprint.NewService(cluster)

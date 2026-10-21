@@ -150,6 +150,9 @@ func run() error {
 	if err := seedWork(ctx, cluster, creds, store, log); err != nil {
 		return err
 	}
+	if err := seedSuite(ctx, cluster, creds, log); err != nil {
+		return err
+	}
 	if err := seedSingleSignOn(ctx, cluster, creds, log); err != nil {
 		return err
 	}
