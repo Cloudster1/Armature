@@ -7,6 +7,8 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+## 0.1.0 - 2026-10-21
+
 - Fixed: installing the chart with `values-demo.yaml` no longer fails now
   and then at the seed Job. The seed asked once for the attachment bucket,
   and on a fresh install SeaweedFS may still be starting and refuse it; the
