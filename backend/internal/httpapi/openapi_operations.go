@@ -17,6 +17,7 @@ import (
 	"github.com/armature/armature/backend/internal/component"
 	"github.com/armature/armature/backend/internal/csvio"
 	"github.com/armature/armature/backend/internal/db"
+	"github.com/armature/armature/backend/internal/demo"
 	"github.com/armature/armature/backend/internal/desk"
 	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/filter"
@@ -225,6 +226,10 @@ var operations = []operation{
 		request: renameInstallationRequest{}, responses: ok(env{"installation": installation.Installation{}})},
 	{method: "POST", path: "/installation/demo-project", handler: "handleAddDemoProject", tag: "installation", summary: "Fill the installation with the demo: a production line and its maintenance, under the keys LINE and MAINT; administrators only, once, and written to the audit log.",
 		responses: created(env{"project": project.Project{}})},
+	{method: "GET", path: "/installation/suite-demo", handler: "handleSuiteDemo", tag: "installation", summary: "How far the suite demo got: queued, running, done or failed, and the step of its steps; null until somebody added it. Administrators only.",
+		responses: ok(env{"demo": (*demo.SuiteDemo)(nil)})},
+	{method: "POST", path: "/installation/suite-demo", handler: "handleAddSuiteDemo", tag: "installation", summary: "Add the suite demo: the GitHub issues of Armature, Exciter and Stator, under the keys ARM, EXC and STA and their GitHub numbers, built by the worker. Administrators only, once, and written to the audit log; 409 when it was added, 422 when one of its keys is taken.",
+		responses: map[int]any{202: env{"demo": demo.SuiteDemo{}}}},
 	{method: "DELETE", path: "/members/{userID}", handler: "handleRemoveMember", tag: "users", summary: "Let a member go by switching their account off: their sessions and tokens end, and what they did stays theirs.", responses: none()},
 	{method: "GET", path: "/users", handler: "handleListUsers", tag: "users", summary: "The accounts, switched off ones included, and what may be done to each, a page at a time, with how many there are in all.",
 		query: []param{{name: "q", description: "Text the name or the address contains; names it starts come first."}, {name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, {name: "offset", schema: intParam}}, responses: ok(auth.UserPage{})},

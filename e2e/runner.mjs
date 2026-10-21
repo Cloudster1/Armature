@@ -79,6 +79,7 @@ const INSTALLATION_WIDE = [
   ["PUT", /^\/settings\/second-factor$/, "who must sign in with a second factor"],
   ["PUT", /^\/installation$/, "the installation's name"],
   ["POST", /^\/installation\/demo-project$/, "the demo's projects, which take their keys for good"],
+  ["POST", /^\/installation\/suite-demo$/, "the suite demo's projects, which take their keys for good"],
   ["PUT", /^\/themes\/default$/, "the default theme"],
   ["PUT", /^\/oidc-provider$/, "the single sign-on provider"],
   ["POST|PATCH|DELETE", /^\/roles(\/|$)/, "the roles and what they grant"],

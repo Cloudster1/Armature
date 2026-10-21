@@ -451,3 +451,6 @@ export const QR_QUIET_MODULES = 2;
 
 /** How many characters of an authenticator key are shown together, so it can be typed. */
 export const SECRET_GROUP_LENGTH = 4;
+
+// The suite demo: how often its section asks the worker how far it got while it builds.
+export const SUITE_DEMO_POLL_MS = 2_000;

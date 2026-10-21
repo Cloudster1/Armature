@@ -2566,6 +2566,12 @@ export async function demoProjectAdded() {
   return administer("GET", `/projects/${DEMO_PROJECT_KEY}`).then(() => true, () => false);
 }
 
+/** The suite demo, null until somebody added it, as the administrator reads it. */
+export async function suiteDemo() {
+  const { demo } = await administer("GET", "/installation/suite-demo");
+  return demo;
+}
+
 /** Notes a workflow's whole graph, by name, and returns what saves it back. */
 export async function keepWorkflow(name) {
   const { workflows } = await administer("GET", `/workflows?q=${encodeURIComponent(name)}`);

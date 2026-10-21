@@ -26,6 +26,8 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	r.Get("/installation", s.handleInstallation)
 	r.With(requirePerm(perm.OrgAdminister)).Put("/installation", s.handleRenameInstallation)
 	r.With(requirePerm(perm.OrgAdminister)).Post("/installation/demo-project", s.handleAddDemoProject)
+	r.With(requirePerm(perm.OrgAdminister)).Get("/installation/suite-demo", s.handleSuiteDemo)
+	r.With(requirePerm(perm.OrgAdminister)).Post("/installation/suite-demo", s.handleAddSuiteDemo)
 	// How a project says it is doing, and its month.
 	r.Get("/projects/{projectKey}/status-updates", s.handleListStatusUpdates)
 	r.With(requireProjectPerm(perm.ProjectAdminister)).Post("/projects/{projectKey}/status-updates", s.handlePostStatusUpdate)

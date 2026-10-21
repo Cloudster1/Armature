@@ -3,7 +3,8 @@ import { Link, createRoute, redirect, useNavigate } from "@tanstack/react-router
 import { appRoute } from "./app";
 import { useAccess } from "@/api/access";
 import { ApiError } from "@/api/client";
-import { useAddDemoProject, useInstallation, useRenameInstallation } from "@/api/installation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAddDemoProject, useAddSuiteDemo, useInstallation, useRenameInstallation, useSuiteDemo } from "@/api/installation";
 import { Button, Card, ErrorBanner, Field, Page, PageHeader, SectionTitle, useToast } from "@/components/ui";
 
 export const installationRoute = createRoute({
@@ -110,6 +111,64 @@ function DemoProject() {
           </Button>
         </div>
       </Card>
+      <SuiteDemoCard />
     </section>
+  );
+}
+
+/** The suite demo: the GitHub issues of Armature, Exciter and Stator, which their own suite demos link to. */
+function SuiteDemoCard() {
+  const { data } = useSuiteDemo(true);
+  const add = useAddSuiteDemo();
+  const queryClient = useQueryClient();
+  const demo = data?.demo ?? null;
+  const building = demo?.state === "queued" || demo?.state === "running";
+  const [wasBuilding, setWasBuilding] = useState(false);
+  const refused = add.error instanceof ApiError ? (add.error.fields.key ?? add.error.message) : (add.error as Error | null)?.message;
+
+  // The new projects belong in every list once the worker is done.
+  useEffect(() => {
+    if (building) setWasBuilding(true);
+    else if (wasBuilding && demo?.state === "done") {
+      setWasBuilding(false);
+      void queryClient.invalidateQueries();
+    }
+  }, [building, wasBuilding, demo?.state, queryClient]);
+
+  return (
+    <Card className="mt-3 space-y-3 p-5" data-suite-demo={data ? (demo?.state ?? "none") : "loading"}>
+      {refused && <ErrorBanner>{refused}</ErrorBanner>}
+      {demo?.state === "failed" && <ErrorBanner>{demo.message}</ErrorBanner>}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-md text-sm text-ink-muted">
+          The issues Armature, Exciter and Stator were built from, taken from GitHub, each under its own number: Exciter's issue 261 is EXC-261. Exciter and
+          Stator link their own suite demos to them.
+        </p>
+        {data && !demo && (
+          <Button variant="secondary" loading={add.isPending} data-action="add-suite-demo" onClick={() => add.mutate()}>
+            Add the suite demo
+          </Button>
+        )}
+      </div>
+      {building && demo && (
+        <p role="status" className="text-sm text-ink">
+          Building the suite demo: step {demo.step} of {demo.steps}.
+        </p>
+      )}
+      {demo?.state === "done" && (
+        <p className="text-sm text-ink">
+          The suite demo is in{" "}
+          {demo.projects.map((key, i) => (
+            <span key={key}>
+              {i > 0 && (i === demo.projects.length - 1 ? " and " : ", ")}
+              <Link to="/projects/$projectKey" params={{ projectKey: key }} className="font-medium text-accent hover:underline">
+                {key}
+              </Link>
+            </span>
+          ))}
+          , as GitHub had them on {demo.taken}.
+        </p>
+      )}
+    </Card>
   );
 }

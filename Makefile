@@ -316,6 +316,10 @@ stack-stats: ## What each container costs right now, and how much Redis holds
 seed: ## Fill the running stack's installation with demo people and projects
 	docker compose -f deploy/docker-compose.yml run --rm --build seed
 
+.PHONY: demo-snapshot
+demo-snapshot: ## Take the suite demo's GitHub issues again, on the host with gh signed in
+	@sh deploy/demo-snapshot.sh
+
 .PHONY: psql
 psql: ## Open psql against the primary
 	docker compose -f deploy/docker-compose.yml exec postgres-primary psql -U armature -d armature

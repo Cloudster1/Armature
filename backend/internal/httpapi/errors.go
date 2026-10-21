@@ -149,6 +149,7 @@ func toAPIError(err error) *APIError {
 		return e
 	}
 	var demoKey *demo.KeyTakenError
+	var suiteKey *demo.SuiteKeyTakenError
 	var queryErr *nql.Error
 	if errors.As(err, &queryErr) {
 		pos := queryErr.Pos
@@ -169,6 +170,11 @@ func toAPIError(err error) *APIError {
 	case errors.As(err, &demoKey):
 		return ErrConflict(fmt.Sprintf("The project key %s is taken already, so the demo cannot be added: it needs %s. If it was added before, it is under Projects as %s.",
 			demoKey.Key, strings.Join(demo.Keys, " and "), demo.FactoryName))
+	case errors.As(err, &suiteKey):
+		return ErrValidation(map[string]string{"key": fmt.Sprintf("The project key %s is taken already, so the suite demo cannot be added: it needs %s. Rename or remove that project, then add it again.",
+			suiteKey.Key, demo.SuiteKeysText())})
+	case errors.Is(err, demo.ErrSuiteAdded):
+		return ErrConflict("The suite demo was added already. Its projects are under Projects as " + demo.SuiteKeysText() + ".")
 	case errors.Is(err, auth.ErrEmailTaken):
 		return &APIError{Status: http.StatusConflict, Code: "email_taken", Message: auth.ErrEmailTaken.Error()}
 	case errors.Is(err, auth.ErrSignupClosed):

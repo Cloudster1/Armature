@@ -11,6 +11,7 @@ import {
   keepInstallationName,
   replaceValue,
   signUp,
+  suiteDemo,
   unique,
   uniqueName,
   WAIT,
@@ -19,6 +20,9 @@ import {
 
 /** The sentence a demo refused for its taken key ends with. */
 const DEMO_IS_HERE = "it is under Projects as Production line 3";
+
+/** The worker builds the suite demo's hundreds of issues in seconds; a busy runner gets this long. */
+const SUITE_DEMO_WAIT = 180_000;
 
 serialScenario("renaming the installation shows in the sidebar, and the old settings address leads there", async ({ page }) => {
   await signUp(page, unique("namer"), { visit: false });
@@ -52,4 +56,23 @@ serialScenario("an administrator adds the demo project, and a second time is ref
   await goto(page, "/settings/installation");
   await clickButton(page, "Add the demo project");
   await page.waitForFunction((words) => document.body.innerText.includes(words), { timeout: WAIT }, DEMO_IS_HERE);
+});
+
+// Exciter's issue 261 is EXC-261, and what its GitHub issue depends on blocks it here. A second run finds the
+// suite demo there, from the first or from make seed, and only looks.
+serialScenario("an administrator adds the suite demo, and EXC-261 is Exciter's issue 261 with what blocks it", async ({ page }) => {
+  await signUp(page, unique("suite"), { visit: false });
+  await goto(page, "/settings/installation");
+  if (!(await suiteDemo())) {
+    await clickButton(page, "Add the suite demo");
+  }
+  await page.waitForSelector('[data-suite-demo="done"]', { timeout: SUITE_DEMO_WAIT });
+  for (const key of ["ARM", "EXC", "STA"]) {
+    await page.waitForSelector(`[data-suite-demo="done"] a[href="/projects/${key}"]`, { timeout: WAIT });
+  }
+
+  await goto(page, "/issues/EXC-261");
+  await page.waitForFunction(() => document.body.innerText.includes("Risks in traceability"), { timeout: WAIT });
+  await page.waitForSelector('[data-issue-link="EXC-203"]', { timeout: WAIT });
+  expect.contains(await page.$eval('[data-issue-link="EXC-203"]', (el) => el.innerText), "blocked by", "the issue says what blocks it");
 });

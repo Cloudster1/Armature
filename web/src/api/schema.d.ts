@@ -1490,6 +1490,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/installation/suite-demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How far the suite demo got: queued, running, done or failed, and the step of its steps; null until somebody added it. Administrators only. */
+        get: operations["suiteDemo"];
+        put?: never;
+        /** Add the suite demo: the GitHub issues of Armature, Exciter and Stator, under the keys ARM, EXC and STA and their GitHub numbers, built by the worker. Administrators only, once, and written to the audit log; 409 when it was added, 422 when one of its keys is taken. */
+        post: operations["addSuiteDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invites": {
         parameters: {
             query?: never;
@@ -7481,6 +7499,18 @@ export interface components {
             issues: components["schemas"]["Issue"][];
             words: components["schemas"]["Word"][];
         };
+        SuiteDemo: {
+            /** Format: date-time */
+            createdAt: string;
+            message: string;
+            projects: string[];
+            state: string;
+            step: number;
+            steps: number;
+            taken: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         Summary: {
             description?: string;
             /** Format: uuid */
@@ -12037,6 +12067,68 @@ export interface operations {
                 content: {
                     "application/json": {
                         project: components["schemas"]["Project"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    suiteDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        demo: components["schemas"]["SuiteDemo"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    addSuiteDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        demo: components["schemas"]["SuiteDemo"];
                     };
                 };
             };

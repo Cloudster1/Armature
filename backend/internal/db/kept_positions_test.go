@@ -76,6 +76,12 @@ var discardsAllowed = map[string]string{
 	"desk/companies.go (*Service).raisersCompany":     "the request raised next carries the later position the handler notes",
 	"auth/import_member.go (*Service).ImportedMember": "the import's later writes carry the position the handler notes",
 	"demo/plant.go plant":                             "the demo's record, written last, carries the position the handler notes",
+
+	// The suite demo is built by the worker or the seed, where no request follows; it is read from the primary.
+	"demo/suite_build.go SeedSuite":             "the seed answers no request, and the suite demo is read from the primary",
+	"demo/suite_build.go (*SuiteBuilder).Once":  "the worker answers no request, and the suite demo is read from the primary",
+	"demo/suite_build.go (*SuiteBuilder).build": "the worker answers no request, and the suite demo is read from the primary",
+	"demo/suite_build.go buildSuite":            "the worker or the seed answers no request; the issues are read later, by somebody else",
 }
 
 // A write whose position is thrown away cannot be noted by its handler, and the

@@ -5866,6 +5866,89 @@
         }
       }
     },
+    "/installation/suite-demo": {
+      "get": {
+        "operationId": "suiteDemo",
+        "summary": "How far the suite demo got: queued, running, done or failed, and the step of its steps; null until somebody added it. Administrators only.",
+        "tags": [
+          "installation"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "demo": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/SuiteDemo"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "demo"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "addSuiteDemo",
+        "summary": "Add the suite demo: the GitHub issues of Armature, Exciter and Stator, under the keys ARM, EXC and STA and their GitHub numbers, built by the worker. Administrators only, once, and written to the audit log; 409 when it was added, 422 when one of its keys is taken.",
+        "tags": [
+          "installation"
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "demo": {
+                      "$ref": "#/components/schemas/SuiteDemo"
+                    }
+                  },
+                  "required": [
+                    "demo"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invites": {
       "get": {
         "operationId": "listInvites",
@@ -29795,6 +29878,50 @@
           "completion",
           "words",
           "issues"
+        ]
+      },
+      "SuiteDemo": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "state": {
+            "type": "string"
+          },
+          "step": {
+            "type": "integer"
+          },
+          "steps": {
+            "type": "integer"
+          },
+          "taken": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "state",
+          "step",
+          "steps",
+          "message",
+          "taken",
+          "projects",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "Summary": {
