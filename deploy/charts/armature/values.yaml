@@ -223,8 +223,9 @@ auth:
   # Who may sign up. first: the first account, which sets the installation up
   # and administers it, and nobody after. open: later people too, as members.
   # closed: nobody. Invitations, single sign-on and administrators bring
-  # people in whatever this says.
-  signup: first
+  # people in whatever this says. Blank: closed with jobs.bootstrap, whose
+  # administrator owns the installation, else first.
+  signup: ""
   # What the installation is called when its first account sets it up;
   # administrators rename it afterwards.
   installationName: Armature
@@ -338,6 +339,29 @@ jobs:
   seed:
     # Demo data. The binary itself refuses to run when env is production.
     enabled: false
+  bootstrap:
+    # A real installation's administrator and members, from bootstrap below,
+    # after every install and upgrade. With it nobody signs up first.
+    enabled: false
+
+# Read by the bootstrap Job. The password is never a value: it is a key in a
+# Secret, so it lands in no values file or ConfigMap.
+bootstrap:
+  admin:
+    # Owns an installation the bootstrap sets up; on one set up before, it
+    # is added as an administrator.
+    email: ""
+    # Blank: the part of the email before the @.
+    name: ""
+    # Blank: the secrets Job makes <fullname>-bootstrap-admin with a random
+    # password the first time, and never touches it after. Read it with
+    #   kubectl get secret <fullname>-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d
+    # It is the administrator's first password: one changed in Armature since
+    # is kept.
+    passwordSecret: { name: "", key: password }
+  # People let in before their first sign-in, which single sign-on matches by
+  # email: [{ email: alice@example.com, role: admin }], each role admin or member.
+  members: []
 
 serviceAccount:
   create: true

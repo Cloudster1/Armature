@@ -1,5 +1,6 @@
 // Command seed fills the installation with demo people and projects so that a
-// fresh `docker compose up` has something to sign in to.
+// fresh `docker compose up` has something to sign in to. `seed bootstrap`
+// instead sets a real installation's administrator and members up.
 //
 // It is idempotent: running it twice leaves the same accounts, rather than
 // failing on the second run or quietly creating duplicates.
@@ -56,6 +57,13 @@ type demoUser struct {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "bootstrap" {
+		if err := runBootstrap(); err != nil {
+			slog.Error("bootstrap failed", "error", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(); err != nil {
 		slog.Error("seed failed", "error", err)
 		os.Exit(1)

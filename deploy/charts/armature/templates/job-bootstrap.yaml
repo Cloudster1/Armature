@@ -1,0 +1,75 @@
+{{- if .Values.jobs.bootstrap.enabled }}
+{{- $b := .Values.bootstrap }}
+{{- if .Values.jobs.seed.enabled }}
+{{- fail "jobs.seed.enabled and jobs.bootstrap.enabled are both true. The seed is for a demo and the bootstrap for a real install: turn one of them off." }}
+{{- end }}
+{{- $email := required "jobs.bootstrap.enabled is true, so set bootstrap.admin.email, the account that owns the installation." $b.admin.email }}
+{{- if and (not $b.admin.passwordSecret.name) (not .Values.secrets.generate) }}
+{{- fail "secrets.generate is off and bootstrap.admin.passwordSecret.name is blank, so nothing can make the administrator's password. Name a Secret that holds it, or turn secrets.generate on." }}
+{{- end }}
+{{- if eq .Values.auth.signup "first" }}
+{{- fail "auth.signup is first with jobs.bootstrap.enabled, which leaves the installation to whoever signs up before the bootstrap runs. Leave auth.signup blank, which is closed, or set it to open or closed." }}
+{{- end }}
+{{- $pwSecret := default (include "armature.credentialSecret" (dict "root" . "name" "bootstrapAdmin")) $b.admin.passwordSecret.name }}
+{{- $members := list }}
+{{- range $b.members }}
+{{- if not (has .role (list "admin" "member")) }}
+{{- fail (printf "bootstrap.members has %q as the role of %s; use admin or member, since the installation has one owner, bootstrap.admin." (toString .role) .email) }}
+{{- end }}
+{{- $members = append $members (printf "%s=%s" .email .role) }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "armature.fullname" . }}-bootstrap
+  labels:
+    {{- include "armature.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bootstrap
+  annotations:
+    # After the migrations, which run post-install on a first install. Safe
+    # on every upgrade and Argo CD sync: it adds what is missing and changes
+    # no account that exists.
+    {{- include "armature.hookAnnotations" (dict "helm" "post-install,post-upgrade" "argo" "PostSync" "weight" "10") | nindent 4 }}
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "armature.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: bootstrap
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "armature.serviceAccountName" . }}
+      {{- with .Values.images.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: bootstrap
+          image: {{ include "armature.image" (dict "root" $ "name" "seed") }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          args: ["bootstrap"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "armature.fullname" . }}-env
+          env:
+            {{- include "armature.secretEnv" . | nindent 12 }}
+            - name: ARMATURE_BOOTSTRAP_ADMIN_EMAIL
+              value: {{ $email | quote }}
+            - name: ARMATURE_BOOTSTRAP_ADMIN_NAME
+              value: {{ $b.admin.name | quote }}
+            - name: ARMATURE_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $pwSecret | quote }}
+                  key: {{ default "password" $b.admin.passwordSecret.key | quote }}
+            - name: ARMATURE_BOOTSTRAP_MEMBERS
+              value: {{ join "," $members | quote }}
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+{{- end }}
