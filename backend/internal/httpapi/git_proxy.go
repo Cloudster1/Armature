@@ -223,7 +223,7 @@ func (s *Server) handleGitReceivePack(w http.ResponseWriter, r *http.Request) {
 	}
 	push, err := git.ParsePush(body)
 	if err != nil {
-		gitRefuse(w, http.StatusBadRequest, "The push could not be read: "+err.Error()+". Push again with a current git.")
+		gitRefuse(w, http.StatusBadRequest, capitalize(err.Error())+". Push again with a current git.")
 		return
 	}
 	rec := git.PushRecord{Actor: call.principal.User.ID, IP: clientIP(r)}
