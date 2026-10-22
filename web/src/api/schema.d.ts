@@ -5286,6 +5286,7 @@ export interface components {
                 /** @enum {string} */
                 type: "doc";
             };
+            bodyMarkdown?: string;
             text?: string;
         };
         Commit: {
@@ -5472,6 +5473,7 @@ export interface components {
                 /** @enum {string} */
                 type: "doc";
             };
+            descriptionMarkdown?: string;
             /**
              * Format: date
              * @description A day, YYYY-MM-DD; null clears it.
@@ -7737,6 +7739,7 @@ export interface components {
             assigneeId?: string | null;
             /** @description A rich text document; null clears it. */
             description?: Record<string, never> | null;
+            descriptionMarkdown?: string;
             /**
              * Format: date
              * @description A day, YYYY-MM-DD; null clears it.

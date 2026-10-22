@@ -21949,6 +21949,9 @@
               "content"
             ]
           },
+          "bodyMarkdown": {
+            "type": "string"
+          },
           "text": {
             "type": "string"
           }
@@ -22582,6 +22585,9 @@
               "type",
               "content"
             ]
+          },
+          "descriptionMarkdown": {
+            "type": "string"
           },
           "dueDate": {
             "type": [
@@ -30752,6 +30758,9 @@
               "null"
             ],
             "description": "A rich text document; null clears it."
+          },
+          "descriptionMarkdown": {
+            "type": "string"
           },
           "dueDate": {
             "type": [
