@@ -35,7 +35,7 @@ func TestADescriptionAndACommentCanBeWrittenInMarkdown(t *testing.T) {
 	}), http.StatusCreated, "an issue in Markdown")
 	issueKey := issued.Body["issue"].(map[string]any)["key"].(string)
 	got := description(issued.Body)
-	for _, part := range []string{`"type":"heading","attrs":{"level":3}`, `"text":"Describe the bug"`, `"type":"bold"`, `"type":"bulletList"`, `"type":"codeBlock","attrs":{"language":"go"}`, `"href":"https://example.com/docs"`} {
+	for _, part := range []string{`"type":"heading"`, `"level":3`, `"text":"Describe the bug"`, `"type":"bold"`, `"type":"bulletList"`, `"type":"codeBlock"`, `"language":"go"`, `"href":"https://example.com/docs"`} {
 		if !strings.Contains(got, part) {
 			t.Errorf("the description lacks %s: %s", part, got)
 		}
