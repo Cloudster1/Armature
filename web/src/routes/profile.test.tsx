@@ -14,6 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
   createRoute: (options: unknown) => options,
   useNavigate: () => vi.fn(),
+  useLocation: () => ({ hash: "" }),
 }));
 vi.mock("./app", () => ({ appRoute: {} }));
 vi.mock("@/api/auth", () => ({

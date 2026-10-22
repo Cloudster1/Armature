@@ -20,6 +20,7 @@ export const QUERY_FIELDS: QueryField[] = [
   { name: "priority", takes: "lowest to highest, in that order", example: "priority >= high" },
   { name: "assignee", takes: "an email, a name or currentUser()", example: "assignee = currentUser()" },
   { name: "reporter", takes: "an email, a name or currentUser()", example: "reporter = ada@armature.test" },
+  { name: "watcher", takes: "an email, a name or currentUser()", example: "watcher = currentUser()" },
   { name: "parent", takes: "an issue key", example: "parent = EVR-7" },
   { name: "sprint", takes: "a sprint name or openSprints()", example: "sprint IN (openSprints())" },
   { name: "team", takes: "a team name", example: "team = Alpha" },

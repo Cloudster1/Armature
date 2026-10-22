@@ -205,6 +205,8 @@ func (c *compiler) empty(e Empty) (string, error) {
 		clause = "NOT EXISTS (SELECT 1 FROM issue_version iv WHERE iv.issue_id = i.id AND iv.role = " + c.bind(def.role) + ")"
 	case fkComponent:
 		clause = "NOT EXISTS (SELECT 1 FROM issue_component ic WHERE ic.issue_id = i.id)"
+	case fkWatcher:
+		clause = "NOT EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id)"
 	case fkDescription:
 		clause = "(i.description IS NULL OR jsonb_to_tsvector('simple', i.description, '[\"string\"]') = ''::tsvector)"
 	case fkCustom:
@@ -251,6 +253,12 @@ func (c *compiler) match(def fieldDef, f Field, values []Value) (string, error) 
 		return "(" + def.column + " = ANY(" + c.bind(members) + "::" + def.enumType + "[]))", nil
 	case fkUser:
 		return c.users(def, values)
+	case fkWatcher:
+		test, err := c.users(fieldDef{name: def.name, column: "w.user_id"}, values)
+		if err != nil {
+			return "", err
+		}
+		return "EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id AND " + test + ")", nil
 	case fkLookup:
 		var parts []string
 		var names []string

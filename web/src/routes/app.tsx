@@ -1,14 +1,16 @@
 import { Link, Navigate, Outlet, createRoute, redirect, useLocation } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { rootRoute } from "./root";
 import { meQueryKey, useMe } from "@/api/auth";
 import { request, ApiError } from "@/api/client";
-import { Button, EmptyState, Spotlight, ToastProvider, useToast } from "@/components/ui";
+import { Button, EmptyState, IconButton, Spotlight, ToastProvider, useToast } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
 import { MutationErrorToasts } from "@/features/shell/MutationErrorToasts";
 import { Sidebar, SidebarFoot, currentProjectKey } from "@/features/shell/Sidebar";
 import { ShellHeaderContext } from "@/components/ui";
-import { useLastProject } from "@/features/shell/state";
+import { DRAWER_ID, rememberOutsideSettings, useLastProject, useNarrow } from "@/features/shell/state";
+import { inSettingsArea } from "@/features/shell/places";
 import { CommandPalette, usePaletteShortcut, type PaletteMode, type SpotlightRequest } from "@/features/palette/CommandPalette";
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
 import { IssueDrawerProvider } from "@/features/issues/IssueDrawer";
@@ -95,19 +97,36 @@ function AgentShell() {
   // The page's head is drawn into the strip over the content, which floats
   // as the content scrolls under it; the ref lands before first paint.
   const [strip, setStrip] = useState<HTMLElement | null>(null);
+  const narrow = useNarrow();
+  const [drawer, setDrawer] = useState(false);
+  const closeDrawer = useCallback(() => setDrawer(false), []);
+  const location = useLocation();
+  // Following a link closes the drawer; adjusted during render, so the drawer
+  // is never drawn over the new page.
+  const [drawerHref, setDrawerHref] = useState(location.href);
+  if (drawerHref !== location.href) {
+    setDrawerHref(location.href);
+    setDrawer(false);
+  }
+  useEffect(() => {
+    if (!inSettingsArea(location.pathname)) rememberOutsideSettings(location.href);
+  }, [location.pathname, location.href]);
   return (
-    <div className="flex h-full">
+    <div className="flex h-full" data-shell={narrow ? "narrow" : "wide"}>
       <ThemeLoader />
-      <Sidebar onNewIssue={() => setCreating(true)} onAsk={() => setPalette("ask")} />
-      <main className="relative isolate min-h-0 min-w-0 flex-1 overflow-auto bg-backdrop" data-backdrop-host>
-        <BackdropEffect />
-        <div ref={setStrip} className="sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-8 pt-5 backdrop-blur-md empty:hidden" data-shell-header />
-        <ShellHeaderContext.Provider value={strip}>
-          <div className="px-8 py-6">
-            <Outlet />
-          </div>
-        </ShellHeaderContext.Provider>
-      </main>
+      <Sidebar onNewIssue={() => setCreating(true)} onAsk={() => setPalette("ask")} drawerOpen={narrow && drawer} onCloseDrawer={closeDrawer} />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {narrow && <NarrowStrip open={drawer} onOpen={() => setDrawer(true)} />}
+        <main className="relative isolate min-h-0 min-w-0 flex-1 overflow-auto bg-backdrop" data-backdrop-host>
+          <BackdropEffect />
+          <div ref={setStrip} className={narrow ? "sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-4 pt-4 backdrop-blur-md empty:hidden" : "sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-8 pt-5 backdrop-blur-md empty:hidden"} data-shell-header />
+          <ShellHeaderContext.Provider value={strip}>
+            <div className={narrow ? "px-4 py-4" : "px-8 py-6"}>
+              <Outlet />
+            </div>
+          </ShellHeaderContext.Provider>
+        </main>
+      </div>
       <IssuePanel />
       <CommandPalette
         open={palette !== null}
@@ -120,6 +139,17 @@ function AgentShell() {
       />
       {spotlight && <Spotlight target={spotlight.target} text={spotlight.text} onDone={clearSpotlight} onMissing={spotlightMissing} />}
       <CreateIssueDialog open={creating} onClose={() => setCreating(false)} projectKey={projectKey} />
+    </div>
+  );
+}
+
+/** What is left of the chrome on a phone: the button that opens the drawer, and where you are. */
+function NarrowStrip({ open, onOpen }: { open: boolean; onOpen: () => void }) {
+  const { data } = useMe();
+  return (
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-narrow-strip>
+      <IconButton icon={<Icon.Lines />} label="Open the navigation" size="sm" onClick={onOpen} aria-controls={DRAWER_ID} aria-expanded={open} data-action="open-drawer" />
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{data?.principal?.installation?.name}</span>
     </div>
   );
 }
@@ -154,7 +184,7 @@ function PortalShell() {
             <span className="text-xs text-ink-subtle" data-portal-address>
               {principal?.user.email}
             </span>
-            <SidebarFoot userName={principal?.user.name ?? ""} role={principal?.role ?? ""} avatar={principal?.user.avatarUrl} compact />
+            <SidebarFoot userName={principal?.user.name ?? ""} avatar={principal?.user.avatarUrl} />
           </div>
         </header>
         <main className="min-h-0 flex-1 overflow-auto">

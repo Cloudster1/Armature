@@ -1,12 +1,9 @@
-import { useState } from "react";
 import { IconButton, Tooltip } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { SIDEBAR_RAIL_WIDTH } from "@/config";
-import { applyTheme, readTheme, type Theme } from "@/lib/theme";
-import { InboxBell, NavButton, NavItem } from "./nav";
+import { NavButton, NavItem, NotificationsBell } from "./nav";
 import { AccountMenu } from "./AccountMenu";
-
-const themeLabels: Record<Theme, string> = { system: "Auto", light: "Light", dark: "Dark" };
+import { ThemeButton } from "./ThemeButton";
 
 /**
  * The rail is what is always there: the places every page reaches from, and
@@ -28,15 +25,6 @@ export function Rail({
   userName: string;
   avatar?: string;
 }) {
-  const [theme, setTheme] = useState<Theme>(readTheme);
-
-  function cycleTheme() {
-    const next: Theme = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
-    setTheme(next);
-    applyTheme(next);
-  }
-  const themeIcon = theme === "system" ? <Icon.Monitor /> : theme === "light" ? <Icon.Sun /> : <Icon.Moon />;
-
   return (
     <aside className="flex shrink-0 flex-col items-center border-r border-border bg-surface" style={{ width: SIDEBAR_RAIL_WIDTH }} data-rail>
       <header className="flex h-12 w-full items-center justify-center border-b border-border">
@@ -49,7 +37,7 @@ export function Rail({
         <NavItem to="/search" icon="Search" rail>
           Search
         </NavItem>
-        <InboxBell side="right" />
+        <NotificationsBell side="right" />
         <NavItem to="/projects" icon="Board" rail>
           Projects
         </NavItem>
@@ -63,9 +51,7 @@ export function Rail({
             <IconButton icon={<Icon.Help />} label="Where is something?" size="sm" onClick={onAsk} data-action="guide" />
           </Tooltip>
         )}
-        <Tooltip text={`Theme: ${themeLabels[theme]}`} side="right">
-          <IconButton icon={themeIcon} label={themeLabels[theme]} size="sm" onClick={cycleTheme} data-action="theme" data-guide="theme" />
-        </Tooltip>
+        <ThemeButton side="right" />
         <AccountMenu userName={userName} avatar={avatar} />
       </div>
     </aside>

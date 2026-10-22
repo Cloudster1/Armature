@@ -298,7 +298,7 @@ scenario("a dashboard is shared by a link that needs no sign-in, until it is rev
   expect.contains(await textOf(page, "[data-shared-query]"), "type = ", "the page says what the link froze");
   expect.equal(await page.$('[data-widget="filter"]'), null, "the filter tile is not offered to a visitor");
   expect.truthy(await page.$('[data-widget="velocity"] [data-not-narrowed]'), "and the sprint widget says it is not narrowed");
-  expect.equal(await page.$('a[href="/settings/tokens"]'), null, "no shell around it");
+  expect.equal(await page.$("[data-shell]"), null, "no shell around it");
 
   // Revoked, the same link says so.
   await signIn(page, owner.email);

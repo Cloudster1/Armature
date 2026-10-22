@@ -30,11 +30,11 @@ function InboxPage() {
   return (
     <Page width="narrow">
       <PageHeader
-        title="Inbox"
+        title="Notifications"
         meta={items.length ? `${items.length} ${view === "unread" ? "unread" : "recent"}` : undefined}
         actions={
           <Button variant="secondary" size="sm" onClick={() => markRead.mutate({ all: true })} loading={markRead.isPending} data-action="mark-all-read">
-            Mark all read
+            Mark all as read
           </Button>
         }
       />

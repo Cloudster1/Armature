@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
-import { SIDEBAR_RAIL_BELOW_PX } from "@/config";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { SIDEBAR_DRAWER_BELOW_PX, SIDEBAR_RAIL_BELOW_PX } from "@/config";
 
 const SIDEBAR_KEY = "armature.sidebar";
 const PROJECT_KEY = "armature.project";
+const OUTSIDE_SETTINGS_KEY = "armature.outside-settings";
+
+/** The id the drawer's opening button names in aria-controls. */
+export const DRAWER_ID = "shell-drawer";
 
 export type SidebarMode = "open" | "rail";
 
@@ -89,6 +93,40 @@ export function useMinWidth(px: number): boolean {
     return () => query.removeEventListener("change", update);
   }, [px]);
   return wide;
+}
+
+function onResize(notify: () => void) {
+  window.addEventListener("resize", notify);
+  return () => window.removeEventListener("resize", notify);
+}
+
+/** Whether the viewport is narrow enough that the rail and sidebar become a drawer, read again on every resize. */
+export function useNarrow(): boolean {
+  // The width rather than matchMedia: it is the number the breakpoint
+  // compares, and jsdom has it where it has no matchMedia.
+  return useSyncExternalStore(
+    onResize,
+    () => window.innerWidth < SIDEBAR_DRAWER_BELOW_PX,
+    () => false,
+  );
+}
+
+/** Notes the page last shown outside the settings area, which "Back to Armature" returns to. */
+export function rememberOutsideSettings(href: string) {
+  try {
+    window.sessionStorage.setItem(OUTSIDE_SETTINGS_KEY, href);
+  } catch {
+    // Without storage the way back is home.
+  }
+}
+
+/** The page "Back to Armature" returns to: the last one outside the settings area, or home. */
+export function lastOutsideSettings(): string {
+  try {
+    return window.sessionStorage.getItem(OUTSIDE_SETTINGS_KEY) ?? "/";
+  } catch {
+    return "/";
+  }
 }
 
 /** The project the sidebar shows when the route names none: the last one visited. */

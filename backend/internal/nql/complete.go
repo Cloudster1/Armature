@@ -77,7 +77,7 @@ func Values(field string) []string {
 	switch def.kind {
 	case fkEnum, fkPriority:
 		return append([]string{}, def.enum...)
-	case fkUser:
+	case fkUser, fkWatcher:
 		return []string{"currentUser()"}
 	case fkLookup:
 		if def.table == "sprint" {

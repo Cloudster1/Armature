@@ -18,6 +18,7 @@ const (
 	fkEnum
 	fkPriority
 	fkUser
+	fkWatcher
 	fkParent
 	fkLookup
 	fkLabels
@@ -61,6 +62,7 @@ var catalog = []fieldDef{
 	{name: "priority", kind: fkPriority, column: "i.priority", enum: []string{"lowest", "low", "medium", "high", "highest"}, enumType: "issue_priority", order: "i.priority"},
 	{name: "assignee", kind: fkUser, column: "i.assignee_id"},
 	{name: "reporter", kind: fkUser, column: "i.reporter_id"},
+	{name: "watcher", kind: fkWatcher},
 	{name: "parent", kind: fkParent, column: "i.parent_id"},
 	{name: "sprint", kind: fkLookup, column: "i.sprint_id", table: "sprint"},
 	{name: "team", kind: fkLookup, column: "i.team_id", table: "team"},
@@ -96,7 +98,7 @@ func operatorsFor(kind fieldKind) []string {
 		return []string{"~", "!~"}
 	case fkPriority:
 		return opsOrdered
-	case fkUser, fkParent, fkLookup, fkLabels, fkVersion, fkComponent:
+	case fkUser, fkWatcher, fkParent, fkLookup, fkLabels, fkVersion, fkComponent:
 		return append(append([]string{}, opsEquality...), "empty")
 	case fkNumber, fkTimestamp, fkDate:
 		return append(append([]string{}, opsOrdered...), "empty")

@@ -55,7 +55,7 @@ await page.goto(`${BASE}/login`, { waitUntil: "networkidle0" });
 await page.type("#field-email", EMAIL);
 await page.type("#field-password", PASSWORD);
 await page.click('button[type="submit"]');
-await page.waitForSelector('a[href="/settings/tokens"]');
+await page.waitForSelector('[data-shell] [data-action="account"]');
 
 // The demo's first issue with children and one with a repository, found rather than assumed.
 async function firstKey(path, selector) {

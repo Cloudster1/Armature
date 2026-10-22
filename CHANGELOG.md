@@ -7,6 +7,21 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the menus are where Stator's and Exciter's are (#308). The avatar
+  opens "Your account" whether the sidebar is open or folded: your name,
+  address and seat, then Your profile, Notification settings, Watching, Themes
+  and Access tokens (until now "API tokens"), the connected tools, Settings for
+  administrators and Sign out. Settings leaves the sidebar for a settings area
+  at `/settings` with a sidebar of its own, You and then Settings, headed by
+  "Back to Armature"; somebody who does not administer sees no Settings group,
+  card or palette entry. The sidebar keeps the work, with Saved searches, and
+  Inbox is now Notifications, with the unread count, while its address stays
+  `/inbox`. The bell opens the latest notifications with Mark all as read, See
+  all and Notification settings. The palette reaches every page of the
+  sidebar, the avatar menu and the settings area. Below 768px wide the rail and
+  sidebar give way to a drawer, opened from a strip at the top.
+- Added: `watcher` in a search, such as `watcher = currentUser()`, which is
+  what Watching opens (#308).
 - Added: the avatar opens the "Your account" menu whether the sidebar is open
   or folded, and its "Switch to" group links Stator and Exciter when the
   installation has a connected app for them: one whose Keycloak client is
