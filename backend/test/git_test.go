@@ -33,6 +33,8 @@ type stubHost struct {
 	*httptest.Server
 	mu    sync.Mutex
 	calls []hostCall
+	// pulls numbers the pull requests it opens, as a host does.
+	pulls int64
 }
 
 type hostCall struct {
@@ -71,6 +73,19 @@ func newStubHost(t *testing.T) *stubHost {
 			// Gitea answers with the branch and the commit it starts at.
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"name":"made","commit":{"id":"c0ffee00"}}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/pulls"):
+			// GitHub's answer to opening one, which Gitea's matches.
+			var asked struct{ Title, Head, Base string }
+			_ = json.Unmarshal(body, &asked)
+			s.mu.Lock()
+			s.pulls++
+			number := s.pulls
+			s.mu.Unlock()
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"number":` + strconv.FormatInt(number, 10) + `,"title":` + jsonString(asked.Title) +
+				`,"html_url":"https://github.com/acme/portal/pull/` + strconv.FormatInt(number, 10) + `","state":"open","merged":false,` +
+				`"created_at":"2026-10-22T09:00:00Z","user":{"login":"armature-bot"},"head":{"ref":` + jsonString(asked.Head) +
+				`,"sha":"feed0001"},"base":{"ref":` + jsonString(asked.Base) + `}}`))
 		default:
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{}`))

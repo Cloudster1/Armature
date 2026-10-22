@@ -569,6 +569,8 @@ func (s *Server) deskRoutes(r chi.Router) {
 	})
 	r.With(requireIssuePerm(perm.IssueWrite)).
 		Post("/issues/{issueKey}/branches", s.handleCreateBranch)
+	r.With(requireIssuePerm(perm.IssueWrite)).
+		Post("/issues/{issueKey}/pull-requests", s.handleOpenPullRequest)
 
 	// Companies: who reads whose shared requests is the desk's to say.
 	r.Get("/projects/{projectKey}/companies", s.handleListCompanies)

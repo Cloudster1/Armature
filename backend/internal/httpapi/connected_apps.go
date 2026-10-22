@@ -44,6 +44,7 @@ var appWrites = map[string]string{
 	"POST /issues/{issueKey}/attachments":                   oauth.ScopeIssueWrite,
 	"DELETE /attachments/{attachmentID}":                    oauth.ScopeIssueWrite,
 	"POST /issues/{issueKey}/branches":                      oauth.ScopeIssueWrite,
+	"POST /issues/{issueKey}/pull-requests":                 oauth.ScopeIssueWrite,
 	"POST /issues/{issueKey}/transitions":                   oauth.ScopeIssueTransition,
 	"POST /projects/{projectKey}/board/move":                oauth.ScopeIssueTransition,
 	"POST /issues/{issueKey}/comments":                      oauth.ScopeCommentWrite,

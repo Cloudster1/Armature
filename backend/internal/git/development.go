@@ -143,22 +143,21 @@ func (s *Service) ForIssue(ctx context.Context, key string) (*Development, error
 // issue's. An empty name takes the suggested one; an empty base takes the
 // repository's default branch.
 func (s *Service) CreateBranch(ctx context.Context, issueKey string, repoID uuid.UUID, name, from string, actor uuid.UUID) (*Branch, db.LSN, error) {
-	repo, err := s.ByID(ctx, repoID)
+	repo, found, err := s.issueRepository(ctx, issueKey, repoID)
 	if err != nil {
 		return nil, 0, err
 	}
 	if repo.token == "" {
 		return nil, 0, ErrNoToken
 	}
-	found, err := s.issues.ByKey(ctx, issueKey)
-	if err != nil {
-		return nil, 0, err
-	}
 	if name = strings.TrimSpace(name); name == "" {
 		name = BranchName(found.Key, found.Summary)
 	}
 	if !ValidBranchName(name) {
 		return nil, 0, ErrBadBranchName
+	}
+	if name == repo.DefaultBranch {
+		return nil, 0, ErrDefaultBranch
 	}
 	if from = strings.TrimSpace(from); from == "" {
 		from = repo.DefaultBranch

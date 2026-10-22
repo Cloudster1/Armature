@@ -403,6 +403,21 @@ func declareOverrides(b *openapi.Builder) {
 	// are the sprint states all the same.
 	b.FieldOverrides["SprintRef.state"] = &openapi.Schema{Type: "string", Enum: []string{"future", "active", "closed"}}
 	b.FieldOverrides["SetIssueFieldRequest.value"] = openapi.Nullable(answerSchema)
+	// A tool's input is these schemas flattened, so what a model reads about
+	// a field is said here.
+	describe := func(field, schemaType, format, text string) {
+		b.FieldOverrides[field] = &openapi.Schema{Type: schemaType, Format: format, Description: text}
+	}
+	for _, request := range []string{"CreateBranchRequest", "OpenPullRequestRequest"} {
+		describe(request+".repository", "string", "", "The repository as owner/name, the way list_repositories names it. Give this or repositoryId.")
+		describe(request+".repositoryId", "string", "uuid", "The repository's id from list_repositories. Give this or repository.")
+	}
+	describe("CreateBranchRequest.name", "string", "", "The branch to make; left out, the name the issue suggests, its branchName.")
+	describe("CreateBranchRequest.from", "string", "", "The branch to start from; left out, the repository's default branch.")
+	describe("OpenPullRequestRequest.branch", "string", "", "The issue's branch to merge, one made for this issue; never the default branch.")
+	describe("OpenPullRequestRequest.title", "string", "", "The pull request's title.")
+	describe("OpenPullRequestRequest.body", "string", "", "What the pull request changes and why, in Markdown.")
+	describe("OpenPullRequestRequest.draft", "boolean", "", "Open it as a draft, not yet ready for review.")
 	b.Overrides[reflect.TypeOf(reportUnion{})] = &openapi.Schema{OneOf: []*openapi.Schema{
 		b.SchemaOf(report.Breakdown{}), b.SchemaOf(report.ThroughputReport{}), b.SchemaOf(report.WorkloadReport{}),
 		b.SchemaOf(report.CycleTimeReport{}), b.SchemaOf(report.EpicsReport{}), b.SchemaOf(report.SprintReport{}),

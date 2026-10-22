@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -27,6 +28,15 @@ type Host interface {
 	CreateBranch(ctx context.Context, client *http.Client, repo *Repository, name, from string) (url, head string, err error)
 	// CommentOnPullRequest posts a comment on a pull or merge request.
 	CommentOnPullRequest(ctx context.Context, client *http.Client, repo *Repository, number int64, body string) error
+	// OpenPullRequest opens a pull or merge request and returns it as the
+	// host reports it.
+	OpenPullRequest(ctx context.Context, client *http.Client, repo *Repository, in NewPullRequest) (PullRequest, error)
+}
+
+// NewPullRequest is a pull request to open, from Branch into Base.
+type NewPullRequest struct {
+	Branch, Base, Title, Body string
+	Draft                     bool
 }
 
 // HostFor returns the adapter for a kind of host.
@@ -51,6 +61,9 @@ const hostRequestTimeout = 15 * time.Second
 type hostRefusal struct {
 	Status int
 	Text   string
+	// said is the start of the host's body, for an adapter to tell refusals
+	// of one status apart; it never reaches the caller's answer.
+	said string
 }
 
 func (e *hostRefusal) Error() string { return e.Text }
@@ -95,7 +108,7 @@ func callHost(ctx context.Context, client *http.Client, method, url string, head
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// What the host said is logged, not answered: the caller chose the
 		// address, so its body is a way to read whatever answers there.
-		return &hostRefusal{Status: resp.StatusCode, Text: fmt.Sprintf("%s: the host answered %d to %s", ErrHost, resp.StatusCode, method)}
+		return &hostRefusal{Status: resp.StatusCode, Text: fmt.Sprintf("%s: the host answered %d to %s", ErrHost, resp.StatusCode, method), said: string(raw)}
 	}
 	if out != nil && len(raw) > 0 {
 		if err := json.Unmarshal(raw, out); err != nil {
@@ -117,6 +130,23 @@ func refusedAs(err error, statuses ...int) bool {
 		}
 	}
 	return false
+}
+
+// refusedSaying reports whether the host answered with the status and said
+// the phrase, which is how a host tells "already exists" from another 422.
+func refusedSaying(err error, status int, phrase string) bool {
+	var refusal *hostRefusal
+	return errors.As(err, &refusal) && refusal.Status == status &&
+		strings.Contains(strings.ToLower(refusal.said), strings.ToLower(phrase))
+}
+
+// draftTitle marks a title as a draft the way a host without a draft field
+// reads one.
+func draftTitle(title, prefix string, draft bool) string {
+	if !draft || strings.HasPrefix(title, prefix) {
+		return title
+	}
+	return prefix + " " + title
 }
 
 // parseTime reads the timestamps hosts send, which are RFC 3339 with or

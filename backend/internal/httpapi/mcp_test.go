@@ -69,6 +69,42 @@ func TestAToolRequiresItsPathAndReadsWhenItGets(t *testing.T) {
 	}
 }
 
+// Rotor names a run's branch and opens its pull request through these, so
+// their names and arguments are a promise to a partner.
+func TestTheGitToolsTakeWhatAPartnerNames(t *testing.T) {
+	for name, want := range map[string]struct {
+		readOnly           bool
+		required, optional []string
+	}{
+		"list_repositories":     {true, []string{"projectKey"}, nil},
+		"get_issue_development": {true, []string{"issueKey"}, nil},
+		"create_issue_branch":   {false, []string{"issueKey"}, []string{"repository", "repositoryId", "name", "from"}},
+		"open_pull_request":     {false, []string{"issueKey", "branch", "title"}, []string{"repository", "repositoryId", "body", "draft"}},
+	} {
+		tool, ok := toolByName(name)
+		if !ok {
+			t.Errorf("there is no tool %s", name)
+			continue
+		}
+		if tool.ReadOnly != want.readOnly {
+			t.Errorf("%s: readOnly %v, want %v", name, tool.ReadOnly, want.readOnly)
+		}
+		if strings.Join(tool.Input.Required, ",") != strings.Join(want.required, ",") {
+			t.Errorf("%s requires %v, want %v", name, tool.Input.Required, want.required)
+		}
+		for _, arg := range append(want.required, want.optional...) {
+			if prop := tool.Input.Properties[arg]; prop == nil {
+				t.Errorf("%s does not take %s", name, arg)
+			} else if arg != "issueKey" && arg != "projectKey" && prop.Description == "" {
+				t.Errorf("%s does not say what %s is", name, arg)
+			}
+		}
+		if len(tool.Input.Properties) != len(want.required)+len(want.optional) {
+			t.Errorf("%s takes %d arguments, want %d", name, len(tool.Input.Properties), len(want.required)+len(want.optional))
+		}
+	}
+}
+
 func TestTheEndpointSpeaksJSONRPC(t *testing.T) {
 	s := &Server{}
 	call := func(body string) (int, rpcResponse) {

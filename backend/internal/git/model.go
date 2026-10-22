@@ -188,7 +188,7 @@ var (
 	ErrUnauthenticated = errors.New("the webhook did not authenticate")
 	// ErrNoToken is returned when reaching the host needs a token and the
 	// repository has none.
-	ErrNoToken = errors.New("this repository has no access token, so the tracker cannot write to it")
+	ErrNoToken = errors.New("this repository has no access token, so Armature cannot write to it")
 	// ErrHost is returned when the host's API refused or failed.
 	ErrHost = errors.New("the host refused")
 	// ErrBranchExists is returned when the host already has a branch of that
@@ -199,4 +199,18 @@ var (
 	// ErrUnknownEvent is returned for a webhook event kind this product does
 	// not read; the host still gets a 2xx so it does not retry.
 	ErrUnknownEvent = errors.New("event not handled")
+	// ErrDefaultBranch is returned for the default branch where an issue's own
+	// branch is meant: work reaches it only through a pull request.
+	ErrDefaultBranch = errors.New("that is the repository's default branch, which is never an issue's branch")
+	// ErrNotIssueBranch is returned for a pull request from a branch that was
+	// not made for the issue it is opened on.
+	ErrNotIssueBranch = errors.New("that branch was not made for this issue")
+	// ErrPullRequestExists is returned when the host already has an open pull
+	// request from the branch.
+	ErrPullRequestExists = errors.New("the host already has an open pull request from that branch")
+	// ErrNoTitle is returned for a pull request without a title.
+	ErrNoTitle = errors.New("a pull request needs a title")
+	// ErrAmbiguousName is returned for a repository named by owner/name when
+	// two hosts carry one of that name in the project.
+	ErrAmbiguousName = errors.New("two repositories of that name are connected to the project")
 )

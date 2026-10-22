@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -80,4 +81,68 @@ func (s *Service) recordPull(ctx context.Context, tx db.DBTX, repo *Repository, 
 		return nil, fmt.Errorf("mark %q merged: %w", pr.SourceBranch, err)
 	}
 	return &mergedPull{pr: pr, keys: unique(keys)}, nil
+}
+
+// PullRequestInput is a pull request to open from an issue's branch into the
+// repository's default branch.
+type PullRequestInput struct {
+	Branch, Title, Body string
+	Draft               bool
+}
+
+// OpenPullRequest opens a pull request from the issue's own branch with the
+// repository's token and records it as a delivery would.
+func (s *Service) OpenPullRequest(ctx context.Context, issueKey string, repoID uuid.UUID, in PullRequestInput, actor uuid.UUID) (*PullRequest, db.LSN, error) {
+	repo, found, err := s.issueRepository(ctx, issueKey, repoID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if repo.token == "" {
+		return nil, 0, ErrNoToken
+	}
+	in.Branch, in.Title = strings.TrimSpace(in.Branch), strings.TrimSpace(in.Title)
+	if in.Title == "" {
+		return nil, 0, ErrNoTitle
+	}
+	if err := s.issueBranch(ctx, repo, found.ID, in.Branch); err != nil {
+		return nil, 0, err
+	}
+	host, err := HostFor(repo.Host)
+	if err != nil {
+		return nil, 0, err
+	}
+	opened, err := host.OpenPullRequest(ctx, s.client, repo, NewPullRequest{
+		Branch: in.Branch, Base: repo.DefaultBranch, Title: in.Title, Body: in.Body, Draft: in.Draft,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	// A host may leave out what it was just told; the request says it too.
+	if opened.SourceBranch == "" {
+		opened.SourceBranch = in.Branch
+	}
+	if opened.TargetBranch == "" {
+		opened.TargetBranch = repo.DefaultBranch
+	}
+	if opened.Title == "" {
+		opened.Title = in.Title
+	}
+
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if _, err := s.recordPull(ctx, tx, repo, opened, &Receipt{}); err != nil {
+			return err
+		}
+		if err := tx.QueryRow(ctx, `SELECT id FROM pull_request WHERE repository_id = $1 AND number = $2`,
+			repo.ID, opened.Number).Scan(&opened.ID); err != nil {
+			return fmt.Errorf("read pull request %d: %w", opened.Number, err)
+		}
+		opened.Repository = repo.Name
+		return events.Emit(ctx, tx, "vcs.pull_request.opened", map[string]any{
+			"issueKey": found.Key, "repositoryId": repo.ID, "number": opened.Number, "branch": in.Branch, "actorId": actor,
+		})
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return &opened, lsn, nil
 }

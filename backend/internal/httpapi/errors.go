@@ -419,7 +419,17 @@ func moreAPIError(err error) *APIError {
 	case errors.Is(err, git.ErrBadAddress):
 		return ErrBadRequest("A repository's address and its API address are http or https URLs.")
 	case errors.Is(err, git.ErrNoToken):
-		return ErrConflict(git.ErrNoToken.Error())
+		return &APIError{Status: http.StatusConflict, Code: "no_token", Message: capitalize(git.ErrNoToken.Error()) + ". A project administrator gives it one on the project's Repositories page."}
+	case errors.Is(err, git.ErrAmbiguousName):
+		return ErrConflict("Two repositories of that name are connected to the project, on different hosts. Name it by repositoryId instead.")
+	case errors.Is(err, git.ErrDefaultBranch):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "default_branch", Message: "That is the repository's default branch, which Armature never writes to. Work on the issue's own branch, and merge it through a pull request."}
+	case errors.Is(err, git.ErrNotIssueBranch):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "not_issue_branch", Message: "That branch was not made for this issue. Make the issue's branch with create_issue_branch, push to it, and open the pull request from it."}
+	case errors.Is(err, git.ErrPullRequestExists):
+		return ErrConflict("The host already has an open pull request from that branch. Push to the branch to update it, or find it in the issue's development.")
+	case errors.Is(err, git.ErrNoTitle):
+		return ErrBadRequest("A pull request needs a title. Say in a few words what it changes.")
 	case errors.Is(err, git.ErrBranchExists):
 		return ErrConflict("The host already has a branch of that name. Pick another, or push to the one that is there.")
 	case errors.Is(err, git.ErrBadBranchName):

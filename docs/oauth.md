@@ -50,7 +50,7 @@ to the api. `/oauth/authorize` is a page of the web app.
 | Scope | The consent page says | Lets the token |
 |---|---|---|
 | `read` | See the projects and issues you can see | Every read the person may make. Required with every other scope. |
-| `issue.write` | File and edit issues, and link pages to them | Create and edit issues, their fields, labels, links, remote links, worklogs, attachments and branches |
+| `issue.write` | File and edit issues, and link pages to them | Create and edit issues, their fields, labels, links, remote links, worklogs, attachments, branches and pull requests |
 | `issue.transition` | Move issues through their workflow | Transitions, and moving a card on a board |
 | `comment.write` | Comment on issues | Comments, internal notes and watchers |
 | `webhooks.partner` | Send Armature's events to {app}, from every project (administrators only) | The app's own webhook, below |

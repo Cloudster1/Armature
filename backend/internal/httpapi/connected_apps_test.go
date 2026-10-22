@@ -56,6 +56,8 @@ func TestAConnectedAppIsHeldToTheWritesItsScopesName(t *testing.T) {
 		{http.MethodPost, "/api/v1/filters", false, ""},
 		{http.MethodPost, "/api/v1/issues/CP-1/transitions", false, oauth.ScopeIssueTransition},
 		{http.MethodPost, "/api/v1/issues/CP-1/remote-links", true, ""},
+		{http.MethodPost, "/api/v1/issues/CP-1/branches", true, ""},
+		{http.MethodPost, "/api/v1/issues/CP-1/pull-requests", true, ""},
 		{http.MethodGet, "/api/v1/projects", true, ""},
 		{http.MethodPost, "/api/v1/mcp", true, ""},
 	} {

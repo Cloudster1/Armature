@@ -71,25 +71,44 @@ type ghPush struct {
 	} `json:"repository"`
 }
 
+// ghPull is a pull request as GitHub and Gitea write one, in a delivery and
+// in the answer to opening one.
+type ghPull struct {
+	Number    int64  `json:"number"`
+	Title     string `json:"title"`
+	HTMLURL   string `json:"html_url"`
+	State     string `json:"state"`
+	Merged    bool   `json:"merged"`
+	MergedAt  string `json:"merged_at"`
+	CreatedAt string `json:"created_at"`
+	User      ghUser `json:"user"`
+	Head      struct {
+		Ref string `json:"ref"`
+		SHA string `json:"sha"`
+	} `json:"head"`
+	Base struct {
+		Ref string `json:"ref"`
+	} `json:"base"`
+}
+
+func (pr ghPull) pull(now time.Time) PullRequest {
+	state := PullOpen
+	switch {
+	case pr.Merged:
+		state = PullMerged
+	case pr.State == "closed":
+		state = PullClosed
+	}
+	return PullRequest{
+		Number: pr.Number, Title: pr.Title, URL: pr.HTMLURL, State: state,
+		SourceBranch: pr.Head.Ref, TargetBranch: pr.Base.Ref, HeadSHA: pr.Head.SHA,
+		AuthorName: pr.User.Login, OpenedAt: parseTime(pr.CreatedAt, now), MergedAt: timePtr(pr.MergedAt),
+	}
+}
+
 type ghPullEvent struct {
 	Action      string `json:"action"`
-	PullRequest struct {
-		Number    int64  `json:"number"`
-		Title     string `json:"title"`
-		HTMLURL   string `json:"html_url"`
-		State     string `json:"state"`
-		Merged    bool   `json:"merged"`
-		MergedAt  string `json:"merged_at"`
-		CreatedAt string `json:"created_at"`
-		User      ghUser `json:"user"`
-		Head      struct {
-			Ref string `json:"ref"`
-			SHA string `json:"sha"`
-		} `json:"head"`
-		Base struct {
-			Ref string `json:"ref"`
-		} `json:"base"`
-	} `json:"pull_request"`
+	PullRequest ghPull `json:"pull_request"`
 }
 
 type ghCheckRun struct {
@@ -188,19 +207,7 @@ func parseGitHubDialect(event string, body []byte, branchURL func(string) string
 		if err := json.Unmarshal(body, &p); err != nil {
 			return nil, fmt.Errorf("read pull request: %w", err)
 		}
-		pr := p.PullRequest
-		state := PullOpen
-		switch {
-		case pr.Merged:
-			state = PullMerged
-		case pr.State == "closed":
-			state = PullClosed
-		}
-		return &Delivery{PullRequests: []PullRequest{{
-			Number: pr.Number, Title: pr.Title, URL: pr.HTMLURL, State: state,
-			SourceBranch: pr.Head.Ref, TargetBranch: pr.Base.Ref, HeadSHA: pr.Head.SHA,
-			AuthorName: pr.User.Login, OpenedAt: parseTime(pr.CreatedAt, now), MergedAt: timePtr(pr.MergedAt),
-		}}}, nil
+		return &Delivery{PullRequests: []PullRequest{p.PullRequest.pull(now)}}, nil
 
 	case "check_run":
 		var p ghCheckRun
@@ -283,4 +290,21 @@ func (h githubHost) CreateBranch(ctx context.Context, client *http.Client, repo 
 func (h githubHost) CommentOnPullRequest(ctx context.Context, client *http.Client, repo *Repository, number int64, body string) error {
 	url := strings.TrimRight(repo.APIBaseURL, "/") + "/repos/" + repo.Name + "/issues/" + strconv.FormatInt(number, 10) + "/comments"
 	return callHost(ctx, client, http.MethodPost, url, h.headers(repo), map[string]string{"body": body}, nil)
+}
+
+// OpenPullRequest opens a pull request; GitHub answers 422 both for one that
+// is already open and for a branch with nothing to merge, told apart by text.
+func (h githubHost) OpenPullRequest(ctx context.Context, client *http.Client, repo *Repository, in NewPullRequest) (PullRequest, error) {
+	var made ghPull
+	url := strings.TrimRight(repo.APIBaseURL, "/") + "/repos/" + repo.Name + "/pulls"
+	err := callHost(ctx, client, http.MethodPost, url, h.headers(repo), map[string]any{
+		"title": in.Title, "head": in.Branch, "base": in.Base, "body": in.Body, "draft": in.Draft,
+	}, &made)
+	if refusedSaying(err, http.StatusUnprocessableEntity, "already exists") {
+		return PullRequest{}, ErrPullRequestExists
+	}
+	if err != nil {
+		return PullRequest{}, err
+	}
+	return made.pull(time.Now().UTC()), nil
 }
