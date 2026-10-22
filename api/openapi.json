@@ -5949,6 +5949,48 @@
         }
       }
     },
+    "/installation/tools": {
+      "get": {
+        "operationId": "connectedTools",
+        "summary": "The other tools of the suite this installation has a connected app for, each at the app's address.",
+        "tags": [
+          "oauth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ConnectedTool"
+                      }
+                    }
+                  },
+                  "required": [
+                    "tools"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invites": {
       "get": {
         "operationId": "listInvites",
@@ -22340,6 +22382,25 @@
         "required": [
           "clientId",
           "name"
+        ]
+      },
+      "ConnectedTool": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "name",
+          "url"
         ]
       },
       "Consent": {

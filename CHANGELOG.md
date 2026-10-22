@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the avatar opens the "Your account" menu whether the sidebar is open
+  or folded, and its "Switch to" group links Stator and Exciter when the
+  installation has a connected app for them: one whose Keycloak client is
+  `stator` or `exciter`, or that has the tool's name, at the app's address.
+  Each is a plain link, shown to everyone signed in; with none connected the
+  group is not shown. `GET /installation/tools` lists them (#327).
 - Fixed: `make test`, `make release` and the other targets that mount a
   cache work in a fresh clone. They create `.cache/gocache`, `.cache/gomod`
   and `.cache/npm` as the caller first, where Docker made them owned by root

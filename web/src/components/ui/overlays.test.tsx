@@ -245,6 +245,27 @@ describe("Menu", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "Apollo" }));
   });
+
+  it("draws a link as a plain link under its section's heading, and moves to it with the arrows", async () => {
+    render(
+      <Menu
+        label="Your account"
+        trigger={(p) => <button onClick={p.toggle}>Open</button>}
+        items={[
+          { label: "Your profile", onSelect: () => {} },
+          { label: "Stator", href: "https://stator.example.test", section: "Switch to" },
+        ]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    const link = screen.getByRole("menuitem", { name: "Stator" });
+    expect(link.tagName).toBe("A");
+    expect(link).toHaveAttribute("href", "https://stator.example.test");
+    expect(screen.getByText("Switch to")).toHaveAttribute("data-menu-section", "Switch to");
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+    await userEvent.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(link);
+  });
 });
 
 describe("Popover", () => {

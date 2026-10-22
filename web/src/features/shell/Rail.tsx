@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useLogout } from "@/api/auth";
-import { Avatar, IconButton, Menu, Tooltip } from "@/components/ui";
+import { IconButton, Tooltip } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { SIDEBAR_RAIL_WIDTH } from "@/config";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { InboxBell, NavButton, NavItem } from "./nav";
+import { AccountMenu } from "./AccountMenu";
 
 const themeLabels: Record<Theme, string> = { system: "Auto", light: "Light", dark: "Dark" };
 
@@ -29,8 +28,6 @@ export function Rail({
   userName: string;
   avatar?: string;
 }) {
-  const navigate = useNavigate();
-  const logout = useLogout();
   const [theme, setTheme] = useState<Theme>(readTheme);
 
   function cycleTheme() {
@@ -69,28 +66,7 @@ export function Rail({
         <Tooltip text={`Theme: ${themeLabels[theme]}`} side="right">
           <IconButton icon={themeIcon} label={themeLabels[theme]} size="sm" onClick={cycleTheme} data-action="theme" data-guide="theme" />
         </Tooltip>
-        {open ? (
-          <Tooltip text="Your profile" side="right">
-            <Link to="/settings/profile" className="inline-flex rounded-full" data-action="profile">
-              <Avatar name={userName} src={avatar} size="sm" />
-              <span className="sr-only">Your profile</span>
-            </Link>
-          </Tooltip>
-        ) : (
-          // With the sidebar folded the person's block is gone, so the way out
-          // hangs off the picture instead.
-          <Menu
-            label="Your account"
-            align="start"
-            trigger={(props) => (
-              <IconButton icon={<Avatar name={userName} src={avatar} size="sm" />} label="Your account" size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} className="rounded-full" data-action="profile" />
-            )}
-            items={[
-              { label: "Your profile", icon: <Icon.User />, onSelect: () => navigate({ to: "/settings/profile" }) },
-              { label: "Sign out", icon: <Icon.External />, onSelect: () => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) }), attrs: { "data-action": "sign-out" } },
-            ]}
-          />
-        )}
+        <AccountMenu userName={userName} avatar={avatar} />
       </div>
     </aside>
   );

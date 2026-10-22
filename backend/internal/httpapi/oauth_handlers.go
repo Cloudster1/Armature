@@ -270,6 +270,15 @@ func (s *Server) handleOAuthDecide(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]string{"redirectTo": to})
 }
 
+func (s *Server) handleConnectedTools(w http.ResponseWriter, r *http.Request) {
+	tools, err := s.OAuth.ConnectedTools(r.Context())
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"tools": tools})
+}
+
 func (s *Server) handleListOAuthClients(w http.ResponseWriter, r *http.Request) {
 	clients, err := s.OAuth.ListClients(r.Context())
 	if err != nil {

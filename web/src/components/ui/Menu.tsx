@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
 import { focusables, isEditing, useAnchored, useEscape, useOutsidePress } from "./overlay";
 
 export interface MenuItem {
   label: ReactNode;
-  onSelect: () => void;
+  /** What picking it does; an item with an href is a link and needs none. */
+  onSelect?: () => void;
+  /** Makes the item a plain link, so the browser can open it in a new tab too. */
+  href?: string;
+  /** Starts a group under this heading, which runs to the next item that starts one. */
+  section?: string;
+  /** Sets the item apart from those above it by a line, without a heading. */
+  separated?: boolean;
   icon?: ReactNode;
   danger?: boolean;
   disabled?: boolean;
@@ -109,28 +116,49 @@ export function Menu({
           className="fixed z-30 min-w-44 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
         >
           {header}
-          {items.map((item, i) => (
-            <button
-              key={i}
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              tabIndex={-1}
-              {...item.attrs}
-              onClick={() => {
-                setOpen(false);
-                item.onSelect();
-              }}
-              className={cx(
-                "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm",
-                item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised",
-                "focus:bg-surface-raised focus:outline-none disabled:opacity-50",
-              )}
-            >
-              {item.icon && <span className="text-ink-muted [&_svg]:size-4">{item.icon}</span>}
-              {item.label}
-            </button>
-          ))}
+          {items.map((item, i) => {
+            const className = cx(
+              "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm",
+              item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised",
+              "focus:bg-surface-raised focus:outline-none disabled:opacity-50",
+            );
+            const content = (
+              <>
+                {item.icon && <span className="text-ink-muted [&_svg]:size-4">{item.icon}</span>}
+                {item.label}
+              </>
+            );
+            return (
+              <Fragment key={i}>
+                {item.separated && !item.section && i > 0 && <div role="separator" className="my-1 border-t border-border" />}
+                {item.section && (
+                  <div role="presentation" className={cx("px-2 pt-2 pb-1 text-2xs font-semibold text-ink-subtle", i > 0 && "mt-1 border-t border-border")} data-menu-section={item.section}>
+                    {item.section}
+                  </div>
+                )}
+                {item.href ? (
+                  <a role="menuitem" href={item.href} tabIndex={-1} {...item.attrs} onClick={() => setOpen(false)} className={className}>
+                    {content}
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={item.disabled}
+                    tabIndex={-1}
+                    {...item.attrs}
+                    onClick={() => {
+                      setOpen(false);
+                      item.onSelect?.();
+                    }}
+                    className={className}
+                  >
+                    {content}
+                  </button>
+                )}
+              </Fragment>
+            );
+          })}
         </div>,
         document.body,
         )}

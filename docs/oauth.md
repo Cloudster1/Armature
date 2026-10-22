@@ -102,6 +102,19 @@ digest and shown once, on creation and on rotation.
 | `POST /oauth/clients/{clientID}/rotate-secret` | `{client}` with the new `secret`; the old one stops at once. 409 for a public app. |
 | `DELETE /oauth/clients/{clientID}` | 204; every grant of it ends, and its webhook goes with its log |
 
+### The tools people switch to
+
+The avatar menu's "Switch to" group links the suite's other tools, each to the
+`clientUri` of the app that stands for it (#327). An active app with a
+`clientUri` stands for Stator when its `keycloakClientId` is `stator` or its
+name is "Stator", and for Exciter alike; when several stand for one tool, the
+one changed last wins. Removing the app, or emptying its address, takes the
+tool out of the menu.
+
+`GET /installation/tools` answers `{tools}`, each `{product, name, url}`,
+Stator before Exciter, to everyone signed in except customers. The other tool
+decides what they may see there.
+
 ### Registered by the partner itself
 
 `POST /api/v1/oauth/register` is RFC 7591 dynamic registration, public, braked
