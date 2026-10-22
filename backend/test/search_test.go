@@ -68,6 +68,9 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 	if _, _, err := ws.issues.Transition(ws.ctx, c.Key, issue.TransitionInput{TransitionID: closeID}, ws.actor); err != nil {
 		t.Fatalf("close c: %v", err)
 	}
+	if _, _, _, err := ws.issues.AddWatcher(ws.ctx, b.Key, me, ws.actor); err != nil {
+		t.Fatalf("watch b: %v", err)
+	}
 	customer, _, err := fields.Create(ws.ctx, ws.project.Key, field.Input{Name: "Customer", Kind: field.Text})
 	if err != nil {
 		t.Fatalf("customer field: %v", err)
@@ -162,6 +165,9 @@ func TestIssuesAreFoundByWhatIsSaidAboutThem(t *testing.T) {
 	}{
 		{q: "assignee = currentUser()", want: sorted(a.Key), sql: "i.assignee_id = $1", sqlArgs: []any{me}},
 		{q: "assignee IS EMPTY", want: sorted(b.Key, c.Key), sql: "i.assignee_id IS NULL"},
+		{q: "watcher = currentUser()", want: sorted(b.Key),
+			sql: "EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id AND w.user_id = $1)", sqlArgs: []any{me}},
+		{q: "watcher IS EMPTY", want: sorted(a.Key, c.Key)},
 		{q: "statusCategory != done", want: sorted(a.Key, b.Key), sql: "s.category <> 'done'"},
 		{q: "status = Done", want: sorted(c.Key), sql: "s.name = 'Done'"},
 		{q: `labels IN ("` + security + `", nothing)`, want: sorted(a.Key),
