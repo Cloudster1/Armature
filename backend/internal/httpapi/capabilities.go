@@ -63,6 +63,14 @@ var integrationCapabilities = []capability{
 		},
 	},
 	{
+		// The tools are discovered from their list, so only the endpoint is promised, as Exciter's mcp@1 does.
+		name:    "mcp@1",
+		promise: "A partner works with issues over MCP 2025-06-18 as the person whose token it holds, with the tools its list names.",
+		operations: []string{
+			"POST /mcp",
+		},
+	},
+	{
 		name:    "oauth.partner-tokens@1",
 		promise: "A connected app gets a person's token with their consent, by authorization code with PKCE, refreshes it, revokes it, and registers itself pending an administrator.",
 		operations: []string{

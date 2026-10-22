@@ -7,6 +7,9 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: `/meta` lists `mcp@1`, so a partner such as Rotor finds Armature's
+  MCP endpoint by name before it acts in it as a person, with an API token or
+  a connected app's token (#305).
 - Changed: the menus are where Stator's and Exciter's are (#308). The avatar
   opens "Your account" whether the sidebar is open or folded: your name,
   address and seat, then Your profile, Notification settings, Watching, Themes
