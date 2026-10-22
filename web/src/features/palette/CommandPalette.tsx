@@ -13,6 +13,7 @@ import { Input, cx, modalBackdropStyle, modalPanelStyle } from "@/components/ui"
 import { PALETTE_RESULTS } from "@/config";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { pagesFor, projectSetupPages, projectWorkPages } from "@/features/shell/Sidebar";
+import { personalPlaces, placeKey, settingsFor, SETTINGS_PATH, workPlaces, type Place as ShellPlace } from "@/features/shell/places";
 
 interface Command {
   id: string;
@@ -88,6 +89,10 @@ export function CommandPalette({
     onClose();
     navigate({ to: to as never });
   };
+  const goPlace = (place: ShellPlace) => {
+    onClose();
+    navigate({ to: place.to, search: place.search, hash: place.hash } as never);
+  };
   // The model is offered the places the guide knows, as concrete paths, so it can name one.
   const places = (): Place[] =>
     CATALOGUE.filter((entry) => entry.needs !== "admin" || canAdministerOrg).map((entry) => {
@@ -149,16 +154,20 @@ export function CommandPalette({
         if (matches(page.label)) out.push({ id: `page:${page.path}`, group: "Pages", label: `${projectKey} / ${page.label}`, icon: page.icon, run: () => go(`/projects/${projectKey}${page.path}`) });
       }
     }
-    for (const page of [
-      { to: "/settings/access", label: "Access", icon: "Key" as IconName },
-      { to: "/settings/users", label: "Users", icon: "Users" as IconName },
-      { to: "/settings/holidays", label: "Holidays", icon: "Calendar" as IconName },
-      { to: "/settings/workflows", label: "Workflows", icon: "Workflow" as IconName },
-      { to: "/settings/labels", label: "Labels", icon: "Tag" as IconName },
-      { to: "/settings/tokens", label: "API tokens", icon: "Command" as IconName },
-      { to: "/settings/themes", label: "Themes", icon: "Palette" as IconName },
-    ]) {
-      if (matches(`settings ${page.label}`)) out.push({ id: `settings:${page.to}`, group: "Pages", label: `Settings / ${page.label}`, icon: page.icon, run: () => go(page.to) });
+    // Every page the sidebar, the avatar menu and the settings area reach, by
+    // the same lists and the same rule; the empty box offers the work ones only.
+    const shellPlaces: Array<{ place: ShellPlace; label: string; words: string }> = [
+      ...workPlaces.map((place) => ({ place, label: place.label, words: place.label })),
+      ...(lower
+        ? [
+            ...personalPlaces.map((place) => ({ place, label: place.label, words: `you account ${place.label}` })),
+            ...(canAdministerOrg ? [{ place: { to: SETTINGS_PATH, label: "Settings", icon: "Settings" as IconName }, label: "Settings", words: "settings" }] : []),
+            ...settingsFor(canAdministerOrg).map((place) => ({ place, label: `Settings / ${place.label}`, words: `settings ${place.label}` })),
+          ]
+        : []),
+    ];
+    for (const { place, label, words } of shellPlaces) {
+      if (matches(words)) out.push({ id: `place:${placeKey(place)}`, group: "Pages", label, icon: place.icon, run: () => goPlace(place) });
     }
     const actions: Command[] = [
       { id: "new-issue", group: "Actions", label: "New issue", icon: "Plus", run: () => { onClose(); onNewIssue(); } },

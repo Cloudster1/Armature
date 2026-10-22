@@ -19,7 +19,9 @@ import {
   keepSecondFactorRule,
   mailFor,
   nextTotp,
+  openAccountMenu,
   openPalette,
+  signOutThroughMenu,
   PASSWORD,
   reload,
   selectByLabel,
@@ -46,13 +48,16 @@ serialScenario("somebody signs up through the form and joins the installation as
 
   const who = await signUpThroughForm(page);
   expect.contains(await textOf(page, "h1"), who.name.split(" ")[0], "welcome heading");
-  expect.contains(await bodyText(page), "Member", "somebody who signs up later is a member");
+  // The seat is worded in the avatar menu's header.
+  await openAccountMenu(page);
+  expect.equal(await textOf(page, "[data-account-role]"), "Member", "somebody who signs up later is a member");
+  await page.keyboard.press("Escape");
 });
 
 scenario("signing out ends the session and protects the app", async ({ page }) => {
   await signUp(page);
 
-  await page.click('[data-action="sign-out"]');
+  await signOutThroughMenu(page);
   await waitForPath(page, "/login");
 
   // Going back to the app must not restore it from cache or a stale cookie.
@@ -69,7 +74,7 @@ scenario("signing out in a second page sends the first to sign in on its next ac
   await second.setViewport(page.viewport());
   await goto(second, "/");
   await waitForApp(second);
-  await second.click('[data-action="sign-out"]');
+  await signOutThroughMenu(second);
   await waitForPath(second, "/login");
   await second.close();
 
@@ -90,7 +95,7 @@ scenario("signing out in a second page sends the first to sign in on its next ac
 scenario("an existing account can sign back in", async ({ page }) => {
   const who = await signUp(page);
 
-  await page.click('[data-action="sign-out"]');
+  await signOutThroughMenu(page);
   await waitForPath(page, "/login");
 
   await signInThroughForm(page, who.email);
@@ -154,7 +159,7 @@ scenario("a session ended from the profile sends that browser to sign in on its 
 
 scenario("a wrong password is refused without saying whether the account exists", async ({ page }) => {
   const who = await signUp(page);
-  await page.click('[data-action="sign-out"]');
+  await signOutThroughMenu(page);
   await waitForPath(page, "/login");
 
   await signInThroughForm(page, who.email, "definitely not the password");
@@ -264,7 +269,7 @@ serialScenario("an administrator requires two-step sign-in and a member is held 
     await acceptInvite(other, member);
     await other.waitForSelector("[data-enrolment-required]", { timeout: WAIT });
     expect.contains(await bodyText(other), "Set it up to carry on", "the member is told why they are held");
-    expect.equal(await other.$('a[href="/settings/tokens"]'), null, "nothing of the app is offered while held");
+    expect.equal(await other.$("[data-shell]"), null, "nothing of the app is offered while held");
 
     await enrolThroughPage(other);
     await waitForApp(other);
@@ -293,7 +298,8 @@ scenario("signing in is not offered to someone already signed in", async ({ page
 scenario("an API token can be created and revoked", async ({ page }) => {
   await signUp(page);
 
-  await page.click('a[href="/settings/tokens"]');
+  await openAccountMenu(page);
+  await page.click('[data-account-place="Access tokens"]');
   await waitForPath(page, "/settings/tokens");
   // The path changes before the list has loaded.
   await page.waitForFunction(() => document.body.innerText.includes("No tokens yet"), { timeout: WAIT }).catch(() => {});

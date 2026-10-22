@@ -4,6 +4,8 @@ import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
   connectTool,
+  openAccountMenu,
+  signOutThroughMenu,
   disconnectTool,
   expect,
   fill,
@@ -34,7 +36,7 @@ scenario("an unknown path shows the not-found page rather than a blank screen", 
 serialScenario("form validation is reported against the field, not swallowed", async ({ page }) => {
   const who = unique("dupe");
   await signUp(page, who);
-  await page.click('[data-action="sign-out"]');
+  await signOutThroughMenu(page);
   await waitForPath(page, "/login");
 
   // The same address a second time must be reported, not silently accepted.
@@ -96,7 +98,8 @@ scenario("nothing in the page reports a script error", async ({ page }) => {
   page.on("pageerror", (error) => problems.push(error.message));
 
   await signUp(page);
-  await page.click('a[href="/settings/tokens"]');
+  await openAccountMenu(page);
+  await page.click('[data-account-place="Access tokens"]');
   await waitForPath(page, "/settings/tokens");
   await goto(page, "/");
 

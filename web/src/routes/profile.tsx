@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { LOCALES, MY_DATA_HREF, useChangeMyPassword, useEraseMe, useMe, useRemoveAvatar, useUpdateProfile, useUploadAvatar } from "@/api/auth";
 import { NOTIFICATION_KINDS, useNotificationPreferences, useSaveNotificationPreferences, type NotificationPreferences } from "@/api/notifications";
@@ -287,6 +287,13 @@ function NotificationSettings() {
   const toast = useToast();
   const [draft, setDraft] = useState<NotificationPreferences | null>(null);
   const prefs = draft ?? data?.preferences;
+  const { hash } = useLocation();
+  const section = useRef<HTMLElement>(null);
+  const shown = prefs !== undefined;
+  // The router scrolls to the hash before the preferences have loaded and the section is there.
+  useEffect(() => {
+    if (shown && hash === "notifications") section.current?.scrollIntoView({ block: "start" });
+  }, [shown, hash]);
   if (!prefs) return null;
 
   const on = (map: Record<string, boolean>, kind: string) => map[kind] !== false;
@@ -300,19 +307,19 @@ function NotificationSettings() {
   }
 
   return (
-    <section className="mt-8">
-      <SectionTitle className="mb-2">Notifications</SectionTitle>
+    <section ref={section} id="notifications" className="mt-8 scroll-mt-24">
+      <SectionTitle className="mb-2">Notification settings</SectionTitle>
       <Card className="p-5">
         <form onSubmit={onSubmit} className="space-y-4" noValidate data-notification-settings data-guide="notification-settings">
           {save.error && <ErrorBanner>{(save.error as Error).message}</ErrorBanner>}
           <div className="grid grid-cols-[1fr_auto_auto] gap-x-6 gap-y-2 text-sm">
             <span className="text-ink-subtle">Tell me when</span>
-            <span className="text-ink-subtle">Inbox</span>
+            <span className="text-ink-subtle">Here</span>
             <span className="text-ink-subtle">Mail</span>
             {NOTIFICATION_KINDS.map(({ kind, label }) => (
               <Fragment key={kind}>
                 <span className="text-ink">{label}</span>
-                <Checkbox label={<span className="sr-only">{label} in the inbox</span>} checked={on(prefs.inapp, kind)} onChange={(e) => set("inapp", kind, e.target.checked)} data-pref-inapp={kind} />
+                <Checkbox label={<span className="sr-only">{label} here, under Notifications</span>} checked={on(prefs.inapp, kind)} onChange={(e) => set("inapp", kind, e.target.checked)} data-pref-inapp={kind} />
                 <Checkbox label={<span className="sr-only">{label} by mail</span>} checked={on(prefs.mail, kind)} onChange={(e) => set("mail", kind, e.target.checked)} data-pref-mail={kind} />
               </Fragment>
             ))}

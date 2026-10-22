@@ -10,6 +10,7 @@ import {
   inviteFromMembersPage,
   joinThroughLink,
   mailFor,
+  openAccountMenu,
   PASSWORD,
   signIn,
   signOut,
@@ -17,6 +18,7 @@ import {
   unique,
   WAIT,
   waitForApp,
+  textOf,
   waitForPath,
 } from "../helpers.mjs";
 
@@ -53,7 +55,10 @@ scenario("the people a new member invites can sign in with what they chose", asy
   await signIn(page, who.email, PASSWORD);
   await waitForPath(page, "/");
   await waitForApp(page);
-  expect.contains(await bodyText(page), "Admin", "they hold the role they were invited as");
+  // The seat is worded in the avatar menu's header.
+  await openAccountMenu(page);
+  expect.equal(await textOf(page, "[data-account-role]"), "Admin", "they hold the role they were invited as");
+  await page.keyboard.press("Escape");
 });
 
 scenario("a withdrawn invitation cannot be used", async ({ page }) => {

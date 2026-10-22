@@ -12,6 +12,7 @@ const SCENARIO_FILES = [
   "accounts",
   "work",
   "shell",
+  "menus",
   "projects",
   "templates",
   "git",

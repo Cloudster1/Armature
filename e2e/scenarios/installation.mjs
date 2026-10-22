@@ -35,7 +35,11 @@ serialScenario("renaming the installation shows in the sidebar, and the old sett
     expect.equal(await page.$('[data-action="delete-organization"]'), null, "nothing deletes the installation");
 
     await replaceValue(page, "#field-installation-name", name);
+    const renamed = page.waitForResponse((r) => r.url().endsWith("/api/v1/installation") && r.request().method() === "PUT", { timeout: WAIT });
     await clickButton(page, "Rename");
+    expect.equal((await renamed).status(), 200, "the rename is saved");
+    // The settings area heads its sidebar with the way back; the work's sidebar carries the name.
+    await goto(page, "/");
     await page.waitForFunction((n) => document.querySelector("[data-installation-name]")?.textContent.trim() === n, { timeout: WAIT }, name);
   } finally {
     await putBack();

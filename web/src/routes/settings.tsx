@@ -1,60 +1,44 @@
 import { Link, createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
+import { useAccess } from "@/api/access";
 import { useMe } from "@/api/auth";
 import { Card, Page, PageHeader, SectionTitle } from "@/components/ui";
-import { Icon, type IconName } from "@/components/icons";
+import { Icon } from "@/components/icons";
+import { personalPlaces, placeKey, settingsFor, type Place } from "@/features/shell/places";
 
-/** One door to everything that is set up rather than worked on: yours, then everyone's. */
+/** One door to everything that is set up rather than worked on: yours, then the installation's for its administrators. */
 export const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings",
   component: SettingsHub,
 });
 
-const you: Array<{ to: string; label: string; detail: string; icon: IconName }> = [
-  { to: "/settings/profile", label: "Profile", detail: "Your name, your picture, and how dates are written for you.", icon: "User" },
-  { to: "/settings/tokens", label: "API tokens", detail: "Call the API from a script or a CI job.", icon: "Command" },
-  { to: "/settings/themes", label: "Themes", detail: "Colours, type, cursors and icons, yours or shared with everyone.", icon: "Palette" },
-];
-
-const everyone: Array<{ to: string; label: string; detail: string; icon: IconName }> = [
-  { to: "/settings/installation", label: "Installation", detail: "What everybody sees it called, and the demo project to show it with.", icon: "Settings" },
-  { to: "/settings/access", label: "Access", detail: "Who holds which role, the groups, and the identity provider.", icon: "Key" },
-  { to: "/settings/users", label: "Users", detail: "Accounts that sign in with a password here: make one, reset it, switch it off.", icon: "Users" },
-  { to: "/settings/holidays", label: "Holidays", detail: "Calendars of days off, and which one everybody keeps by default.", icon: "Calendar" },
-  { to: "/settings/workflows", label: "Workflows", detail: "The workflows every project follows and the schemes that hand them to issue types.", icon: "Workflow" },
-  { to: "/settings/labels", label: "Labels", detail: "Words shared by every project.", icon: "Tag" },
-  { to: "/settings/automation", label: "Automation", detail: "Rules that watch every project: when something happens, check it, do things.", icon: "Bolt" },
-  { to: "/settings/webhooks", label: "Webhooks", detail: "Where events are posted, signed, with a log of every try.", icon: "Hook" },
-  { to: "/settings/connected-apps", label: "Connected apps", detail: "Partner tools people connect in one click, with their consent.", icon: "Key" },
-  { to: "/settings/fields", label: "Fields", detail: "What every project records about an issue beyond the standard fields.", icon: "Field" },
-  { to: "/settings/audit", label: "Audit log", detail: "Who did what, and when, kept for a year.", icon: "Shield" },
-];
-
 function SettingsHub() {
   const { data } = useMe();
+  const { data: access } = useAccess();
+  const settings = settingsFor(access?.canAdministerOrg ?? false);
   return (
     <Page width="narrow">
       <PageHeader title="Settings" meta={data?.principal?.installation?.name} />
-      <Group title="You" links={you} />
-      <Group title="Everyone" links={everyone} />
+      <Group title="You" places={personalPlaces} />
+      {settings.length > 0 && <Group title="Settings" places={settings} />}
     </Page>
   );
 }
 
-function Group({ title, links }: { title: string; links: typeof you }) {
+function Group({ title, places }: { title: string; places: Place[] }) {
   return (
-    <section className="mb-8">
+    <section className="mb-8" data-settings-group={title}>
       <SectionTitle className="mb-2">{title}</SectionTitle>
       <Card className="divide-y divide-border">
-        {links.map((link) => {
-          const Glyph = Icon[link.icon];
+        {places.map((place) => {
+          const Glyph = Icon[place.icon];
           return (
-            <Link key={link.to} to={link.to} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-raised" data-settings-link={link.label}>
+            <Link key={placeKey(place)} to={place.to} search={place.search as never} hash={place.hash} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-raised" data-settings-link={place.label}>
               <Glyph className="shrink-0 text-ink-muted" />
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-ink">{link.label}</span>
-                <span className="block text-sm text-ink-muted">{link.detail}</span>
+                <span className="block text-sm font-medium text-ink">{place.label}</span>
+                <span className="block text-sm text-ink-muted">{place.detail}</span>
               </span>
               <Icon.ChevronRight className="shrink-0 text-ink-subtle" />
             </Link>

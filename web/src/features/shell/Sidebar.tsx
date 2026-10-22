@@ -1,19 +1,24 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
+import { useAccess } from "@/api/access";
 import { MY_DATA_HREF, useEraseMe, useLogout, useMe } from "@/api/auth";
 import { useProject, useProjectSearch, type Feature, type Project } from "@/api/projects";
 import { hasFeature } from "@/features/projects/features";
-import { Avatar, Button, IconButton, Input, Menu, Tooltip } from "@/components/ui";
+import { Avatar, Button, IconButton, Input, Menu, Tooltip, type MenuItem } from "@/components/ui";
+import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon, type IconName } from "@/components/icons";
-import { PROJECT_SEARCH_DELAY_MS, SIDEBAR_WIDTH } from "@/config";
+import { PROJECT_SEARCH_DELAY_MS, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { useDebounced } from "@/lib/debounce";
-import { applyTheme, readTheme, type Theme } from "@/lib/theme";
-import { useLastProject, useSidebarGroups, useSidebarMode } from "./state";
+import { DRAWER_ID, lastOutsideSettings, useLastProject, useNarrow, useSidebarGroups, useSidebarMode } from "./state";
 import { useConfirm } from "./ConfirmProvider";
-import { InboxBell, NavItem, NavLinkOut } from "./nav";
+import { NavButton, NavItem, NavLinkOut, UnreadBadge } from "./nav";
 import { Rail } from "./Rail";
 import { BuildStamp } from "./BuildStamp";
 import { SidebarGroup } from "./SidebarGroup";
+import { ThemeButton } from "./ThemeButton";
+import { roleWord, useAccountItems } from "./AccountMenu";
+import { inSettingsArea, personalPlaces, settingsFor, workPlaces, type Place } from "./places";
 
 // The sidebar is the map: where you are is highlighted, where you can go is
 // listed, and a project's pages are always there once a project is chosen.
@@ -54,22 +59,6 @@ export const projectSetupPages: PageLink[] = [
   { path: "/settings", label: "Settings", icon: "Settings" },
 ];
 
-const settingsPages: Array<{ to: string; label: string; icon: IconName }> = [
-  { to: "/settings/installation", label: "Installation", icon: "Settings" },
-  { to: "/settings/access", label: "Access", icon: "Key" },
-  { to: "/settings/users", label: "Users", icon: "Users" },
-  { to: "/settings/holidays", label: "Holidays", icon: "Calendar" },
-  { to: "/settings/workflows", label: "Workflows", icon: "Workflow" },
-  { to: "/settings/labels", label: "Labels", icon: "Tag" },
-  { to: "/settings/automation", label: "Automation", icon: "Bolt" },
-  { to: "/settings/webhooks", label: "Webhooks", icon: "Hook" },
-  { to: "/settings/fields", label: "Fields", icon: "Field" },
-  { to: "/settings/issue-view", label: "Issue view", icon: "Issue" },
-  { to: "/settings/audit", label: "Audit log", icon: "Shield" },
-  { to: "/settings/tokens", label: "API tokens", icon: "Command" },
-  { to: "/settings/themes", label: "Themes", icon: "Palette" },
-];
-
 /** The pages of the list the project has; a project still loading shows them all. */
 export function pagesFor<T extends { feature?: Feature }>(project: Project | undefined, list: T[]): T[] {
   return list.filter((page) => hasFeature(project, page.feature));
@@ -83,57 +72,28 @@ export function currentProjectKey(): string | undefined {
   return undefined;
 }
 
-export function Sidebar({ onNewIssue, onAsk }: { onNewIssue: () => void; onAsk?: () => void }) {
+/**
+ * The rail and the sidebar beside it, or on a narrow screen nothing until the
+ * strip's button opens them as a drawer. In the settings area the sidebar is
+ * the settings' own.
+ */
+export function Sidebar({ onNewIssue, onAsk, drawerOpen = false, onCloseDrawer = () => {} }: { onNewIssue: () => void; onAsk?: () => void; drawerOpen?: boolean; onCloseDrawer?: () => void }) {
   const { data } = useMe();
   const principal = data?.principal;
   const [mode, toggleMode] = useSidebarMode();
+  const narrow = useNarrow();
+  const { pathname } = useLocation();
+  const settings = inSettingsArea(pathname);
+  if (narrow) return drawerOpen ? <NavDrawer settings={settings} onClose={onCloseDrawer} onNewIssue={onNewIssue} /> : null;
   const open = mode === "open";
-  const projectKey = useLastProject(currentProjectKey());
-  const [groups, toggleGroup] = useSidebarGroups();
-  const isOpen = (id: string, defaultOpen: boolean) => groups[id] ?? defaultOpen;
 
   return (
     <>
       <Rail open={open} onToggle={toggleMode} onNewIssue={onNewIssue} onAsk={onAsk} userName={principal?.user.name ?? ""} avatar={principal?.user.avatarUrl} />
       {open && (
-        <nav className="flex shrink-0 flex-col border-r border-border bg-surface" style={{ width: SIDEBAR_WIDTH }} data-sidebar={mode} aria-label="Where you are">
-          <div className="flex h-12 items-center gap-1 border-b border-border px-3">
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
-              {principal?.installation?.name}
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-2 py-3">
-            <SidebarGroup id="work" title="Work & Plan" open={isOpen("work", true)} onToggle={() => toggleGroup("work", true)}>
-              <NavItem to="/" exact icon="Home" rail={false}>
-                Home
-              </NavItem>
-              <NavItem to="/search" icon="Search" rail={false} trailing={<kbd className="font-mono text-2xs text-ink-subtle">Ctrl K</kbd>}>
-                Search
-              </NavItem>
-              <NavItem to="/inbox" icon="Bell" rail={false}>
-                Inbox
-              </NavItem>
-              <NavItem to="/projects" icon="Board" rail={false}>
-                Projects
-              </NavItem>
-            </SidebarGroup>
-
-            <SidebarGroup id="project" title="Project" open={isOpen("project", true)} onToggle={() => toggleGroup("project", true)}>
-              <ProjectSwitcher projectKey={projectKey} />
-              {projectKey && <ProjectPages projectKey={projectKey} adminOpen={isOpen("project-admin", false)} onToggleAdmin={() => toggleGroup("project-admin", false)} />}
-            </SidebarGroup>
-
-            <SidebarGroup id="settings" title="Settings" open={isOpen("settings", true)} onToggle={() => toggleGroup("settings", true)}>
-              {settingsPages.map((page) => (
-                <NavItem key={page.to} to={page.to} icon={page.icon} rail={false}>
-                  {page.label}
-                </NavItem>
-              ))}
-            </SidebarGroup>
-          </div>
-
-          <SidebarUser userName={principal?.user.name ?? ""} role={principal?.role ?? ""} avatar={principal?.user.avatarUrl} />
+        <nav className="flex shrink-0 flex-col border-r border-border bg-surface" style={{ width: SIDEBAR_WIDTH }} data-sidebar={mode} data-sidebar-area={settings ? "settings" : "work"} aria-label="Where you are">
+          <div className="flex h-12 items-center gap-1 border-b border-border px-3">{settings ? <BackToArmature /> : <InstallationName />}</div>
+          <div className="flex-1 overflow-y-auto px-2 py-3">{settings ? <SettingsGroups /> : <WorkGroups />}</div>
           <BuildStamp />
         </nav>
       )}
@@ -141,29 +101,177 @@ export function Sidebar({ onNewIssue, onAsk }: { onNewIssue: () => void; onAsk?:
   );
 }
 
-// The person, at the bottom of the map: who they are here, and the way out.
-function SidebarUser({ userName, role, avatar }: { userName: string; role: string; avatar?: string }) {
-  const navigate = useNavigate();
-  const logout = useLogout();
+function InstallationName() {
+  const { data } = useMe();
   return (
-    <div className="flex items-center gap-2 border-t border-border px-3 py-2.5">
-      <Link to="/settings/profile" className="flex min-w-0 flex-1 items-center gap-2 rounded-control hover:bg-surface-raised" title="Your profile">
-        <Avatar name={userName} src={avatar} size="sm" />
-        <span className="min-w-0 flex-1 truncate text-sm text-ink">{userName}</span>
-      </Link>
-      {/* The seat this person holds here, which decides what the column offers them. */}
-      <span className="shrink-0 text-2xs text-ink-subtle">{role ? role[0]!.toUpperCase() + role.slice(1) : ""}</span>
-      <Tooltip text="Sign out">
-        <IconButton
-          icon={<Icon.External />}
-          label="Sign out"
-          size="sm"
-          onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}
-          data-action="sign-out"
-          aria-busy={logout.isPending}
-        />
-      </Tooltip>
+    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
+      {data?.principal?.installation?.name}
+    </span>
+  );
+}
+
+/** Heads the settings area's sidebar, and leaves it for the last page outside it. */
+function BackToArmature() {
+  const router = useRouter();
+  const back = lastOutsideSettings();
+  function leave(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    router.history.push(back);
+  }
+  return (
+    <a href={back} onClick={leave} className="flex min-w-0 flex-1 items-center gap-2 rounded-control px-1 py-1 text-sm font-semibold text-ink hover:bg-surface-raised" data-action="back-from-settings">
+      <Icon.ChevronLeft className="shrink-0 text-ink-muted" />
+      <span className="truncate">Back to Armature</span>
+    </a>
+  );
+}
+
+function PlaceLink({ place, trailing }: { place: Place; trailing?: ReactNode }) {
+  // Your profile and its notification settings are one page; only the section tells them apart.
+  const shared = personalPlaces.some((other) => other !== place && other.to === place.to);
+  return (
+    <NavItem to={place.to} search={place.search} hash={place.hash} matchHash={shared} exact={place.to === "/"} icon={place.icon} rail={false} trailing={trailing} data-place={place.label}>
+      {place.label}
+    </NavItem>
+  );
+}
+
+/** The work: the tool's places, then the project on screen or the last one visited. */
+function WorkGroups() {
+  const projectKey = useLastProject(currentProjectKey());
+  const [groups, toggleGroup] = useSidebarGroups();
+  const isOpen = (id: string, defaultOpen: boolean) => groups[id] ?? defaultOpen;
+  const trailing = (place: Place) =>
+    place.to === "/search" ? <kbd className="font-mono text-2xs text-ink-subtle">Ctrl K</kbd> : place.to === "/inbox" ? <UnreadBadge /> : undefined;
+  return (
+    <>
+      <SidebarGroup id="work" title="Work & Plan" open={isOpen("work", true)} onToggle={() => toggleGroup("work", true)}>
+        {workPlaces.map((place) => (
+          <PlaceLink key={place.to} place={place} trailing={trailing(place)} />
+        ))}
+      </SidebarGroup>
+
+      <SidebarGroup id="project" title="Project" open={isOpen("project", true)} onToggle={() => toggleGroup("project", true)}>
+        <ProjectSwitcher projectKey={projectKey} />
+        {projectKey && <ProjectPages projectKey={projectKey} adminOpen={isOpen("project-admin", false)} onToggleAdmin={() => toggleGroup("project-admin", false)} />}
+      </SidebarGroup>
+    </>
+  );
+}
+
+/** The settings area's own groups: the person's pages, then the installation's for administrators. */
+function SettingsGroups() {
+  const { data: access } = useAccess();
+  const settings = settingsFor(access?.canAdministerOrg ?? false);
+  const [groups, toggleGroup] = useSidebarGroups();
+  const isOpen = (id: string) => groups[id] ?? true;
+  return (
+    <>
+      <SidebarGroup id="you" title="You" open={isOpen("you")} onToggle={() => toggleGroup("you", true)}>
+        {personalPlaces.map((place) => (
+          <PlaceLink key={place.label} place={place} />
+        ))}
+      </SidebarGroup>
+      {settings.length > 0 && (
+        <SidebarGroup id="settings" title="Settings" open={isOpen("settings")} onToggle={() => toggleGroup("settings", true)}>
+          {settings.map((place) => (
+            <PlaceLink key={place.to} place={place} />
+          ))}
+        </SidebarGroup>
+      )}
+    </>
+  );
+}
+
+// A modal panel from the left, as in Stator and Exciter: the page stays in
+// view behind the scrim but out of reach, and focus is held inside.
+function NavDrawer({ settings, onClose, onNewIssue }: { settings: boolean; onClose: () => void; onNewIssue: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEscape(true, onClose);
+  useFocusReturn(true, ref, true);
+  // Closing on the press would let the rest of the click land on the page.
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex bg-ink/30" onClick={(e) => e.target === e.currentTarget && onClose()} data-drawer-backdrop>
+      <div
+        ref={ref}
+        id={DRAWER_ID}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
+        // A strip of the page as wide as the rail stays uncovered, so there
+        // is always somewhere to tap the drawer shut.
+        style={{ width: `min(${SIDEBAR_WIDTH}px, calc(100vw - ${SIDEBAR_RAIL_WIDTH}px))` }}
+        className="flex h-full flex-col border-r border-border bg-surface shadow-2"
+        data-sidebar="drawer"
+        data-sidebar-area={settings ? "settings" : "work"}
+      >
+        <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3">
+          {settings ? <BackToArmature /> : <InstallationName />}
+          <IconButton icon={<Icon.X />} label="Close the navigation" size="sm" onClick={onClose} data-focus-last="" data-action="close-drawer" />
+        </div>
+        <nav aria-label="Where you are" className="flex-1 overflow-y-auto px-2 py-3">
+          {!settings && (
+            <div className="mb-3">
+              <NavButton icon="Plus" rail={false} onClick={() => { onClose(); onNewIssue(); }} data-action="new-issue">
+                New issue
+              </NavButton>
+            </div>
+          )}
+          {settings ? <SettingsGroups /> : <WorkGroups />}
+        </nav>
+        <DrawerFoot />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/** The drawer's foot: the avatar menu's entries, the theme switch and the build stamp. */
+function DrawerFoot() {
+  const { data } = useMe();
+  const principal = data?.principal;
+  const items = useAccountItems();
+  return (
+    <div className="max-h-[45vh] shrink-0 overflow-y-auto border-t border-border px-2 pt-2" data-drawer-foot>
+      <div className="flex items-center gap-2 px-1 pb-2">
+        <Avatar name={principal?.user.name ?? ""} src={principal?.user.avatarUrl} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm text-ink">{principal?.user.name}</span>
+          <span className="block text-2xs text-ink-subtle">{roleWord(principal?.role)}</span>
+        </span>
+        <ThemeButton side="top" />
+      </div>
+      <ul aria-label="Your account">
+        {items.map((item, i) => (
+          <li key={i}>
+            {item.section && <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-ink-subtle uppercase">{item.section}</p>}
+            {item.separated && !item.section && <div role="separator" className="my-1 border-t border-border" />}
+            <DrawerEntry item={item} />
+          </li>
+        ))}
+      </ul>
+      <BuildStamp />
     </div>
+  );
+}
+
+function DrawerEntry({ item }: { item: MenuItem }) {
+  const className = "flex h-8 w-full items-center gap-2 rounded-control px-2 text-left text-sm text-ink-muted hover:bg-surface-raised hover:text-ink";
+  const content = (
+    <>
+      {item.icon && <span className="shrink-0 [&_svg]:size-4">{item.icon}</span>}
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+    </>
+  );
+  return item.href ? (
+    <a href={item.href} className={className} {...item.attrs}>
+      {content}
+    </a>
+  ) : (
+    <Button variant="ghost" onClick={item.onSelect} className="h-8 w-full justify-start gap-2 px-2! font-normal text-ink-muted" {...item.attrs}>
+      {content}
+    </Button>
   );
 }
 
@@ -252,8 +360,6 @@ function ProjectSwitcher({ projectKey }: { projectKey: string | undefined }) {
   );
 }
 
-const themeLabels: Record<Theme, string> = { system: "Auto", light: "Light", dark: "Dark" };
-
 // A customer has no profile page, so their rights over their data hang off
 // their name: the file, and the way out. Erasing keeps their requests, by
 // "Former user", which the confirm says.
@@ -289,31 +395,14 @@ function CustomerMenu({ userName, avatar }: { userName: string; avatar?: string 
   );
 }
 
-export function SidebarFoot({ userName, role, avatar, rail, compact = false, onAsk }: { userName: string; role: string; avatar?: string; rail?: boolean; compact?: boolean; onAsk?: () => void }) {
+/** The portal's corner: the customer's menu, the theme switch and the way out. Customers have no notifications page; the desk mails them. */
+export function SidebarFoot({ userName, avatar }: { userName: string; avatar?: string }) {
   const navigate = useNavigate();
   const logout = useLogout();
-  const [theme, setTheme] = useState<Theme>(readTheme);
-
-  function cycleTheme() {
-    const next: Theme = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
-    setTheme(next);
-    applyTheme(next);
-  }
-  const themeIcon = theme === "system" ? <Icon.Monitor /> : theme === "light" ? <Icon.Sun /> : <Icon.Moon />;
-  // The buttons say their words to screen readers and to the tests, which read
-  // the theme button's text as Auto, Light or Dark.
-  // Customers have no inbox: the desk mails them, so the portal's foot has no bell.
-  const controls = (
-    <>
-      {!compact && <InboxBell />}
-      {onAsk && (
-        <Tooltip text="Where is something?">
-          <IconButton icon={<Icon.Help />} label="Where is something?" size="sm" onClick={onAsk} data-action="guide" />
-        </Tooltip>
-      )}
-      <Tooltip text={`Theme: ${themeLabels[theme]}`}>
-        <IconButton icon={themeIcon} label={themeLabels[theme]} size="sm" onClick={cycleTheme} data-action="theme" data-guide="theme" />
-      </Tooltip>
+  return (
+    <div className="flex items-center gap-2">
+      <CustomerMenu userName={userName} avatar={avatar} />
+      <ThemeButton />
       <Tooltip text="Sign out">
         <IconButton
           icon={<Icon.External />}
@@ -324,34 +413,6 @@ export function SidebarFoot({ userName, role, avatar, rail, compact = false, onA
           aria-busy={logout.isPending}
         />
       </Tooltip>
-    </>
-  );
-
-  if (compact) {
-    return (
-      <div className="flex items-center gap-2">
-        <CustomerMenu userName={userName} avatar={avatar} />
-        {controls}
-      </div>
-    );
-  }
-  if (rail) {
-    return (
-      <div className="flex flex-col items-center gap-1 border-t border-border py-2">
-        <Avatar name={userName} src={avatar} size="sm" />
-        {controls}
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2 border-t border-border px-3 py-2.5">
-      <Link to="/settings/profile" className="flex min-w-0 flex-1 items-center gap-2 rounded-control hover:bg-surface-raised" title="Your profile" data-action="profile">
-        <Avatar name={userName} src={avatar} size="sm" />
-        <span className="min-w-0 flex-1 truncate text-sm text-ink">{userName}</span>
-      </Link>
-      {/* The seat this person holds here, which decides what the column offers them. */}
-      <span className="shrink-0 text-2xs text-ink-subtle">{role ? role[0]!.toUpperCase() + role.slice(1) : ""}</span>
-      {controls}
     </div>
   );
 }

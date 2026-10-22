@@ -196,8 +196,20 @@ export async function waitForPath(page, path, timeout = WAIT) {
  * waiting on the path alone makes every following selector a race.
  */
 export async function waitForApp(page, timeout = WAIT) {
-  await page.waitForSelector("header", { timeout });
-  await page.waitForSelector('a[href="/settings/tokens"]', { timeout });
+  await page.waitForSelector('[data-shell] [data-action="account"], [data-shell] [data-action="open-drawer"]', { timeout });
+}
+
+/** Opens the avatar's menu, "Your account", and waits for it. */
+export async function openAccountMenu(page) {
+  await page.waitForSelector('[data-action="account"]', { timeout: WAIT });
+  await page.click('[data-action="account"]');
+  await page.waitForSelector('[role="menu"][aria-label="Your account"]', { timeout: WAIT });
+}
+
+/** Signs out through the avatar's menu, the one way out of the agents' shell. */
+export async function signOutThroughMenu(page) {
+  await openAccountMenu(page);
+  await page.click('[role="menu"] [data-action="sign-out"]');
 }
 
 export async function textOf(page, selector) {

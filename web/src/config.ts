@@ -200,6 +200,12 @@ export const SIDEBAR_RAIL_WIDTH = 48;
 /** Below this viewport width the sidebar starts as a rail. */
 export const SIDEBAR_RAIL_BELOW_PX = 1024;
 
+/** Below this viewport width the rail and the sidebar give way to a drawer, as in Stator and Exciter. */
+export const SIDEBAR_DRAWER_BELOW_PX = 768;
+
+/** How many notifications the bell's panel shows before "See all". */
+export const BELL_PANEL_SIZE = 8;
+
 /** How wide the issue drawer opens from the right, on a screen too narrow to dock it. */
 export const DRAWER_WIDTH = 704;
 

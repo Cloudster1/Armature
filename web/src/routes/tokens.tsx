@@ -61,7 +61,7 @@ function TokensPage() {
             Settings
           </Link>
         }
-        title="API tokens" />
+        title="Access tokens" />
 
       {freshSecret && (
         <Card className="mb-6 border-accent/40 bg-accent-subtle p-4">

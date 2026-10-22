@@ -1692,7 +1692,8 @@ and remember it; Project Admin folds by default since setup is visited less than
 work. A project's pages are in the sidebar with a switcher that keeps the page
 kind, so Board stays Board in the other project (a sprint's board becomes the
 other project's Sprints, since the sprint is not theirs), and the command
-palette is the keyboard's sidebar. Below 1024px the sidebar becomes a rail of icons.
+palette is the keyboard's sidebar. Below 1024px the sidebar becomes a rail of icons,
+and below 768px both become a drawer.
 
 The page's head draws into a strip over the content rather than moving out of
 the thirty-five pages that call it, and floats on glass so the title and the
@@ -1702,6 +1703,31 @@ slate reads as a night.
 
 **Reconsider if** a third column is wanted, at which point the rail is the wrong
 first column.
+
+### Yours under the avatar, the installation's in a settings area, the work in the sidebar
+
+The sidebar carried thirteen Settings entries to everyone, and most of the
+pages then refused the agents who opened them. Stator, Armature and Exciter now
+put things in the same places (praetorianer777/Dynamo#12, #308): the avatar
+opens "Your account" with the person's own pages, the other tools, Settings for
+administrators and Sign out; `/settings` and the pages under it trade the
+sidebar for one of their own, You and then Settings, headed by "Back to
+Armature", which returns to the last page outside it; the sidebar keeps the
+work. One list in `features/shell/places.ts` feeds the sidebar, the avatar
+menu, the settings area, its hub and the palette, so none of them can offer a
+page the others leave out, and one check, `canAdministerOrg`, hides every
+installation page from the rest.
+
+Three places differ from the shared layout. Connected apps lists the apps an
+administrator lets in, so it is a settings page here; a person's own grants are
+rows of Access tokens. Watching is the search `watcher = currentUser()`, which
+the query language learned for it, rather than a page of its own. And there are
+no Stator or Exciter account pages, since they connect to Armature, not
+Armature to them. Below 768px the rail and sidebar give way to a drawer, as in
+the other two tools, with the avatar menu's entries in its foot.
+
+**Reconsider if** a person's connections to the other tools come to live here,
+which would give them a "You" entry each.
 
 ### Destructive actions confirm with the noun; undoable ones toast with Undo
 

@@ -89,7 +89,7 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
             ))}
           </ul>
         </div>
-        <p className="text-ink-muted">Afterwards you go back to {consent.redirectHost}. Disconnect it any time under Settings, API tokens.</p>
+        <p className="text-ink-muted">Afterwards you go back to {consent.redirectHost}. Disconnect it any time under Access tokens, in your account menu.</p>
         {consent.refusal && (
           <p className="rounded-control border border-border bg-surface-raised px-3 py-2 text-ink-muted" data-consent-refusal>
             {consent.refusal}
