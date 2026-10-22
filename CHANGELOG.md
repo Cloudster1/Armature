@@ -7,6 +7,10 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: `make test`, `make release` and the other targets that mount a
+  cache work in a fresh clone. They create `.cache/gocache`, `.cache/gomod`
+  and `.cache/npm` as the caller first, where Docker made them owned by root
+  and the build then could not write to them (#323).
 - Added: an issue's description and its comments are written in Markdown
   through the API. Creating and changing an issue take `descriptionMarkdown`
   and a comment takes `bodyMarkdown`, beside the document fields, which may

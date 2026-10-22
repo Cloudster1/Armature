@@ -1,5 +1,7 @@
 # Armature - all toolchains run in containers; nothing is installed on the host.
 
+.DEFAULT_GOAL := help
+
 # Pinned to 1.26 deliberately: under golang:1.27 on this host every test binary
 # is killed about a second into its run ("signal: killed"), and some built
 # binaries die a couple of seconds after startup. 1.25 and 1.26 are unaffected.
@@ -33,6 +35,13 @@ SECRET_KEY         ?= YXJtYXR1cmUtZGV2LWtleS1ub3QtYS1zZWNyZXQtMDA=
 GO_CACHE_VOL   := $(ROOT)/.cache/gocache
 GO_MOD_VOL     := $(ROOT)/.cache/gomod
 NPM_CACHE_VOL  := $(ROOT)/.cache/npm
+GO_CACHES      := $(GO_CACHE_VOL) $(GO_MOD_VOL)
+
+# Made here, as the caller, before a container mounts them: a directory Docker
+# creates for a mount is owned by root, and the container running as the
+# caller can then neither write to it nor remove it.
+$(GO_CACHES) $(NPM_CACHE_VOL):
+	mkdir -p $@
 
 # The OpenAPI document lives beside the code at api/, outside the backend
 # module, so it is mounted separately and the test that checks it is told where.
@@ -89,19 +98,19 @@ help: ## Show this help
 ## ---------- backend ----------
 
 .PHONY: go
-go: ## Run an arbitrary go command in the toolchain container: make go ARGS="version"
+go: | $(GO_CACHES) ## Run an arbitrary go command in the toolchain container: make go ARGS="version"
 	$(DOCKER_GO) go $(ARGS)
 
 .PHONY: tidy
-tidy: ## go mod tidy
+tidy: | $(GO_CACHES) ## go mod tidy
 	$(DOCKER_GO) go mod tidy
 
 .PHONY: build
-build: ## Compile all backend binaries
+build: | $(GO_CACHES) ## Compile all backend binaries
 	$(DOCKER_GO) go build ./...
 
 .PHONY: test
-test: test-scripts ## Run backend unit tests and the script tests
+test: test-scripts | $(GO_CACHES) ## Run backend unit tests and the script tests
 	$(DOCKER_GO) go test ./...
 
 .PHONY: test-scripts
@@ -118,7 +127,7 @@ hooks: ## Have git refuse a push whose branch name or commit subjects the releas
 # streaming replication and replay lag are properties of Postgres itself and
 # cannot be usefully faked. Bring the stack up with `make up` first.
 .PHONY: test-integration
-test-integration: ## Run the integration suite against the running stack
+test-integration: | $(GO_CACHES) ## Run the integration suite against the running stack
 	@# The worker is stopped for the duration. The relay tests start their own
 	@# relays and assert on exactly which events were published; a background
 	@# worker draining the same outbox would race them.
@@ -200,22 +209,22 @@ test-e2e: ## Run the browser end-to-end suite against the running stack
 		--entrypoint node $(E2E_IMAGE) /usr/src/app/e2e/suite.mjs
 
 .PHONY: test-all
-test-all: test test-integration test-e2e ## Everything: unit, integration and browser
+test-all: test test-integration test-e2e | $(NPM_CACHE_VOL) ## Everything: unit, integration and browser
 	$(DOCKER_NODE) npm run test
 
 .PHONY: vet
-vet: ## go vet
+vet: | $(GO_CACHES) ## go vet
 	$(DOCKER_GO) go vet ./...
 
 .PHONY: fmt
-fmt: ## gofmt the backend
+fmt: | $(GO_CACHES) ## gofmt the backend
 	$(DOCKER_GO) gofmt -l -w .
 
 # The OpenAPI document is derived from the server's own tables and types; the
 # checked in copy at api/openapi.json is what a test compares against and what
 # the TypeScript client is generated from.
 .PHONY: openapi
-openapi: ## Regenerate api/openapi.json and the TypeScript client types from it
+openapi: | $(GO_CACHES) $(NPM_CACHE_VOL) ## Regenerate api/openapi.json and the TypeScript client types from it
 	$(DOCKER_GO) go run ./cmd/openapi /api/openapi.json
 	docker run --rm -t -u $(UID):$(GID) \
 		-v $(ROOT)/web:/app -v $(ROOT)/api:/api \
@@ -223,7 +232,7 @@ openapi: ## Regenerate api/openapi.json and the TypeScript client types from it
 		-w /app $(NODE_IMAGE) npx openapi-typescript /api/openapi.json -o src/api/schema.d.ts
 
 .PHONY: shell
-shell: ## Interactive shell in the Go toolchain container
+shell: | $(GO_CACHES) ## Interactive shell in the Go toolchain container
 	docker run --rm -it -u $(UID):$(GID) \
 		-v $(ROOT)/backend:/src -v $(GO_CACHE_VOL):/gocache -v $(GO_MOD_VOL):/gomod \
 		-e GOCACHE=/gocache -e GOMODCACHE=/gomod -e GOFLAGS=-buildvcs=false \
@@ -241,10 +250,10 @@ NPM_AUDIT_LEVEL     ?= high
 .PHONY: audit-deps audit-go audit-npm
 audit-deps: audit-go audit-npm ## Look for known vulnerabilities in the Go and npm dependencies (make -k runs both)
 
-audit-go: ## Look for known vulnerabilities the backend can reach
+audit-go: | $(GO_CACHES) ## Look for known vulnerabilities the backend can reach
 	$(DOCKER_GO) go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
-audit-npm: ## Look for known vulnerabilities in what the web app ships
+audit-npm: | $(NPM_CACHE_VOL) ## Look for known vulnerabilities in what the web app ships
 	$(DOCKER_NODE) npm audit --omit=dev --audit-level=$(NPM_AUDIT_LEVEL)
 
 .PHONY: realm-check
@@ -267,15 +276,15 @@ release-tag: ## Tag the merged release pull request and push the tag, which publ
 ## ---------- frontend ----------
 
 .PHONY: npm
-npm: ## Run an arbitrary npm command: make npm ARGS="install"
+npm: | $(NPM_CACHE_VOL) ## Run an arbitrary npm command: make npm ARGS="install"
 	$(DOCKER_NODE) npm $(ARGS)
 
 .PHONY: web-install
-web-install: ## Install frontend dependencies
+web-install: | $(NPM_CACHE_VOL) ## Install frontend dependencies
 	$(DOCKER_NODE) npm install
 
 .PHONY: web-build
-web-build: ## Production build of the SPA
+web-build: | $(NPM_CACHE_VOL) ## Production build of the SPA
 	$(DOCKER_NODE) npm run build
 
 ## ---------- stack ----------
