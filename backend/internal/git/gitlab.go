@@ -182,7 +182,7 @@ func (h gitlabHost) CreateBranch(ctx context.Context, client *http.Client, repo 
 	}
 	query := "?branch=" + url.QueryEscape(name) + "&ref=" + url.QueryEscape(from)
 	err := callHost(ctx, client, http.MethodPost, h.project(repo)+"/repository/branches"+query, h.headers(repo), nil, &made)
-	if refusedAs(err, http.StatusBadRequest) && strings.Contains(err.Error(), "already exists") {
+	if refusedSaying(err, http.StatusBadRequest, "already exists") {
 		return "", "", ErrBranchExists
 	}
 	if err != nil {
@@ -197,4 +197,55 @@ func (h gitlabHost) CreateBranch(ctx context.Context, client *http.Client, repo 
 func (h gitlabHost) CommentOnPullRequest(ctx context.Context, client *http.Client, repo *Repository, number int64, body string) error {
 	target := h.project(repo) + "/merge_requests/" + strconv.FormatInt(number, 10) + "/notes"
 	return callHost(ctx, client, http.MethodPost, target, h.headers(repo), map[string]string{"body": body}, nil)
+}
+
+// gitlabDraftPrefix is how GitLab marks a merge request a draft from its title.
+const gitlabDraftPrefix = "Draft:"
+
+type glMergeRequestMade struct {
+	IID          int64  `json:"iid"`
+	Title        string `json:"title"`
+	WebURL       string `json:"web_url"`
+	State        string `json:"state"`
+	SourceBranch string `json:"source_branch"`
+	TargetBranch string `json:"target_branch"`
+	SHA          string `json:"sha"`
+	CreatedAt    string `json:"created_at"`
+	MergedAt     string `json:"merged_at"`
+	Author       struct {
+		Name     string `json:"name"`
+		Username string `json:"username"`
+	} `json:"author"`
+}
+
+// OpenPullRequest opens a merge request; GitLab answers 409 for one already
+// open from the branch.
+func (h gitlabHost) OpenPullRequest(ctx context.Context, client *http.Client, repo *Repository, in NewPullRequest) (PullRequest, error) {
+	var made glMergeRequestMade
+	err := callHost(ctx, client, http.MethodPost, h.project(repo)+"/merge_requests", h.headers(repo), map[string]string{
+		"title": draftTitle(in.Title, gitlabDraftPrefix, in.Draft), "source_branch": in.Branch,
+		"target_branch": in.Base, "description": in.Body,
+	}, &made)
+	if refusedAs(err, http.StatusConflict) {
+		return PullRequest{}, ErrPullRequestExists
+	}
+	if err != nil {
+		return PullRequest{}, err
+	}
+	state := PullOpen
+	switch made.State {
+	case "merged":
+		state = PullMerged
+	case "closed":
+		state = PullClosed
+	}
+	author := made.Author.Name
+	if author == "" {
+		author = made.Author.Username
+	}
+	return PullRequest{
+		Number: made.IID, Title: made.Title, URL: made.WebURL, State: state,
+		SourceBranch: made.SourceBranch, TargetBranch: made.TargetBranch, HeadSHA: made.SHA,
+		AuthorName: author, OpenedAt: parseTime(made.CreatedAt, time.Now().UTC()), MergedAt: timePtr(made.MergedAt),
+	}, nil
 }

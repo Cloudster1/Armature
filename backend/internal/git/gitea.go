@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // giteaHost speaks Gitea's webhooks and API. Gitea sends GitHub's payloads
@@ -78,4 +79,24 @@ func (h giteaHost) CreateBranch(ctx context.Context, client *http.Client, repo *
 func (h giteaHost) CommentOnPullRequest(ctx context.Context, client *http.Client, repo *Repository, number int64, body string) error {
 	url := h.repository(repo) + "/issues/" + strconv.FormatInt(number, 10) + "/comments"
 	return callHost(ctx, client, http.MethodPost, url, h.headers(repo), map[string]string{"body": body}, nil)
+}
+
+// giteaDraftPrefix is the first of the prefixes Gitea reads a pull request as
+// work in progress by; its API has no draft field.
+const giteaDraftPrefix = "WIP:"
+
+// OpenPullRequest opens a pull request, which Gitea answers as GitHub does,
+// and 409 for one that is already open.
+func (h giteaHost) OpenPullRequest(ctx context.Context, client *http.Client, repo *Repository, in NewPullRequest) (PullRequest, error) {
+	var made ghPull
+	err := callHost(ctx, client, http.MethodPost, h.repository(repo)+"/pulls", h.headers(repo), map[string]string{
+		"title": draftTitle(in.Title, giteaDraftPrefix, in.Draft), "head": in.Branch, "base": in.Base, "body": in.Body,
+	}, &made)
+	if refusedAs(err, http.StatusConflict) {
+		return PullRequest{}, ErrPullRequestExists
+	}
+	if err != nil {
+		return PullRequest{}, err
+	}
+	return made.pull(time.Now().UTC()), nil
 }

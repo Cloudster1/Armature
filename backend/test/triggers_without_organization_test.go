@@ -54,7 +54,7 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 	} {
 		made(p.name, `INSERT INTO app_user (email, name, standing) VALUES ($1 || '@triggers.test', $1, nullif($2, '')) RETURNING id`, p.name, p.role)
 	}
-	const planned = `{sprints,milestones,releases,components,teams,automation}`
+	const planned = `{sprints,milestones,releases,components,teams,automation,repositories}`
 	made("alpha", `INSERT INTO project (key, name, features) VALUES ('ALPHA', 'Alpha', $1) RETURNING id`, planned)
 	made("beta", `INSERT INTO project (key, name, features) VALUES ('BETA', 'Beta', $1) RETURNING id`, planned)
 	made("desk", `INSERT INTO project (key, name, kind) VALUES ('DESK', 'Desk', 'service') RETURNING id`)
@@ -81,6 +81,8 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 	made("dashboard", `INSERT INTO dashboard (project_id, name) VALUES ($1, 'Wall') RETURNING id`, ids["alpha"])
 	made("calendar", `SELECT id FROM holiday_calendar WHERE is_default`)
 	made("link type", `SELECT id FROM issue_link_type WHERE name = $1`, bootstrap.LinkRelates)
+	made("repository", `INSERT INTO git_repository (project_id, host, name, url, api_base_url, webhook_secret)
+		VALUES ($1, 'github', 'acme/portal', 'https://github.com/acme/portal', 'https://api.github.com', 'secret') RETURNING id`, ids["alpha"])
 	made("session", `INSERT INTO user_session (user_id, token_hash, expires_at) VALUES ($1, '\x01', now() + interval '1 day') RETURNING id`, ids["member"])
 
 	// Longest name first, as the replacer tries them in order and :alpha would
@@ -122,6 +124,10 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 		{"an article belongs to a service desk", `INSERT INTO kb_article (project_id, title) VALUES (:alpha, 'How to')`, "articles belong to a service desk project"},
 		{"a rating belongs to a request", `INSERT INTO csat_rating (issue_id, token_hash) VALUES (:alpha_issue, '\x02')`, "a request of a service desk"},
 		{"a project's field does not shadow the installation's", `INSERT INTO custom_field (project_id, name, kind) VALUES (:alpha, 'severity', 'text')`, "already has a field named"},
+		{"the default branch is no issue's branch", `INSERT INTO git_branch (repository_id, name, issue_id) VALUES (:repository, 'main', :alpha_issue)`, "never an issue's branch"},
+		{"a branch is renamed to the default one only without its issue", `INSERT INTO git_branch (repository_id, name, issue_id) VALUES (:repository, 'ALPHA-1-fix', :alpha_issue); UPDATE git_branch SET name = 'main' WHERE name = 'ALPHA-1-fix'`, "never an issue's branch"},
+		{"another branch is the issue's", `INSERT INTO git_branch (repository_id, name, issue_id) VALUES (:repository, 'ALPHA-1-fix', :alpha_issue)`, ""},
+		{"the default branch is followed without an issue", `INSERT INTO git_branch (repository_id, name) VALUES (:repository, 'main')`, ""},
 		{"a link has two ends", `INSERT INTO issue_link (link_type_id, source_id, target_id) VALUES (:link_type, :alpha_issue, gen_random_uuid())`, "issue_link_target_id_fkey"},
 
 		// Who may do what.
@@ -168,6 +174,20 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("a branch made the default lets go of its issue", func(t *testing.T) {
+		err := try(t, `
+			INSERT INTO git_branch (repository_id, name, issue_id) VALUES (:repository, 'next', :alpha_issue);
+			UPDATE git_repository SET default_branch = 'next' WHERE id = :repository;
+			DO $$ BEGIN
+			    IF (SELECT issue_id FROM git_branch WHERE name = 'next') IS NOT NULL THEN
+			        RAISE EXCEPTION 'the new default branch is still the issue''s';
+			    END IF;
+			END $$`)
+		if err != nil {
+			t.Error(err)
+		}
+	})
 
 	t.Run("unsharing the default theme clears it", func(t *testing.T) {
 		err := try(t, `
