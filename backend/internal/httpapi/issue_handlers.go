@@ -12,6 +12,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/markdown"
 	"github.com/armature/armature/backend/internal/perm"
 	"github.com/armature/armature/backend/internal/project"
 	"github.com/armature/armature/backend/internal/workflow"
@@ -31,11 +32,13 @@ type createIssueRequest struct {
 	TypeID      *uuid.UUID      `json:"typeId,omitempty"`
 	Summary     string          `json:"summary"`
 	Description json.RawMessage `json:"description,omitempty"`
-	Priority    string          `json:"priority,omitempty"`
-	AssigneeID  *uuid.UUID      `json:"assigneeId,omitempty"`
-	ParentKey   string          `json:"parentKey,omitempty"`
-	StartDate   datePatch       `json:"startDate,omitempty"`
-	DueDate     datePatch       `json:"dueDate,omitempty"`
+	// DescriptionMarkdown is the description written in Markdown, for clients without the editor's document.
+	DescriptionMarkdown *string    `json:"descriptionMarkdown,omitempty"`
+	Priority            string     `json:"priority,omitempty"`
+	AssigneeID          *uuid.UUID `json:"assigneeId,omitempty"`
+	ParentKey           string     `json:"parentKey,omitempty"`
+	StartDate           datePatch  `json:"startDate,omitempty"`
+	DueDate             datePatch  `json:"dueDate,omitempty"`
 	// TeamID, Estimate and SprintID let the plan file an issue where it will
 	// sit in one request. Committing to a sprint takes the sprint permission.
 	TeamID   *uuid.UUID `json:"teamId,omitempty"`
@@ -51,6 +54,13 @@ func (s *Server) handleCreateIssue(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		respondError(w, r, err)
 		return
+	}
+	if req.DescriptionMarkdown != nil {
+		if len(req.Description) > 0 {
+			respondError(w, r, errBothDescriptions)
+			return
+		}
+		req.Description = markdown.Document(*req.DescriptionMarkdown, "")
 	}
 
 	// The project can come from the path or the body; the path wins, because
@@ -119,10 +129,12 @@ func (s *Server) handleGetIssue(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateIssueRequest struct {
-	Summary     *string    `json:"summary,omitempty"`
-	Description docPatch   `json:"description,omitempty"`
-	Priority    *string    `json:"priority,omitempty"`
-	TypeID      *uuid.UUID `json:"typeId,omitempty"`
+	Summary     *string  `json:"summary,omitempty"`
+	Description docPatch `json:"description,omitempty"`
+	// DescriptionMarkdown replaces the description with Markdown; an empty one clears it.
+	DescriptionMarkdown *string    `json:"descriptionMarkdown,omitempty"`
+	Priority            *string    `json:"priority,omitempty"`
+	TypeID              *uuid.UUID `json:"typeId,omitempty"`
 	// Assignee and DueDate accept an explicit null to clear the field, which a
 	// plain omitted field cannot express.
 	Assignee assigneePatch `json:"assigneeId,omitempty"`
@@ -279,6 +291,13 @@ func (s *Server) handleUpdateIssue(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
+	if req.DescriptionMarkdown != nil {
+		if req.Description.Set {
+			respondError(w, r, errBothDescriptions)
+			return
+		}
+		req.Description = docPatch{Set: true, Value: markdown.Document(*req.DescriptionMarkdown, "")}
+	}
 
 	updated, lsn, err := s.Issues.Update(r.Context(), r.PathValue("issueKey"), req.toInput(), actorFrom(r))
 	if err != nil {
@@ -344,18 +363,32 @@ func (s *Server) handleTransitionIssue(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"issue": updated})
 }
 
+// errBothDescriptions refuses a description sent twice, since neither would be the one meant.
+var errBothDescriptions = ErrBadRequest("Send the description as a document or as Markdown, not both.")
+
 type commentRequest struct {
 	Body json.RawMessage `json:"body,omitempty"`
+	// BodyMarkdown is the comment written in Markdown.
+	BodyMarkdown string `json:"bodyMarkdown,omitempty"`
 	// Text is a convenience for clients that have no rich text editor yet; it
 	// is wrapped into a document server side.
 	Text string `json:"text,omitempty"`
 }
 
-// document returns the body to store, accepting either a rich text document or
-// plain text.
+// document returns the body to store, accepting a rich text document, Markdown
+// or plain text.
 func (c commentRequest) document() (json.RawMessage, error) {
+	if len(c.Body) > 0 && c.BodyMarkdown != "" {
+		return nil, ErrBadRequest("Send the comment as a document or as Markdown, not both.")
+	}
 	if len(c.Body) > 0 {
 		return c.Body, nil
+	}
+	if c.BodyMarkdown != "" {
+		if doc := markdown.Document(c.BodyMarkdown, ""); doc != nil {
+			return doc, nil
+		}
+		return nil, ErrBadRequest("A comment needs some text.")
 	}
 	if strings.TrimSpace(c.Text) == "" {
 		return nil, ErrBadRequest("A comment needs some text.")

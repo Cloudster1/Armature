@@ -13,6 +13,7 @@ import (
 	"github.com/armature/armature/backend/internal/bootstrap"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
+	"github.com/armature/armature/backend/internal/markdown"
 )
 
 // The suite demo (#300) holds the GitHub issues of the three tools, each under its own number, so
@@ -176,7 +177,7 @@ func PlanSuite(snapshots []Snapshot, people int) SuitePlan {
 func planIssue(s Snapshot, gh GitHubIssue, people int) SuiteIssue {
 	out := SuiteIssue{
 		Number: gh.Number, Summary: summary(gh.Title), TypeName: issueType(gh),
-		Description: Markdown(gh.Body, "https://github.com/"+s.Repo+"/blob/"+s.Commit+"/"),
+		Description: markdown.Document(gh.Body, "https://github.com/"+s.Repo+"/blob/"+s.Commit+"/"),
 		CreatedAt:   gh.CreatedAt, Milestone: gh.Milestone, URL: gh.URL, Labels: labels(gh.Labels),
 		Reporter: int(gh.Number % int64(people)), Assignee: int((gh.Number + 1) % int64(people)),
 	}

@@ -1,4 +1,5 @@
-package demo
+// Package markdown reads Markdown as the rich text documents issues and comments hold.
+package markdown
 
 import (
 	"encoding/json"
@@ -34,9 +35,9 @@ type mark struct {
 	Attrs map[string]any `json:"attrs,omitempty"`
 }
 
-// Markdown turns a GitHub issue body into a description, keeping only what the tracker shows.
-// base resolves a relative link, such as docs/api.md, against the repository it was written in.
-func Markdown(body, base string) json.RawMessage {
+// Document turns Markdown, as GitHub writes it, into a document, keeping only what the tracker shows.
+// base resolves a relative link, such as docs/api.md, against where it was written; without it one is dropped.
+func Document(body, base string) json.RawMessage {
 	source := []byte(body)
 	root := githubMarkdown.Parser().Parse(text.NewReader(source))
 	c := converter{source: source, base: base}
