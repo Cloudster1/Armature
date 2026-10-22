@@ -154,6 +154,7 @@ var operations = []operation{
 		query: authorizeQuery, responses: ok(consentAnswer{})},
 	{method: "POST", path: "/oauth/consent", handler: "handleOAuthDecide", tag: "oauth", summary: "Allow or cancel what the consent page showed; the answer is where the browser goes.",
 		request: consentRequest{}, responses: ok(env{"redirectTo": ""})},
+	{method: "GET", path: "/installation/tools", handler: "handleConnectedTools", tag: "oauth", summary: "The other tools of the suite this installation has a connected app for, each at the app's address.", responses: ok(env{"tools": []oauth.ConnectedTool{}})},
 	{method: "GET", path: "/oauth/clients", handler: "handleListOAuthClients", tag: "oauth", summary: "The connected apps, by name, pending ones marked.", responses: ok(env{"clients": []oauth.Client{}})},
 	{method: "POST", path: "/oauth/clients", handler: "handleCreateOAuthClient", tag: "oauth", summary: "Register a connected app by hand, active at once; a confidential one's secret is shown once.",
 		request: oauth.ClientInput{}, responses: created(env{"client": oauth.Client{}})},

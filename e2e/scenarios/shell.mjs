@@ -3,6 +3,8 @@
 import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
+  connectTool,
+  disconnectTool,
   expect,
   fill,
   goto,
@@ -112,4 +114,45 @@ scenario("the foot of the sidebar names the running build", async ({ page }) => 
   expect.truthy(/\S/.test(stamp), "the foot names a build");
   const title = await page.$eval("[data-build]", (el) => el.getAttribute("title") ?? "");
   expect.truthy(stamp.startsWith("dev") || /\(/.test(stamp) || title.includes("commit"), `the stamp reads as a build: ${stamp}`);
+});
+
+/** Opens the avatar menu and reads its Switch to group: each tool's name, address and how it opens. */
+async function switchTo(page) {
+  await page.click('[data-action="account"]');
+  await page.waitForSelector('[role="menu"]', { timeout: WAIT });
+  const tools = await page.$$eval("[data-switch-to]", (links) =>
+    links.map((a) => ({ product: a.getAttribute("data-switch-to"), tag: a.tagName, href: a.getAttribute("href"), target: a.getAttribute("target"), text: a.textContent })),
+  );
+  const heading = await page.$('[data-menu-section="Switch to"]');
+  await page.keyboard.press("Escape");
+  return { tools, heading: heading !== null };
+}
+
+serialScenario("the avatar menu links the connected tools, only those connected, and drops the group with none", async ({ page }) => {
+  await signUp(page, unique("switcher"), { role: "member" });
+  const stator = `https://${unique("stator").email.split("@")[0]}.example.test`;
+  const exciter = `https://${unique("exciter").email.split("@")[0]}.example.test`;
+  const made = [];
+  try {
+    made.push(await connectTool("stator", stator));
+    await reload(page);
+    let menu = await switchTo(page);
+    expect.equal(menu.heading, true, "one connected tool brings the Switch to group");
+    expect.equal(JSON.stringify(menu.tools.map((t) => t.product)), JSON.stringify(["stator"]), "only Stator is listed");
+    expect.equal(menu.tools[0].href, stator, "Stator opens at its connection's address");
+    expect.equal(menu.tools[0].tag, "A", "it is a plain link, which the browser can open in a new tab");
+
+    made.push(await connectTool("exciter", exciter));
+    await reload(page);
+    menu = await switchTo(page);
+    expect.equal(JSON.stringify(menu.tools.map((t) => [t.product, t.href])), JSON.stringify([["stator", stator], ["exciter", exciter]]), "both are listed, Stator first");
+
+    while (made.length) await disconnectTool(made.pop());
+    await reload(page);
+    menu = await switchTo(page);
+    expect.equal(menu.tools.length, 0, "with none connected nothing is listed");
+    expect.equal(menu.heading, false, "and the group is gone");
+  } finally {
+    for (const id of made) await disconnectTool(id).catch(() => {});
+  }
 });

@@ -32,6 +32,18 @@ export function useRenameInstallation() {
   });
 }
 
+/** Another tool of the suite this installation is connected to, at its connected app's address. */
+export type ConnectedTool = components["schemas"]["ConnectedTool"];
+
+/** The tools the avatar menu offers to switch to; everyone signed in may read them. */
+export function useConnectedTools() {
+  return useQuery({
+    queryKey: ["installation", "tools"] as const,
+    queryFn: () => request<{ tools: ConnectedTool[] }>("/installation/tools"),
+    select: (data) => data.tools,
+  });
+}
+
 /** Fills the installation with the demo, whose projects, labels and workflow every list may show. */
 export function useAddDemoProject() {
   const queryClient = useQueryClient();

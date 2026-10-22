@@ -381,6 +381,22 @@ export async function signUp(page, who = unique("user"), { visit = true, role = 
   return { ...who, org: administrator.org.name };
 }
 
+/**
+ * Registers a connected app standing for a tool of the suite, by the realm's
+ * client id, as the run's administrator; returns its id.
+ */
+export async function connectTool(product, address) {
+  const { client } = await administer("POST", "/oauth/clients", {
+    name: uniqueName(product), clientUri: address, redirectUris: [`${address}/oauth/callback`], scopes: ["read"], keycloakClientId: product,
+  });
+  return client.id;
+}
+
+/** Removes a connected app as the run's administrator. */
+export async function disconnectTool(id) {
+  await administer("DELETE", `/oauth/clients/${id}`);
+}
+
 /** Makes an account at the standing given without signing anybody in as it. */
 export async function makeAccount(who = unique("user"), role = "member") {
   await administer("POST", "/users", { email: who.email, name: who.name, role, password: PASSWORD });

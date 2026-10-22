@@ -122,6 +122,9 @@ export const Icon = {
   Bolt: makeIcon("bolt", ["M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z"]),
   Hook: makeIcon("hook", ["M8 2.5v6a2.5 2.5 0 0 0 5 0", "M3 8.5a5 5 0 0 0 10 0", "M6 2.5h4"]),
   Help: makeIcon("help", ["M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12Z", "M6.2 6.2a1.9 1.9 0 0 1 3.7.5c0 1.2-1.9 1.5-1.9 2.6", "M8 11.5h.01"]),
+  // The suite's other tools, by what they hold: Stator a wiki, Exciter requirements.
+  Stator: makeIcon("stator", ["M8 4.5C6.5 3.2 4.5 3 2.5 3.5v9c2-.5 4-.3 5.5 1 1.5-1.3 3.5-1.5 5.5-1v-9c-2-.5-4-.3-5.5 1Z", "M8 4.5v9"]),
+  Exciter: makeIcon("exciter", ["M2.5 4 4 5.5 6.5 3", "M2.5 10.5 4 12l2.5-2.5", "M8.5 4.5h5", "M8.5 11h5"]),
   // The issue types, one glyph each, so a list reads by shape before it reads by word.
   Bug: makeIcon("bug", ["M8 5a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V8a3 3 0 0 1 3-3Z", "M6 5.5 5 3.5", "m10 5.5 1-2", "M5 9H3", "M13 9h-2", "M5.5 12 4 13.5", "m10.5 12 1.5 1.5"]),
   Story: makeIcon("story", ["M5 2.5h6v11l-3-2.2-3 2.2Z"]),

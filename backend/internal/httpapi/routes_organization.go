@@ -28,6 +28,9 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	r.With(requirePerm(perm.OrgAdminister)).Post("/installation/demo-project", s.handleAddDemoProject)
 	r.With(requirePerm(perm.OrgAdminister)).Get("/installation/suite-demo", s.handleSuiteDemo)
 	r.With(requirePerm(perm.OrgAdminister)).Post("/installation/suite-demo", s.handleAddSuiteDemo)
+	// Everyone signed in may switch to a connected tool; that tool decides
+	// what they see there.
+	r.Get("/installation/tools", s.handleConnectedTools)
 	// How a project says it is doing, and its month.
 	r.Get("/projects/{projectKey}/status-updates", s.handleListStatusUpdates)
 	r.With(requireProjectPerm(perm.ProjectAdminister)).Post("/projects/{projectKey}/status-updates", s.handlePostStatusUpdate)
