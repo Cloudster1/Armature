@@ -2716,6 +2716,27 @@ its own process, so a stack without the worker and the chart's seed Job get it
 too. A dependency that would make an issue block itself is left out with a
 line in the log, as the tracker refuses such a link from anybody.
 
+### The git proxy reads every commit of a push before the host sees it (#333)
+
+A partner pushes through Armature so the host's token never leaves it, and the
+rule is that only an issue's own branch moves, forward. The ref is easy to
+judge from the commands at the head of the push. A force push is not: git
+sends the host's current commit as the old one whatever `--force` says, so
+comparing it with the host tells nothing, and hosts let a force push through
+unless a branch is protected. The proxy therefore holds a push whole, at most
+`MaxPushBytes`, inflates its pack and walks the parents of the commits it
+carries from the new commit back to the old one. git sends a push's commits
+whole or as deltas of commits in the same push, so the walk needs nothing from
+the host. A history it cannot follow is refused rather than guessed at: a
+commit stored against one the host has, which only a repository repacked with
+bitmaps sends, and a branch pointed at a commit the host already has. That is
+the price of not asking the host about ancestry it has no common API for.
+
+The whole push is refused when one ref is, with a report of every ref as
+receive-pack writes one, so git prints each reason beside its ref and nothing
+is half pushed. A refusal before the push, such as a missing scope, is plain
+text, which git shows after `remote:`; JSON it would not show at all.
+
 ## The product's name
 
 ### The name is Armature, and nothing of NoJira was kept working

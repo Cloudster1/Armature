@@ -38,23 +38,26 @@ const (
 	maxVerifier = 128
 )
 
-// The scopes a connected app asks for. Every one but the last is a permission
-// name, which the token is narrowed to where a key is narrowed.
+// The scopes a connected app asks for. The first four are permission names,
+// which the token is narrowed to where a key is narrowed.
 const (
 	ScopeRead            = "read"
 	ScopeIssueWrite      = "issue.write"
 	ScopeIssueTransition = "issue.transition"
 	ScopeCommentWrite    = "comment.write"
+	// ScopeGitWrite lets the app push, through the git proxy, to the branches
+	// made for issues the person may edit.
+	ScopeGitWrite = "git.write"
 	// ScopeWebhooks lets the app manage its own webhook endpoint, for an
 	// administrator only.
 	ScopeWebhooks = "webhooks.partner"
 )
 
 // Scopes are every scope, in the order the consent page lists them.
-var Scopes = []string{ScopeRead, ScopeIssueWrite, ScopeIssueTransition, ScopeCommentWrite, ScopeWebhooks}
+var Scopes = []string{ScopeRead, ScopeIssueWrite, ScopeIssueTransition, ScopeCommentWrite, ScopeGitWrite, ScopeWebhooks}
 
 // ResourceScopes are the scopes a protected resource's metadata names.
-var ResourceScopes = []string{ScopeRead, ScopeIssueWrite, ScopeIssueTransition, ScopeCommentWrite}
+var ResourceScopes = []string{ScopeRead, ScopeIssueWrite, ScopeIssueTransition, ScopeCommentWrite, ScopeGitWrite}
 
 // words is what the consent page says each scope lets the app do.
 var words = map[string]string{
@@ -62,6 +65,7 @@ var words = map[string]string{
 	ScopeIssueWrite:      "File and edit issues, and link pages to them",
 	ScopeIssueTransition: "Move issues through their workflow",
 	ScopeCommentWrite:    "Comment on issues",
+	ScopeGitWrite:        "Push code to the branches of issues you may edit",
 	ScopeWebhooks:        "Send Armature's events to %s, from every project (administrators only)",
 }
 
@@ -70,6 +74,7 @@ var allows = map[string]string{
 	ScopeIssueWrite:      "file and edit issues",
 	ScopeIssueTransition: "move issues through their workflow",
 	ScopeCommentWrite:    "comment on issues",
+	ScopeGitWrite:        "push to issue branches",
 	ScopeWebhooks:        "manage its webhook",
 }
 
@@ -85,7 +90,7 @@ func Words(scope, app string) string {
 // MissingScope is the sentence refusing an app a write its grant does not
 // allow, naming what to allow instead.
 func MissingScope(app, scope string, held []string) string {
-	if len(held) == 1 && held[0] == ScopeRead {
+	if len(held) == 1 && held[0] == ScopeRead && scope != ScopeGitWrite {
 		return app + " was allowed to read only. Connect it again and allow it to change issues."
 	}
 	what := allows[scope]

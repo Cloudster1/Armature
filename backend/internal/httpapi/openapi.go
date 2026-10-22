@@ -80,6 +80,9 @@ type operation struct {
 	tool, toolHelp string
 	// rawNote describes a raw body; the git webhook keeps the default.
 	rawNote string
+	// gitLeg marks one of the git proxy's requests, which take and answer
+	// git's own media types and refuse in sentences git prints.
+	gitLeg git.Leg
 	// deprecated marks an operation kept for one more release and says what
 	// to call instead.
 	deprecated string
@@ -141,6 +144,10 @@ func Spec() *openapi.Document {
 			o.Parameters = append(o.Parameters, openapi.Parameter{Name: q.name, In: "query", Description: q.description, Schema: schema})
 		}
 		switch {
+		case op.gitLeg != "" && op.method == http.MethodPost:
+			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
+				"application/x-" + string(op.gitLeg) + "-request": {Schema: &openapi.Schema{Type: "string", Format: "binary"}},
+			}}
 		case op.multipart:
 			body := &openapi.Schema{Type: "object", Required: []string{"file"},
 				Properties: map[string]*openapi.Schema{"file": {Type: "string", Format: "binary"}}}
@@ -166,6 +173,8 @@ func Spec() *openapi.Document {
 		for status, body := range op.responses {
 			r := &openapi.Response{Description: http.StatusText(status)}
 			switch {
+			case op.gitLeg != "" && status == http.StatusOK:
+				r.Content = gitMedia(op.gitLeg)
 			case op.binary && status == http.StatusOK:
 				r.Content = map[string]openapi.MediaType{"*/*": {Schema: &openapi.Schema{Type: "string", Format: "binary"}}}
 			case body != nil:
@@ -181,6 +190,10 @@ func Spec() *openapi.Document {
 		}
 		o.Responses["default"] = &openapi.Response{Description: "An error, in the one shape every endpoint uses.",
 			Content: map[string]openapi.MediaType{"application/json": {Schema: errorSchema}}}
+		if op.gitLeg != "" {
+			o.Responses["default"] = &openapi.Response{Description: "A refusal, as a sentence git prints after remote:.",
+				Content: map[string]openapi.MediaType{"text/plain": {Schema: &openapi.Schema{Type: "string"}}}}
+		}
 		if op.public {
 			o.Security = []map[string][]string{}
 		}
@@ -238,6 +251,19 @@ func (op operation) rawDescription() string {
 		return op.rawNote
 	}
 	return "The payload the git host sends."
+}
+
+// gitMedia is what a git proxy request answers: the refs either service
+// advertises, or the result of the service it carried.
+func gitMedia(leg git.Leg) map[string]openapi.MediaType {
+	binary := openapi.MediaType{Schema: &openapi.Schema{Type: "string", Format: "binary"}}
+	if leg == git.LegRefs {
+		return map[string]openapi.MediaType{
+			"application/x-git-upload-pack-advertisement":  binary,
+			"application/x-git-receive-pack-advertisement": binary,
+		}
+	}
+	return map[string]openapi.MediaType{"application/x-" + string(leg) + "-result": binary}
 }
 
 // operationID is what a client calls the operation: the handler's name unless
@@ -484,13 +510,15 @@ type Route struct {
 	Statuses         []int
 	Public, Binary   bool
 	Redirect         bool
+	// Git is a git proxy request, refused in plain sentences.
+	Git bool
 }
 
 // Catalog lists every operation in the table.
 func Catalog() []Route {
 	out := make([]Route, 0, len(operations))
 	for _, op := range operations {
-		r := Route{Method: op.method, Path: op.path, Public: op.public, Binary: op.binary, Redirect: op.redirect || op.moved}
+		r := Route{Method: op.method, Path: op.path, Public: op.public, Binary: op.binary, Redirect: op.redirect || op.moved, Git: op.gitLeg != ""}
 		r.ID = op.operationID()
 		for status := range op.responses {
 			r.Statuses = append(r.Statuses, status)

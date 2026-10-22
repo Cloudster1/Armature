@@ -31,7 +31,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	r.Use(securityHeaders)
 	r.Use(cors(allowedOrigins))
 	r.Use(s.sameSite(allowedOrigins))
-	r.Use(middleware.Timeout(30 * time.Second))
+	r.Use(requestTimeout(requestLimit))
 	r.Use(s.authenticate)
 	r.Use(readOnlyToken)
 	r.Use(appScope(r))
@@ -102,6 +102,11 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// What a git host calls. No session: the delivery proves itself with
 		// the repository's secret.
 		r.Post("/git/webhooks/{repositoryID}", s.handleWebhook)
+		// git's smart HTTP, proxied to the host as the token's person. The
+		// handlers judge the token themselves and answer as git reads it.
+		r.Get("/git/{projectKey}/{owner}/{name}/info/refs", s.handleGitRefs)
+		r.Post("/git/{projectKey}/{owner}/{name}/git-upload-pack", s.handleGitUploadPack)
+		r.Post("/git/{projectKey}/{owner}/{name}/git-receive-pack", s.handleGitReceivePack)
 		// What an outside system posts to start a rule; the address is the key.
 		r.Post("/automation/hooks/{token}", s.handleIncomingHook)
 
@@ -167,6 +172,25 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 
 	s.handler = r
 	return r
+}
+
+// requestLimit is how long a request may take, but for a git transfer.
+const requestLimit = 30 * time.Second
+
+// requestTimeout bounds every request but a clone's or a push's, which streams
+// for as long as git.TransferTimeout allows.
+func requestTimeout(d time.Duration) func(http.Handler) http.Handler {
+	bounded := middleware.Timeout(d)
+	return func(next http.Handler) http.Handler {
+		limited := bounded(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if gitTransfer(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			limited.ServeHTTP(w, r)
+		})
+	}
 }
 
 // handleLiveness answers whether the process is running at all. It touches

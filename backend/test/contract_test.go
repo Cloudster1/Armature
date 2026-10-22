@@ -118,6 +118,13 @@ func (c *contract) observe(t *testing.T, method, path string, status int, conten
 	if r.Binary && status == http.StatusOK {
 		return
 	}
+	if r.Git {
+		// git prints a refusal as it came, so the proxy's are plain sentences.
+		if len(body) != 0 && !strings.HasPrefix(contentType, "text/plain") {
+			t.Errorf("contract: %s %s answered %d as %q, want a plain sentence", method, path, status, contentType)
+		}
+		return
+	}
 	if status/100 == 3 {
 		// http.Redirect writes a small HTML body for a GET; that is fine.
 		return

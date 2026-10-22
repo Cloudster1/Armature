@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -288,6 +289,8 @@ type Server struct {
 	// handler is the built router, kept so a tool call can be run through the
 	// same chain as any request.
 	handler http.Handler
+	// gitBrakes keep the git proxy's rate per token.
+	gitBrakes gitBrakes
 }
 
 // WorkflowDeps bundles the workflow engine with the store that loads workflows
@@ -313,7 +316,7 @@ func readOnlyToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// A transport carries reads and writes alike; the rule is applied to
 		// the calls it carries, which run through this chain again.
-		if !transports[r.URL.Path] && writeRefused(r.Method, PrincipalFrom(r.Context())) {
+		if !transports[r.URL.Path] && !gitTransfer(r.URL.Path) && writeRefused(r.Method, PrincipalFrom(r.Context())) {
 			respondError(w, r, ErrReadOnlyToken())
 			return
 		}
@@ -544,6 +547,14 @@ func credentialFrom(r *http.Request, cookieName string) string {
 		if token, ok := strings.CutPrefix(h, "Bearer "); ok {
 			return strings.TrimSpace(token)
 		}
+	}
+	if gitTransfer(r.URL.Path) {
+		// git sends a token as basic auth, as the password or as the name;
+		// a browser's cookie never clones or pushes.
+		if user, password, ok := r.BasicAuth(); ok {
+			return strings.TrimSpace(cmp.Or(password, user))
+		}
+		return ""
 	}
 	if c, err := r.Cookie(cookieName); err == nil {
 		return c.Value

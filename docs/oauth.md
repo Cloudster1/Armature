@@ -53,6 +53,7 @@ to the api. `/oauth/authorize` is a page of the web app.
 | `issue.write` | File and edit issues, and link pages to them | Create and edit issues, their fields, labels, links, remote links, worklogs, attachments, branches and pull requests |
 | `issue.transition` | Move issues through their workflow | Transitions, and moving a card on a board |
 | `comment.write` | Comment on issues | Comments, internal notes and watchers |
+| `git.write` | Push code to the branches of issues you may edit | Pushes through the [git proxy](integration.md#git-proxy1) to a branch made for an issue the person may edit; never the default branch, a tag, a deletion or a force push |
 | `webhooks.partner` | Send Armature's events to {app}, from every project (administrators only) | The app's own webhook, below |
 
 - A connected app may make the writes the table names and no other. Any other
@@ -69,6 +70,10 @@ to the api. `/oauth/authorize` is a page of the web app.
 - Within its scopes, the token is the person: a project they cannot see is not
   there, and a write their role does not allow is 403 `forbidden`, as for
   their own session. A person losing a right narrows their apps at once.
+- `git.write` is no permission of its own: a push takes it from the app and
+  `issue.write` from the person's role, whether or not the app also holds
+  `issue.write`. Without it a push hears "Rotor was not allowed to push to
+  issue branches. Connect it again and allow it to push to issue branches."
 - Personal access tokens are unchanged: `POST /tokens` takes `read` or nothing.
 
 ## Apps
