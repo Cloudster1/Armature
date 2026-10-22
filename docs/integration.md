@@ -85,6 +85,34 @@ promised; a tool that only reads says so with `readOnlyHint`.
 
 - `POST /mcp`
 
+A partner that writes code for an issue, as Rotor does, works in the
+repository the issue's project connects, through four tools it may name. The
+host is only ever called with the repository's own access token, and a write
+is the person's: it needs `issue.write` on the issue, from the person's role
+and from the app's grant.
+
+| Tool | Arguments | Answers |
+|---|---|---|
+| `list_repositories` (reads) | `projectKey` | `repositories`: each one's `id`, `host`, `name` (owner/name), `url`, `defaultBranch` and `hasToken`, whether Armature can write to it |
+| `get_issue_development` (reads) | `issueKey` | the issue's `branches`, `pullRequests`, `commits` and CI `runs`, and `branchName`, the name a branch made for it gets |
+| `create_issue_branch` | `issueKey`, `repository`, `name` and `from` optional | `branch`: the branch the host made, off `from` or the default branch, named `name` or `branchName` |
+| `open_pull_request` | `issueKey`, `repository`, `branch`, `title`, `body` and `draft` optional | `pullRequest`: its `number`, `url`, `state`, `sourceBranch` and `targetBranch`, recorded on the issue |
+
+- `repository` is the owner/name `list_repositories` gives; `repositoryId`
+  names it by id instead. Either way it is a repository of the issue's
+  project, or it is not found.
+- A pull request goes from a branch made for this issue, by
+  `create_issue_branch` or by a push naming the issue, into the default
+  branch. The default branch is never an issue's branch, which the database
+  holds too, and a branch made for nothing or for another issue takes no pull
+  request. `draft` opens it as a draft: GitHub's draft, GitLab's `Draft:`,
+  Gitea's `WIP:`.
+- A repository without an access token answers "This repository has no
+  access token, so Armature cannot write to it." with code `no_token`, and the
+  host refusing answers 502 `host_refused`. These calls are
+  `POST /issues/{issueKey}/branches` and `POST /issues/{issueKey}/pull-requests`
+  over HTTP.
+
 ### `oauth.partner-tokens@1`
 
 A connected app gets a person's token with their consent, by authorization code

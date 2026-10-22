@@ -163,12 +163,14 @@ func (s *Server) handleIssueDevelopment(w http.ResponseWriter, r *http.Request) 
 }
 
 type createBranchRequest struct {
-	RepositoryID uuid.UUID `json:"repositoryId"`
+	// RepositoryID or Repository, its owner/name, names a repository of the
+	// issue's project; a tool knows the name, the page the id.
+	RepositoryID uuid.UUID `json:"repositoryId,omitzero"`
+	Repository   string    `json:"repository,omitempty"`
 	// Name is the branch to make; empty takes the name suggested for the
-	// issue. From is the branch to start it at; empty takes the repository's
-	// default branch.
-	Name string `json:"name"`
-	From string `json:"from"`
+	// issue. From is the branch to start it at; empty takes the default branch.
+	Name string `json:"name,omitempty"`
+	From string `json:"from,omitempty"`
 }
 
 func (s *Server) handleCreateBranch(w http.ResponseWriter, r *http.Request) {
@@ -177,15 +179,61 @@ func (s *Server) handleCreateBranch(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	if req.RepositoryID == uuid.Nil {
-		respondError(w, r, ErrBadRequest("Which repository should the branch be made in?"))
+	repoID, err := s.issueRepository(r, req.RepositoryID, req.Repository)
+	if err != nil {
+		respondError(w, r, err)
 		return
 	}
-	made, lsn, err := s.Git.CreateBranch(r.Context(), r.PathValue("issueKey"), req.RepositoryID, req.Name, req.From, userFrom(r))
+	made, lsn, err := s.Git.CreateBranch(r.Context(), r.PathValue("issueKey"), repoID, req.Name, req.From, userFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
 	}
 	NoteWrite(r.Context(), lsn)
 	respondJSON(w, r, http.StatusCreated, map[string]any{"branch": made})
+}
+
+type openPullRequestRequest struct {
+	RepositoryID uuid.UUID `json:"repositoryId,omitzero"`
+	Repository   string    `json:"repository,omitempty"`
+	Branch       string    `json:"branch"`
+	Title        string    `json:"title"`
+	Body         string    `json:"body,omitempty"`
+	Draft        bool      `json:"draft,omitempty"`
+}
+
+func (s *Server) handleOpenPullRequest(w http.ResponseWriter, r *http.Request) {
+	var req openPullRequestRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	repoID, err := s.issueRepository(r, req.RepositoryID, req.Repository)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	opened, lsn, err := s.Git.OpenPullRequest(r.Context(), r.PathValue("issueKey"), repoID, git.PullRequestInput{
+		Branch: req.Branch, Title: req.Title, Body: req.Body, Draft: req.Draft,
+	}, userFrom(r))
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusCreated, map[string]any{"pullRequest": opened})
+}
+
+// issueRepository is the repository a write on an issue names, by id or by
+// owner/name, and never both.
+func (s *Server) issueRepository(r *http.Request, id uuid.UUID, name string) (uuid.UUID, error) {
+	switch {
+	case id != uuid.Nil && name != "":
+		return uuid.Nil, ErrBadRequest("Name the repository once, by repository or by repositoryId, not both.")
+	case id != uuid.Nil:
+		return id, nil
+	case name == "":
+		return uuid.Nil, ErrBadRequest("Which repository? Give repository as owner/name, the way list_repositories names it.")
+	}
+	return s.Git.RepositoryOfIssue(r.Context(), r.PathValue("issueKey"), name)
 }

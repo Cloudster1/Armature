@@ -7,6 +7,20 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a partner such as Rotor works on an issue's code over MCP, as the
+  person (#332). `list_repositories` and `get_issue_development` read a
+  project's repositories and an issue's branches, pull requests, commits and
+  CI runs; `create_issue_branch` makes the issue's branch and
+  `open_pull_request` opens its pull request into the default branch on
+  GitHub, GitLab or Gitea, with the repository's token, recorded on the issue.
+  Both need `issue.write` on the issue. A pull request is opened over HTTP at
+  `POST /issues/{issueKey}/pull-requests`, and a branch or pull request names
+  its repository by owner/name as well as by id. `docs/integration.md` lists
+  the tools.
+- Changed: a branch is only made in a repository of the issue's own project,
+  and never named for the default branch, which the database keeps from being
+  any issue's branch. A repository without an access token says so in a
+  sentence that says who adds one.
 - Added: `/meta` lists `mcp@1`, so a partner such as Rotor finds Armature's
   MCP endpoint by name before it acts in it as a person, with an API token or
   a connected app's token (#305).

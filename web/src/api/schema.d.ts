@@ -2044,6 +2044,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/issues/{issueKey}/pull-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Have the host open a pull request from a branch made for the issue into the default branch, and record it on the issue. */
+        post: operations["openPullRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/issues/{issueKey}/remote-links": {
         parameters: {
             query?: never;
@@ -5469,10 +5486,17 @@ export interface components {
             name: string;
         };
         CreateBranchRequest: {
-            from: string;
-            name: string;
-            /** Format: uuid */
-            repositoryId: string;
+            /** @description The branch to start from; left out, the repository's default branch. */
+            from?: string;
+            /** @description The branch to make; left out, the name the issue suggests, its branchName. */
+            name?: string;
+            /** @description The repository as owner/name, the way list_repositories names it. Give this or repositoryId. */
+            repository?: string;
+            /**
+             * Format: uuid
+             * @description The repository's id from list_repositories. Give this or repository.
+             */
+            repositoryId?: string;
         };
         CreateDashboardRequest: {
             /** Format: uuid */
@@ -6353,6 +6377,23 @@ export interface components {
         OauthErrorBody: {
             error: string;
             error_description: string;
+        };
+        OpenPullRequestRequest: {
+            /** @description What the pull request changes and why, in Markdown. */
+            body?: string;
+            /** @description The issue's branch to merge, one made for this issue; never the default branch. */
+            branch: string;
+            /** @description Open it as a draft, not yet ready for review. */
+            draft?: boolean;
+            /** @description The repository as owner/name, the way list_repositories names it. Give this or repositoryId. */
+            repository?: string;
+            /**
+             * Format: uuid
+             * @description The repository's id from list_repositories. Give this or repository.
+             */
+            repositoryId?: string;
+            /** @description The pull request's title. */
+            title: string;
         };
         Operation: {
             deprecated?: boolean;
@@ -13556,6 +13597,43 @@ export interface operations {
                 content: {
                     "application/json": {
                         issue: components["schemas"]["Issue"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    openPullRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issueKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenPullRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pullRequest: components["schemas"]["PullRequest"];
                     };
                 };
             };
