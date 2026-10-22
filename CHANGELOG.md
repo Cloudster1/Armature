@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: an issue's description and its comments are written in Markdown
+  through the API. Creating and changing an issue take `descriptionMarkdown`
+  and a comment takes `bodyMarkdown`, beside the document fields, which may
+  not be sent with them. Headings, lists, code, quotes, emphasis and links
+  come through as the editor shows them, and the rest as text; an empty
+  Markdown description clears it (#329).
 - Added: the suite demo, the GitHub issues of Armature, Exciter and Stator as
   the projects `ARM`, `EXC` and `STA`, each under its GitHub number, so
   Exciter's and Stator's suite demos link to them (`EXC-261` is Exciter's
