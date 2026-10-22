@@ -66,7 +66,7 @@ func appScope(mux *chi.Mux) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p := PrincipalFrom(r.Context())
-			if p == nil || p.App == nil || safeMethod(r.Method) || transports[r.URL.Path] {
+			if p == nil || p.App == nil || safeMethod(r.Method) || transports[r.URL.Path] || gitTransfer(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}

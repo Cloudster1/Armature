@@ -71,6 +71,15 @@ var integrationCapabilities = []capability{
 		},
 	},
 	{
+		name:    "git-proxy@1",
+		promise: "A project's repository cloned and fetched through Armature with a token holding read, and a branch made for an issue pushed with git.write, never the default branch, a tag, a deletion or a force push; the host's token never leaves Armature.",
+		operations: []string{
+			"GET /git/{projectKey}/{owner}/{name}/info/refs",
+			"POST /git/{projectKey}/{owner}/{name}/git-upload-pack",
+			"POST /git/{projectKey}/{owner}/{name}/git-receive-pack",
+		},
+	},
+	{
 		name:    "oauth.partner-tokens@1",
 		promise: "A connected app gets a person's token with their consent, by authorization code with PKCE, refreshes it, revokes it, and registers itself pending an administrator.",
 		operations: []string{

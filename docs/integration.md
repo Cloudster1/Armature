@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
+  "capabilities": ["calendar@1", "git-proxy@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
 }
 ```
 
@@ -112,6 +112,62 @@ and from the app's grant.
   host refusing answers 502 `host_refused`. These calls are
   `POST /issues/{issueKey}/branches` and `POST /issues/{issueKey}/pull-requests`
   over HTTP.
+
+### `git-proxy@1`
+
+A partner clones a project's repository and pushes an issue's branch through
+Armature, as the person whose token it holds, and the host's own token never
+leaves Armature. Armature speaks git's smart HTTP and forwards each request to
+the host's clone address with the repository's access token.
+
+- `GET /git/{projectKey}/{owner}/{name}/info/refs?service=git-upload-pack` or
+  `?service=git-receive-pack`
+- `POST /git/{projectKey}/{owner}/{name}/git-upload-pack`
+- `POST /git/{projectKey}/{owner}/{name}/git-receive-pack`
+
+The clone address is `{issuer}/api/v1/git/{projectKey}/{owner}/{name}.git`,
+where `owner/name` is the repository's name as `list_repositories` gives it:
+`https://armature.example.com/api/v1/git/CP/acme/portal.git`. A GitLab owner
+with subgroups is one path segment, its slashes written `%2F`.
+
+- **The token.** An API token or a connected app's access token, sent as
+  `Authorization: Bearer <token>` (`git -c http.extraHeader="Authorization:
+  Bearer <token>" clone ...`) or as basic auth, the token being the password
+  and the user name anything (`https://rotor:<token>@.../CP/acme/portal.git`).
+  A browser's session cookie never clones or pushes. Without a credential the
+  proxy answers 401 with `WWW-Authenticate: Basic`, so git asks its
+  credential helper.
+- **A clone or a fetch** needs `read` and the right to see the project. A
+  project the person cannot see, or a repository it does not connect, is "not
+  found".
+- **A push** needs, besides, `git.write` from a connected app (a personal
+  key may push unless it is read-only), and the person's `issue.write` in the
+  project. Each command is then checked before anything reaches the host, and
+  the whole push is refused when one is:
+  - only `refs/heads/<branch>` of a branch made for an issue, by
+    `create_issue_branch` or a push naming the issue, that the person may
+    edit;
+  - never the default branch, a tag, a deletion or a signed push;
+  - never a force push: every commit a branch moves to must descend from
+    where it was, through the commits the push carries. A push that only
+    points a branch at a commit the host already has is refused for the
+    same reason.
+- **Refusals** are sentences git prints. One before the push, such as a
+  missing scope, a reader or a missing repository, is a 401, 403, 404 or 409
+  in `text/plain`, which git shows after `remote:`. A refused ref is reported
+  as receive-pack does, `! [remote rejected] main -> main (main is the
+  default branch, ...)`, with the reason on `remote:` as well.
+- **Limits.** A push is at most 32 MiB and its objects at most 512 MiB
+  unpacked. A token makes at most 30 pushes and starts at most 60 clones or
+  fetches a minute; past either it hears 429. A clone or a push may stream for
+  ten minutes.
+- **The record.** Every push, forwarded or refused, is in the audit log as
+  `git.push` against the repository: the person, the app, each ref with its
+  old and new commit and its issue, why it was refused, and the host's status.
+- **The host.** A repository without an access token answers 409, and the
+  host refusing Armature's token, or not having the repository, answers 502;
+  both say who fixes it. GitHub is reached as `x-access-token`, GitLab and
+  Gitea as `oauth2`, each with the token as the password.
 
 ### `oauth.partner-tokens@1`
 

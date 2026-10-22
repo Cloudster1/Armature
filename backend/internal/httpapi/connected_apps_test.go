@@ -60,6 +60,8 @@ func TestAConnectedAppIsHeldToTheWritesItsScopesName(t *testing.T) {
 		{http.MethodPost, "/api/v1/issues/CP-1/pull-requests", true, ""},
 		{http.MethodGet, "/api/v1/projects", true, ""},
 		{http.MethodPost, "/api/v1/mcp", true, ""},
+		// The git proxy judges git.write itself, and answers as git reads it.
+		{http.MethodPost, "/api/v1/git/CP/acme/app.git/git-receive-pack", true, ""},
 	} {
 		reached = false
 		req := httptest.NewRequest(c.method, c.path, nil)

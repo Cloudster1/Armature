@@ -1297,6 +1297,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/git/{projectKey}/{owner}/{name}/git-receive-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Push to branches made for issues the person may edit, never the default branch, a tag, a deletion or a force push; each refusal is a reason git prints. */
+        post: operations["gitReceivePack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/git/{projectKey}/{owner}/{name}/git-upload-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clone or fetch a project's repository through Armature, which reaches the host with the repository's token. */
+        post: operations["gitUploadPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/git/{projectKey}/{owner}/{name}/info/refs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The refs of a project's repository, from its host, to clone or fetch it with a token holding read, or to push with git.write. name ends in .git. */
+        get: operations["gitRefs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/groups": {
         parameters: {
             query?: never;
@@ -11573,6 +11624,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    gitReceivePack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+                owner: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-git-receive-pack-request": string;
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-git-receive-pack-result": string;
+                };
+            };
+            /** @description A refusal, as a sentence git prints after remote:. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+        };
+    };
+    gitUploadPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+                owner: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-git-upload-pack-request": string;
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-git-upload-pack-result": string;
+                };
+            };
+            /** @description A refusal, as a sentence git prints after remote:. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+        };
+    };
+    gitRefs: {
+        parameters: {
+            query?: {
+                /** @description git-upload-pack to clone or fetch, git-receive-pack to push. */
+                service?: string;
+            };
+            header?: never;
+            path: {
+                projectKey: string;
+                owner: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-git-receive-pack-advertisement": string;
+                    "application/x-git-upload-pack-advertisement": string;
+                };
+            };
+            /** @description A refusal, as a sentence git prints after remote:. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
                 };
             };
         };

@@ -7,6 +7,16 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a partner such as Rotor clones a project's repository and pushes an
+  issue's branch through Armature, as the person, while the host's token stays
+  in Armature (#333). The git proxy answers git's smart HTTP at
+  `/api/v1/git/{projectKey}/{owner}/{name}.git` with an API token or a
+  connected app's token, as a bearer or as the password. A clone needs `read`;
+  a push needs the new scope `git.write` and the right to edit the issue, and
+  goes only to a branch made for an issue, never to the default branch, as a
+  tag, a deletion or a force push, each refused with a reason git prints.
+  Pushes are capped in size and rate per token, and each is in the audit log
+  with the person, the app and the refs. `/meta` lists `git-proxy@1`.
 - Added: a partner such as Rotor works on an issue's code over MCP, as the
   person (#332). `list_repositories` and `get_issue_development` read a
   project's repositories and an issue's branches, pull requests, commits and

@@ -290,6 +290,7 @@ export const CONNECTED_APP_SCOPES: Array<{ scope: string; words: string }> = [
   { scope: "issue.write", words: "File and edit issues, and link pages to them" },
   { scope: "issue.transition", words: "Move issues through their workflow" },
   { scope: "comment.write", words: "Comment on issues" },
+  { scope: "git.write", words: "Push code to the branches of issues you may edit" },
   { scope: "webhooks.partner", words: "Send Armature's events to it, from every project (administrators only)" },
 ];
 

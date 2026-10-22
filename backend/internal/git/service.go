@@ -26,17 +26,21 @@ import (
 type Service struct {
 	db     *db.Cluster
 	issues *issue.Service
-	// client talks to the hosts. Tests point it at a stub.
+	// client talks to the hosts' APIs. Tests point it at a stub.
 	client *http.Client
-	now    func() time.Time
+	// transfer carries the git proxy's clones and pushes, which take longer.
+	transfer *http.Client
+	now      func() time.Time
 }
 
 func NewService(cluster *db.Cluster, issues *issue.Service) *Service {
-	return &Service{db: cluster, issues: issues, client: netguard.Client(hostRequestTimeout, netguard.FromEnv()), now: time.Now}
+	allow := netguard.FromEnv()
+	return &Service{db: cluster, issues: issues, client: netguard.Client(hostRequestTimeout, allow),
+		transfer: netguard.Client(TransferTimeout, allow), now: time.Now}
 }
 
-// UseHTTPClient swaps the client the hosts are reached with.
-func (s *Service) UseHTTPClient(c *http.Client) { s.client = c }
+// UseHTTPClient swaps the client the hosts are reached with, for both.
+func (s *Service) UseHTTPClient(c *http.Client) { s.client, s.transfer = c, c }
 
 // ConnectInput describes a repository to connect.
 type ConnectInput struct {

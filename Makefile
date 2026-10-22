@@ -6,6 +6,9 @@
 # is killed about a second into its run ("signal: killed"), and some built
 # binaries die a couple of seconds after startup. 1.25 and 1.26 are unaffected.
 GO_IMAGE   ?= golang:1.26-alpine
+# The integration suite clones and pushes through the git proxy with git
+# itself, which the alpine image lacks and this one carries.
+INTEGRATION_IMAGE ?= golang:1.26-bookworm
 NODE_IMAGE ?= node:26-alpine
 # 3.18 at the earliest: the SeaweedFS chart uses the fromToml template
 # function, which older Helm does not define and fails the render on.
@@ -31,6 +34,10 @@ S3_SECRET_KEY      ?= armature-dev-secret
 # Seals authenticator secrets; the compose file's api uses the same one, so a
 # row the suite leaves behind opens for the stack too.
 SECRET_KEY         ?= YXJtYXR1cmUtZGV2LWtleS1ub3QtYS1zZWNyZXQtMDA=
+# The compose stack's Gitea administrator, whom the git proxy's tests make
+# their repositories as.
+GITEA_USER         ?= demo
+GITEA_PASSWORD     ?= demo password please
 
 GO_CACHE_VOL   := $(ROOT)/.cache/gocache
 GO_MOD_VOL     := $(ROOT)/.cache/gomod
@@ -152,7 +159,9 @@ test-integration: | $(GO_CACHES) ## Run the integration suite against the runnin
 		-e ARMATURE_S3_ACCESS_KEY='$(S3_ACCESS_KEY)' -e ARMATURE_S3_SECRET_KEY='$(S3_SECRET_KEY)' \
 		-e ARMATURE_SMTP_ADDR=mailpit:1025 -e ARMATURE_POP3_ADDR=mailpit:1110 -e ARMATURE_POP3_USER=armature -e ARMATURE_POP3_PASSWORD=armature \
 		-e ARMATURE_TEST_TLS_SMTP_ADDR=mailpit-tls:1025 -e ARMATURE_TEST_TLS_POP3_ADDR=mailpit-tls:1110 \
-		-w /src $(GO_IMAGE) go test -tags integration -count=1 $(TESTFLAGS) ./test/... ; \
+		-e ARMATURE_TEST_GITEA_URL=http://gitea:3000 -e ARMATURE_TEST_GITEA_USER='$(GITEA_USER)' -e ARMATURE_TEST_GITEA_PASSWORD='$(GITEA_PASSWORD)' \
+		-e CGO_ENABLED=0 \
+		-w /src $(INTEGRATION_IMAGE) go test -tags integration -count=1 $(TESTFLAGS) ./test/... ; \
 		status=$$? ; \
 		docker compose -f deploy/docker-compose.yml start worker >/dev/null 2>&1 || true ; \
 		exit $$status
