@@ -89,6 +89,13 @@ Every name the first kit exported is still exported, so callers keep
   never HTML: `p`, `h2`-`h4`, lists, `blockquote`, `pre > code`, `br`,
   `strong`, `em`, `code`, `s`, `a` for a web or mail address only, a mention
   as `[data-mention=<id>]`. An unknown node shows its text.
+- **`.doc-content`** (`styles/index.css`): how a document looks, in DocView
+  and in the rich editor alike, so a description looks the same while it is
+  written. Its first part is shared with Stator and Exciter, rule for rule,
+  so an Armature description, a Stator page and an Exciter requirement read
+  the same; **a change to the shared part is made in all three.** Below it
+  sit Armature's own rules: the editor's headings sized one level down, as
+  DocView draws them under the page's `h1`.
 - **markdown.ts**: `docToMarkdown` and `markdownToDoc` over exactly the
   schema's node set, round-trip safe; prose that would read as markup is
   escaped, and nothing is ever parsed as HTML.

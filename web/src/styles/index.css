@@ -311,6 +311,124 @@
   background: repeating-linear-gradient(135deg, var(--color-border-strong) 0 1px, transparent 1px 5px);
 }
 
+/* A description or comment, read and edited alike, as Stator and Exciter draw a document. The shared
+ * part is the same in all three, so a change to it is made in all three; see docs/design/03-components.md. */
+@layer components {
+  /* Shared with Stator and Exciter. */
+  .doc-content {
+    line-height: var(--text-base--line-height);
+    overflow-wrap: anywhere;
+  }
+  .doc-content > * + *,
+  .doc-content :is(li, blockquote, td, th) > * + * {
+    margin-top: 0.5rem;
+  }
+  .doc-content :is(h1, h2, h3, h4) {
+    font-weight: 600;
+  }
+  .doc-content h1 {
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    margin-top: 1.25rem;
+  }
+  .doc-content h2 {
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    margin-top: 1rem;
+  }
+  .doc-content h3 {
+    font-size: var(--text-base);
+    margin-top: 0.75rem;
+  }
+  .doc-content > :first-child {
+    margin-top: 0;
+  }
+  .doc-content ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+  }
+  .doc-content ol {
+    list-style: decimal;
+    padding-left: 1.5rem;
+  }
+  .doc-content blockquote {
+    border-left: 2px solid var(--color-border-strong);
+    padding-left: 0.75rem;
+    color: var(--color-ink-muted);
+  }
+  .doc-content a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .doc-content hr {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    margin-block: 1rem;
+  }
+  .doc-content :not(pre) > code {
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+    padding: 0 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+  .doc-content pre {
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+    padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    overflow-x: auto;
+  }
+  .doc-content .tableWrapper,
+  .doc-content .doc-table-wrap {
+    overflow-x: auto;
+  }
+  .doc-content table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .doc-content :is(td, th) {
+    border: 1px solid var(--color-border);
+    padding: 0.25rem 0.5rem;
+    vertical-align: top;
+    text-align: left;
+  }
+  .doc-content th {
+    background: var(--color-surface-raised);
+    font-weight: 600;
+  }
+  .doc-content [data-mention] {
+    border-radius: var(--radius-control);
+    background: var(--color-accent-subtle);
+    padding: 0 0.25rem;
+    font-weight: 500;
+    color: var(--color-accent);
+  }
+  .doc-content .ProseMirror-selectednode {
+    outline: 2px solid var(--color-focus);
+  }
+  .doc-content p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: var(--color-ink-subtle);
+  }
+
+  /* Armature's own. A description sits under the page's h1, so the view draws its levels one down;
+   * the editor keeps the real tags and is sized to match. */
+  .doc-editor h1 {
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+  }
+  .doc-editor :is(h2, h3) {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+  }
+}
+
 /* Print, which is also how a PDF is made: the page's controls go, colours are
    kept so the bars survive, and a widget is never cut across two pages. */
 @media print {

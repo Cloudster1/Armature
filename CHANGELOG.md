@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: descriptions and comments are drawn with the document styles
+  Stator and Exciter share (#344), in the view and in the rich editor alike,
+  so an Armature description, a Stator page and an Exciter requirement read
+  the same. The shared `.doc-content` rules are noted in
+  `docs/design/03-components.md` as changed in all three tools together.
 - Changed: the kit's small shapes match Stator's and Exciter's (#342). A
   page header's actions wrap instead of widening the page, a long menu no
   longer scrolls the page behind it, the unread count wears the accent,
