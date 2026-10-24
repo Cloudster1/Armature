@@ -1,3 +1,4 @@
+import { ApiError } from "@/api/client";
 import type { Alignment, PlanMove, ScheduleMoveInput } from "@/api/plan";
 import { formatDay } from "@/lib/week";
 
@@ -26,4 +27,21 @@ export function proposedBars(alignment: Alignment | null): Map<string, { start: 
 export function describeMove(move: PlanMove, locale: string): string {
   const days = `${move.workingDays} working day${move.workingDays === 1 ? "" : "s"}`;
   return `moves from ${formatDay(dayOf(move.from.startDate), locale)} to ${formatDay(dayOf(move.to.startDate), locale)}, ${days}, after ${move.after}`;
+}
+
+/** The moves that put an applied auto plan back, each expecting the dates it set. */
+export function movesBack(applied: ScheduleMoveInput[]): ScheduleMoveInput[] {
+  return applied.map((move) => ({
+    key: move.key,
+    expected: { startDate: move.startDate, dueDate: move.dueDate },
+    startDate: move.expected.startDate,
+    dueDate: move.expected.dueDate,
+  }));
+}
+
+/** Why an undo saved nothing, in words about the undo rather than about a preview. */
+export function undoRefusal(error: unknown): string {
+  const key = error instanceof ApiError && error.code === "moved_since" ? error.fields.issueKey : undefined;
+  if (key) return `${key} was changed after the auto plan, so nothing was undone. Move it back by hand or run auto plan again.`;
+  return error instanceof Error ? error.message : "The auto plan could not be undone. Try again.";
 }

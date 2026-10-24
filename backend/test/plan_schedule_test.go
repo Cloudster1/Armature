@@ -73,6 +73,9 @@ func TestAPlansMovesAreSavedAllOrNothing(t *testing.T) {
 			move(second, "2027-11-01", "2027-11-04", "2027-11-10", "2027-11-11"),
 		)
 		refused(r, http.StatusConflict, second)
+		if r.ErrorCode() != "moved_since" || r.Error()["fields"].(map[string]any)["issueKey"] != second {
+			t.Errorf("the refusal %s does not name %s as a field a client can read", r.Raw, second)
+		}
 		unchanged()
 	})
 

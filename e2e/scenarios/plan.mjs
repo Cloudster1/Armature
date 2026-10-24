@@ -6,6 +6,7 @@ import {
   barRange,
   blockThroughAPI,
   bodyText,
+  clickButton,
   createIssue,
   createProject,
   dragBar,
@@ -202,6 +203,13 @@ scenario("auto plan shows where a blocked issue would go, and moves it on apply"
   const range = await barRange(page, blocked);
   expect.equal(range.due, "2027-11-09", "the blocked story now starts after its blocker");
   expect.equal(await page.$(`[data-plan-warning-for="${blocked}"]`), null, "and the warning is gone");
+
+  // One step puts it back, and the history holds both moves.
+  await page.waitForSelector("[data-toasts] button", { timeout: WAIT });
+  await clickButton(page, "Undo");
+  await page.waitForFunction((key) => document.querySelector(`[data-plan-bar="${key}"]`)?.dataset.planStart?.startsWith("2027-11-03"), { timeout: WAIT }, blocked);
+  expect.equal((await barRange(page, blocked)).due, "2027-11-04", "undo puts the story back where it was");
+  await page.waitForSelector(`[data-plan-warning-for="${blocked}"]`, { timeout: WAIT });
 });
 
 scenario("cancelling an auto plan changes nothing", async ({ page }) => {

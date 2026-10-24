@@ -145,6 +145,12 @@ func toAPIError(err error) *APIError {
 		return apiErr
 	}
 
+	// The moved issue travels as a field, so a client can word its own advice.
+	var moved issue.MovedSinceError
+	if errors.As(err, &moved) {
+		return &APIError{Status: http.StatusConflict, Code: "moved_since", Message: err.Error(), Fields: map[string]string{"issueKey": moved.Key}}
+	}
+
 	if e := connectedAppError(err); e != nil {
 		return e
 	}
@@ -234,8 +240,6 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, issue.ErrNotFound):
 		return ErrNotFound("That issue was not found.")
 	case errors.Is(err, issue.ErrLinkCycle):
-		return ErrConflict(err.Error())
-	case errors.Is(err, issue.ErrMovedSince):
 		return ErrConflict(err.Error())
 	case errors.Is(err, issue.ErrInvalidKey):
 		return ErrBadRequest("That is not an issue key.")
