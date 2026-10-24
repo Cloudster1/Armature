@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the shell has the landmarks and states Stator's and Exciter's have
+  (#353). A "Skip to the content" link, shown when the keyboard reaches it,
+  moves focus past the navigation to the page. The rail's toggle says whether
+  the sidebar is out and names it, a folded sidebar group stays in the page
+  hidden so its title names it, each tab names the panel it switches, and the
+  rail, sidebar and narrow strip are left off a printout.
 - Changed: Armature shows its logo the way Stator and Exciter show theirs
   (#340). Sign-in and the two-step setup show the logo above the name on the
   app's backdrop, the sidebar head and the shared dashboard show the gopher's

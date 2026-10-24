@@ -10,7 +10,7 @@ import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon, type IconName } from "@/components/icons";
 import { PROJECT_SEARCH_DELAY_MS, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { useDebounced } from "@/lib/debounce";
-import { DRAWER_ID, lastOutsideSettings, useLastProject, useNarrow, useSidebarGroups, useSidebarMode } from "./state";
+import { DRAWER_ID, SIDEBAR_ID, lastOutsideSettings, useLastProject, useNarrow, useSidebarGroups, useSidebarMode } from "./state";
 import { useConfirm } from "./ConfirmProvider";
 import { NavButton, NavItem, NavLinkOut, UnreadBadge } from "./nav";
 import { Rail } from "./Rail";
@@ -92,7 +92,7 @@ export function Sidebar({ onNewIssue, onAsk, drawerOpen = false, onCloseDrawer =
     <>
       <Rail open={open} onToggle={toggleMode} onNewIssue={onNewIssue} onAsk={onAsk} userName={principal?.user.name ?? ""} avatar={principal?.user.avatarUrl} />
       {open && (
-        <nav className="flex shrink-0 flex-col border-r border-border bg-surface" style={{ width: SIDEBAR_WIDTH }} data-sidebar={mode} data-sidebar-area={settings ? "settings" : "work"} aria-label="Where you are">
+        <nav id={SIDEBAR_ID} className="flex shrink-0 flex-col border-r border-border bg-surface" style={{ width: SIDEBAR_WIDTH }} data-sidebar={mode} data-print-hide data-sidebar-area={settings ? "settings" : "work"} aria-label="Where you are">
           <div className="flex h-12 items-center gap-1 border-b border-border px-3">{settings ? <BackToArmature /> : <InstallationName />}</div>
           <div className="flex-1 overflow-y-auto px-2 py-3">{settings ? <SettingsGroups /> : <WorkGroups />}</div>
           <BuildStamp />

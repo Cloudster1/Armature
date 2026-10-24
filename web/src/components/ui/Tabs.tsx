@@ -9,7 +9,22 @@ export interface Tab<T extends string> {
 
 // Tabs switch what a region shows without leaving the page. Arrow keys move
 // and activate, so a keyboard user does not press Enter on each.
-export function Tabs<T extends string>({ label, value, tabs, onChange, className }: { label: string; value: T; tabs: Tab<T>[]; onChange: (value: T) => void; className?: string }) {
+export function Tabs<T extends string>({
+  label,
+  value,
+  tabs,
+  onChange,
+  panelId,
+  className,
+}: {
+  label: string;
+  value: T;
+  tabs: Tab<T>[];
+  onChange: (value: T) => void;
+  /** The TabPanel the tabs switch, when there is one to point at. */
+  panelId?: string;
+  className?: string;
+}) {
   const id = useId();
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : event.key === "Home" ? -index : event.key === "End" ? tabs.length - 1 - index : 0;
@@ -30,7 +45,7 @@ export function Tabs<T extends string>({ label, value, tabs, onChange, className
             role="tab"
             id={`${id}-${tab.value}`}
             aria-selected={selected}
-            aria-controls={`${id}-panel`}
+            aria-controls={panelId}
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.value)}
             onKeyDown={(event) => onKeyDown(event, index)}
@@ -48,9 +63,9 @@ export function Tabs<T extends string>({ label, value, tabs, onChange, className
   );
 }
 
-export function TabPanel({ children, className }: { children: ReactNode; className?: string }) {
+export function TabPanel({ id, label, children, className }: { id?: string; label?: string; children: ReactNode; className?: string }) {
   return (
-    <div role="tabpanel" className={className}>
+    <div role="tabpanel" id={id} aria-label={label} className={className}>
       {children}
     </div>
   );
