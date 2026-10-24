@@ -121,6 +121,18 @@
 
   --radius-control: 6px;
   --radius-overlay: 8px;
+
+  /* From here up the shell has its rail and sidebar; below it the sidebar is
+   * a drawer. SIDEBAR_DRAWER_BELOW_PX in config.ts is the same width. A rem in
+   * a media query is the browser's 16px, not the 14px the page is set in. */
+  --breakpoint-shell: 48rem;
+
+  --animate-drawer-in: drawer-in 160ms ease-out;
+  @keyframes drawer-in {
+    from {
+      transform: translateX(-100%);
+    }
+  }
 }
 
 /* The dark theme redefines the same names. Two blocks say the same thing: the

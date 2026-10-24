@@ -199,6 +199,16 @@ export async function waitForApp(page, timeout = WAIT) {
   await page.waitForSelector('[data-shell] [data-action="account"], [data-shell] [data-action="open-drawer"]', { timeout });
 }
 
+/**
+ * Opens the narrow screen's drawer and waits for it to stop sliding in: a
+ * click while it moves lands where the control was a moment before.
+ */
+export async function openDrawer(page, selector = '[data-sidebar="drawer"]') {
+  await page.click('[data-action="open-drawer"]');
+  await page.waitForSelector(selector, { timeout: WAIT });
+  await page.waitForFunction(() => document.querySelector('[data-sidebar="drawer"]')?.getAnimations().every((a) => a.playState !== "running"), { timeout: WAIT });
+}
+
 /** Opens the avatar's menu, "Your account", and waits for it. */
 export async function openAccountMenu(page) {
   await page.waitForSelector('[data-action="account"]', { timeout: WAIT });

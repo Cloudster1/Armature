@@ -3,7 +3,7 @@
 // and all of it in a drawer on a phone.
 
 import { scenario } from "../runner.mjs";
-import { expect, goto, openAccountMenu, openPalette, signUp, unique, WAIT, waitForApp, waitForPath, withViewport } from "../helpers.mjs";
+import { expect, goto, openAccountMenu, openDrawer, openPalette, signUp, unique, WAIT, waitForApp, waitForPath, withViewport } from "../helpers.mjs";
 
 const PERSONAL = ["Your profile", "Notification settings", "Watching", "Themes", "Access tokens"];
 const SETTINGS = ["Installation", "Access", "Users", "Holidays", "Workflows", "Labels", "Automation", "Fields", "Issue view", "Connected apps", "Webhooks", "Audit log"];
@@ -106,8 +106,7 @@ scenario("at phone width a drawer holds every group and closes on following a li
     expect.equal(await page.$("[data-rail]"), null, "the rail gives way");
     expect.equal(await page.$('[data-sidebar="open"], [data-sidebar="rail"]'), null, "and so does the sidebar");
 
-    await page.click('[data-action="open-drawer"]');
-    await page.waitForSelector('[data-sidebar="drawer"]', { timeout: WAIT });
+    await openDrawer(page);
     for (const group of ["work", "project"]) expect.truthy(await page.$(`[data-sidebar="drawer"] [data-sidebar-group="${group}"]`), `the drawer holds the ${group} group`);
     const foot = await page.$eval("[data-drawer-foot]", (el) => el.innerText);
     for (const word of [...PERSONAL, "Settings", "Sign out"]) expect.contains(foot, word, `the drawer's foot offers ${word}`);
@@ -120,13 +119,11 @@ scenario("at phone width a drawer holds every group and closes on following a li
     await waitForPath(page, "/inbox");
     await page.waitForFunction(() => !document.querySelector('[data-sidebar="drawer"]'), { timeout: WAIT });
 
-    await page.click('[data-action="open-drawer"]');
-    await page.waitForSelector('[data-sidebar="drawer"]', { timeout: WAIT });
+    await openDrawer(page);
     await page.click('[data-drawer-foot] [data-action="settings"]');
     await waitForPath(page, "/settings");
     await page.waitForFunction(() => !document.querySelector('[data-sidebar="drawer"]'), { timeout: WAIT });
-    await page.click('[data-action="open-drawer"]');
-    await page.waitForSelector('[data-sidebar="drawer"][data-sidebar-area="settings"] [data-sidebar-group="settings"]', { timeout: WAIT });
+    await openDrawer(page, '[data-sidebar="drawer"][data-sidebar-area="settings"] [data-sidebar-group="settings"]');
     expect.truthy(await page.$('[data-sidebar="drawer"] [data-action="back-from-settings"]'), "in the settings area the drawer holds the settings sidebar");
   });
 });

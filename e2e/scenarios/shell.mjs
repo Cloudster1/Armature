@@ -3,6 +3,11 @@
 import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
+  createProject,
+  enterOpenDesk,
+  signOut,
+  toggleDoor,
+  withViewport,
   connectTool,
   openAccountMenu,
   signOutThroughMenu,
@@ -152,6 +157,36 @@ scenario("the keyboard reaches the content from the top of a page through the sk
 
   await page.keyboard.press("Tab");
   expect.truthy(await page.evaluate(() => document.querySelector("main#main").contains(document.activeElement)), "the next Tab stays in the content, past the navigation");
+});
+
+// The padding follows the stylesheet's shell breakpoint, not a branch in code, so both shells get it.
+scenario("at a phone's width each shell's pages start one rem from the edge, as Stator's do, and do not scroll sideways", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const desk = await createProject(page, "Phone desk", { template: "service-desk", visit: false });
+  await toggleDoor(page, desk);
+  const fits = async (shell) => {
+    await page.waitForSelector("main#main [data-shell-content]", { timeout: WAIT });
+    const got = await page.evaluate(() => {
+      const content = document.querySelector("main#main [data-shell-content]");
+      const main = document.getElementById("main");
+      return {
+        start: content.getBoundingClientRect().left + parseFloat(getComputedStyle(content).paddingLeft),
+        rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+        page: document.documentElement.scrollWidth - window.innerWidth,
+        main: main.scrollWidth - main.clientWidth,
+      };
+    });
+    expect.equal(got.start, got.rem, `where the ${shell}'s content starts, in px`);
+    expect.truthy(got.page <= 0 && got.main <= 0, `the ${shell} scrolls sideways by ${Math.max(got.page, got.main)}px`);
+  };
+
+  await withViewport(page, 375, async () => {
+    await goto(page, "/inbox");
+    await fits("app");
+    await signOut(page, { visit: false });
+    await enterOpenDesk(page, desk, unique("walkin"));
+    await fits("portal");
+  });
 });
 
 scenario("nothing in the page reports a script error", async ({ page }) => {
