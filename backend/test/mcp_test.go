@@ -179,4 +179,37 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 			t.Errorf("an unknown method answered %v", unknown.Body["error"])
 		}
 	})
+
+	t.Run("the auto plan proposes through one tool and saves through another", func(t *testing.T) {
+		made := func(summary, start, due string) string {
+			k := obj(t, owner.post("/api/v1/projects/"+mcpKey+"/issues", map[string]any{"summary": summary}), "issue")["key"].(string)
+			want(t, owner.put("/api/v1/issues/"+k+"/schedule", map[string]any{"startDate": start, "dueDate": due}), http.StatusOK, "schedule "+summary)
+			return k
+		}
+		blocker, blocked := made("comes first", "2027-11-01", "2027-11-05"), made("waits", "2027-11-03", "2027-11-04")
+		want(t, owner.post("/api/v1/issues/"+blocker+"/links", map[string]any{"type": "blocks", "targetKey": blocked}), http.StatusCreated, "the link")
+		h.waitForPrimary(t)
+
+		proposal := call(t, agent, "align_plan", map[string]any{"projectKey": mcpKey})
+		moves := proposal["structuredContent"].(map[string]any)["moves"].([]any)
+		if proposal["isError"] == true || len(moves) != 1 {
+			t.Fatalf("align_plan: %s", text(proposal))
+		}
+		m := moves[0].(map[string]any)
+		from, to := m["from"].(map[string]any), m["to"].(map[string]any)
+		move := map[string]any{"key": m["issueKey"], "expected": from, "startDate": to["startDate"], "dueDate": to["dueDate"]}
+
+		saved := call(t, agent, "apply_plan_schedule", map[string]any{"projectKey": mcpKey, "moves": []any{move}})
+		if saved["isError"] == true {
+			t.Fatalf("apply_plan_schedule: %s", text(saved))
+		}
+		if got := obj(t, agent.get("/api/v1/issues/"+blocked), "issue")["startDate"].(string); got[:10] != "2027-11-08" {
+			t.Errorf("%s starts %s after the tools, want 2027-11-08", blocked, got)
+		}
+
+		again := call(t, agent, "apply_plan_schedule", map[string]any{"projectKey": mcpKey, "moves": []any{move}})
+		if again["isError"] != true || !strings.Contains(text(again), blocked) {
+			t.Errorf("the same moves twice: %s, want a refusal naming %s", text(again), blocked)
+		}
+	})
 }
