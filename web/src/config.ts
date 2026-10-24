@@ -446,8 +446,11 @@ export const RESOURCE_HOUR_DECIMALS = 1;
 /** A whole week, as a percent: what a person gives a project nobody has set a share for. */
 export const SHARE_FULL_PERCENT = 100;
 
-/** Edge of the emblem beside the wordmark, in pixels: large on the door pages, small in a header bar. */
-export const WORDMARK_EMBLEM_SIZE = { sm: 24, md: 40 } as const;
+/** The product's name, written beside its logo. */
+export const APP_NAME = "Armature";
+/** The logo's edge on a door page, and the mark's beside a line of text, in pixels; the same as Stator's and Exciter's. */
+export const LOGO_WIDTH_PX = 112;
+export const MARK_WIDTH_PX = 24;
 
 /** Where a password link's secret waits in the tab once it is off the address bar. */
 export const PASSWORD_RESET_TOKEN_KEY = "armature.password-reset";

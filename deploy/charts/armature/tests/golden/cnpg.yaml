@@ -145,6 +145,12 @@ data:
             add_header Cache-Control "public, immutable";
         }
 
+        # nginx has no type for a web app manifest and would serve it as a download.
+        # No add_header here, so the server's security headers still apply.
+        location = /site.webmanifest {
+            default_type application/manifest+json;
+        }
+
         location / {
             try_files $uri $uri/ /index.html;
         }
@@ -335,7 +341,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: web
       annotations:
-        checksum/nginx: 7ec3eba5cb81741a7f8f8c635e8b40a450a5aa759cf8c4a7d0e12b9a4d168558
+        checksum/nginx: 93df2c20809882aca0710b5e446778390228b10d0c14901ed9e4e904e682df5a
     spec:
       serviceAccountName: armature
       # The image is stock nginx, whose master would normally start as root.

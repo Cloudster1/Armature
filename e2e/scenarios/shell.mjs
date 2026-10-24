@@ -3,6 +3,11 @@
 import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
+  createProject,
+  enterOpenDesk,
+  signOut,
+  toggleDoor,
+  withViewport,
   connectTool,
   openAccountMenu,
   signOutThroughMenu,
@@ -88,6 +93,100 @@ scenario("the theme choice persists across a reload", async ({ page }) => {
   await reload(page);
   await page.waitForSelector(themeButton, { timeout: 10_000 });
   expect.equal(await textOf(page, themeButton), "Dark", "the choice survived the reload");
+});
+
+// A missing file would come back as the app's index.html, so the type is what proves it is there.
+scenario("the logo and the icons are served from the site's root, each with its own type", async ({ page }) => {
+  await goto(page, "/login");
+  const served = await page.evaluate(async (paths) => {
+    const out = {};
+    for (const path of paths) {
+      const response = await fetch(path);
+      out[path] = `${response.status} ${response.headers.get("content-type")}`;
+    }
+    return out;
+  }, ["/favicon.ico", "/favicon-32.png", "/apple-touch-icon.png", "/icon-512.png", "/logo-256.webp", "/mark-96.webp", "/site.webmanifest"]);
+  for (const [path, type] of Object.entries({
+    "/favicon.ico": /image\/(x-icon|vnd\.microsoft\.icon)/,
+    "/favicon-32.png": /image\/png/,
+    "/apple-touch-icon.png": /image\/png/,
+    "/icon-512.png": /image\/png/,
+    "/logo-256.webp": /image\/webp/,
+    "/mark-96.webp": /image\/webp/,
+    "/site.webmanifest": /application\/manifest\+json/,
+  })) {
+    expect.truthy(served[path].startsWith("200 ") && type.test(served[path]), `${path} answered ${served[path]}`);
+  }
+});
+
+scenario("the sign-in page shows the logo and the sidebar the mark, which the content security policy lets load", async ({ page }) => {
+  const refused = [];
+  page.on("console", (message) => {
+    if (/Content Security Policy|Refused to load/i.test(message.text())) refused.push(message.text());
+  });
+  const loaded = (selector) => page.waitForFunction((s) => document.querySelector(s)?.naturalWidth > 0, { timeout: WAIT }, selector);
+
+  await goto(page, "/login");
+  await loaded("[data-door] img[data-logo]");
+  expect.equal(await textOf(page, "[data-logo-head]"), "Armature", "the name under the logo");
+
+  await signUp(page);
+  await loaded("[data-sidebar] img[data-logo-mark]");
+  expect.equal(refused.length, 0, `the policy refused: ${refused.join(" | ")}`);
+});
+
+scenario("the keyboard reaches the content from the top of a page through the skip link", async ({ page }) => {
+  await signUp(page);
+  await goto(page, "/projects");
+  await page.waitForSelector("main#main", { timeout: WAIT });
+  await page.evaluate(() => document.activeElement?.blur());
+
+  await page.keyboard.press("Tab");
+  const first = await page.evaluate(() => {
+    const el = document.activeElement;
+    const box = el.getBoundingClientRect();
+    return { skip: el.hasAttribute("data-skip-link"), text: el.textContent.trim(), shown: box.width > 1 && box.height > 1 };
+  });
+  expect.truthy(first.skip, "the first Tab lands on the skip link");
+  expect.equal(first.text, "Skip to the content", "the skip link's words");
+  expect.truthy(first.shown, "the skip link shows once focused");
+
+  await page.keyboard.press("Enter");
+  expect.equal(await page.evaluate(() => document.activeElement?.id), "main", "focus after the skip link");
+  expect.equal(await page.evaluate(() => location.pathname), "/projects", "the skip link left the address alone");
+
+  await page.keyboard.press("Tab");
+  expect.truthy(await page.evaluate(() => document.querySelector("main#main").contains(document.activeElement)), "the next Tab stays in the content, past the navigation");
+});
+
+// The padding follows the stylesheet's shell breakpoint, not a branch in code, so both shells get it.
+scenario("at a phone's width each shell's pages start one rem from the edge, as Stator's do, and do not scroll sideways", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const desk = await createProject(page, "Phone desk", { template: "service-desk", visit: false });
+  await toggleDoor(page, desk);
+  const fits = async (shell) => {
+    await page.waitForSelector("main#main [data-shell-content]", { timeout: WAIT });
+    const got = await page.evaluate(() => {
+      const content = document.querySelector("main#main [data-shell-content]");
+      const main = document.getElementById("main");
+      return {
+        start: content.getBoundingClientRect().left + parseFloat(getComputedStyle(content).paddingLeft),
+        rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+        page: document.documentElement.scrollWidth - window.innerWidth,
+        main: main.scrollWidth - main.clientWidth,
+      };
+    });
+    expect.equal(got.start, got.rem, `where the ${shell}'s content starts, in px`);
+    expect.truthy(got.page <= 0 && got.main <= 0, `the ${shell} scrolls sideways by ${Math.max(got.page, got.main)}px`);
+  };
+
+  await withViewport(page, 375, async () => {
+    await goto(page, "/inbox");
+    await fits("app");
+    await signOut(page, { visit: false });
+    await enterOpenDesk(page, desk, unique("walkin"));
+    await fits("portal");
+  });
 });
 
 scenario("nothing in the page reports a script error", async ({ page }) => {

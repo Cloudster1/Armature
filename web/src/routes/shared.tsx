@@ -4,7 +4,9 @@ import { rootRoute } from "./root";
 import { AuthLayout } from "./auth";
 import { ReportSourceProvider, narrowingKinds } from "@/api/reports";
 import { sharedPdfHref, useShared } from "@/api/shares";
-import { ButtonLink, ErrorBanner, IconButton, Skeleton, Wordmark, cx } from "@/components/ui";
+import { ButtonLink, ErrorBanner, IconButton, Skeleton, cx } from "@/components/ui";
+import { LogoMark } from "@/components/Logo";
+import { APP_NAME } from "@/config";
 import { Icon } from "@/components/icons";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { useFormat } from "@/lib/format";
@@ -71,7 +73,10 @@ function SharedDashboardPage() {
       <div className="flex min-h-full flex-col" data-shared-dashboard={data.dashboard.name}>
         {!print && (
           <header className="flex h-12 shrink-0 items-center gap-4 border-b border-border bg-surface px-6" data-print-hide="">
-            <Wordmark size="sm" />
+            <span className="inline-flex items-center gap-2" data-shared-brand>
+              <LogoMark className="rounded-control" />
+              <span className="font-mono text-sm font-medium tracking-wide text-ink-muted">{APP_NAME}</span>
+            </span>
             <span className="text-sm text-ink-muted">{data.projectName}</span>
             <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{data.dashboard.name}</h1>
             <span className="text-xs text-ink-subtle tabular-nums" data-shared-updated="">

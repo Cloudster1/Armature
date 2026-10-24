@@ -357,6 +357,15 @@ seed: ## Fill the running stack's installation with demo people and projects
 demo-snapshot: ## Take the suite demo's GitHub issues again, on the host with gh signed in
 	@sh deploy/demo-snapshot.sh
 
+# ImageMagick runs from an image, as every other tool does, and as root only
+# for the package install; the files are handed back to the caller after.
+BRANDING_IMAGE ?= alpine:3.22
+
+.PHONY: branding
+branding: ## Make web/public's logo and icons from docs/armature-logo.jpg
+	docker run --rm -v $(ROOT):/code $(BRANDING_IMAGE) sh -ec \
+		'apk add --no-cache imagemagick imagemagick-jpeg imagemagick-webp >/dev/null && /code/deploy/branding.sh && chown -R $(UID):$(GID) /code/web/public'
+
 .PHONY: psql
 psql: ## Open psql against the primary
 	docker compose -f deploy/docker-compose.yml exec postgres-primary psql -U armature -d armature

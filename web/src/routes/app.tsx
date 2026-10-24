@@ -9,7 +9,8 @@ import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
 import { MutationErrorToasts } from "@/features/shell/MutationErrorToasts";
 import { Sidebar, SidebarFoot, useCurrentProjectKey } from "@/features/shell/Sidebar";
 import { ShellHeaderContext } from "@/components/ui";
-import { DRAWER_ID, rememberOutsideSettings, useLastProject, useNarrow } from "@/features/shell/state";
+import { SkipLink } from "@/features/shell/SkipLink";
+import { DRAWER_ID, MAIN_ID, rememberOutsideSettings, useLastProject, useNarrow } from "@/features/shell/state";
 import { inSettingsArea } from "@/features/shell/places";
 import { CommandPalette, usePaletteShortcut, type PaletteMode, type SpotlightRequest } from "@/features/palette/CommandPalette";
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
@@ -113,15 +114,17 @@ function AgentShell() {
   }, [location.pathname, location.href]);
   return (
     <div className="flex h-full" data-shell={narrow ? "narrow" : "wide"}>
+      <SkipLink />
       <ThemeLoader />
       <Sidebar onNewIssue={() => setCreating(true)} onAsk={() => setPalette("ask")} drawerOpen={narrow && drawer} onCloseDrawer={closeDrawer} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {narrow && <NarrowStrip open={drawer} onOpen={() => setDrawer(true)} />}
-        <main className="relative isolate min-h-0 min-w-0 flex-1 overflow-auto bg-backdrop" data-backdrop-host>
+        {/* Focusable only from the skip link, and not ringed then: it is where reading starts, not a control. */}
+        <main id={MAIN_ID} tabIndex={-1} className="relative isolate min-h-0 min-w-0 flex-1 overflow-auto bg-backdrop focus:outline-none" data-backdrop-host>
           <BackdropEffect />
-          <div ref={setStrip} className={narrow ? "sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-4 pt-4 backdrop-blur-md empty:hidden" : "sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-8 pt-5 backdrop-blur-md empty:hidden"} data-shell-header />
+          <div ref={setStrip} className="sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-4 pt-4 backdrop-blur-md empty:hidden shell:px-8 shell:pt-5" data-shell-header />
           <ShellHeaderContext.Provider value={strip}>
-            <div className={narrow ? "px-4 py-4" : "px-8 py-6"}>
+            <div className="px-4 py-4 shell:px-8 shell:py-6" data-shell-content>
               <Outlet />
             </div>
           </ShellHeaderContext.Provider>
@@ -147,7 +150,7 @@ function AgentShell() {
 function NarrowStrip({ open, onOpen }: { open: boolean; onOpen: () => void }) {
   const { data } = useMe();
   return (
-    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-narrow-strip>
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-narrow-strip data-print-hide>
       <IconButton icon={<Icon.Lines />} label="Open the navigation" size="sm" onClick={onOpen} aria-controls={DRAWER_ID} aria-expanded={open} data-action="open-drawer" />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{data?.principal?.installation?.name}</span>
     </div>
@@ -172,23 +175,25 @@ function PortalShell() {
       <MutationErrorToasts />
       <ConfirmProvider>
       <div className="flex h-full flex-col">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-6">
-          <div className="flex items-center gap-5">
-            <span className="text-sm font-semibold text-ink">{principal?.installation?.name ?? "Support"}</span>
+        <SkipLink />
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-4 shell:px-6" data-print-hide>
+          <div className="flex min-w-0 items-center gap-2 shell:gap-5">
+            <span className="min-w-0 truncate text-sm font-semibold text-ink">{principal?.installation?.name ?? "Support"}</span>
             <PortalLink to="/portal" exact>
               Your requests
             </PortalLink>
             <PortalLink to="/portal/new">Raise a request</PortalLink>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-ink-subtle" data-portal-address>
+          <div className="flex shrink-0 items-center gap-3">
+            {/* On a phone the address gives way to the two links; the avatar still says who is in. */}
+            <span className="hidden text-xs text-ink-subtle shell:inline" data-portal-address>
               {principal?.user.email}
             </span>
             <SidebarFoot userName={principal?.user.name ?? ""} avatar={principal?.user.avatarUrl} />
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-auto">
-          <div className="px-8 py-6">
+        <main id={MAIN_ID} tabIndex={-1} className="min-h-0 flex-1 overflow-auto focus:outline-none">
+          <div className="px-4 py-4 shell:px-8 shell:py-6" data-shell-content>
             <Outlet />
           </div>
         </main>
@@ -203,7 +208,7 @@ function PortalLink({ to, exact = false, children }: { to: string; exact?: boole
     <Link
       to={to}
       activeOptions={{ exact }}
-      className="rounded-control px-2 py-1 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink"
+      className="shrink-0 rounded-control px-2 py-1 text-sm whitespace-nowrap text-ink-muted hover:bg-surface-raised hover:text-ink"
       activeProps={{ className: "bg-accent-subtle text-accent font-medium hover:bg-accent-subtle hover:text-accent" }}
     >
       {children}

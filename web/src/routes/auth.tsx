@@ -1,7 +1,8 @@
 import { Link, createRoute, redirect } from "@tanstack/react-router";
 import { rootRoute } from "./root";
 import { LoginForm, SignupForm } from "@/features/auth/AuthForms";
-import { Card, Wordmark } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { LogoHead } from "@/components/Logo";
 import { meQueryKey, useSignupOpen, type SignupState } from "@/api/auth";
 import { request } from "@/api/client";
 import { useEffect, type ReactNode } from "react";
@@ -37,10 +38,10 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
   // A theme is somebody's; the door has nobody yet, so it wears the built-in one.
   useEffect(() => applyCustomTheme(null), []);
   return (
-    <div className="flex min-h-full items-center justify-center px-4 py-12">
+    <div className="flex min-h-full items-center justify-center bg-backdrop px-4 py-12" data-door>
       <div className="w-full max-w-sm">
         <div className="mb-6">
-          <Wordmark />
+          <LogoHead />
           <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
         </div>

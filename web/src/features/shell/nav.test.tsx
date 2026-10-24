@@ -29,6 +29,14 @@ const { NotificationsBell } = await import("./nav");
 afterEach(cleanup);
 
 describe("the bell", () => {
+  it("goes by the name all three tools give it, and counts on the accent", () => {
+    render(<NotificationsBell />);
+    const bell = document.querySelector('[data-action="notifications"]')!;
+    expect(bell.getAttribute("data-unread-count")).toBe("1");
+    const count = bell.parentElement!.querySelector(":scope > span[aria-hidden]")!;
+    expect(count.className.split(" ")).toEqual(expect.arrayContaining(["bg-accent", "text-on-accent", "font-medium"]));
+  });
+
   it("opens the latest notifications with Mark all as read, See all and Notification settings", async () => {
     render(<NotificationsBell />);
     await userEvent.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));

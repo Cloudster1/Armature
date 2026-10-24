@@ -4,6 +4,7 @@ import { SIDEBAR_RAIL_WIDTH } from "@/config";
 import { NavButton, NavItem, NotificationsBell } from "./nav";
 import { AccountMenu } from "./AccountMenu";
 import { ThemeButton } from "./ThemeButton";
+import { SIDEBAR_ID } from "./state";
 
 /**
  * The rail is what is always there: the places every page reaches from, and
@@ -26,9 +27,18 @@ export function Rail({
   avatar?: string;
 }) {
   return (
-    <aside className="flex shrink-0 flex-col items-center border-r border-border bg-surface" style={{ width: SIDEBAR_RAIL_WIDTH }} data-rail>
+    <aside className="flex shrink-0 flex-col items-center border-r border-border bg-surface" style={{ width: SIDEBAR_RAIL_WIDTH }} data-rail data-print-hide>
       <header className="flex h-12 w-full items-center justify-center border-b border-border">
-        <IconButton icon={open ? <Icon.Collapse /> : <Icon.Expand />} label={open ? "Collapse the sidebar" : "Expand the sidebar"} size="sm" onClick={onToggle} data-action="sidebar" />
+        <IconButton
+          icon={open ? <Icon.Collapse /> : <Icon.Expand />}
+          label={open ? "Collapse the sidebar" : "Expand the sidebar"}
+          size="sm"
+          onClick={onToggle}
+          aria-expanded={open}
+          // Folded, the sidebar is not in the document, so there is nothing to name.
+          aria-controls={open ? SIDEBAR_ID : undefined}
+          data-action="sidebar"
+        />
       </header>
       <nav aria-label="Everywhere" className="flex flex-1 flex-col items-center gap-1 py-3">
         <NavItem to="/" exact icon="Home" rail>

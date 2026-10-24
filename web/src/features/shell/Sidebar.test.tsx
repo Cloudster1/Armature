@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import type { Build } from "@/api/meta";
@@ -101,6 +101,21 @@ describe("the shell's chrome", () => {
     expect(screen.queryByText("Other Corp")).toBeNull();
   });
 
+  it("puts the mark beside the installation's name, open or in the narrow drawer", () => {
+    const { unmount } = render(<Sidebar onNewIssue={() => {}} />);
+    const head = document.querySelector("[data-sidebar] [data-installation-name]")!.parentElement!;
+    const mark = head.querySelector("img[data-logo-mark]")!;
+    // Decorative: the name beside it is what a screen reader reads.
+    expect(mark.getAttribute("alt")).toBe("");
+    expect(mark.getAttribute("src")).toBe("/mark-96.webp");
+    unmount();
+
+    window.innerWidth = 375;
+    render(<Sidebar onNewIssue={() => {}} drawerOpen onCloseDrawer={() => {}} />);
+    const drawer = screen.getByRole("dialog", { name: "Navigation" });
+    expect(drawer.querySelector("[data-installation-name]")!.parentElement!.querySelector("[data-logo-mark]")).not.toBeNull();
+  });
+
   it("lists the work and no personal or installation pages, with Notifications counting what is unread", () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     const places = Array.from(document.querySelectorAll('[data-sidebar-group="work"] [data-place]')).map((a) => a.getAttribute("data-place"));
@@ -116,14 +131,35 @@ describe("the shell's chrome", () => {
   it("folds a group by its title and remembers it", async () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     expect(document.querySelector('[data-sidebar-group="work"]')?.getAttribute("data-open")).toBe("true");
-    await userEvent.click(screen.getByRole("button", { name: "Work & Plan" }));
-    expect(document.querySelector('[data-place="Home"]')).toBeNull();
+    const title = screen.getByRole("button", { name: "Work & Plan" });
+    await userEvent.click(title);
+    // Kept, hidden, so the title still names what it folds.
+    const folded = document.getElementById(title.getAttribute("aria-controls")!)!;
+    expect(folded.hidden).toBe(true);
+    expect(title.getAttribute("aria-expanded")).toBe("false");
+    expect(within(document.querySelector("[data-sidebar]") as HTMLElement).queryByRole("link", { name: /Home/ })).toBeNull();
     expect(JSON.parse(localStorage.getItem("armature.sidebar-groups") ?? "{}")).toEqual({ work: false });
+  });
+
+  it("has the rail's toggle say whether the sidebar is out, and name it while it is", () => {
+    const { unmount } = render(<Sidebar onNewIssue={() => {}} />);
+    const toggle = document.querySelector('[data-action="sidebar"]')!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(document.getElementById(toggle.getAttribute("aria-controls")!)?.hasAttribute("data-sidebar")).toBe(true);
+    expect(document.querySelector("[data-rail]")!.hasAttribute("data-print-hide")).toBe(true);
+    expect(document.querySelector("[data-sidebar]")!.hasAttribute("data-print-hide")).toBe(true);
+    unmount();
+
+    state.mode = "rail";
+    render(<Sidebar onNewIssue={() => {}} />);
+    const folded = document.querySelector('[data-action="sidebar"]')!;
+    expect(folded.getAttribute("aria-expanded")).toBe("false");
+    expect(folded.hasAttribute("aria-controls")).toBe(false);
   });
 
   it("keeps every pressed control exactly once in either mode", () => {
     const { unmount } = render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
-    for (const action of ["sidebar", "theme", "guide", "inbox", "new-issue", "account"]) {
+    for (const action of ["sidebar", "theme", "guide", "notifications", "new-issue", "account"]) {
       expect(document.querySelectorAll(`[data-action="${action}"]`), action).toHaveLength(1);
     }
     expect(document.querySelector("[data-unread-count]")?.getAttribute("data-unread-count")).toBe("3");
@@ -133,7 +169,7 @@ describe("the shell's chrome", () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     expect(document.querySelector("[data-sidebar]")).toBeNull();
     expect(document.querySelector("[data-rail]")).not.toBeNull();
-    for (const action of ["sidebar", "theme", "guide", "inbox", "new-issue", "account"]) {
+    for (const action of ["sidebar", "theme", "guide", "notifications", "new-issue", "account"]) {
       expect(document.querySelectorAll(`[data-action="${action}"]`), action).toHaveLength(1);
     }
   });

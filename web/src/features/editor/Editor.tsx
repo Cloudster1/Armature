@@ -105,7 +105,8 @@ export function Editor({ id, value, onChange, findPeople, placeholder, autoFocus
         "aria-multiline": "true",
         "aria-label": ariaLabel,
         "data-editor": "rich",
-        class: cx(controlClass, "h-auto min-h-0 py-2 leading-normal outline-none [&_p]:my-0 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-border-strong [&_blockquote]:pl-3 [&_pre]:rounded-control [&_pre]:bg-surface-sunken [&_pre]:px-3 [&_pre]:py-2 [&_pre]:font-mono [&_pre]:text-sm [&_code]:font-mono [&_[data-mention]]:text-accent [&_[data-mention]]:font-medium [&_p.is-editor-empty:first-child::before]:pointer-events-none [&_p.is-editor-empty:first-child::before]:float-left [&_p.is-editor-empty:first-child::before]:h-0 [&_p.is-editor-empty:first-child::before]:text-ink-subtle [&_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]"),
+        // The same document rules as the view, so a description looks the same while it is written.
+        class: cx(controlClass, "doc-content doc-editor h-auto min-h-0 py-2 outline-none"),
         style: `min-height: ${rows * LINE_HEIGHT_PX}px`,
       },
     },
