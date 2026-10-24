@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/armature/armature/backend/internal/auth"
+	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/plan"
 )
 
 // 1 November 2027 is a Monday, and far enough ahead that nothing is under way.
@@ -146,4 +148,43 @@ func TestAutoPlanProposesMovesAndSavesNothing(t *testing.T) {
 			t.Errorf("moves = %v, want the project's own still proposed", got)
 		}
 	})
+}
+
+// A link between two epics holds the work under one behind the work under the other.
+func TestAutoPlanHoldsAnEpicsWorkBehindTheEpicItWaitsOn(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	ws := h.newProject(t, "epics")
+	first, second := h.buildTree(t, ws), h.buildTree(t, ws)
+	h.schedule(t, ws, first.subtask.Key, "2027-11-01", "2027-11-05")
+	h.schedule(t, ws, second.subtask.Key, "2027-11-03", "2027-11-04")
+	if _, _, err := ws.issues.AddLink(ws.ctx, first.epic.Key, issue.LinkInput{TypeName: issue.LinkTypeBlocks, TargetKey: second.epic.Key}, ws.actor); err != nil {
+		t.Fatal(err)
+	}
+
+	read, err := ws.plans.ForProject(ws.ctx, ws.project.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var warned string
+	for _, w := range read.Warnings {
+		if w.IssueKey == second.subtask.Key && w.Kind == plan.WarnBlockedTooEarly {
+			warned = w.Message
+		}
+	}
+	if !strings.Contains(warned, first.subtask.Key) || !strings.Contains(warned, first.epic.Key+" blocks "+second.epic.Key) {
+		t.Errorf("the warning on %s reads %q, want the work it waits on and the epics' link", second.subtask.Key, warned)
+	}
+
+	proposal, err := ws.plans.Align(ws.ctx, ws.project.Key, nil, false, func(string) bool { return true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(proposal.Moves) != 1 {
+		t.Fatalf("moves = %+v, want only the second epic's step", proposal.Moves)
+	}
+	m := proposal.Moves[0]
+	if m.IssueKey != second.subtask.Key || m.To.Start.Format("2006-01-02") != "2027-11-08" || m.After != first.subtask.Key {
+		t.Errorf("move = %+v, want %s on 8 November, after %s", m, second.subtask.Key, first.subtask.Key)
+	}
 }

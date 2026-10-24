@@ -114,13 +114,13 @@ func Align(items []Item, in AlignInput) Proposal {
 	blockedBy := map[string][]string{}
 	blocks := map[string][]string{}
 	indegree := map[string]int{}
-	for _, b := range in.Blockers {
-		if nodes[b.BlockerKey] == nil || nodes[b.BlockedKey] == nil {
+	for _, c := range Constraints(items, in.Blockers) {
+		if nodes[c.BlockerKey] == nil || nodes[c.BlockedKey] == nil {
 			continue
 		}
-		blockedBy[b.BlockedKey] = append(blockedBy[b.BlockedKey], b.BlockerKey)
-		blocks[b.BlockerKey] = append(blocks[b.BlockerKey], b.BlockedKey)
-		indegree[b.BlockedKey]++
+		blockedBy[c.BlockedKey] = append(blockedBy[c.BlockedKey], c.BlockerKey)
+		blocks[c.BlockerKey] = append(blocks[c.BlockerKey], c.BlockedKey)
+		indegree[c.BlockedKey]++
 	}
 
 	// Kahn's order, each batch sorted by key, so the same plan always proposes the same moves.
