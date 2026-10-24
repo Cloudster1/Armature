@@ -95,6 +95,17 @@ func TestAutoPlanProposesMovesAndSavesNothing(t *testing.T) {
 		want(t, lead.post("/api/v1/projects/"+key+"/plan/align", map[string]any{"q": "nonsense"}), http.StatusBadRequest, "a bad query")
 	})
 
+	t.Run("after a drag, it moves only what the dragged issue holds back", func(t *testing.T) {
+		got := moves(want(t, lead.post("/api/v1/projects/"+key+"/plan/align", map[string]any{"downstreamOf": strings.ToLower(first)}), http.StatusOK, "what the first issue holds back"))
+		if len(got) != 2 || got[second] == "" || got[third] == "" {
+			t.Errorf("moves = %v, want %s and %s, and not %s, which waits on another project", got, second, third, waiting)
+		}
+		resp := lead.post("/api/v1/projects/"+key+"/plan/align", map[string]any{"downstreamOf": first, "place": true})
+		if resp.Status != http.StatusBadRequest {
+			t.Errorf("placing and downstreamOf together: %d %s", resp.Status, resp.Raw)
+		}
+	})
+
 	t.Run("asked to, it places work without dates from its estimate", func(t *testing.T) {
 		made := want(t, lead.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "undated"}), http.StatusCreated, "undated")
 		undated := obj(t, made, "issue")["key"].(string)
@@ -176,7 +187,7 @@ func TestAutoPlanHoldsAnEpicsWorkBehindTheEpicItWaitsOn(t *testing.T) {
 		t.Errorf("the warning on %s reads %q, want the work it waits on and the epics' link", second.subtask.Key, warned)
 	}
 
-	proposal, err := ws.plans.Align(ws.ctx, ws.project.Key, nil, false, func(string) bool { return true })
+	proposal, err := ws.plans.Align(ws.ctx, ws.project.Key, nil, plan.AlignOptions{}, func(string) bool { return true })
 	if err != nil {
 		t.Fatal(err)
 	}

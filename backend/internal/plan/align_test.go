@@ -330,3 +330,21 @@ func TestPlacingLeavesOutWhatItCannotOrShouldNotPlace(t *testing.T) {
 		t.Errorf("without placing: %+v, want nothing", without)
 	}
 }
+
+func TestDownstreamMovesOnlyWhatTheIssueHoldsBack(t *testing.T) {
+	tree := []issue.Node{
+		task("PR-1", "2026-11-02", "2026-11-06"),
+		task("PR-2", "2026-11-04", "2026-11-04"),
+		task("PR-3", "2026-11-04", "2026-11-04"),
+		task("PR-4", "2026-11-02", "2026-11-06"),
+		task("PR-5", "2026-11-04", "2026-11-04"),
+	}
+	// PR-1 holds back PR-2, which holds back PR-3; PR-4 holds back PR-5 on its own.
+	links := blocks("PR-1", "PR-2", "PR-2", "PR-3", "PR-4", "PR-5")
+	if got := moveList(align(t, tree, AlignInput{Blockers: links, Downstream: "PR-1"})); got != "PR-2:2026-11-09..2026-11-09 PR-3:2026-11-10..2026-11-10" {
+		t.Errorf("moves = %s, want PR-1's chain and nothing of PR-4's", got)
+	}
+	if moves := align(t, tree, AlignInput{Blockers: links, Downstream: "PR-3"}); len(moves) != 0 {
+		t.Errorf("moves = %s, want none: PR-3 holds nothing back", moveList(moves))
+	}
+}

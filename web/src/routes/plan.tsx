@@ -6,7 +6,7 @@ import { canWriteIssues, useAccess } from "@/api/access";
 import { useAlign, usePlan, useSchedulePlan, type Alignment } from "@/api/plan";
 import { useProject } from "@/api/projects";
 import { AutoPlanPreview } from "@/features/plan/AutoPlanPreview";
-import { movesBack, movesToSave, proposedBars, undoRefusal } from "@/features/plan/autoplan";
+import { followOffer, movesBack, movesToSave, proposedBars, undoRefusal } from "@/features/plan/autoplan";
 import { DependencyGraph } from "@/features/plan/DependencyGraph";
 import { PlanSummary, PlanToolbar } from "@/features/plan/PlanToolbar";
 import { Timeline } from "@/features/plan/Timeline";
@@ -43,6 +43,8 @@ function PlanPage() {
   const align = useAlign();
   const apply = useSchedulePlan();
   const undo = useSchedulePlan();
+  const follow = useAlign();
+  const push = useSchedulePlan();
   // A proposal is for the plan it was read from, so another view or query drops it.
   const scope = `${projectKey} ${view} ${q}`;
   const [held, setProposal] = useState<{ scope: string; alignment: Alignment } | null>(null);
@@ -69,6 +71,37 @@ function PlanPage() {
             action: { label: "Undo", onClick: () => undoMoves(moves, issues) },
           });
         },
+      },
+    );
+  }
+
+  // A blocker dragged later can leave what it blocks starting too early; the same rule offers to move just those.
+  function offerToFollow(key: string) {
+    if (!canWriteIssues(access, projectKey)) return;
+    follow.mutate(
+      { projectKey, downstreamOf: key },
+      {
+        onSuccess: (alignment) => {
+          const moves = movesToSave(alignment);
+          const offer = followOffer(key, moves.length);
+          if (!offer) return;
+          const issues = `${moves.length} issue${moves.length === 1 ? "" : "s"}`;
+          toast.info(offer.message, { action: { label: offer.action, onClick: () => pushMoves(moves, issues) } });
+        },
+        onError: () => {},
+      },
+    );
+  }
+
+  function pushMoves(moves: ReturnType<typeof movesToSave>, issues: string) {
+    push.mutate(
+      { projectKey, moves },
+      {
+        onSuccess: () =>
+          toast.success(`Moved ${issues} to start after the issues blocking them.`, {
+            action: { label: "Undo", onClick: () => undoMoves(moves, issues) },
+          }),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "The issues could not be moved. Try again."),
       },
     );
   }
@@ -142,7 +175,7 @@ function PlanPage() {
       {view === "dependencies" ? (
         <DependencyGraph projectKey={projectKey} cut={cut} query={q} filters={filters} />
       ) : (
-        <Timeline key={view} projectKey={projectKey} view={view} cut={cut} query={q} filters={filters} zoom={zoom} proposed={proposed} />
+        <Timeline key={view} projectKey={projectKey} view={view} cut={cut} query={q} filters={filters} zoom={zoom} proposed={proposed} onMovedLater={offerToFollow} />
       )}
     </Page>
   );

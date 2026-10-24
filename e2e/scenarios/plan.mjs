@@ -275,3 +275,22 @@ scenario("auto plan holds the work under an epic behind the epic it waits on", a
   await page.click('[data-action="auto-plan-apply"]');
   await page.waitForFunction((k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planStart?.startsWith("2027-11-08"), { timeout: WAIT }, write);
 });
+
+// 2 November 2026 is a Monday, and close enough to today to be on screen.
+scenario("dragging a blocker later offers to move what it blocks along", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Auto plan follow", { visit: false });
+  const blocker = await createIssue(page, key, "Migrate the accounts", { type: "Story", visit: false });
+  const blocked = await createIssue(page, key, "Switch off the old login", { type: "Story", visit: false });
+  await scheduleThroughAPI(page, blocker, "2026-11-02", "2026-11-06");
+  await scheduleThroughAPI(page, blocked, "2026-11-09", "2026-11-10");
+  await blockThroughAPI(page, blocker, blocked);
+
+  await goto(page, `/projects/${key}/plan`);
+  await dragBar(page, blocker, 3);
+  await page.waitForFunction((k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planDue?.startsWith("2026-11-09"), { timeout: WAIT }, blocker);
+
+  await clickButton(page, "Move the 1 issue it blocks");
+  await page.waitForFunction((k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planStart?.startsWith("2026-11-10"), { timeout: WAIT }, blocked);
+  expect.equal((await barRange(page, blocked)).due, "2026-11-11", "it keeps its two working days, starting the day after its blocker ends");
+});

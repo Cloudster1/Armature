@@ -180,8 +180,11 @@ export interface Alignment {
 /** The auto plan's proposal for the plan as the query narrows it. It saves nothing. */
 export function useAlign() {
   return useMutation({
-    mutationFn: ({ projectKey, query, place }: { projectKey: string; query?: string; place?: boolean }) =>
-      request<Alignment>(`/projects/${projectKey}/plan/align`, { method: "POST", body: { ...(query ? { q: query } : {}), ...(place ? { place } : {}) } }),
+    mutationFn: ({ projectKey, query, place, downstreamOf }: { projectKey: string; query?: string; place?: boolean; downstreamOf?: string }) =>
+      request<Alignment>(`/projects/${projectKey}/plan/align`, {
+        method: "POST",
+        body: { ...(query ? { q: query } : {}), ...(place ? { place } : {}), ...(downstreamOf ? { downstreamOf } : {}) },
+      }),
   });
 }
 

@@ -58,3 +58,10 @@ export function undoRefusal(error: unknown): string {
   if (key) return `${key} was changed after the auto plan, so nothing was undone. Move it back by hand or run auto plan again.`;
   return error instanceof Error ? error.message : "The auto plan could not be undone. Try again.";
 }
+
+/** What the toast says after a blocker was dragged later, and its button; nothing when no issue it blocks starts too early. */
+export function followOffer(key: string, moves: number): { message: string; action: string } | null {
+  if (moves === 0) return null;
+  const issues = `${moves} issue${moves === 1 ? "" : "s"}`;
+  return { message: `${issues} that ${key} blocks now ${moves === 1 ? "starts" : "start"} before it ends.`, action: `Move the ${issues} it blocks` };
+}

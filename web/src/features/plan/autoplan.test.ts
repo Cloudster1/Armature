@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/api/client";
 import type { Alignment } from "@/api/plan";
-import { describeMove, movesBack, movesToSave, proposedBars, summarise, undoRefusal } from "./autoplan";
+import { describeMove, followOffer, movesBack, movesToSave, proposedBars, summarise, undoRefusal } from "./autoplan";
 
 const alignment: Alignment = {
   projectKey: "PR",
@@ -89,5 +89,13 @@ describe("placing work without dates", () => {
     expect(summarise(placed)).toBe("2 issues without dates would be placed. Nothing is saved until you apply.");
     expect(summarise({ ...placed, moves: [] })).toBe("Nothing can be placed or needs to move.");
     expect(summarise({ ...placed, moves: [], unplaced: [] })).toBe("Every issue already starts after the issues blocking it.");
+  });
+});
+
+describe("the offer after a blocker is dragged later", () => {
+  it("is made only when something it blocks now starts too early, and counts them", () => {
+    expect(followOffer("PR-1", 0)).toBeNull();
+    expect(followOffer("PR-1", 1)).toEqual({ message: "1 issue that PR-1 blocks now starts before it ends.", action: "Move the 1 issue it blocks" });
+    expect(followOffer("PR-1", 3)?.action).toBe("Move the 3 issues it blocks");
   });
 });
