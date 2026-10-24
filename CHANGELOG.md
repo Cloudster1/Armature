@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: descriptions and comments are drawn with the document styles
+  Stator and Exciter share (#344), in the view and in the rich editor alike,
+  so an Armature description, a Stator page and an Exciter requirement read
+  the same. The shared `.doc-content` rules are noted in
+  `docs/design/03-components.md` as changed in all three tools together.
 - Added: a partner such as Rotor clones a project's repository and pushes an
   issue's branch through Armature, as the person, while the host's token stays
   in Armature (#333). The git proxy answers git's smart HTTP at
