@@ -40,7 +40,12 @@ function HolidaysPage() {
         : ` The ${inWords(calendar.desks)} ${one ? "desk takes its" : "desks take their"} days off from it; choose another one on ${one ? "its service desk page" : "their service desk pages"} first.`;
     const body = `${calendar.name} and its ${calendar.dayCount} days go. The ${calendar.peopleCount} people given it keep the default instead.${kept}`;
     if (await confirm({ noun: "calendar", verb: "Delete", body })) {
-      remove.mutate(calendar.id, { onSuccess: () => { setChosen(null); toast.success(`Deleted ${calendar.name}`); } });
+      remove.mutate(calendar.id, {
+        onSuccess: () => {
+          setChosen(null);
+          toast.success(`Deleted ${calendar.name}`);
+        },
+      });
     }
   }
 
@@ -105,10 +110,18 @@ function HolidaysPage() {
                             label: "Make the default",
                             icon: <Icon.Check />,
                             disabled: calendar.default,
-                            onSelect: () => update.mutate({ id: calendar.id, default: true }, { onSuccess: () => toast.success(`${calendar.name} is now the default`) }),
+                            onSelect: () =>
+                              update.mutate({ id: calendar.id, default: true }, { onSuccess: () => toast.success(`${calendar.name} is now the default`) }),
                             attrs: { "data-action": "default-calendar" },
                           },
-                          { label: "Delete", icon: <Icon.Trash />, danger: true, disabled: calendar.default, onSelect: () => void onDelete(calendar), attrs: { "data-action": "delete-calendar" } },
+                          {
+                            label: "Delete",
+                            icon: <Icon.Trash />,
+                            danger: true,
+                            disabled: calendar.default,
+                            onSelect: () => void onDelete(calendar),
+                            attrs: { "data-action": "delete-calendar" },
+                          },
                         ]}
                       />
                     )}
@@ -152,7 +165,14 @@ function NewCalendarForm({ onMade }: { onMade: (id: string) => void }) {
 
   return (
     <form onSubmit={onSubmit} className="mb-4 flex flex-wrap items-end gap-3" noValidate data-new-calendar>
-      <Field label="New calendar" placeholder="Portugal, or Office in Lisbon" value={name} maxLength={HOLIDAY_NAME_MAX_LENGTH} onChange={(e) => setName(e.target.value)} className="w-64" />
+      <Field
+        label="New calendar"
+        placeholder="Portugal, or Office in Lisbon"
+        value={name}
+        maxLength={HOLIDAY_NAME_MAX_LENGTH}
+        onChange={(e) => setName(e.target.value)}
+        className="w-64"
+      />
       <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
         Add calendar
       </Button>

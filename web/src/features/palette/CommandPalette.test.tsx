@@ -9,7 +9,10 @@ vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 vi.mock("@/api/access", () => ({ useAccess: () => ({ data: { canAdministerOrg: state.admin } }) }));
 vi.mock("@/api/issues", () => ({ useIssues: () => ({ data: { issues: [] } }) }));
 vi.mock("@/api/projects", () => ({ useProject: () => ({ data: undefined }), useProjectSearch: () => ({ data: { projects: [] } }) }));
-vi.mock("@/api/assistant", () => ({ useAsk: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false }), useAssistantStatus: () => ({ data: { configured: false } }) }));
+vi.mock("@/api/assistant", () => ({
+  useAsk: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false }),
+  useAssistantStatus: () => ({ data: { configured: false } }),
+}));
 
 const { CommandPalette } = await import("./CommandPalette");
 
@@ -38,7 +41,10 @@ describe("the palette's pages", () => {
   it("offers somebody who does not administer no settings page", async () => {
     for (const words of ["settings", "audit", "webhooks"]) {
       const all = await offered(words);
-      expect(all.filter((label) => label.startsWith("Settings")), words).toEqual([]);
+      expect(
+        all.filter((label) => label.startsWith("Settings")),
+        words,
+      ).toEqual([]);
       cleanup();
     }
   });

@@ -51,7 +51,18 @@ const MyRequestsPage = (portalRoute as unknown as { component: () => ReactNode }
 const RaisePage = (portalNewRoute as unknown as { component: () => ReactNode }).component;
 
 const globex = { id: "c1", name: "Globex" };
-const typeOf = { id: "rt1", projectId: "p", projectKey: "HLP", name: "Report a problem", issueTypeId: "t", issueTypeName: "Bug", priority: "high" as const, position: 0, category: "", detailsTemplate: "" };
+const typeOf = {
+  id: "rt1",
+  projectId: "p",
+  projectKey: "HLP",
+  name: "Report a problem",
+  issueTypeId: "t",
+  issueTypeName: "Bug",
+  priority: "high" as const,
+  position: 0,
+  category: "",
+  detailsTemplate: "",
+};
 
 describe("the portal's lists", () => {
   it("shows what colleagues shared under the company, with who raised it", () => {
@@ -81,7 +92,9 @@ describe("raising a request", () => {
     fireEvent.click(screen.getByLabelText("Share with Globex"));
     fireEvent.change(screen.getByLabelText(/Summary/), { target: { value: "The VPN is down" } });
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
-    await waitFor(() => expect(raise).toHaveBeenCalledWith(expect.objectContaining({ requestTypeId: "rt1", summary: "The VPN is down", shareWithCompany: true })));
+    await waitFor(() =>
+      expect(raise).toHaveBeenCalledWith(expect.objectContaining({ requestTypeId: "rt1", summary: "The VPN is down", shareWithCompany: true })),
+    );
   });
 
   it("offers nothing to share with a customer in no company", () => {
@@ -124,7 +137,14 @@ describe("a shared request's page", () => {
     followers = [];
     opened = {
       request: { ...issue(), requestTypeName: "Report a problem", team: { id: "t1", name: "Field support" }, assignee: { id: "ag", name: "Grace Agent" } },
-      comments: [{ id: "c1", author: { id: "ag", name: "Grace Agent" }, body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "We are on it." }] }] }, createdAt: "2026-10-10T09:00:00Z" }],
+      comments: [
+        {
+          id: "c1",
+          author: { id: "ag", name: "Grace Agent" },
+          body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "We are on it." }] }] },
+          createdAt: "2026-10-10T09:00:00Z",
+        },
+      ],
     };
     render(<RequestPage />);
     expect(screen.getByText(/Report a problem/)).toBeInTheDocument();

@@ -279,7 +279,11 @@ export interface ArticleInput {
 }
 
 export function useArticles(projectKey: string) {
-  return useQuery({ queryKey: [...deskQueryKey, "articles", projectKey], queryFn: () => request<{ articles: Article[] }>(`/projects/${projectKey}/articles`), enabled: Boolean(projectKey) });
+  return useQuery({
+    queryKey: [...deskQueryKey, "articles", projectKey],
+    queryFn: () => request<{ articles: Article[] }>(`/projects/${projectKey}/articles`),
+    enabled: Boolean(projectKey),
+  });
 }
 
 /** What a customer finds before raising a request. */
@@ -292,7 +296,11 @@ export function usePortalArticles(projectKey: string | undefined, query: string)
 }
 
 export function usePortalArticle(id: string) {
-  return useQuery({ queryKey: [...deskQueryKey, "portal-article", id], queryFn: () => request<{ article: Article }>(`/portal/articles/${id}`), enabled: Boolean(id) });
+  return useQuery({
+    queryKey: [...deskQueryKey, "portal-article", id],
+    queryFn: () => request<{ article: Article }>(`/portal/articles/${id}`),
+    enabled: Boolean(id),
+  });
 }
 
 export function useCreateArticle(projectKey: string) {
@@ -300,7 +308,9 @@ export function useCreateArticle(projectKey: string) {
 }
 
 export function useUpdateArticle() {
-  return useDeskMutation(({ id, ...input }: ArticleInput & { id: string }) => request<{ article: Article }>(`/articles/${id}`, { method: "PATCH", body: input }));
+  return useDeskMutation(({ id, ...input }: ArticleInput & { id: string }) =>
+    request<{ article: Article }>(`/articles/${id}`, { method: "PATCH", body: input }),
+  );
 }
 
 export function useDeleteArticle() {
@@ -315,15 +325,23 @@ export interface CannedResponse {
 }
 
 export function useCannedResponses(projectKey: string) {
-  return useQuery({ queryKey: [...deskQueryKey, "canned", projectKey], queryFn: () => request<{ responses: CannedResponse[] }>(`/projects/${projectKey}/canned-responses`), enabled: Boolean(projectKey) });
+  return useQuery({
+    queryKey: [...deskQueryKey, "canned", projectKey],
+    queryFn: () => request<{ responses: CannedResponse[] }>(`/projects/${projectKey}/canned-responses`),
+    enabled: Boolean(projectKey),
+  });
 }
 
 export function useCreateCanned(projectKey: string) {
-  return useDeskMutation((input: { name: string; body: string }) => request<{ response: CannedResponse }>(`/projects/${projectKey}/canned-responses`, { method: "POST", body: input }));
+  return useDeskMutation((input: { name: string; body: string }) =>
+    request<{ response: CannedResponse }>(`/projects/${projectKey}/canned-responses`, { method: "POST", body: input }),
+  );
 }
 
 export function useUpdateCanned() {
-  return useDeskMutation(({ id, ...input }: { id: string; name?: string; body?: string }) => request<{ response: CannedResponse }>(`/canned-responses/${id}`, { method: "PATCH", body: input }));
+  return useDeskMutation(({ id, ...input }: { id: string; name?: string; body?: string }) =>
+    request<{ response: CannedResponse }>(`/canned-responses/${id}`, { method: "PATCH", body: input }),
+  );
 }
 
 export function useDeleteCanned() {
@@ -332,7 +350,10 @@ export function useDeleteCanned() {
 
 /** A canned response with its placeholders filled in for one request. */
 export function useRenderCanned() {
-  return useMutation({ mutationFn: (input: { id: string; issueKey: string }) => request<{ text: string }>(`/canned-responses/${input.id}/render`, { method: "POST", body: { issueKey: input.issueKey } }) });
+  return useMutation({
+    mutationFn: (input: { id: string; issueKey: string }) =>
+      request<{ text: string }>(`/canned-responses/${input.id}/render`, { method: "POST", body: { issueKey: input.issueKey } }),
+  });
 }
 
 export interface Rating {
@@ -358,13 +379,19 @@ export function useRatingPage(token: string) {
 export function useRate(token: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { score: number; comment?: string }) => request<{ rating: Rating }>(`/csat/${encodeURIComponent(token)}`, { method: "POST", body: input }),
+    mutationFn: (input: { score: number; comment?: string }) =>
+      request<{ rating: Rating }>(`/csat/${encodeURIComponent(token)}`, { method: "POST", body: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["rating", token] }),
   });
 }
 
 export function useIssueRating(issueKey: string, enabled: boolean) {
-  return useQuery({ queryKey: [...deskQueryKey, "rating", issueKey], queryFn: () => request<{ rating: Rating }>(`/issues/${issueKey}/csat`), enabled, retry: false });
+  return useQuery({
+    queryKey: [...deskQueryKey, "rating", issueKey],
+    queryFn: () => request<{ rating: Rating }>(`/issues/${issueKey}/csat`),
+    enabled,
+    retry: false,
+  });
 }
 
 /** When the desk is open: hours per weekday as from/to, days off, the zone. */
@@ -379,11 +406,18 @@ export interface BusinessCalendar {
 }
 
 export function useBusinessCalendar(projectKey: string) {
-  return useQuery({ queryKey: [...deskQueryKey, "calendar", projectKey], queryFn: () => request<{ calendar: BusinessCalendar }>(`/projects/${projectKey}/business-calendar`), enabled: Boolean(projectKey), retry: false });
+  return useQuery({
+    queryKey: [...deskQueryKey, "calendar", projectKey],
+    queryFn: () => request<{ calendar: BusinessCalendar }>(`/projects/${projectKey}/business-calendar`),
+    enabled: Boolean(projectKey),
+    retry: false,
+  });
 }
 
 export function useSaveBusinessCalendar(projectKey: string) {
-  return useDeskMutation((input: BusinessCalendar) => request<{ calendar: BusinessCalendar }>(`/projects/${projectKey}/business-calendar`, { method: "PUT", body: input }));
+  return useDeskMutation((input: BusinessCalendar) =>
+    request<{ calendar: BusinessCalendar }>(`/projects/${projectKey}/business-calendar`, { method: "PUT", body: input }),
+  );
 }
 
 export function useCompanies(projectKey: string) {
@@ -417,9 +451,7 @@ export function useAddCompanyMember() {
 }
 
 export function useRemoveCompanyMember() {
-  return useDeskMutation(({ id, userId }: { id: string; userId: string }) =>
-    request<void>(`/companies/${id}/members/${userId}`, { method: "DELETE" }),
-  );
+  return useDeskMutation(({ id, userId }: { id: string; userId: string }) => request<void>(`/companies/${id}/members/${userId}`, { method: "DELETE" }));
 }
 
 /** An internal note: a comment the customer is never shown. */

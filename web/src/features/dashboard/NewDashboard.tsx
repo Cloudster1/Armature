@@ -4,7 +4,15 @@ import { Button, Card, ErrorBanner, Field } from "@/components/ui";
 import { BLANK_TEMPLATE, DashboardTemplateChooser } from "./DashboardTemplateChooser";
 
 /** A dashboard is named and started from a template, or from nothing. */
-export function NewDashboard({ projectKey, onDone, canRemoveTemplates }: { projectKey: string; onDone: (made?: Dashboard) => void; canRemoveTemplates: boolean }) {
+export function NewDashboard({
+  projectKey,
+  onDone,
+  canRemoveTemplates,
+}: {
+  projectKey: string;
+  onDone: (made?: Dashboard) => void;
+  canRemoveTemplates: boolean;
+}) {
   const create = useCreateDashboard(projectKey);
   const [name, setName] = useState("");
   const [template, setTemplate] = useState(BLANK_TEMPLATE);

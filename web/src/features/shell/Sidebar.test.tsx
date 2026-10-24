@@ -41,7 +41,12 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/api/access", () => ({ useAccess: () => ({ data: { canAdministerOrg: state.admin } }) }));
 vi.mock("@/api/auth", () => ({
-  useMe: () => ({ data: { principal: { user: { id: "u1", name: "Ada Lovelace", email: "ada@armature.test" }, installation: { id: "i1", name: "Acme" }, role: "owner" }, organizations: state.organizations } }),
+  useMe: () => ({
+    data: {
+      principal: { user: { id: "u1", name: "Ada Lovelace", email: "ada@armature.test" }, installation: { id: "i1", name: "Acme" }, role: "owner" },
+      organizations: state.organizations,
+    },
+  }),
   useLogout: () => ({ mutate: vi.fn(), isPending: false }),
   useEraseMe: () => ({ mutate: vi.fn(), isPending: false }),
   MY_DATA_HREF: "/api/v1/auth/me/export",
@@ -185,7 +190,20 @@ describe("the settings area", () => {
     const you = Array.from(document.querySelectorAll('[data-sidebar-group="you"] [data-place]')).map((a) => a.getAttribute("data-place"));
     expect(you).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens"]);
     const settings = Array.from(document.querySelectorAll('[data-sidebar-group="settings"] [data-place]')).map((a) => a.getAttribute("data-place"));
-    expect(settings).toEqual(["Installation", "Access", "Users", "Holidays", "Workflows", "Labels", "Automation", "Fields", "Issue view", "Connected apps", "Webhooks", "Audit log"]);
+    expect(settings).toEqual([
+      "Installation",
+      "Access",
+      "Users",
+      "Holidays",
+      "Workflows",
+      "Labels",
+      "Automation",
+      "Fields",
+      "Issue view",
+      "Connected apps",
+      "Webhooks",
+      "Audit log",
+    ]);
     expect(document.querySelector('[data-place="Notification settings"]')?.getAttribute("href")).toBe("/settings/profile#notifications");
     expect(document.querySelector('[data-place="Watching"]')?.getAttribute("href")).toBe("/search?q=watcher+%3D+currentUser%28%29");
 

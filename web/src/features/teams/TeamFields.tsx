@@ -23,7 +23,13 @@ export function TeamField({ issue }: { issue: Issue }) {
       <label htmlFor="issue-team" className="sr-only">
         Team
       </label>
-      <SelectInput id="issue-team" controlSize="sm" value={issue.teamId ?? ""} onChange={(event) => setTeam.mutate({ key: issue.key, teamId: event.target.value || null })} className="max-w-48">
+      <SelectInput
+        id="issue-team"
+        controlSize="sm"
+        value={issue.teamId ?? ""}
+        onChange={(event) => setTeam.mutate({ key: issue.key, teamId: event.target.value || null })}
+        className="max-w-48"
+      >
         <option value="">Nobody in particular</option>
         {teams.map((team) => (
           <option key={team.id} value={team.id}>
@@ -31,11 +37,7 @@ export function TeamField({ issue }: { issue: Issue }) {
           </option>
         ))}
       </SelectInput>
-      {setTeam.error && (
-        <span className="text-right text-2xs text-danger">
-          {(setTeam.error as Error).message}
-        </span>
-      )}
+      {setTeam.error && <span className="text-right text-2xs text-danger">{(setTeam.error as Error).message}</span>}
     </span>
   );
 }

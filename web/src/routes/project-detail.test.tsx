@@ -114,12 +114,16 @@ describe("listQuery", () => {
   it("says what the list shows as one query, for every page of the export", () => {
     expect(listQuery({ scope: "all", words: "", query: "" })).toBe("");
     expect(listQuery({ scope: "open", words: "", query: "" })).toBe("statusCategory in (todo, in_progress)");
-    expect(listQuery({ scope: "mine", words: ' say "hi" ', query: "", label: "ux", milestone: "Beta 1" })).toBe('assignee = currentUser() AND summary ~ "say \\"hi\\"" AND labels = "ux" AND milestone = "Beta 1"');
+    expect(listQuery({ scope: "mine", words: ' say "hi" ', query: "", label: "ux", milestone: "Beta 1" })).toBe(
+      'assignee = currentUser() AND summary ~ "say \\"hi\\"" AND labels = "ux" AND milestone = "Beta 1"',
+    );
   });
 
   it("keeps a query that stands alone as it is, and brackets one that does not", () => {
     expect(listQuery({ scope: "all", words: "", query: "priority = high ORDER BY due" })).toBe("priority = high ORDER BY due");
-    expect(listQuery({ scope: "open", words: "", query: "priority = high OR type = Bug" })).toBe("statusCategory in (todo, in_progress) AND (priority = high OR type = Bug)");
+    expect(listQuery({ scope: "open", words: "", query: "priority = high OR type = Bug" })).toBe(
+      "statusCategory in (todo, in_progress) AND (priority = high OR type = Bug)",
+    );
   });
 
   it("offers the list to export", async () => {

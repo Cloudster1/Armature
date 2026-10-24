@@ -70,15 +70,11 @@ export interface TeamInput {
 }
 
 export function useCreateTeam(projectKey: string) {
-  return useTeamMutation((input: TeamInput) =>
-    request<{ team: Team }>(`/projects/${projectKey}/teams`, { method: "POST", body: input }),
-  );
+  return useTeamMutation((input: TeamInput) => request<{ team: Team }>(`/projects/${projectKey}/teams`, { method: "POST", body: input }));
 }
 
 export function useUpdateTeam() {
-  return useTeamMutation(({ id, ...input }: TeamInput & { id: string }) =>
-    request<{ team: Team }>(`/teams/${id}`, { method: "PATCH", body: input }),
-  );
+  return useTeamMutation(({ id, ...input }: TeamInput & { id: string }) => request<{ team: Team }>(`/teams/${id}`, { method: "PATCH", body: input }));
 }
 
 export function useDeleteTeam() {
@@ -92,9 +88,7 @@ export function useAddTeamMember() {
 }
 
 export function useRemoveTeamMember() {
-  return useTeamMutation(({ id, userId }: { id: string; userId: string }) =>
-    request<{ team: Team }>(`/teams/${id}/members/${userId}`, { method: "DELETE" }),
-  );
+  return useTeamMutation(({ id, userId }: { id: string; userId: string }) => request<{ team: Team }>(`/teams/${id}/members/${userId}`, { method: "DELETE" }));
 }
 
 /** A null team is not an omission: it is the work going back to the project. */

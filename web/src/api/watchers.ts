@@ -44,9 +44,7 @@ export function useAddWatcher() {
 }
 
 export function useRemoveWatcher() {
-  return useWatcherMutation(({ key, userId }: { key: string; userId: string }) =>
-    request<void>(`/issues/${key}/watchers/${userId}`, { method: "DELETE" }),
-  );
+  return useWatcherMutation(({ key, userId }: { key: string; userId: string }) => request<void>(`/issues/${key}/watchers/${userId}`, { method: "DELETE" }));
 }
 
 /** Ends a watching with the token a mail carried; no session is involved. */

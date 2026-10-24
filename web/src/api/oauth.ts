@@ -101,7 +101,9 @@ export function useCreateConnectedApp() {
 }
 
 export function useUpdateConnectedApp() {
-  return useAppMutation(({ id, ...changes }: ConnectedAppChanges & { id: string }) => request<{ client: ConnectedApp }>(`/oauth/clients/${id}`, { method: "PATCH", body: changes }));
+  return useAppMutation(({ id, ...changes }: ConnectedAppChanges & { id: string }) =>
+    request<{ client: ConnectedApp }>(`/oauth/clients/${id}`, { method: "PATCH", body: changes }),
+  );
 }
 
 export function useApproveConnectedApp() {

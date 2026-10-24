@@ -49,7 +49,15 @@ function RatePage() {
                 {rate.error && <ErrorBanner>{(rate.error as Error).message}</ErrorBanner>}
                 <div className="flex gap-2" role="radiogroup" aria-label="Your rating">
                   {CSAT_SCORES.map((n) => (
-                    <Button key={n} type="button" variant={score === n ? "primary" : "secondary"} onClick={() => setScore(n)} aria-pressed={score === n} data-score={n} className="flex-1">
+                    <Button
+                      key={n}
+                      type="button"
+                      variant={score === n ? "primary" : "secondary"}
+                      onClick={() => setScore(n)}
+                      aria-pressed={score === n}
+                      data-score={n}
+                      className="flex-1"
+                    >
                       {n}
                     </Button>
                   ))}

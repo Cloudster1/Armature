@@ -8,7 +8,15 @@ describe("composeQuery", () => {
   });
 
   it("writes each control in the search language and joins them with AND", () => {
-    const query = composeQuery({ ...EMPTY_FILTER, types: ["Bug", "Task"], team: "Alpha", assignee: "a@b.c", category: "in_progress", days: 30, field: "resolved" });
+    const query = composeQuery({
+      ...EMPTY_FILTER,
+      types: ["Bug", "Task"],
+      team: "Alpha",
+      assignee: "a@b.c",
+      category: "in_progress",
+      days: 30,
+      field: "resolved",
+    });
     expect(query).toBe('type IN ("Bug", "Task") AND team = "Alpha" AND assignee = "a@b.c" AND statusCategory = in_progress AND resolved >= -30d');
   });
 
@@ -33,7 +41,16 @@ describe("the address", () => {
   it("round-trips a filter, and an empty filter still leaves a mark so it beats the saved default", () => {
     const spec = { ...EMPTY_FILTER, types: ["Bug"], team: "Alpha", days: 7, field: "updated" as const, query: "labels = urgent" };
     expect(parseSearch(toSearch(spec) as Record<string, unknown>)).toEqual(spec);
-    expect(toSearch(EMPTY_FILTER)).toEqual({ types: undefined, team: undefined, assignee: undefined, category: undefined, field: undefined, days: 0, milestone: undefined, fq: undefined });
+    expect(toSearch(EMPTY_FILTER)).toEqual({
+      types: undefined,
+      team: undefined,
+      assignee: undefined,
+      category: undefined,
+      field: undefined,
+      days: 0,
+      milestone: undefined,
+      fq: undefined,
+    });
     expect(parseSearch(toSearch(EMPTY_FILTER) as Record<string, unknown>)).toEqual(EMPTY_FILTER);
   });
 

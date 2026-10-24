@@ -37,20 +37,13 @@ function Home() {
     <Page width="content">
       <PageHeader
         title={firstName ? `${firstName}'s work` : "Your work"}
-        meta={
-          mine
-            ? `${mine.total} open issue${mine.total === 1 ? "" : "s"} assigned to you`
-            : undefined
-        }
+        meta={mine ? `${mine.total} open issue${mine.total === 1 ? "" : "s"} assigned to you` : undefined}
       />
 
       <section className="mb-8">
         <SectionTitle className="mb-2">Assigned to you</SectionTitle>
         {mine && issues.length === 0 ? (
-          <EmptyState
-            title="Nothing assigned to you"
-            description="Issues land here when somebody assigns them to you, or when you start progress on one."
-          />
+          <EmptyState title="Nothing assigned to you" description="Issues land here when somebody assigns them to you, or when you start progress on one." />
         ) : (
           <IssueTable issues={issues} showProject />
         )}
@@ -84,11 +77,7 @@ function Home() {
                 <tr key={project.id} className="group hover:bg-surface-raised/60">
                   <Td className="font-mono text-sm text-ink-muted">{project.key}</Td>
                   <Td>
-                    <Link
-                      to="/projects/$projectKey"
-                      params={{ projectKey: project.key }}
-                      className="text-ink group-hover:text-accent"
-                    >
+                    <Link to="/projects/$projectKey" params={{ projectKey: project.key }} className="text-ink group-hover:text-accent">
                       {project.name}
                     </Link>
                   </Td>

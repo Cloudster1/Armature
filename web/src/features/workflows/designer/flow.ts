@@ -64,12 +64,7 @@ function svgDom(attributes: Record<string, string | number | boolean | undefined
  * focused or selected, and the "any status" box only earns its place when a
  * transition leaves it.
  */
-export function toFlow(
-  design: Design,
-  statuses: Map<string, Status>,
-  selection: Selection,
-  readOnly: boolean,
-): { nodes: FlowNode[]; edges: TransitionEdge[] } {
+export function toFlow(design: Design, statuses: Map<string, Status>, selection: Selection, readOnly: boolean): { nodes: FlowNode[]; edges: TransitionEdge[] } {
   const nodes: FlowNode[] = [];
   for (const node of design.nodes) {
     const status = statuses.get(node.statusId);
@@ -120,7 +115,10 @@ export function toFlow(
   }
 
   const bent = bends(design.edges);
-  const drawn = nodes.map((node) => ({ id: fromNodeId(node.id), rect: { x: node.position.x, y: node.position.y, width: WORKFLOW_NODE_WIDTH, height: WORKFLOW_NODE_HEIGHT } }));
+  const drawn = nodes.map((node) => ({
+    id: fromNodeId(node.id),
+    rect: { x: node.position.x, y: node.position.y, width: WORKFLOW_NODE_WIDTH, height: WORKFLOW_NODE_HEIGHT },
+  }));
   const edges: TransitionEdge[] = [];
   for (const edge of design.edges) {
     const from = rectOf(design, edge.from);

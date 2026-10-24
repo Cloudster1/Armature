@@ -15,7 +15,13 @@ export function UnplacedWork({ unscheduled, unestimated }: { unscheduled: Resour
         hint="Has hours, but not both a start and a due day."
         issues={unscheduled}
       />
-      <IssueList id="unestimated" title="Unestimated" empty="Every open issue has hours on it." hint="Has no remaining time and no estimate." issues={unestimated} />
+      <IssueList
+        id="unestimated"
+        title="Unestimated"
+        empty="Every open issue has hours on it."
+        hint="Has no remaining time and no estimate."
+        issues={unestimated}
+      />
     </div>
   );
 }

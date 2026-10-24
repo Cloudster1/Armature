@@ -95,8 +95,7 @@ export function useCreateField() {
 export function useUpdateField() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; name?: string; options?: string[] }) =>
-      request<{ field: Field }>(`/fields/${id}`, { method: "PATCH", body }),
+    mutationFn: ({ id, ...body }: { id: string; name?: string; options?: string[] }) => request<{ field: Field }>(`/fields/${id}`, { method: "PATCH", body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: fieldsQueryKey }),
   });
 }

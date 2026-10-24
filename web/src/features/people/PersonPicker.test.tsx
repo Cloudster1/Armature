@@ -24,7 +24,17 @@ vi.mock("@/api/people", () => ({
 
 const { PersonPicker } = await import("./PersonPicker");
 
-function Harness({ initial = "", selected, exclude, staff }: { initial?: string; selected?: { id: string; name: string }; exclude?: string[]; staff?: boolean }) {
+function Harness({
+  initial = "",
+  selected,
+  exclude,
+  staff,
+}: {
+  initial?: string;
+  selected?: { id: string; name: string };
+  exclude?: string[];
+  staff?: boolean;
+}) {
   const [value, setValue] = useState(initial);
   return (
     <form onSubmit={() => setValue("submitted")}>

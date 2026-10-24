@@ -189,7 +189,8 @@ scenario("a chart widget groups the project's issues by type and draws them", as
   await addWidget(page, "filter");
   await page.click('[data-filter-type="Bug"]');
   await page.waitForFunction(
-    () => document.querySelector('[data-widget="chart"] [data-chart-group="Bug"]') && !document.querySelector('[data-widget="chart"] [data-chart-group="Task"]'),
+    () =>
+      document.querySelector('[data-widget="chart"] [data-chart-group="Bug"]') && !document.querySelector('[data-widget="chart"] [data-chart-group="Task"]'),
     { timeout: WAIT },
   );
 });

@@ -58,9 +58,9 @@ export const QUERY_FUNCTIONS = [
 
 export const QUERY_EXAMPLES = [
   "assignee = currentUser() AND statusCategory != done ORDER BY priority DESC",
-  'project = EVR AND labels = backend AND created >= startOfWeek(-1w)',
+  "project = EVR AND labels = backend AND created >= startOfWeek(-1w)",
   "(type = Bug OR priority >= high) AND sprint IN (openSprints())",
-  'resolved >= -7d ORDER BY resolved DESC',
+  "resolved >= -7d ORDER BY resolved DESC",
 ];
 
 /**

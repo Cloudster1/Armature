@@ -1,14 +1,6 @@
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  groupCards,
-  useBoard,
-  useBoardById,
-  useMoveCard,
-  useSprintBoard,
-  type Card as BoardCard,
-  type Swimlane,
-} from "@/api/boards";
+import { groupCards, useBoard, useBoardById, useMoveCard, useSprintBoard, type Card as BoardCard, type Swimlane } from "@/api/boards";
 import { Avatar, PriorityBadge, TypeBadge } from "@/features/issues/badges";
 import { LabelChips } from "@/features/labels/LabelChip";
 import { EmptyState, ErrorBanner, cx, IconButton, useToast } from "@/components/ui";
@@ -166,7 +158,10 @@ export function BoardView({
 
     // The card immediately above the drop point, skipping the card being moved
     // so it is not treated as its own neighbour.
-    const above = cards.slice(0, beforeIndex).filter((c) => c.key !== current.issueKey).at(-1);
+    const above = cards
+      .slice(0, beforeIndex)
+      .filter((c) => c.key !== current.issueKey)
+      .at(-1);
     const below = beforeKey && beforeKey !== current.issueKey ? beforeKey : undefined;
 
     if (current.fromSwimlaneId === swimlane.id && above?.key === undefined && below === undefined) {
@@ -197,9 +192,7 @@ export function BoardView({
         >
           <span className="font-medium text-ink">{board.sprint.name}</span>
           {board.sprint.goal && <span className="text-ink-muted">{board.sprint.goal}</span>}
-          {board.sprint.endsOn && (
-            <span className="ml-auto text-xs text-ink-subtle">{describeEnd(board.sprint.endsOn)}</span>
-          )}
+          {board.sprint.endsOn && <span className="ml-auto text-xs text-ink-subtle">{describeEnd(board.sprint.endsOn)}</span>}
         </div>
       )}
 
@@ -213,13 +206,9 @@ export function BoardView({
       {unmapped.length > 0 && (
         <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink">
           <strong className="font-medium">
-            {unmapped.length} card{unmapped.length === 1 ? "" : "s"} in states no swimlane
-            covers
+            {unmapped.length} card{unmapped.length === 1 ? "" : "s"} in states no swimlane covers
           </strong>{" "}
-          <span className="text-ink-muted">
-            ({unmapped.map((c) => c.key).join(", ")}). Add those states to a swimlane to see them
-            on the board.
-          </span>
+          <span className="text-ink-muted">({unmapped.map((c) => c.key).join(", ")}). Add those states to a swimlane to see them on the board.</span>
         </div>
       )}
 
@@ -303,14 +292,9 @@ function SwimlaneColumn({
       }}
     >
       <header className="flex items-baseline justify-between gap-2 border-b border-border px-3 py-2">
-        <h3 className="truncate text-xs font-semibold tracking-wide text-ink uppercase">
-          {swimlane.name}
-        </h3>
+        <h3 className="truncate text-xs font-semibold tracking-wide text-ink uppercase">{swimlane.name}</h3>
         <span
-          className={cx(
-            "shrink-0 rounded px-1.5 py-0.5 text-xs tabular-nums",
-            overWip ? "bg-danger/15 font-medium text-danger" : "text-ink-muted",
-          )}
+          className={cx("shrink-0 rounded px-1.5 py-0.5 text-xs tabular-nums", overWip ? "bg-danger/15 font-medium text-danger" : "text-ink-muted")}
           title={
             filtered
               ? swimlane.wipLimit > 0
@@ -331,9 +315,7 @@ function SwimlaneColumn({
           decides which cards land here and which drags are possible. */}
       {!(swimlane.statuses.length === 1 && swimlane.statuses[0]!.name === swimlane.name) && (
         <p className="border-b border-border px-3 py-1.5 text-2xs text-ink-subtle">
-          {swimlane.statuses.length === 0
-            ? "No states: nothing can be here"
-            : swimlane.statuses.map((s) => s.name).join(" · ")}
+          {swimlane.statuses.length === 0 ? "No states: nothing can be here" : swimlane.statuses.map((s) => s.name).join(" · ")}
         </p>
       )}
 
@@ -344,11 +326,7 @@ function SwimlaneColumn({
 
         {rows.map((row) => (
           <div key={row.name || "all"} className="space-y-2">
-            {row.name && (
-              <p className="px-1 pt-1 text-2xs font-medium text-ink-muted capitalize">
-                {row.name}
-              </p>
-            )}
+            {row.name && <p className="px-1 pt-1 text-2xs font-medium text-ink-muted capitalize">{row.name}</p>}
             {row.cards.map((card) => (
               <IssueCard
                 key={card.id}
@@ -442,7 +420,13 @@ function IssueCard({
         <span className="flex-1" />
         <PriorityBadge priority={card.priority} />
         <Avatar name={card.assignee?.name} src={card.assignee?.avatarUrl} size="sm" />
-        <IconButton icon={<Icon.ChevronRight />} label={`Open ${card.key} beside the board`} size="sm" onClick={() => drawer.open(card.key)} data-open-drawer={card.key} />
+        <IconButton
+          icon={<Icon.ChevronRight />}
+          label={`Open ${card.key} beside the board`}
+          size="sm"
+          onClick={() => drawer.open(card.key)}
+          data-open-drawer={card.key}
+        />
       </div>
     </article>
   );

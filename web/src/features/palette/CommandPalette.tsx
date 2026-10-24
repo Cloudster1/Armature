@@ -126,11 +126,17 @@ export function CommandPalette({
   // Built on every render: it is cheap, and the handlers it holds are too.
   const commands = ((): Command[] => {
     const out: Command[] = [];
-    const answers: Command[] = looksLikeQuestion(trimmed) || mode === "ask"
-      ? answer(trimmed, { projectKey, canAdministerOrg, features }).map(({ entry }) => ({
-          id: `answer:${entry.id}`, group: "Answers" as const, label: entry.title, detail: entry.needs === "project" && !projectKey ? "Pick a project" : undefined, icon: "Help" as IconName, run: () => follow(entry),
-        }))
-      : [];
+    const answers: Command[] =
+      looksLikeQuestion(trimmed) || mode === "ask"
+        ? answer(trimmed, { projectKey, canAdministerOrg, features }).map(({ entry }) => ({
+            id: `answer:${entry.id}`,
+            group: "Answers" as const,
+            label: entry.title,
+            detail: entry.needs === "project" && !projectKey ? "Pick a project" : undefined,
+            icon: "Help" as IconName,
+            run: () => follow(entry),
+          }))
+        : [];
     if (mode === "ask") out.push(...answers);
     if (mode === "ask" && answers.length === 0 && trimmed && assistant?.configured) {
       out.push({ id: "ask-assistant", group: "Answers", label: "Ask the assistant", detail: "a model looks for you", icon: "Help", run: askAssistant });
@@ -148,11 +154,19 @@ export function CommandPalette({
     const matches = (s: string) => !lower || s.toLowerCase().includes(lower);
     // Matched again here, since the last answer stays on screen while the next is asked.
     for (const p of projectData?.projects ?? []) {
-      if (matches(`${p.name} ${p.key}`)) out.push({ id: `project:${p.key}`, group: "Projects", label: p.name, detail: p.key, icon: "Board", run: () => go(`/projects/${p.key}`) });
+      if (matches(`${p.name} ${p.key}`))
+        out.push({ id: `project:${p.key}`, group: "Projects", label: p.name, detail: p.key, icon: "Board", run: () => go(`/projects/${p.key}`) });
     }
     if (projectKey) {
       for (const page of pagesFor(currentProject?.project, [...projectWorkPages, ...projectSetupPages])) {
-        if (matches(page.label)) out.push({ id: `page:${page.path}`, group: "Pages", label: `${projectKey} / ${page.label}`, icon: page.icon, run: () => go(`/projects/${projectKey}${page.path}`) });
+        if (matches(page.label))
+          out.push({
+            id: `page:${page.path}`,
+            group: "Pages",
+            label: `${projectKey} / ${page.label}`,
+            icon: page.icon,
+            run: () => go(`/projects/${projectKey}${page.path}`),
+          });
       }
     }
     // Every page the sidebar, the avatar menu and the settings area reach, by
@@ -162,7 +176,9 @@ export function CommandPalette({
       ...(lower
         ? [
             ...personalPlaces.map((place) => ({ place, label: place.label, words: `you account ${place.label}` })),
-            ...(canAdministerOrg ? [{ place: { to: SETTINGS_PATH, label: "Settings", icon: "Settings" as IconName }, label: "Settings", words: "settings" }] : []),
+            ...(canAdministerOrg
+              ? [{ place: { to: SETTINGS_PATH, label: "Settings", icon: "Settings" as IconName }, label: "Settings", words: "settings" }]
+              : []),
             ...settingsFor(canAdministerOrg).map((place) => ({ place, label: `Settings / ${place.label}`, words: `settings ${place.label}` })),
           ]
         : []),
@@ -171,10 +187,45 @@ export function CommandPalette({
       if (matches(words)) out.push({ id: `place:${placeKey(place)}`, group: "Pages", label, icon: place.icon, run: () => goPlace(place) });
     }
     const actions: Command[] = [
-      { id: "new-issue", group: "Actions", label: "New issue", icon: "Plus", run: () => { onClose(); onNewIssue(); } },
-      { id: "theme", group: "Actions", label: "Switch theme", detail: readTheme(), icon: "Monitor", run: () => { const order: Theme[] = ["system", "light", "dark"]; applyTheme(order[(order.indexOf(readTheme()) + 1) % order.length]!); onClose(); } },
-      { id: "sidebar", group: "Actions", label: "Collapse or expand the sidebar", icon: "Collapse", run: () => { onClose(); onToggleSidebar(); } },
-      { id: "search", group: "Actions", label: "Search with a query", icon: "Search", run: () => go(trimmed ? `/search?q=${encodeURIComponent(`text ~ "${trimmed.replace(/"/g, "")}"`)}` : "/search") },
+      {
+        id: "new-issue",
+        group: "Actions",
+        label: "New issue",
+        icon: "Plus",
+        run: () => {
+          onClose();
+          onNewIssue();
+        },
+      },
+      {
+        id: "theme",
+        group: "Actions",
+        label: "Switch theme",
+        detail: readTheme(),
+        icon: "Monitor",
+        run: () => {
+          const order: Theme[] = ["system", "light", "dark"];
+          applyTheme(order[(order.indexOf(readTheme()) + 1) % order.length]!);
+          onClose();
+        },
+      },
+      {
+        id: "sidebar",
+        group: "Actions",
+        label: "Collapse or expand the sidebar",
+        icon: "Collapse",
+        run: () => {
+          onClose();
+          onToggleSidebar();
+        },
+      },
+      {
+        id: "search",
+        group: "Actions",
+        label: "Search with a query",
+        icon: "Search",
+        run: () => go(trimmed ? `/search?q=${encodeURIComponent(`text ~ "${trimmed.replace(/"/g, "")}"`)}` : "/search"),
+      },
     ];
     for (const action of actions) if (matches(action.label)) out.push(action);
     if (mode !== "ask") out.push(...answers);
@@ -203,8 +254,20 @@ export function CommandPalette({
   if (!open) return null;
   let lastGroup = "";
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 px-4" style={modalBackdropStyle} onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Command palette" style={modalPanelStyle} className="flex w-full max-w-xl flex-col overflow-hidden rounded-overlay border border-border bg-surface-overlay shadow-2" data-palette data-palette-mode={mode}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 px-4"
+      style={modalBackdropStyle}
+      onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        style={modalPanelStyle}
+        className="flex w-full max-w-xl flex-col overflow-hidden rounded-overlay border border-border bg-surface-overlay shadow-2"
+        data-palette
+        data-palette-mode={mode}
+      >
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-3">
           <Icon.Search className="text-ink-subtle" />
           <Input
@@ -225,9 +288,7 @@ export function CommandPalette({
         </div>
         {/* A long answer scrolls with the list rather than pushing it out of the window. */}
         <div className="max-h-[50vh] min-h-0 overflow-y-auto">
-          {(ask.isPending || asked || ask.error) && (
-            <AskAnswer pending={ask.isPending} error={ask.error} answer={asked} proposals={proposals} onGo={goThere} />
-          )}
+          {(ask.isPending || asked || ask.error) && <AskAnswer pending={ask.isPending} error={ask.error} answer={asked} proposals={proposals} onGo={goThere} />}
           <ul id="palette-results" role="listbox" className="p-1">
             {commands.length === 0 && (
               <li className="px-3 py-6 text-center text-sm text-ink-subtle" data-palette-empty>
@@ -249,11 +310,16 @@ export function CommandPalette({
                     onMouseEnter={() => setActive(index)}
                     onClick={() => command.run()}
                     data-palette-option={command.id}
-                    className={cx("flex w-full cursor-default items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm", index === active ? "bg-accent-subtle text-ink" : "text-ink hover:bg-surface-raised")}
+                    className={cx(
+                      "flex w-full cursor-default items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm",
+                      index === active ? "bg-accent-subtle text-ink" : "text-ink hover:bg-surface-raised",
+                    )}
                   >
                     <Glyph className="shrink-0 text-ink-muted" />
                     <span className="min-w-0 flex-1 truncate">{command.label}</span>
-                    {command.detail && <span className={cx("shrink-0 font-mono text-2xs", index === active ? "text-ink-muted" : "text-ink-subtle")}>{command.detail}</span>}
+                    {command.detail && (
+                      <span className={cx("shrink-0 font-mono text-2xs", index === active ? "text-ink-muted" : "text-ink-subtle")}>{command.detail}</span>
+                    )}
                   </div>
                 </li>
               );

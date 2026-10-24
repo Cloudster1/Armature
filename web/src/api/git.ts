@@ -160,9 +160,7 @@ export interface Connected {
 }
 
 export function useConnectRepository(projectKey: string) {
-  return useGitMutation((input: ConnectInput) =>
-    request<Connected>(`/projects/${projectKey}/repositories`, { method: "POST", body: input }),
-  );
+  return useGitMutation((input: ConnectInput) => request<Connected>(`/projects/${projectKey}/repositories`, { method: "POST", body: input }));
 }
 
 export function useUpdateRepository() {
@@ -172,9 +170,7 @@ export function useUpdateRepository() {
 }
 
 export function useRotateSecret() {
-  return useGitMutation((id: string) =>
-    request<Connected>(`/repositories/${id}/rotate-secret`, { method: "POST" }),
-  );
+  return useGitMutation((id: string) => request<Connected>(`/repositories/${id}/rotate-secret`, { method: "POST" }));
 }
 
 export function useDisconnectRepository() {
@@ -190,9 +186,7 @@ export interface CreateBranchInput {
 }
 
 export function useCreateBranch(issueKey: string) {
-  return useGitMutation((input: CreateBranchInput) =>
-    request<{ branch: Branch }>(`/issues/${issueKey}/branches`, { method: "POST", body: input }),
-  );
+  return useGitMutation((input: CreateBranchInput) => request<{ branch: Branch }>(`/issues/${issueKey}/branches`, { method: "POST", body: input }));
 }
 
 /** What to type to start working on a branch that now exists on the host. */

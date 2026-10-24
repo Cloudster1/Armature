@@ -42,11 +42,7 @@ scenario("dragging a bar moves the work and keeps its length", async ({ page }) 
 
   await goto(page, `/projects/${key}/plan`);
   await dragBar(page, story, 3);
-  await page.waitForFunction(
-    (k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planStart?.startsWith("2026-03-13"),
-    { timeout: WAIT },
-    story,
-  );
+  await page.waitForFunction((k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planStart?.startsWith("2026-03-13"), { timeout: WAIT }, story);
 
   const range = await barRange(page, story);
   expect.equal(range.start, "2026-03-13", "the start moved three days");
@@ -61,11 +57,7 @@ scenario("dragging a bar's edge changes how long the work takes", async ({ page 
 
   await goto(page, `/projects/${key}/plan`);
   await dragBar(page, story, 4, "end");
-  await page.waitForFunction(
-    (k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planDue?.startsWith("2026-03-24"),
-    { timeout: WAIT },
-    story,
-  );
+  await page.waitForFunction((k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planDue?.startsWith("2026-03-24"), { timeout: WAIT }, story);
 
   const range = await barRange(page, story);
   expect.equal(range.start, "2026-03-10", "the start stayed put");
@@ -200,7 +192,11 @@ scenario("auto plan shows where a blocked issue would go, and moves it on apply"
 
   await page.click('[data-action="auto-plan-apply"]');
   await page.waitForFunction(() => !document.querySelector('[data-testid="auto-plan-preview"]'), { timeout: WAIT });
-  await page.waitForFunction((key) => document.querySelector(`[data-plan-bar="${key}"]`)?.dataset.planStart?.startsWith("2027-11-08"), { timeout: WAIT }, blocked);
+  await page.waitForFunction(
+    (key) => document.querySelector(`[data-plan-bar="${key}"]`)?.dataset.planStart?.startsWith("2027-11-08"),
+    { timeout: WAIT },
+    blocked,
+  );
   const range = await barRange(page, blocked);
   expect.equal(range.due, "2027-11-09", "the blocked story now starts after its blocker");
   expect.equal(await page.$(`[data-plan-warning-for="${blocked}"]`), null, "and the warning is gone");
@@ -208,7 +204,11 @@ scenario("auto plan shows where a blocked issue would go, and moves it on apply"
   // One step puts it back, and the history holds both moves.
   await page.waitForSelector("[data-toasts] button", { timeout: WAIT });
   await clickButton(page, "Undo");
-  await page.waitForFunction((key) => document.querySelector(`[data-plan-bar="${key}"]`)?.dataset.planStart?.startsWith("2027-11-03"), { timeout: WAIT }, blocked);
+  await page.waitForFunction(
+    (key) => document.querySelector(`[data-plan-bar="${key}"]`)?.dataset.planStart?.startsWith("2027-11-03"),
+    { timeout: WAIT },
+    blocked,
+  );
   expect.equal((await barRange(page, blocked)).due, "2027-11-04", "undo puts the story back where it was");
   await page.waitForSelector(`[data-plan-warning-for="${blocked}"]`, { timeout: WAIT });
 });
@@ -267,7 +267,11 @@ scenario("auto plan holds the work under an epic behind the epic it waits on", a
 
   await goto(page, `/projects/${key}/plan`);
   await page.waitForSelector(`[data-plan-warning-for="${write}"]`, { timeout: WAIT });
-  expect.contains(await page.$eval(`[data-plan-warning-for="${write}"]`, (el) => el.textContent), `${design} blocks ${build}`, "the story's warning names the epics' link");
+  expect.contains(
+    await page.$eval(`[data-plan-warning-for="${write}"]`, (el) => el.textContent),
+    `${design} blocks ${build}`,
+    "the story's warning names the epics' link",
+  );
 
   await page.click('[data-action="auto-plan"]');
   await page.waitForSelector(`[data-plan-proposed="${write}"]`, { timeout: WAIT });

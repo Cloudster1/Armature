@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
 import { useStatuses, type Status } from "@/api/issues";
-import {
-  useCreateWorkflow,
-  useRuleTypes,
-  useSaveWorkflow,
-  useWorkflow,
-  type Workflow,
-} from "@/api/workflows";
+import { useCreateWorkflow, useRuleTypes, useSaveWorkflow, useWorkflow, type Workflow } from "@/api/workflows";
 import { Button, ErrorBanner, Field } from "@/components/ui";
 import { Inspector } from "./Inspector";
 import { WorkflowCanvas, type Selection } from "./WorkflowCanvas";
@@ -17,15 +11,7 @@ import { connect, emptyDesign, fromWorkflow, moveNode, problems, toInput, type D
  * is one opinion about how issues move between them, so the canvas is where
  * the organization's statuses are arranged and the arrows say what is allowed.
  */
-export function WorkflowDesigner({
-  workflowId,
-  onDone,
-  onCancel,
-}: {
-  workflowId?: string;
-  onDone: (saved: Workflow) => void;
-  onCancel: () => void;
-}) {
+export function WorkflowDesigner({ workflowId, onDone, onCancel }: { workflowId?: string; onDone: (saved: Workflow) => void; onCancel: () => void }) {
   const { data: statusData } = useStatuses();
   const { data: existing } = useWorkflow(workflowId ?? "");
   const { data: ruleData } = useRuleTypes();
@@ -33,10 +19,7 @@ export function WorkflowDesigner({
   // A status coined in the inspector is known here at once, so its node draws
   // before the refetch of the organization's list has come back.
   const [coined, setCoined] = useState<Status[]>([]);
-  const statuses = useMemo(
-    () => new Map([...(statusData?.statuses ?? []), ...coined].map((status) => [status.id, status])),
-    [statusData, coined],
-  );
+  const statuses = useMemo(() => new Map([...(statusData?.statuses ?? []), ...coined].map((status) => [status.id, status])), [statusData, coined]);
   const catalogue = ruleData?.ruleTypes ?? [];
 
   const [design, setDesign] = useState<{ loadedFrom?: string } & Design>(() => emptyDesign());

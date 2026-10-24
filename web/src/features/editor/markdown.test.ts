@@ -4,15 +4,32 @@ import { docToMarkdown, markdownToDoc, parseInline } from "./markdown";
 import type { DocNode } from "./schema";
 
 const p = (...content: DocNode[]): DocNode => (content.length > 0 ? { type: "paragraph", content } : { type: "paragraph" });
-const t = (text: string, ...marks: string[]): DocNode => (marks.length > 0 ? { type: "text", text, marks: marks.map((type) => ({ type })) } : { type: "text", text });
+const t = (text: string, ...marks: string[]): DocNode =>
+  marks.length > 0 ? { type: "text", text, marks: marks.map((type) => ({ type })) } : { type: "text", text };
 const doc = (...content: DocNode[]): Doc => ({ type: "doc", content });
 
 describe("markdown and the document", () => {
   it("writes every construct the schema names", () => {
     const rich = doc(
       { type: "heading", attrs: { level: 2 }, content: [t("Plan")] },
-      p(t("Ask ", "bold"), { type: "mention", attrs: { id: "u1", label: "Ada Lovelace" } }, t(" first, "), t("softly", "italic"), t(" and "), t("x = 1", "code"), t(", or "), t("not", "strike"), t(".")),
-      { type: "bulletList", content: [{ type: "listItem", content: [p(t("one"))] }, { type: "listItem", content: [p(t("two"), { type: "hardBreak" }, t("more"))] }] },
+      p(
+        t("Ask ", "bold"),
+        { type: "mention", attrs: { id: "u1", label: "Ada Lovelace" } },
+        t(" first, "),
+        t("softly", "italic"),
+        t(" and "),
+        t("x = 1", "code"),
+        t(", or "),
+        t("not", "strike"),
+        t("."),
+      ),
+      {
+        type: "bulletList",
+        content: [
+          { type: "listItem", content: [p(t("one"))] },
+          { type: "listItem", content: [p(t("two"), { type: "hardBreak" }, t("more"))] },
+        ],
+      },
       { type: "orderedList", content: [{ type: "listItem", content: [p(t("first"))] }] },
       { type: "blockquote", content: [p(t("quoted"))] },
       { type: "codeBlock", attrs: { language: "go" }, content: [t("x := 1\ny := 2")] },
@@ -43,12 +60,20 @@ describe("markdown and the document", () => {
   });
 
   it("reads them back, with a mention as the text it was typed as", () => {
-    const back = markdownToDoc("## Plan\n\n**Ask** @Ada, *softly* and `x = 1`.\n\n- one\n- two\n  more\n\n1. first\n\n> quoted\n\n```go\nx := 1\n```\n\n[site](https://example.test)");
+    const back = markdownToDoc(
+      "## Plan\n\n**Ask** @Ada, *softly* and `x = 1`.\n\n- one\n- two\n  more\n\n1. first\n\n> quoted\n\n```go\nx := 1\n```\n\n[site](https://example.test)",
+    );
     expect(back).toEqual(
       doc(
         { type: "heading", attrs: { level: 2 }, content: [t("Plan")] },
         p(t("Ask", "bold"), t(" @Ada, "), t("softly", "italic"), t(" and "), t("x = 1", "code"), t(".")),
-        { type: "bulletList", content: [{ type: "listItem", content: [p(t("one"))] }, { type: "listItem", content: [p(t("two"), { type: "hardBreak" }, t("more"))] }] },
+        {
+          type: "bulletList",
+          content: [
+            { type: "listItem", content: [p(t("one"))] },
+            { type: "listItem", content: [p(t("two"), { type: "hardBreak" }, t("more"))] },
+          ],
+        },
         { type: "orderedList", content: [{ type: "listItem", content: [p(t("first"))] }] },
         { type: "blockquote", content: [p(t("quoted"))] },
         { type: "codeBlock", attrs: { language: "go" }, content: [t("x := 1")] },
@@ -102,7 +127,10 @@ describe("markdown and the document", () => {
           // A heading is one line in markdown, so it carries no breaks here.
           return { type: "heading", attrs: { level: 1 + rand(3) }, content: inline(false) };
         case 2:
-          return { type: rand(2) ? "bulletList" : "orderedList", content: Array.from({ length: 1 + rand(2) }, () => ({ type: "listItem", content: [block(depth + 1)] })) };
+          return {
+            type: rand(2) ? "bulletList" : "orderedList",
+            content: Array.from({ length: 1 + rand(2) }, () => ({ type: "listItem", content: [block(depth + 1)] })),
+          };
         case 3:
           return { type: "blockquote", content: [block(depth + 1)] };
         default:

@@ -39,7 +39,10 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
       <Avatar name={entry.actor?.name} src={entry.actor?.avatarUrl} size="sm" />
       <p className="min-w-0 flex-1 text-ink-muted">
         <span className="font-medium text-ink">{entry.actor?.name ?? "Armature"}</span> {entry.changes.map((c) => describe(c.field, c.from, c.to)).join(", ")}
-        <span className="text-ink-subtle"> · <RelativeTime iso={entry.createdAt} /></span>
+        <span className="text-ink-subtle">
+          {" "}
+          · <RelativeTime iso={entry.createdAt} />
+        </span>
       </p>
     </div>
   );

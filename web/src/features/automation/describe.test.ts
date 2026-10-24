@@ -24,7 +24,14 @@ describe("describeRule", () => {
       "When assignee changes, then add a comment.",
     );
     expect(
-      describeRule({ trigger: { kind: "scheduled", query: "due < now()", schedule: { unit: "hours", every: 2 } }, conditions: [], actions: [{ kind: "assign", value: "reporter" }] }, catalog),
+      describeRule(
+        {
+          trigger: { kind: "scheduled", query: "due < now()", schedule: { unit: "hours", every: 2 } },
+          conditions: [],
+          actions: [{ kind: "assign", value: "reporter" }],
+        },
+        catalog,
+      ),
     ).toBe("When every 2 hours, over due < now(), then assign to reporter.");
   });
 });

@@ -58,7 +58,11 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
             label="Whose backlog"
             value={teamId}
             onChange={setTeamId}
-            options={[{ id: "", name: "Nobody in particular" }, ...teams].map((team) => ({ value: team.id, label: team.name, attrs: { "data-backlog-of": team.name } }))}
+            options={[{ id: "", name: "Nobody in particular" }, ...teams].map((team) => ({
+              value: team.id,
+              label: team.name,
+              attrs: { "data-backlog-of": team.name },
+            }))}
           />
         </div>
       )}
@@ -82,10 +86,7 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
           Backlog <span className="font-normal text-ink-muted">({backlog.length})</span>
         </h2>
         {backlog.length === 0 ? (
-          <EmptyState
-            title="Nothing in the backlog"
-            description="Every unfinished issue here is committed to a sprint."
-          />
+          <EmptyState title="Nothing in the backlog" description="Every unfinished issue here is committed to a sprint." />
         ) : (
           <Card className="divide-y divide-border">
             {backlog.map((issue) => (
@@ -98,15 +99,7 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
   );
 }
 
-function SprintCard({
-  sprint,
-  plan,
-  others,
-}: {
-  sprint: Sprint;
-  plan?: SprintPlan;
-  others: Sprint[];
-}) {
+function SprintCard({ sprint, plan, others }: { sprint: Sprint; plan?: SprintPlan; others: Sprint[] }) {
   // Read for this sprint alone: a page of the project's newest issues misses
   // older committed work, and a card that looks empty invites a delete.
   const { data: work } = useSprintIssues(sprint.projectKey, sprint.id);
@@ -160,7 +153,9 @@ function SprintCard({
                     size="sm"
                     variant="ghost"
                     loading={remove.isPending}
-                    onClick={async () => (await confirm({ noun: "sprint", body: `${sprint.name} goes; its issues return to the backlog.` })) && remove.mutate(sprint.id)}
+                    onClick={async () =>
+                      (await confirm({ noun: "sprint", body: `${sprint.name} goes; its issues return to the backlog.` })) && remove.mutate(sprint.id)
+                    }
                   >
                     Delete
                   </Button>
@@ -180,11 +175,7 @@ function SprintCard({
                     </option>
                   ))}
                 </SelectInput>
-                <Button
-                  size="sm"
-                  loading={complete.isPending}
-                  onClick={() => complete.mutate({ id: sprint.id, moveTo: moveTo || null })}
-                >
+                <Button size="sm" loading={complete.isPending} onClick={() => complete.mutate({ id: sprint.id, moveTo: moveTo || null })}>
                   Complete sprint
                 </Button>
               </>
@@ -194,8 +185,7 @@ function SprintCard({
 
         {over && plan && (
           <p className="mt-2 text-sm text-danger">
-            {describe(plan)} committed. This is more than the team said fits, which is worth
-            deciding on rather than discovering later.
+            {describe(plan)} committed. This is more than the team said fits, which is worth deciding on rather than discovering later.
           </p>
         )}
 
@@ -255,7 +245,12 @@ function SprintSettings({ sprint, hours }: { sprint: Sprint; hours: string | nul
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
       <label htmlFor={`from-${sprint.id}`}>From</label>
       <div className="w-36">
-        <DateInput id={`from-${sprint.id}`} controlSize="sm" value={sprint.startsOn ? sprint.startsOn.slice(0, 10) : ""} onCommit={(day) => set("startsOn", day)} />
+        <DateInput
+          id={`from-${sprint.id}`}
+          controlSize="sm"
+          value={sprint.startsOn ? sprint.startsOn.slice(0, 10) : ""}
+          onCommit={(day) => set("startsOn", day)}
+        />
       </div>
       <label htmlFor={`to-${sprint.id}`}>to</label>
       <div className="w-36">
@@ -292,39 +287,31 @@ function SprintSettings({ sprint, hours }: { sprint: Sprint; hours: string | nul
   );
 }
 
-function IssueRow({
-  issue,
-  sprints,
-  current,
-}: {
-  issue: Issue;
-  sprints: Sprint[];
-  current?: Sprint;
-}) {
+function IssueRow({ issue, sprints, current }: { issue: Issue; sprints: Sprint[]; current?: Sprint }) {
   const setSprint = useSetIssueSprint();
   const movable = current?.state !== "closed";
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm" data-issue={issue.key}>
       <TypeBadge icon={issue.type.icon} name={issue.type.name} />
-      <Link
-        to="/issues/$issueKey"
-        params={{ issueKey: issue.key }}
-        className="shrink-0 font-mono text-2xs text-ink-muted hover:text-accent"
-      >
+      <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="shrink-0 font-mono text-2xs text-ink-muted hover:text-accent">
         {issue.key}
       </Link>
       <span className="min-w-0 flex-1 truncate text-ink">{issue.summary}</span>
       <StatusBadge name={issue.status.name} category={issue.status.category} />
-      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink-muted">
-        {issue.estimate != null ? `${issue.estimate} pts` : "unsized"}
-      </span>
+      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink-muted">{issue.estimate != null ? `${issue.estimate} pts` : "unsized"}</span>
       {movable && (
         <>
           <label htmlFor={`move-${issue.key}`} className="sr-only">
             Move {issue.key} to
           </label>
-          <SelectInput id={`move-${issue.key}`} value={issue.sprintId ?? ""} onChange={(event) => setSprint.mutate({ key: issue.key, sprintId: event.target.value || null })} controlSize="sm" className="text-xs">
+          <SelectInput
+            id={`move-${issue.key}`}
+            value={issue.sprintId ?? ""}
+            onChange={(event) => setSprint.mutate({ key: issue.key, sprintId: event.target.value || null })}
+            controlSize="sm"
+            className="text-xs"
+          >
             <option value="">Backlog</option>
             {current && <option value={current.id}>{current.name}</option>}
             {sprints.map((sprint) => (
@@ -346,21 +333,12 @@ function NewSprint({ projectKey, teamId }: { projectKey: string; teamId: string 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    create.mutate(
-      { name: name.trim(), teamId: teamId || null },
-      { onSuccess: () => setName("") },
-    );
+    create.mutate({ name: name.trim(), teamId: teamId || null }, { onSuccess: () => setName("") });
   }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
-      <Field
-        label="New sprint"
-        value={name}
-        placeholder="Sprint 4"
-        onChange={(event) => setName(event.target.value)}
-        className="w-56"
-      />
+      <Field label="New sprint" value={name} placeholder="Sprint 4" onChange={(event) => setName(event.target.value)} className="w-56" />
       <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
         Add sprint
       </Button>

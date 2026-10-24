@@ -34,7 +34,13 @@ export function MilestoneDashboardDialog({ milestone, open, onClose }: { milesto
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={`A dashboard for ${milestone.name}`} description="Every widget on it counts only the issues heading for this milestone." attrs={{ "data-milestone-dashboard": milestone.name }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={`A dashboard for ${milestone.name}`}
+      description="Every widget on it counts only the issues heading for this milestone."
+      attrs={{ "data-milestone-dashboard": milestone.name }}
+    >
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <Field label="Dashboard name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         <Select label="Template" value={template} onChange={(e) => setTemplate(e.target.value)}>

@@ -5,17 +5,7 @@ import { Button, Field, Select } from "@/components/ui";
 import { StatusBadge } from "@/features/issues/badges";
 import { NewStatusForm } from "./NewStatusForm";
 import { RuleEditor } from "./RuleEditor";
-import {
-  ANYWHERE,
-  addStatus,
-  connect,
-  removeEdge,
-  removeStatus,
-  setInitial,
-  updateEdge,
-  type Design,
-  type Edge,
-} from "./graph";
+import { ANYWHERE, addStatus, connect, removeEdge, removeStatus, setInitial, updateEdge, type Design, type Edge } from "./graph";
 import type { Selection } from "./WorkflowCanvas";
 
 /**
@@ -60,15 +50,7 @@ export function Inspector({
   if (selection.kind === "node") {
     const status = statuses.get(selection.statusId);
     if (status && design.nodes.some((node) => node.statusId === status.id)) {
-      return (
-        <NodePanel
-          status={status}
-          design={design}
-          statuses={statuses}
-          onChange={onChange}
-          onSelect={onSelect}
-        />
-      );
+      return <NodePanel status={status} design={design} statuses={statuses} onChange={onChange} onSelect={onSelect} />;
     }
   }
   return <DesignPanel design={design} statuses={statuses} onChange={onChange} onSelect={onSelect} onCoined={onCoined} />;
@@ -88,9 +70,7 @@ function DesignPanel({
   onCoined: (status: Status) => void;
 }) {
   const [adding, setAdding] = useState("");
-  const available = [...statuses.values()].filter(
-    (status) => !design.nodes.some((node) => node.statusId === status.id),
-  );
+  const available = [...statuses.values()].filter((status) => !design.nodes.some((node) => node.statusId === status.id));
 
   // Adding leaves this panel open, because the next thing is usually another.
   function add() {
@@ -156,9 +136,7 @@ function NodePanel({
   onSelect: (selection: Selection) => void;
 }) {
   const [target, setTarget] = useState("");
-  const others = design.nodes
-    .map((node) => statuses.get(node.statusId))
-    .filter((each): each is Status => each !== undefined && each.id !== status.id);
+  const others = design.nodes.map((node) => statuses.get(node.statusId)).filter((each): each is Status => each !== undefined && each.id !== status.id);
   const leaving = design.edges.filter((edge) => edge.from === status.id);
   const isInitial = design.initialId === status.id;
 

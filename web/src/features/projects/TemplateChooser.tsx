@@ -17,13 +17,7 @@ export function templateShape(template: ProjectTemplate): string {
  * be shown and moved, and the description is what makes the decision, so it
  * sits on the card rather than behind a tooltip.
  */
-export function TemplateChooser({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (key: string) => void;
-}) {
+export function TemplateChooser({ value, onChange }: { value: string; onChange: (key: string) => void }) {
   const { data, isLoading } = useProjectTemplates();
   const templates = data?.templates ?? [];
 

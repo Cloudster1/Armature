@@ -11,9 +11,11 @@ export function WorkingWeekTable({ week }: { week: WorkingWeek }) {
   return (
     <div className="space-y-3" data-working-week>
       <p className="text-sm text-ink-muted">
-        Days off from <span className="text-ink" data-week-calendar>{week.calendar?.name ?? "no calendar yet"}</span>
-        {week.calendarId === null && week.calendar ? ", everyone's default" : ""}.
-        {!week.saved && " Nobody has set your week, so it is the standard one."}
+        Days off from{" "}
+        <span className="text-ink" data-week-calendar>
+          {week.calendar?.name ?? "no calendar yet"}
+        </span>
+        {week.calendarId === null && week.calendar ? ", everyone's default" : ""}.{!week.saved && " Nobody has set your week, so it is the standard one."}
       </p>
       <Table dense>
         <thead>
@@ -45,7 +47,13 @@ export function WorkingWeekTable({ week }: { week: WorkingWeek }) {
 export function WorkingWeekDialog({ userId, name, onClose }: { userId: string; name: string; onClose: () => void }) {
   const { data, error } = useWorkingWeek(userId);
   return (
-    <Dialog open onClose={onClose} title={`${name}'s working week`} description="Hours on each weekday, and the holiday calendar whose days they have off." attrs={{ "data-working-week-dialog": userId }}>
+    <Dialog
+      open
+      onClose={onClose}
+      title={`${name}'s working week`}
+      description="Hours on each weekday, and the holiday calendar whose days they have off."
+      attrs={{ "data-working-week-dialog": userId }}
+    >
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {data && <WorkingWeekForm week={data.week} name={name} onClose={onClose} />}
     </Dialog>
@@ -70,7 +78,12 @@ function WorkingWeekForm({ week, name, onClose }: { week: WorkingWeek; name: str
     if (unreadable.length > 0) return;
     save.mutate(
       { userId: week.userId, calendarId: calendarId || null, minutes: minutes as Record<string, number> },
-      { onSuccess: () => { toast.success(`Saved ${name}'s working week`); onClose(); } },
+      {
+        onSuccess: () => {
+          toast.success(`Saved ${name}'s working week`);
+          onClose();
+        },
+      },
     );
   }
 

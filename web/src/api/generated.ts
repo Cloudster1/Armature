@@ -25,10 +25,7 @@ const raiseOnError: Middleware = {
     } catch {
       body = undefined;
     }
-    throw new ApiError(
-      response.status,
-      body?.error ?? { code: "unexpected_response", message: `The server returned ${response.status}.` },
-    );
+    throw new ApiError(response.status, body?.error ?? { code: "unexpected_response", message: `The server returned ${response.status}.` });
   },
 };
 

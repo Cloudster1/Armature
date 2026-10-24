@@ -33,7 +33,12 @@ export function burndownSeries(curve: SprintBurndown): Series[] {
   const scope = curve.points.map((p) => ({ x: at(p), y: p.scope }));
   const lastDay = Math.max(1, dayIndex(from, curve.sprint.endsOn ?? to.toISOString()));
   const first = curve.points[0];
-  const ideal = first ? [{ x: at(first), y: first.scope }, { x: lastDay, y: 0 }] : [];
+  const ideal = first
+    ? [
+        { x: at(first), y: first.scope },
+        { x: lastDay, y: 0 },
+      ]
+    : [];
   return [
     { name: "scope", tone: "text-ink-subtle", points: scope, step: true },
     { name: "ideal", tone: "text-ink-muted", points: ideal, dashed: true },

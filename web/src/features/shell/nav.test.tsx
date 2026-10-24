@@ -10,8 +10,22 @@ const notifications = [
 ];
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to, hash, params, onClick, ...rest }: { children: ReactNode; to: string; hash?: string; params?: Record<string, string>; onClick?: () => void } & Record<string, unknown>) => (
-    <a href={`${params?.issueKey ? to.replace("$issueKey", params.issueKey) : to}${hash ? `#${hash}` : ""}`} onClick={(e) => { e.preventDefault(); onClick?.(); }} {...(rest as Record<string, string>)}>
+  Link: ({
+    children,
+    to,
+    hash,
+    params,
+    onClick,
+    ...rest
+  }: { children: ReactNode; to: string; hash?: string; params?: Record<string, string>; onClick?: () => void } & Record<string, unknown>) => (
+    <a
+      href={`${params?.issueKey ? to.replace("$issueKey", params.issueKey) : to}${hash ? `#${hash}` : ""}`}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick?.();
+      }}
+      {...(rest as Record<string, string>)}
+    >
       {children}
     </a>
   ),

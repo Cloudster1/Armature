@@ -5,7 +5,19 @@ import type { Doc } from "@/api/issues";
  * server all agree on. Nothing outside this set reaches the database, so a
  * document reads back whole on every screen.
  */
-export const NODE_TYPES = ["doc", "paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "hardBreak", "text", "mention"] as const;
+export const NODE_TYPES = [
+  "doc",
+  "paragraph",
+  "heading",
+  "bulletList",
+  "orderedList",
+  "listItem",
+  "blockquote",
+  "codeBlock",
+  "hardBreak",
+  "text",
+  "mention",
+] as const;
 export const MARK_TYPES = ["bold", "italic", "code", "strike", "link"] as const;
 export const HEADING_LEVELS = [1, 2, 3] as const;
 

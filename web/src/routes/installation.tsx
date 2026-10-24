@@ -64,7 +64,10 @@ function RenameForm({ name }: { name: string }) {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    rename.mutateAsync(wanted).then(() => toast.success(`Renamed to ${wanted}`), () => {});
+    rename.mutateAsync(wanted).then(
+      () => toast.success(`Renamed to ${wanted}`),
+      () => {},
+    );
   }
 
   return (
@@ -93,7 +96,10 @@ function DemoProject() {
   const navigate = useNavigate();
 
   function onAdd() {
-    add.mutateAsync().then(({ project }) => navigate({ to: "/projects/$projectKey", params: { projectKey: project.key } }), () => {});
+    add.mutateAsync().then(
+      ({ project }) => navigate({ to: "/projects/$projectKey", params: { projectKey: project.key } }),
+      () => {},
+    );
   }
 
   return (

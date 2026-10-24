@@ -99,7 +99,9 @@ const LAYER = "[data-dialog-backdrop]";
 function fullBottom(page, dialog) {
   return page.$eval(dialog, (el) => {
     const top = el.getBoundingClientRect().top + (el.closest("[data-dialog-backdrop]")?.scrollTop ?? 0);
-    return Math.round(top + ["[data-dialog-header]", "[data-dialog-body]", "[data-dialog-footer]"].reduce((sum, part) => sum + (el.querySelector(part)?.scrollHeight ?? 0), 0));
+    return Math.round(
+      top + ["[data-dialog-header]", "[data-dialog-body]", "[data-dialog-footer]"].reduce((sum, part) => sum + (el.querySelector(part)?.scrollHeight ?? 0), 0),
+    );
   });
 }
 
@@ -117,10 +119,13 @@ function pressable(page, selector) {
 
 /** How far the dialog's layer and the page behind it are scrolled. */
 function scrolled(page) {
-  return page.evaluate((layer) => ({
-    layer: document.querySelector(layer)?.scrollTop ?? 0,
-    page: document.querySelector("main")?.scrollTop ?? 0,
-  }), LAYER);
+  return page.evaluate(
+    (layer) => ({
+      layer: document.querySelector(layer)?.scrollTop ?? 0,
+      page: document.querySelector("main")?.scrollTop ?? 0,
+    }),
+    LAYER,
+  );
 }
 
 /** Turns the wheel once at a point and waits for the dialog's layer to move past where it was. */
@@ -195,7 +200,10 @@ async function pressCreate(page) {
 
 // Reported in #294: with a pile of labels the dialog grew past the window and
 // neither the page nor the dialog would scroll to Create.
-for (const [where, size] of [["a laptop", SHORT_WINDOW], ["a phone", PHONE]]) {
+for (const [where, size] of [
+  ["a laptop", SHORT_WINDOW],
+  ["a phone", PHONE],
+]) {
   scenario(`a new issue with many labels on ${where} scrolls like a page wherever the wheel turns, and Create stays in reach`, async ({ page }) => {
     await signUp(page, unique("user"), { visit: false });
     const key = await createProject(page, "Many Labels");
@@ -292,7 +300,10 @@ scenario("the export dialog on a phone scrolls by the wheel over its description
     await page.click('[data-action="export-csv"]');
     await page.waitForSelector("[data-export-dialog]", { timeout: WAIT });
     const bottom = await fullBottom(page, "[data-export-dialog]");
-    expect.truthy(bottom > PHONE_BEHIND_BARS.height, `the export dialog runs past the bottom of the window (to ${bottom} of ${PHONE_BEHIND_BARS.height} pixels)`);
+    expect.truthy(
+      bottom > PHONE_BEHIND_BARS.height,
+      `the export dialog runs past the bottom of the window (to ${bottom} of ${PHONE_BEHIND_BARS.height} pixels)`,
+    );
 
     const description = await page.$eval("[data-export-dialog] [data-dialog-header] p", (el) => {
       const box = el.getBoundingClientRect();
@@ -344,7 +355,6 @@ scenario("the project switcher on a short window scrolls to its last project", a
   }
 });
 
-
 scenario("the project switcher's filter takes a name of two words", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const name = `${uniqueName("Switchable", "-")} Portal`;
@@ -356,11 +366,7 @@ scenario("the project switcher's filter takes a name of two words", async ({ pag
     await page.type('[aria-label="Filter projects"]', name);
     await page.waitForSelector(`[data-project-option="${key}"]`, { timeout: WAIT });
     expect.truthy(await page.$('[role="menu"][aria-label="Switch project"]'), "the menu stays open after the space");
-    expect.equal(
-      await page.$eval('[aria-label="Filter projects"]', (el) => el.value),
-      name,
-      "the box holds the whole name",
-    );
+    expect.equal(await page.$eval('[aria-label="Filter projects"]', (el) => el.value), name, "the box holds the whole name");
   } finally {
     await archiveProjects(page, [key]);
   }

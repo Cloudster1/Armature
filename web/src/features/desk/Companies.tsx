@@ -33,8 +33,8 @@ export function Companies({ projectKey, editable }: { projectKey: string; editab
     <section data-guide="desk-companies">
       <SectionTitle className="mb-2">Companies</SectionTitle>
       <p className="mb-3 text-sm text-ink-muted">
-        Customers who work together. Whoever raises a request chooses whether their company sees it; a colleague may then read it, reply and attach files,
-        never sees the internal notes, and is not mailed about it. A customer at one of a company's domains joins it with their first request here.
+        Customers who work together. Whoever raises a request chooses whether their company sees it; a colleague may then read it, reply and attach files, never
+        sees the internal notes, and is not mailed about it. A customer at one of a company's domains joins it with their first request here.
       </p>
       {companies.length === 0 && !editable && <p className="text-sm text-ink-subtle">No companies yet.</p>}
       <div className="space-y-3">
@@ -48,7 +48,13 @@ export function Companies({ projectKey, editable }: { projectKey: string; editab
             {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Company" value={name} onChange={(e) => setName(e.target.value)} placeholder="Globex" />
-              <Field label="Domains" value={domains} onChange={(e) => setDomains(e.target.value)} placeholder="globex.test" hint="Separate several with commas." />
+              <Field
+                label="Domains"
+                value={domains}
+                onChange={(e) => setDomains(e.target.value)}
+                placeholder="globex.test"
+                hint="Separate several with commas."
+              />
             </div>
             <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
               Add company
@@ -118,8 +124,11 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
               label={`Remove ${company.name}`}
               size="sm"
               onClick={async () =>
-                (await confirm({ noun: "company", verb: "Remove", body: `${company.name} goes; its customers keep their own requests, and what they shared is shared no more.` })) &&
-                remove.mutate(company.id, { onSuccess: () => toast.success(`${company.name} removed`) })
+                (await confirm({
+                  noun: "company",
+                  verb: "Remove",
+                  body: `${company.name} goes; its customers keep their own requests, and what they shared is shared no more.`,
+                })) && remove.mutate(company.id, { onSuccess: () => toast.success(`${company.name} removed`) })
               }
             />
           </span>
@@ -153,7 +162,14 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
         {editable && (
           <form onSubmit={addDomain} className="flex items-end gap-2" noValidate>
             <div className="flex-1">
-              <Field label={`A domain for ${company.name}`} id={`field-company-domain-${company.id}`} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="globex.test" controlSize="sm" />
+              <Field
+                label={`A domain for ${company.name}`}
+                id={`field-company-domain-${company.id}`}
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                placeholder="globex.test"
+                controlSize="sm"
+              />
             </div>
             <Button type="submit" size="sm" variant="secondary" disabled={!cleanDomain(domain) || update.isPending}>
               Add domain
@@ -174,7 +190,11 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
                   {m.name} <span className="text-ink-muted">{m.email}</span>
                 </span>
                 {editable && (
-                  <Button variant="link" className="text-xs text-ink-subtle hover:text-danger" onClick={() => takeOut.mutate({ id: company.id, userId: m.userId })}>
+                  <Button
+                    variant="link"
+                    className="text-xs text-ink-subtle hover:text-danger"
+                    onClick={() => takeOut.mutate({ id: company.id, userId: m.userId })}
+                  >
                     Take out
                   </Button>
                 )}

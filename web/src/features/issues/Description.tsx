@@ -52,11 +52,7 @@ export function Description({ issueKey, doc, updatedAt, editable }: { issueKey: 
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Description</h2>
         {editable && !editing && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={edit}
-          >
+          <Button size="sm" variant="ghost" onClick={edit}>
             {doc ? "Edit" : "Add description"}
           </Button>
         )}
@@ -69,7 +65,15 @@ export function Description({ issueKey, doc, updatedAt, editable }: { issueKey: 
               {doc ? <DocView doc={doc} /> : <p className="text-sm text-ink-subtle">The description has been cleared.</p>}
             </section>
           )}
-          <Editor id="issue-description" value={opened.doc} onChange={change} autoFocus placeholder="Why it matters, what done looks like." aria-label="Description" onSubmit={save} />
+          <Editor
+            id="issue-description"
+            value={opened.doc}
+            onChange={change}
+            autoFocus
+            placeholder="Why it matters, what done looks like."
+            aria-label="Description"
+            onSubmit={save}
+          />
           {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
           <div className="flex gap-2">
             <Button size="sm" loading={update.isPending} onClick={save}>

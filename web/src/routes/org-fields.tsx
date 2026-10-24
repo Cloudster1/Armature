@@ -15,7 +15,10 @@ function OrgFieldsPage() {
   const { data: access } = useAccess();
   return (
     <Page width="content">
-      <PageHeader title="Fields" meta="What every project records about an issue beyond the standard fields. A project's own field is promoted here from its Fields page." />
+      <PageHeader
+        title="Fields"
+        meta="What every project records about an issue beyond the standard fields. A project's own field is promoted here from its Fields page."
+      />
       <FieldList canConfigure={Boolean(access?.canAdministerOrg)} />
     </Page>
   );

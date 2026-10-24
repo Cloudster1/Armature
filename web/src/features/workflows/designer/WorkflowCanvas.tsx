@@ -43,7 +43,13 @@ export type Selection = { kind: "none" } | { kind: "node"; statusId: string } | 
 /** How a card wears its category: the tint, the border, the badge, the ring and the word. */
 const categoryLook: Record<StatusCategory, { card: string; badge: string; ring: string; word: string; glyph: typeof Icon.Check }> = {
   todo: { card: "bg-status-todo-subtle border-status-todo/40", badge: "bg-status-todo", ring: "border-status-todo", word: "To do", glyph: Icon.Play },
-  in_progress: { card: "bg-status-progress-subtle border-status-progress/40", badge: "bg-status-progress", ring: "border-status-progress", word: "In progress", glyph: Icon.Clock },
+  in_progress: {
+    card: "bg-status-progress-subtle border-status-progress/40",
+    badge: "bg-status-progress",
+    ring: "border-status-progress",
+    word: "In progress",
+    glyph: Icon.Clock,
+  },
   done: { card: "bg-status-done-subtle border-status-done/40", badge: "bg-status-done", ring: "border-status-done", word: "Done", glyph: Icon.Check },
 };
 
@@ -56,8 +62,7 @@ const nodeTypes = { status: StatusNode, anywhere: AnywhereNode };
 const edgeTypes = { transition: TransitionEdge };
 
 /** Only a status takes a transition, and never from itself. */
-const isValidConnection: IsValidConnection = (connection) =>
-  connection.source !== connection.target && connection.target !== ANYWHERE_NODE_ID;
+const isValidConnection: IsValidConnection = (connection) => connection.source !== connection.target && connection.target !== ANYWHERE_NODE_ID;
 
 /**
  * The picture of a workflow: statuses as boxes, transitions as arrows, and an
@@ -107,10 +112,7 @@ export function WorkflowCanvas({
     },
     [onSelect],
   );
-  const connect = useCallback(
-    (connection: Connection) => onConnect(fromNodeId(connection.source), fromNodeId(connection.target)),
-    [onConnect],
-  );
+  const connect = useCallback((connection: Connection) => onConnect(fromNodeId(connection.source), fromNodeId(connection.target)), [onConnect]);
 
   return (
     <div
@@ -252,7 +254,10 @@ function StatusNode({ data, selected }: NodeProps<StatusNodeType>) {
 /** The round badge that carries a card's category, so the colour is read twice. */
 function Badge({ className, glyph: Glyph }: { className: string; glyph: typeof Icon.Check }) {
   return (
-    <span className={cx("grid shrink-0 place-items-center rounded-full text-surface", className)} style={{ width: WORKFLOW_BADGE_SIZE, height: WORKFLOW_BADGE_SIZE }}>
+    <span
+      className={cx("grid shrink-0 place-items-center rounded-full text-surface", className)}
+      style={{ width: WORKFLOW_BADGE_SIZE, height: WORKFLOW_BADGE_SIZE }}
+    >
       <Glyph size={18} className={Glyph === Icon.Play ? "fill-current" : undefined} />
     </span>
   );

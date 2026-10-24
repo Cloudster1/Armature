@@ -32,7 +32,14 @@ function ProjectSettingsPage() {
   const toast = useToast();
   const project = data?.project;
   const saved = useMemo(
-    () => project && { name: project.name, description: project.description, leadId: project.leadId ?? "", docsUrl: project.docsUrl ?? "", docsLabel: project.docsLabel ?? "" },
+    () =>
+      project && {
+        name: project.name,
+        description: project.description,
+        leadId: project.leadId ?? "",
+        docsUrl: project.docsUrl ?? "",
+        docsLabel: project.docsLabel ?? "",
+      },
     [project],
   );
   const [draft, setField] = useDraft(saved);
@@ -54,7 +61,14 @@ function ProjectSettingsPage() {
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     update.mutate(
-      { key: projectKey, name: name.trim(), description: description.trim(), leadId: leadId || null, docsUrl: docsUrl.trim(), docsLabel: docsUrl.trim() ? docsLabel.trim() : "" },
+      {
+        key: projectKey,
+        name: name.trim(),
+        description: description.trim(),
+        leadId: leadId || null,
+        docsUrl: docsUrl.trim(),
+        docsLabel: docsUrl.trim() ? docsLabel.trim() : "",
+      },
       { onSuccess: () => toast.success("Project settings saved") },
     );
   }
@@ -75,7 +89,10 @@ function ProjectSettingsPage() {
         }
       />
       {archived && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink" data-archived-notice="">
+        <div
+          className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink"
+          data-archived-notice=""
+        >
           <span>{project.name} is archived. Restore it to change its settings.</span>
           <Button size="sm" variant="secondary" loading={restore.isPending} onClick={restoreProject} data-action="restore-project">
             Restore project
@@ -94,7 +111,13 @@ function ProjectSettingsPage() {
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
             {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
             <Field label="Project name" required value={name} onChange={(e) => setField("name", e.target.value)} />
-            <Field label="Description" rows={3} value={description} onChange={(e) => setField("description", e.target.value)} placeholder="What the project is for, in a sentence." />
+            <Field
+              label="Description"
+              rows={3}
+              value={description}
+              onChange={(e) => setField("description", e.target.value)}
+              placeholder="What the project is for, in a sentence."
+            />
             <PersonPicker
               label="Lead"
               value={leadId}
@@ -134,7 +157,9 @@ function ProjectSettingsPage() {
         <section className="mt-8">
           <SectionTitle className="mb-2">Features</SectionTitle>
           <Card className="p-5">
-            <p className="mb-3 text-sm text-ink-muted">The pages this project has. Its template chose them; turning one off hides the page and refuses new entries, and deletes nothing.</p>
+            <p className="mb-3 text-sm text-ink-muted">
+              The pages this project has. Its template chose them; turning one off hides the page and refuses new entries, and deletes nothing.
+            </p>
             <ul className="grid gap-2 sm:grid-cols-2">
               {FEATURES.filter((f) => !f.deskOnly || project.kind === "service").map((f) => {
                 const on = project.features.includes(f.key);
@@ -148,10 +173,7 @@ function ProjectSettingsPage() {
                       disabled={toggleFeatures.isPending}
                       onChange={(next) => {
                         const features = next ? [...project.features, f.key] : project.features.filter((each) => each !== f.key);
-                        toggleFeatures.mutate(
-                          { key: projectKey, features },
-                          { onSuccess: () => toast.success(`${f.label} turned ${next ? "on" : "off"}`) },
-                        );
+                        toggleFeatures.mutate({ key: projectKey, features }, { onSuccess: () => toast.success(`${f.label} turned ${next ? "on" : "off"}`) });
                       }}
                     />
                   </li>
@@ -175,7 +197,9 @@ function ProjectSettingsPage() {
         <section className="mt-8">
           <SectionTitle className="mb-2">Archive</SectionTitle>
           <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-            <p className="text-sm text-ink-muted">Archiving takes the project and its issues out of every list. Nothing is deleted, and it can be shown again with the archived ones and restored.</p>
+            <p className="text-sm text-ink-muted">
+              Archiving takes the project and its issues out of every list. Nothing is deleted, and it can be shown again with the archived ones and restored.
+            </p>
             <Button
               variant="danger"
               loading={archive.isPending}

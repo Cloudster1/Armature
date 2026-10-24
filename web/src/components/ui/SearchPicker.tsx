@@ -31,7 +31,21 @@ interface SearchPickerProps {
 }
 
 /** A select over the matches of a search, so a long list is never drawn whole. */
-export function SearchPicker({ "aria-label": label, id, value, onChange, words, onWords, options, leading, placeholder, nothing, disabled, controlSize = "sm", className }: SearchPickerProps) {
+export function SearchPicker({
+  "aria-label": label,
+  id,
+  value,
+  onChange,
+  words,
+  onWords,
+  options,
+  leading,
+  placeholder,
+  nothing,
+  disabled,
+  controlSize = "sm",
+  className,
+}: SearchPickerProps) {
   return (
     <div className={cx("flex flex-wrap items-center gap-1.5", className)} data-search-picker={label}>
       <Input
@@ -47,7 +61,14 @@ export function SearchPicker({ "aria-label": label, id, value, onChange, words, 
         className="w-40"
         data-picker-search=""
       />
-      <SelectInput id={id} aria-label={label} controlSize={controlSize} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value, options.find((option) => option.value === event.target.value)?.label ?? "")}>
+      <SelectInput
+        id={id}
+        aria-label={label}
+        controlSize={controlSize}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value, options.find((option) => option.value === event.target.value)?.label ?? "")}
+      >
         {leading}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -55,7 +76,11 @@ export function SearchPicker({ "aria-label": label, id, value, onChange, words, 
           </option>
         ))}
       </SelectInput>
-      {nothing && <span className="text-xs text-ink-subtle" role="status">{nothing}</span>}
+      {nothing && (
+        <span className="text-xs text-ink-subtle" role="status">
+          {nothing}
+        </span>
+      )}
     </div>
   );
 }

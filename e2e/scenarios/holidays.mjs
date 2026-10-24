@@ -46,10 +46,7 @@ serialScenario("an administrator imports an .ics and sees its days on the defaul
     await importHolidays(page);
     const name = await page.$eval('[data-holiday-day="2026-12-25"] input[aria-label="Name"]', (el) => el.value);
     expect.equal(name, "Christmas break", "a folded name is read whole");
-    await page.waitForFunction(
-      () => document.querySelector('[data-calendar-row="Holidays"] td:nth-child(2)')?.textContent.trim() === "4",
-      { timeout: WAIT },
-    );
+    await page.waitForFunction(() => document.querySelector('[data-calendar-row="Holidays"] td:nth-child(2)')?.textContent.trim() === "4", { timeout: WAIT });
   } finally {
     await putBack();
   }
@@ -109,9 +106,8 @@ scenario("a desk takes its days off from a holiday calendar and keeps it after a
 
   await reload(page);
   await page.waitForSelector("#field-calendar-holiday-calendar", { timeout: WAIT });
-  await page.waitForFunction(
-    () => document.querySelector("#field-calendar-holiday-calendar")?.selectedOptions[0]?.textContent.trim() === "Holidays",
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelector("#field-calendar-holiday-calendar")?.selectedOptions[0]?.textContent.trim() === "Holidays", {
+    timeout: WAIT,
+  });
   expect.truthy(await page.$("[data-goal-calendars]"), "the hours were saved with the calendar");
 });

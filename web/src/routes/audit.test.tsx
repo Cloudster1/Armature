@@ -106,7 +106,9 @@ describe("the audit page", () => {
   it("reads what was stored under the organization as the installation's, and filters by the stored key", async () => {
     render(<AuditPage />);
     const select = screen.getByLabelText("Action");
-    const words = within(select).getAllByRole("option").map((o) => o.textContent ?? "");
+    const words = within(select)
+      .getAllByRole("option")
+      .map((o) => o.textContent ?? "");
     expect(words).toContain("installation.created");
     expect(words).toContain("installation.second_factor_required");
     expect(words.join(" ")).not.toMatch(/\borg\./);

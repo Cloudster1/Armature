@@ -41,7 +41,9 @@ function NamePicker({
           onClose={() => setOpen(false)}
           label={label}
           align="end"
-          trigger={<Button variant="ghost" size="sm" icon={<Icon.Edit />} onClick={() => setOpen((o) => !o)} aria-label={`Change ${label.toLowerCase()}`} id={id} />}
+          trigger={
+            <Button variant="ghost" size="sm" icon={<Icon.Edit />} onClick={() => setOpen((o) => !o)} aria-label={`Change ${label.toLowerCase()}`} id={id} />
+          }
         >
           {all.length === 0 ? (
             <p className="text-sm text-ink-muted">Nothing to choose from yet.</p>
@@ -76,7 +78,15 @@ export function VersionField({ issue, editable, role }: { issue: Issue; editable
     set.mutate({ key: issue.key, fix: role === "fix" ? ids : fix.map((f) => f.id), affects: role === "affects" ? ids : affects.map((a) => a.id) });
   return (
     <>
-      <NamePicker id={role === "fix" ? "issue-fix-versions" : "issue-affects-versions"} label={role === "fix" ? "Fix versions" : "Affects versions"} chosen={chosen} options={versions} editable={editable} emptyWord="None" onChange={change} />
+      <NamePicker
+        id={role === "fix" ? "issue-fix-versions" : "issue-affects-versions"}
+        label={role === "fix" ? "Fix versions" : "Affects versions"}
+        chosen={chosen}
+        options={versions}
+        editable={editable}
+        emptyWord="None"
+        onChange={change}
+      />
       {set.error && <span className="block text-right text-2xs text-danger">{(set.error as Error).message}</span>}
     </>
   );
@@ -88,7 +98,15 @@ export function ComponentField({ issue, editable }: { issue: Issue; editable: bo
   const set = useSetIssueComponents();
   return (
     <>
-      <NamePicker id="issue-components" label="Components" chosen={issue.components ?? []} options={data?.components ?? []} editable={editable} emptyWord="None" onChange={(ids) => set.mutate({ key: issue.key, components: ids })} />
+      <NamePicker
+        id="issue-components"
+        label="Components"
+        chosen={issue.components ?? []}
+        options={data?.components ?? []}
+        editable={editable}
+        emptyWord="None"
+        onChange={(ids) => set.mutate({ key: issue.key, components: ids })}
+      />
       {set.error && <span className="block text-right text-2xs text-danger">{(set.error as Error).message}</span>}
     </>
   );

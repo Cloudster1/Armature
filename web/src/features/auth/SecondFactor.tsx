@@ -201,7 +201,12 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
           variant="secondary"
           icon={copied ? <Icon.Check /> : <Icon.Copy />}
           data-action="copy-recovery-codes"
-          onClick={() => navigator.clipboard.writeText(codes.join("\n")).then(() => setCopied(true), () => setCopied(false))}
+          onClick={() =>
+            navigator.clipboard.writeText(codes.join("\n")).then(
+              () => setCopied(true),
+              () => setCopied(false),
+            )
+          }
         >
           {copied ? "Copied" : "Copy codes"}
         </Button>
@@ -226,7 +231,9 @@ export function SecondFactorSettings() {
           <Enrolled status={status} />
         ) : status.available ? (
           <>
-            <p className="text-sm text-ink-muted">Signing in with your password then asks for a code from an app on your phone, so a password that leaked is not enough on its own.</p>
+            <p className="text-sm text-ink-muted">
+              Signing in with your password then asks for a code from an app on your phone, so a password that leaked is not enough on its own.
+            </p>
             <Enrolment onDone={() => {}} />
           </>
         ) : (
@@ -271,7 +278,12 @@ function Enrolled({ status }: { status: SecondFactorStatus }) {
           data-action="renew-recovery-codes"
           onClick={() => {
             remove.reset();
-            renew.mutate(code.trim(), { onSuccess: (answer) => { setCode(""); setFresh(answer.recoveryCodes); } });
+            renew.mutate(code.trim(), {
+              onSuccess: (answer) => {
+                setCode("");
+                setFresh(answer.recoveryCodes);
+              },
+            });
           }}
         >
           New recovery codes
@@ -308,13 +320,19 @@ export function EnrolmentRequired() {
         <LogoHead />
         <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">Set up two-step sign-in</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {data?.principal?.installation?.name ?? APP_NAME} asks everybody in your role to sign in with a code from an app on their phone as well as a password. Set it up to carry on.
+          {data?.principal?.installation?.name ?? APP_NAME} asks everybody in your role to sign in with a code from an app on their phone as well as a password.
+          Set it up to carry on.
         </p>
         <Card className="mt-6 space-y-4 p-5">
           <Enrolment onDone={() => {}} />
         </Card>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="ghost" loading={logout.isPending} data-action="sign-out" onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}>
+          <Button
+            variant="ghost"
+            loading={logout.isPending}
+            data-action="sign-out"
+            onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}
+          >
             Sign out
           </Button>
         </div>

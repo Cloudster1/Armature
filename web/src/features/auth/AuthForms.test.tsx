@@ -151,11 +151,16 @@ describe("LoginForm", () => {
 
   it("goes back to the password once the code step has run out", async () => {
     const reset = vi.fn();
-    mockLogin({ mutate: vi.fn((_input, options) => options?.onSuccess?.({ challenge: "c1", expiresInSeconds: 300 })), reset } as Partial<ReturnType<typeof baseLogin>>);
+    mockLogin({ mutate: vi.fn((_input, options) => options?.onSuccess?.({ challenge: "c1", expiresInSeconds: 300 })), reset } as Partial<
+      ReturnType<typeof baseLogin>
+    >);
     finish.mockReturnValue({
       ...baseLogin(),
       reset: vi.fn(),
-      error: new ApiError(410, { code: "challenge_invalid", message: "This sign-in has expired or had too many wrong codes. Sign in again with your password." }),
+      error: new ApiError(410, {
+        code: "challenge_invalid",
+        message: "This sign-in has expired or had too many wrong codes. Sign in again with your password.",
+      }),
     });
 
     wrap(<LoginForm />);

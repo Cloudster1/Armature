@@ -4,7 +4,23 @@ import { appRoute } from "./app";
 import { useAccess } from "@/api/access";
 import { LABEL_COLORS, useDeleteLabel, useLabels, useUpdateLabel, type Label } from "@/api/labels";
 import type { LabelColor } from "@/api/issues";
-import { Button, Choice, EmptyState, ErrorBanner, Field, ListSearch, Page, PageHeader, Pager, Table, Td, Th, clampOffset, isPageOffset, shownOf } from "@/components/ui";
+import {
+  Button,
+  Choice,
+  EmptyState,
+  ErrorBanner,
+  Field,
+  ListSearch,
+  Page,
+  PageHeader,
+  Pager,
+  Table,
+  Td,
+  Th,
+  clampOffset,
+  isPageOffset,
+  shownOf,
+} from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { LABEL_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -43,7 +59,8 @@ function LabelsPage() {
   const labels = data?.labels ?? [];
 
   const show = useCallback(
-    (next: LabelsSearch, replace = false) => navigate({ to: "/settings/labels", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
+    (next: LabelsSearch, replace = false) =>
+      navigate({ to: "/settings/labels", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
     [navigate],
   );
   // Labels leave the list while it is open; a page past the end steps back.
@@ -59,11 +76,20 @@ function LabelsPage() {
             Settings
           </Link>
         }
-        title="Labels" meta="Words shared by every project. A label is coined the first time somebody puts it on an issue." />
+        title="Labels"
+        meta="Words shared by every project. A label is coined the first time somebody puts it on an issue."
+      />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
       <div className="mb-3 flex items-center gap-3">
-        <ListSearch aria-label="Find labels" placeholder="Find a label" value={q} onChange={(text) => show({ q: text })} className="w-56" data-label-search="" />
+        <ListSearch
+          aria-label="Find labels"
+          placeholder="Find a label"
+          value={q}
+          onChange={(text) => show({ q: text })}
+          className="w-56"
+          data-label-search=""
+        />
         {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, labels.length, "label")}</span>}
       </div>
       {isLoading ? null : labels.length === 0 && q ? (
@@ -81,7 +107,14 @@ function LabelsPage() {
           </thead>
           <tbody>
             {labels.map((label) => (
-              <LabelRow key={label.id} label={label} canAdminister={canAdminister} onDelete={async () => (await confirm({ noun: "label", verb: "Remove", body: `${label.name} comes off every issue carrying it.` })) && remove.mutate(label.id)} />
+              <LabelRow
+                key={label.id}
+                label={label}
+                canAdminister={canAdminister}
+                onDelete={async () =>
+                  (await confirm({ noun: "label", verb: "Remove", body: `${label.name} comes off every issue carrying it.` })) && remove.mutate(label.id)
+                }
+              />
             ))}
           </tbody>
         </Table>
@@ -116,7 +149,13 @@ function LabelRow({ label, canAdminister, onDelete }: { label: Label; canAdminis
               <span className="block text-sm font-medium text-ink-muted">Colour</span>
               <span className="flex gap-1" role="radiogroup" aria-label="Colour">
                 {LABEL_COLORS.map((option) => (
-                  <Choice key={option} checked={option === color} aria-label={option} onSelect={() => setColor(option)} className={option === color ? "rounded ring-2 ring-accent" : "rounded"}>
+                  <Choice
+                    key={option}
+                    checked={option === color}
+                    aria-label={option}
+                    onSelect={() => setColor(option)}
+                    className={option === color ? "rounded ring-2 ring-accent" : "rounded"}
+                  >
                     <LabelChip label={{ name: option, color: option }} />
                   </Choice>
                 ))}

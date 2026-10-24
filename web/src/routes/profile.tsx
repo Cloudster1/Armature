@@ -94,7 +94,11 @@ function ProfilePage() {
                 Upload picture
               </Button>
               {user.avatarUrl && (
-                <Button variant="ghost" loading={removeAvatar.isPending} onClick={() => removeAvatar.mutate(undefined, { onSuccess: () => toast.success("Picture removed") })}>
+                <Button
+                  variant="ghost"
+                  loading={removeAvatar.isPending}
+                  onClick={() => removeAvatar.mutate(undefined, { onSuccess: () => toast.success("Picture removed") })}
+                >
                   Remove
                 </Button>
               )}
@@ -134,7 +138,12 @@ function ProfilePage() {
               </option>
             ))}
           </Select>
-          <Select label="Language" value={locale} onChange={(e) => setLocale(e.target.value)} hint="Changes how dates, times and numbers are written; the interface itself stays in English.">
+          <Select
+            label="Language"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value)}
+            hint="Changes how dates, times and numbers are written; the interface itself stays in English."
+          >
             {/* Empty is what a new account has: the browser decides, and the select says so. */}
             <option value="">Same as the browser ({browserLocale()})</option>
             {LOCALES.map((l) => (
@@ -194,7 +203,9 @@ function YourAbsences({ userId }: { userId: string }) {
     <section className="mt-8">
       <SectionTitle className="mb-2">Absences</SectionTitle>
       <Card className="space-y-3 p-5">
-        <p className="text-sm text-ink-muted">The days you are away, so the plan stops counting on you. Colleagues see the days and never a reason; there is nowhere to give one.</p>
+        <p className="text-sm text-ink-muted">
+          The days you are away, so the plan stops counting on you. Colleagues see the days and never a reason; there is nowhere to give one.
+        </p>
         <AbsenceEditor userId={userId} absences={data.absences} truncated={data.truncated} empty="You are not away from a month ago on." />
       </Card>
     </section>
@@ -231,7 +242,14 @@ function ChangePassword() {
         <form onSubmit={onSubmit} className="space-y-4" noValidate data-change-password>
           {change.error && <ErrorBanner>{(change.error as Error).message}</ErrorBanner>}
           <Field label="Current password" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
-          <Field label="New password" type="password" autoComplete="new-password" hint="At least 12 characters. Every other session of yours ends; this one stays." value={next} onChange={(e) => setNext(e.target.value)} />
+          <Field
+            label="New password"
+            type="password"
+            autoComplete="new-password"
+            hint="At least 12 characters. Every other session of yours ends; this one stays."
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+          />
           <Button type="submit" loading={change.isPending} disabled={!current || !next} data-action="change-password">
             Change password
           </Button>
@@ -253,19 +271,29 @@ function YourData({ name }: { name: string }) {
       <SectionTitle className="mb-2">Your data</SectionTitle>
       <Card className="space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-ink-muted">Everything held about you, as one JSON file: your profile, where you belong, your sessions, and what you reported, wrote and watched.</p>
+          <p className="text-sm text-ink-muted">
+            Everything held about you, as one JSON file: your profile, where you belong, your sessions, and what you reported, wrote and watched.
+          </p>
           <ButtonLink href={MY_DATA_HREF} download icon={<Icon.Download />} data-action="export-me">
             Download my data
           </ButtonLink>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <p className="text-sm text-ink-muted">Deleting your account ends every session and token and takes your name and address out. Issues and comments you wrote stay, by "Former user".</p>
+          <p className="text-sm text-ink-muted">
+            Deleting your account ends every session and token and takes your name and address out. Issues and comments you wrote stay, by "Former user".
+          </p>
           <Button
             variant="danger"
             loading={erase.isPending}
             data-action="erase-me"
             onClick={async () => {
-              if (await confirm({ noun: "account", verb: "Delete", body: `${name}'s name, address, sessions and tokens go for good. What you wrote stays, by "Former user".` })) {
+              if (
+                await confirm({
+                  noun: "account",
+                  verb: "Delete",
+                  body: `${name}'s name, address, sessions and tokens go for good. What you wrote stays, by "Former user".`,
+                })
+              ) {
                 erase.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) });
               }
             }}
@@ -297,13 +325,17 @@ function NotificationSettings() {
   if (!prefs) return null;
 
   const on = (map: Record<string, boolean>, kind: string) => map[kind] !== false;
-  const set = (channel: "mail" | "inapp", kind: string, value: boolean) =>
-    setDraft({ ...prefs, [channel]: { ...prefs[channel], [kind]: value } });
+  const set = (channel: "mail" | "inapp", kind: string, value: boolean) => setDraft({ ...prefs, [channel]: { ...prefs[channel], [kind]: value } });
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!prefs) return;
-    save.mutate(prefs, { onSuccess: () => { setDraft(null); toast.success("Notification settings saved"); } });
+    save.mutate(prefs, {
+      onSuccess: () => {
+        setDraft(null);
+        toast.success("Notification settings saved");
+      },
+    });
   }
 
   return (
@@ -319,16 +351,37 @@ function NotificationSettings() {
             {NOTIFICATION_KINDS.map(({ kind, label }) => (
               <Fragment key={kind}>
                 <span className="text-ink">{label}</span>
-                <Checkbox label={<span className="sr-only">{label} here, under Notifications</span>} checked={on(prefs.inapp, kind)} onChange={(e) => set("inapp", kind, e.target.checked)} data-pref-inapp={kind} />
-                <Checkbox label={<span className="sr-only">{label} by mail</span>} checked={on(prefs.mail, kind)} onChange={(e) => set("mail", kind, e.target.checked)} data-pref-mail={kind} />
+                <Checkbox
+                  label={<span className="sr-only">{label} here, under Notifications</span>}
+                  checked={on(prefs.inapp, kind)}
+                  onChange={(e) => set("inapp", kind, e.target.checked)}
+                  data-pref-inapp={kind}
+                />
+                <Checkbox
+                  label={<span className="sr-only">{label} by mail</span>}
+                  checked={on(prefs.mail, kind)}
+                  onChange={(e) => set("mail", kind, e.target.checked)}
+                  data-pref-mail={kind}
+                />
               </Fragment>
             ))}
           </div>
           <div className="space-y-1">
-            <Checkbox label="Watch the issues I report or am assigned" checked={prefs.watchOwn} onChange={(e) => setDraft({ ...prefs, watchOwn: e.target.checked })} data-pref-watch-own />
+            <Checkbox
+              label="Watch the issues I report or am assigned"
+              checked={prefs.watchOwn}
+              onChange={(e) => setDraft({ ...prefs, watchOwn: e.target.checked })}
+              data-pref-watch-own
+            />
             <p className="text-sm text-ink-subtle">Off, you hear about them only when you watch one yourself, are assigned it or are mentioned.</p>
           </div>
-          <Select label="Mail arrives" value={prefs.digest} onChange={(e) => setDraft({ ...prefs, digest: e.target.value as NotificationPreferences["digest"] })} id="field-digest" hint="Bundled mail lists everything since the last one, in one message.">
+          <Select
+            label="Mail arrives"
+            value={prefs.digest}
+            onChange={(e) => setDraft({ ...prefs, digest: e.target.value as NotificationPreferences["digest"] })}
+            id="field-digest"
+            hint="Bundled mail lists everything since the last one, in one message."
+          >
             <option value="off">As it happens</option>
             <option value="hourly">Bundled, once an hour</option>
             <option value="daily">Bundled, once a day</option>

@@ -62,7 +62,16 @@ export function composeQuery(spec: FilterSpec, savedQuery: SavedQueryLookup = ()
 
 /** How many of the tile's controls say something, for the badge on the tile. */
 export function activeCount(spec: FilterSpec): number {
-  return [spec.types.length > 0, spec.team !== "", spec.assignee !== "", spec.category !== "", spec.days > 0, spec.milestone !== "", spec.query.trim() !== "", spec.filterId !== ""].filter(Boolean).length;
+  return [
+    spec.types.length > 0,
+    spec.team !== "",
+    spec.assignee !== "",
+    spec.category !== "",
+    spec.days > 0,
+    spec.milestone !== "",
+    spec.query.trim() !== "",
+    spec.filterId !== "",
+  ].filter(Boolean).length;
 }
 
 export function isEmpty(spec: FilterSpec): boolean {

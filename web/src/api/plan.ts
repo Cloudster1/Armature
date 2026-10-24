@@ -129,15 +129,8 @@ export function usePlan(projectKey: string, query = "") {
 export function useSchedule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      key,
-      startDate,
-      dueDate,
-    }: {
-      key: string;
-      startDate?: string | null;
-      dueDate?: string | null;
-    }) => request<{ issue: Issue }>(`/issues/${key}/schedule`, { method: "PUT", body: { startDate, dueDate } }),
+    mutationFn: ({ key, startDate, dueDate }: { key: string; startDate?: string | null; dueDate?: string | null }) =>
+      request<{ issue: Issue }>(`/issues/${key}/schedule`, { method: "PUT", body: { startDate, dueDate } }),
     // One issue's dates change the roll-up of everything above it.
     onSuccess: () => queryClient.invalidateQueries(),
   });
@@ -242,8 +235,7 @@ export function useAddLink() {
 export function useRemoveLink() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ key, linkId }: { key: string; linkId: string }) =>
-      request<void>(`/issues/${key}/links/${linkId}`, { method: "DELETE" }),
+    mutationFn: ({ key, linkId }: { key: string; linkId: string }) => request<void>(`/issues/${key}/links/${linkId}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }

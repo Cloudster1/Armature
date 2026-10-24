@@ -3,7 +3,17 @@ import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useMe } from "@/api/auth";
 import { useAccess } from "@/api/access";
-import { themeExportHref, useActiveTheme, useChooseTheme, useDeleteTheme, useImportTheme, useSetDefaultTheme, useThemes, useUpdateTheme, type Theme } from "@/api/themes";
+import {
+  themeExportHref,
+  useActiveTheme,
+  useChooseTheme,
+  useDeleteTheme,
+  useImportTheme,
+  useSetDefaultTheme,
+  useThemes,
+  useUpdateTheme,
+  type Theme,
+} from "@/api/themes";
 import { Button, EmptyState, ErrorBanner, IconButton, Menu, Page, PageHeader, Segmented, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -66,16 +76,30 @@ function ThemesPage() {
         actions={
           <>
             {seen && source === "everyone" && (
-              <Button variant="secondary" onClick={() => choose.mutate({ builtIn: true }, { onSuccess: () => toast.success("Back to the built-in theme") })} data-action="built-in-theme">
+              <Button
+                variant="secondary"
+                onClick={() => choose.mutate({ builtIn: true }, { onSuccess: () => toast.success("Back to the built-in theme") })}
+                data-action="built-in-theme"
+              >
                 Use the built-in theme
               </Button>
             )}
             {!seen && orgDefault && (
-              <Button variant="secondary" onClick={() => choose.mutate(null, { onSuccess: () => toast.success(`Now using ${orgDefault.name}`) })} data-action="org-default-theme">
+              <Button
+                variant="secondary"
+                onClick={() => choose.mutate(null, { onSuccess: () => toast.success(`Now using ${orgDefault.name}`) })}
+                data-action="org-default-theme"
+              >
                 Use everyone's default
               </Button>
             )}
-            <Button variant="secondary" icon={<Icon.Upload />} loading={importTheme.isPending} onClick={() => fileInput.current?.click()} data-action="import-theme">
+            <Button
+              variant="secondary"
+              icon={<Icon.Upload />}
+              loading={importTheme.isPending}
+              onClick={() => fileInput.current?.click()}
+              data-action="import-theme"
+            >
               Import theme
             </Button>
             <input
@@ -159,25 +183,76 @@ function ThemesPage() {
                     <Menu
                       label={`Actions for ${t.name}`}
                       align="end"
-                      trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${t.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-action="theme-menu" />}
+                      trigger={(props) => (
+                        <IconButton
+                          icon={<Icon.More />}
+                          label={`Actions for ${t.name}`}
+                          size="sm"
+                          onClick={props.toggle}
+                          aria-haspopup={props["aria-haspopup"]}
+                          aria-expanded={props["aria-expanded"]}
+                          data-action="theme-menu"
+                        />
+                      )}
                       items={[
                         t.active
-                          ? { label: "Stop using", icon: <Icon.X />, onSelect: () => choose.mutate(null, { onSuccess: () => toast.success(orgDefault ? "Back to everyone's default" : "Back to the built-in theme") }), attrs: { "data-action": "stop-theme" } }
-                          : { label: "Use this theme", icon: <Icon.Check />, onSelect: () => choose.mutate(t.id, { onSuccess: () => toast.success(`Now using ${t.name}`) }), attrs: { "data-action": "use-theme" } },
+                          ? {
+                              label: "Stop using",
+                              icon: <Icon.X />,
+                              onSelect: () =>
+                                choose.mutate(null, {
+                                  onSuccess: () => toast.success(orgDefault ? "Back to everyone's default" : "Back to the built-in theme"),
+                                }),
+                              attrs: { "data-action": "stop-theme" },
+                            }
+                          : {
+                              label: "Use this theme",
+                              icon: <Icon.Check />,
+                              onSelect: () => choose.mutate(t.id, { onSuccess: () => toast.success(`Now using ${t.name}`) }),
+                              attrs: { "data-action": "use-theme" },
+                            },
                         ...(administers && t.shared
                           ? [
                               t.default
-                                ? { label: "No longer everyone's default", icon: <Icon.X />, onSelect: () => setDefault.mutate(null, { onSuccess: () => toast.success("Everyone sees the built-in theme again") }), attrs: { "data-action": "undefault-theme" } }
-                                : { label: "Make it everyone's default", icon: <Icon.Users />, onSelect: () => setDefault.mutate(t.id, { onSuccess: () => toast.success(`${t.name} is what everybody sees until they choose`) }), attrs: { "data-action": "default-theme" } },
+                                ? {
+                                    label: "No longer everyone's default",
+                                    icon: <Icon.X />,
+                                    onSelect: () => setDefault.mutate(null, { onSuccess: () => toast.success("Everyone sees the built-in theme again") }),
+                                    attrs: { "data-action": "undefault-theme" },
+                                  }
+                                : {
+                                    label: "Make it everyone's default",
+                                    icon: <Icon.Users />,
+                                    onSelect: () =>
+                                      setDefault.mutate(t.id, { onSuccess: () => toast.success(`${t.name} is what everybody sees until they choose`) }),
+                                    attrs: { "data-action": "default-theme" },
+                                  },
                             ]
                           : []),
-                        { label: "Edit", icon: <Icon.Edit />, disabled: !editable, onSelect: () => navigate({ to: "/settings/themes/$themeId", params: { themeId: t.id } }), attrs: { "data-action": "edit-theme" } },
-                        { label: "Export as a file", icon: <Icon.Download />, onSelect: () => { window.location.href = themeExportHref(t.id); }, attrs: { "data-action": "export-theme" } },
+                        {
+                          label: "Edit",
+                          icon: <Icon.Edit />,
+                          disabled: !editable,
+                          onSelect: () => navigate({ to: "/settings/themes/$themeId", params: { themeId: t.id } }),
+                          attrs: { "data-action": "edit-theme" },
+                        },
+                        {
+                          label: "Export as a file",
+                          icon: <Icon.Download />,
+                          onSelect: () => {
+                            window.location.href = themeExportHref(t.id);
+                          },
+                          attrs: { "data-action": "export-theme" },
+                        },
                         {
                           label: t.shared ? "Stop sharing" : "Share with everyone",
                           icon: <Icon.Share />,
                           disabled: !editable,
-                          onSelect: () => update.mutate({ id: t.id, shared: !t.shared }, { onSuccess: () => toast.success(t.shared ? `${t.name} is yours alone again` : `${t.name} is shared with everyone`) }),
+                          onSelect: () =>
+                            update.mutate(
+                              { id: t.id, shared: !t.shared },
+                              { onSuccess: () => toast.success(t.shared ? `${t.name} is yours alone again` : `${t.name} is shared with everyone`) },
+                            ),
                           attrs: { "data-action": "share-theme" },
                         },
                         {
@@ -186,7 +261,12 @@ function ThemesPage() {
                           danger: true,
                           disabled: !editable,
                           onSelect: async () => {
-                            const using = t.inUse === 0 ? "Nobody is using it." : t.inUse === 1 ? "The one person using it goes back to the built-in theme." : `The ${t.inUse} people using it go back to the built-in theme.`;
+                            const using =
+                              t.inUse === 0
+                                ? "Nobody is using it."
+                                : t.inUse === 1
+                                  ? "The one person using it goes back to the built-in theme."
+                                  : `The ${t.inUse} people using it go back to the built-in theme.`;
                             if (await confirm({ noun: "theme", verb: "Delete", body: `${t.name} and its files go for good. ${using}` })) {
                               remove.mutate(t.id, { onSuccess: () => toast.success(`Deleted ${t.name}`) });
                             }

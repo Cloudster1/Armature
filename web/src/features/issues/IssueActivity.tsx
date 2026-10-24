@@ -55,7 +55,6 @@ function projectOf(issueKey: string): string {
   return issueKey.slice(0, issueKey.lastIndexOf("-"));
 }
 
-
 // Only the author rewrites a comment; whoever administers the project may also
 // take one down, which the server allows for the same reason.
 function CommentItem({ comment, issueKey, mine, administers }: { comment: Comment; issueKey: string; mine: boolean; administers: boolean }) {
@@ -110,7 +109,15 @@ function CommentEditor({ comment, issueKey, close }: { comment: Comment; issueKe
 
   return (
     <div className="mt-1 space-y-2">
-      <Editor id={`comment-${comment.id}`} value={comment.body} onChange={setDraft} findPeople={findPeople} autoFocus aria-label="Edit comment" onSubmit={save} />
+      <Editor
+        id={`comment-${comment.id}`}
+        value={comment.body}
+        onChange={setDraft}
+        findPeople={findPeople}
+        autoFocus
+        aria-label="Edit comment"
+        onSubmit={save}
+      />
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
       <div className="flex gap-2">
         <Button size="sm" loading={update.isPending} disabled={!draft} onClick={save} data-action="save-comment">
@@ -163,10 +170,13 @@ function CommentForm({ issueKey }: { issueKey: string }) {
     const send = internal ? note : add;
     send
       .mutateAsync({ key: issueKey, body })
-      .then(() => {
-        forgetDraft("comment", issueKey);
-        editor.current?.clear();
-      }, () => {})
+      .then(
+        () => {
+          forgetDraft("comment", issueKey);
+          editor.current?.clear();
+        },
+        () => {},
+      )
       .finally(() => {
         posting.current = false;
       });
@@ -179,17 +189,40 @@ function CommentForm({ issueKey }: { issueKey: string }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-2">
-      <Editor id="new-comment" value={opened} onChange={change} findPeople={findPeople} rows={3} placeholder="Add a comment; @ names somebody" aria-label="Add a comment" onSubmit={post} handle={(h) => (editor.current = h)} />
+      <Editor
+        id="new-comment"
+        value={opened}
+        onChange={change}
+        findPeople={findPeople}
+        rows={3}
+        placeholder="Add a comment; @ names somebody"
+        aria-label="Add a comment"
+        onSubmit={post}
+        handle={(h) => (editor.current = h)}
+      />
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm" loading={add.isPending || note.isPending} disabled={!body}>
           {internal ? "Add note" : "Comment"}
         </Button>
-        <Checkbox label="Internal note, not shown to the customer" checked={internal} onChange={(e) => setInternal(e.target.checked)} data-action="internal-note" className="text-ink-muted" />
+        <Checkbox
+          label="Internal note, not shown to the customer"
+          checked={internal}
+          onChange={(e) => setInternal(e.target.checked)}
+          data-action="internal-note"
+          className="text-ink-muted"
+        />
         {isDesk && canned.length > 0 && (
           <Menu
             label="Insert a canned response"
             trigger={(props) => (
-              <Button variant="ghost" size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-action="canned-responses">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={props.toggle}
+                aria-haspopup={props["aria-haspopup"]}
+                aria-expanded={props["aria-expanded"]}
+                data-action="canned-responses"
+              >
                 Canned response
               </Button>
             )}

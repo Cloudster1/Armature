@@ -43,7 +43,10 @@ export function RoleMatrix() {
   return (
     <div className="space-y-4" data-role-matrix>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-muted">A tick is saved at once, and everybody holding the role has it from their next request. The built-in roles stay; the global administrator always administers Armature.</p>
+        <p className="text-sm text-ink-muted">
+          A tick is saved at once, and everybody holding the role has it from their next request. The built-in roles stay; the global administrator always
+          administers Armature.
+        </p>
         {administers && (
           <Button icon={<Icon.Plus />} onClick={() => setAdding(true)} data-action="new-role">
             New role
@@ -58,20 +61,39 @@ export function RoleMatrix() {
             {roles.map((role) => (
               <Th key={role.role} className="text-center align-top" data-role-column={role.role}>
                 <span className="inline-flex flex-col items-center gap-1 normal-case tracking-normal">
-                  <span className="whitespace-nowrap text-xs font-medium text-ink" title={role.description}>{role.name}</span>
+                  <span className="whitespace-nowrap text-xs font-medium text-ink" title={role.description}>
+                    {role.name}
+                  </span>
                   <span className="inline-flex items-center gap-1">
-                  {role.builtin && <Tag className="whitespace-nowrap">Built in</Tag>}
-                  {administers && (
-                    <Menu
-                      label={`Actions for ${role.name}`}
-                      align="end"
-                      trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${role.name}`} size="xs" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-action="role-menu" />}
-                      items={[
-                        { label: "Rename or describe", icon: <Icon.Edit />, onSelect: () => setRenaming(role), attrs: { "data-action": "rename-role" } },
-                        { label: "Delete", icon: <Icon.Trash />, danger: true, disabled: role.builtin, onSelect: () => void drop(role), attrs: { "data-action": "delete-role" } },
-                      ]}
-                    />
-                  )}
+                    {role.builtin && <Tag className="whitespace-nowrap">Built in</Tag>}
+                    {administers && (
+                      <Menu
+                        label={`Actions for ${role.name}`}
+                        align="end"
+                        trigger={(props) => (
+                          <IconButton
+                            icon={<Icon.More />}
+                            label={`Actions for ${role.name}`}
+                            size="xs"
+                            onClick={props.toggle}
+                            aria-haspopup={props["aria-haspopup"]}
+                            aria-expanded={props["aria-expanded"]}
+                            data-action="role-menu"
+                          />
+                        )}
+                        items={[
+                          { label: "Rename or describe", icon: <Icon.Edit />, onSelect: () => setRenaming(role), attrs: { "data-action": "rename-role" } },
+                          {
+                            label: "Delete",
+                            icon: <Icon.Trash />,
+                            danger: true,
+                            disabled: role.builtin,
+                            onSelect: () => void drop(role),
+                            attrs: { "data-action": "delete-role" },
+                          },
+                        ]}
+                      />
+                    )}
                   </span>
                 </span>
               </Th>
@@ -122,7 +144,12 @@ function NewRoleDialog({ onClose }: { onClose: () => void }) {
     if (!name.trim()) return;
     create.mutate(
       { name: name.trim(), description: description.trim(), orgWideOnly, permissions: ["read"] },
-      { onSuccess: (made) => { toast.success(`Added ${made.role.name}; tick what it grants`); onClose(); } },
+      {
+        onSuccess: (made) => {
+          toast.success(`Added ${made.role.name}; tick what it grants`);
+          onClose();
+        },
+      },
     );
   }
   return (
@@ -157,7 +184,15 @@ function RenameRoleDialog({ role, onClose }: { role: RoleDescription; onClose: (
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    update.mutate({ role: role.role, name: name.trim(), description: description.trim() }, { onSuccess: () => { toast.success(`Saved ${name.trim()}`); onClose(); } });
+    update.mutate(
+      { role: role.role, name: name.trim(), description: description.trim() },
+      {
+        onSuccess: () => {
+          toast.success(`Saved ${name.trim()}`);
+          onClose();
+        },
+      },
+    );
   }
   return (
     <Dialog open onClose={onClose} title={`Rename ${role.name}`} attrs={{ "data-rename-role": role.role }}>

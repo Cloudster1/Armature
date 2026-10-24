@@ -13,7 +13,13 @@ export function MilestoneField({ issue }: { issue: Issue }) {
       <label htmlFor="issue-milestone" className="sr-only">
         Milestone
       </label>
-      <SelectInput id="issue-milestone" controlSize="sm" value={issue.milestoneId ?? ""} onChange={(event) => setMilestone.mutate({ key: issue.key, milestoneId: event.target.value || null })} className="max-w-48">
+      <SelectInput
+        id="issue-milestone"
+        controlSize="sm"
+        value={issue.milestoneId ?? ""}
+        onChange={(event) => setMilestone.mutate({ key: issue.key, milestoneId: event.target.value || null })}
+        className="max-w-48"
+      >
         <option value="">None</option>
         {milestones.map((milestone) => (
           <option key={milestone.id} value={milestone.id}>
@@ -21,15 +27,9 @@ export function MilestoneField({ issue }: { issue: Issue }) {
           </option>
         ))}
         {/* A closed milestone is not offered, but the issue may already count towards one. */}
-        {issue.milestone && !milestones.some((m) => m.id === issue.milestone?.id) && (
-          <option value={issue.milestone.id}>{issue.milestone.name}</option>
-        )}
+        {issue.milestone && !milestones.some((m) => m.id === issue.milestone?.id) && <option value={issue.milestone.id}>{issue.milestone.name}</option>}
       </SelectInput>
-      {setMilestone.error && (
-        <span className="text-right text-2xs text-danger">
-          {(setMilestone.error as Error).message}
-        </span>
-      )}
+      {setMilestone.error && <span className="text-right text-2xs text-danger">{(setMilestone.error as Error).message}</span>}
     </span>
   );
 }

@@ -106,7 +106,13 @@ export function FilterTile({
         >
           <option value={UNASSIGNED}>Nobody yet</option>
         </PersonPicker>
-        <Select label="Saved search" id="field-saved-search" value={spec.filterId} onChange={(event) => onChange({ ...spec, filterId: event.target.value })} hint={spec.filterId ? savedQuery(spec.filterId) : undefined}>
+        <Select
+          label="Saved search"
+          id="field-saved-search"
+          value={spec.filterId}
+          onChange={(event) => onChange({ ...spec, filterId: event.target.value })}
+          hint={spec.filterId ? savedQuery(spec.filterId) : undefined}
+        >
           <option value="">None</option>
           {(savedData?.filters ?? []).map((f) => (
             <option key={f.id} value={f.id}>
@@ -131,7 +137,12 @@ export function FilterTile({
             </option>
           ))}
         </Select>
-        <Select label="Counted by" value={spec.field} disabled={spec.days === 0} onChange={(event) => onChange({ ...spec, field: event.target.value as DateField })}>
+        <Select
+          label="Counted by"
+          value={spec.field}
+          disabled={spec.days === 0}
+          onChange={(event) => onChange({ ...spec, field: event.target.value as DateField })}
+        >
           <option value="created">When created</option>
           <option value="updated">When updated</option>
           <option value="resolved">When resolved</option>
@@ -174,7 +185,10 @@ export function FilterTile({
           )}
         </form>
         {active > 0 && (
-          <Button variant="ghost" onClick={() => onChange({ ...spec, types: [], team: "", assignee: "", category: "", days: 0, milestone: "", query: "", filterId: "" })}>
+          <Button
+            variant="ghost"
+            onClick={() => onChange({ ...spec, types: [], team: "", assignee: "", category: "", days: 0, milestone: "", query: "", filterId: "" })}
+          >
             Clear filter
           </Button>
         )}

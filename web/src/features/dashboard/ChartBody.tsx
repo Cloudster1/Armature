@@ -26,9 +26,19 @@ function GroupsBody({ projectKey, widget, narrow }: BodyProps) {
   return (
     <div>
       <p className="mb-3 text-xs text-ink-subtle">{describeChart(widget.config ?? {})}</p>
-      {shape === "donut" ? <Donut arcs={donutLayout(groups)} tones={tones} total={figure(data.total)} /> : <Columns columns={columnLayout(groups)} tones={tones} segmentTones={partTones} />}
+      {shape === "donut" ? (
+        <Donut arcs={donutLayout(groups)} tones={tones} total={figure(data.total)} />
+      ) : (
+        <Columns columns={columnLayout(groups)} tones={tones} segmentTones={partTones} />
+      )}
       {stacked && partTones ? (
-        <Legend items={segmentNames(groups).map((label) => ({ label, value: groups.reduce((sum, g) => sum + (g.parts.find((p) => p.label === label)?.value ?? 0), 0) }))} tones={partTones} />
+        <Legend
+          items={segmentNames(groups).map((label) => ({
+            label,
+            value: groups.reduce((sum, g) => sum + (g.parts.find((p) => p.label === label)?.value ?? 0), 0),
+          }))}
+          tones={partTones}
+        />
       ) : (
         groups.length >= 2 && <Legend items={legend} tones={tones} />
       )}

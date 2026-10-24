@@ -60,7 +60,9 @@ export function DashboardGrid({
   const first = dashboard.widgets.find((w) => narrows.has(w.kind));
   const probe = useReport<Breakdown>(projectKey, (first?.kind ?? "status_breakdown") as ReportKind, first?.config ?? {}, first ? narrow : undefined);
   const failure: QueryFailure | undefined =
-    narrow && probe.error instanceof ApiError && probe.error.code === "bad_query" ? { message: probe.error.message, position: probe.error.position } : undefined;
+    narrow && probe.error instanceof ApiError && probe.error.code === "bad_query"
+      ? { message: probe.error.message, position: probe.error.position }
+      : undefined;
 
   // Removing a widget is undone by adding it back, so it asks nothing and
   // offers Undo instead.
@@ -68,7 +70,10 @@ export function DashboardGrid({
     remove.mutate(widget.id, {
       onSuccess: () =>
         toast.info(`Removed ${widget.title}`, {
-          action: { label: "Undo", onClick: () => add.mutate({ dashboardId: dashboard.id, kind: widget.kind, title: widget.title, width: widget.width, config: widget.config }) },
+          action: {
+            label: "Undo",
+            onClick: () => add.mutate({ dashboardId: dashboard.id, kind: widget.kind, title: widget.title, width: widget.width, config: widget.config }),
+          },
         }),
     });
   }
@@ -99,7 +104,12 @@ export function DashboardGrid({
                 arranging ? (
                   <div className="flex shrink-0 items-center gap-1">
                     <WidgetSettings projectKey={projectKey} widget={widget} onChange={(config) => update.mutate({ id: widget.id, config })} />
-                    <Button size="sm" variant="ghost" title="Narrower or wider" onClick={() => update.mutate({ id: widget.id, width: widget.width === 2 ? 1 : 2 })}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="Narrower or wider"
+                      onClick={() => update.mutate({ id: widget.id, width: widget.width === 2 ? 1 : 2 })}
+                    >
                       {widget.width === 2 ? "Half" : "Full"}
                     </Button>
                     <Button size="sm" variant="ghost" title="Move earlier" onClick={() => move(index, -1)} disabled={index === 0}>
@@ -137,7 +147,17 @@ export function DashboardGrid({
 
       {arranging && canDelete && (
         <div className="flex justify-end">
-          <Button size="sm" variant="ghost" loading={deleteDashboard.isPending} onClick={async () => (await confirm({ noun: "dashboard", body: `${dashboard.name} and its arrangement go; the numbers are computed from the issues and lose nothing.` })) && deleteDashboard.mutate(dashboard.id)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            loading={deleteDashboard.isPending}
+            onClick={async () =>
+              (await confirm({
+                noun: "dashboard",
+                body: `${dashboard.name} and its arrangement go; the numbers are computed from the issues and lose nothing.`,
+              })) && deleteDashboard.mutate(dashboard.id)
+            }
+          >
             Delete this dashboard
           </Button>
         </div>

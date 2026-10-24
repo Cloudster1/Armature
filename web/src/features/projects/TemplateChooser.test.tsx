@@ -11,7 +11,22 @@ vi.mock("@/api/projects", () => ({
 
 const { TemplateChooser, templateShape } = await import("./TemplateChooser");
 
-const everything: ProjectTemplate["features"] = ["board", "sprints", "plan", "calendar", "resources", "milestones", "releases", "components", "hierarchy", "dashboard", "teams", "repositories", "automation", "import"];
+const everything: ProjectTemplate["features"] = [
+  "board",
+  "sprints",
+  "plan",
+  "calendar",
+  "resources",
+  "milestones",
+  "releases",
+  "components",
+  "hierarchy",
+  "dashboard",
+  "teams",
+  "repositories",
+  "automation",
+  "import",
+];
 
 const kanban: ProjectTemplate = {
   key: "kanban",

@@ -61,9 +61,7 @@ export function AttachmentPanel({
   return (
     <section data-attachments>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
-          Attachments {attachments.length > 0 && `(${attachments.length})`}
-        </h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Attachments {attachments.length > 0 && `(${attachments.length})`}</h2>
         {editable && (
           <>
             <input ref={input} type="file" className="sr-only" aria-label="Attach a file" onChange={onPick} />
@@ -106,7 +104,18 @@ export function AttachmentPanel({
                 {a.uploader?.name ?? "Armature"} · <RelativeTime iso={a.createdAt} />
               </span>
               {mayRemove(a.uploader?.id) && (
-                <Button size="sm" variant="ghost" aria-label={`Remove ${a.fileName}`} onClick={async () => (await confirm({ noun: "attachment", verb: "Remove", body: `${a.fileName} goes from the ${source === "portal" ? "request" : "issue"} and from storage.` })) && remove.mutate(a.id)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Remove ${a.fileName}`}
+                  onClick={async () =>
+                    (await confirm({
+                      noun: "attachment",
+                      verb: "Remove",
+                      body: `${a.fileName} goes from the ${source === "portal" ? "request" : "issue"} and from storage.`,
+                    })) && remove.mutate(a.id)
+                  }
+                >
                   Remove
                 </Button>
               )}

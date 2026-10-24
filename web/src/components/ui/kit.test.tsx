@@ -85,13 +85,7 @@ describe("ErrorBanner", () => {
 
 describe("EmptyState", () => {
   it("renders its title, description and action", () => {
-    render(
-      <EmptyState
-        title="No tokens yet"
-        description="Create one to get started."
-        action={<Button>Create</Button>}
-      />,
-    );
+    render(<EmptyState title="No tokens yet" description="Create one to get started." action={<Button>Create</Button>} />);
     expect(screen.getByText("No tokens yet")).toBeInTheDocument();
     expect(screen.getByText("Create one to get started.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();

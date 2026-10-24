@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  PLAN_HEADER_ROW_HEIGHT,
-  PLAN_MILESTONE_BAND_HEIGHT,
-  PLAN_MILESTONE_FLAG_WIDTH,
-  PLAN_SPRINT_BAND_HEIGHT,
-} from "@/config";
+import { PLAN_HEADER_ROW_HEIGHT, PLAN_MILESTONE_BAND_HEIGHT, PLAN_MILESTONE_FLAG_WIDTH, PLAN_SPRINT_BAND_HEIGHT } from "@/config";
 import { flagSide, headerLayout, labelledFlags } from "./layout";
 
 describe("headerLayout", () => {

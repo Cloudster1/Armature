@@ -5,7 +5,13 @@ import type { ReactNode } from "react";
 const state = { admin: false };
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to, hash, search, ...rest }: { children: ReactNode; to: string; hash?: string; search?: Record<string, string> } & Record<string, unknown>) => {
+  Link: ({
+    children,
+    to,
+    hash,
+    search,
+    ...rest
+  }: { children: ReactNode; to: string; hash?: string; search?: Record<string, string> } & Record<string, unknown>) => {
     const query = search ? `?${new URLSearchParams(search)}` : "";
     const { className } = rest as { className?: string };
     return (
@@ -24,7 +30,8 @@ const { settingsRoute } = await import("./settings");
 const { axeViolations } = await import("@/test/axe");
 const SettingsHub = (settingsRoute as unknown as { component: () => ReactNode }).component;
 
-const links = (group: string) => Array.from(document.querySelectorAll(`[data-settings-group="${group}"] [data-settings-link]`)).map((a) => a.getAttribute("data-settings-link"));
+const links = (group: string) =>
+  Array.from(document.querySelectorAll(`[data-settings-group="${group}"] [data-settings-link]`)).map((a) => a.getAttribute("data-settings-link"));
 
 afterEach(() => {
   cleanup();
@@ -42,7 +49,20 @@ describe("the settings hub", () => {
   it("gives an administrator the Settings card, Issue view among it", () => {
     state.admin = true;
     render(<SettingsHub />);
-    expect(links("Settings")).toEqual(["Installation", "Access", "Users", "Holidays", "Workflows", "Labels", "Automation", "Fields", "Issue view", "Connected apps", "Webhooks", "Audit log"]);
+    expect(links("Settings")).toEqual([
+      "Installation",
+      "Access",
+      "Users",
+      "Holidays",
+      "Workflows",
+      "Labels",
+      "Automation",
+      "Fields",
+      "Issue view",
+      "Connected apps",
+      "Webhooks",
+      "Audit log",
+    ]);
     expect(document.querySelector('a[href="/settings/issue-view"]')).not.toBeNull();
   });
 });

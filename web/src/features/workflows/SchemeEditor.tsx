@@ -62,12 +62,7 @@ export function SchemeEditor({ scheme, onDone }: { scheme?: Scheme; onDone: () =
 
   return (
     <Card className="space-y-4 p-4">
-      <Field
-        label="Scheme name"
-        value={name}
-        placeholder="Support project workflows"
-        onChange={(event) => setName(event.target.value)}
-      />
+      <Field label="Scheme name" value={name} placeholder="Support project workflows" onChange={(event) => setName(event.target.value)} />
 
       <div className="space-y-2">
         {items.map((item, at) => (
@@ -75,13 +70,7 @@ export function SchemeEditor({ scheme, onDone }: { scheme?: Scheme; onDone: () =
             <SelectInput
               aria-label="Issue type"
               value={item.issueTypeId}
-              onChange={(event) =>
-                setItems((current) =>
-                  current.map((each, index) =>
-                    index === at ? { ...each, issueTypeId: event.target.value } : each,
-                  ),
-                )
-              }
+              onChange={(event) => setItems((current) => current.map((each, index) => (index === at ? { ...each, issueTypeId: event.target.value } : each)))}
               className="w-44"
             >
               <option value={FALLBACK}>Everything else</option>
@@ -100,29 +89,17 @@ export function SchemeEditor({ scheme, onDone }: { scheme?: Scheme; onDone: () =
               chosenName={item.workflowName}
               leading={!item.workflowId && <option value="">Choose a workflow</option>}
               onChange={(workflowId, workflowName) =>
-                setItems((current) =>
-                  current.map((each, index) => (index === at ? { ...each, workflowId, workflowName } : each)),
-                )
+                setItems((current) => current.map((each, index) => (index === at ? { ...each, workflowId, workflowName } : each)))
               }
             />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setItems((current) => current.filter((_, index) => index !== at))}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setItems((current) => current.filter((_, index) => index !== at))}>
               Remove
             </Button>
           </div>
         ))}
       </div>
 
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() =>
-          setItems((current) => [...current, { ...UNCHOSEN }])
-        }
-      >
+      <Button variant="secondary" size="sm" onClick={() => setItems((current) => [...current, { ...UNCHOSEN }])}>
         Add a mapping
       </Button>
 

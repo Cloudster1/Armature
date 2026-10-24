@@ -35,7 +35,8 @@ export function describeChart(config: WidgetConfig): string {
     return `${what} ${counts} per ${config.interval === "month" ? "month" : "week"}${by}`;
   }
   const by = fieldLabel[(config.groupBy as GroupField) ?? "status"] ?? "status";
-  const split = config.shape === "stacked" && config.splitBy && config.splitBy in fieldLabel ? `, split by ${fieldLabel[config.splitBy as GroupField].toLowerCase()}` : "";
+  const split =
+    config.shape === "stacked" && config.splitBy && config.splitBy in fieldLabel ? `, split by ${fieldLabel[config.splitBy as GroupField].toLowerCase()}` : "";
   return `${what} by ${by.toLowerCase()}${split}`;
 }
 
@@ -59,7 +60,10 @@ const categoryTone: Record<string, string> = {
  */
 export function tonesFor(groups: ChartGroup[]): Map<string, string> {
   const tones = new Map<string, string>();
-  const named = groups.filter((g) => g.label !== OTHER).map((g) => g.label).sort((a, b) => a.localeCompare(b));
+  const named = groups
+    .filter((g) => g.label !== OTHER)
+    .map((g) => g.label)
+    .sort((a, b) => a.localeCompare(b));
   named.forEach((label, index) => tones.set(label, CHART_TONES[index % CHART_TONES.length]!));
   for (const g of groups) {
     if (g.category && categoryTone[g.category]) tones.set(g.label, categoryTone[g.category]!);
@@ -122,7 +126,13 @@ export function arcPath(cx: number, cy: number, r: number, inner: number, start:
     return `${round(cx + radius * Math.cos(angle))} ${round(cy + radius * Math.sin(angle))}`;
   };
   const large = end - start > 0.5 ? 1 : 0;
-  return [`M${point(r, start)}`, `A${r} ${r} 0 ${large} 1 ${point(r, end)}`, `L${point(inner, end)}`, `A${inner} ${inner} 0 ${large} 0 ${point(inner, start)}`, "Z"].join(" ");
+  return [
+    `M${point(r, start)}`,
+    `A${r} ${r} 0 ${large} 1 ${point(r, end)}`,
+    `L${point(inner, end)}`,
+    `A${inner} ${inner} 0 ${large} 0 ${point(inner, start)}`,
+    "Z",
+  ].join(" ");
 }
 
 export interface Column {

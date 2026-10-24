@@ -113,11 +113,12 @@ describe("the generated client", () => {
   it("throws the shared ApiError from the error envelope", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify({ error: { code: "not_found", message: "That issue was not found." } }), {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        }),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: { code: "not_found", message: "That issue was not found." } }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          }),
       ),
     );
     const api = createApi("http://app.test/api/v1");

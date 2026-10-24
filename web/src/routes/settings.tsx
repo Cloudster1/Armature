@@ -34,7 +34,14 @@ function Group({ title, places }: { title: string; places: Place[] }) {
         {places.map((place) => {
           const Glyph = Icon[place.icon];
           return (
-            <Link key={placeKey(place)} to={place.to} search={place.search as never} hash={place.hash} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-raised" data-settings-link={place.label}>
+            <Link
+              key={placeKey(place)}
+              to={place.to}
+              search={place.search as never}
+              hash={place.hash}
+              className="flex items-center gap-3 px-4 py-3 hover:bg-surface-raised"
+              data-settings-link={place.label}
+            >
               <Glyph className="shrink-0 text-ink-muted" />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-ink">{place.label}</span>

@@ -42,7 +42,10 @@ vi.mock("@/api/issues", async () => ({
 }));
 
 vi.mock("@/api/people", () => ({
-  useMemberSearch: () => ({ data: { members: [{ id: "u1", name: "Ada", email: "ada@example.com", role: "member" }], total: 1, limit: 20, offset: 0 }, isLoading: false }),
+  useMemberSearch: () => ({
+    data: { members: [{ id: "u1", name: "Ada", email: "ada@example.com", role: "member" }], total: 1, limit: 20, offset: 0 },
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/api/projects", async () => ({
@@ -59,7 +62,18 @@ vi.mock("@/api/arrange", async () => ({
   }),
 }));
 
-const severity: Field = { id: SEVERITY, projectId: "p1", projectKey: "CP", org: false, name: "Severity", kind: "select", options: ["Low", "High"], position: 0, createdAt: "", updatedAt: "" };
+const severity: Field = {
+  id: SEVERITY,
+  projectId: "p1",
+  projectKey: "CP",
+  org: false,
+  name: "Severity",
+  kind: "select",
+  options: ["Low", "High"],
+  position: 0,
+  createdAt: "",
+  updatedAt: "",
+};
 
 vi.mock("@/api/fields", async () => ({
   ...(await vi.importActual<typeof import("@/api/fields")>("@/api/fields")),
@@ -90,7 +104,9 @@ vi.mock("@/api/versions", async () => ({
 vi.mock("@/api/labels", async () => ({
   ...(await vi.importActual<typeof import("@/api/labels")>("@/api/labels")),
   useLabels: () => ({ data: { labels: [{ name: "regression" }] }, isLoading: false }),
-  useLabelSearch: (q: string) => ({ data: q ? { labels: [{ id: "l1", name: "regression", color: "red", issueCount: 3 }].filter((l) => l.name.includes(q)) } : undefined }),
+  useLabelSearch: (q: string) => ({
+    data: q ? { labels: [{ id: "l1", name: "regression", color: "red", issueCount: 3 }].filter((l) => l.name.includes(q)) } : undefined,
+  }),
 }));
 
 const { ToastProvider } = await import("@/components/ui");
@@ -135,16 +151,7 @@ describe("CreateIssueDialog", () => {
     draw();
     const labels = asked();
     expect(labels.slice(0, 2)).toEqual(["Summary", "Type"]);
-    expect(labels.slice(2)).toEqual([
-      "Description",
-      "Assignee",
-      "Reporter",
-      "Sprint",
-      "Milestone",
-      "Priority",
-      "Labels",
-      "Severity",
-    ]);
+    expect(labels.slice(2)).toEqual(["Description", "Assignee", "Reporter", "Sprint", "Milestone", "Priority", "Labels", "Severity"]);
   });
 
   // Labels are everybody's; the form offers one only when its start is typed.
@@ -210,7 +217,9 @@ describe("CreateIssueDialog", () => {
   // holding it up, and it is one request per thing.
   it("applies what the create request cannot carry", async () => {
     draw();
-    state.created.mockImplementation((_body: unknown, opts: { onSuccess: (r: { issue: { key: string } }) => void }) => opts.onSuccess({ issue: { key: "CP-7" } }));
+    state.created.mockImplementation((_body: unknown, opts: { onSuccess: (r: { issue: { key: string } }) => void }) =>
+      opts.onSuccess({ issue: { key: "CP-7" } }),
+    );
 
     await userEvent.type(screen.getByLabelText("Summary"), "Login loops");
     await userEvent.selectOptions(screen.getByLabelText("Reporter"), "u1");
@@ -232,7 +241,9 @@ describe("CreateIssueDialog", () => {
   // also cannot be made a second time by pressing the button again.
   it("names the issue it made, says what did not stick, and will not make it twice", async () => {
     draw();
-    state.created.mockImplementation((_body: unknown, opts: { onSuccess: (r: { issue: { key: string } }) => void }) => opts.onSuccess({ issue: { key: "CP-8" } }));
+    state.created.mockImplementation((_body: unknown, opts: { onSuccess: (r: { issue: { key: string } }) => void }) =>
+      opts.onSuccess({ issue: { key: "CP-8" } }),
+    );
     state.request = vi.fn().mockRejectedValue(new Error("Launch has already been reached"));
 
     await userEvent.type(screen.getByLabelText("Summary"), "Login loops");
@@ -259,7 +270,9 @@ describe("CreateIssueDialog", () => {
     Element.prototype.scrollIntoView = scrolled;
     try {
       draw();
-      state.created.mockImplementation((_body: unknown, opts: { onSuccess: (r: { issue: { key: string } }) => void }) => opts.onSuccess({ issue: { key: "CP-9" } }));
+      state.created.mockImplementation((_body: unknown, opts: { onSuccess: (r: { issue: { key: string } }) => void }) =>
+        opts.onSuccess({ issue: { key: "CP-9" } }),
+      );
       state.request = vi.fn().mockRejectedValue(new Error("Launch has already been reached"));
       await userEvent.type(screen.getByLabelText("Summary"), "Login loops");
       await userEvent.selectOptions(screen.getByLabelText("Milestone"), "m1");

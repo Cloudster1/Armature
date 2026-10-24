@@ -16,10 +16,7 @@ export function WorkflowGraph({ workflowId, caption }: { workflowId: string; cap
   const { data, isLoading, error } = useWorkflow(workflowId);
   const { data: statusData } = useStatuses();
   const { data: access } = useAccess();
-  const statuses = useMemo(
-    () => new Map((statusData?.statuses ?? []).map((status) => [status.id, status])),
-    [statusData],
-  );
+  const statuses = useMemo(() => new Map((statusData?.statuses ?? []).map((status) => [status.id, status])), [statusData]);
   const design = useMemo(() => (data ? fromWorkflow(data) : null), [data]);
 
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;

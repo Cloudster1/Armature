@@ -91,20 +91,14 @@ scenario("a team runs one sprint at a time", async ({ page }) => {
 
   await goto(page, `/projects/${key}/sprints`);
   await page.click('[data-sprint="Sprint 1"] button');
-  await page.waitForFunction(
-    () => document.body.innerText.includes("Running"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("Running"), { timeout: WAIT });
 
   // Starting the second is refused, and the refusal names the one in the way.
   await page.evaluate(() => {
     const card = document.querySelector('[data-sprint="Sprint 2"]');
     [...card.querySelectorAll("button")].find((b) => b.textContent.trim() === "Start sprint")?.click();
   });
-  await page.waitForFunction(
-    () => document.body.innerText.includes("Sprint 1 is already running"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("Sprint 1 is already running"), { timeout: WAIT });
 });
 
 scenario("completing a sprint carries the unfinished work onward", async ({ page }) => {
@@ -126,17 +120,11 @@ scenario("completing a sprint carries the unfinished work onward", async ({ page
 
   await selectByLabel(page, '[data-sprint="Sprint 1"] select', "Carry the rest to Sprint 2");
   await clickButton(page, "Complete sprint");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("Completed"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("Completed"), { timeout: WAIT });
 
   // The issue moved, and its changelog says so.
   await goto(page, `/issues/${unfinished}`);
-  await page.waitForFunction(
-    () => document.body.innerText.includes("Sprint 2"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("Sprint 2"), { timeout: WAIT });
   expect.contains(await bodyText(page), "Sprint 1", "the changelog records where it came from");
 });
 
@@ -160,10 +148,9 @@ scenario("a project splits into teams and each gets a board of its own", async (
   await clickButton(page, "Give Platform a board");
   await page.waitForSelector('[data-board="Platform board"]', { timeout: WAIT });
   // Every offer waits while one board is being made; a press before then is lost.
-  await page.waitForFunction(
-    () => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Give Portal a board" && !b.disabled),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Give Portal a board" && !b.disabled), {
+    timeout: WAIT,
+  });
   await clickButton(page, "Give Portal a board");
   await page.waitForSelector('[data-board="Portal board"]', { timeout: WAIT });
 
@@ -195,20 +182,12 @@ scenario("each team plans out of its own backlog", async ({ page }) => {
   await page.waitForSelector('[data-backlog-of="Platform"]', { timeout: WAIT });
 
   await page.click('[data-backlog-of="Platform"]');
-  await page.waitForFunction(
-    (k) => document.querySelector(`[data-issue="${k}"]`) !== null,
-    { timeout: WAIT },
-    mine,
-  );
+  await page.waitForFunction((k) => document.querySelector(`[data-issue="${k}"]`) !== null, { timeout: WAIT }, mine);
   let shown = await page.$$eval("[data-issue]", (els) => els.map((e) => e.getAttribute("data-issue")));
   expect.equal(shown.join(","), mine, "the platform backlog holds only platform work");
 
   await page.click('[data-backlog-of="Portal"]');
-  await page.waitForFunction(
-    (k) => document.querySelector(`[data-issue="${k}"]`) !== null,
-    { timeout: WAIT },
-    theirs,
-  );
+  await page.waitForFunction((k) => document.querySelector(`[data-issue="${k}"]`) !== null, { timeout: WAIT }, theirs);
   shown = await page.$$eval("[data-issue]", (els) => els.map((e) => e.getAttribute("data-issue")));
   expect.equal(shown.join(","), theirs, "and the portal backlog only portal work");
 });
@@ -219,33 +198,25 @@ scenario("two teams run sprints at the same time", async ({ page }) => {
   await createTeam(page, key, "Platform");
   await createTeam(page, key, "Portal");
 
-  for (const [team, name] of [["Platform", "Platform 1"], ["Portal", "Portal 1"]]) {
+  for (const [team, name] of [
+    ["Platform", "Platform 1"],
+    ["Portal", "Portal 1"],
+  ]) {
     await goto(page, `/projects/${key}/sprints`);
     await page.click(`[data-backlog-of="${team}"]`);
     await page.waitForSelector("#field-new-sprint", { timeout: WAIT });
     await page.type("#field-new-sprint", name);
     await clickButton(page, "Add sprint");
-    await page.waitForFunction(
-      (n) => document.querySelector(`[data-sprint="${n}"]`) !== null,
-      { timeout: WAIT },
-      name,
-    );
+    await page.waitForFunction((n) => document.querySelector(`[data-sprint="${n}"]`) !== null, { timeout: WAIT }, name);
     await planSprint(page, name, { from: "2026-03-02", to: "2026-03-13", capacity: 10 });
     await page.click(`[data-sprint="${name}"] button`);
-    await page.waitForFunction(
-      (n) => document.querySelector(`[data-sprint="${n}"]`)?.innerText.includes("Running"),
-      { timeout: WAIT },
-      name,
-    );
+    await page.waitForFunction((n) => document.querySelector(`[data-sprint="${n}"]`)?.innerText.includes("Running"), { timeout: WAIT }, name);
   }
 
   // Both are running, which is the whole point of separate backlogs.
   await goto(page, `/projects/${key}/sprints`);
   await page.click('[data-backlog-of="Platform"]');
-  await page.waitForFunction(
-    () => document.querySelector('[data-sprint="Platform 1"]')?.innerText.includes("Running"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelector('[data-sprint="Platform 1"]')?.innerText.includes("Running"), { timeout: WAIT });
 });
 
 scenario("a team carrying work cannot just be deleted", async ({ page }) => {
@@ -262,10 +233,7 @@ scenario("a team carrying work cannot just be deleted", async ({ page }) => {
     [...card.querySelectorAll("button")].find((b) => b.textContent.trim() === "Delete")?.click();
   });
   await confirm(page);
-  await page.waitForFunction(
-    () => document.body.innerText.includes("Platform still has 1 issue."),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("Platform still has 1 issue."), { timeout: WAIT });
 });
 
 // More than the largest page the API serves, so the old work is off the newest one.
@@ -284,38 +252,34 @@ scenario("an old committed issue stays in its sprint past the newest 200", async
   await commitIssue(page, old, "Sprint 3");
 
   // Filed through the API: two hundred trips through the dialog would test the dialog.
-  const filed = await page.evaluate(async (projectKey, count) => {
-    let made = 0;
-    for (let i = 0; i < count; i += 1) {
-      const response = await fetch(`/api/v1/projects/${projectKey}/issues`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary: `newer work ${i}` }),
-      });
-      if (response.ok) made += 1;
-    }
-    return made;
-  }, key, PAST_A_PAGE);
+  const filed = await page.evaluate(
+    async (projectKey, count) => {
+      let made = 0;
+      for (let i = 0; i < count; i += 1) {
+        const response = await fetch(`/api/v1/projects/${projectKey}/issues`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ summary: `newer work ${i}` }),
+        });
+        if (response.ok) made += 1;
+      }
+      return made;
+    },
+    key,
+    PAST_A_PAGE,
+  );
   expect.equal(filed, PAST_A_PAGE, "the newer work was filed");
 
   await goto(page, `/projects/${key}/sprints`);
-  await page.waitForFunction(
-    (k) => document.querySelector(`[data-sprint="Sprint 3"] [data-issue="${k}"]`) !== null,
-    { timeout: WAIT },
-    old,
-  );
+  await page.waitForFunction((k) => document.querySelector(`[data-sprint="Sprint 3"] [data-issue="${k}"]`) !== null, { timeout: WAIT }, old);
 
   // The card is not empty, so it is not offered for deletion.
   const buttons = await page.$$eval('[data-sprint="Sprint 3"] button', (els) => els.map((b) => b.textContent.trim()));
   expect.notContains(buttons.join(","), "Delete", "a sprint holding work is offered for deletion");
 
   // The backlog is every newer issue, and nothing that is done or committed.
-  await page.waitForFunction(
-    (n) => document.querySelector('[data-testid="backlog"] h2')?.innerText.includes(`(${n})`),
-    { timeout: WAIT },
-    PAST_A_PAGE,
-  );
+  await page.waitForFunction((n) => document.querySelector('[data-testid="backlog"] h2')?.innerText.includes(`(${n})`), { timeout: WAIT }, PAST_A_PAGE);
   const backlog = await page.$$eval('[data-testid="backlog"] [data-issue]', (els) => els.map((e) => e.getAttribute("data-issue")));
   expect.truthy(!backlog.includes(finished), "the finished work is not in the backlog");
   expect.truthy(!backlog.includes(old), "nor is the committed work");

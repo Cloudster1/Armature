@@ -69,10 +69,7 @@ export function DependencyGraph({
     return () => observer.disconnect();
   }, [pane]);
 
-  const cut = useMemo<Cut>(
-    () => ({ ...scope, matched: query && data ? new Set(data.matched) : null }),
-    [scope, query, data],
-  );
+  const cut = useMemo<Cut>(() => ({ ...scope, matched: query && data ? new Set(data.matched) : null }), [scope, query, data]);
   const shown = useMemo(() => filterItems(cutItems(data?.items ?? [], cut, new Date()), filters), [data?.items, cut, filters]);
   const visible = useMemo(() => new Map(flatten(shown).map((item) => [item.issue.key, item] as const)), [shown]);
   const inProject = useMemo(() => new Set(flatten(data?.items ?? []).map((item) => item.issue.key)), [data?.items]);

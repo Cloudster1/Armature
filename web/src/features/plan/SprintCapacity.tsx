@@ -14,9 +14,7 @@ export function SprintCapacity({ sprints }: { sprints: SprintPlan[] }) {
 
   return (
     <section>
-      <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">
-        Capacity
-      </h2>
+      <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Capacity</h2>
       <ul className="space-y-2" data-testid="plan-capacity">
         {sprints.map((plan) => (
           <CapacityRow key={plan.sprint.id} plan={plan} />
@@ -39,11 +37,7 @@ function CapacityRow({ plan }: { plan: SprintPlan }) {
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-medium text-ink">
           {plan.sprint.name}
-          {plan.sprint.state === "active" && (
-            <span className="ml-2 rounded-full bg-accent-subtle px-2 py-0.5 text-2xs font-medium text-accent">
-              Running
-            </span>
-          )}
+          {plan.sprint.state === "active" && <span className="ml-2 rounded-full bg-accent-subtle px-2 py-0.5 text-2xs font-medium text-accent">Running</span>}
         </span>
         <span className={cx("tabular-nums", over ? "text-danger" : "text-ink-muted")}>
           {number(plan.committed)}
@@ -59,14 +53,8 @@ function CapacityRow({ plan }: { plan: SprintPlan }) {
 
       <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface-raised">
         <div className="flex h-full">
-          <span
-            className="h-full bg-success"
-            style={{ width: `${(plan.completed / full) * 100}%` }}
-          />
-          <span
-            className={cx("h-full", over ? "bg-danger" : "bg-accent")}
-            style={{ width: `${((plan.committed - plan.completed) / full) * 100}%` }}
-          />
+          <span className="h-full bg-success" style={{ width: `${(plan.completed / full) * 100}%` }} />
+          <span className={cx("h-full", over ? "bg-danger" : "bg-accent")} style={{ width: `${((plan.committed - plan.completed) / full) * 100}%` }} />
         </div>
       </div>
     </li>

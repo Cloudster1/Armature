@@ -18,9 +18,7 @@ export function SprintField({ issue }: { issue: Issue }) {
         controlSize="sm"
         id="issue-sprint"
         value={issue.sprintId ?? ""}
-        onChange={(event) =>
-          setSprint.mutate({ key: issue.key, sprintId: event.target.value || null })
-        }
+        onChange={(event) => setSprint.mutate({ key: issue.key, sprintId: event.target.value || null })}
         className="text-xs"
       >
         <option value="">Backlog</option>
@@ -31,15 +29,9 @@ export function SprintField({ issue }: { issue: Issue }) {
           </option>
         ))}
         {/* A closed sprint is not offered, but the issue may already be in one. */}
-        {issue.sprint && !sprints.some((s) => s.id === issue.sprint?.id) && (
-          <option value={issue.sprint.id}>{issue.sprint.name}</option>
-        )}
+        {issue.sprint && !sprints.some((s) => s.id === issue.sprint?.id) && <option value={issue.sprint.id}>{issue.sprint.name}</option>}
       </SelectInput>
-      {setSprint.error && (
-        <span className="text-right text-2xs text-danger">
-          {(setSprint.error as Error).message}
-        </span>
-      )}
+      {setSprint.error && <span className="text-right text-2xs text-danger">{(setSprint.error as Error).message}</span>}
     </span>
   );
 }
@@ -71,16 +63,9 @@ export function EstimateField({ issue }: { issue: Issue }) {
           if (next === (issue.estimate ?? null)) return;
           setEstimate.mutate({ key: issue.key, estimate: next });
         }}
-        className={cx(
-          "w-24 text-right text-xs",
-          "placeholder:text-ink-subtle",
-        )}
+        className={cx("w-24 text-right text-xs", "placeholder:text-ink-subtle")}
       />
-      {setEstimate.error && (
-        <span className="text-right text-2xs text-danger">
-          {(setEstimate.error as Error).message}
-        </span>
-      )}
+      {setEstimate.error && <span className="text-right text-2xs text-danger">{(setEstimate.error as Error).message}</span>}
     </span>
   );
 }

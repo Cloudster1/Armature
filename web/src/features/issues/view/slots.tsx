@@ -115,13 +115,17 @@ export const slotViews: Record<Slot, (props: SlotProps) => ReactNode> = {
   otherFields: ({ issue, editable, named }) => <IssueFields issueKey={issue.key} editable={editable} except={named} />,
   created: ({ issue }) => (
     <Detail label="Created">
-      <span className="text-ink-muted"><RelativeTime iso={issue.createdAt} /></span>
+      <span className="text-ink-muted">
+        <RelativeTime iso={issue.createdAt} />
+      </span>
     </Detail>
   ),
   resolved: ({ issue }) =>
     issue.resolvedAt ? (
       <Detail label="Resolved">
-        <span className="text-ink-muted"><RelativeTime iso={issue.resolvedAt} /></span>
+        <span className="text-ink-muted">
+          <RelativeTime iso={issue.resolvedAt} />
+        </span>
       </Detail>
     ) : null,
 };
@@ -153,7 +157,13 @@ function PriorityPicker({ issueKey, current }: { issueKey: string; current: Prio
   return (
     <span className="flex items-center justify-end gap-2">
       <PriorityBadge priority={current} />
-      <SelectInput value={current} aria-label="Priority" controlSize="sm" onChange={(e) => update.mutate({ key: issueKey, priority: e.target.value as Priority })} className="capitalize">
+      <SelectInput
+        value={current}
+        aria-label="Priority"
+        controlSize="sm"
+        onChange={(e) => update.mutate({ key: issueKey, priority: e.target.value as Priority })}
+        className="capitalize"
+      >
         {PRIORITIES.map((p) => (
           <option key={p} value={p}>
             {p}

@@ -56,7 +56,11 @@ describe("undoing an auto plan", () => {
   });
 
   it("names the issue changed since, and what to do about it", () => {
-    const refused = new ApiError(409, { code: "moved_since", message: "PR-2 was moved since these dates were read, so nothing was saved.", fields: { issueKey: "PR-2" } });
+    const refused = new ApiError(409, {
+      code: "moved_since",
+      message: "PR-2 was moved since these dates were read, so nothing was saved.",
+      fields: { issueKey: "PR-2" },
+    });
     expect(undoRefusal(refused)).toBe("PR-2 was changed after the auto plan, so nothing was undone. Move it back by hand or run auto plan again.");
     expect(undoRefusal(new ApiError(403, { code: "forbidden", message: "You may not move these issues." }))).toBe("You may not move these issues.");
   });

@@ -19,7 +19,10 @@ describe("grants", () => {
 
   // A grant over one project says nothing about another.
   it("keeps a project scoped grant to its project", () => {
-    const a = access({ grants: [{ role: "project_administrator", projectKey: "CP" }], permissions: { org: [], projects: { CP: ["read", "issue.write", "project.administer"] } } });
+    const a = access({
+      grants: [{ role: "project_administrator", projectKey: "CP" }],
+      permissions: { org: [], projects: { CP: ["read", "issue.write", "project.administer"] } },
+    });
     expect(canAdminister(a, "CP")).toBe(true);
     expect(canAdminister(a, "OPS")).toBe(false);
     expect(canWriteIssues(a, "OPS")).toBe(false);

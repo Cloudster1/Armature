@@ -18,11 +18,7 @@ function sprint(id: string, name: string, teamId?: string): Sprint {
   };
 }
 
-const sprints = [
-  sprint("a1", "Alpha 1", "alpha"),
-  sprint("b1", "Beta 1", "beta"),
-  sprint("p1", "Project 1"),
-];
+const sprints = [sprint("a1", "Alpha 1", "alpha"), sprint("b1", "Beta 1", "beta"), sprint("p1", "Project 1")];
 
 vi.mock("@/api/sprints", async () => ({
   ...(await vi.importActual<typeof import("@/api/sprints")>("@/api/sprints")),

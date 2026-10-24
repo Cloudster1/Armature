@@ -85,7 +85,15 @@ function WorkflowLibrary() {
           </Link>
         }
         title="Workflows"
-        tabs={<Tabs label="Workflows" value={current} panelId={panelId} onChange={(next) => navigate({ to: tabs.find((t) => t.value === next)!.to as never })} tabs={tabs.map((t) => ({ value: t.value, label: t.label, attrs: { "data-workflow-tab": t.label } }))} />}
+        tabs={
+          <Tabs
+            label="Workflows"
+            value={current}
+            panelId={panelId}
+            onChange={(next) => navigate({ to: tabs.find((t) => t.value === next)!.to as never })}
+            tabs={tabs.map((t) => ({ value: t.value, label: t.label, attrs: { "data-workflow-tab": t.label } }))}
+          />
+        }
       />
       <TabPanel id={panelId} label={tabs.find((t) => t.value === current)?.label}>
         <Outlet />
@@ -100,7 +108,11 @@ function WorkflowsTab() {
   // A new search or page leaves the marked card behind; the address keeps the rest.
   const show = useCallback(
     (next: LibrarySearch, replace = false) =>
-      navigate({ to: "/settings/workflows", search: { q: next.q || undefined, offset: next.offset || undefined, workflow: replace ? focused : undefined }, replace }),
+      navigate({
+        to: "/settings/workflows",
+        search: { q: next.q || undefined, offset: next.offset || undefined, workflow: replace ? focused : undefined },
+        replace,
+      }),
     [navigate, focused],
   );
   return <WorkflowCards focused={focused} q={q} offset={offset} onShow={show} canConfigure={useCanConfigure()} />;

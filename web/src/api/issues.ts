@@ -237,9 +237,7 @@ export interface IssuePage {
 export const issuesQueryKey = ["issues"] as const;
 
 export function useIssues(query: IssueQuery) {
-  const path = query.project
-    ? `/projects/${query.project}/issues${issueSearch(query)}`
-    : `/issues${issueSearch(query)}`;
+  const path = query.project ? `/projects/${query.project}/issues${issueSearch(query)}` : `/issues${issueSearch(query)}`;
 
   return useQuery({
     queryKey: [...issuesQueryKey, query],
@@ -345,8 +343,7 @@ export interface CreateIssueInput {
 export function useCreateIssue() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectKey, ...body }: CreateIssueInput) =>
-      request<{ issue: Issue }>(`/projects/${projectKey}/issues`, { method: "POST", body }),
+    mutationFn: ({ projectKey, ...body }: CreateIssueInput) => request<{ issue: Issue }>(`/projects/${projectKey}/issues`, { method: "POST", body }),
     // Creating an issue changes the project's counts as well as its list.
     onSuccess: () => queryClient.invalidateQueries(),
   });
@@ -377,8 +374,7 @@ export function isStaleEdit(error: unknown): boolean {
 export function useUpdateIssue() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ key, ...body }: UpdateIssueInput) =>
-      request<{ issue: Issue }>(`/issues/${key}`, { method: "PATCH", body }),
+    mutationFn: ({ key, ...body }: UpdateIssueInput) => request<{ issue: Issue }>(`/issues/${key}`, { method: "PATCH", body }),
     // The board, the plan, the calendar, the resources and the sprints all show
     // these fields, and a new priority moves a desk's clocks.
     onSuccess: () => queryClient.invalidateQueries(),
@@ -406,8 +402,7 @@ export function useTransitionIssue() {
 export function useAddComment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ key, body }: { key: string; body: Doc }) =>
-      request<{ comment: Comment }>(`/issues/${key}/comments`, { method: "POST", body: { body } }),
+    mutationFn: ({ key, body }: { key: string; body: Doc }) => request<{ comment: Comment }>(`/issues/${key}/comments`, { method: "POST", body: { body } }),
     // A reply can complete a desk clock, so nothing about the issue is trusted after one.
     onSuccess: () => queryClient.invalidateQueries(),
   });
@@ -449,8 +444,7 @@ export interface WorklogInput {
 export function useLogWork() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ key, ...body }: WorklogInput & { key: string }) =>
-      request<{ worklog: Worklog }>(`/issues/${key}/worklogs`, { method: "POST", body }),
+    mutationFn: ({ key, ...body }: WorklogInput & { key: string }) => request<{ worklog: Worklog }>(`/issues/${key}/worklogs`, { method: "POST", body }),
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }
@@ -458,8 +452,7 @@ export function useLogWork() {
 export function useUpdateWorklog() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: WorklogInput & { id: string }) =>
-      request<{ worklog: Worklog }>(`/worklogs/${id}`, { method: "PATCH", body }),
+    mutationFn: ({ id, ...body }: WorklogInput & { id: string }) => request<{ worklog: Worklog }>(`/worklogs/${id}`, { method: "PATCH", body }),
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }

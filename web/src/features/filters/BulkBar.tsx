@@ -46,7 +46,13 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
         start={
           <div className="flex flex-wrap items-end gap-3" data-bulk-bar={keys.length}>
             <span className="pb-2 text-sm font-medium text-ink">{keys.length} selected on this page</span>
-            <Select label="Priority" id="field-bulk-priority" controlSize="sm" value={change.priority ?? ""} onChange={(e) => setChange({ ...change, priority: e.target.value || undefined })}>
+            <Select
+              label="Priority"
+              id="field-bulk-priority"
+              controlSize="sm"
+              value={change.priority ?? ""}
+              onChange={(e) => setChange({ ...change, priority: e.target.value || undefined })}
+            >
               <option value="">Leave</option>
               {["lowest", "low", "medium", "high", "highest"].map((p) => (
                 <option key={p} value={p}>
@@ -69,7 +75,15 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
             <Labelled id="field-bulk-labels" label="Add labels" className="w-48">
               <LabelInput id="field-bulk-labels" controlSize="sm" placeholder="Type a label" value={labels} onChange={setLabels} onTyping={setTyping} />
             </Labelled>
-            <Field label="Transition" id="field-bulk-transition" controlSize="sm" value={change.transition ?? ""} onChange={(e) => setChange({ ...change, transition: e.target.value || undefined })} placeholder="Start progress" className="w-40" />
+            <Field
+              label="Transition"
+              id="field-bulk-transition"
+              controlSize="sm"
+              value={change.transition ?? ""}
+              onChange={(e) => setChange({ ...change, transition: e.target.value || undefined })}
+              placeholder="Start progress"
+              className="w-40"
+            />
           </div>
         }
         end={
@@ -82,13 +96,24 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
             <Button variant="secondary" size="sm" icon={<Icon.Download />} onClick={() => setExporting(true)} data-action="export-selected">
               Export {keys.length} selected
             </Button>
-            <Button size="sm" onClick={apply} loading={edit.isPending} disabled={tooMany || changeIsEmpty({ ...change, addLabels: adding })} data-action="bulk-apply">
+            <Button
+              size="sm"
+              onClick={apply}
+              loading={edit.isPending}
+              disabled={tooMany || changeIsEmpty({ ...change, addLabels: adding })}
+              data-action="bulk-apply"
+            >
               Apply to {keys.length}
             </Button>
           </div>
         }
       />
-      <ExportDialog query={keysQuery(keys)} open={exporting} onClose={() => setExporting(false)} description={`The ${keys.length} selected issues, as a file with the columns you tick.`} />
+      <ExportDialog
+        query={keysQuery(keys)}
+        open={exporting}
+        onClose={() => setExporting(false)}
+        description={`The ${keys.length} selected issues, as a file with the columns you tick.`}
+      />
       {edit.error && <ErrorBanner>{(edit.error as Error).message}</ErrorBanner>}
       <Dialog
         open={result !== null}

@@ -12,7 +12,9 @@ vi.mock("@/api/filters", async () => ({
 
 vi.mock("@/api/labels", async () => ({
   ...(await vi.importActual<typeof import("@/api/labels")>("@/api/labels")),
-  useLabelSearch: (q: string) => ({ data: q ? { labels: [{ id: "l1", name: "backend", color: "blue", issueCount: 4 }].filter((l) => l.name.includes(q)) } : undefined }),
+  useLabelSearch: (q: string) => ({
+    data: q ? { labels: [{ id: "l1", name: "backend", color: "blue", issueCount: 4 }].filter((l) => l.name.includes(q)) } : undefined,
+  }),
 }));
 
 vi.mock("@/api/people", () => ({ useMemberSearch: () => ({ data: { members: [], total: 0, limit: 20, offset: 0 } }) }));

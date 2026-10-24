@@ -41,7 +41,14 @@ const plan: ResourcePlan = {
         { start: "2031-03-10T00:00:00Z", loadHours: 50, capacityHours: 40, nominalHours: 40, issues: [{ key: "FLOW-2", summary: "Long day", hours: 50 }] },
       ],
     },
-    { kind: "unassigned", name: "Unassigned", weeks: [{ start: "2031-03-03T00:00:00Z", loadHours: 0, issues: [] }, { start: "2031-03-10T00:00:00Z", loadHours: 0, issues: [] }] },
+    {
+      kind: "unassigned",
+      name: "Unassigned",
+      weeks: [
+        { start: "2031-03-03T00:00:00Z", loadHours: 0, issues: [] },
+        { start: "2031-03-10T00:00:00Z", loadHours: 0, issues: [] },
+      ],
+    },
   ],
   unscheduled: [{ key: "FLOW-4", summary: "Due but not started", hours: 2.96 }],
   unestimated: [{ key: "FLOW-3", summary: "Nobody sized this" }],

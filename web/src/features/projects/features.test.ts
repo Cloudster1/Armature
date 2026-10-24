@@ -45,7 +45,24 @@ describe("a project's features", () => {
 
   it("read on a template card as what it leaves out", () => {
     expect(leftOut(desk.features)).toEqual(["sprints", "plan", "resources", "milestones", "releases", "components", "hierarchy", "repositories"]);
-    expect(leftOut(["board", "sprints", "plan", "calendar", "resources", "milestones", "releases", "components", "hierarchy", "dashboard", "teams", "repositories", "automation", "import"])).toEqual([]);
+    expect(
+      leftOut([
+        "board",
+        "sprints",
+        "plan",
+        "calendar",
+        "resources",
+        "milestones",
+        "releases",
+        "components",
+        "hierarchy",
+        "dashboard",
+        "teams",
+        "repositories",
+        "automation",
+        "import",
+      ]),
+    ).toEqual([]);
   });
 
   it("keep the guide from answering with a page the project lacks", () => {

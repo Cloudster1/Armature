@@ -11,7 +11,13 @@ export function AddWidget({ projectKey, dashboardId, exclude }: { projectKey: st
       <h2 className="mb-2 text-2xs font-medium tracking-wide text-ink-subtle uppercase">Add a widget</h2>
       <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {kinds.map((k) => (
-          <OptionCard key={k.kind} data-add-widget={k.kind} onSelect={() => add.mutate({ dashboardId, kind: k.kind })} title={k.title} description={k.description} />
+          <OptionCard
+            key={k.kind}
+            data-add-widget={k.kind}
+            onSelect={() => add.mutate({ dashboardId, kind: k.kind })}
+            title={k.title}
+            description={k.description}
+          />
         ))}
       </div>
       {add.error && (

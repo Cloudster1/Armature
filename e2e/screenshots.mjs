@@ -110,10 +110,16 @@ for (const [name, path, waitFor, extra = {}] of SHOTS) {
       await page.waitForSelector("[data-shared-dashboard] [data-widget]");
     }
     if (extra.pick) {
-      await page.evaluate((text) => [...document.querySelectorAll('[role="group"][aria-label="Board"] button')].find((b) => b.textContent.trim().startsWith(text))?.click(), extra.pick);
+      await page.evaluate(
+        (text) => [...document.querySelectorAll('[role="group"][aria-label="Board"] button')].find((b) => b.textContent.trim().startsWith(text))?.click(),
+        extra.pick,
+      );
     }
     if (extra.zoom) {
-      await page.evaluate((text) => [...document.querySelectorAll('[role="group"][aria-label="Zoom"] button')].find((b) => b.textContent.trim() === text)?.click(), extra.zoom);
+      await page.evaluate(
+        (text) => [...document.querySelectorAll('[role="group"][aria-label="Zoom"] button')].find((b) => b.textContent.trim() === text)?.click(),
+        extra.zoom,
+      );
     }
     if (extra.scrollTo) {
       // Centred: the sticky header covers a section put at the top, and a

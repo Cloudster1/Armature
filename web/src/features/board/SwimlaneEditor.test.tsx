@@ -113,10 +113,7 @@ describe("SwimlaneEditor", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add swimlane" }));
     await userEvent.type(screen.getByLabelText("New swimlane name"), "Blocked");
     await userEvent.click(screen.getByRole("button", { name: "Add swimlane" }));
-    expect(addSwimlane).toHaveBeenCalledWith(
-      expect.objectContaining({ boardId: "b2", name: "Blocked" }),
-      expect.anything(),
-    );
+    expect(addSwimlane).toHaveBeenCalledWith(expect.objectContaining({ boardId: "b2", name: "Blocked" }), expect.anything());
   });
 
   it("edits, moves and deletes that board's lanes", async () => {
@@ -126,9 +123,7 @@ describe("SwimlaneEditor", () => {
     await userEvent.clear(queued.getByLabelText("Card limit"));
     await userEvent.type(queued.getByLabelText("Card limit"), "3");
     await userEvent.click(queued.getByRole("button", { name: "Save" }));
-    expect(updateSwimlane).toHaveBeenCalledWith(
-      expect.objectContaining({ boardId: "b2", swimlaneId: "l1", wipLimit: 3 }),
-    );
+    expect(updateSwimlane).toHaveBeenCalledWith(expect.objectContaining({ boardId: "b2", swimlaneId: "l1", wipLimit: 3 }));
 
     await userEvent.click(queued.getByRole("button", { name: "Move Queued right" }));
     expect(reorderSwimlanes).toHaveBeenCalledWith({ boardId: "b2", order: ["l2", "l1"] });
@@ -192,7 +187,10 @@ describe("SwimlaneEditor", () => {
     // A scheme change can leave a lane holding a state the project no longer
     // reaches; hiding it would leave no way to take it off.
     it("keep a state the lane holds that the project no longer reaches, so it can be let go", async () => {
-      const held: Board = { ...teamBoard, swimlanes: [{ ...lane("l1", "Queued", 0, statuses[0]!), statuses: [statuses[0]!, retired] }, teamBoard.swimlanes[1]!] };
+      const held: Board = {
+        ...teamBoard,
+        swimlanes: [{ ...lane("l1", "Queued", 0, statuses[0]!), statuses: [statuses[0]!, retired] }, teamBoard.swimlanes[1]!],
+      };
       useBoardById.mockReturnValue({ data: { board: held }, isLoading: false });
       const { container } = render(<SwimlaneEditor boardId="b2" />);
       const queued = laneOf(container, "Queued");

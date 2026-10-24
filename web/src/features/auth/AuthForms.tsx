@@ -40,10 +40,7 @@ export function LoginForm({ next }: { next?: string } = {}) {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    login.mutate(
-      { email, password },
-      { onSuccess: (answer) => (isChallenge(answer) ? setChallenge(answer.challenge) : proceed()) },
-    );
+    login.mutate({ email, password }, { onSuccess: (answer) => (isChallenge(answer) ? setChallenge(answer.challenge) : proceed()) });
   }
 
   if (challenge) {
@@ -193,8 +190,7 @@ export function SignupForm() {
   const [checked, setChecked] = useState(false);
 
   function set(key: keyof typeof values) {
-    return (event: { target: { value: string } }) =>
-      setValues((current) => ({ ...current, [key]: event.target.value }));
+    return (event: { target: { value: string } }) => setValues((current) => ({ ...current, [key]: event.target.value }));
   }
 
   function onSubmit(event: FormEvent) {
@@ -210,15 +206,7 @@ export function SignupForm() {
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
       {formError(signup.error) && <ErrorBanner>{formError(signup.error)}</ErrorBanner>}
       <Field label="Your name" required value={values.name} onChange={set("name")} error={errors.name} />
-      <Field
-        label="Work email"
-        type="email"
-        autoComplete="username"
-        required
-        value={values.email}
-        onChange={set("email")}
-        error={errors.email}
-      />
+      <Field label="Work email" type="email" autoComplete="username" required value={values.email} onChange={set("email")} error={errors.email} />
       <NewPasswordFields
         password={values.password}
         repeat={repeat}

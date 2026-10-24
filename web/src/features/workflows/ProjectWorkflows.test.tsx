@@ -134,9 +134,7 @@ describe("ProjectWorkflows", () => {
   it("sends null when a row is handed back to the default", async () => {
     state.schemeId = "s2";
     state.schemes = [organisation, ownScheme];
-    state.assignments = [
-      assignment("Bug", "Bug triage", { scope: "project", schemeId: "s2", schemeName: "Support workflows", named: true }),
-    ];
+    state.assignments = [assignment("Bug", "Bug triage", { scope: "project", schemeId: "s2", schemeName: "Support workflows", named: true })];
     setAssignment.mockClear();
 
     render(<ProjectWorkflows projectKey="PR" />);
@@ -149,9 +147,7 @@ describe("ProjectWorkflows", () => {
   it("shows the fallback's workflow on a row the project's fallback decides, with no way back per type", () => {
     state.schemeId = "s2";
     state.schemes = [organisation, ownScheme];
-    state.assignments = [
-      assignment("Task", "Bug triage", { scope: "project", schemeId: "s2", schemeName: "Support workflows", named: false }),
-    ];
+    state.assignments = [assignment("Task", "Bug triage", { scope: "project", schemeId: "s2", schemeName: "Support workflows", named: false })];
 
     render(<ProjectWorkflows projectKey="PR" />);
     const task = screen.getByLabelText("Workflow for Task") as HTMLSelectElement;
@@ -179,9 +175,7 @@ describe("ProjectWorkflows", () => {
     render(<ProjectWorkflows projectKey="PR" />);
     expect(screen.getByText("This project follows the default.")).toBeInTheDocument();
     // It names the scheme rather than saying "the default", which is not a name.
-    expect(
-      screen.getByText(/Every issue type uses Default workflow scheme/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Every issue type uses Default workflow scheme/)).toBeInTheDocument();
   });
 
   it("names the workflow each issue type uses and who decided it", () => {
@@ -202,9 +196,7 @@ describe("ProjectWorkflows", () => {
     const task = screen.getByRole("row", { name: /Task/ });
     expect(within(task).getByText("All projects")).toBeInTheDocument();
     // The fallback is the interesting half: it is why the row is inherited.
-    expect(
-      within(task).getByText(/catches everything it does not name/),
-    ).toBeInTheDocument();
+    expect(within(task).getByText(/catches everything it does not name/)).toBeInTheDocument();
   });
 
   it("draws the first row's workflow and follows a click to another row", async () => {
@@ -223,7 +215,7 @@ describe("ProjectWorkflows", () => {
     expect(document.querySelector('[data-workflow-graph="Default software workflow"]')).not.toBeNull();
     expect(document.querySelector('[data-workflow-graph="Bug triage"]')).toBeNull();
     // The picture is for looking at: nothing on it is a button.
-    expect(document.querySelectorAll("[data-workflow-graph] [role=\"button\"]")).toHaveLength(0);
+    expect(document.querySelectorAll('[data-workflow-graph] [role="button"]')).toHaveLength(0);
   });
 
   // Handing the decision back is a deliberate null, not the absence of a value.
@@ -262,9 +254,7 @@ describe("ProjectWorkflows", () => {
   it("asks the server for the workflows typed and keeps a row's own workflow offered by its name", async () => {
     state.schemeId = "s2";
     state.schemes = [organisation, ownScheme];
-    state.assignments = [
-      assignment("Bug", "Bug triage", { scope: "project", schemeId: "s2", schemeName: "Support workflows", named: true }),
-    ];
+    state.assignments = [assignment("Bug", "Bug triage", { scope: "project", schemeId: "s2", schemeName: "Support workflows", named: true })];
     asked.workflows = [];
 
     render(<ProjectWorkflows projectKey="PR" />);

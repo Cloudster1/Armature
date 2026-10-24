@@ -51,7 +51,8 @@ export function describeCalendar(c: BusinessCalendar): string {
   const first = open[0]!;
   const same = open.every((d) => JSON.stringify(c.hours[d.key]) === JSON.stringify(c.hours[first.key]));
   const span = (c.hours[first.key] ?? []).map((s) => `${s.from} to ${s.to}`).join(", ");
-  const days = same && open.length > 1 ? `${first.label.slice(0, 3)} to ${open[open.length - 1]!.label.slice(0, 3)}` : open.map((d) => d.label.slice(0, 3)).join(", ");
+  const days =
+    same && open.length > 1 ? `${first.label.slice(0, 3)} to ${open[open.length - 1]!.label.slice(0, 3)}` : open.map((d) => d.label.slice(0, 3)).join(", ");
   return `${days} ${same ? span : "varied"} (${c.timezone})`;
 }
 
@@ -70,9 +71,26 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
     event.preventDefault();
     if (!title.trim()) return;
     if (editing) {
-      update.mutate({ id: editing.id, title: title.trim(), body: body.trim() }, { onSuccess: () => { setEditing(null); setTitle(""); setBody(""); } });
+      update.mutate(
+        { id: editing.id, title: title.trim(), body: body.trim() },
+        {
+          onSuccess: () => {
+            setEditing(null);
+            setTitle("");
+            setBody("");
+          },
+        },
+      );
     } else {
-      create.mutate({ title: title.trim(), body: body.trim() }, { onSuccess: () => { setTitle(""); setBody(""); } });
+      create.mutate(
+        { title: title.trim(), body: body.trim() },
+        {
+          onSuccess: () => {
+            setTitle("");
+            setBody("");
+          },
+        },
+      );
     }
   }
 
@@ -83,14 +101,34 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
       <Card className="mb-4 p-4">
         <form onSubmit={submit} className="space-y-3" noValidate data-testid="new-article">
           {(create.error ?? update.error) && <ErrorBanner>{((create.error ?? update.error) as Error).message}</ErrorBanner>}
-          <Field label="Article title" id="field-article-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Resetting your password" />
-          <Field label="Article body" id="field-article-body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Plain words, in the order a reader does them." />
+          <Field
+            label="Article title"
+            id="field-article-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Resetting your password"
+          />
+          <Field
+            label="Article body"
+            id="field-article-body"
+            rows={4}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Plain words, in the order a reader does them."
+          />
           <div className="flex gap-2">
             <Button type="submit" loading={create.isPending || update.isPending} disabled={!title.trim()}>
               {editing ? "Save article" : "Add article"}
             </Button>
             {editing && (
-              <Button variant="ghost" onClick={() => { setEditing(null); setTitle(""); setBody(""); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEditing(null);
+                  setTitle("");
+                  setBody("");
+                }}
+              >
                 Cancel
               </Button>
             )}
@@ -121,8 +159,24 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
                     <Button variant="secondary" size="sm" onClick={() => update.mutate({ id: a.id, published: !a.published })} data-action="article-publish">
                       {a.published ? "Unpublish" : "Publish"}
                     </Button>
-                    <IconButton icon={<Icon.Edit />} label={`Edit ${a.title}`} size="sm" onClick={() => { setEditing(a); setTitle(a.title); setBody(a.body); }} />
-                    <IconButton icon={<Icon.Trash />} label={`Delete ${a.title}`} size="sm" onClick={async () => (await confirm({ noun: "article", verb: "Delete", body: `${a.title} goes; customers stop finding it.` })) && remove.mutate(a.id)} />
+                    <IconButton
+                      icon={<Icon.Edit />}
+                      label={`Edit ${a.title}`}
+                      size="sm"
+                      onClick={() => {
+                        setEditing(a);
+                        setTitle(a.title);
+                        setBody(a.body);
+                      }}
+                    />
+                    <IconButton
+                      icon={<Icon.Trash />}
+                      label={`Delete ${a.title}`}
+                      size="sm"
+                      onClick={async () =>
+                        (await confirm({ noun: "article", verb: "Delete", body: `${a.title} goes; customers stop finding it.` })) && remove.mutate(a.id)
+                      }
+                    />
                   </span>
                 </Td>
               </tr>
@@ -149,9 +203,26 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
     event.preventDefault();
     if (!name.trim() || !body.trim()) return;
     if (editing) {
-      update.mutate({ id: editing.id, name: name.trim(), body: body.trim() }, { onSuccess: () => { setEditing(null); setName(""); setBody(""); } });
+      update.mutate(
+        { id: editing.id, name: name.trim(), body: body.trim() },
+        {
+          onSuccess: () => {
+            setEditing(null);
+            setName("");
+            setBody("");
+          },
+        },
+      );
     } else {
-      create.mutate({ name: name.trim(), body: body.trim() }, { onSuccess: () => { setName(""); setBody(""); } });
+      create.mutate(
+        { name: name.trim(), body: body.trim() },
+        {
+          onSuccess: () => {
+            setName("");
+            setBody("");
+          },
+        },
+      );
     }
   }
 
@@ -159,19 +230,35 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
     <section data-guide="canned-responses">
       <SectionTitle className="mb-2">Canned responses</SectionTitle>
       <p className="mb-3 text-sm text-ink-muted">
-        Replies agents keep ready. <span className="font-mono text-xs">{"{{customer.name}}"}</span>, <span className="font-mono text-xs">{"{{issue.key}}"}</span>, <span className="font-mono text-xs">{"{{issue.summary}}"}</span> and <span className="font-mono text-xs">{"{{agent.name}}"}</span> are filled in when one is inserted.
+        Replies agents keep ready. <span className="font-mono text-xs">{"{{customer.name}}"}</span>,{" "}
+        <span className="font-mono text-xs">{"{{issue.key}}"}</span>, <span className="font-mono text-xs">{"{{issue.summary}}"}</span> and{" "}
+        <span className="font-mono text-xs">{"{{agent.name}}"}</span> are filled in when one is inserted.
       </p>
       <Card className="mb-4 p-4">
         <form onSubmit={submit} className="space-y-3" noValidate data-testid="new-canned">
           {(create.error ?? update.error) && <ErrorBanner>{((create.error ?? update.error) as Error).message}</ErrorBanner>}
           <Field label="Response name" id="field-canned-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Greeting" />
-          <Field label="Response body" id="field-canned-body" rows={3} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Hello {{customer.name}}, thanks for writing about {{issue.summary}}." />
+          <Field
+            label="Response body"
+            id="field-canned-body"
+            rows={3}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Hello {{customer.name}}, thanks for writing about {{issue.summary}}."
+          />
           <div className="flex gap-2">
             <Button type="submit" loading={create.isPending || update.isPending} disabled={!name.trim() || !body.trim()}>
               {editing ? "Save response" : "Add response"}
             </Button>
             {editing && (
-              <Button variant="ghost" onClick={() => { setEditing(null); setName(""); setBody(""); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEditing(null);
+                  setName("");
+                  setBody("");
+                }}
+              >
                 Cancel
               </Button>
             )}
@@ -194,8 +281,22 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
                 <Td className="max-w-md truncate text-sm text-ink-muted">{c.body}</Td>
                 <Td>
                   <span className="flex justify-end gap-1">
-                    <IconButton icon={<Icon.Edit />} label={`Edit ${c.name}`} size="sm" onClick={() => { setEditing(c); setName(c.name); setBody(c.body); }} />
-                    <IconButton icon={<Icon.Trash />} label={`Delete ${c.name}`} size="sm" onClick={async () => (await confirm({ noun: "canned response", verb: "Delete", body: `${c.name} goes.` })) && remove.mutate(c.id)} />
+                    <IconButton
+                      icon={<Icon.Edit />}
+                      label={`Edit ${c.name}`}
+                      size="sm"
+                      onClick={() => {
+                        setEditing(c);
+                        setName(c.name);
+                        setBody(c.body);
+                      }}
+                    />
+                    <IconButton
+                      icon={<Icon.Trash />}
+                      label={`Delete ${c.name}`}
+                      size="sm"
+                      onClick={async () => (await confirm({ noun: "canned response", verb: "Delete", body: `${c.name} goes.` })) && remove.mutate(c.id)}
+                    />
                   </span>
                 </Td>
               </tr>
@@ -232,7 +333,12 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            save.mutate(calendar, { onSuccess: () => { setDraft(null); toast.success("Business hours saved"); } });
+            save.mutate(calendar, {
+              onSuccess: () => {
+                setDraft(null);
+                toast.success("Business hours saved");
+              },
+            });
           }}
           className="space-y-4"
           noValidate
@@ -248,16 +354,37 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
                   <Checkbox label={d.label} checked={open} onChange={(e) => setDay(d.key, e.target.checked)} className="w-28" data-weekday-open={d.key} />
                   {open && (
                     <>
-                      <Input type="time" aria-label={`${d.label} opens`} controlSize="sm" value={spans[0]!.from} onChange={(e) => setSpan(d.key, "from", e.target.value)} className="w-28" />
+                      <Input
+                        type="time"
+                        aria-label={`${d.label} opens`}
+                        controlSize="sm"
+                        value={spans[0]!.from}
+                        onChange={(e) => setSpan(d.key, "from", e.target.value)}
+                        className="w-28"
+                      />
                       <span className="text-sm text-ink-subtle">to</span>
-                      <Input type="time" aria-label={`${d.label} closes`} controlSize="sm" value={spans[0]!.to} onChange={(e) => setSpan(d.key, "to", e.target.value)} className="w-28" />
+                      <Input
+                        type="time"
+                        aria-label={`${d.label} closes`}
+                        controlSize="sm"
+                        value={spans[0]!.to}
+                        onChange={(e) => setSpan(d.key, "to", e.target.value)}
+                        className="w-28"
+                      />
                     </>
                   )}
                 </div>
               );
             })}
           </div>
-          <Field label="Time zone" id="field-calendar-timezone" value={calendar.timezone} onChange={(e) => setDraft({ ...calendar, timezone: e.target.value })} hint="The zone the hours are read in, such as Europe/Berlin." className="max-w-xs" />
+          <Field
+            label="Time zone"
+            id="field-calendar-timezone"
+            value={calendar.timezone}
+            onChange={(e) => setDraft({ ...calendar, timezone: e.target.value })}
+            hint="The zone the hours are read in, such as Europe/Berlin."
+            className="max-w-xs"
+          />
           <Select
             label="Holidays from"
             id="field-calendar-holiday-calendar"
@@ -276,7 +403,22 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
               </option>
             ))}
           </Select>
-          <Field label="Extra days off" id="field-calendar-holidays" value={calendar.holidays.join(", ")} onChange={(e) => setDraft({ ...calendar, holidays: e.target.value.split(",").map((h) => h.trim()).filter(Boolean) })} placeholder="2026-12-25, 2026-12-26" hint="The desk's own, beside the holiday calendar's: days written as YYYY-MM-DD, separated by commas." />
+          <Field
+            label="Extra days off"
+            id="field-calendar-holidays"
+            value={calendar.holidays.join(", ")}
+            onChange={(e) =>
+              setDraft({
+                ...calendar,
+                holidays: e.target.value
+                  .split(",")
+                  .map((h) => h.trim())
+                  .filter(Boolean),
+              })
+            }
+            placeholder="2026-12-25, 2026-12-26"
+            hint="The desk's own, beside the holiday calendar's: days written as YYYY-MM-DD, separated by commas."
+          />
           <Button type="submit" loading={save.isPending} data-action="save-hours">
             {saved ? "Save business hours" : "Set business hours"}
           </Button>
@@ -286,7 +428,13 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
         <div className="mt-4 space-y-2" data-goal-calendars>
           <p className="text-sm text-ink-muted">Which goals count only these hours ({describeCalendar(calendar)}):</p>
           {(policyData?.policies ?? []).map((p) => (
-            <Checkbox key={p.id} label={`${p.name} counts business hours only`} checked={p.useCalendar} onChange={(e) => updatePolicy.mutate({ id: p.id, useCalendar: e.target.checked })} data-policy-calendar={p.metric} />
+            <Checkbox
+              key={p.id}
+              label={`${p.name} counts business hours only`}
+              checked={p.useCalendar}
+              onChange={(e) => updatePolicy.mutate({ id: p.id, useCalendar: e.target.checked })}
+              data-policy-calendar={p.metric}
+            />
           ))}
         </div>
       )}
@@ -349,7 +497,13 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
           <code className="min-w-0 flex-1 truncate rounded-control bg-surface-raised px-2 py-1 font-mono text-xs text-ink" data-desk-address>
             {address}
           </code>
-          <IconButton icon={<Icon.Copy />} label="Copy the address" size="sm" data-action="copy-desk-address" onClick={() => navigator.clipboard.writeText(address).then(() => toast.success("Address copied"))} />
+          <IconButton
+            icon={<Icon.Copy />}
+            label="Copy the address"
+            size="sm"
+            data-action="copy-desk-address"
+            onClick={() => navigator.clipboard.writeText(address).then(() => toast.success("Address copied"))}
+          />
         </div>
         <div className="flex items-start gap-3">
           <Switch
@@ -359,12 +513,18 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
             data-action="toggle-door"
             data-door-verifies={String(verifies)}
             onChange={(checked) =>
-              update.mutate({ key: project.key, portalVerifies: checked }, { onSuccess: () => toast.success(checked ? "The door asks for a code again" : "The door is open") })
+              update.mutate(
+                { key: project.key, portalVerifies: checked },
+                { onSuccess: () => toast.success(checked ? "The door asks for a code again" : "The door is open") },
+              )
             }
           />
           <div className="text-sm">
             <p className="text-ink">Ask for a code by mail before letting somebody in</p>
-            <p className="text-ink-muted">Off, anyone who gives an address is that address for this desk, and sees this desk alone. Turning it back on signs out everyone who came in without a code.</p>
+            <p className="text-ink-muted">
+              Off, anyone who gives an address is that address for this desk, and sees this desk alone. Turning it back on signs out everyone who came in
+              without a code.
+            </p>
           </div>
         </div>
         <div className="space-y-2 border-t border-border pt-4" data-trusted-domains>
@@ -383,7 +543,10 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
                         size="xs"
                         disabled={update.isPending}
                         onClick={() =>
-                          update.mutate({ key: project.key, trustedDomains: domains.filter((d) => d !== domain) }, { onSuccess: () => toast.success(`No longer trusting ${domain}`) })
+                          update.mutate(
+                            { key: project.key, trustedDomains: domains.filter((d) => d !== domain) },
+                            { onSuccess: () => toast.success(`No longer trusting ${domain}`) },
+                          )
                         }
                       />
                     )}
@@ -395,7 +558,15 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
           {editable && (
             <form onSubmit={trust} className="flex items-end gap-2" noValidate>
               <div className="flex-1">
-                <Field label="Trusted domain" id="field-trusted-domain" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="acme.test" error={domainError} controlSize="sm" />
+                <Field
+                  label="Trusted domain"
+                  id="field-trusted-domain"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="acme.test"
+                  error={domainError}
+                  controlSize="sm"
+                />
               </div>
               <Button type="submit" size="sm" variant="secondary" data-action="add-domain" disabled={!cleanDomain(draft) || update.isPending}>
                 Add
@@ -407,7 +578,12 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
           <p className="text-sm text-ink">New requests by mail</p>
           {mailAddress ? (
             <p className="text-sm text-ink-muted">
-              A mail to <code className="rounded-control bg-surface-raised px-1 font-mono text-xs text-ink" data-desk-mail-address>{mailAddress}</code> that names no request becomes a request of this type, raised by its sender. Agents' mail and automatic replies never do. None answers it with the portal's address instead.
+              A mail to{" "}
+              <code className="rounded-control bg-surface-raised px-1 font-mono text-xs text-ink" data-desk-mail-address>
+                {mailAddress}
+              </code>{" "}
+              that names no request becomes a request of this type, raised by its sender. Agents' mail and automatic replies never do. None answers it with the
+              portal's address instead.
             </p>
           ) : (
             <p className="text-sm text-ink-muted">This installation reads no mailbox, so mail raises no requests here. The type chosen applies once it does.</p>
@@ -422,7 +598,10 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
               data-action="mail-request-type"
               onChange={(e) => {
                 const chosen = e.target.value;
-                update.mutate({ key: project.key, mailRequestTypeId: chosen || null }, { onSuccess: () => toast.success(chosen ? "New mail raises requests" : "Mail raises no requests") });
+                update.mutate(
+                  { key: project.key, mailRequestTypeId: chosen || null },
+                  { onSuccess: () => toast.success(chosen ? "New mail raises requests" : "Mail raises no requests") },
+                );
               }}
             >
               <option value="">None</option>
@@ -439,4 +618,3 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
     </section>
   );
 }
-

@@ -62,14 +62,7 @@ function BoardPage() {
           </>
         }
         meta={scrum ? "Shows the sprint that is running." : "Shows the work in flight and what was finished lately."}
-        tabs={
-          <BoardPicker
-            projectKey={projectKey}
-            boardId={boardId}
-            onPick={(picked) => go({ board: picked?.id, filter }, false)}
-            canManage={canConfigure}
-          />
-        }
+        tabs={<BoardPicker projectKey={projectKey} boardId={boardId} onPick={(picked) => go({ board: picked?.id, filter }, false)} canManage={canConfigure} />}
         actions={
           canConfigure && (
             <>
@@ -78,10 +71,7 @@ function BoardPage() {
                   New board
                 </Button>
               )}
-              <Button
-                variant={configuring ? "primary" : "secondary"}
-                onClick={() => setConfiguring(!configuring)}
-              >
+              <Button variant={configuring ? "primary" : "secondary"} onClick={() => setConfiguring(!configuring)}>
                 {configuring ? "Done configuring" : "Configure swimlanes"}
               </Button>
             </>
@@ -89,13 +79,7 @@ function BoardPage() {
         }
       />
 
-      {adding && (
-        <NewBoardForm
-          projectKey={projectKey}
-          defaultType={boards[0]?.type ?? "kanban"}
-          onDone={() => setAdding(false)}
-        />
-      )}
+      {adding && <NewBoardForm projectKey={projectKey} defaultType={boards[0]?.type ?? "kanban"} onDone={() => setAdding(false)} />}
 
       <div className={cx(configuring && "grid gap-6 xl:grid-cols-[1fr_28rem]")}>
         {/* min-w-0 lets the grid track shrink below the board's natural width.
@@ -106,9 +90,7 @@ function BoardPage() {
         </div>
         {configuring && showing && (
           <aside className="min-w-0">
-            <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">
-              Swimlanes
-            </h2>
+            <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">Swimlanes</h2>
             <SwimlaneEditor boardId={showing.id} />
           </aside>
         )}

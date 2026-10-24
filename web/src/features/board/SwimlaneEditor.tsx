@@ -61,9 +61,7 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
 
       <Card className="p-4">
         <h3 className="text-sm font-medium text-ink">Rows within each swimlane</h3>
-        <p className="mt-1 text-sm text-ink-muted">
-          Swimlanes are made of ticket states. This groups the cards inside them a second way.
-        </p>
+        <p className="mt-1 text-sm text-ink-muted">Swimlanes are made of ticket states. This groups the cards inside them a second way.</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {groupings.map((option) => (
             <Chip key={option.value} pressed={board.groupBy === option.value} onClick={() => updateBoard.mutate({ id: boardId, groupBy: option.value })}>
@@ -81,8 +79,7 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
             {unclaimed.length} state{unclaimed.length === 1 ? "" : "s"} not on the board
           </strong>{" "}
           <span className="text-ink-muted">
-            ({unclaimed.map((s) => s.name).join(", ")}). Cards in {unclaimed.length === 1 ? "it" : "them"}{" "}
-            will not appear in any swimlane.
+            ({unclaimed.map((s) => s.name).join(", ")}). Cards in {unclaimed.length === 1 ? "it" : "them"} will not appear in any swimlane.
           </span>
         </div>
       )}
@@ -106,11 +103,7 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
       </ul>
 
       {adding ? (
-        <AddSwimlaneForm
-          boardId={boardId}
-          available={unclaimed}
-          onDone={() => setAdding(false)}
-        />
+        <AddSwimlaneForm boardId={boardId} available={unclaimed} onDone={() => setAdding(false)} />
       ) : (
         <Button variant="secondary" onClick={() => setAdding(true)}>
           Add swimlane
@@ -228,21 +221,10 @@ function SwimlaneRow({
       <div className="flex items-start gap-3">
         <form onSubmit={saveDetails} className="flex flex-1 flex-wrap items-end gap-3">
           <div className="min-w-40 flex-1">
-            <Field
-              label={`Swimlane ${swimlane.position + 1} name`}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Field label={`Swimlane ${swimlane.position + 1} name`} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="w-28">
-            <Field
-              label="Card limit"
-              type="number"
-              min={0}
-              value={wipLimit}
-              onChange={(e) => setWipLimit(e.target.value)}
-              placeholder="None"
-            />
+            <Field label="Card limit" type="number" min={0} value={wipLimit} onChange={(e) => setWipLimit(e.target.value)} placeholder="None" />
           </div>
           <Button type="submit" size="sm" variant="secondary" loading={update.isPending}>
             Save
@@ -250,22 +232,10 @@ function SwimlaneRow({
         </form>
 
         <div className="flex shrink-0 items-center gap-1 pt-6">
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={isFirst || moving}
-            onClick={() => onMove(-1)}
-            aria-label={`Move ${swimlane.name} left`}
-          >
+          <Button size="sm" variant="ghost" disabled={isFirst || moving} onClick={() => onMove(-1)} aria-label={`Move ${swimlane.name} left`}>
             &larr;
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={isLast || moving}
-            onClick={() => onMove(1)}
-            aria-label={`Move ${swimlane.name} right`}
-          >
+          <Button size="sm" variant="ghost" disabled={isLast || moving} onClick={() => onMove(1)} aria-label={`Move ${swimlane.name} right`}>
             &rarr;
           </Button>
           <Button
@@ -273,7 +243,10 @@ function SwimlaneRow({
             variant="ghost"
             disabled={!canDelete}
             loading={remove.isPending}
-            onClick={async () => (await confirm({ noun: "swimlane", body: `${swimlane.name} goes from the board; the statuses it showed move to the next one.` })) && remove.mutate({ boardId, swimlaneId: swimlane.id })}
+            onClick={async () =>
+              (await confirm({ noun: "swimlane", body: `${swimlane.name} goes from the board; the statuses it showed move to the next one.` })) &&
+              remove.mutate({ boardId, swimlaneId: swimlane.id })
+            }
             title={canDelete ? "Delete this swimlane" : "A board needs at least one swimlane"}
           >
             Delete
@@ -306,15 +279,7 @@ function SwimlaneRow({
   );
 }
 
-function AddSwimlaneForm({
-  boardId,
-  available,
-  onDone,
-}: {
-  boardId: string;
-  available: Status[];
-  onDone: () => void;
-}) {
+function AddSwimlaneForm({ boardId, available, onDone }: { boardId: string; available: Status[]; onDone: () => void }) {
   const add = useAddSwimlane();
   const [name, setName] = useState("");
   const [chosen, setChosen] = useState<string[]>([]);
@@ -328,19 +293,10 @@ function AddSwimlaneForm({
     <Card className="p-4">
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         {add.error && <ErrorBanner>{(add.error as Error).message}</ErrorBanner>}
-        <Field
-          label="New swimlane name"
-          autoFocus
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Blocked"
-        />
+        <Field label="New swimlane name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="Blocked" />
         {available.length > 0 && (
           <fieldset>
-            <legend className="text-xs font-medium text-ink-muted">
-              States for it (only ones not already on the board)
-            </legend>
+            <legend className="text-xs font-medium text-ink-muted">States for it (only ones not already on the board)</legend>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {available.map((status) => (
                 <Checkbox
@@ -348,7 +304,10 @@ function AddSwimlaneForm({
                   label={status.name}
                   checked={chosen.includes(status.id)}
                   onChange={() => setChosen((current) => (current.includes(status.id) ? current.filter((id) => id !== status.id) : [...current, status.id]))}
-                  className={cx("rounded border px-2 py-1 text-xs", chosen.includes(status.id) ? "border-accent bg-accent-subtle text-accent" : "border-border")}
+                  className={cx(
+                    "rounded border px-2 py-1 text-xs",
+                    chosen.includes(status.id) ? "border-accent bg-accent-subtle text-accent" : "border-border",
+                  )}
                 />
               ))}
             </div>

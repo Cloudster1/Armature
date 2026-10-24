@@ -63,7 +63,10 @@ function AuditPage() {
       </div>
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {isLoading ? null : entries.length === 0 ? (
-        <EmptyState title="Nothing recorded" description={cursors.length ? "That was the last page." : "Nothing matches; widen the dates or choose every action."} />
+        <EmptyState
+          title="Nothing recorded"
+          description={cursors.length ? "That was the last page." : "Nothing matches; widen the dates or choose every action."}
+        />
       ) : (
         <Table>
           <thead>

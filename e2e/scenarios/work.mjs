@@ -70,7 +70,11 @@ scenario("a mention in a comment lands in the person's inbox and makes them a wa
   await waitForApp(page);
   expect.equal((await unreadCount(page)) >= 1, true, "the bell counts it");
   const rows = await inboxRows(page);
-  expect.equal(rows.some((r) => r.kind === "mentioned" && !r.read && r.text.includes(issueKey)), true, `the inbox lists the mention: ${JSON.stringify(rows)}`);
+  expect.equal(
+    rows.some((r) => r.kind === "mentioned" && !r.read && r.text.includes(issueKey)),
+    true,
+    `the inbox lists the mention: ${JSON.stringify(rows)}`,
+  );
   await page.click('[data-notification="mentioned"]');
   await waitForPath(page, `/issues/${issueKey}`);
   await goto(page, "/inbox");
@@ -82,7 +86,7 @@ scenario("a mention in a comment lands in the person's inbox and makes them a wa
   await goto(page, "/settings/profile");
   await page.waitForSelector("[data-notification-settings]", { timeout: WAIT });
   await page.click('[data-pref-mail="commented"]');
-  await page.click('[data-pref-watch-own]');
+  await page.click("[data-pref-watch-own]");
   await page.click('[data-action="save-notifications"]');
   await page.waitForFunction(() => document.body.innerText.includes("Notification settings saved"), { timeout: WAIT });
   // Watching his own issues stays off when he comes back.
@@ -132,7 +136,7 @@ serialScenario("a webhook endpoint gets a signed test delivery, and it starts a 
 
     // The ping went through the incoming address, and the rule filed the issue.
     await goto(page, `/projects/${key}`);
-    await eventually(page, '[data-issue-row]');
+    await eventually(page, "[data-issue-row]");
     await page.waitForFunction(() => document.body.innerText.includes("An alert came in"), { timeout: 30_000 });
   } finally {
     await removeWebhook(hook);
@@ -175,7 +179,11 @@ scenario("a ticket filed with a component lands on the component's default assig
   const owner = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Parts", { visit: false });
   await createComponent(page, key, "Billing", { assignee: owner.name });
-  expect.equal(await page.$eval('[data-component="Billing"] [data-component-assignee]', (el) => el.dataset.componentAssignee), owner.name, "the component says who takes new work");
+  expect.equal(
+    await page.$eval('[data-component="Billing"] [data-component-assignee]', (el) => el.dataset.componentAssignee),
+    owner.name,
+    "the component says who takes new work",
+  );
 
   const issueKey = await createIssue(page, key, "Invoice is wrong", { visit: false });
   await goto(page, `/issues/${issueKey}`);
@@ -265,7 +273,12 @@ scenario("one issue is exported from its page, ticked rows from search, and a pr
   const a = await createIssue(page, key, "Export me alone", { visit: false });
   const b = await createIssue(page, key, "Export me with a friend", { visit: false });
   await createIssue(page, key, "Leave me out", { visit: false });
-  const keysOf = (rows) => rows.slice(1).map((row) => row.split(",")[0]).sort().join(" ");
+  const keysOf = (rows) =>
+    rows
+      .slice(1)
+      .map((row) => row.split(",")[0])
+      .sort()
+      .join(" ");
 
   // The issue that is open, from its More menu.
   await goto(page, `/issues/${a}`);

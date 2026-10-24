@@ -74,9 +74,7 @@ describe("reading a saved workflow", () => {
       x: WORKFLOW_LAYOUT_ORIGIN_X + WORKFLOW_COLUMN_GAP,
       y: WORKFLOW_LAYOUT_ORIGIN_Y,
     });
-    expect(design.nodes.find((node) => node.statusId === done.id)?.x).toBe(
-      WORKFLOW_LAYOUT_ORIGIN_X + 2 * WORKFLOW_COLUMN_GAP,
-    );
+    expect(design.nodes.find((node) => node.statusId === done.id)?.x).toBe(WORKFLOW_LAYOUT_ORIGIN_X + 2 * WORKFLOW_COLUMN_GAP);
   });
 
   it("translates steps into statuses and carries the rules", () => {
@@ -143,7 +141,6 @@ describe("placing statuses", () => {
   it("forgets the opening status when it is removed", () => {
     expect(removeStatus(fromWorkflow(saved), todo.id).initialId).toBe("");
   });
-
 });
 
 describe("drawing transitions", () => {
@@ -241,7 +238,10 @@ describe("saying what would stop a save", () => {
     const design: Design = {
       name: "",
       description: "",
-      nodes: [{ statusId: todo.id, x: 0, y: 0 }, { statusId: done.id, x: 300, y: 0 }],
+      nodes: [
+        { statusId: todo.id, x: 0, y: 0 },
+        { statusId: done.id, x: 300, y: 0 },
+      ],
       initialId: "",
       edges: [
         { key: "a", name: "", description: "", from: todo.id, to: done.id, rules: [] },
@@ -275,18 +275,14 @@ describe("describing a rule", () => {
   ];
 
   it("uses the label and spells out the configuration", () => {
-    expect(describeRule({ kind: "validator", type: "validator.comment_required", config: {} }, catalogue)).toBe(
-      "Comment required",
+    expect(describeRule({ kind: "validator", type: "validator.comment_required", config: {} }, catalogue)).toBe("Comment required");
+    expect(describeRule({ kind: "condition", type: "condition.org_role", config: { roles: ["admin", "owner"] } }, catalogue)).toBe(
+      "Actor holds a role (Roles: admin, owner)",
     );
-    expect(
-      describeRule({ kind: "condition", type: "condition.org_role", config: { roles: ["admin", "owner"] } }, catalogue),
-    ).toBe("Actor holds a role (Roles: admin, owner)");
   });
 
   it("falls back to the type name for a rule the catalogue does not know", () => {
-    expect(describeRule({ kind: "condition", type: "condition.moon_phase", config: {} }, catalogue)).toBe(
-      "condition.moon_phase",
-    );
+    expect(describeRule({ kind: "condition", type: "condition.moon_phase", config: {} }, catalogue)).toBe("condition.moon_phase");
   });
 });
 
@@ -299,8 +295,7 @@ describe("the any-status box", () => {
     }
     const anywhere = anywhereRect();
     for (const node of design.nodes) {
-      const overlaps =
-        Math.abs(node.x - anywhere.x) < WORKFLOW_NODE_WIDTH && Math.abs(node.y - anywhere.y) < WORKFLOW_NODE_HEIGHT;
+      const overlaps = Math.abs(node.x - anywhere.x) < WORKFLOW_NODE_WIDTH && Math.abs(node.y - anywhere.y) < WORKFLOW_NODE_HEIGHT;
       expect(overlaps).toBe(false);
     }
   });

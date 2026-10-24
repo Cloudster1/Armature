@@ -78,7 +78,17 @@ export function useCurrentProjectKey(): string | undefined {
  * strip's button opens them as a drawer. In the settings area the sidebar is
  * the settings' own.
  */
-export function Sidebar({ onNewIssue, onAsk, drawerOpen = false, onCloseDrawer = () => {} }: { onNewIssue: () => void; onAsk?: () => void; drawerOpen?: boolean; onCloseDrawer?: () => void }) {
+export function Sidebar({
+  onNewIssue,
+  onAsk,
+  drawerOpen = false,
+  onCloseDrawer = () => {},
+}: {
+  onNewIssue: () => void;
+  onAsk?: () => void;
+  drawerOpen?: boolean;
+  onCloseDrawer?: () => void;
+}) {
   const { data } = useMe();
   const principal = data?.principal;
   const [mode, toggleMode] = useSidebarMode();
@@ -92,7 +102,15 @@ export function Sidebar({ onNewIssue, onAsk, drawerOpen = false, onCloseDrawer =
     <>
       <Rail open={open} onToggle={toggleMode} onNewIssue={onNewIssue} onAsk={onAsk} userName={principal?.user.name ?? ""} avatar={principal?.user.avatarUrl} />
       {open && (
-        <nav id={SIDEBAR_ID} className="flex shrink-0 flex-col border-r border-border bg-surface" style={{ width: SIDEBAR_WIDTH }} data-sidebar={mode} data-print-hide data-sidebar-area={settings ? "settings" : "work"} aria-label="Where you are">
+        <nav
+          id={SIDEBAR_ID}
+          className="flex shrink-0 flex-col border-r border-border bg-surface"
+          style={{ width: SIDEBAR_WIDTH }}
+          data-sidebar={mode}
+          data-print-hide
+          data-sidebar-area={settings ? "settings" : "work"}
+          aria-label="Where you are"
+        >
           <div className="flex h-12 items-center gap-1 border-b border-border px-3">{settings ? <BackToArmature /> : <InstallationName />}</div>
           <div className="flex-1 overflow-y-auto px-2 py-3">{settings ? <SettingsGroups /> : <WorkGroups />}</div>
           <BuildStamp />
@@ -124,7 +142,12 @@ function BackToArmature() {
     router.history.push(back);
   }
   return (
-    <a href={back} onClick={leave} className="flex min-w-0 flex-1 items-center gap-2 rounded-control px-1 py-1 text-sm font-semibold text-ink hover:bg-surface-raised" data-action="back-from-settings">
+    <a
+      href={back}
+      onClick={leave}
+      className="flex min-w-0 flex-1 items-center gap-2 rounded-control px-1 py-1 text-sm font-semibold text-ink hover:bg-surface-raised"
+      data-action="back-from-settings"
+    >
       <Icon.ChevronLeft className="shrink-0 text-ink-muted" />
       <span className="truncate">Back to Armature</span>
     </a>
@@ -135,7 +158,17 @@ function PlaceLink({ place, trailing }: { place: Place; trailing?: ReactNode }) 
   // Your profile and its notification settings are one page; only the section tells them apart.
   const shared = personalPlaces.some((other) => other !== place && other.to === place.to);
   return (
-    <NavItem to={place.to} search={place.search} hash={place.hash} matchHash={shared} exact={place.to === "/"} icon={place.icon} rail={false} trailing={trailing} data-place={place.label}>
+    <NavItem
+      to={place.to}
+      search={place.search}
+      hash={place.hash}
+      matchHash={shared}
+      exact={place.to === "/"}
+      icon={place.icon}
+      rail={false}
+      trailing={trailing}
+      data-place={place.label}
+    >
       {place.label}
     </NavItem>
   );
@@ -158,7 +191,9 @@ function WorkGroups() {
 
       <SidebarGroup id="project" title="Project" open={isOpen("project", true)} onToggle={() => toggleGroup("project", true)}>
         <ProjectSwitcher projectKey={projectKey} />
-        {projectKey && <ProjectPages projectKey={projectKey} adminOpen={isOpen("project-admin", false)} onToggleAdmin={() => toggleGroup("project-admin", false)} />}
+        {projectKey && (
+          <ProjectPages projectKey={projectKey} adminOpen={isOpen("project-admin", false)} onToggleAdmin={() => toggleGroup("project-admin", false)} />
+        )}
       </SidebarGroup>
     </>
   );
@@ -217,7 +252,15 @@ function NavDrawer({ settings, onClose, onNewIssue }: { settings: boolean; onClo
         <nav aria-label="Where you are" className="flex-1 overflow-y-auto px-2 py-3">
           {!settings && (
             <div className="mb-3">
-              <NavButton icon="Plus" rail={false} onClick={() => { onClose(); onNewIssue(); }} data-action="new-issue">
+              <NavButton
+                icon="Plus"
+                rail={false}
+                onClick={() => {
+                  onClose();
+                  onNewIssue();
+                }}
+                data-action="new-issue"
+              >
                 New issue
               </NavButton>
             </div>
@@ -376,7 +419,15 @@ function CustomerMenu({ userName, avatar }: { userName: string; avatar?: string 
       label="Your account"
       align="end"
       trigger={(props) => (
-        <Button variant="ghost" size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} className="px-1!" data-action="customer-menu">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={props.toggle}
+          aria-haspopup={props["aria-haspopup"]}
+          aria-expanded={props["aria-expanded"]}
+          className="px-1!"
+          data-action="customer-menu"
+        >
           <Avatar name={userName} src={avatar} size="sm" />
           <span className="sr-only text-sm text-ink shell:not-sr-only">{userName}</span>
         </Button>
@@ -389,7 +440,13 @@ function CustomerMenu({ userName, avatar }: { userName: string; avatar?: string 
           danger: true,
           attrs: { "data-action": "erase-me" },
           onSelect: async () => {
-            if (await confirm({ noun: "account", verb: "Delete", body: `${userName}'s name, address and sessions go for good. Your requests stay, by "Former user".` })) {
+            if (
+              await confirm({
+                noun: "account",
+                verb: "Delete",
+                body: `${userName}'s name, address and sessions go for good. Your requests stay, by "Former user".`,
+              })
+            ) {
               erase.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) });
             }
           },

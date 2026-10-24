@@ -125,7 +125,9 @@ describe("the projects page in the address", () => {
     page.total = 120;
     renderPage();
     await userEvent.type(screen.getByLabelText("Find projects"), "live");
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/projects", search: { q: "live", offset: undefined, archived: undefined }, replace: false }));
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ to: "/projects", search: { q: "live", offset: undefined, archived: undefined }, replace: false }),
+    );
     expect(navigate).toHaveBeenCalledTimes(1);
   });
 

@@ -32,9 +32,7 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
   return (
     <section data-testid="watchers-panel">
       <div className="mb-3 flex items-center gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
-          Watchers {watchers.length > 0 && `(${watchers.length})`}
-        </h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Watchers {watchers.length > 0 && `(${watchers.length})`}</h2>
         <span className="flex-1" />
         {me &&
           (watching ? (
@@ -94,7 +92,12 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
               <span className="text-ink">{w.name}</span>
               <span className="min-w-0 flex-1 truncate text-ink-subtle">{w.email}</span>
               {editable && (
-                <Button variant="link" onClick={() => remove.mutate({ key: issueKey, userId: w.userId })} aria-label={`Stop ${w.name} watching`} className="text-xs text-ink-subtle hover:text-danger">
+                <Button
+                  variant="link"
+                  onClick={() => remove.mutate({ key: issueKey, userId: w.userId })}
+                  aria-label={`Stop ${w.name} watching`}
+                  className="text-xs text-ink-subtle hover:text-danger"
+                >
                   Remove
                 </Button>
               )}

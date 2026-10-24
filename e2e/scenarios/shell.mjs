@@ -84,11 +84,7 @@ scenario("the theme choice persists across a reload", async ({ page }) => {
   expect.equal(await textOf(page, themeButton), "Light", "cycles to light");
   await page.click(themeButton);
   expect.equal(await textOf(page, themeButton), "Dark", "cycles to dark");
-  expect.equal(
-    await page.evaluate(() => document.documentElement.getAttribute("data-theme")),
-    "dark",
-    "the document is stamped with the theme",
-  );
+  expect.equal(await page.evaluate(() => document.documentElement.getAttribute("data-theme")), "dark", "the document is stamped with the theme");
 
   await reload(page);
   await page.waitForSelector(themeButton, { timeout: 10_000 });
@@ -98,14 +94,17 @@ scenario("the theme choice persists across a reload", async ({ page }) => {
 // A missing file would come back as the app's index.html, so the type is what proves it is there.
 scenario("the logo and the icons are served from the site's root, each with its own type", async ({ page }) => {
   await goto(page, "/login");
-  const served = await page.evaluate(async (paths) => {
-    const out = {};
-    for (const path of paths) {
-      const response = await fetch(path);
-      out[path] = `${response.status} ${response.headers.get("content-type")}`;
-    }
-    return out;
-  }, ["/favicon.ico", "/favicon-32.png", "/apple-touch-icon.png", "/icon-512.png", "/logo-256.webp", "/mark-96.webp", "/site.webmanifest"]);
+  const served = await page.evaluate(
+    async (paths) => {
+      const out = {};
+      for (const path of paths) {
+        const response = await fetch(path);
+        out[path] = `${response.status} ${response.headers.get("content-type")}`;
+      }
+      return out;
+    },
+    ["/favicon.ico", "/favicon-32.png", "/apple-touch-icon.png", "/icon-512.png", "/logo-256.webp", "/mark-96.webp", "/site.webmanifest"],
+  );
   for (const [path, type] of Object.entries({
     "/favicon.ico": /image\/(x-icon|vnd\.microsoft\.icon)/,
     "/favicon-32.png": /image\/png/,
@@ -156,7 +155,10 @@ scenario("the keyboard reaches the content from the top of a page through the sk
   expect.equal(await page.evaluate(() => location.pathname), "/projects", "the skip link left the address alone");
 
   await page.keyboard.press("Tab");
-  expect.truthy(await page.evaluate(() => document.querySelector("main#main").contains(document.activeElement)), "the next Tab stays in the content, past the navigation");
+  expect.truthy(
+    await page.evaluate(() => document.querySelector("main#main").contains(document.activeElement)),
+    "the next Tab stays in the content, past the navigation",
+  );
 });
 
 // The padding follows the stylesheet's shell breakpoint, not a branch in code, so both shells get it.
@@ -223,7 +225,13 @@ async function switchTo(page) {
   await page.click('[data-action="account"]');
   await page.waitForSelector('[role="menu"]', { timeout: WAIT });
   const tools = await page.$$eval("[data-switch-to]", (links) =>
-    links.map((a) => ({ product: a.getAttribute("data-switch-to"), tag: a.tagName, href: a.getAttribute("href"), target: a.getAttribute("target"), text: a.textContent })),
+    links.map((a) => ({
+      product: a.getAttribute("data-switch-to"),
+      tag: a.tagName,
+      href: a.getAttribute("href"),
+      target: a.getAttribute("target"),
+      text: a.textContent,
+    })),
   );
   const heading = await page.$('[data-menu-section="Switch to"]');
   await page.keyboard.press("Escape");
@@ -247,7 +255,14 @@ serialScenario("the avatar menu links the connected tools, only those connected,
     made.push(await connectTool("exciter", exciter));
     await reload(page);
     menu = await switchTo(page);
-    expect.equal(JSON.stringify(menu.tools.map((t) => [t.product, t.href])), JSON.stringify([["stator", stator], ["exciter", exciter]]), "both are listed, Stator first");
+    expect.equal(
+      JSON.stringify(menu.tools.map((t) => [t.product, t.href])),
+      JSON.stringify([
+        ["stator", stator],
+        ["exciter", exciter],
+      ]),
+      "both are listed, Stator first",
+    );
 
     while (made.length) await disconnectTool(made.pop());
     await reload(page);

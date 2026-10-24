@@ -62,20 +62,9 @@ export function DeskEntryForm({ desk, deskName, onEntered }: { desk?: string; de
   if (!sentTo) {
     return (
       <form onSubmit={sendCode} className="space-y-4" noValidate data-desk-entry={desk ?? ""}>
-        <p className="text-sm text-ink-muted">
-          {deskName} answers requests here. Say where to reach you and a code arrives by mail; no account is needed.
-        </p>
+        <p className="text-sm text-ink-muted">{deskName} answers requests here. Say where to reach you and a code arrives by mail; no account is needed.</p>
         {error && !fieldError && <ErrorBanner>{error.message}</ErrorBanner>}
-        <Field
-          label="Email"
-          type="email"
-          autoComplete="email"
-          autoFocus
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          error={fieldError}
-        />
+        <Field label="Email" type="email" autoComplete="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} error={fieldError} />
         <Button type="submit" loading={requestCode.isPending} className="w-full" disabled={!email.trim()}>
           Send me a code
         </Button>

@@ -82,9 +82,7 @@ export function useUpdateUser() {
 }
 
 export function useSetUserPassword() {
-  return useUserMutation(({ id, password }: { id: string; password: string }) =>
-    request<void>(`/users/${id}/password`, { method: "PUT", body: { password } }),
-  );
+  return useUserMutation(({ id, password }: { id: string; password: string }) => request<void>(`/users/${id}/password`, { method: "PUT", body: { password } }));
 }
 
 /** Somebody the identity provider vouched for who is waiting to be let in. */

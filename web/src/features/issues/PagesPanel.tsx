@@ -41,7 +41,12 @@ export function PagesPanel({ issueKey, editable }: { issueKey: string; editable:
                   </a>
                   <span className="shrink-0 text-xs text-ink-subtle">{link.source}</span>
                   {editable && (
-                    <Button variant="link" onClick={() => remove.mutate({ key: issueKey, id: link.id })} aria-label={`Remove the ${noun} ${link.title}`} className="text-xs text-ink-subtle hover:text-danger">
+                    <Button
+                      variant="link"
+                      onClick={() => remove.mutate({ key: issueKey, id: link.id })}
+                      aria-label={`Remove the ${noun} ${link.title}`}
+                      className="text-xs text-ink-subtle hover:text-danger"
+                    >
                       Remove
                     </Button>
                   )}
@@ -60,7 +65,16 @@ export function PagesPanel({ issueKey, editable }: { issueKey: string; editable:
 function SourceIcon({ page }: { page: RemoteLink }) {
   const [broken, setBroken] = useState(false);
   if (page.iconUrl && !broken) {
-    return <img src={page.iconUrl} alt="" referrerPolicy="no-referrer" className="size-4 shrink-0 rounded-sm" onError={() => setBroken(true)} data-remote-link-icon />;
+    return (
+      <img
+        src={page.iconUrl}
+        alt=""
+        referrerPolicy="no-referrer"
+        className="size-4 shrink-0 rounded-sm"
+        onError={() => setBroken(true)}
+        data-remote-link-icon
+      />
+    );
   }
   return (
     <span aria-hidden className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-surface-sunken text-2xs font-semibold text-ink-muted uppercase">

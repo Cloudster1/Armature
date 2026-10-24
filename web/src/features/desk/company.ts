@@ -3,7 +3,14 @@ import { cleanDomain } from "./DeskExtras";
 
 /** Domains typed as a list: commas or spaces between them, each as the server stores it. */
 export function parseDomains(raw: string): string[] {
-  return [...new Set(raw.split(/[\s,]+/).map(cleanDomain).filter(Boolean))];
+  return [
+    ...new Set(
+      raw
+        .split(/[\s,]+/)
+        .map(cleanDomain)
+        .filter(Boolean),
+    ),
+  ];
 }
 
 /** Where a request came from, as an agent reads it: "Globex, shared" or "Globex". */

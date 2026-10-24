@@ -9,9 +9,7 @@ export function ScopeBadge({ origin }: { origin: Origin }) {
     <span
       className={cx(
         "inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium",
-        ownedHere
-          ? "bg-accent-subtle text-accent ring-1 ring-accent/30"
-          : "bg-surface-raised text-ink-muted",
+        ownedHere ? "bg-accent-subtle text-accent ring-1 ring-accent/30" : "bg-surface-raised text-ink-muted",
       )}
     >
       {ownedHere ? "This project" : "All projects"}

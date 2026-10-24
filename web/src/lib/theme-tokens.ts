@@ -104,8 +104,18 @@ export const TOKEN_NAMES: string[] = TOKEN_GROUPS.flatMap((group) => group.token
 /** The pointers a theme may replace, with what each lands on. */
 export const CURSOR_KINDS: Array<{ kind: string; label: string; keyword: string; selector: string }> = [
   { kind: "default", label: "Default", keyword: "default", selector: ":root, body" },
-  { kind: "pointer", label: "Pointer", keyword: "pointer", selector: 'a, button, [role="button"], [role="tab"], [role="option"], label, select, summary, .cursor-pointer' },
-  { kind: "text", label: "Text", keyword: "text", selector: 'input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, [contenteditable="true"], .cursor-text' },
+  {
+    kind: "pointer",
+    label: "Pointer",
+    keyword: "pointer",
+    selector: 'a, button, [role="button"], [role="tab"], [role="option"], label, select, summary, .cursor-pointer',
+  },
+  {
+    kind: "text",
+    label: "Text",
+    keyword: "text",
+    selector: 'input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, [contenteditable="true"], .cursor-text',
+  },
   { kind: "grab", label: "Grab", keyword: "grab", selector: ".cursor-grab" },
   { kind: "grabbing", label: "Grabbing", keyword: "grabbing", selector: ".cursor-grabbing" },
   { kind: "move", label: "Move", keyword: "move", selector: ".cursor-move" },

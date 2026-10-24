@@ -48,7 +48,15 @@ function offences(source: string, fileName = "words.tsx"): string[] {
   const visit = (node: ts.Node) => {
     let text: string | undefined;
     if (ts.isJsxText(node)) text = node.text;
-    else if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) && isRead(node)) text = node.text;
+    else if (
+      (ts.isStringLiteral(node) ||
+        ts.isNoSubstitutionTemplateLiteral(node) ||
+        ts.isTemplateHead(node) ||
+        ts.isTemplateMiddle(node) ||
+        ts.isTemplateTail(node)) &&
+      isRead(node)
+    )
+      text = node.text;
     if (text !== undefined && REFUSED.test(text)) {
       const line = file.getLineAndCharacterOfPosition(node.getStart(file)).line + 1;
       found.push(`${line}: ${text.trim()}`);
@@ -64,15 +72,19 @@ const root = join(__dirname, "..");
 const SCAN_TIMEOUT_MS = 60_000;
 
 describe("the words on screen", () => {
-  it("say everyone or all projects, never the organization, outside the Installation page", () => {
-    const found = walk(root)
-      .filter((file) => !ALLOWED.includes(relative(root, file)))
-      .map((file) => ({ file, text: readFileSync(file, "utf8") }))
-      // Only a file that holds the word somewhere is worth parsing.
-      .filter(({ text }) => REFUSED.test(text))
-      .flatMap(({ file, text }) => offences(text, file).map((o) => `${relative(root, file)}:${o}`));
-    expect(found.join("\n")).toBe("");
-  }, SCAN_TIMEOUT_MS);
+  it(
+    "say everyone or all projects, never the organization, outside the Installation page",
+    () => {
+      const found = walk(root)
+        .filter((file) => !ALLOWED.includes(relative(root, file)))
+        .map((file) => ({ file, text: readFileSync(file, "utf8") }))
+        // Only a file that holds the word somewhere is worth parsing.
+        .filter(({ text }) => REFUSED.test(text))
+        .flatMap(({ file, text }) => offences(text, file).map((o) => `${relative(root, file)}:${o}`));
+      expect(found.join("\n")).toBe("");
+    },
+    SCAN_TIMEOUT_MS,
+  );
 
   it("are told apart from names, keys and comments", () => {
     for (const line of [

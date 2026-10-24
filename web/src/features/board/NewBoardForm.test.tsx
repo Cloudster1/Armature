@@ -47,10 +47,7 @@ describe("NewBoardForm", () => {
     await userEvent.click(screen.getByRole("radio", { name: /Kanban/ }));
     await userEvent.click(screen.getByRole("button", { name: "Create board" }));
 
-    expect(createBoard).toHaveBeenCalledWith(
-      { name: "Flow", type: "kanban", teamId: null },
-      expect.anything(),
-    );
+    expect(createBoard).toHaveBeenCalledWith({ name: "Flow", type: "kanban", teamId: null }, expect.anything());
   });
 
   it("can scope the board to a team", async () => {
@@ -62,10 +59,7 @@ describe("NewBoardForm", () => {
     await userEvent.selectOptions(screen.getByLabelText("Draws from"), "t1");
     await userEvent.click(screen.getByRole("button", { name: "Create board" }));
 
-    expect(createBoard).toHaveBeenCalledWith(
-      { name: "Platform flow", type: "kanban", teamId: "t1" },
-      expect.anything(),
-    );
+    expect(createBoard).toHaveBeenCalledWith({ name: "Platform flow", type: "kanban", teamId: "t1" }, expect.anything());
   });
 
   // Without teams there is nothing to draw from but the project, so the

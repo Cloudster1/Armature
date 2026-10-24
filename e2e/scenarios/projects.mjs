@@ -70,13 +70,21 @@ scenario("the projects page finds projects by name or key and pages through them
     await goto(page, "/projects");
     await page.type('[aria-label="Find projects"]', marker);
     await page.waitForFunction((m) => new URL(location.href).searchParams.get("q") === m, { timeout: WAIT }, marker);
-    await page.waitForFunction((range) => document.querySelector("[data-page-range]")?.textContent === range, { timeout: WAIT }, `1 to ${PROJECT_PAGE} of ${keys.length}`);
+    await page.waitForFunction(
+      (range) => document.querySelector("[data-page-range]")?.textContent === range,
+      { timeout: WAIT },
+      `1 to ${PROJECT_PAGE} of ${keys.length}`,
+    );
     expect.contains(await bodyText(page), `${keys.length} projects`, "the count is of every match, not of the page");
     expect.equal((await listedKeys(page)).join(","), keys.slice(0, PROJECT_PAGE).join(","), "the first page holds the first matches by key");
 
     await press(page, '[aria-label="Next page"]');
     await page.waitForFunction((n) => new URL(location.href).searchParams.get("offset") === String(n), { timeout: WAIT }, PROJECT_PAGE);
-    await page.waitForFunction((k) => document.querySelectorAll("tr[data-project]").length === 1 && document.querySelector(`tr[data-project="${k}"]`), { timeout: WAIT }, keys[PROJECT_PAGE]);
+    await page.waitForFunction(
+      (k) => document.querySelectorAll("tr[data-project]").length === 1 && document.querySelector(`tr[data-project="${k}"]`),
+      { timeout: WAIT },
+      keys[PROJECT_PAGE],
+    );
 
     await reload(page);
     await page.waitForSelector(`tr[data-project="${keys[PROJECT_PAGE]}"]`, { timeout: WAIT });
@@ -123,10 +131,7 @@ scenario("only the workflow's legal moves are offered", async ({ page }) => {
   const buttonsFromTodo = await page.$$eval("button", (bs) => bs.map((b) => b.textContent.trim()));
   expect.truthy(buttonsFromTodo.includes("Start progress"), "Start progress is offered from To Do");
   expect.truthy(buttonsFromTodo.includes("Close"), "the global Close is offered");
-  expect.truthy(
-    !buttonsFromTodo.includes("Approve"),
-    `Approve should not be reachable from To Do, saw: ${buttonsFromTodo.join(", ")}`,
-  );
+  expect.truthy(!buttonsFromTodo.includes("Approve"), `Approve should not be reachable from To Do, saw: ${buttonsFromTodo.join(", ")}`);
 });
 
 scenario("taking a transition applies the workflow's post-functions", async ({ page }) => {
@@ -154,10 +159,7 @@ scenario("the changelog records every move", async ({ page }) => {
 
   // The history is its own query, so wait for its content rather than for the
   // status badge that changes first.
-  await page.waitForFunction(
-    () => document.body.innerText.includes("moved this from To Do to In Progress"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("moved this from To Do to In Progress"), { timeout: WAIT });
 
   const history = await bodyText(page);
   expect.containsInsensitive(history, "History", "the history section is shown");
@@ -249,7 +251,7 @@ scenario("a description keeps its formatting in both editor modes", async ({ pag
   // The markdown face shows the same document as text and takes edits.
   await clickButton(page, "Edit");
   await setEditorMode(page, "markdown");
-  await page.waitForSelector('textarea#issue-description', { timeout: WAIT });
+  await page.waitForSelector("textarea#issue-description", { timeout: WAIT });
   const source = await editorText(page, "#issue-description");
   expect.contains(source, "## Plan", "the heading reads as markdown");
   expect.contains(source, "- first step", "and so does the list");
@@ -261,7 +263,7 @@ scenario("a description keeps its formatting in both editor modes", async ({ pag
   await page.reload();
   await waitForApp(page);
   await clickButton(page, "Edit");
-  await page.waitForSelector('textarea#issue-description', { timeout: WAIT });
+  await page.waitForSelector("textarea#issue-description", { timeout: WAIT });
   await setEditorMode(page, "rich");
 });
 
@@ -274,10 +276,7 @@ scenario("a comment can be added and appears on the issue", async ({ page }) => 
   await page.type("#new-comment", "This looks like a duplicate.");
   await clickButton(page, "Comment");
 
-  await page.waitForFunction(
-    () => document.body.innerText.includes("This looks like a duplicate."),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("This looks like a duplicate."), { timeout: WAIT });
 });
 
 scenario("the issue list filters by scope", async ({ page }) => {

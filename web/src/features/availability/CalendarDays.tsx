@@ -60,7 +60,15 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
 
   function save() {
     if (!draft || !calendar) return;
-    setDays.mutate({ id: calendar.id, days: draft }, { onSuccess: () => { setDraft(null); toast.success(`Saved the days of ${calendar.name}`); } });
+    setDays.mutate(
+      { id: calendar.id, days: draft },
+      {
+        onSuccess: () => {
+          setDraft(null);
+          toast.success(`Saved the days of ${calendar.name}`);
+        },
+      },
+    );
   }
 
   return (
@@ -69,13 +77,34 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
         <SectionTitle>Days off in {calendar.name}</SectionTitle>
         {canAdminister && (
           <span className="flex gap-2">
-            <Button size="sm" variant="secondary" icon={<Icon.Upload />} loading={importDays.isPending} onClick={() => fileInput.current?.click()} data-action="import-holidays">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={<Icon.Upload />}
+              loading={importDays.isPending}
+              onClick={() => fileInput.current?.click()}
+              data-action="import-holidays"
+            >
               Import .ics
             </Button>
-            <Button size="sm" variant="secondary" icon={<Icon.Plus />} onClick={() => setDraft([...days, { day: "", name: "", halfDay: false }])} data-action="add-holiday">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={<Icon.Plus />}
+              onClick={() => setDraft([...days, { day: "", name: "", halfDay: false }])}
+              data-action="add-holiday"
+            >
               Add a day
             </Button>
-            <input ref={fileInput} type="file" accept={HOLIDAY_FILE_ACCEPT} className="hidden" aria-label="Choose an .ics file" data-holiday-file onChange={(e) => void onFile(e.target.files?.[0])} />
+            <input
+              ref={fileInput}
+              type="file"
+              accept={HOLIDAY_FILE_ACCEPT}
+              className="hidden"
+              aria-label="Choose an .ics file"
+              data-holiday-file
+              onChange={(e) => void onFile(e.target.files?.[0])}
+            />
           </span>
         )}
       </div>
@@ -84,7 +113,11 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       {days.length === 0 ? (
         <EmptyState
           title="No days off yet"
-          description={canAdminister ? "Add the days by hand, or import the .ics file a calendar application exports. Recurring events need to be exported as separate days." : "An administrator adds the days off here."}
+          description={
+            canAdminister
+              ? "Add the days by hand, or import the .ics file a calendar application exports. Recurring events need to be exported as separate days."
+              : "An administrator adds the days off here."
+          }
         />
       ) : (
         <Card>
@@ -105,13 +138,28 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
                       <Input type="date" controlSize="sm" value={day.day} aria-label="Day" onChange={(e) => change(index, { day: e.target.value })} />
                     </Td>
                     <Td>
-                      <Input controlSize="sm" value={day.name} maxLength={HOLIDAY_NAME_MAX_LENGTH} aria-label="Name" onChange={(e) => change(index, { name: e.target.value })} />
+                      <Input
+                        controlSize="sm"
+                        value={day.name}
+                        maxLength={HOLIDAY_NAME_MAX_LENGTH}
+                        aria-label="Name"
+                        onChange={(e) => change(index, { name: e.target.value })}
+                      />
                     </Td>
                     <Td>
-                      <Checkbox label={<span className="sr-only">Half day</span>} checked={day.halfDay} onChange={(e) => change(index, { halfDay: e.target.checked })} />
+                      <Checkbox
+                        label={<span className="sr-only">Half day</span>}
+                        checked={day.halfDay}
+                        onChange={(e) => change(index, { halfDay: e.target.checked })}
+                      />
                     </Td>
                     <Td className="text-right">
-                      <IconButton icon={<Icon.X />} label={`Remove ${day.name || "this day"}`} size="sm" onClick={() => setDraft(days.filter((_, i) => i !== index))} />
+                      <IconButton
+                        icon={<Icon.X />}
+                        label={`Remove ${day.name || "this day"}`}
+                        size="sm"
+                        onClick={() => setDraft(days.filter((_, i) => i !== index))}
+                      />
                     </Td>
                   </tr>
                 ) : (

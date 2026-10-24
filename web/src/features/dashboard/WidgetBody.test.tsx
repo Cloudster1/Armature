@@ -32,7 +32,10 @@ function draws(source: ReportSource) {
 describe("the sprint history widget", () => {
   beforeEach(() => {
     asked = [];
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => answer(url)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => answer(url)),
+    );
   });
   afterEach(() => vi.unstubAllGlobals());
 

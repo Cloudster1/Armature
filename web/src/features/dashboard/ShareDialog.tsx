@@ -9,7 +9,19 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
  * The links that open this dashboard without a sign-in. A new link's address
  * is shown once, here; afterwards the row knows only that it exists.
  */
-export function ShareDialog({ dashboardId, dashboardName, query, open, onClose }: { dashboardId: string; dashboardName: string; query: string; open: boolean; onClose: () => void }) {
+export function ShareDialog({
+  dashboardId,
+  dashboardName,
+  query,
+  open,
+  onClose,
+}: {
+  dashboardId: string;
+  dashboardName: string;
+  query: string;
+  open: boolean;
+  onClose: () => void;
+}) {
   const { data, error } = useShares(dashboardId);
   const create = useCreateShare();
   const revoke = useRevokeShare();
@@ -46,13 +58,27 @@ export function ShareDialog({ dashboardId, dashboardName, query, open, onClose }
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={`Share ${dashboardName}`} size="lg" attrs={{ "data-share-dialog": "" }} description="A link shows the dashboard as it is filtered now, to anybody who has it, until you revoke it.">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={`Share ${dashboardName}`}
+      size="lg"
+      attrs={{ "data-share-dialog": "" }}
+      description="A link shows the dashboard as it is filtered now, to anybody who has it, until you revoke it."
+    >
       <div className="space-y-5">
         {made && (
           <div className="rounded-overlay border border-accent bg-accent-subtle p-3" data-share-made="">
             <p className="text-sm font-medium text-ink">{made.share.name} is ready. Copy the address now; it is not shown again.</p>
             <div className="mt-2 flex items-center gap-2">
-              <Input readOnly value={made.url} aria-label="Link address" className="min-w-0 flex-1 font-mono text-xs" data-share-url={made.url} onFocus={(e) => e.currentTarget.select()} />
+              <Input
+                readOnly
+                value={made.url}
+                aria-label="Link address"
+                className="min-w-0 flex-1 font-mono text-xs"
+                data-share-url={made.url}
+                onFocus={(e) => e.currentTarget.select()}
+              />
               <IconButton icon={<Icon.Copy />} label="Copy the link" size="md" onClick={() => copy(made.url)} data-action="copy-share" />
             </div>
           </div>
@@ -94,7 +120,13 @@ export function ShareDialog({ dashboardId, dashboardName, query, open, onClose }
                       size="sm"
                       variant="ghost"
                       data-action="revoke-share"
-                      onClick={async () => (await confirm({ noun: "link", verb: "Revoke", body: `${share.name} stops opening the dashboard. Anybody holding it sees that it is no longer valid.` })) && revoke.mutate({ dashboardId, shareId: share.id })}
+                      onClick={async () =>
+                        (await confirm({
+                          noun: "link",
+                          verb: "Revoke",
+                          body: `${share.name} stops opening the dashboard. Anybody holding it sees that it is no longer valid.`,
+                        })) && revoke.mutate({ dashboardId, shareId: share.id })
+                      }
                     >
                       Revoke
                     </Button>

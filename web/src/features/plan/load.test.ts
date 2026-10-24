@@ -11,7 +11,13 @@ function row(team: string, kind: TeamLoad["kind"], loads: number[], capacity?: n
     teamId: kind === "team" ? `id-${team}` : undefined,
     weeklyCapacity: capacity,
     unscheduled: 0,
-    weeks: loads.map((load, i) => ({ start: `2026-09-${String(7 + i * 7).padStart(2, "0")}T00:00:00Z`, load, capacity, issues: load > 0 ? 1 : 0, unestimated: 0 })),
+    weeks: loads.map((load, i) => ({
+      start: `2026-09-${String(7 + i * 7).padStart(2, "0")}T00:00:00Z`,
+      load,
+      capacity,
+      issues: load > 0 ? 1 : 0,
+      unestimated: 0,
+    })),
     ...over,
   };
 }

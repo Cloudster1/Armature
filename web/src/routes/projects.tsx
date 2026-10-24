@@ -3,7 +3,28 @@ import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useArchiveProject, useCreateProject, useKeyCheck, useProjects, useRestoreProject, type Project } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
-import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, ListSearch, Menu, Page, PageHeader, Pager, Skeleton, Switch, Table, Td, Th, clampOffset, countOf, isPageOffset, useToast } from "@/components/ui";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorBanner,
+  Field,
+  IconButton,
+  ListSearch,
+  Menu,
+  Page,
+  PageHeader,
+  Pager,
+  Skeleton,
+  Switch,
+  Table,
+  Td,
+  Th,
+  clampOffset,
+  countOf,
+  isPageOffset,
+  useToast,
+} from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TemplateChooser } from "@/features/projects/TemplateChooser";
 import { RelativeTime } from "@/features/issues/badges";
@@ -122,7 +143,15 @@ function ProjectsPage() {
           </tbody>
         </Table>
       )}
-      {data && <Pager label="Project pages" total={data.total} offset={data.offset} pageSize={PROJECT_PAGE_SIZE} onChange={(next) => show({ q, archived, offset: next })} />}
+      {data && (
+        <Pager
+          label="Project pages"
+          total={data.total}
+          offset={data.offset}
+          pageSize={PROJECT_PAGE_SIZE}
+          onChange={(next) => show({ q, archived, offset: next })}
+        />
+      )}
     </Page>
   );
 }
@@ -174,7 +203,9 @@ const ProjectRow = memo(function ProjectRow({
         <span className="text-ink">{project.openIssueCount} open</span>
         <span className="text-ink-subtle"> · {project.issueCount} total</span>
       </Td>
-      <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums"><RelativeTime iso={project.updatedAt} /></Td>
+      <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums">
+        <RelativeTime iso={project.updatedAt} />
+      </Td>
       <Td className="text-right">
         {admin && (
           <Menu
@@ -195,7 +226,11 @@ const ProjectRow = memo(function ProjectRow({
               archived
                 ? [{ label: "Restore", icon: <Icon.Archive />, onSelect: () => onRestore(project), attrs: { "data-action": "restore-project" } }]
                 : [
-                    { label: "Settings", icon: <Icon.Settings />, onSelect: () => navigate({ to: "/projects/$projectKey/settings", params: { projectKey: project.key } }) },
+                    {
+                      label: "Settings",
+                      icon: <Icon.Settings />,
+                      onSelect: () => navigate({ to: "/projects/$projectKey/settings", params: { projectKey: project.key } }),
+                    },
                     {
                       label: "Archive",
                       icon: <Icon.Archive />,

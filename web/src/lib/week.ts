@@ -1,4 +1,12 @@
-import { ABSENCE_MAX_DAYS, ABSENCES_LISTED_DAYS_BEHIND, HOURS_PER_DAY, MINUTES_PER_HOUR, MS_PER_DAY, WEEKDAY_REFERENCE_MONDAY, WORKING_HOURS_DECIMALS } from "@/config";
+import {
+  ABSENCE_MAX_DAYS,
+  ABSENCES_LISTED_DAYS_BEHIND,
+  HOURS_PER_DAY,
+  MINUTES_PER_HOUR,
+  MS_PER_DAY,
+  WEEKDAY_REFERENCE_MONDAY,
+  WORKING_HOURS_DECIMALS,
+} from "@/config";
 import { WEEKDAYS, type Absence, type Weekday } from "@/api/availability";
 
 /** Minutes as the hours a person types: 480 is "8", 450 is "7.5". */

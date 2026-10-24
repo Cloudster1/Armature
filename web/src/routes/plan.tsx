@@ -175,7 +175,17 @@ function PlanPage() {
       {view === "dependencies" ? (
         <DependencyGraph projectKey={projectKey} cut={cut} query={q} filters={filters} />
       ) : (
-        <Timeline key={view} projectKey={projectKey} view={view} cut={cut} query={q} filters={filters} zoom={zoom} proposed={proposed} onMovedLater={offerToFollow} />
+        <Timeline
+          key={view}
+          projectKey={projectKey}
+          view={view}
+          cut={cut}
+          query={q}
+          filters={filters}
+          zoom={zoom}
+          proposed={proposed}
+          onMovedLater={offerToFollow}
+        />
       )}
     </Page>
   );

@@ -42,7 +42,11 @@ export function NavItem({
       search={search as never}
       hash={hash}
       {...rest}
-      activeOptions={{ exact: exact || hash !== undefined || search !== undefined, includeHash: matchHash ?? hash !== undefined, includeSearch: search !== undefined }}
+      activeOptions={{
+        exact: exact || hash !== undefined || search !== undefined,
+        includeHash: matchHash ?? hash !== undefined,
+        includeSearch: search !== undefined,
+      }}
       className={cx(
         "flex h-8 items-center gap-2 rounded-control text-sm text-ink-muted hover:bg-surface-raised hover:text-ink",
         rail ? "w-8 justify-center px-0" : "px-2",
@@ -82,10 +86,20 @@ export function NavLinkOut({ href, icon, children, ...rest }: { href: string; ic
 }
 
 /** An action in the rail or the sidebar, drawn like a destination. */
-export function NavButton({ icon, rail, children, ...rest }: { icon: IconName; rail: boolean; children: string; onClick: () => void } & Record<`data-${string}`, string>) {
+export function NavButton({
+  icon,
+  rail,
+  children,
+  ...rest
+}: { icon: IconName; rail: boolean; children: string; onClick: () => void } & Record<`data-${string}`, string>) {
   const Glyph = Icon[icon];
   const button = (
-    <Button variant="ghost" {...rest} className={cx("gap-2 font-normal", rail ? "w-8 px-0!" : "w-full justify-start px-2!")} icon={<Glyph className="shrink-0" />}>
+    <Button
+      variant="ghost"
+      {...rest}
+      className={cx("gap-2 font-normal", rail ? "w-8 px-0!" : "w-full justify-start px-2!")}
+      icon={<Glyph className="shrink-0" />}
+    >
       {rail ? <span className="sr-only">{children}</span> : <span className="min-w-0 flex-1 truncate text-left">{children}</span>}
     </Button>
   );
@@ -130,9 +144,21 @@ export function NotificationsBell({ side = "bottom" }: { side?: "top" | "bottom"
       trigger={
         <Tooltip text={label} side={side}>
           <span className="relative inline-flex">
-            <IconButton icon={<Icon.Bell />} label={label} size="sm" onClick={() => setOpen((o) => !o)} aria-expanded={open} data-action="notifications" data-guide="inbox" data-unread-count={unread} />
+            <IconButton
+              icon={<Icon.Bell />}
+              label={label}
+              size="sm"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              data-action="notifications"
+              data-guide="inbox"
+              data-unread-count={unread}
+            />
             {unread > 0 && (
-              <span aria-hidden className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-2xs leading-4 font-medium text-on-accent">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-2xs leading-4 font-medium text-on-accent"
+              >
                 {unread > 99 ? "99+" : unread}
               </span>
             )}
@@ -159,7 +185,14 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
     <div data-notifications-panel>
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <span className="text-sm font-semibold text-ink">Notifications</span>
-        <Button variant="ghost" size="sm" onClick={() => markRead.mutate({ all: true })} loading={markRead.isPending} disabled={unread === 0} data-action="mark-all-read">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => markRead.mutate({ all: true })}
+          loading={markRead.isPending}
+          disabled={unread === 0}
+          data-action="mark-all-read"
+        >
           Mark all as read
         </Button>
       </div>
@@ -176,7 +209,10 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
             };
             const content = (
               <>
-                <span className={n.readAt ? "mt-1.5 size-2 shrink-0 rounded-full bg-transparent" : "mt-1.5 size-2 shrink-0 rounded-full bg-accent"} aria-hidden />
+                <span
+                  className={n.readAt ? "mt-1.5 size-2 shrink-0 rounded-full bg-transparent" : "mt-1.5 size-2 shrink-0 rounded-full bg-accent"}
+                  aria-hidden
+                />
                 <span className="min-w-0 flex-1">
                   <span className={cx("block text-sm", n.readAt ? "text-ink-muted" : "font-medium text-ink")}>{n.title}</span>
                   <span className="block text-xs text-ink-subtle">{format.relative(n.createdAt)}</span>
@@ -200,7 +236,13 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
         <Link to="/inbox" onClick={onDone} className="text-accent hover:underline" data-action="see-all-notifications">
           See all
         </Link>
-        <Link to="/settings/profile" hash="notifications" onClick={onDone} className="text-ink-muted hover:text-ink hover:underline" data-action="notification-settings">
+        <Link
+          to="/settings/profile"
+          hash="notifications"
+          onClick={onDone}
+          className="text-ink-muted hover:text-ink hover:underline"
+          data-action="notification-settings"
+        >
           Notification settings
         </Link>
       </div>

@@ -44,7 +44,17 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
   return (
     <div className="flex flex-wrap items-center gap-0.5" role="toolbar" aria-label="Formatting">
       {buttons.map((b) => (
-        <IconButton key={b.action} icon={b.icon} label={b.label} size="sm" variant="ghost" aria-pressed={b.on} data-editor-action={b.action} onMouseDown={(e) => e.preventDefault()} onClick={b.run} />
+        <IconButton
+          key={b.action}
+          icon={b.icon}
+          label={b.label}
+          size="sm"
+          variant="ghost"
+          aria-pressed={b.on}
+          data-editor-action={b.action}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={b.run}
+        />
       ))}
       <Popover
         open={linking}

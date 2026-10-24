@@ -73,7 +73,13 @@ export function ArrangementEditor({
         </SelectInput>
         <Tag data-arrange-origin={current.origin.scope}>{ORIGIN_WORDS[current.origin.scope] ?? current.origin.scope}</Tag>
         {canFollow && current.origin.scope === "project" && (
-          <Button variant="secondary" size="sm" loading={saving} onClick={() => onSave({ issueTypeId: current.issueTypeId, places: null })} data-action="follow-the-organization">
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={saving}
+            onClick={() => onSave({ issueTypeId: current.issueTypeId, places: null })}
+            data-action="follow-the-organization"
+          >
             Follow the default
           </Button>
         )}

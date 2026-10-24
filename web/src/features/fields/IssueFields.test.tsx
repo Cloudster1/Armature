@@ -35,13 +35,21 @@ function value(over: Partial<FieldValue["field"]>, answer?: FieldValue["value"],
 describe("IssueFields", () => {
   it("draws nothing for a project without fields", () => {
     state.values = [];
-    const { container } = render(<dl><IssueFields issueKey="CP-1" editable /></dl>);
+    const { container } = render(
+      <dl>
+        <IssueFields issueKey="CP-1" editable />
+      </dl>,
+    );
     expect(container.querySelector("dt")).toBeNull();
   });
 
   it("offers the field's options with none chosen", () => {
     state.values = [value({})];
-    render(<dl><IssueFields issueKey="CP-1" editable /></dl>);
+    render(
+      <dl>
+        <IssueFields issueKey="CP-1" editable />
+      </dl>,
+    );
     const select = screen.getByLabelText("Platform") as HTMLSelectElement;
     expect(select.value).toBe("");
     expect([...select.options].map((o) => o.textContent)).toEqual(["None", "Web", "Mobile"]);
@@ -50,7 +58,11 @@ describe("IssueFields", () => {
   // The option was removed after it was chosen; the answer must not vanish.
   it("keeps showing a choice the project no longer offers", () => {
     state.values = [value({}, "Desk", "Desk")];
-    render(<dl><IssueFields issueKey="CP-1" editable /></dl>);
+    render(
+      <dl>
+        <IssueFields issueKey="CP-1" editable />
+      </dl>,
+    );
     const select = screen.getByLabelText("Platform") as HTMLSelectElement;
     expect(select.value).toBe("Desk");
     const stale = [...select.options].find((o) => o.value === "Desk");
@@ -60,7 +72,11 @@ describe("IssueFields", () => {
 
   it("shows a reader the answer as text", () => {
     state.values = [value({}, "Web", "Web")];
-    render(<dl><IssueFields issueKey="CP-1" editable={false} /></dl>);
+    render(
+      <dl>
+        <IssueFields issueKey="CP-1" editable={false} />
+      </dl>,
+    );
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.getByText("Web")).toBeInTheDocument();
   });

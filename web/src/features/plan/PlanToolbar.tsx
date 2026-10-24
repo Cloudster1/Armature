@@ -52,7 +52,11 @@ export function PlanToolbar({
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const active = filters.types.length + Number(Boolean(filters.milestoneId)) + Number(Boolean(filters.teamId)) + Number(closedForDays !== null && closedForDays !== 14 ? 1 : 0);
+  const active =
+    filters.types.length +
+    Number(Boolean(filters.milestoneId)) +
+    Number(Boolean(filters.teamId)) +
+    Number(closedForDays !== null && closedForDays !== 14 ? 1 : 0);
 
   function toggleType(name: string) {
     const types = filters.types.includes(name) ? filters.types.filter((each) => each !== name) : [...filters.types, name];
@@ -64,7 +68,12 @@ export function PlanToolbar({
       label="Plan controls"
       start={
         <>
-          <Segmented<PlanView> label="Plan view" value={view} options={PLAN_VIEWS.map((each) => ({ value: each.id, label: each.label, attrs: { title: each.hint } }))} onChange={onView} />
+          <Segmented<PlanView>
+            label="Plan view"
+            value={view}
+            options={PLAN_VIEWS.map((each) => ({ value: each.id, label: each.label, attrs: { title: each.hint } }))}
+            onChange={onView}
+          />
           <div className="flex min-w-64 max-w-xl flex-1 items-center gap-1" data-testid="plan-scope">
             <QueryInput value={query} onSubmit={onQuery} error={queryError} compact label="Narrow the plan with a query" />
             <Popover
@@ -72,7 +81,16 @@ export function PlanToolbar({
               onClose={() => setHelpOpen(false)}
               label="Query help"
               align="end"
-              trigger={<Button variant="ghost" size="sm" icon={<Icon.Help />} onClick={() => setHelpOpen((o) => !o)} aria-expanded={helpOpen} aria-label="How to write a query" />}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<Icon.Help />}
+                  onClick={() => setHelpOpen((o) => !o)}
+                  aria-expanded={helpOpen}
+                  aria-label="How to write a query"
+                />
+              }
               className="w-xl max-w-[90vw]"
             >
               <QueryHelp />
@@ -83,7 +101,13 @@ export function PlanToolbar({
             onClose={() => setFiltersOpen(false)}
             label="Filters"
             trigger={
-              <Button variant="secondary" icon={<Icon.Filter />} onClick={() => setFiltersOpen((o) => !o)} aria-expanded={filtersOpen} data-action="plan-filters">
+              <Button
+                variant="secondary"
+                icon={<Icon.Filter />}
+                onClick={() => setFiltersOpen((o) => !o)}
+                aria-expanded={filtersOpen}
+                data-action="plan-filters"
+              >
                 Filters{active > 0 && <Tag className="ml-1 bg-accent-subtle text-accent">{active}</Tag>}
               </Button>
             }
@@ -106,7 +130,13 @@ export function PlanToolbar({
                 </div>
               </div>
               {milestones.length > 0 && (
-                <Select label="Milestone" aria-label="Filter by milestone" id="plan-filter-milestone" value={filters.milestoneId} onChange={(event) => onFilters({ ...filters, milestoneId: event.target.value })}>
+                <Select
+                  label="Milestone"
+                  aria-label="Filter by milestone"
+                  id="plan-filter-milestone"
+                  value={filters.milestoneId}
+                  onChange={(event) => onFilters({ ...filters, milestoneId: event.target.value })}
+                >
                   <option value="">Any milestone</option>
                   {milestones.map((milestone) => (
                     <option key={milestone.id} value={milestone.id}>
@@ -116,7 +146,13 @@ export function PlanToolbar({
                 </Select>
               )}
               {teams.length > 0 && (
-                <Select label="Team" aria-label="Filter by team" id="plan-filter-team" value={filters.teamId} onChange={(event) => onFilters({ ...filters, teamId: event.target.value })}>
+                <Select
+                  label="Team"
+                  aria-label="Filter by team"
+                  id="plan-filter-team"
+                  value={filters.teamId}
+                  onChange={(event) => onFilters({ ...filters, teamId: event.target.value })}
+                >
                   <option value="">Any team</option>
                   {teams.map((team) => (
                     <option key={team.id} value={team.id}>
@@ -149,7 +185,11 @@ export function PlanToolbar({
                   <span className="text-sm text-ink-muted">days</span>
                 </div>
                 <p className="mt-1 text-xs text-ink-subtle">
-                  {closedForDays === null ? "Everything done stays on the plan." : closedForDays === 0 ? "Done work is not drawn." : "Leave it blank to keep everything."}
+                  {closedForDays === null
+                    ? "Everything done stays on the plan."
+                    : closedForDays === 0
+                      ? "Done work is not drawn."
+                      : "Leave it blank to keep everything."}
                 </p>
               </div>
               {(filters.types.length > 0 || filters.milestoneId || filters.teamId) && (
@@ -173,7 +213,11 @@ export function PlanToolbar({
           )}
         </>
       }
-      end={showZoom ? <Segmented<Zoom["id"]> label="Zoom" value={zoom} options={ZOOMS.map((option) => ({ value: option.id, label: option.label }))} onChange={onZoom} /> : undefined}
+      end={
+        showZoom ? (
+          <Segmented<Zoom["id"]> label="Zoom" value={zoom} options={ZOOMS.map((option) => ({ value: option.id, label: option.label }))} onChange={onZoom} />
+        ) : undefined
+      }
     />
   );
 }
@@ -192,7 +236,14 @@ export function PlanSummary({ numbers, children }: { numbers: Meter; children?: 
         <Figure label="points" value={number(numbers.points)} />
       </dl>
       {children}
-      <Button variant="link" onClick={() => setMore((m) => !m)} aria-expanded={more} className="ml-auto text-xs" icon={more ? <Icon.ChevronUp /> : <Icon.ChevronDown />} data-plan-more>
+      <Button
+        variant="link"
+        onClick={() => setMore((m) => !m)}
+        aria-expanded={more}
+        className="ml-auto text-xs"
+        icon={more ? <Icon.ChevronUp /> : <Icon.ChevronDown />}
+        data-plan-more
+      >
         {more ? "Less" : "More"}
       </Button>
       {more && (

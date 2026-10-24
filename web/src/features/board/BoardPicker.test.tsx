@@ -51,9 +51,7 @@ describe("BoardPicker", () => {
     state.boards = [board()];
     state.teams = [];
 
-    const { container } = render(
-      <BoardPicker projectKey="CP" boardId={undefined} onPick={() => {}} />,
-    );
+    const { container } = render(<BoardPicker projectKey="CP" boardId={undefined} onPick={() => {}} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -95,10 +93,7 @@ describe("BoardPicker", () => {
     state.teams = [team()];
 
     render(<BoardPicker projectKey="CP" boardId="b2" onPick={() => {}} />);
-    expect(screen.getByRole("button", { name: "Platform board" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(screen.getByRole("button", { name: "Platform board" })).toHaveAttribute("aria-pressed", "true");
   });
 
   // A team without a board has a backlog nobody can look at.

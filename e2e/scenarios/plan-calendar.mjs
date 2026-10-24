@@ -89,7 +89,7 @@ function isoDate(date) {
 }
 function nextMonday() {
   const today = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()));
-  const ahead = ((8 - today.getUTCDay()) % 7) || 7;
+  const ahead = (8 - today.getUTCDay()) % 7 || 7;
   return addDaysTo(today, ahead);
 }
 
@@ -105,7 +105,11 @@ scenario("a team's weeks are measured against what it said it can take", async (
   const small = await createIssue(page, key, "six points for Alpha", { type: "Task", visit: false });
   const loose = await createIssue(page, key, "three points for nobody", "Task");
   const monday = nextMonday();
-  for (const [issueKey, points, team] of [[big, 8, "Alpha"], [small, 6, "Alpha"], [loose, 3, null]]) {
+  for (const [issueKey, points, team] of [
+    [big, 8, "Alpha"],
+    [small, 6, "Alpha"],
+    [loose, 3, null],
+  ]) {
     await estimateIssue(page, issueKey, points);
     if (team) await assignTeam(page, issueKey, team);
     await scheduleIssue(page, issueKey, isoDate(monday), isoDate(addDaysTo(monday, 4)));
@@ -118,17 +122,15 @@ scenario("a team's weeks are measured against what it said it can take", async (
   expect.truthy(await page.$('[data-plan-load-row="Total"]'), "and so does the whole project");
 
   const week = isoDate(monday);
-  const alpha = await page.$eval(
-    `[data-plan-load-cells="Alpha"] [data-plan-load-week="${week}"]`,
-    (el) => ({ load: el.dataset.load, capacity: el.dataset.capacity, over: el.dataset.over }),
-  );
+  const alpha = await page.$eval(`[data-plan-load-cells="Alpha"] [data-plan-load-week="${week}"]`, (el) => ({
+    load: el.dataset.load,
+    capacity: el.dataset.capacity,
+    over: el.dataset.over,
+  }));
   expect.equal(alpha.load, "14", "the two issues land in the week in full");
   expect.equal(alpha.capacity, "10", "against the capacity the team gave");
   expect.equal(alpha.over, "true", "which makes the week over");
-  const total = await page.$eval(
-    `[data-plan-load-cells="Total"] [data-plan-load-week="${week}"]`,
-    (el) => el.dataset.load,
-  );
+  const total = await page.$eval(`[data-plan-load-cells="Total"] [data-plan-load-week="${week}"]`, (el) => el.dataset.load);
   expect.equal(total, "17", "the total adds the loose work");
   expect.contains(await textOf(page, '[data-testid="plan-warnings"]'), "Alpha is loaded with 14 points", "and the plan says so, as a warning");
 
@@ -146,11 +148,7 @@ scenario("a team's weeks are measured against what it said it can take", async (
   for (const zoom of ["Fit", "Quarters"]) {
     await zoomPlan(page, zoom);
     const geometry = await planGeometry(page);
-    expect.equal(
-      Math.round(geometry.sidebarHeaderHeight),
-      Math.round(geometry.calendarHeaderHeight),
-      `${zoom}: the headers agree with load rows below`,
-    );
+    expect.equal(Math.round(geometry.sidebarHeaderHeight), Math.round(geometry.calendarHeaderHeight), `${zoom}: the headers agree with load rows below`);
     for (const row of geometry.rows) {
       expect.equal(Math.round(row.side), Math.round(row.calendar), `${zoom}: ${row.key} lines up`);
     }
@@ -169,28 +167,19 @@ scenario("an issue is added to a sprint from the plan's own row", async ({ page 
   await goto(page, `/projects/${key}/plan?view=sprints`);
   await page.waitForSelector('[data-plan-group="Sprint A"]', { timeout: WAIT });
   await addOnPlan(page, "Sprint A", "made in the sprint");
-  await page.waitForFunction(
-    () => document.querySelectorAll('[data-testid="plan-sidebar"] [data-plan-row]').length === 2,
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="plan-sidebar"] [data-plan-row]').length === 2, { timeout: WAIT });
   const rows = await planRows(page);
   expect.equal(rows[0], "[Sprint A]", "the sprint group comes first");
   expect.equal(rows.indexOf("[Backlog]"), 3, `the new issue sits under Sprint A, not the backlog: ${rows.join(", ")}`);
   const made = rows.slice(1, 3).find((k) => k !== existing);
   await goto(page, `/issues/${made}`);
-  await page.waitForFunction(
-    () => document.querySelector("#issue-sprint")?.selectedOptions[0]?.textContent.includes("Sprint A"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelector("#issue-sprint")?.selectedOptions[0]?.textContent.includes("Sprint A"), { timeout: WAIT });
   expect.contains(await bodyText(page), "made in the sprint", "the ticket is real");
 
   // The management view's row files a ticket that no sprint has taken on.
   await goto(page, `/projects/${key}/plan`);
   await addOnPlan(page, "plan", "made on the plan");
-  await page.waitForFunction(
-    () => document.querySelectorAll('[data-testid="plan-sidebar"] [data-plan-row]').length === 3,
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="plan-sidebar"] [data-plan-row]').length === 3, { timeout: WAIT });
   await goto(page, `/projects/${key}/plan?view=sprints`);
   await page.waitForSelector('[data-plan-group="Backlog"]', { timeout: WAIT });
   const bySprint = await planRows(page);
@@ -217,10 +206,7 @@ scenario("dragging across empty calendar makes a ticket with those dates", async
   await page.waitForSelector("[data-plan-draft-summary]", { timeout: WAIT });
   await page.type("[data-plan-draft-summary]", "drawn on the plan");
   await page.keyboard.press("Enter");
-  await page.waitForFunction(
-    () => document.querySelectorAll('[data-testid="plan-sidebar"] [data-plan-row]').length === 2,
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="plan-sidebar"] [data-plan-row]').length === 2, { timeout: WAIT });
   const drawn = (await planRows(page)).find((k) => k !== unscheduled);
   const range = await barRange(page, drawn);
   const today = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()));

@@ -35,7 +35,13 @@ export function JoinRequests() {
                 {request.email}, asked {format.dateTime(request.requestedAt)}
               </div>
             </div>
-            <Button size="sm" variant="secondary" onClick={() => decline.mutate({ userId: request.userId })} loading={decline.isPending} data-action="decline-request">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => decline.mutate({ userId: request.userId })}
+              loading={decline.isPending}
+              data-action="decline-request"
+            >
               Turn away
             </Button>
             <Button size="sm" onClick={() => letIn(request)} loading={admit.isPending} data-action="admit-request">

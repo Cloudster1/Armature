@@ -139,8 +139,7 @@ export interface BoardInput {
 export function useCreateBoard(projectKey: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: BoardInput) =>
-      request<{ board: Board }>(`/projects/${projectKey}/boards`, { method: "POST", body: input }),
+    mutationFn: (input: BoardInput) => request<{ board: Board }>(`/projects/${projectKey}/boards`, { method: "POST", body: input }),
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }
@@ -148,8 +147,7 @@ export function useCreateBoard(projectKey: string) {
 export function useUpdateBoard() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: BoardInput & { id: string }) =>
-      request<{ board: Board }>(`/boards/${id}`, { method: "PATCH", body: input }),
+    mutationFn: ({ id, ...input }: BoardInput & { id: string }) => request<{ board: Board }>(`/boards/${id}`, { method: "PATCH", body: input }),
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }
@@ -180,8 +178,7 @@ export interface MoveResult {
 export function useMoveCard() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectKey, ...body }: MoveInput) =>
-      request<MoveResult>(`/projects/${projectKey}/board/move`, { method: "POST", body }),
+    mutationFn: ({ projectKey, ...body }: MoveInput) => request<MoveResult>(`/projects/${projectKey}/board/move`, { method: "POST", body }),
     // A move can change status, assignee and resolution at once, so everything
     // about the board and the issue is stale afterwards.
     onSettled: () => queryClient.invalidateQueries(),
@@ -194,15 +191,8 @@ export function useMoveCard() {
 export function useAddSwimlane() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      boardId,
-      ...body
-    }: {
-      boardId: string;
-      name: string;
-      statusIds?: string[];
-      wipLimit?: number;
-    }) => request<{ swimlane: Swimlane }>(`/boards/${boardId}/swimlanes`, { method: "POST", body }),
+    mutationFn: ({ boardId, ...body }: { boardId: string; name: string; statusIds?: string[]; wipLimit?: number }) =>
+      request<{ swimlane: Swimlane }>(`/boards/${boardId}/swimlanes`, { method: "POST", body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKey }),
   });
 }
@@ -210,17 +200,7 @@ export function useAddSwimlane() {
 export function useUpdateSwimlane() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      boardId,
-      swimlaneId,
-      ...body
-    }: {
-      boardId: string;
-      swimlaneId: string;
-      name?: string;
-      wipLimit?: number;
-      statusIds?: string[];
-    }) =>
+    mutationFn: ({ boardId, swimlaneId, ...body }: { boardId: string; swimlaneId: string; name?: string; wipLimit?: number; statusIds?: string[] }) =>
       request<void>(`/boards/${boardId}/swimlanes/${swimlaneId}`, {
         method: "PATCH",
         body,
@@ -241,8 +221,7 @@ export function useDeleteSwimlane() {
 export function useReorderSwimlanes() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ boardId, order }: { boardId: string; order: string[] }) =>
-      request<void>(`/boards/${boardId}/swimlanes`, { method: "PUT", body: { order } }),
+    mutationFn: ({ boardId, order }: { boardId: string; order: string[] }) => request<void>(`/boards/${boardId}/swimlanes`, { method: "PUT", body: { order } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKey }),
   });
 }
@@ -262,7 +241,5 @@ export function groupCards(cards: Card[], groupBy: Grouping): Array<{ name: stri
     if (existing) existing.push(card);
     else rows.set(name, [card]);
   }
-  return [...rows.entries()]
-    .map(([name, groupedCards]) => ({ name, cards: groupedCards }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return [...rows.entries()].map(([name, groupedCards]) => ({ name, cards: groupedCards })).sort((a, b) => a.name.localeCompare(b.name));
 }

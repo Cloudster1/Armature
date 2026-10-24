@@ -90,22 +90,9 @@ function NewMilestone({ projectKey }: { projectKey: string }) {
     <Card className="p-4">
       <form onSubmit={submit} className="flex flex-wrap items-end gap-3" data-testid="new-milestone">
         <div className="min-w-48 flex-1">
-          <Field
-            label="Milestone"
-            id="field-milestone-name"
-            value={name}
-            placeholder="Release 1.0"
-            onChange={(event) => setName(event.target.value)}
-          />
+          <Field label="Milestone" id="field-milestone-name" value={name} placeholder="Release 1.0" onChange={(event) => setName(event.target.value)} />
         </div>
-        <Field
-          label="Due on"
-          id="field-milestone-due"
-          type="date"
-          value={dueOn}
-          onChange={(event) => setDueOn(event.target.value)}
-          className="w-40"
-        />
+        <Field label="Due on" id="field-milestone-due" type="date" value={dueOn} onChange={(event) => setDueOn(event.target.value)} className="w-40" />
         <div className="min-w-56 flex-[2]">
           <Field
             label="What it means"
@@ -147,10 +134,7 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
 
   function save(event: FormEvent) {
     event.preventDefault();
-    update.mutate(
-      { id: milestone.id, name: name.trim(), dueOn: dueOn || null },
-      { onSuccess: () => setEditing(false) },
-    );
+    update.mutate({ id: milestone.id, name: name.trim(), dueOn: dueOn || null }, { onSuccess: () => setEditing(false) });
   }
 
   return (
@@ -179,16 +163,8 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
             <>
               <h3 className="text-sm font-semibold text-ink">
                 {milestone.name}
-                {isClosed && (
-                  <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs font-medium text-ink-muted">
-                    Closed
-                  </span>
-                )}
-                {overdue && (
-                  <span className="ml-2 rounded-full bg-danger-subtle px-2 py-0.5 text-2xs font-medium text-danger">
-                    Overdue
-                  </span>
-                )}
+                {isClosed && <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs font-medium text-ink-muted">Closed</span>}
+                {overdue && <span className="ml-2 rounded-full bg-danger-subtle px-2 py-0.5 text-2xs font-medium text-danger">Overdue</span>}
               </h3>
               <p className="mt-0.5 text-xs text-ink-muted">
                 {milestone.dueOn ? `Due ${formatDay(milestone.dueOn, locale)}` : "No date yet"}
@@ -219,7 +195,15 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
               Close milestone
             </Button>
           )}
-          <Button size="sm" variant="ghost" loading={remove.isPending} onClick={async () => (await confirm({ noun: "milestone", body: `${milestone.name} goes; the issues counting towards it stay and count towards nothing.` })) && remove.mutate(milestone.id)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            loading={remove.isPending}
+            onClick={async () =>
+              (await confirm({ noun: "milestone", body: `${milestone.name} goes; the issues counting towards it stay and count towards nothing.` })) &&
+              remove.mutate(milestone.id)
+            }
+          >
             Delete
           </Button>
         </div>

@@ -20,7 +20,14 @@ describe("report words", () => {
 
 describe("charts", () => {
   it("sizes bars against the largest and names each row", () => {
-    render(<BarList rows={[{ label: "To Do", count: 2 }, { label: "Done", count: 4 }]} />);
+    render(
+      <BarList
+        rows={[
+          { label: "To Do", count: 2 },
+          { label: "Done", count: 4 },
+        ]}
+      />,
+    );
     const todo = screen.getByText("To Do").closest("[data-bar]");
     expect(todo).toHaveAttribute("data-bar", "To Do");
     const fill = todo?.querySelector("span span") as HTMLElement;
@@ -39,14 +46,43 @@ describe("charts", () => {
 });
 
 describe("LineChart", () => {
-  const remaining = { name: "remaining", tone: "text-chart-1", points: [{ x: 0, y: 8 }, { x: 1, y: 5 }, { x: 2, y: 3 }] };
-  const ideal = { name: "ideal", tone: "text-ink-muted", points: [{ x: 0, y: 8 }, { x: 4, y: 0 }], dashed: true };
-  const scope = { name: "scope", tone: "text-ink-subtle", points: [{ x: 0, y: 8 }, { x: 2, y: 10 }], step: true };
+  const remaining = {
+    name: "remaining",
+    tone: "text-chart-1",
+    points: [
+      { x: 0, y: 8 },
+      { x: 1, y: 5 },
+      { x: 2, y: 3 },
+    ],
+  };
+  const ideal = {
+    name: "ideal",
+    tone: "text-ink-muted",
+    points: [
+      { x: 0, y: 8 },
+      { x: 4, y: 0 },
+    ],
+    dashed: true,
+  };
+  const scope = {
+    name: "scope",
+    tone: "text-ink-subtle",
+    points: [
+      { x: 0, y: 8 },
+      { x: 2, y: 10 },
+    ],
+    step: true,
+  };
 
   it("draws one path per series with a command per sample", () => {
     render(<LineChart series={[remaining, ideal]} />);
     const path = document.querySelector('[data-series="remaining"] path')!;
-    expect(path.getAttribute("d")!.split(" ").filter((c) => /^[MLHV]/.test(c))).toHaveLength(3);
+    expect(
+      path
+        .getAttribute("d")!
+        .split(" ")
+        .filter((c) => /^[MLHV]/.test(c)),
+    ).toHaveLength(3);
     expect(document.querySelector('[data-series="ideal"] path')).toHaveAttribute("stroke-dasharray");
     expect(path).not.toHaveAttribute("stroke-dasharray");
   });
@@ -59,8 +95,24 @@ describe("LineChart", () => {
   });
 
   it("holds a stepped series until the next sample", () => {
-    expect(pathOf([{ x: 0, y: 10 }, { x: 50, y: 40 }], true)).toBe("M0 10 H50 V40");
-    expect(pathOf([{ x: 0, y: 10 }, { x: 50, y: 40 }], false)).toBe("M0 10 L50 40");
+    expect(
+      pathOf(
+        [
+          { x: 0, y: 10 },
+          { x: 50, y: 40 },
+        ],
+        true,
+      ),
+    ).toBe("M0 10 H50 V40");
+    expect(
+      pathOf(
+        [
+          { x: 0, y: 10 },
+          { x: 50, y: 40 },
+        ],
+        false,
+      ),
+    ).toBe("M0 10 L50 40");
   });
 
   it("marks a series of one point, which a path alone would not draw", () => {

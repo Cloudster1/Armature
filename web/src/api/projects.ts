@@ -178,8 +178,7 @@ export function useProjectTemplates() {
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateProjectInput) =>
-      request<{ project: Project }>("/projects", { method: "POST", body: input }),
+    mutationFn: (input: CreateProjectInput) => request<{ project: Project }>("/projects", { method: "POST", body: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
   });
 }

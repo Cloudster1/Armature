@@ -231,16 +231,13 @@ export function useRemoveFromGroup() {
 }
 
 export function useGrantRole() {
-  return useAccessMutation(
-    (input: { role: Role; projectKey?: string; userId?: string; groupId?: string }) =>
-      request<{ assignment: Assignment }>("/role-assignments", { method: "POST", body: input }),
+  return useAccessMutation((input: { role: Role; projectKey?: string; userId?: string; groupId?: string }) =>
+    request<{ assignment: Assignment }>("/role-assignments", { method: "POST", body: input }),
   );
 }
 
 export function useRevokeRole() {
-  return useAccessMutation((id: string) =>
-    request<void>(`/role-assignments/${id}`, { method: "DELETE" }),
-  );
+  return useAccessMutation((id: string) => request<void>(`/role-assignments/${id}`, { method: "DELETE" }));
 }
 
 export interface RoleInput {

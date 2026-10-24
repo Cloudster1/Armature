@@ -61,8 +61,17 @@ export function ActiveSessions() {
           </div>
         ))}
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <p className="text-sm text-ink-muted">{others.length ? "Not you, or not any more? End the others here." : "You are signed in here and nowhere else."}</p>
-          <Button variant="secondary" size="sm" disabled={others.length === 0} loading={endOthers.isPending} onClick={signOutOthers} data-action="end-other-sessions">
+          <p className="text-sm text-ink-muted">
+            {others.length ? "Not you, or not any more? End the others here." : "You are signed in here and nowhere else."}
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={others.length === 0}
+            loading={endOthers.isPending}
+            onClick={signOutOthers}
+            data-action="end-other-sessions"
+          >
             Sign out everywhere else
           </Button>
         </div>

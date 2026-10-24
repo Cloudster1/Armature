@@ -77,16 +77,12 @@ describe("request", () => {
   });
 
   it("flags a 401 so the router can send the user to sign in", async () => {
-    fetchMock.mockResolvedValue(
-      reply(401, JSON.stringify({ error: { code: "unauthorized", message: "Sign in to continue." } })),
-    );
+    fetchMock.mockResolvedValue(reply(401, JSON.stringify({ error: { code: "unauthorized", message: "Sign in to continue." } })));
 
     const error = (await request("/thing").catch((e: unknown) => e)) as ApiError;
     expect(error.isUnauthenticated).toBe(true);
 
-    fetchMock.mockResolvedValue(
-      reply(403, JSON.stringify({ error: { code: "forbidden", message: "No." } })),
-    );
+    fetchMock.mockResolvedValue(reply(403, JSON.stringify({ error: { code: "forbidden", message: "No." } })));
     const forbidden = (await request("/thing").catch((e: unknown) => e)) as ApiError;
     expect(forbidden.isUnauthenticated).toBe(false);
   });
@@ -111,9 +107,7 @@ describe("request", () => {
   });
 
   it("has empty fields when the envelope omits them", async () => {
-    fetchMock.mockResolvedValue(
-      reply(409, JSON.stringify({ error: { code: "email_taken", message: "Taken." } })),
-    );
+    fetchMock.mockResolvedValue(reply(409, JSON.stringify({ error: { code: "email_taken", message: "Taken." } })));
 
     const error = (await request("/thing").catch((e: unknown) => e)) as ApiError;
     expect(error.fields).toEqual({});

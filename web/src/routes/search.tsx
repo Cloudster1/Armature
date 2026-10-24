@@ -56,7 +56,14 @@ function SearchPage() {
 
   return (
     <Page width="content">
-      <PageHeader title={active ? active.name : "Search"} meta={active ? `A saved search${active.ownerName ? ` by ${active.ownerName}` : ""}` : "Every issue you can see, narrowed by a query. Without one, the newest first."} />
+      <PageHeader
+        title={active ? active.name : "Search"}
+        meta={
+          active
+            ? `A saved search${active.ownerName ? ` by ${active.ownerName}` : ""}`
+            : "Every issue you can see, narrowed by a query. Without one, the newest first."
+        }
+      />
 
       <div className="mb-3">
         <QueryInput value={q} autoFocus error={error} onSubmit={(next) => navigate({ to: "/search", search: { q: next } })} />

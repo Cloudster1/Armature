@@ -33,9 +33,7 @@ beforeEach(() => {
   fetchMock.mockReset();
   fetchMock.mockImplementation((_url: string, init: RequestInit) =>
     Promise.resolve(
-      init.method === "DELETE"
-        ? { status: 204, ok: true, text: () => Promise.resolve("") }
-        : { status: 200, ok: true, text: () => Promise.resolve("{}") },
+      init.method === "DELETE" ? { status: 204, ok: true, text: () => Promise.resolve("") } : { status: 200, ok: true, text: () => Promise.resolve("{}") },
     ),
   );
 });
@@ -48,9 +46,7 @@ afterEach(() => {
 function seeded() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   for (const key of Object.values(VIEWS)) client.setQueryData(key, { cached: true });
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  );
+  const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   return { client, wrapper };
 }
 

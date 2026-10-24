@@ -418,7 +418,8 @@ export function useReport<T>(projectKey: string, kind: ReportKind, config: Widge
   const query = search.toString();
   return useQuery({
     queryKey: shared ? [...reportsQueryKey, "shared", shared.share, shared.widgetId] : [...reportsQueryKey, "report", projectKey, kind, query],
-    queryFn: () => request<T>(shared ? `/shared/${shared.share}/widgets/${shared.widgetId}` : `/projects/${projectKey}/reports/${kind}${query ? `?${query}` : ""}`),
+    queryFn: () =>
+      request<T>(shared ? `/shared/${shared.share}/widgets/${shared.widgetId}` : `/projects/${projectKey}/reports/${kind}${query ? `?${query}` : ""}`),
     enabled: Boolean(projectKey),
     // A dashboard is left open; its numbers should follow the work.
     refetchInterval: DASHBOARD_REFETCH_MS,

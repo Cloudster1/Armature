@@ -4,9 +4,7 @@ import type { ReactNode } from "react";
 
 // The links are only addresses here; what they point at is the router's job.
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, params }: { children: ReactNode; params?: { issueKey?: string } }) => (
-    <a href={`/issues/${params?.issueKey ?? ""}`}>{children}</a>
-  ),
+  Link: ({ children, params }: { children: ReactNode; params?: { issueKey?: string } }) => <a href={`/issues/${params?.issueKey ?? ""}`}>{children}</a>,
 }));
 
 const { Ancestry, ProgressBar } = await import("./hierarchy");
@@ -54,9 +52,7 @@ describe("ProgressBar", () => {
   });
 
   it("sizes the done and in-progress segments by their share", () => {
-    const { container } = render(
-      <ProgressBar progress={progress({ total: 4, done: 1, inProgress: 1, todo: 2 })} />,
-    );
+    const { container } = render(<ProgressBar progress={progress({ total: 4, done: 1, inProgress: 1, todo: 2 })} />);
     const segments = container.querySelectorAll("span[style]");
     expect(segments).toHaveLength(2);
     expect((segments[0] as HTMLElement).style.width).toBe("25%");
@@ -71,21 +67,11 @@ describe("Ancestry", () => {
   });
 
   it("reads from the top down and links each step", () => {
-    render(
-      <Ancestry
-        ancestors={[
-          issue("P-1", "Make signing in effortless", LEVEL_EPIC + 1),
-          issue("P-2", "Password and recovery", LEVEL_EPIC),
-        ]}
-      />,
-    );
+    render(<Ancestry ancestors={[issue("P-1", "Make signing in effortless", LEVEL_EPIC + 1), issue("P-2", "Password and recovery", LEVEL_EPIC)]} />);
 
     const nav = screen.getByRole("navigation", { name: "Parent issues" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual([
-      "Make signing in effortless",
-      "Password and recovery",
-    ]);
+    expect(links.map((l) => l.textContent)).toEqual(["Make signing in effortless", "Password and recovery"]);
     expect(links[0]).toHaveAttribute("href", "/issues/P-1");
   });
 

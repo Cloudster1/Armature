@@ -13,7 +13,15 @@ const categories: Array<{ value: StatusCategory; label: string }> = [
  * wanted. The category is chosen here and is for keeps: everything that
  * counts what is done reads it.
  */
-export function NewStatusForm({ onCreated, heading = "Or coin a new one", submitLabel = "Create and add" }: { onCreated: (status: Status) => void; heading?: string; submitLabel?: string }) {
+export function NewStatusForm({
+  onCreated,
+  heading = "Or coin a new one",
+  submitLabel = "Create and add",
+}: {
+  onCreated: (status: Status) => void;
+  heading?: string;
+  submitLabel?: string;
+}) {
   const create = useCreateStatus();
   const [name, setName] = useState("");
   const [category, setCategory] = useState<StatusCategory>("in_progress");

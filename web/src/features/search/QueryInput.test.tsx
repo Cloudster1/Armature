@@ -60,7 +60,10 @@ describe("QueryInput", () => {
 describe("the list under the bar", () => {
   const typed = (): Suggestions => ({
     completion: { slot: "field", prefix: "sta", from: 0, to: 3, quoted: false, words: ["status"] },
-    words: [{ text: "status", detail: "field" }, { text: "start", detail: "field" }],
+    words: [
+      { text: "status", detail: "field" },
+      { text: "start", detail: "field" },
+    ],
     issues: [{ key: "ALP-7", summary: "Stale sessions" } as Suggestions["issues"][number]],
   });
 

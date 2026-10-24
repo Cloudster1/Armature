@@ -18,7 +18,11 @@ export function Avatar({ name, src, size = "md", className }: { name?: string; s
     return (
       <span
         title="Unassigned"
-        className={cx("inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-border-strong text-ink-subtle", sizes[size], className)}
+        className={cx(
+          "inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-border-strong text-ink-subtle",
+          sizes[size],
+          className,
+        )}
       >
         <span aria-hidden="true">?</span>
         <span className="sr-only">Unassigned</span>
@@ -42,7 +46,10 @@ export function Avatar({ name, src, size = "md", className }: { name?: string; s
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
   return (
-    <span title={name} className={cx("inline-flex shrink-0 items-center justify-center rounded-full bg-primary font-medium text-on-primary", sizes[size], className)}>
+    <span
+      title={name}
+      className={cx("inline-flex shrink-0 items-center justify-center rounded-full bg-primary font-medium text-on-primary", sizes[size], className)}
+    >
       <span aria-hidden="true">{initials}</span>
       <span className="sr-only">{name}</span>
     </span>

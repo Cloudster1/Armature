@@ -71,7 +71,8 @@ export function useNotificationPreferences() {
 export function useSaveNotificationPreferences() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: NotificationPreferences) => request<{ preferences: NotificationPreferences }>("/notification-preferences", { method: "PUT", body: input }),
+    mutationFn: (input: NotificationPreferences) =>
+      request<{ preferences: NotificationPreferences }>("/notification-preferences", { method: "PUT", body: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification-preferences"] }),
   });
 }

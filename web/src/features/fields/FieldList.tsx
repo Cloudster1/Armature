@@ -79,12 +79,21 @@ export function FieldList({ projectKey, canConfigure, canPromote = false }: { pr
                 kindTitle={titleOf(field.kind)}
                 // An organization field on a project's page is read there and changed in Settings.
                 canConfigure={canConfigure && (field.org ? !projectKey : true)}
-                onDelete={async () => (await confirm({ noun: "field", verb: "Remove", body: `${field.name} goes from every issue ${field.org ? "in every project" : "in the project"}, with the answers it held.` })) && remove.mutate(field.id)}
+                onDelete={async () =>
+                  (await confirm({
+                    noun: "field",
+                    verb: "Remove",
+                    body: `${field.name} goes from every issue ${field.org ? "in every project" : "in the project"}, with the answers it held.`,
+                  })) && remove.mutate(field.id)
+                }
                 onPromote={
                   canPromote && !field.org
                     ? async () =>
-                        (await confirm({ noun: "field", verb: "Promote", body: `${field.name} becomes every project's; a field by the same name elsewhere is folded into it and keeps its answers.` })) &&
-                        promote.mutate(field.id, { onSuccess: () => toast.info(`${field.name} is now on every project`) })
+                        (await confirm({
+                          noun: "field",
+                          verb: "Promote",
+                          body: `${field.name} becomes every project's; a field by the same name elsewhere is folded into it and keeps its answers.`,
+                        })) && promote.mutate(field.id, { onSuccess: () => toast.info(`${field.name} is now on every project`) })
                     : undefined
                 }
               />
@@ -133,13 +142,7 @@ function FieldRow({
           <form onSubmit={save} className="space-y-2">
             {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field
-                id={`field-name-${field.id}`}
-                label="Field name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+              <Field id={`field-name-${field.id}`} label="Field name" value={name} onChange={(e) => setName(e.target.value)} required />
               {field.kind === "select" && (
                 <Field label="Options, one per line" id={`field-options-${field.id}`} value={options} onChange={(e) => setOptions(e.target.value)} rows={3} />
               )}
@@ -229,14 +232,7 @@ function NewFieldForm({ projectKey, onDone }: { projectKey?: string; onDone: () 
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
         <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-          <Field
-            label="Field name"
-            autoFocus
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Customer"
-          />
+          <Field label="Field name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer" />
           <Select id="field-kind" label="Kind" value={kind} onChange={(e) => setKind(e.target.value as FieldKind)}>
             {kinds.map((k) => (
               <option key={k.kind} value={k.kind}>
@@ -247,7 +243,14 @@ function NewFieldForm({ projectKey, onDone }: { projectKey?: string; onDone: () 
         </div>
         <p className="text-sm text-ink-subtle">{kinds.find((k) => k.kind === kind)?.description}</p>
         {hasOptions && (
-          <Field label="Options, one per line" id="field-options" value={options} onChange={(e) => setOptions(e.target.value)} rows={4} placeholder={"Web\nMobile\nDesktop"} />
+          <Field
+            label="Options, one per line"
+            id="field-options"
+            value={options}
+            onChange={(e) => setOptions(e.target.value)}
+            rows={4}
+            placeholder={"Web\nMobile\nDesktop"}
+          />
         )}
         <div className="flex gap-2">
           <Button type="submit" loading={create.isPending} disabled={!name.trim()}>

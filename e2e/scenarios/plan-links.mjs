@@ -43,22 +43,14 @@ scenario("a ticket is moved under another on the plan", async ({ page }) => {
 
   // Dropping the story on the epic makes it the epic's child, one level in.
   await dragRow(page, story, epic);
-  await page.waitForFunction(
-    (k) => document.querySelector(`[data-plan-row="${k}"]`)?.dataset.planDepth === "1",
-    { timeout: WAIT },
-    story,
-  );
+  await page.waitForFunction((k) => document.querySelector(`[data-plan-row="${k}"]`)?.dataset.planDepth === "1", { timeout: WAIT }, story);
   await goto(page, `/issues/${story}`);
   await page.waitForFunction((k) => document.body.innerText.includes(k), { timeout: WAIT }, epic);
 
   // Dropping it above the rows makes it a root again.
   await goto(page, `/projects/${key}/plan`);
   await dragRow(page, story, "top");
-  await page.waitForFunction(
-    (k) => document.querySelector(`[data-plan-row="${k}"]`)?.dataset.planDepth === "0",
-    { timeout: WAIT },
-    story,
-  );
+  await page.waitForFunction((k) => document.querySelector(`[data-plan-row="${k}"]`)?.dataset.planDepth === "0", { timeout: WAIT }, story);
 
   // A story cannot hold an epic: the drop is refused with the reason, and nothing moves.
   await dragRow(page, epic, story);

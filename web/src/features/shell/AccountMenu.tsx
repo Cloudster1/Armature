@@ -36,12 +36,23 @@ export function useAccountItems(): MenuItem[] {
   const { data: access } = useAccess();
   const go = (place: Place) => navigate({ to: place.to, search: place.search as never, hash: place.hash });
   return [
-    ...personalPlaces.map((place) => ({ label: place.label, icon: <PlaceGlyph place={place} />, onSelect: () => go(place), attrs: { "data-account-place": place.label } })),
+    ...personalPlaces.map((place) => ({
+      label: place.label,
+      icon: <PlaceGlyph place={place} />,
+      onSelect: () => go(place),
+      attrs: { "data-account-place": place.label },
+    })),
     ...switchToItems(tools),
     ...(access?.canAdministerOrg
       ? [{ label: "Settings", icon: <Icon.Settings />, separated: true, onSelect: () => navigate({ to: SETTINGS_PATH }), attrs: { "data-action": "settings" } }]
       : []),
-    { label: "Sign out", icon: <Icon.External />, separated: true, onSelect: () => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) }), attrs: { "data-action": "sign-out" } },
+    {
+      label: "Sign out",
+      icon: <Icon.External />,
+      separated: true,
+      onSelect: () => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) }),
+      attrs: { "data-action": "sign-out" },
+    },
   ];
 }
 
@@ -77,7 +88,16 @@ export function AccountMenu({ userName, avatar }: { userName: string; avatar?: s
       align="start"
       header={<AccountHeader />}
       trigger={(props) => (
-        <IconButton icon={<Avatar name={userName} src={avatar} size="sm" />} label="Your account" size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} className="rounded-full" data-action="account" />
+        <IconButton
+          icon={<Avatar name={userName} src={avatar} size="sm" />}
+          label="Your account"
+          size="sm"
+          onClick={props.toggle}
+          aria-haspopup={props["aria-haspopup"]}
+          aria-expanded={props["aria-expanded"]}
+          className="rounded-full"
+          data-action="account"
+        />
       )}
       items={items}
     />

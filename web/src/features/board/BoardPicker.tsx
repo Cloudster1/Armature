@@ -1,12 +1,5 @@
 import { useState, type FormEvent } from "react";
-import {
-  useBoards,
-  useCreateBoard,
-  useDeleteBoard,
-  useUpdateBoard,
-  type BoardSummary,
-  type BoardType,
-} from "@/api/boards";
+import { useBoards, useCreateBoard, useDeleteBoard, useUpdateBoard, type BoardSummary, type BoardType } from "@/api/boards";
 import { useTeams } from "@/api/teams";
 import { Button, ErrorBanner, Field, Segmented } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -62,9 +55,7 @@ export function BoardPicker({
         }))}
       />
 
-      {canManage && shown && (
-        <ManageBoard key={shown.id} board={shown} isLast={boards.length <= 1} onDeleted={() => onPick(null)} />
-      )}
+      {canManage && shown && <ManageBoard key={shown.id} board={shown} isLast={boards.length <= 1} onDeleted={() => onPick(null)} />}
 
       {unserved.map((team) => (
         <Button
@@ -84,15 +75,7 @@ export function BoardPicker({
 }
 
 /** Puts right a board made by mistake: its name, its type, or the board itself. */
-function ManageBoard({
-  board,
-  isLast,
-  onDeleted,
-}: {
-  board: BoardSummary;
-  isLast: boolean;
-  onDeleted: () => void;
-}) {
+function ManageBoard({ board, isLast, onDeleted }: { board: BoardSummary; isLast: boolean; onDeleted: () => void }) {
   const update = useUpdateBoard();
   const remove = useDeleteBoard();
   const confirm = useConfirm();

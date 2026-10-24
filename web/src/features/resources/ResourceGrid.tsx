@@ -28,19 +28,32 @@ export function ResourceGrid({ plan }: { plan: ResourcePlan }) {
             {plan.grouping === "person" ? "Person" : "Team"}
           </div>
           {plan.weeks.map((start) => (
-            <div key={start} role="columnheader" className="border-l border-border px-2 py-2 font-medium text-ink-muted tabular-nums" data-resource-column={start.slice(0, 10)}>
+            <div
+              key={start}
+              role="columnheader"
+              className="border-l border-border px-2 py-2 font-medium text-ink-muted tabular-nums"
+              data-resource-column={start.slice(0, 10)}
+            >
               {weekLabel(start, locale)}
             </div>
           ))}
         </div>
         {plan.rows.map((row) => (
           <div key={row.id ?? row.kind} role="row" className="contents" data-resource-row={row.name} data-resource-kind={row.kind}>
-            <div role="rowheader" className={cx("sticky left-0 z-10 flex items-center border-t border-border bg-surface px-3 text-sm", row.kind === "unassigned" ? "text-ink-muted" : "text-ink")}>
+            <div
+              role="rowheader"
+              className={cx(
+                "sticky left-0 z-10 flex items-center border-t border-border bg-surface px-3 text-sm",
+                row.kind === "unassigned" ? "text-ink-muted" : "text-ink",
+              )}
+            >
               <span className="truncate">{row.name}</span>
             </div>
             {row.weeks.map((week) => {
               const key = `${row.id ?? row.kind}:${week.start}`;
-              return <Cell key={key} row={row} week={week} open={open === key} onToggle={() => setOpen(open === key ? null : key)} onClose={() => setOpen(null)} />;
+              return (
+                <Cell key={key} row={row} week={week} open={open === key} onToggle={() => setOpen(open === key ? null : key)} onClose={() => setOpen(null)} />
+              );
             })}
           </div>
         ))}
@@ -82,10 +95,19 @@ function Cell({ row, week, open, onToggle, onClose }: { row: ResourceRow; week: 
             </span>
             <span aria-hidden="true" className="relative block w-full" style={{ height: RESOURCE_BAR_HEIGHT }}>
               {daysOff && (
-                <span className="absolute inset-x-0 bg-hatched" data-days-off style={{ bottom: px(shares.capacity!), height: px(shares.nominal! - shares.capacity!) }} />
+                <span
+                  className="absolute inset-x-0 bg-hatched"
+                  data-days-off
+                  style={{ bottom: px(shares.capacity!), height: px(shares.nominal! - shares.capacity!) }}
+                />
               )}
-              {shares.capacity !== undefined && <span className="absolute inset-x-0 border-t border-dashed border-border-strong" style={{ bottom: px(shares.capacity) }} />}
-              <span className={cx("absolute inset-x-1 bottom-0 rounded-t-sm", tone[state])} style={{ height: Math.max(week.loadHours > 0 ? 2 : 0, px(shares.load)) }} />
+              {shares.capacity !== undefined && (
+                <span className="absolute inset-x-0 border-t border-dashed border-border-strong" style={{ bottom: px(shares.capacity) }} />
+              )}
+              <span
+                className={cx("absolute inset-x-1 bottom-0 rounded-t-sm", tone[state])}
+                style={{ height: Math.max(week.loadHours > 0 ? 2 : 0, px(shares.load)) }}
+              />
             </span>
           </Choice>
         }

@@ -25,12 +25,27 @@ export function CloneMoveMenu({ issue, editable }: { issue: Issue; editable: boo
       <Menu
         label="More about this issue"
         align="end"
-        trigger={(props) => <IconButton icon={<Icon.More />} label="More about this issue" size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-action="issue-more" />}
+        trigger={(props) => (
+          <IconButton
+            icon={<Icon.More />}
+            label="More about this issue"
+            size="sm"
+            onClick={props.toggle}
+            aria-haspopup={props["aria-haspopup"]}
+            aria-expanded={props["aria-expanded"]}
+            data-action="issue-more"
+          />
+        )}
         items={[...changes, { label: "Export as CSV", icon: <Icon.Download />, onSelect: () => setExporting(true), attrs: { "data-action": "export-issue" } }]}
       />
       {cloning && <CloneDialog issue={issue} onClose={() => setCloning(false)} />}
       {moving && <MoveDialog issue={issue} onClose={() => setMoving(false)} />}
-      <ExportDialog query={keysQuery([issue.key])} open={exporting} onClose={() => setExporting(false)} description={`${issue.key} alone, as a file with the columns you tick.`} />
+      <ExportDialog
+        query={keysQuery([issue.key])}
+        open={exporting}
+        onClose={() => setExporting(false)}
+        description={`${issue.key} alone, as a file with the columns you tick.`}
+      />
     </>
   );
 }
@@ -151,7 +166,13 @@ export function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => vo
           </div>
         )}
         {(needsStatus || statusId) && (
-          <Select label="Status there" id="field-move-status" value={statusId} onChange={(e) => setStatusId(e.target.value)} hint="The other project's workflow does not have this issue's status; choose one it has.">
+          <Select
+            label="Status there"
+            id="field-move-status"
+            value={statusId}
+            onChange={(e) => setStatusId(e.target.value)}
+            hint="The other project's workflow does not have this issue's status; choose one it has."
+          >
             <option value="">Choose a status</option>
             {(statuses?.statuses ?? []).map((s) => (
               <option key={s.id} value={s.id}>

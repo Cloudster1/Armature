@@ -9,10 +9,25 @@ const doc: Doc = {
   type: "doc",
   content: [
     { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Plan" }] },
-    { type: "paragraph", content: [{ type: "text", text: "bold", marks: [{ type: "bold" }] }, { type: "text", text: " and " }, { type: "mention", attrs: { id: "u1", label: "Ada" } }, { type: "hardBreak" }, { type: "text", text: "next line" }] },
+    {
+      type: "paragraph",
+      content: [
+        { type: "text", text: "bold", marks: [{ type: "bold" }] },
+        { type: "text", text: " and " },
+        { type: "mention", attrs: { id: "u1", label: "Ada" } },
+        { type: "hardBreak" },
+        { type: "text", text: "next line" },
+      ],
+    },
     { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "item" }] }] }] },
     { type: "codeBlock", attrs: { language: "go" }, content: [{ type: "text", text: "x := 1" }] },
-    { type: "paragraph", content: [{ type: "text", text: "safe", marks: [{ type: "link", attrs: { href: "https://example.test" } }] }, { type: "text", text: "unsafe", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] }] },
+    {
+      type: "paragraph",
+      content: [
+        { type: "text", text: "safe", marks: [{ type: "link", attrs: { href: "https://example.test" } }] },
+        { type: "text", text: "unsafe", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] },
+      ],
+    },
     { type: "table", content: [{ type: "text", text: "unknown" }] },
   ],
 };
@@ -40,7 +55,18 @@ describe("DocView", () => {
     }
 
     const css = readFileSync(resolve(process.cwd(), "src/styles/index.css"), "utf8");
-    for (const selector of [".doc-content :is(h1, h2, h3, h4)", ".doc-content h2", ".doc-content h3", ".doc-content ul", ".doc-content ol", ".doc-content blockquote", ".doc-content a", ".doc-content :not(pre) > code", ".doc-content pre", ".doc-content [data-mention]"]) {
+    for (const selector of [
+      ".doc-content :is(h1, h2, h3, h4)",
+      ".doc-content h2",
+      ".doc-content h3",
+      ".doc-content ul",
+      ".doc-content ol",
+      ".doc-content blockquote",
+      ".doc-content a",
+      ".doc-content :not(pre) > code",
+      ".doc-content pre",
+      ".doc-content [data-mention]",
+    ]) {
       expect(css, selector).toContain(`${selector} {`);
     }
   });

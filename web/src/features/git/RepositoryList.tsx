@@ -55,9 +55,7 @@ export function RepositoryList({ projectKey }: { projectKey: string }) {
           description="Connect one and commits, branches, pull requests and CI runs that name an issue by key appear on that issue. A commit message can move the issue too: CP-4 #start-progress."
         />
       ) : (
-        repositories.map((repository) => (
-          <RepositoryCard key={repository.id} repository={repository} projectKey={projectKey} onRotated={setHanded} />
-        ))
+        repositories.map((repository) => <RepositoryCard key={repository.id} repository={repository} projectKey={projectKey} onRotated={setHanded} />)
       )}
     </div>
   );
@@ -69,15 +67,7 @@ const apiPlaceholder: Record<HostKind, string> = {
   gitea: "https://gitea.example.com/api/v1",
 };
 
-function ConnectForm({
-  projectKey,
-  onConnected,
-  onCancel,
-}: {
-  projectKey: string;
-  onConnected: (connected: Connected) => void;
-  onCancel: () => void;
-}) {
+function ConnectForm({ projectKey, onConnected, onCancel }: { projectKey: string; onConnected: (connected: Connected) => void; onCancel: () => void }) {
   const connect = useConnectRepository(projectKey);
   const { data: workflows } = useProjectWorkflows(projectKey);
   const [host, setHost] = useState<HostKind>("github");
@@ -90,8 +80,7 @@ function ConnectForm({
   // The names on offer come from the project's fallback workflow, which is
   // the one most of its issues follow. The field stays free text, because a
   // type with a workflow of its own may name a transition the fallback lacks.
-  const fallbackWorkflowId = workflows?.assignments.find((a) => a.origin.named === false)?.workflowId
-    ?? workflows?.assignments[0]?.workflowId ?? "";
+  const fallbackWorkflowId = workflows?.assignments.find((a) => a.origin.named === false)?.workflowId ?? workflows?.assignments[0]?.workflowId ?? "";
   const { data: workflow } = useWorkflow(fallbackWorkflowId);
   const transitions = [...new Set((workflow?.workflow?.transitions ?? []).map((t) => t.name))];
 
@@ -193,9 +182,7 @@ function WebhookHandout({ connected, onDone }: { connected: Connected; onDone: (
   return (
     <Card className="border-accent/40 bg-accent-subtle/40 p-5" data-testid="webhook-handout">
       <h2 className="text-sm font-semibold text-ink">Now tell {repository.name} where to send its webhooks</h2>
-      <p className="mt-1 text-sm text-ink-muted">
-        Copy this secret now. It is not shown again; it can only be replaced.
-      </p>
+      <p className="mt-1 text-sm text-ink-muted">Copy this secret now. It is not shown again; it can only be replaced.</p>
       <dl className="mt-3 space-y-2 text-sm">
         <div>
           <dt className="text-ink-muted">Payload URL</dt>
@@ -229,15 +216,7 @@ function WebhookHandout({ connected, onDone }: { connected: Connected; onDone: (
   );
 }
 
-function RepositoryCard({
-  repository,
-  projectKey,
-  onRotated,
-}: {
-  repository: Repository;
-  projectKey: string;
-  onRotated: (connected: Connected) => void;
-}) {
+function RepositoryCard({ repository, projectKey, onRotated }: { repository: Repository; projectKey: string; onRotated: (connected: Connected) => void }) {
   const update = useUpdateRepository();
   const rotate = useRotateSecret();
   const disconnect = useDisconnectRepository();
@@ -255,32 +234,19 @@ function RepositoryCard({
               {repository.name}
             </a>
             <Tag>{hostLabel(repository.host)}</Tag>
-            <Tag className={cx(repository.hasToken ? "text-success" : "text-ink-subtle")}>
-              {repository.hasToken ? "read and write" : "read only"}
-            </Tag>
+            <Tag className={cx(repository.hasToken ? "text-success" : "text-ink-subtle")}>{repository.hasToken ? "read and write" : "read only"}</Tag>
           </h2>
           <p className="mt-0.5 text-sm text-ink-muted">
-            {repository.commitCount} commit{repository.commitCount === 1 ? "" : "s"} ·{" "}
-            {repository.openPullRequestCount} open {pullWord(repository.host)}
+            {repository.commitCount} commit{repository.commitCount === 1 ? "" : "s"} · {repository.openPullRequestCount} open {pullWord(repository.host)}
             {repository.openPullRequestCount === 1 ? "" : "s"} · branches from {repository.defaultBranch}
             {repository.transitionOnMerge ? ` · merging takes ${repository.transitionOnMerge}` : ""}
           </p>
         </div>
         <div className="flex shrink-0 gap-1">
-          <Button
-            size="sm"
-            variant="secondary"
-            loading={rotate.isPending}
-            onClick={() => rotate.mutate(repository.id, { onSuccess: onRotated })}
-          >
+          <Button size="sm" variant="secondary" loading={rotate.isPending} onClick={() => rotate.mutate(repository.id, { onSuccess: onRotated })}>
             Rotate secret
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            loading={disconnect.isPending}
-            onClick={() => disconnect.mutate(repository.id)}
-          >
+          <Button size="sm" variant="ghost" loading={disconnect.isPending} onClick={() => disconnect.mutate(repository.id)}>
             Disconnect
           </Button>
         </div>
@@ -305,12 +271,7 @@ function RepositoryCard({
           Save token
         </Button>
         {repository.hasToken && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => update.mutate({ id: repository.id, accessToken: "" })}
-          >
+          <Button type="button" size="sm" variant="ghost" onClick={() => update.mutate({ id: repository.id, accessToken: "" })}>
             Remove token
           </Button>
         )}

@@ -97,8 +97,7 @@ if (typeof window !== "undefined") {
     offsetWidth: { get: sized("width"), configurable: true },
   });
   if (!(window.SVGElement.prototype as { getBBox?: unknown }).getBBox) {
-    (window.SVGElement.prototype as unknown as { getBBox: () => DOMRect }).getBBox = () =>
-      ({ x: 0, y: 0, width: 0, height: 0 }) as DOMRect;
+    (window.SVGElement.prototype as unknown as { getBBox: () => DOMRect }).getBBox = () => ({ x: 0, y: 0, width: 0, height: 0 }) as DOMRect;
   }
 }
 

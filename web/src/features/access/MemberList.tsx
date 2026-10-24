@@ -32,7 +32,11 @@ export function MemberList({ q = "", offset = 0, show }: MembersShown & { show: 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <SectionTitle>Members</SectionTitle>
           <div className="flex items-center gap-2">
-            {data && <span className="text-sm text-ink-muted" data-members-total={data.total}>{countOf(data.total, "member")}</span>}
+            {data && (
+              <span className="text-sm text-ink-muted" data-members-total={data.total}>
+                {countOf(data.total, "member")}
+              </span>
+            )}
             <PeopleSearch label="Find members" value={q} onChange={(text) => show({ q: text })} />
           </div>
         </div>
@@ -57,7 +61,9 @@ export function MemberList({ q = "", offset = 0, show }: MembersShown & { show: 
             ))}
           </Card>
         )}
-        {data && <Pager label="Member pages" total={data.total} offset={data.offset} pageSize={PEOPLE_PAGE_SIZE} onChange={(next) => show({ q, offset: next })} />}
+        {data && (
+          <Pager label="Member pages" total={data.total} offset={data.offset} pageSize={PEOPLE_PAGE_SIZE} onChange={(next) => show({ q, offset: next })} />
+        )}
       </section>
     </div>
   );

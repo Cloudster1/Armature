@@ -109,10 +109,13 @@ scenario("a new theme starts from the shipped Deep-Tech example", async ({ page 
   expect.equal(named, "Deep-Tech", "the example names the draft");
 
   await page.click('[data-action="preview-theme"]');
-  await page.waitForFunction(() => {
-    const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim().toLowerCase();
-    return accent === "#1f5fc5" || accent === "#5cc8ff";
-  }, { timeout: WAIT });
+  await page.waitForFunction(
+    () => {
+      const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim().toLowerCase();
+      return accent === "#1f5fc5" || accent === "#5cc8ff";
+    },
+    { timeout: WAIT },
+  );
 
   await clickButton(page, "Save theme");
   await page.waitForFunction(() => /\/settings\/themes\/[0-9a-f-]{36}$/.test(location.pathname), { timeout: WAIT });
@@ -166,7 +169,11 @@ serialScenario("everyone's default theme reaches everybody until they choose", a
     await page.click(`[data-theme-row="${name}"] [data-action="theme-menu"]`);
     await page.waitForSelector('[data-action="default-theme"]', { timeout: WAIT });
     await page.click('[data-action="default-theme"]');
-    await page.waitForFunction((n) => document.querySelector(`[data-theme-row="${n}"]`)?.getAttribute("data-theme-default") === "true", { timeout: WAIT }, name);
+    await page.waitForFunction(
+      (n) => document.querySelector(`[data-theme-row="${n}"]`)?.getAttribute("data-theme-default") === "true",
+      { timeout: WAIT },
+      name,
+    );
 
     const who = await inviteMember(page, "housed");
     await acceptInvite(page, who, { visit: false });

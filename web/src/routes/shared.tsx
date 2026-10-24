@@ -50,7 +50,15 @@ function SharedDashboardPage() {
 
   if (error) {
     return (
-      <AuthLayout title="This link is no longer valid." subtitle="The dashboard it opened may have been unshared, or the link expired." footer={<Link to="/login" className="font-medium text-accent hover:underline">Sign in</Link>}>
+      <AuthLayout
+        title="This link is no longer valid."
+        subtitle="The dashboard it opened may have been unshared, or the link expired."
+        footer={
+          <Link to="/login" className="font-medium text-accent hover:underline">
+            Sign in
+          </Link>
+        }
+      >
         <p className="text-sm text-ink-muted" data-share-gone="">
           Ask whoever sent it for a new one.
         </p>
@@ -85,7 +93,13 @@ function SharedDashboardPage() {
             <ButtonLink href={sharedPdfHref(token)} download size="sm" icon={<Icon.Download />} data-action="download-pdf">
               Download PDF
             </ButtonLink>
-            <IconButton icon={theme === "system" ? <Icon.Monitor /> : theme === "light" ? <Icon.Sun /> : <Icon.Moon />} label={themeLabels[theme]} size="sm" onClick={cycleTheme} data-action="theme" />
+            <IconButton
+              icon={theme === "system" ? <Icon.Monitor /> : theme === "light" ? <Icon.Sun /> : <Icon.Moon />}
+              label={themeLabels[theme]}
+              size="sm"
+              onClick={cycleTheme}
+              data-action="theme"
+            />
           </header>
         )}
         <main className="min-h-0 flex-1 overflow-auto">
