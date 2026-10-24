@@ -9,7 +9,8 @@ import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
 import { MutationErrorToasts } from "@/features/shell/MutationErrorToasts";
 import { Sidebar, SidebarFoot, currentProjectKey } from "@/features/shell/Sidebar";
 import { ShellHeaderContext } from "@/components/ui";
-import { DRAWER_ID, rememberOutsideSettings, useLastProject, useNarrow } from "@/features/shell/state";
+import { SkipLink } from "@/features/shell/SkipLink";
+import { DRAWER_ID, MAIN_ID, rememberOutsideSettings, useLastProject, useNarrow } from "@/features/shell/state";
 import { inSettingsArea } from "@/features/shell/places";
 import { CommandPalette, usePaletteShortcut, type PaletteMode, type SpotlightRequest } from "@/features/palette/CommandPalette";
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
@@ -113,11 +114,13 @@ function AgentShell() {
   }, [location.pathname, location.href]);
   return (
     <div className="flex h-full" data-shell={narrow ? "narrow" : "wide"}>
+      <SkipLink />
       <ThemeLoader />
       <Sidebar onNewIssue={() => setCreating(true)} onAsk={() => setPalette("ask")} drawerOpen={narrow && drawer} onCloseDrawer={closeDrawer} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {narrow && <NarrowStrip open={drawer} onOpen={() => setDrawer(true)} />}
-        <main className="relative isolate min-h-0 min-w-0 flex-1 overflow-auto bg-backdrop" data-backdrop-host>
+        {/* Focusable only from the skip link, and not ringed then: it is where reading starts, not a control. */}
+        <main id={MAIN_ID} tabIndex={-1} className="relative isolate min-h-0 min-w-0 flex-1 overflow-auto bg-backdrop focus:outline-none" data-backdrop-host>
           <BackdropEffect />
           <div ref={setStrip} className={narrow ? "sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-4 pt-4 backdrop-blur-md empty:hidden" : "sticky top-0 z-20 border-b border-border/60 bg-surface-glass px-8 pt-5 backdrop-blur-md empty:hidden"} data-shell-header />
           <ShellHeaderContext.Provider value={strip}>
@@ -147,7 +150,7 @@ function AgentShell() {
 function NarrowStrip({ open, onOpen }: { open: boolean; onOpen: () => void }) {
   const { data } = useMe();
   return (
-    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-narrow-strip>
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-narrow-strip data-print-hide>
       <IconButton icon={<Icon.Lines />} label="Open the navigation" size="sm" onClick={onOpen} aria-controls={DRAWER_ID} aria-expanded={open} data-action="open-drawer" />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{data?.principal?.installation?.name}</span>
     </div>
@@ -172,7 +175,8 @@ function PortalShell() {
       <MutationErrorToasts />
       <ConfirmProvider>
       <div className="flex h-full flex-col">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-6">
+        <SkipLink />
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-6" data-print-hide>
           <div className="flex items-center gap-5">
             <span className="text-sm font-semibold text-ink">{principal?.installation?.name ?? "Support"}</span>
             <PortalLink to="/portal" exact>
@@ -187,7 +191,7 @@ function PortalShell() {
             <SidebarFoot userName={principal?.user.name ?? ""} avatar={principal?.user.avatarUrl} />
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-auto">
+        <main id={MAIN_ID} tabIndex={-1} className="min-h-0 flex-1 overflow-auto focus:outline-none">
           <div className="px-8 py-6">
             <Outlet />
           </div>

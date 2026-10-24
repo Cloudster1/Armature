@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import type { Build } from "@/api/meta";
@@ -115,9 +115,30 @@ describe("the shell's chrome", () => {
   it("folds a group by its title and remembers it", async () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     expect(document.querySelector('[data-sidebar-group="work"]')?.getAttribute("data-open")).toBe("true");
-    await userEvent.click(screen.getByRole("button", { name: "Work & Plan" }));
-    expect(document.querySelector('[data-place="Home"]')).toBeNull();
+    const title = screen.getByRole("button", { name: "Work & Plan" });
+    await userEvent.click(title);
+    // Kept, hidden, so the title still names what it folds.
+    const folded = document.getElementById(title.getAttribute("aria-controls")!)!;
+    expect(folded.hidden).toBe(true);
+    expect(title.getAttribute("aria-expanded")).toBe("false");
+    expect(within(document.querySelector("[data-sidebar]") as HTMLElement).queryByRole("link", { name: /Home/ })).toBeNull();
     expect(JSON.parse(localStorage.getItem("armature.sidebar-groups") ?? "{}")).toEqual({ work: false });
+  });
+
+  it("has the rail's toggle say whether the sidebar is out, and name it while it is", () => {
+    const { unmount } = render(<Sidebar onNewIssue={() => {}} />);
+    const toggle = document.querySelector('[data-action="sidebar"]')!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(document.getElementById(toggle.getAttribute("aria-controls")!)?.hasAttribute("data-sidebar")).toBe(true);
+    expect(document.querySelector("[data-rail]")!.hasAttribute("data-print-hide")).toBe(true);
+    expect(document.querySelector("[data-sidebar]")!.hasAttribute("data-print-hide")).toBe(true);
+    unmount();
+
+    state.mode = "rail";
+    render(<Sidebar onNewIssue={() => {}} />);
+    const folded = document.querySelector('[data-action="sidebar"]')!;
+    expect(folded.getAttribute("aria-expanded")).toBe("false");
+    expect(folded.hasAttribute("aria-controls")).toBe(false);
   });
 
   it("keeps every pressed control exactly once in either mode", () => {
