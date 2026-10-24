@@ -143,7 +143,7 @@ describe("the shell's chrome", () => {
 
   it("keeps every pressed control exactly once in either mode", () => {
     const { unmount } = render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
-    for (const action of ["sidebar", "theme", "guide", "inbox", "new-issue", "account"]) {
+    for (const action of ["sidebar", "theme", "guide", "notifications", "new-issue", "account"]) {
       expect(document.querySelectorAll(`[data-action="${action}"]`), action).toHaveLength(1);
     }
     expect(document.querySelector("[data-unread-count]")?.getAttribute("data-unread-count")).toBe("3");
@@ -153,7 +153,7 @@ describe("the shell's chrome", () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     expect(document.querySelector("[data-sidebar]")).toBeNull();
     expect(document.querySelector("[data-rail]")).not.toBeNull();
-    for (const action of ["sidebar", "theme", "guide", "inbox", "new-issue", "account"]) {
+    for (const action of ["sidebar", "theme", "guide", "notifications", "new-issue", "account"]) {
       expect(document.querySelectorAll(`[data-action="${action}"]`), action).toHaveLength(1);
     }
   });
