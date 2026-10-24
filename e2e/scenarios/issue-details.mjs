@@ -22,6 +22,7 @@ import {
   issueRows,
   openFilters,
   openIssueBeside,
+  patchThroughAPI,
   planSprint,
   reload,
   pickPerson,
@@ -504,4 +505,37 @@ scenario("a type change that leaves the issue's status behind says where it land
   await page.waitForSelector('[data-action="change-type"][aria-label="Issue type: Bug"]', { timeout: WAIT });
   await page.waitForSelector("header .status-todo", { timeout: WAIT });
   await page.waitForFunction(() => document.querySelector("[data-issue-history]")?.innerText.includes("moved this from In Progress to To Do"), { timeout: WAIT });
+});
+
+// The same rules Stator and Exciter draw a document with, under the production stylesheet and its policy.
+scenario("a description is drawn with the document styles Stator and Exciter share", async ({ page }) => {
+  const refused = [];
+  page.on("console", (message) => {
+    if (/Content Security Policy|Refused to/i.test(message.text())) refused.push(message.text());
+  });
+  await signUp(page);
+  const key = await createProject(page, "Docs look", { visit: false });
+  const issueKey = await createIssue(page, key, "Read me", { visit: false });
+  await patchThroughAPI(page, issueKey, { descriptionMarkdown: "# Steps\n\n- one\n- two\n\n1. first\n\n> Quoted, with `code` in it.\n\n```go\nx := 1\n```\n" });
+
+  await goto(page, `/issues/${issueKey}`);
+  await page.waitForSelector("[data-description] .doc-content blockquote", { timeout: WAIT });
+  const look = await page.$eval("[data-description] .doc-content", (doc) => {
+    const style = (selector) => getComputedStyle(doc.querySelector(selector));
+    return {
+      heading: style("h2").fontWeight,
+      bullets: style("ul").listStyleType,
+      numbers: style("ol").listStyleType,
+      quoteEdge: style("blockquote").borderLeftWidth,
+      inlineCode: style("blockquote code").fontFamily,
+      block: style("pre").backgroundColor,
+    };
+  });
+  expect.equal(look.heading, "600", "a heading's weight");
+  expect.equal(look.bullets, "disc", "a bullet list's marker");
+  expect.equal(look.numbers, "decimal", "a numbered list's marker");
+  expect.equal(look.quoteEdge, "2px", "a quote's edge");
+  expect.containsInsensitive(look.inlineCode, "mono", "inline code's font");
+  expect.truthy(look.block !== "rgba(0, 0, 0, 0)", `a code block's ground is ${look.block}`);
+  expect.equal(refused.length, 0, `the policy refused: ${refused.join(" | ")}`);
 });
