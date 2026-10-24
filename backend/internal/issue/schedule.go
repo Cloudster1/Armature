@@ -38,46 +38,50 @@ func (s *Service) Schedule(ctx context.Context, key string, in ScheduleInput, ac
 		if in.Due != nil {
 			due = *in.Due
 		}
-		if err := CheckDates(start, due); err != nil {
-			return err
-		}
-
-		var changes []Change
-		if !sameDay(before.StartDate, start) {
-			changes = append(changes, Change{Field: "startDate", From: formatDate(before.StartDate), To: formatDate(start)})
-		}
-		if !sameDay(before.DueDate, due) {
-			changes = append(changes, Change{Field: "dueDate", From: formatDate(before.DueDate), To: formatDate(due)})
-		}
-		if len(changes) == 0 {
-			updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
-			return err
-		}
-
-		if _, err := tx.Exec(ctx, `
-			UPDATE issue SET start_date = $2, due_date = $3 WHERE id = $1`,
-			before.ID, start, due); err != nil {
-			return err
-		}
-		if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
-			return err
-		}
-
-		updated, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
-		if err != nil {
-			return err
-		}
-		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
-			"issueId": updated.ID,
-			"key":     updated.Key,
-			"changes": changes,
-			"actorId": actor.UserID,
-		})
+		updated, err = s.writeSchedule(ctx, tx, before, start, due, actor)
+		return err
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	return updated, lsn, nil
+}
+
+// writeSchedule moves one locked issue to its new range, recording what changed
+// and telling the outbox. A range that does not change writes nothing.
+func (s *Service) writeSchedule(ctx context.Context, tx db.DBTX, before *Issue, start, due *time.Time, actor Actor) (*Issue, error) {
+	if err := CheckDates(start, due); err != nil {
+		return nil, err
+	}
+	var changes []Change
+	if !sameDay(before.StartDate, start) {
+		changes = append(changes, Change{Field: "startDate", From: formatDate(before.StartDate), To: formatDate(start)})
+	}
+	if !sameDay(before.DueDate, due) {
+		changes = append(changes, Change{Field: "dueDate", From: formatDate(before.DueDate), To: formatDate(due)})
+	}
+	if len(changes) == 0 {
+		return scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE issue SET start_date = $2, due_date = $3 WHERE id = $1`,
+		before.ID, start, due); err != nil {
+		return nil, err
+	}
+	if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
+		return nil, err
+	}
+	updated, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
+	if err != nil {
+		return nil, err
+	}
+	return updated, events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		"issueId": updated.ID,
+		"key":     updated.Key,
+		"changes": changes,
+		"actorId": actor.UserID,
+	})
 }
 
 // sameDay compares two optional dates, treating absence as a value.

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -113,6 +114,56 @@ func (s *Server) handleScheduleIssue(w http.ResponseWriter, r *http.Request) {
 	}
 	NoteWrite(r.Context(), lsn)
 	respondJSON(w, r, http.StatusOK, map[string]any{"issue": updated})
+}
+
+// planMoveRequest is one issue's new range and the range it is expected to
+// have now. All four days are required, null where a day is unset.
+type planMoveRequest struct {
+	Key      string          `json:"key"`
+	Expected scheduleRequest `json:"expected"`
+	Start    datePatch       `json:"startDate"`
+	Due      datePatch       `json:"dueDate"`
+}
+
+type planScheduleRequest struct {
+	Moves []planMoveRequest `json:"moves"`
+}
+
+// handleSchedulePlan moves several of a project's issues at once, or none of
+// them when any has moved since the dates the moves were worked out from.
+func (s *Server) handleSchedulePlan(w http.ResponseWriter, r *http.Request) {
+	var req planScheduleRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	switch {
+	case len(req.Moves) == 0:
+		respondError(w, r, ErrBadRequest("Give at least one move."))
+		return
+	case len(req.Moves) > issue.MaxScheduleMoves:
+		respondError(w, r, ErrBadRequest(fmt.Sprintf("Give at most %d moves at once, and send the rest in another request.", issue.MaxScheduleMoves)))
+		return
+	}
+	moves := make([]issue.ScheduleMove, 0, len(req.Moves))
+	for _, m := range req.Moves {
+		if strings.TrimSpace(m.Key) == "" || !m.Expected.Start.Set || !m.Expected.Due.Set || !m.Start.Set || !m.Due.Set {
+			respondError(w, r, ErrBadRequest("Give each move its key, its new startDate and dueDate, and the expected ones it has now, with null for a day that is unset."))
+			return
+		}
+		moves = append(moves, issue.ScheduleMove{
+			Key:           strings.TrimSpace(m.Key),
+			ExpectedStart: m.Expected.Start.Value, ExpectedDue: m.Expected.Due.Value,
+			Start: m.Start.Value, Due: m.Due.Value,
+		})
+	}
+	updated, lsn, err := s.Issues.ScheduleMany(r.Context(), r.PathValue("projectKey"), moves, actorFrom(r))
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusOK, map[string]any{"issues": updated})
 }
 
 type linkRequest struct {

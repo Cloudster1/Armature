@@ -758,6 +758,16 @@ export async function setDate(page, selector, value) {
 }
 
 /** Schedules an issue from its own page, which is the keyboard route. */
+/** Both ends of an issue's range through the API, for a scenario about what follows from them. */
+export async function scheduleThroughAPI(page, issueKey, start, due) {
+  await callAPI(page, "PUT", `/issues/${issueKey}/schedule`, { startDate: start, dueDate: due });
+}
+
+/** A Blocks link through the API: blocker must finish before blocked starts. */
+export async function blockThroughAPI(page, blocker, blocked) {
+  await callAPI(page, "POST", `/issues/${blocker}/links`, { type: "Blocks", targetKey: blocked });
+}
+
 export async function scheduleIssue(page, issueKey, start, due) {
   await goto(page, `/issues/${issueKey}`);
   await setDate(page, "#issue-start", start);

@@ -28,6 +28,8 @@ export function PlanToolbar({
   zoom,
   onZoom,
   showZoom,
+  onAutoPlan,
+  autoPlanning = false,
 }: {
   view: PlanView;
   onView: (view: PlanView) => void;
@@ -44,6 +46,9 @@ export function PlanToolbar({
   zoom: Zoom["id"];
   onZoom: (zoom: Zoom["id"]) => void;
   showZoom: boolean;
+  /** Asks for the auto plan's proposal; absent for someone who cannot move issues, or where nothing is drawn on dates. */
+  onAutoPlan?: () => void;
+  autoPlanning?: boolean;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -154,6 +159,18 @@ export function PlanToolbar({
               )}
             </div>
           </Popover>
+          {onAutoPlan && (
+            <Button
+              variant="secondary"
+              icon={<Icon.Calendar />}
+              onClick={onAutoPlan}
+              disabled={autoPlanning}
+              title="Start every blocked issue after the issues blocking it, shown first and saved only when you apply"
+              data-action="auto-plan"
+            >
+              {autoPlanning ? "Planning..." : "Auto plan"}
+            </Button>
+          )}
         </>
       }
       end={showZoom ? <Segmented<Zoom["id"]> label="Zoom" value={zoom} options={ZOOMS.map((option) => ({ value: option.id, label: option.label }))} onChange={onZoom} /> : undefined}

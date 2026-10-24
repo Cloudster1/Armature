@@ -143,6 +143,56 @@ export function useSchedule() {
   });
 }
 
+/** Both ends of an issue's range, as days. */
+export interface PlanSpan {
+  startDate: string;
+  dueDate: string;
+}
+
+/** One issue the auto plan would shift so it starts after what blocks it. */
+export interface PlanMove {
+  issueKey: string;
+  from: PlanSpan;
+  to: PlanSpan;
+  /** The length the issue keeps, counted on its team's calendar. */
+  workingDays: number;
+  /** The blocker whose due day the new start follows. */
+  after: string;
+}
+
+/** What the auto plan proposes, and the warnings the plan would have after it. */
+export interface Alignment {
+  projectKey: string;
+  moves: PlanMove[];
+  warnings: PlanWarning[];
+}
+
+/** The auto plan's proposal for the plan as the query narrows it. It saves nothing. */
+export function useAlign() {
+  return useMutation({
+    mutationFn: ({ projectKey, query }: { projectKey: string; query?: string }) =>
+      request<Alignment>(`/projects/${projectKey}/plan/align`, { method: "POST", body: query ? { q: query } : {} }),
+  });
+}
+
+/** One issue's new range and the range it is expected to have now; null is an unset day. */
+export interface ScheduleMoveInput {
+  key: string;
+  expected: { startDate: string | null; dueDate: string | null };
+  startDate: string | null;
+  dueDate: string | null;
+}
+
+/** Moving several of a project's issues at once, all or none. */
+export function useSchedulePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectKey, moves }: { projectKey: string; moves: ScheduleMoveInput[] }) =>
+      request<{ issues: Issue[] }>(`/projects/${projectKey}/plan/schedule`, { method: "PUT", body: { moves } }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+}
+
 export interface IssueLink {
   id: string;
   direction: "outward" | "inward";

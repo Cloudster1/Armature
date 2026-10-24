@@ -4,6 +4,7 @@ import { scenario } from "../runner.mjs";
 import {
   addChild,
   barRange,
+  blockThroughAPI,
   bodyText,
   createIssue,
   createProject,
@@ -11,6 +12,7 @@ import {
   expect,
   goto,
   scheduleIssue,
+  scheduleThroughAPI,
   setDate,
   signUp,
   unique,
@@ -166,4 +168,52 @@ scenario("unscheduled work keeps its row on the plan", async ({ page }) => {
   const range = await barRange(page, story);
   expect.truthy(range.start, "the issue now has a start");
   expect.truthy(range.due, "and an end");
+});
+
+// 1 November 2027 is a Monday. The blocked story starts while its blocker runs.
+async function blockedTooEarly(page, name) {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, name, { visit: false });
+  const blocker = await createIssue(page, key, "Store the reset tokens", { type: "Story", visit: false });
+  const blocked = await createIssue(page, key, "Send the reset email", { type: "Story", visit: false });
+  await scheduleThroughAPI(page, blocker, "2027-11-01", "2027-11-05");
+  await scheduleThroughAPI(page, blocked, "2027-11-03", "2027-11-04");
+  await blockThroughAPI(page, blocker, blocked);
+  await goto(page, `/projects/${key}/plan`);
+  await page.waitForSelector('[data-action="auto-plan"]', { timeout: WAIT });
+  await page.click('[data-action="auto-plan"]');
+  await page.waitForSelector('[data-testid="auto-plan-preview"]', { timeout: WAIT });
+  return { key, blocker, blocked };
+}
+
+scenario("auto plan shows where a blocked issue would go, and moves it on apply", async ({ page }) => {
+  const { blocker, blocked } = await blockedTooEarly(page, "Auto plan");
+
+  const line = await page.$eval(`[data-auto-plan-move="${blocked}"]`, (el) => el.textContent);
+  expect.contains(line, blocker, "the preview says which blocker the move follows");
+  const ghost = await page.$eval(`[data-plan-proposed="${blocked}"]`, (el) => ({ start: el.dataset.planStart, due: el.dataset.planDue }));
+  expect.equal(ghost.start, "2027-11-08", "the ghost starts the Monday after the blocker ends");
+  expect.equal(ghost.due, "2027-11-09", "and keeps its two working days");
+  expect.equal((await barRange(page, blocked)).start, "2027-11-03", "nothing moved before apply");
+
+  await page.click('[data-action="auto-plan-apply"]');
+  await page.waitForFunction(() => !document.querySelector('[data-testid="auto-plan-preview"]'), { timeout: WAIT });
+  await page.waitForFunction((key) => document.querySelector(`[data-plan-bar="${key}"]`)?.dataset.planStart?.startsWith("2027-11-08"), { timeout: WAIT }, blocked);
+  const range = await barRange(page, blocked);
+  expect.equal(range.due, "2027-11-09", "the blocked story now starts after its blocker");
+  expect.equal(await page.$(`[data-plan-warning-for="${blocked}"]`), null, "and the warning is gone");
+});
+
+scenario("cancelling an auto plan changes nothing", async ({ page }) => {
+  const { blocked } = await blockedTooEarly(page, "Auto plan cancel");
+  await page.click('[data-action="auto-plan-cancel"]');
+  await page.waitForFunction(() => !document.querySelector('[data-testid="auto-plan-preview"]'), { timeout: WAIT });
+  expect.equal(await page.$(`[data-plan-proposed="${blocked}"]`), null, "the ghost goes with the preview");
+  expect.equal((await barRange(page, blocked)).start, "2027-11-03", "and the story stays where it was");
+
+  // Escape drops a preview as Cancel does.
+  await page.click('[data-action="auto-plan"]');
+  await page.waitForSelector('[data-testid="auto-plan-preview"]', { timeout: WAIT });
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector('[data-testid="auto-plan-preview"]'), { timeout: WAIT });
 });
