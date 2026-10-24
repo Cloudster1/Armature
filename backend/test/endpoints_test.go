@@ -98,6 +98,7 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	if len(dependencies) != 1 || dependencies[0].(map[string]any)["linkId"] != idOf(t, link, "link") {
 		t.Errorf("the plan's dependency does not name its link: %v", dependencies)
 	}
+	want(t, c.post("/api/v1/projects/"+evrKey+"/plan/align", map[string]any{}), http.StatusOK, "auto plan proposal")
 	want(t, c.get("/api/v1/issues/"+storyKey+"/links"), http.StatusOK, "links")
 	want(t, c.delete("/api/v1/issues/"+storyKey+"/links/"+idOf(t, link, "link")), http.StatusNoContent, "unlink")
 	transitions := list(t, want(t, c.get("/api/v1/issues/"+taskKey+"/transitions"), http.StatusOK, "transitions"), "transitions")
