@@ -34,4 +34,3 @@ export { Pager, clampOffset, countOf, isPageOffset, shownOf } from "./Pager";
 export { ListSearch } from "./ListSearch";
 export { SearchPicker, type PickerOption } from "./SearchPicker";
 export { Tabs, TabPanel, type Tab } from "./Tabs";
-export { Wordmark } from "./Wordmark";

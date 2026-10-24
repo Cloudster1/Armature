@@ -15,6 +15,7 @@ import { useConfirm } from "./ConfirmProvider";
 import { NavButton, NavItem, NavLinkOut, UnreadBadge } from "./nav";
 import { Rail } from "./Rail";
 import { BuildStamp } from "./BuildStamp";
+import { LogoMark } from "@/components/Logo";
 import { SidebarGroup } from "./SidebarGroup";
 import { ThemeButton } from "./ThemeButton";
 import { roleWord, useAccountItems } from "./AccountMenu";
@@ -104,9 +105,12 @@ export function Sidebar({ onNewIssue, onAsk, drawerOpen = false, onCloseDrawer =
 function InstallationName() {
   const { data } = useMe();
   return (
-    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
-      {data?.principal?.installation?.name}
-    </span>
+    <>
+      <LogoMark className="mr-1 shrink-0 rounded-control" />
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
+        {data?.principal?.installation?.name}
+      </span>
+    </>
   );
 }
 
