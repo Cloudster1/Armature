@@ -15,13 +15,13 @@ function List({ keys }: { keys: string[] }) {
   return (
     <div data-issue-list="">
       {keys.map((key) => (
-        <button key={key} onClick={() => panel.open(key)}>
+        <button type="button" key={key} onClick={() => panel.open(key)}>
           {key}
         </button>
       ))}
       <output>{panel.current ?? "closed"}</output>
-      <button onClick={() => panel.step(1)}>next</button>
-      <button onClick={() => panel.step(-1)}>previous</button>
+      <button type="button" onClick={() => panel.step(1)}>next</button>
+      <button type="button" onClick={() => panel.step(-1)}>previous</button>
       <textarea aria-label="Comment" />
     </div>
   );

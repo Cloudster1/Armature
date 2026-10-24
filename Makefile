@@ -218,8 +218,27 @@ test-e2e: ## Run the browser end-to-end suite against the running stack
 		--entrypoint node $(E2E_IMAGE) /usr/src/app/e2e/suite.mjs
 
 .PHONY: test-all
-test-all: test test-integration test-e2e | $(NPM_CACHE_VOL) ## Everything: unit, integration and browser
+test-all: test test-integration test-e2e lint | $(NPM_CACHE_VOL) ## Everything: unit, lint, integration and browser
 	$(DOCKER_NODE) npm run test
+
+# ESLint with the rules Stator and Exciter share; the accessibility checks and
+# the style ratchet run inside npm run test.
+.PHONY: lint
+lint: | $(NPM_CACHE_VOL) ## Lint the web app with the rules Stator and Exciter share
+	$(DOCKER_NODE) npm run lint
+
+# Biome formats web/ and e2e/ as Stator and Exciter do, from its own image.
+BIOME_IMAGE ?= ghcr.io/biomejs/biome:2.5.8
+DOCKER_BIOME = docker run --rm -u $(UID):$(GID) -v $(ROOT):/code -w /code $(BIOME_IMAGE)
+
+.PHONY: check-format
+check-format: ## Fail when a file in web/ or e2e/ is not formatted as biome.json says
+	@$(DOCKER_BIOME) format web e2e \
+		|| { echo "Some files in web/ or e2e/ are not formatted. Run make format, review the changes and commit them."; exit 1; }
+
+.PHONY: format
+format: ## Format web/ and e2e/ in place as biome.json says
+	$(DOCKER_BIOME) format --write web e2e
 
 .PHONY: vet
 vet: | $(GO_CACHES) ## go vet

@@ -36,7 +36,7 @@ Commits describe a change to the product, not to a file.
 
 `make test`, `make test-integration`, `make npm ARGS="run test"` and
 `make test-e2e`. A feature is finished when all four pass, not when the code is
-written. `ONLY=<substring>` filters the browser suite while iterating and
+written. `make lint` runs ESLint as CI does. `ONLY=<substring>` filters the browser suite while iterating and
 `WORKERS=<n>` sets how many browsers run it (four unless said otherwise), and
 `SHUFFLE=1` runs it in a random order. It
 runs against the production build, so a CSP or nginx problem fails it;

@@ -21,6 +21,7 @@ vi.mock("@/api/auth", () => ({ useMe: () => ({ data: { principal: { installation
 vi.mock("@/api/access", () => ({ useAccess: () => ({ data: { canAdministerOrg: state.admin } }) }));
 
 const { settingsRoute } = await import("./settings");
+const { axeViolations } = await import("@/test/axe");
 const SettingsHub = (settingsRoute as unknown as { component: () => ReactNode }).component;
 
 const links = (group: string) => Array.from(document.querySelectorAll(`[data-settings-group="${group}"] [data-settings-link]`)).map((a) => a.getAttribute("data-settings-link"));
@@ -43,5 +44,20 @@ describe("the settings hub", () => {
     render(<SettingsHub />);
     expect(links("Settings")).toEqual(["Installation", "Access", "Users", "Holidays", "Workflows", "Labels", "Automation", "Fields", "Issue view", "Connected apps", "Webhooks", "Audit log"]);
     expect(document.querySelector('a[href="/settings/issue-view"]')).not.toBeNull();
+  });
+});
+
+describe("the settings hub's accessibility", () => {
+  it("breaks no rule, for an administrator or for anybody else", async () => {
+    for (const admin of [true, false]) {
+      state.admin = admin;
+      const { unmount } = render(
+        <main>
+          <SettingsHub />
+        </main>,
+      );
+      expect(await axeViolations(), admin ? "administrator" : "member").toEqual([]);
+      unmount();
+    }
   });
 });

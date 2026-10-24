@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useAccess } from "@/api/access";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
@@ -123,7 +123,8 @@ export function CommandPalette({
     if (entry.target && onSpotlight) onSpotlight({ target: entry.target, text: entry.sentence });
   };
 
-  const commands = useMemo<Command[]>(() => {
+  // Built on every render: it is cheap, and the handlers it holds are too.
+  const commands = ((): Command[] => {
     const out: Command[] = [];
     const answers: Command[] = looksLikeQuestion(trimmed) || mode === "ask"
       ? answer(trimmed, { projectKey, canAdministerOrg, features }).map(({ entry }) => ({
@@ -178,7 +179,7 @@ export function CommandPalette({
     for (const action of actions) if (matches(action.label)) out.push(action);
     if (mode !== "ask") out.push(...answers);
     return out.slice(0, PALETTE_RESULTS * 3);
-  }, [trimmed, looksLikeKey, issueData, projectData, currentProject, projectKey, mode, canAdministerOrg, assistant?.configured]);
+  })();
 
   useEffect(() => setActive(0), [commands.length, trimmed]);
 

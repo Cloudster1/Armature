@@ -353,7 +353,7 @@ export function QueryInput({
 							onClose={() => setHelp(false)}
 							label="What a query can say"
 							align="end"
-							className="w-[64rem] max-w-[calc(100vw-20rem)]"
+							className="w-5xl max-w-[calc(100vw-20rem)]"
 							trigger={
 								<IconButton
 									icon={<Icon.Info />}

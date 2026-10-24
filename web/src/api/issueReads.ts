@@ -12,7 +12,7 @@ const UNFINISHED: StatusCategory[] = ["todo", "in_progress"];
  */
 async function everyPage(projectKey: string, params: URLSearchParams): Promise<IssuePage> {
   const issues: IssuePage["issues"] = [];
-  let total = 0;
+  let total: number;
   do {
     const search = new URLSearchParams(params);
     search.set("limit", String(MAX_PAGE_SIZE));

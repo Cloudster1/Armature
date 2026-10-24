@@ -66,7 +66,7 @@ export function pagesFor<T extends { feature?: Feature }>(project: Project | und
 }
 
 /** The project whose pages are on screen, read off the route; an issue key carries its project. */
-export function currentProjectKey(): string | undefined {
+export function useCurrentProjectKey(): string | undefined {
   const params = useParams({ strict: false }) as { projectKey?: string; issueKey?: string };
   if (params.projectKey) return params.projectKey;
   if (params.issueKey) return params.issueKey.slice(0, params.issueKey.lastIndexOf("-")) || undefined;
@@ -143,7 +143,7 @@ function PlaceLink({ place, trailing }: { place: Place; trailing?: ReactNode }) 
 
 /** The work: the tool's places, then the project on screen or the last one visited. */
 function WorkGroups() {
-  const projectKey = useLastProject(currentProjectKey());
+  const projectKey = useLastProject(useCurrentProjectKey());
   const [groups, toggleGroup] = useSidebarGroups();
   const isOpen = (id: string, defaultOpen: boolean) => groups[id] ?? defaultOpen;
   const trailing = (place: Place) =>

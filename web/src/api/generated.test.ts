@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
-import { ApiError } from "./client";
+import type { ApiError } from "./client";
 import { createApi, type Schemas } from "./generated";
 import type { Issue, Comment, HistoryEntry } from "./issues";
 import type { Project } from "./projects";

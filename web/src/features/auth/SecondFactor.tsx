@@ -18,7 +18,7 @@ import { Button, Card, ErrorBanner, Field, SectionTitle } from "@/components/ui"
 import { LogoHead } from "@/components/Logo";
 import { Icon } from "@/components/icons";
 import { useFormat } from "@/lib/format";
-import { APP_NAME, QR_CODE_PX, QR_QUIET_MODULES, SECOND_FACTOR_CODE_DIGITS, SECRET_GROUP_LENGTH } from "@/config";
+import { APP_NAME, QR_CODE_PX, QR_DARK, QR_LIGHT, QR_QUIET_MODULES, SECOND_FACTOR_CODE_DIGITS, SECRET_GROUP_LENGTH } from "@/config";
 
 /** Draws what an authenticator app scans, dark on light whatever the theme, so every camera reads it. */
 export function QrCode({ value }: { value: string }) {
@@ -40,8 +40,8 @@ export function QrCode({ value }: { value: string }) {
       className="shrink-0 rounded-control"
       data-second-factor-qr
     >
-      <rect width={size} height={size} fill="#ffffff" />
-      <path d={path} fill="#000000" />
+      <rect width={size} height={size} fill={QR_LIGHT} />
+      <path d={path} fill={QR_DARK} />
     </svg>
   );
 }

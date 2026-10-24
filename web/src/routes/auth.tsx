@@ -6,6 +6,7 @@ import { LogoHead } from "@/components/Logo";
 import { meQueryKey, useSignupOpen, type SignupState } from "@/api/auth";
 import { request } from "@/api/client";
 import { useEffect, type ReactNode } from "react";
+import type { QueryClient } from "@tanstack/react-query";
 import { applyCustomTheme } from "@/lib/theme";
 
 /**
@@ -18,7 +19,7 @@ import { applyCustomTheme } from "@/lib/theme";
  * mean catching our own redirect and swallowing it, leaving a signed-in visitor
  * stuck on the sign-in page.
  */
-export async function redirectIfSignedIn({ context }: { context: { queryClient: import("@tanstack/react-query").QueryClient } }) {
+export async function redirectIfSignedIn({ context }: { context: { queryClient: QueryClient } }) {
   const signedIn = await context.queryClient
     .ensureQueryData({
       queryKey: meQueryKey,

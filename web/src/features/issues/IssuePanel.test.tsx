@@ -177,7 +177,7 @@ function List() {
   const panel = useIssueDrawer();
   return (
     <div data-issue-list="">
-      <button onClick={() => panel.open("CP-1")}>Open CP-1</button>
+      <button type="button" onClick={() => panel.open("CP-1")}>Open CP-1</button>
     </div>
   );
 }

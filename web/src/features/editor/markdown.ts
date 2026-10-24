@@ -1,5 +1,6 @@
 import type { Doc } from "@/api/issues";
-import { HEADING_LEVELS, safeHref, type DocMark, type DocNode } from "./schema";
+import type { HEADING_LEVELS} from "./schema";
+import { safeHref, type DocMark, type DocNode } from "./schema";
 
 /**
  * Markdown is a way of typing the document, not a second format: these two
@@ -110,7 +111,7 @@ function wrap(text: string, mark: DocMark): string {
 
 /** The characters that would be read as markup are escaped, so prose stays prose. */
 function escapeText(text: string): string {
-  return text.replace(/([\\*`~\[\]])/g, "\\$1");
+  return text.replace(/([\\*`~[\]])/g, "\\$1");
 }
 
 // ---------------------------------------------------------------- md to doc

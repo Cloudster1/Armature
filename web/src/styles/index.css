@@ -121,6 +121,10 @@
 
   --radius-control: 6px;
   --radius-overlay: 8px;
+  /* An issue type's glyph is the size of a letter, so its corner is smaller than any control's. */
+  --radius-glyph: 3px;
+  /* A shared dashboard has the whole window to itself, so it may be wider than any page in the shell. */
+  --container-dashboard: 100rem;
 
   /* From here up the shell has its rail and sidebar; below it the sidebar is
    * a drawer. SIDEBAR_DRAWER_BELOW_PX in config.ts is the same width. A rem in

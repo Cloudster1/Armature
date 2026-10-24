@@ -7,7 +7,7 @@ import { Button, EmptyState, IconButton, Spotlight, ToastProvider, useToast } fr
 import { Icon } from "@/components/icons";
 import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
 import { MutationErrorToasts } from "@/features/shell/MutationErrorToasts";
-import { Sidebar, SidebarFoot, currentProjectKey } from "@/features/shell/Sidebar";
+import { Sidebar, SidebarFoot, useCurrentProjectKey } from "@/features/shell/Sidebar";
 import { ShellHeaderContext } from "@/components/ui";
 import { SkipLink } from "@/features/shell/SkipLink";
 import { DRAWER_ID, MAIN_ID, rememberOutsideSettings, useLastProject, useNarrow } from "@/features/shell/state";
@@ -86,7 +86,7 @@ function AgentShell() {
   const [creating, setCreating] = useState(false);
   const [spotlight, setSpotlight] = useState<SpotlightRequest | null>(null);
   const toast = useToast();
-  const projectKey = useLastProject(currentProjectKey());
+  const projectKey = useLastProject(useCurrentProjectKey());
   const openPalette = useCallback(() => setPalette("command"), []);
   usePaletteShortcut(openPalette);
   const clearSpotlight = useCallback(() => setSpotlight(null), []);

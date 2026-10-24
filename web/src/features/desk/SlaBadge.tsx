@@ -7,7 +7,7 @@ import { cx } from "@/components/ui";
  */
 export function SlaBadge({ timer, short = false }: { timer: Timer; short?: boolean }) {
   const label = short ? "" : metricName(timer.metric) + ": ";
-  let dot = "bg-status-done";
+  let dot: string;
   let text: string;
   if (timer.completedAt) {
     text = timer.breached ? `missed by ${humanDuration(-timer.remainingSeconds)}` : `met with ${humanDuration(timer.remainingSeconds)} to spare`;

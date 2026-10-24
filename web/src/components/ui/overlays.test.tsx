@@ -152,9 +152,9 @@ describe("DockedPanel", () => {
     const onClose = vi.fn();
     render(
       <>
-        <button>Outside</button>
+        <button type="button">Outside</button>
         <DockedPanel open onClose={onClose} title="ALP-12" width={400}>
-          <button>Inside</button>
+          <button type="button">Inside</button>
         </DockedPanel>
       </>,
     );
@@ -214,7 +214,7 @@ describe("Menu", () => {
 
   it("closes on Escape without selecting", async () => {
     const pick = vi.fn();
-    render(<Menu label="m" trigger={(p) => <button onClick={p.toggle}>Open</button>} items={[{ label: "Only", onSelect: pick }]} />);
+    render(<Menu label="m" trigger={(p) => <button type="button" onClick={p.toggle}>Open</button>} items={[{ label: "Only", onSelect: pick }]} />);
     await userEvent.click(screen.getByRole("button", { name: "Open" }));
     await userEvent.keyboard("{Escape}");
     expect(pick).not.toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe("Menu", () => {
         <Menu
           label="Switch"
           header={<input aria-label="Filter" value={text} onChange={(e) => setText(e.target.value)} />}
-          trigger={(p) => <button onClick={p.toggle}>Open</button>}
+          trigger={(p) => <button type="button" onClick={p.toggle}>Open</button>}
           items={[{ label: "Apollo", onSelect: pick }]}
         />
       );
@@ -250,7 +250,7 @@ describe("Menu", () => {
     render(
       <Menu
         label="Your account"
-        trigger={(p) => <button onClick={p.toggle}>Open</button>}
+        trigger={(p) => <button type="button" onClick={p.toggle}>Open</button>}
         items={[
           { label: "Your profile", onSelect: () => {} },
           { label: "Stator", href: "https://stator.example.test", section: "Switch to" },
@@ -275,7 +275,7 @@ describe("Popover", () => {
       return (
         <>
           <p>Outside</p>
-          <Popover open={open} onClose={() => setOpen(false)} label="Filters" trigger={<button onClick={() => setOpen(true)}>Filters</button>}>
+          <Popover open={open} onClose={() => setOpen(false)} label="Filters" trigger={<button type="button" onClick={() => setOpen(true)}>Filters</button>}>
             <input aria-label="Label" />
           </Popover>
         </>
@@ -297,7 +297,7 @@ describe("Tooltip", () => {
     vi.useFakeTimers();
     render(
       <Tooltip text="Collapse the sidebar">
-        <button>Collapse</button>
+        <button type="button">Collapse</button>
       </Tooltip>,
     );
     fireEvent.pointerEnter(screen.getByRole("button", { name: "Collapse" }).parentElement!);

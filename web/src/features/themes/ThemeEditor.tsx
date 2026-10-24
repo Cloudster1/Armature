@@ -54,7 +54,7 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
   const panelId = useId();
   const [preview, setPreview] = useState(false);
   const [startedFrom, setStartedFrom] = useState("blank");
-  const assets = theme?.assets ?? [];
+  const assets = useMemo(() => theme?.assets ?? [], [theme?.assets]);
   const saving = create.isPending || update.isPending;
   const patch = (change: (draft: ThemeSpec) => void) =>
     setSpec((current) => {

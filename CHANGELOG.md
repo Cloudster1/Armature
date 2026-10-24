@@ -7,6 +7,14 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the frontend checks Stator and Exciter run (#343). `make lint` runs
+  ESLint with their shared rules, in CI too; axe-core checks the shell, the
+  planning view and the settings hub in Vitest; and the style ratchet now
+  also refuses bare pixel sizes, arbitrary sizes, hex colours and colour
+  functions outside the kit, with today's few exceptions listed with why.
+  The kit's `Button` is a plain button unless it says `type="submit"`.
+  `biome.json` and `make check-format` / `make format` are in place; the
+  first formatting pass waits for the open pull requests to land.
 - Changed: descriptions and comments are drawn with the document styles
   Stator and Exciter share (#344), in the view and in the rich editor alike,
   so an Armature description, a Stator page and an Exciter requirement read
