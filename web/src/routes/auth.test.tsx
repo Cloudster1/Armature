@@ -71,3 +71,15 @@ describe("sign-up where the installation allows it", () => {
     expect(document.querySelector("[data-signup-form]")).toBeNull();
   });
 });
+
+describe("the door", () => {
+  it("shows the logo above the product's name, on the backdrop the app wears", () => {
+    signup.data = { open: true, first: false };
+    render(<SignupPage />);
+    const logo = document.querySelector("img[data-logo]")!;
+    expect(logo.getAttribute("srcset")).toContain("/logo-512.webp 512w");
+    expect(logo.getAttribute("alt")).toBe("");
+    expect(logo.closest("[data-logo-head]")!.textContent).toBe("Armature");
+    expect(logo.closest("[data-door]")!.className).toContain("bg-backdrop");
+  });
+});
