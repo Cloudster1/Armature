@@ -64,6 +64,12 @@ data:
             add_header Cache-Control "public, immutable";
         }
 
+        # nginx has no type for a web app manifest and would serve it as a download.
+        # No add_header here, so the server's security headers still apply.
+        location = /site.webmanifest {
+            default_type application/manifest+json;
+        }
+
         location / {
             try_files $uri $uri/ /index.html;
         }
