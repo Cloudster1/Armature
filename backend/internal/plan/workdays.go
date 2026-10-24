@@ -41,6 +41,21 @@ func NewWorkdays(holidays []availability.Holiday, members map[uuid.UUID][]uuid.U
 
 var standardWeek = availability.StandardWeek()
 
+// memberIDs is everybody on any of the teams, each once.
+func memberIDs(teams map[uuid.UUID][]uuid.UUID) []uuid.UUID {
+	var ids []uuid.UUID
+	seen := map[uuid.UUID]bool{}
+	for _, members := range teams {
+		for _, id := range members {
+			if !seen[id] {
+				seen[id] = true
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids
+}
+
 // personWorks says whether a person's work is spread onto a day: a day they have
 // minutes on. A day not read falls back to their week and the default calendar.
 func (w Workdays) personWorks(id uuid.UUID, d time.Time) bool {

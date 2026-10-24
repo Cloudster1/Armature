@@ -369,6 +369,10 @@ func (s *Server) projectRoutes(r chi.Router) {
 
 	// And the same tree laid out against a calendar.
 	r.Get("/projects/{projectKey}/plan", s.handleGetPlan)
+	// What the auto plan would move. It saves nothing, but only someone who
+	// could make the moves is shown them.
+	r.With(requireProjectPerm(perm.IssueWrite)).
+		Post("/projects/{projectKey}/plan/align", s.handleAlignPlan)
 	// And the work set against the hours there are, per team or person.
 	r.With(s.requireFeature(project.FeatureResources)).Get("/projects/{projectKey}/resources", s.handleGetResources)
 	// What share of each person's week the project has.

@@ -194,17 +194,7 @@ func (s *Service) workdays(ctx context.Context, projectKey string, items []Item,
 	if err != nil {
 		return Workdays{}, nil, err
 	}
-	var ids []uuid.UUID
-	seen := map[uuid.UUID]bool{}
-	for _, members := range people.Teams {
-		for _, id := range members {
-			if !seen[id] {
-				seen[id] = true
-				ids = append(ids, id)
-			}
-		}
-	}
-	days, err := s.people.ForPeople(ctx, ids, first, last)
+	days, err := s.people.ForPeople(ctx, memberIDs(people.Teams), first, last)
 	if err != nil {
 		return Workdays{}, nil, err
 	}
