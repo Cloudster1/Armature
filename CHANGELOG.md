@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: Armature shows its logo the way Stator and Exciter show theirs
+  (#340). Sign-in and the two-step setup show the logo above the name on the
+  app's backdrop, the sidebar head and the shared dashboard show the gopher's
+  face beside the name, and the browser tab, touch icon and a new web app
+  manifest use the same face. `make branding` makes them all from
+  `docs/armature-logo.jpg`, and nginx serves the manifest with its own type.
 - Added: a partner such as Rotor clones a project's repository and pushes an
   issue's branch through Armature, as the person, while the host's token stays
   in Armature (#333). The git proxy answers git's smart HTTP at
