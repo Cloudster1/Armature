@@ -192,19 +192,32 @@ func Check(items []Item, blockers []issue.Blocker) []Warning {
 		}
 	}
 
-	for _, b := range blockers {
-		blocker, blocked := byKey[b.BlockerKey], byKey[b.BlockedKey]
-		if !blocker.Scheduled() || !blocked.Scheduled() {
+	// Through a parent, one warning per link and blocked issue, naming the blocker that ends last.
+	type through struct{ from, to, blocked string }
+	latest := map[through]Constraint{}
+	var order []through
+	for _, c := range Constraints(items, blockers) {
+		blocker, blocked := byKey[c.BlockerKey], byKey[c.BlockedKey]
+		if !blocker.Scheduled() || !blocked.Scheduled() || blocked.Start.After(*blocker.Due) {
 			continue
 		}
-		if !blocked.Start.After(*blocker.Due) {
-			warnings = append(warnings, Warning{
-				IssueKey: blocked.Issue.Key,
-				Kind:     WarnBlockedTooEarly,
-				Message: fmt.Sprintf("starts %s, but %s does not finish until %s",
-					day(blocked.Start), b.BlockerKey, day(blocker.Due)),
-			})
+		k := through{c.Via.BlockerKey, c.Via.BlockedKey, c.BlockedKey}
+		was, seen := latest[k]
+		if !seen {
+			order = append(order, k)
 		}
+		if !seen || blocker.Due.After(*byKey[was.BlockerKey].Due) {
+			latest[k] = c
+		}
+	}
+	for _, k := range order {
+		c := latest[k]
+		blocker, blocked := byKey[c.BlockerKey], byKey[c.BlockedKey]
+		message := fmt.Sprintf("starts %s, but %s does not finish until %s", day(blocked.Start), c.BlockerKey, day(blocker.Due))
+		if !c.Direct() {
+			message += fmt.Sprintf(", and %s blocks %s", c.Via.BlockerKey, c.Via.BlockedKey)
+		}
+		warnings = append(warnings, Warning{IssueKey: blocked.Issue.Key, Kind: WarnBlockedTooEarly, Message: message})
 	}
 
 	sort.SliceStable(warnings, func(a, b int) bool {

@@ -253,3 +253,25 @@ scenario("auto plan places estimated work without dates after what blocks it", a
   await page.click('[data-action="auto-plan-apply"]');
   await page.waitForFunction((k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planStart?.startsWith("2027-11-08"), { timeout: WAIT }, undated);
 });
+
+scenario("auto plan holds the work under an epic behind the epic it waits on", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Auto plan epics", { visit: false });
+  const design = await createIssue(page, key, "Design the export", { type: "Epic", visit: false });
+  const build = await createIssue(page, key, "Build the export", { type: "Epic", visit: false });
+  const sketch = await addChild(page, design, "Sketch the file format", "Story");
+  const write = await addChild(page, build, "Write the exporter", "Story");
+  await scheduleThroughAPI(page, sketch, "2027-11-01", "2027-11-05");
+  await scheduleThroughAPI(page, write, "2027-11-03", "2027-11-04");
+  await blockThroughAPI(page, design, build);
+
+  await goto(page, `/projects/${key}/plan`);
+  await page.waitForSelector(`[data-plan-warning-for="${write}"]`, { timeout: WAIT });
+  expect.contains(await page.$eval(`[data-plan-warning-for="${write}"]`, (el) => el.textContent), `${design} blocks ${build}`, "the story's warning names the epics' link");
+
+  await page.click('[data-action="auto-plan"]');
+  await page.waitForSelector(`[data-plan-proposed="${write}"]`, { timeout: WAIT });
+  expect.equal(await page.$eval(`[data-plan-proposed="${write}"]`, (el) => el.dataset.planStart), "2027-11-08", "the story waits for the other epic's story");
+  await page.click('[data-action="auto-plan-apply"]');
+  await page.waitForFunction((k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planStart?.startsWith("2027-11-08"), { timeout: WAIT }, write);
+});
