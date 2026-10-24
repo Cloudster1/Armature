@@ -24,6 +24,16 @@ var (
 	ErrMovedTwice = errors.New("an issue is moved twice")
 )
 
+// MovedSinceError is ErrMovedSince for one issue, named so a client can say in
+// its own words what to do about it.
+type MovedSinceError struct{ Key string }
+
+func (e MovedSinceError) Error() string {
+	return fmt.Sprintf("%s was moved since these dates were read, so nothing was saved.", e.Key)
+}
+
+func (e MovedSinceError) Unwrap() error { return ErrMovedSince }
+
 // ScheduleMove is one issue's new range, with the range it is expected to have
 // now. Either end of either range may be nil, an unset day.
 type ScheduleMove struct {
@@ -74,7 +84,7 @@ func (s *Service) ScheduleMany(ctx context.Context, projectKey string, moves []S
 			before := &locked[i]
 			m := byNum[keyNum(before.Key)]
 			if !sameDay(before.StartDate, m.ExpectedStart) || !sameDay(before.DueDate, m.ExpectedDue) {
-				return levelError{ErrMovedSince, fmt.Sprintf("%s was moved since these dates were read, so nothing was saved. Preview the auto plan again.", before.Key)}
+				return MovedSinceError{Key: before.Key}
 			}
 			if err := CheckDates(m.Start, m.Due); err != nil {
 				return levelError{errors.Unwrap(err), fmt.Sprintf("%s cannot move: %s", before.Key, err.Error())}

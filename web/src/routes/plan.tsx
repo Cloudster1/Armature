@@ -6,7 +6,7 @@ import { canWriteIssues, useAccess } from "@/api/access";
 import { useAlign, usePlan, useSchedulePlan, type Alignment } from "@/api/plan";
 import { useProject } from "@/api/projects";
 import { AutoPlanPreview } from "@/features/plan/AutoPlanPreview";
-import { movesToSave, proposedBars } from "@/features/plan/autoplan";
+import { movesBack, movesToSave, proposedBars, undoRefusal } from "@/features/plan/autoplan";
 import { DependencyGraph } from "@/features/plan/DependencyGraph";
 import { PlanSummary, PlanToolbar } from "@/features/plan/PlanToolbar";
 import { Timeline } from "@/features/plan/Timeline";
@@ -42,6 +42,7 @@ function PlanPage() {
   const toast = useToast();
   const align = useAlign();
   const apply = useSchedulePlan();
+  const undo = useSchedulePlan();
   // A proposal is for the plan it was read from, so another view or query drops it.
   const scope = `${projectKey} ${view} ${q}`;
   const [held, setProposal] = useState<{ scope: string; alignment: Alignment } | null>(null);
@@ -55,14 +56,28 @@ function PlanPage() {
 
   function applyProposal() {
     if (!proposal) return;
-    const moved = proposal.moves.length;
+    const moves = movesToSave(proposal);
+    const issues = `${moves.length} issue${moves.length === 1 ? "" : "s"}`;
     apply.mutate(
-      { projectKey, moves: movesToSave(proposal) },
+      { projectKey, moves },
       {
         onSuccess: () => {
           setProposal(null);
-          toast.success(`Moved ${moved} issue${moved === 1 ? "" : "s"} to start after the issues blocking them.`);
+          toast.success(`Moved ${issues} to start after the issues blocking them.`, {
+            action: { label: "Undo", onClick: () => undoMoves(moves, issues) },
+          });
         },
+      },
+    );
+  }
+
+  // Undo expects the dates the auto plan set, so a change made since refuses it rather than being lost.
+  function undoMoves(applied: ReturnType<typeof movesToSave>, issues: string) {
+    undo.mutate(
+      { projectKey, moves: movesBack(applied) },
+      {
+        onSuccess: () => toast.success(`Moved ${issues} back to where they were.`),
+        onError: (error) => toast.error(undoRefusal(error)),
       },
     );
   }
