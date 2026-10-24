@@ -1010,6 +1010,7 @@ function BarRow({
         <span
           aria-hidden="true"
           data-plan-proposed={item.issue.key}
+          data-plan-placed={bar ? undefined : true}
           data-plan-start={proposed.start}
           data-plan-due={proposed.due}
           title={`${item.issue.key} would move to ${proposed.start} to ${proposed.due}`}

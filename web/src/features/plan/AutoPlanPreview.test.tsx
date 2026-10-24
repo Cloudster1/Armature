@@ -25,8 +25,10 @@ function move(n: number): PlanMove {
 }
 
 function preview(alignment: Partial<Alignment>, props: Partial<Parameters<typeof AutoPlanPreview>[0]> = {}) {
-  const handlers = { onApply: vi.fn(), onCancel: vi.fn(), onPreviewAgain: vi.fn() };
-  render(<AutoPlanPreview alignment={{ projectKey: "PR", moves: [], warnings: [], ...alignment }} locale="en-GB" applying={false} {...handlers} {...props} />);
+  const handlers = { onApply: vi.fn(), onCancel: vi.fn(), onPreviewAgain: vi.fn(), onPlace: vi.fn() };
+  render(
+    <AutoPlanPreview alignment={{ projectKey: "PR", moves: [], unplaced: [], warnings: [], ...alignment }} locale="en-GB" applying={false} place={false} {...handlers} {...props} />,
+  );
   return handlers;
 }
 
@@ -69,5 +71,18 @@ describe("the auto plan's preview", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks again with work without dates placed, and lists what it could not place", () => {
+    const { onPlace } = preview({ unplaced: [{ issueKey: "PR-9", reason: "Not placed: it has no estimate." }] });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Also place issues without dates/ }));
+    expect(onPlace).toHaveBeenCalledWith(true);
+    expect(document.querySelector('[data-auto-plan-unplaced="PR-9"]')?.textContent).toContain("Not placed: it has no estimate.");
+  });
+
+  it("applies nothing while a new proposal is read", () => {
+    preview({ moves: [move(2)] }, { reading: true, place: true });
+    expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("checkbox", { name: /Also place/ }) as HTMLInputElement).checked).toBe(true);
   });
 });

@@ -93,6 +93,29 @@ func TestAutoPlanProposesMovesAndSavesNothing(t *testing.T) {
 		want(t, lead.post("/api/v1/projects/"+key+"/plan/align", map[string]any{"q": "nonsense"}), http.StatusBadRequest, "a bad query")
 	})
 
+	t.Run("asked to, it places work without dates from its estimate", func(t *testing.T) {
+		made := want(t, lead.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "undated"}), http.StatusCreated, "undated")
+		undated := obj(t, made, "issue")["key"].(string)
+		want(t, lead.patch("/api/v1/issues/"+undated, map[string]any{"timeEstimateMinutes": 2 * 8 * 60}), http.StatusOK, "two days of work")
+		bare := obj(t, want(t, lead.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "unsized"}), http.StatusCreated, "unsized"), "issue")["key"].(string)
+		link(third, undated)
+
+		without := want(t, lead.post("/api/v1/projects/"+key+"/plan/align", map[string]any{}), http.StatusOK, "a proposal without placing")
+		if got := moves(without); got[undated] != "" || len(list(t, without, "unplaced")) != 0 {
+			t.Errorf("without placing: moves %v, unplaced %v", got, list(t, without, "unplaced"))
+		}
+
+		placing := want(t, lead.post("/api/v1/projects/"+key+"/plan/align", map[string]any{"place": true}), http.StatusOK, "a proposal that places")
+		// The third issue moves to 10 November, so the undated one follows on the 11th and 12th.
+		if got := moves(placing)[undated]; got != "2027-11-11..2027-11-12 after "+third {
+			t.Errorf("%s = %q, want two days after %s", undated, got, third)
+		}
+		unplaced := list(t, placing, "unplaced")
+		if len(unplaced) != 1 || unplaced[0].(map[string]any)["issueKey"] != bare {
+			t.Errorf("unplaced = %v, want only %s, which has no estimate", unplaced, bare)
+		}
+	})
+
 	grant := func(name, role string) *client {
 		email := h.outsider(t, name)
 		var id string

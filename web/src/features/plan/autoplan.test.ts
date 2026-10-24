@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/api/client";
 import type { Alignment } from "@/api/plan";
-import { describeMove, movesBack, movesToSave, proposedBars, undoRefusal } from "./autoplan";
+import { describeMove, movesBack, movesToSave, proposedBars, summarise, undoRefusal } from "./autoplan";
 
 const alignment: Alignment = {
   projectKey: "PR",
@@ -21,6 +21,7 @@ const alignment: Alignment = {
       after: "PR-2",
     },
   ],
+  unplaced: [],
   warnings: [],
 };
 
@@ -58,5 +59,35 @@ describe("undoing an auto plan", () => {
     const refused = new ApiError(409, { code: "moved_since", message: "PR-2 was moved since these dates were read, so nothing was saved.", fields: { issueKey: "PR-2" } });
     expect(undoRefusal(refused)).toBe("PR-2 was changed after the auto plan, so nothing was undone. Move it back by hand or run auto plan again.");
     expect(undoRefusal(new ApiError(403, { code: "forbidden", message: "You may not move these issues." }))).toBe("You may not move these issues.");
+  });
+});
+
+describe("placing work without dates", () => {
+  const placed: Alignment = {
+    projectKey: "PR",
+    moves: [
+      { issueKey: "PR-4", to: { startDate: "2027-11-11T00:00:00Z", dueDate: "2027-11-12T00:00:00Z" }, placed: true, workingDays: 2, after: "PR-3" },
+      { issueKey: "PR-5", to: { startDate: "2026-10-01T00:00:00Z", dueDate: "2026-10-01T00:00:00Z" }, placed: true, workingDays: 1, after: "" },
+    ],
+    unplaced: [{ issueKey: "PR-6", reason: "Not placed: it has no estimate." }],
+    warnings: [],
+  };
+
+  it("is saved expecting the issue to have no dates yet", () => {
+    expect(movesToSave(placed)[0]).toEqual({ key: "PR-4", expected: { startDate: null, dueDate: null }, startDate: "2027-11-11", dueDate: "2027-11-12" });
+  });
+
+  it("reads as placed, after its blocker when it has one", () => {
+    expect(describeMove(placed.moves[0]!, "en-GB")).toBe("is placed from 11 Nov 2027, 2 working days, after PR-3");
+    expect(describeMove(placed.moves[1]!, "en-GB")).toBe("is placed from 1 Oct 2026, 1 working day");
+  });
+
+  it("is counted apart from the moves", () => {
+    expect(summarise({ ...placed, moves: [...alignment.moves, ...placed.moves] })).toBe(
+      "2 issues would move to start after the issues blocking them, and 2 issues without dates would be placed. Nothing is saved until you apply.",
+    );
+    expect(summarise(placed)).toBe("2 issues without dates would be placed. Nothing is saved until you apply.");
+    expect(summarise({ ...placed, moves: [] })).toBe("Nothing can be placed or needs to move.");
+    expect(summarise({ ...placed, moves: [], unplaced: [] })).toBe("Every issue already starts after the issues blocking it.");
   });
 });

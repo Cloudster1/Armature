@@ -46,12 +46,14 @@ function PlanPage() {
   // A proposal is for the plan it was read from, so another view or query drops it.
   const scope = `${projectKey} ${view} ${q}`;
   const [held, setProposal] = useState<{ scope: string; alignment: Alignment } | null>(null);
+  const [place, setPlace] = useState(false);
   const proposal = held?.scope === scope ? held.alignment : null;
   const proposed = useMemo(() => proposedBars(proposal), [proposal]);
 
-  function preview() {
+  function preview(placing = place) {
     apply.reset();
-    align.mutate({ projectKey, query: q }, { onSuccess: (alignment) => setProposal({ scope, alignment }) });
+    setPlace(placing);
+    align.mutate({ projectKey, query: q, place: placing }, { onSuccess: (alignment) => setProposal({ scope, alignment }) });
   }
 
   function applyProposal() {
@@ -115,7 +117,7 @@ function PlanPage() {
         zoom={zoom}
         onZoom={setZoom}
         showZoom={view !== "dependencies"}
-        onAutoPlan={view !== "dependencies" && canWriteIssues(access, projectKey) ? preview : undefined}
+        onAutoPlan={view !== "dependencies" && canWriteIssues(access, projectKey) ? () => preview() : undefined}
         autoPlanning={align.isPending}
       />
 
@@ -125,10 +127,13 @@ function PlanPage() {
           alignment={proposal}
           locale={format.locale}
           applying={apply.isPending}
+          place={place}
+          onPlace={preview}
+          reading={align.isPending}
           refusal={apply.error ? (apply.error as Error).message : undefined}
           onApply={applyProposal}
           onCancel={() => setProposal(null)}
-          onPreviewAgain={preview}
+          onPreviewAgain={() => preview()}
         />
       )}
 

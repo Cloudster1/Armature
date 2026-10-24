@@ -152,26 +152,36 @@ export interface PlanSpan {
 /** One issue the auto plan would shift so it starts after what blocks it. */
 export interface PlanMove {
   issueKey: string;
-  from: PlanSpan;
+  /** Where the issue is now; absent for one without dates that is being placed. */
+  from?: PlanSpan;
   to: PlanSpan;
+  /** The issue had no dates and gets its first ones. */
+  placed?: boolean;
   /** The length the issue keeps, counted on its team's calendar. */
   workingDays: number;
-  /** The blocker whose due day the new start follows. */
+  /** The blocker whose due day the new start follows; empty when nothing holds a placed issue back. */
   after: string;
+}
+
+/** Work without dates the auto plan was asked to place and could not, with why. */
+export interface Unplaced {
+  issueKey: string;
+  reason: string;
 }
 
 /** What the auto plan proposes, and the warnings the plan would have after it. */
 export interface Alignment {
   projectKey: string;
   moves: PlanMove[];
+  unplaced: Unplaced[];
   warnings: PlanWarning[];
 }
 
 /** The auto plan's proposal for the plan as the query narrows it. It saves nothing. */
 export function useAlign() {
   return useMutation({
-    mutationFn: ({ projectKey, query }: { projectKey: string; query?: string }) =>
-      request<Alignment>(`/projects/${projectKey}/plan/align`, { method: "POST", body: query ? { q: query } : {} }),
+    mutationFn: ({ projectKey, query, place }: { projectKey: string; query?: string; place?: boolean }) =>
+      request<Alignment>(`/projects/${projectKey}/plan/align`, { method: "POST", body: { ...(query ? { q: query } : {}), ...(place ? { place } : {}) } }),
   });
 }
 
