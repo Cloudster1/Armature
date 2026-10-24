@@ -100,6 +100,21 @@ describe("the shell's chrome", () => {
     expect(screen.queryByText("Other Corp")).toBeNull();
   });
 
+  it("puts the mark beside the installation's name, open or in the narrow drawer", () => {
+    const { unmount } = render(<Sidebar onNewIssue={() => {}} />);
+    const head = document.querySelector("[data-sidebar] [data-installation-name]")!.parentElement!;
+    const mark = head.querySelector("img[data-logo-mark]")!;
+    // Decorative: the name beside it is what a screen reader reads.
+    expect(mark.getAttribute("alt")).toBe("");
+    expect(mark.getAttribute("src")).toBe("/mark-96.webp");
+    unmount();
+
+    window.innerWidth = 375;
+    render(<Sidebar onNewIssue={() => {}} drawerOpen onCloseDrawer={() => {}} />);
+    const drawer = screen.getByRole("dialog", { name: "Navigation" });
+    expect(drawer.querySelector("[data-installation-name]")!.parentElement!.querySelector("[data-logo-mark]")).not.toBeNull();
+  });
+
   it("lists the work and no personal or installation pages, with Notifications counting what is unread", () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     const places = Array.from(document.querySelectorAll('[data-sidebar-group="work"] [data-place]')).map((a) => a.getAttribute("data-place"));

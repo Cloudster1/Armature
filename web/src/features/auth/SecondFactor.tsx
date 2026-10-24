@@ -14,10 +14,11 @@ import {
   useStartSecondFactor,
   type SecondFactorStatus,
 } from "@/api/secondFactor";
-import { Button, Card, ErrorBanner, Field, SectionTitle, Wordmark } from "@/components/ui";
+import { Button, Card, ErrorBanner, Field, SectionTitle } from "@/components/ui";
+import { LogoHead } from "@/components/Logo";
 import { Icon } from "@/components/icons";
 import { useFormat } from "@/lib/format";
-import { QR_CODE_PX, QR_QUIET_MODULES, SECOND_FACTOR_CODE_DIGITS, SECRET_GROUP_LENGTH } from "@/config";
+import { APP_NAME, QR_CODE_PX, QR_QUIET_MODULES, SECOND_FACTOR_CODE_DIGITS, SECRET_GROUP_LENGTH } from "@/config";
 
 /** Draws what an authenticator app scans, dark on light whatever the theme, so every camera reads it. */
 export function QrCode({ value }: { value: string }) {
@@ -302,12 +303,12 @@ export function EnrolmentRequired() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-full items-center justify-center px-4 py-12" data-enrolment-required>
+    <div className="flex min-h-full items-center justify-center bg-backdrop px-4 py-12" data-enrolment-required>
       <div className="w-full max-w-lg">
-        <Wordmark />
+        <LogoHead />
         <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">Set up two-step sign-in</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {data?.principal?.installation?.name ?? "Armature"} asks everybody in your role to sign in with a code from an app on their phone as well as a password. Set it up to carry on.
+          {data?.principal?.installation?.name ?? APP_NAME} asks everybody in your role to sign in with a code from an app on their phone as well as a password. Set it up to carry on.
         </p>
         <Card className="mt-6 space-y-4 p-5">
           <Enrolment onDone={() => {}} />
