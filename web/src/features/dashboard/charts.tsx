@@ -184,7 +184,7 @@ export function LineChart({
       <div className="mt-2 flex flex-wrap gap-4 text-2xs text-ink-muted">
         {drawn.map((s) => (
           <span key={s.name} className="flex items-center gap-1">
-            <span className={cx("inline-block h-0.5 w-3", s.tone)} style={{ borderTop: s.dashed ? "1px dashed currentColor" : "2px solid currentColor" }} />
+            <span className={cx("inline-block h-0.5 w-3 border-current", s.dashed ? "border-t border-dashed" : "border-t-2", s.tone)} />
             {s.name}
           </span>
         ))}

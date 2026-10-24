@@ -40,11 +40,15 @@ export function Button({
   className,
   children,
   disabled,
+  type = "button",
   ...rest
 }: ButtonProps) {
   return (
     <button
       {...rest}
+      // Without a type the browser makes it a submit button, and any button
+      // in a form would send the form; a submit button says so.
+      type={type}
       disabled={disabled || loading}
       // aria-busy rather than swapping the label, so a screen reader announces
       // the state change without the button losing its accessible name.

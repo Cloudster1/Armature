@@ -3,7 +3,8 @@ import type { Holiday } from "@/api/availability";
 import { cx } from "@/components/ui";
 import { PLAN_MIN_TICK_LABEL_PX, PLAN_ROW_HEIGHT } from "@/config";
 import { headerLayout } from "./layout";
-import { headingTicks, holidayBands, makeScale, ticksFor, type Zoom } from "./scale";
+import type { makeScale } from "./scale";
+import { headingTicks, holidayBands, ticksFor, type Zoom } from "./scale";
 
 const NO_HOLIDAYS: Holiday[] = [];
 

@@ -42,7 +42,7 @@ jobs:
             run: make test
             go-cache: unit
           - name: web
-            run: make npm ARGS=ci && make npm ARGS="run typecheck" && make npm ARGS="run test"
+            run: make npm ARGS=ci && make npm ARGS="run typecheck" && make lint && make npm ARGS="run test"
             npm-cache: true
           - name: chart
             run: make helm-deps helm-lint helm-check

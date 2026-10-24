@@ -71,6 +71,7 @@ vi.mock("./state", async () => {
 vi.mock("./ConfirmProvider", () => ({ useConfirm: () => async () => true }));
 
 const { Sidebar } = await import("./Sidebar");
+const { axeViolations } = await import("@/test/axe");
 
 beforeEach(() => {
   localStorage.clear();
@@ -179,6 +180,28 @@ describe("the settings area", () => {
     state.pathname = "/settings";
     render(<Sidebar onNewIssue={() => {}} />);
     expect(screen.getByText("Back to Armature").closest("a")?.getAttribute("href")).toBe("/");
+  });
+});
+
+describe("the shell's accessibility", () => {
+  // Each face of the chrome, under a main so the page has its landmarks.
+  it("breaks no rule open, folded, in the settings area or as the drawer", async () => {
+    const shell = () => (
+      <>
+        <Sidebar onNewIssue={() => {}} onAsk={() => {}} drawerOpen={window.innerWidth < 768} onCloseDrawer={() => {}} />
+        <main>
+          <h1>Page</h1>
+        </main>
+      </>
+    );
+    for (const face of ["open", "rail", "settings", "drawer"] as const) {
+      state.mode = face === "rail" ? "rail" : "open";
+      state.pathname = face === "settings" ? "/settings/profile" : "/";
+      window.innerWidth = face === "drawer" ? 375 : 1280;
+      const { unmount } = render(shell());
+      expect(await axeViolations(), face).toEqual([]);
+      unmount();
+    }
   });
 });
 

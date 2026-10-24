@@ -112,7 +112,8 @@ scenario("at phone width a drawer holds every group and closes on following a li
     const foot = await page.$eval("[data-drawer-foot]", (el) => el.innerText);
     for (const word of [...PERSONAL, "Settings", "Sign out"]) expect.contains(foot, word, `the drawer's foot offers ${word}`);
     expect.truthy(await page.$('[data-drawer-foot] [data-action="theme"]'), "and the theme switch");
-    expect.truthy(await page.$("[data-drawer-foot] [data-build]"), "and the build stamp");
+    // The stamp waits on /meta, which may answer after the drawer opens.
+    expect.truthy(await page.waitForSelector("[data-drawer-foot] [data-build]", { timeout: WAIT }).catch(() => null), "and the build stamp");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect.equal(overflow, 0, "nothing widens the page");
 

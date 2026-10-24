@@ -231,7 +231,7 @@ export function BoardView({
         leftOut={board.leftOut > 0 && board.leftOutQuery ? { count: board.leftOut, query: board.leftOutQuery, days: board.doneForDays } : undefined}
       />
 
-      <div className="flex min-h-[28rem] gap-3 overflow-x-auto pb-2" data-issue-list="">
+      <div className="flex min-h-112 gap-3 overflow-x-auto pb-2" data-issue-list="">
         {swimlanes.map((swimlane) => (
           <SwimlaneColumn
             key={swimlane.id}

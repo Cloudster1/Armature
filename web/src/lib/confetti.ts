@@ -1,4 +1,4 @@
-import { CONFETTI_GRAVITY_PX_PER_S2, CONFETTI_LIFE_MS, CONFETTI_PIECES_PER_CLICK } from "@/config";
+import { CONFETTI_COLORS as COLORS, CONFETTI_GRAVITY_PX_PER_S2, CONFETTI_LIFE_MS, CONFETTI_PIECES_PER_CLICK } from "@/config";
 
 // A burst of colour where the page is clicked: pieces fly out, tumble, fall
 // and fade. Nothing is drawn between clicks, and nothing at all for anyone
@@ -18,7 +18,6 @@ export interface Piece {
 	born: number;
 }
 
-const COLORS = ["#ff1744", "#ffab00", "#00c853", "#2979ff", "#d500f9", "#00e5ff", "#ff2e88", "#ffd600"];
 const GLYPHS = ["🎉", "✨", "🧧", "🌈", "💥", "🍀", "🎊", "⭐"];
 
 /** The pieces one click throws from a point, at the moment given. */

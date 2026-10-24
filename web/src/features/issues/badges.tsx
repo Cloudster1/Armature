@@ -111,7 +111,7 @@ const typeIcons: Record<string, IconName> = {
 export function TypeBadge({ icon, name }: { icon: string; name: string }) {
   const Glyph = Icon[typeIcons[icon] ?? "Task"];
   return (
-    <span title={name} className={cx("inline-flex size-4 shrink-0 items-center justify-center rounded-[3px]", typeStyles[icon] ?? typeStyles.task)}>
+    <span title={name} className={cx("inline-flex size-4 shrink-0 items-center justify-center rounded-glyph", typeStyles[icon] ?? typeStyles.task)}>
       <Glyph className="size-3" />
       <span className="sr-only">{name}</span>
     </span>

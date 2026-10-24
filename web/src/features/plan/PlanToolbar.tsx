@@ -73,7 +73,7 @@ export function PlanToolbar({
               label="Query help"
               align="end"
               trigger={<Button variant="ghost" size="sm" icon={<Icon.Help />} onClick={() => setHelpOpen((o) => !o)} aria-expanded={helpOpen} aria-label="How to write a query" />}
-              className="w-[36rem] max-w-[90vw]"
+              className="w-xl max-w-[90vw]"
             >
               <QueryHelp />
             </Popover>

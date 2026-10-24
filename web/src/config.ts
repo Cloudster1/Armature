@@ -404,6 +404,8 @@ export const DIALOG_BOTTOM_PX = 16;
 /** How many pieces a click throws, how long each lives, and how hard they fall. */
 export const CONFETTI_PIECES_PER_CLICK = 28;
 export const CONFETTI_LIFE_MS = 1100;
+/** Confetti is a party, not the theme: the same bright colours on every theme. */
+export const CONFETTI_COLORS = ["#ff1744", "#ffab00", "#00c853", "#2979ff", "#d500f9", "#00e5ff", "#ff2e88", "#ffd600"];
 export const CONFETTI_GRAVITY_PX_PER_S2 = 1600;
 export const CONSTELLATION_POINTS_PER_MEGAPIXEL = 70;
 
@@ -455,6 +457,9 @@ export const SECOND_FACTOR_CODE_DIGITS = 6;
 
 /** How wide the QR code an authenticator app scans is drawn, in pixels. */
 export const QR_CODE_PX = 176;
+/** A QR code is dark on light whatever the theme, or a phone's camera cannot read it. */
+export const QR_DARK = "#000000";
+export const QR_LIGHT = "#ffffff";
 
 /** The light margin around a QR code, in modules; cameras find the code by it. */
 export const QR_QUIET_MODULES = 2;
