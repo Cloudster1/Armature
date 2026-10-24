@@ -14047,6 +14047,69 @@
         }
       }
     },
+    "/projects/{projectKey}/plan/schedule": {
+      "put": {
+        "operationId": "schedulePlan",
+        "summary": "Move several of the project's issues at once, or none when any has moved since its expected dates; each moved issue records its history and sends issue.updated.",
+        "tags": [
+          "plan"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanScheduleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Issue"
+                      }
+                    }
+                  },
+                  "required": [
+                    "issues"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{projectKey}/queue": {
       "get": {
         "operationId": "queue",
@@ -26595,6 +26658,51 @@
         "required": [
           "weeks",
           "rows"
+        ]
+      },
+      "PlanMoveRequest": {
+        "type": "object",
+        "properties": {
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "A day, YYYY-MM-DD; null clears it."
+          },
+          "expected": {
+            "$ref": "#/components/schemas/ScheduleRequest"
+          },
+          "key": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "A day, YYYY-MM-DD; null clears it."
+          }
+        },
+        "required": [
+          "key",
+          "expected"
+        ]
+      },
+      "PlanScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanMoveRequest"
+            }
+          }
+        },
+        "required": [
+          "moves"
         ]
       },
       "Point": {

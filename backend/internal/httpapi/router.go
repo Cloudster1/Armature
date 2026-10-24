@@ -369,6 +369,10 @@ func (s *Server) projectRoutes(r chi.Router) {
 
 	// And the same tree laid out against a calendar.
 	r.Get("/projects/{projectKey}/plan", s.handleGetPlan)
+	// Moving several of the plan's issues at once, all or none; every one is
+	// checked to be the project's, so the project's permission covers them.
+	r.With(requireProjectPerm(perm.IssueWrite)).
+		Put("/projects/{projectKey}/plan/schedule", s.handleSchedulePlan)
 	// And the work set against the hours there are, per team or person.
 	r.With(s.requireFeature(project.FeatureResources)).Get("/projects/{projectKey}/resources", s.handleGetResources)
 	// What share of each person's week the project has.

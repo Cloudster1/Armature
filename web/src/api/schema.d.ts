@@ -3367,6 +3367,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectKey}/plan/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Move several of the project's issues at once, or none when any has moved since its expected dates; each moved issue records its history and sends issue.updated. */
+        put: operations["schedulePlan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectKey}/queue": {
         parameters: {
             query?: never;
@@ -6607,6 +6624,23 @@ export interface components {
         PlanLoad: {
             rows: components["schemas"]["TeamLoad"][];
             weeks: string[];
+        };
+        PlanMoveRequest: {
+            /**
+             * Format: date
+             * @description A day, YYYY-MM-DD; null clears it.
+             */
+            dueDate?: string | null;
+            expected: components["schemas"]["ScheduleRequest"];
+            key: string;
+            /**
+             * Format: date
+             * @description A day, YYYY-MM-DD; null clears it.
+             */
+            startDate?: string | null;
+        };
+        PlanScheduleRequest: {
+            moves: components["schemas"]["PlanMoveRequest"][];
         };
         Point: {
             x: number;
@@ -17422,6 +17456,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    schedulePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issues: components["schemas"]["Issue"][];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

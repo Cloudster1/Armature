@@ -86,6 +86,9 @@ func TestEveryEndpointOverTheAPI(t *testing.T) {
 	want(t, c.get("/api/v1/issues/"+storyKey+"/hierarchy"), http.StatusOK, "hierarchy")
 	want(t, c.get("/api/v1/projects/"+evrKey+"/hierarchy"), http.StatusOK, "project tree")
 	want(t, c.put("/api/v1/issues/"+storyKey+"/schedule", map[string]any{"startDate": "2026-09-01", "dueDate": "2026-09-14"}), http.StatusOK, "schedule")
+	want(t, c.put("/api/v1/projects/"+evrKey+"/plan/schedule", map[string]any{"moves": []any{map[string]any{
+		"key": storyKey, "expected": map[string]any{"startDate": "2026-09-01", "dueDate": "2026-09-14"}, "startDate": "2026-09-01", "dueDate": "2026-09-14",
+	}}}), http.StatusOK, "schedule the plan")
 	want(t, c.get("/api/v1/projects/"+evrKey+"/plan"), http.StatusOK, "plan")
 	matched := list(t, want(t, c.get("/api/v1/projects/"+evrKey+"/plan?q="+url.QueryEscape("key = "+storyKey)), http.StatusOK, "plan by query"), "matched")
 	if len(matched) != 1 || matched[0] != storyKey {
