@@ -3367,6 +3367,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectKey}/plan/align": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What the auto plan would move so every blocked issue starts after its blockers; saves nothing. */
+        post: operations["alignPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectKey}/queue": {
         parameters: {
             query?: never;
@@ -4891,6 +4908,14 @@ export interface components {
             /** Format: date-time */
             start: string;
         };
+        AlignRequest: {
+            q?: string;
+        };
+        Alignment: {
+            moves: components["schemas"]["Move"][];
+            projectKey: string;
+            warnings: components["schemas"]["Warning"][];
+        };
         Allocation: {
             elsewherePercent: number;
             name: string;
@@ -5190,7 +5215,7 @@ export interface components {
             holidayCalendarName: string | null;
             holidays: string[];
             hours: {
-                [key: string]: components["schemas"]["Span"][];
+                [key: string]: components["schemas"]["DeskSpan"][];
             };
             timezone: string;
         };
@@ -5747,6 +5772,10 @@ export interface components {
             projectKey: string;
             repliesByMail: boolean;
             requestTypes: components["schemas"]["RequestType"][];
+        };
+        DeskSpan: {
+            from: string;
+            to: string;
         };
         Development: {
             branchName: string;
@@ -6370,6 +6399,13 @@ export interface components {
             month: number;
             truncated: boolean;
             year: number;
+        };
+        Move: {
+            after: string;
+            from: components["schemas"]["Span"];
+            issueKey: string;
+            to: components["schemas"]["Span"];
+            workingDays: number;
         };
         MoveCardRequest: {
             afterKey?: string;
@@ -7426,8 +7462,10 @@ export interface components {
             open: boolean;
         };
         Span: {
-            from: string;
-            to: string;
+            /** Format: date-time */
+            dueDate: string;
+            /** Format: date-time */
+            startDate: string;
         };
         Spec: {
             backdrop?: components["schemas"]["Backdrop"];
@@ -17422,6 +17460,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    alignPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlignRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Alignment"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

@@ -8,6 +8,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/nql"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +22,38 @@ func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
 		query = compiled
 	}
 	found, err := s.Plans.ForProjectMatching(r.Context(), r.PathValue("projectKey"), query)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, found)
+}
+
+// alignRequest is the plan's query, if any; an empty object aligns the whole plan.
+type alignRequest struct {
+	Query string `json:"q,omitempty"`
+}
+
+// handleAlignPlan proposes the moves that start each blocked issue after its
+// blockers, and saves nothing.
+func (s *Server) handleAlignPlan(w http.ResponseWriter, r *http.Request) {
+	var req alignRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	var query *nql.Compiled
+	if q := strings.TrimSpace(req.Query); q != "" {
+		compiled, err := compileQuery(q, PrincipalFrom(r.Context()).User.ID)
+		if err != nil {
+			respondError(w, r, err)
+			return
+		}
+		query = compiled
+	}
+	perms := PermsFrom(r.Context())
+	mayRead := func(projectKey string) bool { return perms.Can(perm.Read, projectKey) }
+	found, err := s.Plans.Align(r.Context(), r.PathValue("projectKey"), query, mayRead)
 	if err != nil {
 		respondError(w, r, err)
 		return

@@ -17,3 +17,11 @@ func LoadSpan(from, to, today time.Time) (time.Time, time.Time) {
 	from = maxTime(from, midnight(today).AddDate(0, 0, -LoadBackDays))
 	return from, minTime(to, from.AddDate(0, 0, LoadSpanDays))
 }
+
+// The auto plan reads holidays up to AlignReachDays past the last due date, as
+// far as a chain of moves can push the work. WorkdaySearchDays bounds the search
+// for a working day, so a calendar with none at all ends it instead of looping.
+const (
+	AlignReachDays    = 366
+	WorkdaySearchDays = 366
+)

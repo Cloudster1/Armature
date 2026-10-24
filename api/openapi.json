@@ -14047,6 +14047,58 @@
         }
       }
     },
+    "/projects/{projectKey}/plan/align": {
+      "post": {
+        "operationId": "alignPlan",
+        "summary": "What the auto plan would move so every blocked issue starts after its blockers; saves nothing.",
+        "tags": [
+          "plan"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Alignment"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{projectKey}/queue": {
       "get": {
         "operationId": "queue",
@@ -20529,6 +20581,39 @@
           "averageDays"
         ]
       },
+      "AlignRequest": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string"
+          }
+        }
+      },
+      "Alignment": {
+        "type": "object",
+        "properties": {
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Move"
+            }
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Warning"
+            }
+          }
+        },
+        "required": [
+          "projectKey",
+          "moves",
+          "warnings"
+        ]
+      },
       "Allocation": {
         "type": "object",
         "properties": {
@@ -21596,7 +21681,7 @@
             "additionalProperties": {
               "type": "array",
               "items": {
-                "$ref": "#/components/schemas/Span"
+                "$ref": "#/components/schemas/DeskSpan"
               }
             }
           },
@@ -23536,6 +23621,21 @@
           "name",
           "requestTypes",
           "repliesByMail"
+        ]
+      },
+      "DeskSpan": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
         ]
       },
       "Development": {
@@ -25727,6 +25827,33 @@
           "month",
           "items",
           "truncated"
+        ]
+      },
+      "Move": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Span"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "to": {
+            "$ref": "#/components/schemas/Span"
+          },
+          "workingDays": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "issueKey",
+          "from",
+          "to",
+          "workingDays",
+          "after"
         ]
       },
       "MoveCardRequest": {
@@ -29626,16 +29753,18 @@
       "Span": {
         "type": "object",
         "properties": {
-          "from": {
-            "type": "string"
+          "dueDate": {
+            "type": "string",
+            "format": "date-time"
           },
-          "to": {
-            "type": "string"
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
-          "from",
-          "to"
+          "startDate",
+          "dueDate"
         ]
       },
       "Spec": {
