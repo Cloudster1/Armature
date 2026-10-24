@@ -90,6 +90,46 @@ scenario("the theme choice persists across a reload", async ({ page }) => {
   expect.equal(await textOf(page, themeButton), "Dark", "the choice survived the reload");
 });
 
+// A missing file would come back as the app's index.html, so the type is what proves it is there.
+scenario("the logo and the icons are served from the site's root, each with its own type", async ({ page }) => {
+  await goto(page, "/login");
+  const served = await page.evaluate(async (paths) => {
+    const out = {};
+    for (const path of paths) {
+      const response = await fetch(path);
+      out[path] = `${response.status} ${response.headers.get("content-type")}`;
+    }
+    return out;
+  }, ["/favicon.ico", "/favicon-32.png", "/apple-touch-icon.png", "/icon-512.png", "/logo-256.webp", "/mark-96.webp", "/site.webmanifest"]);
+  for (const [path, type] of Object.entries({
+    "/favicon.ico": /image\/(x-icon|vnd\.microsoft\.icon)/,
+    "/favicon-32.png": /image\/png/,
+    "/apple-touch-icon.png": /image\/png/,
+    "/icon-512.png": /image\/png/,
+    "/logo-256.webp": /image\/webp/,
+    "/mark-96.webp": /image\/webp/,
+    "/site.webmanifest": /application\/manifest\+json/,
+  })) {
+    expect.truthy(served[path].startsWith("200 ") && type.test(served[path]), `${path} answered ${served[path]}`);
+  }
+});
+
+scenario("the sign-in page shows the logo and the sidebar the mark, which the content security policy lets load", async ({ page }) => {
+  const refused = [];
+  page.on("console", (message) => {
+    if (/Content Security Policy|Refused to load/i.test(message.text())) refused.push(message.text());
+  });
+  const loaded = (selector) => page.waitForFunction((s) => document.querySelector(s)?.naturalWidth > 0, { timeout: WAIT }, selector);
+
+  await goto(page, "/login");
+  await loaded("[data-door] img[data-logo]");
+  expect.equal(await textOf(page, "[data-logo-head]"), "Armature", "the name under the logo");
+
+  await signUp(page);
+  await loaded("[data-sidebar] img[data-logo-mark]");
+  expect.equal(refused.length, 0, `the policy refused: ${refused.join(" | ")}`);
+});
+
 scenario("the keyboard reaches the content from the top of a page through the skip link", async ({ page }) => {
   await signUp(page);
   await goto(page, "/projects");
