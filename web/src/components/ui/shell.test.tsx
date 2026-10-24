@@ -30,6 +30,13 @@ describe("the pieces the shell redesign added", () => {
 
   // Without a strip the head is drawn in place, which is what every page
   // test and the portal get; with one it is drawn there.
+  it("lets the head's actions wrap on a narrow screen and keeps them whole from sm up", () => {
+    render(<PageHeader title="Busy" actions={<button type="button">First</button>} />);
+    const actions = screen.getByRole("button", { name: "First" }).parentElement!;
+    expect(actions.className.split(" ")).toEqual(expect.arrayContaining(["flex-wrap", "sm:shrink-0"]));
+    expect(actions.className.split(" ")).not.toContain("shrink-0");
+  });
+
   it("draws the page's head in place, or into the shell's strip when there is one", () => {
     const { container, unmount } = render(<PageHeader title="Alone" />);
     expect(container.querySelector("header h1")?.textContent).toBe("Alone");

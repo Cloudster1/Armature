@@ -104,7 +104,7 @@ export function UnreadBadge() {
   const unread = data?.unread ?? 0;
   if (unread === 0) return null;
   return (
-    <span className="min-w-5 rounded-full bg-primary px-1.5 text-center text-2xs font-semibold leading-5 text-on-primary" data-unread-badge={unread}>
+    <span className="min-w-5 rounded-full bg-accent px-1.5 text-center text-2xs leading-5 font-medium text-on-accent" data-unread-badge={unread}>
       {unread > 99 ? "99+" : unread}
       <span className="sr-only"> unread</span>
     </span>
@@ -130,9 +130,9 @@ export function NotificationsBell({ side = "bottom" }: { side?: "top" | "bottom"
       trigger={
         <Tooltip text={label} side={side}>
           <span className="relative inline-flex">
-            <IconButton icon={<Icon.Bell />} label={label} size="sm" onClick={() => setOpen((o) => !o)} aria-expanded={open} data-action="inbox" data-guide="inbox" data-unread-count={unread} />
+            <IconButton icon={<Icon.Bell />} label={label} size="sm" onClick={() => setOpen((o) => !o)} aria-expanded={open} data-action="notifications" data-guide="inbox" data-unread-count={unread} />
             {unread > 0 && (
-              <span aria-hidden className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-2xs font-semibold leading-4 text-on-primary">
+              <span aria-hidden className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-2xs leading-4 font-medium text-on-accent">
                 {unread > 99 ? "99+" : unread}
               </span>
             )}
