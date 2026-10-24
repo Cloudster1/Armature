@@ -111,6 +111,11 @@ describe("Chip", () => {
     expect(onClick).toHaveBeenCalled();
     expect(chip).toHaveAttribute("data-plan-type-filter", "Bug");
   });
+
+  it("shows the focus ring a keyboard reaches it with, as Stator's and Exciter's do", () => {
+    render(<Chip pressed>Bug</Chip>);
+    expect(screen.getByRole("button", { name: "Bug" }).className).toMatch(/focus-visible:outline-2 .*focus-visible:outline-focus/);
+  });
 });
 
 describe("OptionCard", () => {

@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the kit's small shapes match Stator's and Exciter's (#342). A
+  page header's actions wrap instead of widening the page, a long menu no
+  longer scrolls the page behind it, the unread count wears the accent,
+  Settings is drawn as sliders and the key as theirs, and a chip shows the
+  focus ring. The bell's `data-action` is `notifications`, as in the other two.
 - Changed: the shell lays itself out with the breakpoint Stator and Exciter
   share (#341). `--breakpoint-shell` in the stylesheet, the same 768px as the
   drawer's switch in code, sets the pages' padding, so the portal's pages are

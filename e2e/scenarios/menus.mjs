@@ -86,7 +86,7 @@ scenario("a member sees no Settings in the avatar menu, the settings area or the
 
 scenario("the bell opens the latest notifications with the way to all of them and their settings", async ({ page }) => {
   await signUp(page, unique("bell"));
-  await page.click('[data-action="inbox"]');
+  await page.click('[data-action="notifications"]');
   await page.waitForSelector("[data-notifications-panel]", { timeout: WAIT });
   expect.truthy(await page.$('[data-notifications-panel] [data-action="mark-all-read"]'), "it offers to mark them all read");
   expect.truthy(await page.$('[data-notifications-panel] [data-action="notification-settings"]'), "and their settings");
