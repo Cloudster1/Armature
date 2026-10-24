@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Checkbox, Field, IconButton, Segmented, Select, Switch, Tabs } from "./index";
+import { Checkbox, Field, IconButton, Segmented, Select, Switch, TabPanel, Tabs } from "./index";
 import { Icon } from "../icons";
 
 describe("Field", () => {
@@ -81,5 +81,32 @@ describe("Tabs", () => {
     screen.getByRole("tab", { name: "All" }).focus();
     await userEvent.keyboard("{End}");
     expect(onChange).toHaveBeenLastCalledWith("comments");
+  });
+
+  it("names the panel it switches, and names nothing when there is none", () => {
+    const { unmount } = render(
+      <>
+        <Tabs label="Activity" value="all" panelId="activity-panel" tabs={[{ value: "all", label: "All" }]} onChange={() => {}} />
+        <TabPanel id="activity-panel" label="All">
+          Everything
+        </TabPanel>
+      </>,
+    );
+    const panel = document.getElementById(screen.getByRole("tab", { name: "All" }).getAttribute("aria-controls")!);
+    expect(panel).toBe(screen.getByRole("tabpanel", { name: "All" }));
+    unmount();
+
+    render(<Tabs label="Activity" value="all" tabs={[{ value: "all", label: "All" }]} onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: "All" })).not.toHaveAttribute("aria-controls");
+  });
+
+  it("is used on every page with a panel to point at", () => {
+    const sources = import.meta.glob("/src/**/*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+    const pages = Object.entries(sources).filter(([path, text]) => !path.includes(".test.") && !path.endsWith("/Tabs.tsx") && /<Tabs[\s<]/.test(text));
+    expect(pages.length).toBeGreaterThan(0);
+    for (const [path, text] of pages) {
+      expect(text, path).toMatch(/panelId=\{/);
+      expect(text, path).toMatch(/<TabPanel id=\{/);
+    }
   });
 });

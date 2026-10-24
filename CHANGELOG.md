@@ -12,6 +12,40 @@ and its tag message, so a change is written here in the branch that makes it.
   so an Armature description, a Stator page and an Exciter requirement read
   the same. The shared `.doc-content` rules are noted in
   `docs/design/03-components.md` as changed in all three tools together.
+- Changed: the kit's small shapes match Stator's and Exciter's (#342). A
+  page header's actions wrap instead of widening the page, a long menu no
+  longer scrolls the page behind it, the unread count wears the accent,
+  Settings is drawn as sliders and the key as theirs, and a chip shows the
+  focus ring. The bell's `data-action` is `notifications`, as in the other two.
+- Changed: the shell lays itself out with the breakpoint Stator and Exciter
+  share (#341). `--breakpoint-shell` in the stylesheet, the same 768px as the
+  drawer's switch in code, sets the pages' padding, so the portal's pages are
+  as narrow on a phone as the app's; the portal's header fits a phone, and the
+  drawer slides in unless less motion is asked for.
+- Changed: the shell has the landmarks and states Stator's and Exciter's have
+  (#353). A "Skip to the content" link, shown when the keyboard reaches it,
+  moves focus past the navigation to the page. The rail's toggle says whether
+  the sidebar is out and names it, a folded sidebar group stays in the page
+  hidden so its title names it, each tab names the panel it switches, and the
+  rail, sidebar and narrow strip are left off a printout.
+- Changed: Armature shows its logo the way Stator and Exciter show theirs
+  (#340). Sign-in and the two-step setup show the logo above the name on the
+  app's backdrop, the sidebar head and the shared dashboard show the gopher's
+  face beside the name, and the browser tab, touch icon and a new web app
+  manifest use the same face. `make branding` makes them all from
+  `docs/armature-logo.jpg`, and nginx serves the manifest with its own type.
+- Added: the plan lines its dates up with its dependencies (#345 to #352).
+  Auto plan in the plan's toolbar previews where each issue would move, drawn
+  as ghost bars with a list of the moves, so that every blocked issue starts
+  after what blocks it, keeping its length in its team's working days. Only
+  later, never earlier; done and started issues stay where they are. Apply
+  saves every move in one go or none, refusing with a sentence when an issue
+  moved since the preview, and the toast offers to undo it in one step. The
+  preview can also place undated issues from their estimate, a Blocks link on
+  a parent holds back every issue beneath it, and dragging a blocker later
+  offers to move what it blocks along. `POST /projects/{key}/plan/align` and
+  `PUT /projects/{key}/plan/schedule` do the same over the API, and the MCP
+  tools `align_plan` and `apply_plan_schedule` offer it to an assistant.
 - Added: a partner such as Rotor clones a project's repository and pushes an
   issue's branch through Armature, as the person, while the host's token stays
   in Armature (#333). The git proxy answers git's smart HTTP at
