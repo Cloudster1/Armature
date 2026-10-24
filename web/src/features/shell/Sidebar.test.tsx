@@ -77,6 +77,7 @@ vi.mock("./ConfirmProvider", () => ({ useConfirm: () => async () => true }));
 
 const { Sidebar } = await import("./Sidebar");
 const { axeViolations } = await import("@/test/axe");
+const { applyLanguage } = await import("@/i18n");
 
 beforeEach(() => {
   localStorage.clear();
@@ -256,6 +257,35 @@ describe("the shell's accessibility", () => {
       expect(await axeViolations(), face).toEqual([]);
       unmount();
     }
+  });
+});
+
+describe("the shell in German", () => {
+  it("names its places, groups and controls in German, and in English again once switched back", async () => {
+    applyLanguage("de");
+    try {
+      const { unmount } = render(
+        <>
+          <Sidebar onNewIssue={() => {}} onAsk={() => {}} />
+          <main>
+            <h1>Seite</h1>
+          </main>
+        </>,
+      );
+      for (const word of ["Start", "Suche", "Benachrichtigungen", "Gespeicherte Suchen", "Projekte"])
+        expect(screen.getAllByText(word).length, word).toBeGreaterThan(0);
+      expect(screen.getByRole("button", { name: "Arbeit & Planung" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Seitenleiste einklappen" })).toBeInTheDocument();
+      expect(screen.getByRole("navigation", { name: "Wo Sie sind" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Benachrichtigungen, 3 ungelesen" })).toBeInTheDocument();
+      expect(screen.queryByText("Saved searches")).toBeNull();
+      expect(await axeViolations()).toEqual([]);
+      unmount();
+    } finally {
+      applyLanguage("");
+    }
+    render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
+    expect(screen.getByText("Saved searches")).toBeInTheDocument();
   });
 });
 

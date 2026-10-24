@@ -181,7 +181,8 @@ scenario("a person changes their name and time zone and puts a face to it", asyn
   await selectByLabel(page, "#field-time-zone", "Europe/Berlin");
   await selectByLabel(page, "#field-language", "Deutsch (Deutschland)");
   await clickButton(page, "Save changes");
-  await page.waitForFunction(() => document.body.innerText.includes("Profile saved"), { timeout: WAIT });
+  // Deutsch is the interface's language too from here on.
+  await page.waitForFunction(() => document.body.innerText.includes("Profil gespeichert"), { timeout: WAIT });
   await goto(page, "/settings/profile");
   await page.waitForFunction(() => document.querySelector("#field-name")?.value === "Ada Lovelace", { timeout: WAIT });
   expect.contains(await textOf(page, "[data-format-preview]"), ".2026", "dates are written the German way");
@@ -203,13 +204,13 @@ scenario("a person changes their name and time zone and puts a face to it", asyn
   const path = `${dir}/face-${Date.now()}.png`;
   writeFileSync(path, bytes);
   await input.uploadFile(path);
-  await page.waitForFunction(() => document.body.innerText.includes("Picture changed"), { timeout: WAIT });
+  await page.waitForFunction(() => document.body.innerText.includes("Bild geändert"), { timeout: WAIT });
   await page.waitForSelector('aside img[alt="Ada Lovelace"]', { timeout: WAIT });
   const src = await page.$eval('aside img[alt="Ada Lovelace"]', (el) => el.getAttribute("src"));
   expect.truthy(src.includes("/api/v1/users/") && src.includes("/avatar?v="), "the foot shows the picture from the API");
 
-  await clickButton(page, "Remove");
-  await page.waitForFunction(() => document.body.innerText.includes("Picture removed"), { timeout: WAIT });
+  await clickButton(page, "Entfernen");
+  await page.waitForFunction(() => document.body.innerText.includes("Bild entfernt"), { timeout: WAIT });
   await page.waitForFunction(() => !document.querySelector('aside img[alt="Ada Lovelace"]'), { timeout: WAIT });
 });
 

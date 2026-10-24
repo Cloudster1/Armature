@@ -7,6 +7,19 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: Armature speaks English and German from one catalogue, as Stator
+  and Exciter do (#354). The profile's Language changes the interface as
+  well as how dates and numbers are written: a German locale shows it in
+  German, any other the browser's language, and its first choice now reads
+  "Follow the browser". The shell (rail, sidebar, drawer, avatar menu, bell,
+  palette and the settings hub), the profile's own form and the planning
+  view come from `web/src/i18n` first; a test refuses a key missing in either
+  language and a German line left in English.
+- Fixed: "Follow the browser" on the profile could not be saved, and choosing
+  it broke the page (#354). Every account held `en`, a value the profile
+  never offered; a migration makes the unchosen locale empty, which follows
+  the browser, and the profile accepts it. Toasts stay on screen while the
+  interface changes language.
 - Added: the frontend checks Stator and Exciter run (#343). `make lint` runs
   ESLint with their shared rules, in CI too; axe-core checks the shell, the
   planning view and the settings hub in Vitest; and the style ratchet now

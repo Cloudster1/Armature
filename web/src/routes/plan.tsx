@@ -14,6 +14,7 @@ import { useClosedForDays } from "@/features/plan/settings";
 import type { Zoom } from "@/features/plan/scale";
 import { NO_FILTERS, meter, viewFor, type Cut, type Filters } from "@/features/plan/views";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 /** The view is in the address, so a plan somebody sends is the plan they saw. */
 export const planRoute = createRoute({
@@ -61,14 +62,14 @@ function PlanPage() {
   function applyProposal() {
     if (!proposal) return;
     const moves = movesToSave(proposal);
-    const issues = `${moves.length} issue${moves.length === 1 ? "" : "s"}`;
+    const issues = t.plan.autoPlan.issues(moves.length);
     apply.mutate(
       { projectKey, moves },
       {
         onSuccess: () => {
           setProposal(null);
-          toast.success(`Moved ${issues} to start after the issues blocking them.`, {
-            action: { label: "Undo", onClick: () => undoMoves(moves, issues) },
+          toast.success(t.plan.autoPlan.moved(issues), {
+            action: { label: t.plan.autoPlan.undo, onClick: () => undoMoves(moves, issues) },
           });
         },
       },
@@ -85,7 +86,7 @@ function PlanPage() {
           const moves = movesToSave(alignment);
           const offer = followOffer(key, moves.length);
           if (!offer) return;
-          const issues = `${moves.length} issue${moves.length === 1 ? "" : "s"}`;
+          const issues = t.plan.autoPlan.issues(moves.length);
           toast.info(offer.message, { action: { label: offer.action, onClick: () => pushMoves(moves, issues) } });
         },
         onError: () => {},
@@ -98,10 +99,10 @@ function PlanPage() {
       { projectKey, moves },
       {
         onSuccess: () =>
-          toast.success(`Moved ${issues} to start after the issues blocking them.`, {
-            action: { label: "Undo", onClick: () => undoMoves(moves, issues) },
+          toast.success(t.plan.autoPlan.moved(issues), {
+            action: { label: t.plan.autoPlan.undo, onClick: () => undoMoves(moves, issues) },
           }),
-        onError: (error) => toast.error(error instanceof Error ? error.message : "The issues could not be moved. Try again."),
+        onError: (error) => toast.error(error instanceof Error ? error.message : t.plan.autoPlan.moveFailed),
       },
     );
   }
@@ -111,7 +112,7 @@ function PlanPage() {
     undo.mutate(
       { projectKey, moves: movesBack(applied) },
       {
-        onSuccess: () => toast.success(`Moved ${issues} back to where they were.`),
+        onSuccess: () => toast.success(t.plan.autoPlan.movedBack(issues)),
         onError: (error) => toast.error(undoRefusal(error)),
       },
     );
@@ -131,7 +132,7 @@ function PlanPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Plan"
+        title={t.plan.title}
       />
 
       <PlanToolbar

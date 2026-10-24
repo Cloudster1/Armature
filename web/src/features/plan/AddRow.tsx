@@ -5,6 +5,7 @@ import { PLAN_INDENT_PER_LEVEL, PLAN_ROW_HEIGHT } from "@/config";
 import { draftBox } from "./create";
 import type { Scale } from "./scale";
 import { isoDay } from "./scale";
+import { t } from "@/i18n";
 
 /** What an add row holds while it is being typed into. */
 export interface AddDraft {
@@ -49,7 +50,7 @@ export function AddSidebarRow({
       title={error}
     >
       <SelectInput
-        aria-label={`Type of the issue to add to ${label}`}
+        aria-label={t.plan.add.typeOf(label)}
         value={draft.typeId}
         onChange={(event) => onChange({ ...draft, typeId: event.target.value })}
         controlSize="sm"
@@ -63,9 +64,9 @@ export function AddSidebarRow({
         ))}
       </SelectInput>
       <Input
-        aria-label={`Add an issue to ${label}`}
+        aria-label={t.plan.add.addTo(label)}
         value={draft.summary}
-        placeholder={pending ? "Adding..." : "Add an issue"}
+        placeholder={pending ? t.plan.add.adding : t.plan.add.placeholder}
         disabled={pending}
         onChange={(event) => onChange({ ...draft, summary: event.target.value })}
         onKeyDown={onKeyDown}
@@ -136,7 +137,7 @@ export function AddCalendarRow({
           left={box.left}
           width={box.width}
           summary={draft.summary}
-          range={`${isoDay(draft.start)} to ${isoDay(draft.due)}`}
+          range={t.plan.add.range(isoDay(draft.start), isoDay(draft.due))}
           onChange={onDraftChange}
           onSubmit={onDraftSubmit}
           onCancel={onDraftCancel}
@@ -172,10 +173,10 @@ function DraftInput({
   return (
     <Input
       ref={ref}
-      aria-label={`Summary of the issue to add, ${range}`}
+      aria-label={t.plan.add.summaryOf(range)}
       title={range}
       value={summary}
-      placeholder="What needs doing, then Enter"
+      placeholder={t.plan.add.draftPlaceholder}
       onChange={(event) => onChange(event.target.value)}
       onKeyDown={(event) => {
         if (event.key === "Enter" && summary.trim()) {

@@ -3,6 +3,7 @@
 import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
+  clickButton,
   createProject,
   enterOpenDesk,
   signOut,
@@ -189,6 +190,32 @@ scenario("at a phone's width each shell's pages start one rem from the edge, as 
     await enterOpenDesk(page, desk, unique("walkin"));
     await fits("portal");
   });
+});
+
+// The profile's Language changes the interface as well as the dates, and a reload keeps it.
+scenario("a person who picks Deutsch on their profile sees the sidebar in German, and English again after", async ({ page }) => {
+  await signUp(page);
+  const languageSelect = 'select:has(option[value="de-DE"])';
+  const sidebarSays = (word) => page.waitForSelector(`[data-sidebar] [data-place="${word}"]`, { timeout: WAIT });
+
+  await goto(page, "/settings/profile");
+  await page.waitForSelector(languageSelect, { timeout: WAIT });
+  await page.select(languageSelect, "de-DE");
+  await clickButton(page, "Save changes");
+  await sidebarSays("Ihr Profil");
+  expect.equal(await page.evaluate(() => document.documentElement.lang), "de", "the page's language");
+
+  await goto(page, "/");
+  await sidebarSays("Benachrichtigungen");
+  await reload(page);
+  await sidebarSays("Gespeicherte Suchen");
+
+  await goto(page, "/settings/profile");
+  await page.waitForSelector(languageSelect, { timeout: WAIT });
+  await page.select(languageSelect, "");
+  await clickButton(page, "Änderungen speichern");
+  await sidebarSays("Your profile");
+  expect.equal(await page.evaluate(() => document.documentElement.lang), "en", "the page's language once back");
 });
 
 scenario("nothing in the page reports a script error", async ({ page }) => {

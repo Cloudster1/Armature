@@ -5,6 +5,7 @@ import { NavButton, NavItem, NotificationsBell } from "./nav";
 import { AccountMenu } from "./AccountMenu";
 import { ThemeButton } from "./ThemeButton";
 import { SIDEBAR_ID } from "./state";
+import { t } from "@/i18n";
 
 /**
  * The rail is what is always there: the places every page reaches from, and
@@ -31,7 +32,7 @@ export function Rail({
       <header className="flex h-12 w-full items-center justify-center border-b border-border">
         <IconButton
           icon={open ? <Icon.Collapse /> : <Icon.Expand />}
-          label={open ? "Collapse the sidebar" : "Expand the sidebar"}
+          label={open ? t.shell.nav.collapseSidebar : t.shell.nav.expandSidebar}
           size="sm"
           onClick={onToggle}
           aria-expanded={open}
@@ -40,25 +41,25 @@ export function Rail({
           data-action="sidebar"
         />
       </header>
-      <nav aria-label="Everywhere" className="flex flex-1 flex-col items-center gap-1 py-3">
+      <nav aria-label={t.shell.nav.everywhere} className="flex flex-1 flex-col items-center gap-1 py-3">
         <NavItem to="/" exact icon="Home" rail>
-          Home
+          {t.shell.places.home}
         </NavItem>
         <NavItem to="/search" icon="Search" rail>
-          Search
+          {t.shell.places.search}
         </NavItem>
         <NotificationsBell side="right" />
         <NavItem to="/projects" icon="Board" rail>
-          Projects
+          {t.shell.places.projects}
         </NavItem>
         <NavButton icon="Plus" rail onClick={onNewIssue} data-action="new-issue" data-guide="new-issue">
-          New issue
+          {t.shell.nav.newIssue}
         </NavButton>
       </nav>
       <div className="flex flex-col items-center gap-1 border-t border-border py-2">
         {onAsk && (
-          <Tooltip text="Where is something?" side="right">
-            <IconButton icon={<Icon.Help />} label="Where is something?" size="sm" onClick={onAsk} data-action="guide" />
+          <Tooltip text={t.shell.nav.whereIsSomething} side="right">
+            <IconButton icon={<Icon.Help />} label={t.shell.nav.whereIsSomething} size="sm" onClick={onAsk} data-action="guide" />
           </Tooltip>
         )}
         <ThemeButton side="right" />

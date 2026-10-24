@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { applyLanguage, languageOfLocale } from "@/i18n";
 import { useMutation } from "./mutation";
 import { request, upload } from "./client";
 import { cacheCustomTheme } from "@/lib/theme";
@@ -51,6 +53,15 @@ export function useMe() {
     retry: false,
     staleTime: 30_000,
   });
+}
+
+/** Follows the signed-in person's language whenever the app has asked who they are; it never asks itself. */
+export function useProfileLanguage(): void {
+  const { data } = useQuery({ queryKey: meQueryKey, queryFn: () => request<MeResponse>("/auth/me"), enabled: false });
+  const locale = data?.principal?.user.locale;
+  useEffect(() => {
+    if (locale !== undefined) applyLanguage(languageOfLocale(locale));
+  }, [locale]);
 }
 
 /** The person signing up; the installation is not theirs to name. */
@@ -229,7 +240,11 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ProfileInput) => request<{ principal: Principal }>("/auth/me", { method: "PATCH", body: input }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: meQueryKey }),
+    // Not awaited: a new language draws the page again, and the caller's own
+    // onSuccess, its confirmation, would never run once the page it came from is gone.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: meQueryKey });
+    },
   });
 }
 

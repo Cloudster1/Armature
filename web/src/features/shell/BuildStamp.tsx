@@ -1,6 +1,7 @@
 import { useMeta } from "@/api/meta";
 import { COMMIT_SHORT_LENGTH } from "@/config";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 /**
  * Which build is running, in one quiet line under the person. The short hash
@@ -13,7 +14,7 @@ export function BuildStamp() {
   if (!data) return null;
   const { version, commit, builtAt } = data.build;
   const label = commit ? `${version} (${commit.slice(0, COMMIT_SHORT_LENGTH)})` : version;
-  const detail = [commit && `commit ${commit}`, builtAt && `built ${format.dateTime(builtAt)}`].filter(Boolean).join(", ");
+  const detail = [commit && t.shell.build.commit(commit), builtAt && t.shell.build.built(format.dateTime(builtAt))].filter(Boolean).join(", ");
   return (
     <div className="truncate px-3 pb-2 text-2xs text-ink-subtle" title={detail || undefined} data-build>
       {label}

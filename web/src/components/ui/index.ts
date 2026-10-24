@@ -29,7 +29,7 @@ export { MentionTextarea, mentionQuery, type FindPeople, type Mentionable } from
 export { Menu, type MenuItem } from "./Menu";
 export { Dialog, ConfirmDialog, Drawer, DockedPanel, isInteractiveTarget, modalBackdropStyle, modalPanelStyle } from "./Dialog";
 export { isEditing } from "./overlay";
-export { ToastProvider, useToast, type ToastKind, type ToastOptions } from "./Toast";
+export { ToastProvider, ToastShelf, useToast, type ToastKind, type ToastOptions } from "./Toast";
 export { Pager, clampOffset, countOf, isPageOffset, shownOf } from "./Pager";
 export { ListSearch } from "./ListSearch";
 export { SearchPicker, type PickerOption } from "./SearchPicker";

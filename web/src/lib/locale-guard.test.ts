@@ -27,12 +27,13 @@ function offences(source: string): string[] {
 }
 
 const root = join(__dirname, "..");
-const ALLOWED = "lib/format.ts";
+// The interface reads the browser's languages only to choose which catalogue it speaks.
+const ALLOWED = new Set(["lib/format.ts", "i18n/index.ts"]);
 
 describe("the reader's language", () => {
   it("is the only one a date or a number is written in outside lib/format.ts", () => {
     const found = walk(root)
-      .filter((file) => relative(root, file) !== ALLOWED)
+      .filter((file) => !ALLOWED.has(relative(root, file)))
       .flatMap((file) => offences(readFileSync(file, "utf8")).map((o) => `${relative(root, file)}: ${o}`));
     expect(found.join("\n")).toBe("");
   });

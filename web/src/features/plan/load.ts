@@ -3,6 +3,7 @@ import { PLAN_LOAD_FULL_RATIO } from "@/config";
 import { DAYS_PER_WEEK, isoDay, type Scale } from "./scale";
 import { number } from "./SprintBands";
 import type { Filters, Row } from "./views";
+import { t } from "@/i18n";
 
 /** The key of the collapsible group the load rows sit under. */
 export const LOAD_GROUP_KEY = "load";
@@ -21,10 +22,10 @@ export function loadRows(load: Load, filters: Filters, collapsed: Set<string>): 
     {
       kind: "group",
       key: LOAD_GROUP_KEY,
-      label: "Load by team",
+      label: t.plan.load.group,
       sprint: null,
       count: rows.length,
-      detail: "points per week against capacity",
+      detail: t.plan.load.groupDetail,
       collapsed: isCollapsed,
     },
   ];
@@ -67,28 +68,28 @@ export function barShare(row: TeamLoad, week: LoadWeek): number {
 
 /** What the sidebar says about a row: its capacity, or that none was set, and what is off the calendar. */
 export function describeLoad(row: TeamLoad): string {
-  const parts = [row.weeklyCapacity !== undefined ? `${number(row.weeklyCapacity)} pts/week` : "no capacity set"];
-  if (row.unscheduled > 0) parts.push(`${row.unscheduled} unscheduled`);
+  const parts = [row.weeklyCapacity !== undefined ? t.plan.load.perWeek(number(row.weeklyCapacity)) : t.plan.load.noCapacity];
+  if (row.unscheduled > 0) parts.push(t.plan.load.unscheduled(row.unscheduled));
   return parts.join(" · ");
 }
 
 /** What a week's cell says on hover, and why its capacity is short when it is. */
 export function describeWeek(row: TeamLoad, week: LoadWeek): string {
-  const load = week.capacity !== undefined ? `${number(week.load)}/${number(week.capacity)} pts` : `${number(week.load)} pts`;
-  const extra = week.unestimated > 0 ? `, ${week.unestimated} unestimated` : "";
-  const said = `${row.team}, week of ${isoDay(new Date(week.start))}: ${load} over ${week.issues} issue${week.issues === 1 ? "" : "s"}${extra}`;
+  const load = week.capacity !== undefined ? t.plan.load.pointsOf(number(week.load), number(week.capacity)) : t.plan.load.points(number(week.load));
+  const extra = week.unestimated > 0 ? t.plan.load.unestimated(week.unestimated) : "";
+  const said = t.plan.load.week(row.team, isoDay(new Date(week.start)), load, week.issues, extra);
   const why = daysOff(week);
   if (!why) return said;
   if (week.nominalCapacity === undefined || week.capacity === undefined) return `${said}. ${capitalised(why)}`;
-  return `${said}. Capacity ${number(week.nominalCapacity)} pts, ${number(week.capacity)} after ${why}`;
+  return t.plan.load.shortBy(said, number(week.nominalCapacity), number(week.capacity), why);
 }
 
 /** The days away and the holidays of a week, in words, or nothing. */
 export function daysOff(week: LoadWeek): string {
   const parts: string[] = [];
-  if (week.daysAway) parts.push(`${number(week.daysAway)} day${week.daysAway === 1 ? "" : "s"} away`);
-  if (week.holidays) parts.push(`${week.holidays} holiday${week.holidays === 1 ? "" : "s"}`);
-  return parts.join(" and ");
+  if (week.daysAway) parts.push(t.plan.load.daysAway(number(week.daysAway), week.daysAway));
+  if (week.holidays) parts.push(t.plan.load.holidays(week.holidays));
+  return parts.join(t.plan.load.and);
 }
 
 function capitalised(text: string): string {

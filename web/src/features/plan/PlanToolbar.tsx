@@ -8,6 +8,7 @@ import { QueryHelp } from "@/features/search/QueryInput";
 import { ZOOMS, type Zoom } from "./scale";
 import { number } from "./SprintBands";
 import { PLAN_VIEWS, type Filters, type Meter, type PlanView } from "./views";
+import { t } from "@/i18n";
 
 // One toolbar over the plan. The view, the query, the filters and the zoom
 // sit in one row; the cut and the filters are one popover, because to a
@@ -65,21 +66,21 @@ export function PlanToolbar({
 
   return (
     <Toolbar
-      label="Plan controls"
+      label={t.plan.toolbar.controls}
       start={
         <>
           <Segmented<PlanView>
-            label="Plan view"
+            label={t.plan.toolbar.view}
             value={view}
             options={PLAN_VIEWS.map((each) => ({ value: each.id, label: each.label, attrs: { title: each.hint } }))}
             onChange={onView}
           />
           <div className="flex min-w-64 max-w-xl flex-1 items-center gap-1" data-testid="plan-scope">
-            <QueryInput value={query} onSubmit={onQuery} error={queryError} compact label="Narrow the plan with a query" />
+            <QueryInput value={query} onSubmit={onQuery} error={queryError} compact label={t.plan.toolbar.narrow} />
             <Popover
               open={helpOpen}
               onClose={() => setHelpOpen(false)}
-              label="Query help"
+              label={t.plan.toolbar.queryHelp}
               align="end"
               trigger={
                 <Button
@@ -88,7 +89,7 @@ export function PlanToolbar({
                   icon={<Icon.Help />}
                   onClick={() => setHelpOpen((o) => !o)}
                   aria-expanded={helpOpen}
-                  aria-label="How to write a query"
+                  aria-label={t.plan.toolbar.howToQuery}
                 />
               }
               className="w-xl max-w-[90vw]"
@@ -99,7 +100,7 @@ export function PlanToolbar({
           <Popover
             open={filtersOpen}
             onClose={() => setFiltersOpen(false)}
-            label="Filters"
+            label={t.plan.toolbar.filters}
             trigger={
               <Button
                 variant="secondary"
@@ -108,15 +109,16 @@ export function PlanToolbar({
                 aria-expanded={filtersOpen}
                 data-action="plan-filters"
               >
-                Filters{active > 0 && <Tag className="ml-1 bg-accent-subtle text-accent">{active}</Tag>}
+                {t.plan.toolbar.filters}
+                {active > 0 && <Tag className="ml-1 bg-accent-subtle text-accent">{active}</Tag>}
               </Button>
             }
             className="w-80"
           >
             <div className="space-y-4" data-testid="plan-filters">
               <div>
-                <p className="mb-1.5 text-2xs font-medium tracking-wide text-ink-subtle uppercase">Type</p>
-                <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by type">
+                <p className="mb-1.5 text-2xs font-medium tracking-wide text-ink-subtle uppercase">{t.plan.toolbar.type}</p>
+                <div className="flex flex-wrap gap-1" role="group" aria-label={t.plan.toolbar.filterByType}>
                   {numbers.byType.map((type) => {
                     const on = filters.types.includes(type.name);
                     return (
@@ -131,13 +133,13 @@ export function PlanToolbar({
               </div>
               {milestones.length > 0 && (
                 <Select
-                  label="Milestone"
-                  aria-label="Filter by milestone"
+                  label={t.plan.toolbar.milestone}
+                  aria-label={t.plan.toolbar.filterByMilestone}
                   id="plan-filter-milestone"
                   value={filters.milestoneId}
                   onChange={(event) => onFilters({ ...filters, milestoneId: event.target.value })}
                 >
-                  <option value="">Any milestone</option>
+                  <option value="">{t.plan.toolbar.anyMilestone}</option>
                   {milestones.map((milestone) => (
                     <option key={milestone.id} value={milestone.id}>
                       {milestone.name}
@@ -147,13 +149,13 @@ export function PlanToolbar({
               )}
               {teams.length > 0 && (
                 <Select
-                  label="Team"
-                  aria-label="Filter by team"
+                  label={t.plan.toolbar.team}
+                  aria-label={t.plan.toolbar.filterByTeam}
                   id="plan-filter-team"
                   value={filters.teamId}
                   onChange={(event) => onFilters({ ...filters, teamId: event.target.value })}
                 >
-                  <option value="">Any team</option>
+                  <option value="">{t.plan.toolbar.anyTeam}</option>
                   {teams.map((team) => (
                     <option key={team.id} value={team.id}>
                       {team.name}
@@ -163,7 +165,7 @@ export function PlanToolbar({
               )}
               <div>
                 <label htmlFor="plan-closed-for" className="block text-sm font-medium text-ink-muted">
-                  Hide tickets done for more than
+                  {t.plan.toolbar.hideDone}
                 </label>
                 <div className="mt-1 flex items-center gap-2">
                   <Input
@@ -172,29 +174,25 @@ export function PlanToolbar({
                     min={0}
                     step={1}
                     inputMode="numeric"
-                    aria-label="Hide tickets done for more than"
+                    aria-label={t.plan.toolbar.hideDone}
                     data-plan-closed-for
                     value={closedForDays ?? ""}
-                    placeholder="any"
+                    placeholder={t.plan.toolbar.any}
                     onChange={(event) => {
                       const text = event.target.value.trim();
                       onClosedForDays(text === "" ? null : Math.max(0, Math.floor(Number(text))));
                     }}
                     className="max-w-20 text-right tabular-nums"
                   />
-                  <span className="text-sm text-ink-muted">days</span>
+                  <span className="text-sm text-ink-muted">{t.plan.toolbar.days}</span>
                 </div>
                 <p className="mt-1 text-xs text-ink-subtle">
-                  {closedForDays === null
-                    ? "Everything done stays on the plan."
-                    : closedForDays === 0
-                      ? "Done work is not drawn."
-                      : "Leave it blank to keep everything."}
+                  {closedForDays === null ? t.plan.toolbar.keepAllDone : closedForDays === 0 ? t.plan.toolbar.noDone : t.plan.toolbar.blankKeepsAll}
                 </p>
               </div>
               {(filters.types.length > 0 || filters.milestoneId || filters.teamId) && (
                 <Button size="sm" variant="ghost" onClick={() => onFilters({ types: [], milestoneId: "", teamId: "" })}>
-                  Clear filters
+                  {t.plan.toolbar.clearFilters}
                 </Button>
               )}
             </div>
@@ -205,17 +203,22 @@ export function PlanToolbar({
               icon={<Icon.Calendar />}
               onClick={onAutoPlan}
               disabled={autoPlanning}
-              title="Start every blocked issue after the issues blocking it, shown first and saved only when you apply"
+              title={t.plan.toolbar.autoPlanHint}
               data-action="auto-plan"
             >
-              {autoPlanning ? "Planning..." : "Auto plan"}
+              {autoPlanning ? t.plan.toolbar.planning : t.plan.toolbar.autoPlan}
             </Button>
           )}
         </>
       }
       end={
         showZoom ? (
-          <Segmented<Zoom["id"]> label="Zoom" value={zoom} options={ZOOMS.map((option) => ({ value: option.id, label: option.label }))} onChange={onZoom} />
+          <Segmented<Zoom["id"]>
+            label={t.plan.zoom.label}
+            value={zoom}
+            options={ZOOMS.map((option) => ({ value: option.id, label: option.label }))}
+            onChange={onZoom}
+          />
         ) : undefined
       }
     />
@@ -228,12 +231,12 @@ export function PlanSummary({ numbers, children }: { numbers: Meter; children?: 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" data-testid="plan-meter">
       <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <Figure label="issues" value={numbers.total} />
-        <Figure label="scheduled" value={numbers.scheduled} />
-        <Figure label="to do" value={numbers.todo} />
-        <Figure label="in progress" value={numbers.inProgress} />
-        <Figure label="done" value={`${numbers.done} (${numbers.donePercent}%)`} />
-        <Figure label="points" value={number(numbers.points)} />
+        <Figure label={t.plan.summary.issues} value={numbers.total} />
+        <Figure label={t.plan.summary.scheduled} value={numbers.scheduled} />
+        <Figure label={t.plan.summary.todo} value={numbers.todo} />
+        <Figure label={t.plan.summary.inProgress} value={numbers.inProgress} />
+        <Figure label={t.plan.summary.done} value={`${numbers.done} (${numbers.donePercent}%)`} />
+        <Figure label={t.plan.summary.points} value={number(numbers.points)} />
       </dl>
       {children}
       <Button
@@ -244,12 +247,10 @@ export function PlanSummary({ numbers, children }: { numbers: Meter; children?: 
         icon={more ? <Icon.ChevronUp /> : <Icon.ChevronDown />}
         data-plan-more
       >
-        {more ? "Less" : "More"}
+        {more ? t.plan.summary.less : t.plan.summary.more}
       </Button>
       {more && (
-        <div className="basis-full text-xs text-ink-muted">
-          {numbers.byType.map((type) => `${type.count} ${type.name.toLowerCase()}${type.count === 1 ? "" : "s"}`).join(" · ")}
-        </div>
+        <div className="basis-full text-xs text-ink-muted">{numbers.byType.map((type) => t.plan.summary.ofType(type.count, type.name)).join(" · ")}</div>
       )}
     </div>
   );

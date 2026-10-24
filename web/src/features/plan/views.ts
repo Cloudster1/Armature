@@ -2,6 +2,7 @@ import type { Issue } from "@/api/issues";
 import type { PlanItem, TeamLoad } from "@/api/plan";
 import type { SprintPlan } from "@/api/sprints";
 import { MS_PER_DAY } from "./scale";
+import { t } from "@/i18n";
 
 /**
  * The plan is one set of data read several ways. A view decides which rows are
@@ -13,18 +14,30 @@ export type PlanView = "management" | "sprints" | "dependencies";
 export const PLAN_VIEWS: Array<{ id: PlanView; label: string; hint: string }> = [
   {
     id: "management",
-    label: "Timeline",
-    hint: "Every issue in its hierarchy, with the milestones and the numbers.",
+    get label() {
+      return t.plan.views.management;
+    },
+    get hint() {
+      return t.plan.views.managementHint;
+    },
   },
   {
     id: "sprints",
-    label: "Sprints",
-    hint: "The work by iteration: each sprint with what is committed to it, then the backlog.",
+    get label() {
+      return t.plan.views.sprints;
+    },
+    get hint() {
+      return t.plan.views.sprintsHint;
+    },
   },
   {
     id: "dependencies",
-    label: "Dependencies",
-    hint: "Which tickets wait on which, laid out left to right.",
+    get label() {
+      return t.plan.views.dependencies;
+    },
+    get hint() {
+      return t.plan.views.dependenciesHint;
+    },
   },
 ];
 
@@ -230,7 +243,7 @@ export function sprintRows(items: PlanItem[], sprints: SprintPlan[], collapsed: 
   const known = new Set(sprints.map((plan) => plan.sprint.id));
   group(
     BACKLOG_KEY,
-    "Backlog",
+    t.plan.views.backlog,
     null,
     all.filter((item) => !item.issue.sprintId || !known.has(item.issue.sprintId)),
   );
@@ -239,5 +252,5 @@ export function sprintRows(items: PlanItem[], sprints: SprintPlan[], collapsed: 
 
 export function rowsFor(view: PlanView, items: PlanItem[], sprints: SprintPlan[], collapsed: Set<string>): Row[] {
   if (view === "sprints") return sprintRows(items, sprints, collapsed);
-  return [...hierarchyRows(items, collapsed), { kind: "add", key: PLAN_ADD_KEY, label: "plan", group: null }];
+  return [...hierarchyRows(items, collapsed), { kind: "add", key: PLAN_ADD_KEY, label: t.plan.views.addToPlan, group: null }];
 }

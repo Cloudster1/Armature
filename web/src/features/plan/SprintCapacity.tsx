@@ -1,6 +1,7 @@
 import { overBy, type SprintPlan } from "@/api/sprints";
 import { cx } from "@/components/ui";
 import { number, teamHours } from "./SprintBands";
+import { t } from "@/i18n";
 
 /**
  * What each sprint holds, against what the team said fits.
@@ -14,7 +15,7 @@ export function SprintCapacity({ sprints }: { sprints: SprintPlan[] }) {
 
   return (
     <section>
-      <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Capacity</h2>
+      <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">{t.plan.sprint.capacity}</h2>
       <ul className="space-y-2" data-testid="plan-capacity">
         {sprints.map((plan) => (
           <CapacityRow key={plan.sprint.id} plan={plan} />
@@ -37,12 +38,15 @@ function CapacityRow({ plan }: { plan: SprintPlan }) {
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-medium text-ink">
           {plan.sprint.name}
-          {plan.sprint.state === "active" && <span className="ml-2 rounded-full bg-accent-subtle px-2 py-0.5 text-2xs font-medium text-accent">Running</span>}
+          {plan.sprint.state === "active" && (
+            <span className="ml-2 rounded-full bg-accent-subtle px-2 py-0.5 text-2xs font-medium text-accent">{t.plan.sprint.running}</span>
+          )}
         </span>
         <span className={cx("tabular-nums", over ? "text-danger" : "text-ink-muted")}>
           {number(plan.committed)}
-          {plan.sprint.capacity != null && ` of ${number(plan.sprint.capacity)}`} pts
-          {plan.unestimated > 0 && `, ${plan.unestimated} unestimated`}
+          {plan.sprint.capacity != null && t.plan.sprint.of(number(plan.sprint.capacity))}
+          {t.plan.sprint.pts}
+          {plan.unestimated > 0 && t.plan.sprint.unestimated(plan.unestimated)}
         </span>
       </div>
       {hours && (

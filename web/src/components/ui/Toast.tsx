@@ -1,4 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type RefObject,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { TOAST_MAX, TOAST_MS } from "@/config";
 import { Icon } from "../icons";
 import { IconButton } from "./Button";
@@ -35,18 +47,41 @@ export function useToast(): ToastApi {
   return api;
 }
 
-export function ToastProvider({ children }: { children: ReactNode }) {
+interface Shelf {
+  toasts: ToastEntry[];
+  setToasts: Dispatch<SetStateAction<ToastEntry[]>>;
+  counter: RefObject<number>;
+}
+
+const ShelfContext = createContext<Shelf | null>(null);
+
+/**
+ * Holds the toasts above the router, so a page drawn again in another language
+ * keeps what it just said. The provider inside the router still draws them.
+ */
+export function ToastShelf({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
   const counter = useRef(0);
+  const shelf = useMemo<Shelf>(() => ({ toasts, setToasts, counter }), [toasts]);
+  return <ShelfContext.Provider value={shelf}>{children}</ShelfContext.Provider>;
+}
 
-  const dismiss = useCallback((id: number) => setToasts((all) => all.filter((t) => t.id !== id)), []);
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const shelf = useContext(ShelfContext);
+  const [ownToasts, setOwnToasts] = useState<ToastEntry[]>([]);
+  const ownCounter = useRef(0);
+  const toasts = shelf?.toasts ?? ownToasts;
+  const setToasts = shelf?.setToasts ?? setOwnToasts;
+  const counter = shelf?.counter ?? ownCounter;
+
+  const dismiss = useCallback((id: number) => setToasts((all) => all.filter((t) => t.id !== id)), [setToasts]);
   const push = useCallback(
     (kind: ToastKind, message: string, options?: ToastOptions) => {
       const id = ++counter.current;
       setToasts((all) => [...all, { id, kind, message, ...options }].slice(-TOAST_MAX));
       window.setTimeout(() => dismiss(id), TOAST_MS);
     },
-    [dismiss],
+    [dismiss, counter, setToasts],
   );
   const api = useMemo<ToastApi>(
     () => ({

@@ -4,6 +4,7 @@ import type { Alignment } from "@/api/plan";
 import { Button, Card, Checkbox, ErrorBanner } from "@/components/ui";
 import { PLAN_ALIGN_MAX_MOVES } from "@/config";
 import { describeMove, summarise } from "./autoplan";
+import { t } from "@/i18n";
 
 /**
  * What the auto plan would move, before anything does. Apply saves every move
@@ -48,15 +49,15 @@ export function AutoPlanPreview({
   const left = alignment.warnings.filter((w) => w.issueKey);
 
   return (
-    <Card className="mb-3 space-y-3 p-4" role="region" aria-label="Auto plan" data-testid="auto-plan-preview">
+    <Card className="mb-3 space-y-3 p-4" role="region" aria-label={t.plan.autoPlan.title} data-testid="auto-plan-preview">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-ink">Auto plan</h2>
+        <h2 className="text-sm font-semibold text-ink">{t.plan.autoPlan.title}</h2>
         <p className="text-sm text-ink-muted" data-auto-plan-count={moves.length}>
           {summarise(alignment)}
         </p>
       </div>
       <Checkbox
-        label="Also place issues without dates, from their remaining or estimated time"
+        label={t.plan.autoPlan.place}
         checked={place}
         disabled={reading || applying}
         onChange={(event) => onPlace(event.target.checked)}
@@ -89,7 +90,7 @@ export function AutoPlanPreview({
 
       {left.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium text-ink-muted">What the plan would still disagree on ({left.length})</p>
+          <p className="mb-1 text-xs font-medium text-ink-muted">{t.plan.autoPlan.disagree(left.length)}</p>
           <ul className="space-y-1 text-sm" data-testid="auto-plan-warnings">
             {left.map((w) => (
               <li key={`${w.issueKey}-${w.kind}-${w.message}`} className="flex items-baseline gap-2" data-auto-plan-warning-for={w.issueKey}>
@@ -101,14 +102,12 @@ export function AutoPlanPreview({
         </div>
       )}
 
-      {tooMany && (
-        <ErrorBanner>{`The auto plan would move ${moves.length} issues, and at most ${PLAN_ALIGN_MAX_MOVES} move at once. Narrow the plan with a query and try again.`}</ErrorBanner>
-      )}
+      {tooMany && <ErrorBanner>{t.plan.autoPlan.tooMany(moves.length, PLAN_ALIGN_MAX_MOVES)}</ErrorBanner>}
       {refusal && (
         <ErrorBanner>
           <span className="mr-2">{refusal}</span>
           <Button size="sm" variant="secondary" onClick={onPreviewAgain} data-action="auto-plan-again">
-            Preview again
+            {t.plan.autoPlan.previewAgain}
           </Button>
         </ErrorBanner>
       )}
@@ -116,11 +115,11 @@ export function AutoPlanPreview({
       <div className="flex gap-2">
         {moves.length > 0 && (
           <Button onClick={onApply} disabled={applying || reading || tooMany || Boolean(refusal)} data-action="auto-plan-apply">
-            {applying ? "Applying..." : "Apply"}
+            {applying ? t.plan.autoPlan.applying : t.plan.autoPlan.apply}
           </Button>
         )}
         <Button variant="secondary" onClick={onCancel} data-action="auto-plan-cancel">
-          {moves.length > 0 ? "Cancel" : "Close"}
+          {moves.length > 0 ? t.plan.autoPlan.cancel : t.plan.autoPlan.close}
         </Button>
       </div>
     </Card>
