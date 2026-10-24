@@ -42,12 +42,7 @@ export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
         canConfigure={canConfigure}
       />
 
-      {shown && (
-        <WorkflowGraph
-          workflowId={shown.workflowId}
-          caption={`${shown.issueTypeName} issues follow this workflow here.`}
-        />
-      )}
+      {shown && <WorkflowGraph workflowId={shown.workflowId} caption={`${shown.issueTypeName} issues follow this workflow here.`} />}
 
       <Card elevated className="overflow-hidden">
         {canMap && (
@@ -61,7 +56,11 @@ export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
               <th className="px-4 py-2 font-medium">Issue type</th>
               <th className="px-4 py-2 font-medium">Workflow</th>
               <th className="px-4 py-2 font-medium">Decided by</th>
-              {canMap && <th className="px-4 py-2 font-medium" data-guide="workflow-decide">Decide</th>}
+              {canMap && (
+                <th className="px-4 py-2 font-medium" data-guide="workflow-decide">
+                  Decide
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -131,11 +130,7 @@ function AssignmentRow({
     >
       <td className="px-4 py-2.5 font-medium text-ink">{assignment.issueTypeName}</td>
       <td className="px-4 py-2.5">
-        <Link
-          to="/settings/workflows"
-          search={{ workflow: assignment.workflowId, q: assignment.workflowName }}
-          className="text-ink hover:text-accent"
-        >
+        <Link to="/settings/workflows" search={{ workflow: assignment.workflowId, q: assignment.workflowName }} className="text-ink hover:text-accent">
           {assignment.workflowName}
         </Link>
       </td>
@@ -184,21 +179,14 @@ function SchemeChoice({
     <Card elevated className="p-4">
       {own ? (
         <>
-          <p className="text-sm font-medium text-ink">
-            This project uses its own scheme, {own.name}.
-          </p>
-          <p className="mt-1 text-sm text-ink-muted">
-            Issue types it does not name still follow {defaultSchemeName || "the default scheme"}.
-          </p>
+          <p className="text-sm font-medium text-ink">This project uses its own scheme, {own.name}.</p>
+          <p className="mt-1 text-sm text-ink-muted">Issue types it does not name still follow {defaultSchemeName || "the default scheme"}.</p>
         </>
       ) : (
         <>
-          <p className="text-sm font-medium text-ink">
-            This project follows the default.
-          </p>
+          <p className="text-sm font-medium text-ink">This project follows the default.</p>
           <p className="mt-1 text-sm text-ink-muted">
-            Every issue type uses {defaultSchemeName || "the default scheme"}. Give the
-            project a scheme of its own to disagree about some of them.
+            Every issue type uses {defaultSchemeName || "the default scheme"}. Give the project a scheme of its own to disagree about some of them.
           </p>
         </>
       )}
@@ -206,11 +194,7 @@ function SchemeChoice({
       {canConfigure && schemeCount && others <= 0 && !own && (
         <p className="mt-2 text-sm text-ink-subtle">
           There is no other scheme to give it yet. Build one under{" "}
-          <Link
-            to="/settings/workflows"
-            search={{ workflow: undefined }}
-            className="underline underline-offset-2 hover:text-ink"
-          >
+          <Link to="/settings/workflows" search={{ workflow: undefined }} className="underline underline-offset-2 hover:text-ink">
             Workflows
           </Link>
           , naming only the issue types this project should handle differently.
@@ -232,28 +216,15 @@ function SchemeChoice({
             leading={<option value="">Choose a scheme...</option>}
             onChange={(id, name) => setPicked({ id, name })}
           />
-          <Button
-            size="sm"
-            disabled={!picked.id}
-            loading={setScheme.isPending}
-            onClick={() => setScheme.mutate({ projectKey, schemeId: picked.id })}
-          >
+          <Button size="sm" disabled={!picked.id} loading={setScheme.isPending} onClick={() => setScheme.mutate({ projectKey, schemeId: picked.id })}>
             Use this scheme
           </Button>
           {own && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setScheme.mutate({ projectKey, schemeId: null })}
-            >
+            <Button size="sm" variant="ghost" onClick={() => setScheme.mutate({ projectKey, schemeId: null })}>
               Follow the default
             </Button>
           )}
-          <Link
-            to="/settings/workflows"
-            search={{ workflow: undefined }}
-            className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline"
-          >
+          <Link to="/settings/workflows" search={{ workflow: undefined }} className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline">
             Manage schemes
           </Link>
         </div>

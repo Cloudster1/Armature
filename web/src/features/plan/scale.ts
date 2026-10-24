@@ -200,11 +200,7 @@ export function headingTicks(scale: Scale, zoom: Zoom): Tick[] {
 }
 
 /** A bar's position, or null when the issue has no range to draw. */
-export function barFor(
-  scale: Scale,
-  start: string | null | undefined,
-  due: string | null | undefined,
-): { left: number; width: number } | null {
+export function barFor(scale: Scale, start: string | null | undefined, due: string | null | undefined): { left: number; width: number } | null {
   if (!start || !due) return null;
   return { left: scale.x(start), width: scale.spanWidth(start, due) };
 }
@@ -213,12 +209,7 @@ export function barFor(
  * Where a drag lands. Moving keeps the length and shifts both ends; resizing
  * moves one end and never past the other, so a range cannot turn inside out.
  */
-export function applyDrag(
-  start: Date,
-  due: Date,
-  mode: "move" | "start" | "end",
-  days: number,
-): { start: Date; due: Date } {
+export function applyDrag(start: Date, due: Date, mode: "move" | "start" | "end", days: number): { start: Date; due: Date } {
   if (days === 0) return { start, due };
   switch (mode) {
     case "move":

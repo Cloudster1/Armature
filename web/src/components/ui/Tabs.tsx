@@ -27,7 +27,8 @@ export function Tabs<T extends string>({
 }) {
   const id = useId();
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : event.key === "Home" ? -index : event.key === "End" ? tabs.length - 1 - index : 0;
+    const step =
+      event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : event.key === "Home" ? -index : event.key === "End" ? tabs.length - 1 - index : 0;
     if (!step) return;
     event.preventDefault();
     const next = tabs[(index + step + tabs.length) % tabs.length]!;

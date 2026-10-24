@@ -17,9 +17,7 @@ export const rootRoute = createRootRouteWithContext<RouterContext>()({
     <div className="flex h-full items-center justify-center p-8 text-center">
       <div>
         <p className="text-lg font-semibold text-ink">Page not found</p>
-        <p className="mt-1 text-sm text-ink-muted">
-          The page you asked for does not exist.
-        </p>
+        <p className="mt-1 text-sm text-ink-muted">The page you asked for does not exist.</p>
       </div>
     </div>
   ),

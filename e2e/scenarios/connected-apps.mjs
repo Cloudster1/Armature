@@ -23,8 +23,14 @@ function authorize(app, scope, extra = {}) {
   const verifier = randomBytes(32).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
   const query = new URLSearchParams({
-    response_type: "code", client_id: app.client_id, redirect_uri: RETURN, scope, state: "partner-state",
-    code_challenge: challenge, code_challenge_method: "S256", ...extra,
+    response_type: "code",
+    client_id: app.client_id,
+    redirect_uri: RETURN,
+    scope,
+    state: "partner-state",
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+    ...extra,
   });
   return { path: `/oauth/authorize?${query}`, verifier };
 }

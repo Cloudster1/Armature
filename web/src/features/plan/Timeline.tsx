@@ -14,18 +14,7 @@ import { AddCalendarRow, AddSidebarRow, type AddDraft, type Ghost } from "./AddR
 import { dragRange, isRealDrag, placementFor, type Placement } from "./create";
 import { decide, rowAt, type DropTarget } from "./reparent";
 import { LOAD_GROUP_KEY, barShare, describeLoad, describeWeek, loadRows, utilisation, weekCells, type Utilisation } from "./load";
-import {
-  NO_CUT,
-  NO_FILTERS,
-  cutItems,
-  filterItems,
-  flatten,
-  rowsFor,
-  type Cut,
-  type Filters,
-  type PlanView,
-  type Row,
-} from "./views";
+import { NO_CUT, NO_FILTERS, cutItems, filterItems, flatten, rowsFor, type Cut, type Filters, type PlanView, type Row } from "./views";
 import {
   EDGE_LINGER_MS,
   PLAN_DEFAULT_SPAN_DAYS,
@@ -36,24 +25,11 @@ import {
   PLAN_ROW_HEIGHT,
   PLAN_SIDEBAR_WIDTH,
 } from "@/config";
-import {
-  addDays,
-  applyDrag,
-  barFor,
-  day,
-  filled,
-  fitted,
-  daysBetween,
-  isoDay,
-  makeScale,
-  zoomFor,
-  type Zoom,
-} from "./scale";
+import { addDays, applyDrag, barFor, day, filled, fitted, daysBetween, isoDay, makeScale, zoomFor, type Zoom } from "./scale";
 import { TimelineHeader } from "./TimelineHeader";
 
 /** What the pane is assumed to measure before it has been measured. */
 const FALLBACK_PANE_WIDTH = 800;
-
 
 /** A drag in flight. The origin lives in a ref; only the preview re-renders. */
 interface DragOrigin {
@@ -69,9 +45,7 @@ interface DragOrigin {
  * dragged, on an unscheduled issue's row it schedules that issue. The anchor
  * is where the pointer went down, in canvas pixels.
  */
-type EmptyDrag =
-  | { kind: "create"; rowKey: string; anchorX: number; placement: Placement }
-  | { kind: "schedule"; key: string; anchorX: number };
+type EmptyDrag = { kind: "create"; rowKey: string; anchorX: number; placement: Placement } | { kind: "schedule"; key: string; anchorX: number };
 
 /** An empty drag before it has an anchor: Omit on its own would flatten the union. */
 type EmptyDragStart = EmptyDrag extends infer T ? (T extends EmptyDrag ? Omit<T, "anchorX"> : never) : never;
@@ -193,10 +167,7 @@ export function Timeline({
   }, [scroller, zoom.id, todayX]);
   // The cut applies to every view; the filters narrow the management view
   // only, and the sprint view shows each iteration's work as it is.
-  const cut = useMemo<Cut>(
-    () => ({ ...scope, matched: query && data ? new Set(data.matched) : null }),
-    [scope, query, data],
-  );
+  const cut = useMemo<Cut>(() => ({ ...scope, matched: query && data ? new Set(data.matched) : null }), [scope, query, data]);
   const shown = useMemo(() => {
     const kept = cutItems(data?.items ?? [], cut, new Date());
     return view === "management" ? filterItems(kept, filters) : kept;
@@ -204,10 +175,7 @@ export function Timeline({
   // The load rows close the management view: what each team is carrying per
   // week, under the work it is carrying.
   const rows = useMemo(
-    () => [
-      ...rowsFor(view, shown, data?.sprints ?? [], collapsed),
-      ...(view === "management" && data ? loadRows(data.load, filters, collapsed) : []),
-    ],
+    () => [...rowsFor(view, shown, data?.sprints ?? [], collapsed), ...(view === "management" && data ? loadRows(data.load, filters, collapsed) : [])],
     [view, shown, data, filters, collapsed],
   );
   const byKey = useMemo(() => new Map(flatten(data?.items ?? []).map((item) => [item.issue.key, item] as const)), [data?.items]);
@@ -236,11 +204,7 @@ export function Timeline({
     });
   }
 
-  function onPointerDown(
-    event: ReactPointerEvent<HTMLElement>,
-    item: PlanItem,
-    mode: DragOrigin["mode"],
-  ) {
+  function onPointerDown(event: ReactPointerEvent<HTMLElement>, item: PlanItem, mode: DragOrigin["mode"]) {
     if (locked || !item.start || !item.due) return;
     event.preventDefault();
     event.stopPropagation();
@@ -360,8 +324,7 @@ export function Timeline({
       setPreview(null);
       return;
     }
-    const moved =
-      daysBetween(origin.start, preview.start) !== 0 || daysBetween(origin.due, preview.due) !== 0;
+    const moved = daysBetween(origin.start, preview.start) !== 0 || daysBetween(origin.due, preview.due) !== 0;
     if (moved) {
       const later = daysBetween(origin.due, preview.due) > 0;
       schedule.mutate(
@@ -469,9 +432,7 @@ export function Timeline({
   // Sprints are the sprint view's business; the management view reads the
   // plan without them, so the same line is not drawn on two views at once.
   const showSprints = view === "sprints";
-  const warnings = showSprints
-    ? data.warnings.filter((w) => !w.team)
-    : data.warnings.filter((w) => !w.sprint && w.kind !== "outside-sprint");
+  const warnings = showSprints ? data.warnings.filter((w) => !w.team) : data.warnings.filter((w) => !w.sprint && w.kind !== "outside-sprint");
   // The sidebar's own header has to match the calendar's, bands included, or
   // the rows either side of the divider stop lining up.
   const headerHeight = headerLayout({
@@ -506,10 +467,7 @@ export function Timeline({
             onPointerUp={onSidebarPointerUp}
             onPointerCancel={onSidebarPointerUp}
           >
-            <div
-              className="relative flex items-end border-b border-border px-3 pb-1 text-xs font-medium text-ink-muted"
-              style={{ height: headerHeight }}
-            >
+            <div className="relative flex items-end border-b border-border px-3 pb-1 text-xs font-medium text-ink-muted" style={{ height: headerHeight }}>
               {view === "sprints" ? "Sprint and its work" : "Issue"}
               {lift && (
                 <span
@@ -575,11 +533,7 @@ export function Timeline({
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
               >
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-0 bottom-0 w-px bg-accent/50"
-                  style={{ left: todayX }}
-                />
+                <span aria-hidden="true" className="pointer-events-none absolute top-0 bottom-0 w-px bg-accent/50" style={{ left: todayX }} />
                 <MilestoneLines scale={scale} milestones={data.milestones} />
 
                 {rows.map((row, index) =>
@@ -689,9 +643,7 @@ function GroupSidebarRow({ row, onToggle }: { row: Extract<Row, { kind: "group" 
         className="text-ink-subtle"
       />
       <span className="min-w-0 truncate font-semibold text-ink">{row.label}</span>
-      {sprint?.state === "active" && (
-        <span className="rounded-full bg-accent-subtle px-1.5 text-2xs font-medium text-accent">Running</span>
-      )}
+      {sprint?.state === "active" && <span className="rounded-full bg-accent-subtle px-1.5 text-2xs font-medium text-accent">Running</span>}
       <span className="ml-auto shrink-0 text-xs text-ink-muted tabular-nums">
         {row.detail ?? `${row.count} ${row.count === 1 ? "issue" : "issues"}`}
         {row.sprint && `, ${describeSprint(row.sprint)}`}
@@ -739,10 +691,7 @@ function GroupBand({ row, top, scale }: { row: Extract<Row, { kind: "group" }>; 
 function LoadSidebarRow({ row }: { row: TeamLoad }) {
   return (
     <div
-      className={cx(
-        "flex items-center gap-1.5 border-b border-border/60 px-3 text-sm last:border-b-0",
-        row.kind === "total" && "font-semibold",
-      )}
+      className={cx("flex items-center gap-1.5 border-b border-border/60 px-3 text-sm last:border-b-0", row.kind === "total" && "font-semibold")}
       style={{ height: PLAN_ROW_HEIGHT, paddingLeft: PLAN_INDENT_PER_LEVEL * 2 }}
       data-plan-load-row={row.team}
     >
@@ -763,11 +712,7 @@ const loadTone: Record<Utilisation, string> = {
 function LoadRow({ row, top, scale }: { row: TeamLoad; top: number; scale: ReturnType<typeof makeScale> }) {
   const inner = PLAN_ROW_HEIGHT - 2 * PLAN_LOAD_CELL_INSET;
   return (
-    <div
-      className="absolute right-0 left-0 border-b border-border/60"
-      style={{ top, height: PLAN_ROW_HEIGHT }}
-      data-plan-load-cells={row.team}
-    >
+    <div className="absolute right-0 left-0 border-b border-border/60" style={{ top, height: PLAN_ROW_HEIGHT }} data-plan-load-cells={row.team}>
       {weekCells(scale, row).map((cell) => {
         const state = utilisation(cell.week.load, cell.week.capacity);
         const height = Math.round(inner * barShare(row, cell.week));
@@ -1027,7 +972,6 @@ function BarRow({
 
 const ARROW_INSET = 8;
 
-
 /** An arrow's elbow path, and where its control sits: the middle of the vertical leg. */
 export function arrowPath(fromX: number, fromY: number, toX: number, toY: number) {
   // The elbow steps clear of both bars before turning, so an arrow between
@@ -1167,9 +1111,7 @@ function WarningList({ warnings }: { warnings: PlanWarning[] }) {
 
   return (
     <section>
-      <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">
-        Where the plan disagrees with itself ({warnings.length})
-      </h2>
+      <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Where the plan disagrees with itself ({warnings.length})</h2>
       <ul className="space-y-1.5" data-testid="plan-warnings">
         {warnings.map((warning) => (
           <li
@@ -1178,13 +1120,12 @@ function WarningList({ warnings }: { warnings: PlanWarning[] }) {
             data-plan-warning-for={warning.issueKey ?? warning.sprint ?? warning.team}
             data-plan-severity={severityOf(warning.kind)}
           >
-            <Icon.Warning className={cx("size-3.5 shrink-0 self-center", severityOf(warning.kind) === "error" ? "text-danger" : "text-warning")} aria-hidden="true" />
+            <Icon.Warning
+              className={cx("size-3.5 shrink-0 self-center", severityOf(warning.kind) === "error" ? "text-danger" : "text-warning")}
+              aria-hidden="true"
+            />
             {warning.issueKey ? (
-              <Link
-                to="/issues/$issueKey"
-                params={{ issueKey: warning.issueKey }}
-                className="shrink-0 font-mono text-xs text-accent hover:underline"
-              >
+              <Link to="/issues/$issueKey" params={{ issueKey: warning.issueKey }} className="shrink-0 font-mono text-xs text-accent hover:underline">
                 {warning.issueKey}
               </Link>
             ) : (

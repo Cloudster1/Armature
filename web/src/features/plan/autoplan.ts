@@ -37,8 +37,12 @@ export function summarise(alignment: Alignment): string {
   const placed = alignment.moves.filter((move) => !move.from).length;
   const moved = alignment.moves.length - placed;
   const issues = (n: number) => `${n} issue${n === 1 ? "" : "s"}`;
-  const parts = [moved > 0 && `${issues(moved)} would move to start after the issues blocking them`, placed > 0 && `${issues(placed)} without dates would be placed`].filter(Boolean);
-  if (parts.length === 0) return alignment.unplaced.length > 0 ? "Nothing can be placed or needs to move." : "Every issue already starts after the issues blocking it.";
+  const parts = [
+    moved > 0 && `${issues(moved)} would move to start after the issues blocking them`,
+    placed > 0 && `${issues(placed)} without dates would be placed`,
+  ].filter(Boolean);
+  if (parts.length === 0)
+    return alignment.unplaced.length > 0 ? "Nothing can be placed or needs to move." : "Every issue already starts after the issues blocking it.";
   return `${parts.join(", and ")}. Nothing is saved until you apply.`.replace(/^./, (c) => c.toUpperCase());
 }
 

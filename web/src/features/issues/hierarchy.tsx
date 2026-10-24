@@ -1,15 +1,7 @@
 import { markdownToDoc } from "@/features/editor/markdown";
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  useCreateIssue,
-  useIssueHierarchy,
-  useIssueTypes,
-  useSetParent,
-  type Issue,
-  type Progress,
-  type TreeNode,
-} from "@/api/issues";
+import { useCreateIssue, useIssueHierarchy, useIssueTypes, useSetParent, type Issue, type Progress, type TreeNode } from "@/api/issues";
 import { useParentCandidates } from "@/api/issueReads";
 import { Button, ErrorBanner, Input, ProgressBar as Bar, SelectInput, Textarea, cx } from "@/components/ui";
 import { Avatar, StatusBadge, TypeBadge } from "./badges";
@@ -49,11 +41,7 @@ export function Ancestry({ ancestors }: { ancestors: Issue[] }) {
       {ancestors.map((ancestor) => (
         <span key={ancestor.id} className="flex items-center gap-1.5">
           <TypeBadge icon={ancestor.type.icon} name={ancestor.type.name} />
-          <Link
-            to="/issues/$issueKey"
-            params={{ issueKey: ancestor.key }}
-            className="text-ink-muted hover:text-accent hover:underline"
-          >
+          <Link to="/issues/$issueKey" params={{ issueKey: ancestor.key }} className="text-ink-muted hover:text-accent hover:underline">
             {ancestor.summary}
           </Link>
           <span aria-hidden="true" className="text-ink-subtle">
@@ -81,9 +69,7 @@ export function ChildrenPanel({ issueKey }: { issueKey: string }) {
   return (
     <section>
       <div className="mb-3 flex items-center gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
-          Child issues {data.children.length > 0 && `(${data.children.length})`}
-        </h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Child issues {data.children.length > 0 && `(${data.children.length})`}</h2>
         <ProgressBar progress={data.progress} className="max-w-56 flex-1" />
         <span className="flex-1" />
         {canHaveChildren && !adding && (
@@ -103,14 +89,7 @@ export function ChildrenPanel({ issueKey }: { issueKey: string }) {
         </ul>
       )}
 
-      {adding && (
-        <AddChildForm
-          parentKey={issueKey}
-          projectKey={data.issue.projectKey}
-          types={data.childTypes}
-          onDone={() => setAdding(false)}
-        />
-      )}
+      {adding && <AddChildForm parentKey={issueKey} projectKey={data.issue.projectKey} types={data.childTypes} onDone={() => setAdding(false)} />}
     </section>
   );
 }
@@ -120,18 +99,10 @@ function ChildRow({ node }: { node: TreeNode }) {
   return (
     <li className="flex items-center gap-3 px-3 py-2">
       <TypeBadge icon={issue.type.icon} name={issue.type.name} />
-      <Link
-        to="/issues/$issueKey"
-        params={{ issueKey: issue.key }}
-        className="shrink-0 font-mono text-2xs text-ink-muted hover:text-accent"
-      >
+      <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="shrink-0 font-mono text-2xs text-ink-muted hover:text-accent">
         {issue.key}
       </Link>
-      <Link
-        to="/issues/$issueKey"
-        params={{ issueKey: issue.key }}
-        className="min-w-0 flex-1 truncate text-sm text-ink hover:text-accent"
-      >
+      <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="min-w-0 flex-1 truncate text-sm text-ink hover:text-accent">
         {issue.summary}
       </Link>
       {progress.total > 0 && <ProgressBar progress={progress} className="w-32 shrink-0" />}
@@ -189,7 +160,15 @@ function AddChildForm({
         <label htmlFor="child-summary" className="sr-only">
           What needs doing
         </label>
-        <Input id="child-summary" value={summary} autoFocus onChange={(e) => setSummary(e.target.value)} placeholder="What needs doing?" controlSize="sm" className="min-w-0 flex-1" />
+        <Input
+          id="child-summary"
+          value={summary}
+          autoFocus
+          onChange={(e) => setSummary(e.target.value)}
+          placeholder="What needs doing?"
+          controlSize="sm"
+          className="min-w-0 flex-1"
+        />
         <Button type="submit" size="sm" loading={create.isPending} disabled={!summary.trim()}>
           Add
         </Button>
@@ -200,7 +179,13 @@ function AddChildForm({
       <label htmlFor="child-description" className="sr-only">
         Description
       </label>
-      <Textarea id="child-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Description, if a line is not enough. Optional." />
+      <Textarea
+        id="child-description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={2}
+        placeholder="Description, if a line is not enough. Optional."
+      />
     </form>
   );
 }
@@ -215,9 +200,7 @@ export function ParentPicker({ issue }: { issue: Issue }) {
   const { data: typeData } = useIssueTypes();
   // The server is asked for the level above by type, so a parent older than
   // any one page is still found by typing its name.
-  const levelAbove = (typeData?.issueTypes ?? [])
-    .filter((type) => type.level === issue.type.level + 1)
-    .map((type) => type.id);
+  const levelAbove = (typeData?.issueTypes ?? []).filter((type) => type.level === issue.type.level + 1).map((type) => type.id);
   const { data } = useParentCandidates(issue.projectKey, levelAbove, words.trim());
 
   const found = data?.issues ?? [];
@@ -261,11 +244,7 @@ export function ParentPicker({ issue }: { issue: Issue }) {
           </option>
         ))}
       </SelectInput>
-      {setParent.error && (
-        <span className="text-right text-2xs text-danger">
-          {(setParent.error as Error).message}
-        </span>
-      )}
+      {setParent.error && <span className="text-right text-2xs text-danger">{(setParent.error as Error).message}</span>}
     </span>
   );
 }

@@ -20,8 +20,12 @@ function List({ keys }: { keys: string[] }) {
         </button>
       ))}
       <output>{panel.current ?? "closed"}</output>
-      <button type="button" onClick={() => panel.step(1)}>next</button>
-      <button type="button" onClick={() => panel.step(-1)}>previous</button>
+      <button type="button" onClick={() => panel.step(1)}>
+        next
+      </button>
+      <button type="button" onClick={() => panel.step(-1)}>
+        previous
+      </button>
       <textarea aria-label="Comment" />
     </div>
   );
@@ -69,11 +73,13 @@ describe("IssueDrawerProvider", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "ALP-2" }));
     // The list was filtered and ALP-2 is no longer in it.
-    await act(async () => rerender(
-      <IssueDrawerProvider>
-        <List keys={["ALP-1", "ALP-3"]} />
-      </IssueDrawerProvider>,
-    ));
+    await act(async () =>
+      rerender(
+        <IssueDrawerProvider>
+          <List keys={["ALP-1", "ALP-3"]} />
+        </IssueDrawerProvider>,
+      ),
+    );
     expect(indexOf(["ALP-1", "ALP-3"], "ALP-2")).toBe(-1);
     await userEvent.click(screen.getByRole("button", { name: "next" }));
     expect(screen.getByRole("status")).toHaveTextContent("ALP-1");

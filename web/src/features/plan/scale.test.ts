@@ -154,12 +154,7 @@ describe("ticks", () => {
 
   it("labels quarters from January, not from the start of the window", () => {
     const year = makeScale(day("2026-02-01"), day("2026-12-31"), 2);
-    expect(quarterTicks(year).map((t) => t.label)).toEqual([
-      "Q1 2026",
-      "Q2 2026",
-      "Q3 2026",
-      "Q4 2026",
-    ]);
+    expect(quarterTicks(year).map((t) => t.label)).toEqual(["Q1 2026", "Q2 2026", "Q3 2026", "Q4 2026"]);
   });
 
   it("keeps the two header rows from saying the same thing twice", () => {
@@ -236,6 +231,11 @@ describe("holidayBands", () => {
   });
 
   it("leaves out the days off the calendar", () => {
-    expect(holidayBands(scale, [{ day: "2026-02-27", name: "Before", halfDay: false }, { day: "2026-04-01", name: "After", halfDay: false }])).toEqual([]);
+    expect(
+      holidayBands(scale, [
+        { day: "2026-02-27", name: "Before", halfDay: false },
+        { day: "2026-04-01", name: "After", halfDay: false },
+      ]),
+    ).toEqual([]);
   });
 });

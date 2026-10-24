@@ -5,9 +5,7 @@ import type { Issue, StatusCategory } from "@/api/issues";
 import type { Plan, PlanItem } from "@/api/plan";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, params }: { children: ReactNode; params?: { issueKey?: string } }) => (
-    <a href={`/issues/${params?.issueKey ?? ""}`}>{children}</a>
-  ),
+  Link: ({ children, params }: { children: ReactNode; params?: { issueKey?: string } }) => <a href={`/issues/${params?.issueKey ?? ""}`}>{children}</a>,
 }));
 
 const removeMutate = vi.fn();

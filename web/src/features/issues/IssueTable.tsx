@@ -46,7 +46,12 @@ export function IssueTable({
         <tr>
           {selecting && (
             <Th className="w-8">
-              <Checkbox label={<span className="sr-only">Select every issue on this page</span>} checked={allTicked} onChange={(e) => onSelect(e.target.checked ? new Set(issues.map((i) => i.key)) : new Set())} data-select-all />
+              <Checkbox
+                label={<span className="sr-only">Select every issue on this page</span>}
+                checked={allTicked}
+                onChange={(e) => onSelect(e.target.checked ? new Set(issues.map((i) => i.key)) : new Set())}
+                data-select-all
+              />
             </Th>
           )}
           <Th className="w-8" aria-label="Type" />
@@ -72,7 +77,12 @@ export function IssueTable({
           >
             {selecting && (
               <Td>
-                <Checkbox label={<span className="sr-only">Select {issue.key}</span>} checked={selected.has(issue.key)} onChange={(e) => toggle(issue.key, e.target.checked)} data-select-issue={issue.key} />
+                <Checkbox
+                  label={<span className="sr-only">Select {issue.key}</span>}
+                  checked={selected.has(issue.key)}
+                  onChange={(e) => toggle(issue.key, e.target.checked)}
+                  data-select-issue={issue.key}
+                />
               </Td>
             )}
             <Td>
@@ -80,22 +90,14 @@ export function IssueTable({
             </Td>
             <Td className="font-mono text-sm text-ink-muted">{issue.key}</Td>
             <Td className="max-w-0">
-              <Link
-                to="/issues/$issueKey"
-                params={{ issueKey: issue.key }}
-                className="block truncate text-ink group-hover:text-accent"
-              >
+              <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="block truncate text-ink group-hover:text-accent">
                 {issue.summary}
               </Link>
               <LabelChips labels={issue.labels ?? []} className="mt-0.5" />
             </Td>
             {showProject && (
               <Td>
-                <Link
-                  to="/projects/$projectKey"
-                  params={{ projectKey: issue.projectKey }}
-                  className="font-mono text-sm text-ink-muted hover:text-ink"
-                >
+                <Link to="/projects/$projectKey" params={{ projectKey: issue.projectKey }} className="font-mono text-sm text-ink-muted hover:text-ink">
                   {issue.projectKey}
                 </Link>
               </Td>
@@ -109,9 +111,17 @@ export function IssueTable({
             <Td>
               <Avatar name={issue.assignee?.name} src={issue.assignee?.avatarUrl} size="sm" />
             </Td>
-            <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums"><RelativeTime iso={issue.updatedAt} /></Td>
+            <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums">
+              <RelativeTime iso={issue.updatedAt} />
+            </Td>
             <Td className="text-right">
-              <IconButton icon={<Icon.ChevronRight />} label={`Open ${issue.key} beside the list`} size="sm" onClick={() => drawer.open(issue.key)} data-open-drawer={issue.key} />
+              <IconButton
+                icon={<Icon.ChevronRight />}
+                label={`Open ${issue.key} beside the list`}
+                size="sm"
+                onClick={() => drawer.open(issue.key)}
+                data-open-drawer={issue.key}
+              />
             </Td>
           </tr>
         ))}

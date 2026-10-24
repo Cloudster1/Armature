@@ -28,7 +28,15 @@ function issue(key: string, summary: string, start: string, due: string): Issue 
 }
 
 function item(key: string, summary: string, start: string, due: string): PlanItem {
-  return { issue: issue(key, summary, start, due), depth: 0, start, due, derived: false, progress: { total: 1, done: 0, inProgress: 0, todo: 1 }, children: [] } as unknown as PlanItem;
+  return {
+    issue: issue(key, summary, start, due),
+    depth: 0,
+    start,
+    due,
+    derived: false,
+    progress: { total: 1, done: 0, inProgress: 0, todo: 1 },
+    children: [],
+  } as unknown as PlanItem;
 }
 
 const plan = {

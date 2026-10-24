@@ -1,7 +1,24 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useMe } from "@/api/auth";
 import { useManagedUsers, useSetUserPassword, useUpdateUser, type ManagedUser } from "@/api/users";
-import { Button, Dialog, EmptyState, ErrorBanner, Field, IconButton, Menu, Pager, Select, Table, Tag, Td, Th, clampOffset, countOf, useToast } from "@/components/ui";
+import {
+  Button,
+  Dialog,
+  EmptyState,
+  ErrorBanner,
+  Field,
+  IconButton,
+  Menu,
+  Pager,
+  Select,
+  Table,
+  Tag,
+  Td,
+  Th,
+  clampOffset,
+  countOf,
+  useToast,
+} from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { WorkingWeekDialog } from "@/features/availability/WorkingWeek";
@@ -44,7 +61,11 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <PeopleSearch label="Find users" value={q} onChange={(text) => show({ q: text })} />
-      {data && <span className="text-sm text-ink-muted" data-users-total={data.total}>{countOf(data.total, "account")}</span>}
+      {data && (
+        <span className="text-sm text-ink-muted" data-users-total={data.total}>
+          {countOf(data.total, "account")}
+        </span>
+      )}
     </div>
   );
 
@@ -64,14 +85,26 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
   }
 
   async function switchOff(user: ManagedUser) {
-    if (await confirm({ noun: "account", verb: "Deactivate", body: `${user.name} can no longer sign in, and every session and token of theirs ends. What they wrote stays.` })) {
+    if (
+      await confirm({
+        noun: "account",
+        verb: "Deactivate",
+        body: `${user.name} can no longer sign in, and every session and token of theirs ends. What they wrote stays.`,
+      })
+    ) {
       update.mutate({ id: user.id, isActive: false }, { onSuccess: () => toast.success(`Deactivated ${user.name}`) });
     }
   }
 
   // For somebody who lost both the phone and the recovery codes; they sign in with the password alone after.
   async function turnOffSecondFactor(user: ManagedUser) {
-    if (await confirm({ noun: "two-step sign-in", verb: "Turn off", body: `${user.name} signs in with the password alone until they set it up again. Do this only when you are sure it is them asking.` })) {
+    if (
+      await confirm({
+        noun: "two-step sign-in",
+        verb: "Turn off",
+        body: `${user.name} signs in with the password alone until they set it up again. Do this only when you are sure it is them asking.`,
+      })
+    ) {
       removeFactor.mutate(user.id, { onSuccess: () => toast.success(`Turned off two-step sign-in for ${user.name}`) });
     }
   }
@@ -131,14 +164,51 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
                     )}
                     items={[
                       { label: "Rename", icon: <Icon.Edit />, disabled: locked, onSelect: () => setRenaming(user), attrs: { "data-action": "rename-user" } },
-                      { label: "Change role", icon: <Icon.Key />, disabled: locked || user.role === "owner", onSelect: () => setChangingRole(user), attrs: { "data-action": "change-role" } },
-                      { label: "Set password", icon: <Icon.Shield />, disabled: locked || user.signsInWith === "provider", onSelect: () => setSettingPassword(user), attrs: { "data-action": "set-password" } },
-                      { label: "Turn off two-step sign-in", icon: <Icon.Key />, disabled: locked || !user.secondFactor, onSelect: () => void turnOffSecondFactor(user), attrs: { "data-action": "remove-second-factor" } },
+                      {
+                        label: "Change role",
+                        icon: <Icon.Key />,
+                        disabled: locked || user.role === "owner",
+                        onSelect: () => setChangingRole(user),
+                        attrs: { "data-action": "change-role" },
+                      },
+                      {
+                        label: "Set password",
+                        icon: <Icon.Shield />,
+                        disabled: locked || user.signsInWith === "provider",
+                        onSelect: () => setSettingPassword(user),
+                        attrs: { "data-action": "set-password" },
+                      },
+                      {
+                        label: "Turn off two-step sign-in",
+                        icon: <Icon.Key />,
+                        disabled: locked || !user.secondFactor,
+                        onSelect: () => void turnOffSecondFactor(user),
+                        attrs: { "data-action": "remove-second-factor" },
+                      },
                       // Hours worked are not the account's, so a shared account's week is set here too; a customer has none.
-                      { label: "Working week", icon: <Icon.Calendar />, disabled: user.role === "customer", onSelect: () => setSettingWeek(user), attrs: { "data-action": "working-week" } },
+                      {
+                        label: "Working week",
+                        icon: <Icon.Calendar />,
+                        disabled: user.role === "customer",
+                        onSelect: () => setSettingWeek(user),
+                        attrs: { "data-action": "working-week" },
+                      },
                       user.isActive
-                        ? { label: "Deactivate", icon: <Icon.EyeOff />, danger: true, disabled: locked, onSelect: () => void switchOff(user), attrs: { "data-action": "deactivate-user" } }
-                        : { label: "Reactivate", icon: <Icon.Eye />, disabled: locked, onSelect: () => update.mutate({ id: user.id, isActive: true }, { onSuccess: () => toast.success(`Reactivated ${user.name}`) }), attrs: { "data-action": "reactivate-user" } },
+                        ? {
+                            label: "Deactivate",
+                            icon: <Icon.EyeOff />,
+                            danger: true,
+                            disabled: locked,
+                            onSelect: () => void switchOff(user),
+                            attrs: { "data-action": "deactivate-user" },
+                          }
+                        : {
+                            label: "Reactivate",
+                            icon: <Icon.Eye />,
+                            disabled: locked,
+                            onSelect: () => update.mutate({ id: user.id, isActive: true }, { onSuccess: () => toast.success(`Reactivated ${user.name}`) }),
+                            attrs: { "data-action": "reactivate-user" },
+                          },
                     ]}
                   />
                 </Td>
@@ -164,7 +234,15 @@ function RenameDialog({ user, onClose }: { user: ManagedUser; onClose: () => voi
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    update.mutate({ id: user.id, name: name.trim() }, { onSuccess: () => { toast.success(`Renamed to ${name.trim()}`); onClose(); } });
+    update.mutate(
+      { id: user.id, name: name.trim() },
+      {
+        onSuccess: () => {
+          toast.success(`Renamed to ${name.trim()}`);
+          onClose();
+        },
+      },
+    );
   }
   return (
     <Dialog open onClose={onClose} title={`Rename ${user.name}`} attrs={{ "data-rename-user": user.email }}>
@@ -190,10 +268,24 @@ function RoleDialog({ user, onClose }: { user: ManagedUser; onClose: () => void 
   const [role, setRole] = useState<"admin" | "member">(user.role === "admin" ? "admin" : "member");
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    update.mutate({ id: user.id, role }, { onSuccess: () => { toast.success(`${user.name} is now ${roleWords[role].toLowerCase()}`); onClose(); } });
+    update.mutate(
+      { id: user.id, role },
+      {
+        onSuccess: () => {
+          toast.success(`${user.name} is now ${roleWords[role].toLowerCase()}`);
+          onClose();
+        },
+      },
+    );
   }
   return (
-    <Dialog open onClose={onClose} title={`Change ${user.name}'s role`} description="An administrator holds every key to Armature; a member starts as a user in every project." attrs={{ "data-change-role": user.email }}>
+    <Dialog
+      open
+      onClose={onClose}
+      title={`Change ${user.name}'s role`}
+      description="An administrator holds every key to Armature; a member starts as a user in every project."
+      attrs={{ "data-change-role": user.email }}
+    >
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <Select label="New role" value={role} onChange={(e) => setRole(e.target.value as "admin" | "member")}>
           <option value="member">Member</option>
@@ -220,12 +312,34 @@ function PasswordDialog({ user, onClose }: { user: ManagedUser; onClose: () => v
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!password) return;
-    set.mutate({ id: user.id, password }, { onSuccess: () => { toast.success(`Set a new password for ${user.name}`); onClose(); } });
+    set.mutate(
+      { id: user.id, password },
+      {
+        onSuccess: () => {
+          toast.success(`Set a new password for ${user.name}`);
+          onClose();
+        },
+      },
+    );
   }
   return (
-    <Dialog open onClose={onClose} title={`Set a password for ${user.name}`} description="Every session they have ends. Tell them the password another way, and ask them to change it from their profile." attrs={{ "data-set-password": user.email }}>
+    <Dialog
+      open
+      onClose={onClose}
+      title={`Set a password for ${user.name}`}
+      description="Every session they have ends. Tell them the password another way, and ask them to change it from their profile."
+      attrs={{ "data-set-password": user.email }}
+    >
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <Field label="New password" type="password" autoComplete="new-password" autoFocus hint="At least 12 characters." value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Field
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          autoFocus
+          hint="At least 12 characters."
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
         {set.error && <ErrorBanner>{(set.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>

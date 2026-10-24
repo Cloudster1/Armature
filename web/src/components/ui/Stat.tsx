@@ -31,7 +31,9 @@ export function Stat({
         {value}
         {hint && <span className="ml-1 text-xs text-ink-subtle">{hint}</span>}
       </p>
-      {share !== undefined && <ProgressBar value={share * 100} label={`${label}: ${Math.round(share * 100)}%`} size="xs" className="mt-1" segments={[{ value: share * 100, tone }]} />}
+      {share !== undefined && (
+        <ProgressBar value={share * 100} label={`${label}: ${Math.round(share * 100)}%`} size="xs" className="mt-1" segments={[{ value: share * 100, tone }]} />
+      )}
     </div>
   );
 }

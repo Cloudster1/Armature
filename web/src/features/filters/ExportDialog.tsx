@@ -44,7 +44,13 @@ export function ExportDialog({
     >
       <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
         {EXPORT_COLUMNS.map((c) => (
-          <Checkbox key={c} label={c} checked={columns.includes(c)} onChange={(e) => setColumns(e.target.checked ? [...columns, c] : columns.filter((x) => x !== c))} data-export-column={c} />
+          <Checkbox
+            key={c}
+            label={c}
+            checked={columns.includes(c)}
+            onChange={(e) => setColumns(e.target.checked ? [...columns, c] : columns.filter((x) => x !== c))}
+            data-export-column={c}
+          />
         ))}
       </div>
     </Dialog>

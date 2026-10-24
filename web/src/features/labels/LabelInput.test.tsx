@@ -34,7 +34,17 @@ function serveLabels() {
   return asked;
 }
 
-function Harness({ start = [], mode = "many", create = true, onChange }: { start?: string[]; mode?: "many" | "one"; create?: boolean; onChange?: (names: string[], labels: LabelRef[]) => void }) {
+function Harness({
+  start = [],
+  mode = "many",
+  create = true,
+  onChange,
+}: {
+  start?: string[];
+  mode?: "many" | "one";
+  create?: boolean;
+  onChange?: (names: string[], labels: LabelRef[]) => void;
+}) {
   const [value, setValue] = useState(start);
   return (
     <LabelInput

@@ -65,10 +65,21 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/api/issues", async () => ({
   ...(await vi.importActual<typeof import("@/api/issues")>("@/api/issues")),
   useIssue: (key: string) => ({ data: { issue: issues[key] }, isLoading: false, error: null }),
-  useComments: nothing, useHistory: nothing, useTransitions: nothing, useIssueHierarchy: nothing,
-  useIssues: nothing, useStatuses: nothing, useWorklogs: nothing, useIssueTypes: nothing,
-  useAddComment: writes(sent.comment), useTransitionIssue: mutation, useUpdateIssue: writes(sent.update),
-  useSetParent: mutation, useCreateIssue: mutation, useLogWork: mutation, useDeleteWorklog: mutation,
+  useComments: nothing,
+  useHistory: nothing,
+  useTransitions: nothing,
+  useIssueHierarchy: nothing,
+  useIssues: nothing,
+  useStatuses: nothing,
+  useWorklogs: nothing,
+  useIssueTypes: nothing,
+  useAddComment: writes(sent.comment),
+  useTransitionIssue: mutation,
+  useUpdateIssue: writes(sent.update),
+  useSetParent: mutation,
+  useCreateIssue: mutation,
+  useLogWork: mutation,
+  useDeleteWorklog: mutation,
 }));
 
 vi.mock("@/api/people", () => ({ useMemberSearch: nothing, useFindMentionable: () => async () => [] }));
@@ -108,62 +119,86 @@ vi.mock("@/api/arrange", async () => ({
 
 vi.mock("@/api/desk", async () => ({
   ...(await vi.importActual<typeof import("@/api/desk")>("@/api/desk")),
-  useTimers: nothing, useCannedResponses: nothing, useAddNote: mutation, useRenderCanned: mutation,
+  useTimers: nothing,
+  useCannedResponses: nothing,
+  useAddNote: mutation,
+  useRenderCanned: mutation,
 }));
 
 vi.mock("@/api/plan", async () => ({
   ...(await vi.importActual<typeof import("@/api/plan")>("@/api/plan")),
-  useLinks: nothing, useLinkTypes: nothing, useSchedule: mutation, useAddLink: mutation, useRemoveLink: mutation,
+  useLinks: nothing,
+  useLinkTypes: nothing,
+  useSchedule: mutation,
+  useAddLink: mutation,
+  useRemoveLink: mutation,
 }));
 
 vi.mock("@/api/sprints", async () => ({
   ...(await vi.importActual<typeof import("@/api/sprints")>("@/api/sprints")),
-  useSprints: nothing, useSetIssueSprint: mutation, useSetEstimate: mutation,
+  useSprints: nothing,
+  useSetIssueSprint: mutation,
+  useSetEstimate: mutation,
 }));
 
 vi.mock("@/api/milestones", async () => ({
   ...(await vi.importActual<typeof import("@/api/milestones")>("@/api/milestones")),
-  useMilestones: nothing, useSetIssueMilestone: mutation,
+  useMilestones: nothing,
+  useSetIssueMilestone: mutation,
 }));
 
 vi.mock("@/api/versions", async () => ({
   ...(await vi.importActual<typeof import("@/api/versions")>("@/api/versions")),
-  useVersions: nothing, useComponents: nothing, useSetIssueVersions: mutation, useSetIssueComponents: mutation,
+  useVersions: nothing,
+  useComponents: nothing,
+  useSetIssueVersions: mutation,
+  useSetIssueComponents: mutation,
 }));
 
 vi.mock("@/api/teams", async () => ({
   ...(await vi.importActual<typeof import("@/api/teams")>("@/api/teams")),
-  useTeams: nothing, useSetIssueTeam: mutation,
+  useTeams: nothing,
+  useSetIssueTeam: mutation,
 }));
 
 vi.mock("@/api/labels", async () => ({
   ...(await vi.importActual<typeof import("@/api/labels")>("@/api/labels")),
-  useLabels: nothing, useLabelSearch: nothing, useSetIssueLabels: mutation,
+  useLabels: nothing,
+  useLabelSearch: nothing,
+  useSetIssueLabels: mutation,
 }));
 
 vi.mock("@/api/watchers", async () => ({
   ...(await vi.importActual<typeof import("@/api/watchers")>("@/api/watchers")),
-  useWatchers: nothing, useAddWatcher: mutation, useRemoveWatcher: mutation,
+  useWatchers: nothing,
+  useAddWatcher: mutation,
+  useRemoveWatcher: mutation,
 }));
 
 vi.mock("@/api/remoteLinks", async () => ({
   ...(await vi.importActual<typeof import("@/api/remoteLinks")>("@/api/remoteLinks")),
-  useRemoteLinks: nothing, useRemoveRemoteLink: mutation,
+  useRemoteLinks: nothing,
+  useRemoveRemoteLink: mutation,
 }));
 
 vi.mock("@/api/attachments", async () => ({
   ...(await vi.importActual<typeof import("@/api/attachments")>("@/api/attachments")),
-  useAttachments: nothing, useUploadAttachment: mutation, useDeleteAttachment: mutation,
+  useAttachments: nothing,
+  useUploadAttachment: mutation,
+  useDeleteAttachment: mutation,
 }));
 
 vi.mock("@/api/git", async () => ({
   ...(await vi.importActual<typeof import("@/api/git")>("@/api/git")),
-  useDevelopment: nothing, useRepositories: nothing, useCreateBranch: mutation,
+  useDevelopment: nothing,
+  useRepositories: nothing,
+  useCreateBranch: mutation,
 }));
 
 vi.mock("@/api/filters", async () => ({
   ...(await vi.importActual<typeof import("@/api/filters")>("@/api/filters")),
-  useCloneIssue: mutation, useMoveIssue: mutation,
+  useCloneIssue: mutation,
+  useMoveIssue: mutation,
 }));
 
 const { IssueDrawerProvider, useIssueDrawer, useIssueList } = await import("./IssueDrawer");
@@ -177,7 +212,9 @@ function List() {
   const panel = useIssueDrawer();
   return (
     <div data-issue-list="">
-      <button type="button" onClick={() => panel.open("CP-1")}>Open CP-1</button>
+      <button type="button" onClick={() => panel.open("CP-1")}>
+        Open CP-1
+      </button>
     </div>
   );
 }

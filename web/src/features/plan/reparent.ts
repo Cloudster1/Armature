@@ -7,9 +7,7 @@ import { flatten, type Row } from "./views";
 export type DropTarget = { kind: "row"; item: PlanItem } | { kind: "top" };
 
 /** What a drop would do, or why it would not. */
-export type Decision =
-  | { kind: "into" | "beside" | "top"; parentKey: string | null }
-  | { refused: string };
+export type Decision = { kind: "into" | "beside" | "top"; parentKey: string | null } | { refused: string };
 
 /** The issue row under a point, measured from the top of the first row; nothing off the rows. */
 export function rowAt(rows: Row[], y: number): DropTarget | null {

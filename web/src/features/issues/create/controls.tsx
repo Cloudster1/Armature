@@ -18,7 +18,19 @@ export function PersonSelect({ label, value, onPick, customers = false }: { labe
 }
 
 /** One of a list, or none of it. */
-export function OneOf({ label, options, value, onPick, none = "None" }: { label: string; options: Named[]; value: string; onPick: (id: string) => void; none?: string }) {
+export function OneOf({
+  label,
+  options,
+  value,
+  onPick,
+  none = "None",
+}: {
+  label: string;
+  options: Named[];
+  value: string;
+  onPick: (id: string) => void;
+  none?: string;
+}) {
   return (
     <Select label={label} value={value} onChange={(e) => onPick(e.target.value)}>
       <option value="">{none}</option>
@@ -43,7 +55,11 @@ export function ManyOf({ label, options, chosen, onChange }: { label: string; op
       </span>
       <div role="group" aria-labelledby={`${id}-label`} className="flex flex-wrap gap-1.5" data-pick-many={label}>
         {options.map((option) => (
-          <Chip key={option.id} pressed={chosen.includes(option.id)} onClick={() => onChange(chosen.includes(option.id) ? chosen.filter((each) => each !== option.id) : [...chosen, option.id])}>
+          <Chip
+            key={option.id}
+            pressed={chosen.includes(option.id)}
+            onClick={() => onChange(chosen.includes(option.id) ? chosen.filter((each) => each !== option.id) : [...chosen, option.id])}
+          >
             {option.name}
           </Chip>
         ))}
@@ -68,11 +84,7 @@ export function FieldAnswer({ field, answer, onAnswer }: { field: Field; answer:
 
   if (field.kind === "select") {
     return (
-      <Select
-        label={field.name}
-        value={typeof answer?.value === "string" ? answer.value : ""}
-        onChange={(e) => keep(e.target.value)}
-      >
+      <Select label={field.name} value={typeof answer?.value === "string" ? answer.value : ""} onChange={(e) => keep(e.target.value)}>
         <option value="">None</option>
         {field.options.map((option) => (
           <option key={option} value={option}>

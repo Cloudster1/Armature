@@ -131,7 +131,13 @@ describe("meter", () => {
 
 describe("rows", () => {
   const sprint = (id: string, name: string): SprintPlan =>
-    ({ sprint: { id, name, state: "active", projectId: "p", projectKey: "PR", position: 0, createdAt: "", updatedAt: "" }, committed: 8, completed: 3, issues: 2, unestimated: 0 }) as SprintPlan;
+    ({
+      sprint: { id, name, state: "active", projectId: "p", projectKey: "PR", position: 0, createdAt: "", updatedAt: "" },
+      committed: 8,
+      completed: 3,
+      issues: 2,
+      unestimated: 0,
+    }) as SprintPlan;
 
   it("walks the hierarchy and drops collapsed branches", () => {
     expect(hierarchyRows(items, new Set()).map((r) => r.key)).toEqual(["P-1", "P-2", "P-3", "P-4"]);
@@ -142,13 +148,7 @@ describe("rows", () => {
   // waiting. An epic that only holds committed stories is not waiting.
   it("groups the work by sprint with the backlog last, containers left out", () => {
     const rows = sprintRows(items, [sprint("s1", "Sprint 1")], new Set()).filter((r) => r.kind !== "add");
-    expect(rows.map((r) => (r.kind === "group" ? `[${r.label} ${r.count}]` : r.key))).toEqual([
-      "[Sprint 1 2]",
-      "P-2",
-      "P-3",
-      "[Backlog 1]",
-      "P-4",
-    ]);
+    expect(rows.map((r) => (r.kind === "group" ? `[${r.label} ${r.count}]` : r.key))).toEqual(["[Sprint 1 2]", "P-2", "P-3", "[Backlog 1]", "P-4"]);
     expect(rows.filter((r) => r.kind === "issue").every((r) => r.kind === "issue" && r.item.depth === 0)).toBe(true);
   });
 
@@ -176,7 +176,12 @@ describe("rows", () => {
     const sprint = { sprint: { id: "s1", name: "Sprint A", teamId: "t1" }, committed: 0, completed: 0, issues: 1, unestimated: 0 } as unknown as SprintPlan;
     const rows = rowsFor("sprints", [a1, b1], [sprint], new Set());
     expect(rows.map((r) => (r.kind === "group" ? `[${r.label}]` : r.kind === "add" ? `+${r.label}` : r.key))).toEqual([
-      "[Sprint A]", "PR-1", "+Sprint A", "[Backlog]", "PR-2", "+Backlog",
+      "[Sprint A]",
+      "PR-1",
+      "+Sprint A",
+      "[Backlog]",
+      "PR-2",
+      "+Backlog",
     ]);
     const folded = rowsFor("sprints", [a1, b1], [sprint], new Set(["sprint:s1"]));
     expect(folded.filter((r) => r.kind === "add")).toHaveLength(1);

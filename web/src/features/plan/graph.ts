@@ -77,7 +77,10 @@ export function layoutGraph(nodes: GraphNode[], edges: GraphEdge[], opts: { colu
     linked.add(e.to);
   }
 
-  const layer = layers(keys.filter((k) => linked.has(k)), forward);
+  const layer = layers(
+    keys.filter((k) => linked.has(k)),
+    forward,
+  );
   const rows = order(layer, forward);
 
   const rects = new Map<string, Rect>();

@@ -1,10 +1,6 @@
 import puppeteer from "puppeteer";
 import { AssertionError, DEFAULT_WORKERS, refusal, registeringFrom, run } from "./runner.mjs";
-import {
-  BASE_URL,
-  setUpAdministrator,
-  WAIT,
-} from "./helpers.mjs";
+import { BASE_URL, setUpAdministrator, WAIT } from "./helpers.mjs";
 
 // Each module registers its scenarios as it loads, in the order below, which is
 // the order they are queued in.

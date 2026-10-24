@@ -127,7 +127,12 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {schedule.error && <ErrorBanner>{(schedule.error as Error).message}</ErrorBanner>}
       {data?.month.truncated && <p className="text-sm text-ink-muted">More is dated this month than the calendar draws; the plan has all of it.</p>}
-      <div className="grid grid-cols-7 gap-px rounded-control border border-border bg-border text-xs" role="grid" aria-label={monthTitle(year, month, locale)} data-issue-list="">
+      <div
+        className="grid grid-cols-7 gap-px rounded-control border border-border bg-border text-xs"
+        role="grid"
+        aria-label={monthTitle(year, month, locale)}
+        data-issue-list=""
+      >
         {WEEKDAYS.map((d) => (
           <div key={d} className="bg-surface px-2 py-1 font-medium text-ink-muted" role="columnheader">
             {d}
@@ -157,7 +162,17 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
               </div>
               <ul className="space-y-0.5">
                 {onDay.shown.map((placed) => (
-                  <Item key={`${placed.item.kind}-${placed.item.id}`} placed={placed} day={cell.day} projectKey={projectKey} draggable={canWrite && placed.item.kind === "issue"} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onClick={onClick} />
+                  <Item
+                    key={`${placed.item.kind}-${placed.item.id}`}
+                    placed={placed}
+                    day={cell.day}
+                    projectKey={projectKey}
+                    draggable={canWrite && placed.item.kind === "issue"}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onClick={onClick}
+                  />
                 ))}
                 {onDay.more > 0 && <li className="px-1 text-ink-subtle" data-calendar-more={onDay.more}>{`+${onDay.more} more`}</li>}
               </ul>
@@ -190,7 +205,12 @@ function Item({
 }) {
   const { item, starts, ends } = placed;
   const label = labelOf(item);
-  const shape = cx("block truncate border px-1 py-0.5 leading-4", toneOf(item), starts ? "rounded-l" : "-ml-1 border-l-0", ends ? "rounded-r" : "-mr-1 border-r-0");
+  const shape = cx(
+    "block truncate border px-1 py-0.5 leading-4",
+    toneOf(item),
+    starts ? "rounded-l" : "-ml-1 border-l-0",
+    ends ? "rounded-r" : "-mr-1 border-r-0",
+  );
   const text = starts ? label : " ";
   return (
     <li

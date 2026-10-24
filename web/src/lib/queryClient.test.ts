@@ -73,9 +73,7 @@ describe("a session that ends while the app is open", () => {
     const client = createQueryClient(ended);
     client.setQueryData(meQueryKey, signedIn);
 
-    await Promise.all(
-      ["a", "b", "c"].map((key) => client.fetchQuery({ queryKey: ["issues", key], queryFn: refused(401) }).catch(() => {})),
-    );
+    await Promise.all(["a", "b", "c"].map((key) => client.fetchQuery({ queryKey: ["issues", key], queryFn: refused(401) }).catch(() => {})));
 
     expect(ended).toHaveBeenCalledTimes(1);
   });

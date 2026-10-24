@@ -41,8 +41,7 @@ export function useInvites() {
 export function useCreateInvite() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { email: string; role: InvitableRole }) =>
-      request<CreatedInvite>("/invites", { method: "POST", body: input }),
+    mutationFn: (input: { email: string; role: InvitableRole }) => request<CreatedInvite>("/invites", { method: "POST", body: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: invitesKey }),
   });
 }
@@ -50,8 +49,7 @@ export function useCreateInvite() {
 export function useWithdrawInvite() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      request<void>(`/invites/${id}`, { method: "DELETE" }),
+    mutationFn: (id: string) => request<void>(`/invites/${id}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: invitesKey }),
   });
 }

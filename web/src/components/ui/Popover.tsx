@@ -38,7 +38,14 @@ export function Popover({
       </div>
       {open &&
         createPortal(
-          <div ref={panelRef} role="dialog" aria-label={label} data-popover style={place} className={cx("fixed z-30 min-w-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-3 shadow-2", className)}>
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-label={label}
+            data-popover
+            style={place}
+            className={cx("fixed z-30 min-w-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-3 shadow-2", className)}
+          >
             {children}
           </div>,
           document.body,

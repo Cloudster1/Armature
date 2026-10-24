@@ -73,8 +73,8 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
       <div className="space-y-4 text-sm text-ink" data-consent={client.name} data-consent-pending={consent.pending ? "true" : "false"}>
         {consent.pending && (
           <p data-consent-approve>
-            <span className="font-semibold">{client.name}</span> at {consent.redirectHost} asks to be connected to Armature. Allowing it lets it ask anybody here to connect
-            their account, with at most these rights.
+            <span className="font-semibold">{client.name}</span> at {consent.redirectHost} asks to be connected to Armature. Allowing it lets it ask anybody
+            here to connect their account, with at most these rights.
           </p>
         )}
         <div>
@@ -103,7 +103,12 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
             </Button>
           )}
           {consent.mayCancel && (
-            <Button variant="ghost" loading={decide.isPending && decide.variables?.decision === "deny"} onClick={() => answer("deny")} data-action="consent-cancel">
+            <Button
+              variant="ghost"
+              loading={decide.isPending && decide.variables?.decision === "deny"}
+              onClick={() => answer("deny")}
+              data-action="consent-cancel"
+            >
               Cancel
             </Button>
           )}

@@ -69,14 +69,24 @@ export function QuickFilters({
               icon: person.id === UNASSIGNED ? undefined : <Avatar name={person.name} src={person.avatarUrl} size="sm" />,
             }))}
           />
-          <Pick name="Label" chosen={filter.labels} onChange={(labels) => onChange({ ...filter, labels })} values={options.labels.map((label) => ({ value: label.id, label: label.name }))} />
+          <Pick
+            name="Label"
+            chosen={filter.labels}
+            onChange={(labels) => onChange({ ...filter, labels })}
+            values={options.labels.map((label) => ({ value: label.id, label: label.name }))}
+          />
           <Pick
             name="Type"
             chosen={filter.types}
             onChange={(types) => onChange({ ...filter, types })}
             values={options.types.map((each) => ({ value: each.name, label: each.name, icon: <TypeBadge icon={each.icon} name={each.name} /> }))}
           />
-          <Pick name="Epic" chosen={filter.epics} onChange={(epics) => onChange({ ...filter, epics })} values={options.epics.map((epic) => ({ value: epic.key, label: epic.summary }))} />
+          <Pick
+            name="Epic"
+            chosen={filter.epics}
+            onChange={(epics) => onChange({ ...filter, epics })}
+            values={options.epics.map((epic) => ({ value: epic.key, label: epic.summary }))}
+          />
           <Input
             type="search"
             controlSize="sm"
@@ -93,7 +103,12 @@ export function QuickFilters({
           <>
             {leftOut && (
               <span className="text-xs text-ink-muted" data-done-left-out={leftOut.count}>
-                <Link to="/search" search={{ q: leftOut.query }} title={`Finished more than ${leftOut.days} day${leftOut.days === 1 ? "" : "s"} ago. Open them in search.`} className="hover:text-accent hover:underline">
+                <Link
+                  to="/search"
+                  search={{ q: leftOut.query }}
+                  title={`Finished more than ${leftOut.days} day${leftOut.days === 1 ? "" : "s"} ago. Open them in search.`}
+                  className="hover:text-accent hover:underline"
+                >
                   {leftOut.count} finished issue{leftOut.count === 1 ? "" : "s"} left out
                 </Link>
               </span>

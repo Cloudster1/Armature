@@ -36,7 +36,14 @@ export function WorkflowCards({ focused, q, offset, onShow, canConfigure }: Work
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <ListSearch aria-label="Find workflows" placeholder="Find by name" value={q} onChange={(text) => onShow({ q: text })} className="w-56" data-library-search="" />
+          <ListSearch
+            aria-label="Find workflows"
+            placeholder="Find by name"
+            value={q}
+            onChange={(text) => onShow({ q: text })}
+            className="w-56"
+            data-library-search=""
+          />
           {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, workflows.length, "workflow")}</span>}
         </div>
         {canConfigure && (
@@ -46,16 +53,39 @@ export function WorkflowCards({ focused, q, offset, onShow, canConfigure }: Work
         )}
       </div>
       {isLoading && <p className="text-sm text-ink-muted">Loading...</p>}
-      {data && workflows.length === 0 && q && <EmptyState icon={<Icon.Search />} title="No workflow matches that" description="Try part of its name, or clear the search." />}
+      {data && workflows.length === 0 && q && (
+        <EmptyState icon={<Icon.Search />} title="No workflow matches that" description="Try part of its name, or clear the search." />
+      )}
       {workflows.map((workflow) => (
-        <WorkflowCard key={workflow.id} workflow={workflow} highlighted={workflow.id === focused} canConfigure={canConfigure} schemeCount={schemeCount} statusCount={statusCount} />
+        <WorkflowCard
+          key={workflow.id}
+          workflow={workflow}
+          highlighted={workflow.id === focused}
+          canConfigure={canConfigure}
+          schemeCount={schemeCount}
+          statusCount={statusCount}
+        />
       ))}
-      {data && <Pager label="Workflow pages" total={data.total} offset={data.offset} pageSize={LIBRARY_PAGE_SIZE} onChange={(next) => onShow({ q, offset: next })} />}
+      {data && (
+        <Pager label="Workflow pages" total={data.total} offset={data.offset} pageSize={LIBRARY_PAGE_SIZE} onChange={(next) => onShow({ q, offset: next })} />
+      )}
     </section>
   );
 }
 
-function WorkflowCard({ workflow, highlighted, canConfigure, schemeCount, statusCount }: { workflow: WorkflowSummary; highlighted: boolean; canConfigure: boolean; schemeCount: number; statusCount: number }) {
+function WorkflowCard({
+  workflow,
+  highlighted,
+  canConfigure,
+  schemeCount,
+  statusCount,
+}: {
+  workflow: WorkflowSummary;
+  highlighted: boolean;
+  canConfigure: boolean;
+  schemeCount: number;
+  statusCount: number;
+}) {
   const copy = useCopyWorkflow();
   const remove = useDeleteWorkflow();
   const confirm = useConfirm();
@@ -75,8 +105,23 @@ function WorkflowCard({ workflow, highlighted, canConfigure, schemeCount, status
       actions={
         canConfigure ? (
           <>
-            <IconButton icon={<Icon.Edit />} label={`Edit ${workflow.name}`} size="sm" variant="ghost" data-action="edit" onClick={() => navigate({ to: "/settings/workflows/$workflowId/design", params: { workflowId: workflow.id } })} />
-            <IconButton icon={<Icon.Copy />} label={`Duplicate ${workflow.name}`} size="sm" variant="ghost" data-action="duplicate" aria-busy={copy.isPending} onClick={() => copy.mutate({ id: workflow.id, name: `${workflow.name} copy` })} />
+            <IconButton
+              icon={<Icon.Edit />}
+              label={`Edit ${workflow.name}`}
+              size="sm"
+              variant="ghost"
+              data-action="edit"
+              onClick={() => navigate({ to: "/settings/workflows/$workflowId/design", params: { workflowId: workflow.id } })}
+            />
+            <IconButton
+              icon={<Icon.Copy />}
+              label={`Duplicate ${workflow.name}`}
+              size="sm"
+              variant="ghost"
+              data-action="duplicate"
+              aria-busy={copy.isPending}
+              onClick={() => copy.mutate({ id: workflow.id, name: `${workflow.name} copy` })}
+            />
             {workflow.schemeCount === 0 && (
               <IconButton
                 icon={<Icon.Trash />}
@@ -85,7 +130,9 @@ function WorkflowCard({ workflow, highlighted, canConfigure, schemeCount, status
                 variant="ghost"
                 data-action="delete"
                 aria-busy={remove.isPending}
-                onClick={async () => (await confirm({ noun: "workflow", body: `${workflow.name} goes, if nothing still uses it.` })) && remove.mutate(workflow.id)}
+                onClick={async () =>
+                  (await confirm({ noun: "workflow", body: `${workflow.name} goes, if nothing still uses it.` })) && remove.mutate(workflow.id)
+                }
               />
             )}
           </>
@@ -104,7 +151,12 @@ function WorkflowCard({ workflow, highlighted, canConfigure, schemeCount, status
         <div className="flex shrink-0 gap-6">
           <Stat label="Statuses" value={workflow.stepCount} share={statusCount ? workflow.stepCount / statusCount : undefined} />
           <Stat label="Transitions" value={workflow.transitionCount} />
-          <Stat label="Schemes" value={workflow.inDefault ? "all" : workflow.schemeCount} share={schemeCount && !workflow.inDefault ? workflow.schemeCount / schemeCount : undefined} tone="done" />
+          <Stat
+            label="Schemes"
+            value={workflow.inDefault ? "all" : workflow.schemeCount}
+            share={schemeCount && !workflow.inDefault ? workflow.schemeCount / schemeCount : undefined}
+            tone="done"
+          />
         </div>
       </div>
       {error && <ErrorBanner>{error.message}</ErrorBanner>}

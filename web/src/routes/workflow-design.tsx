@@ -24,8 +24,7 @@ function DesignExistingPage() {
 
 function DesignerPage({ workflowId }: { workflowId?: string }) {
   const navigate = useNavigate();
-  const back = (saved?: Workflow) =>
-    navigate({ to: "/settings/workflows", search: { workflow: saved?.id, q: saved?.name } });
+  const back = (saved?: Workflow) => navigate({ to: "/settings/workflows", search: { workflow: saved?.id, q: saved?.name } });
 
   return (
     <div>

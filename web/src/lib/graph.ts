@@ -70,10 +70,7 @@ export function clipToRect(rect: Rect, towards: Point): Point {
   const dx = towards.x - c.x;
   const dy = towards.y - c.y;
   if (dx === 0 && dy === 0) return c;
-  const scale = Math.min(
-    dx === 0 ? Infinity : rect.width / 2 / Math.abs(dx),
-    dy === 0 ? Infinity : rect.height / 2 / Math.abs(dy),
-  );
+  const scale = Math.min(dx === 0 ? Infinity : rect.width / 2 / Math.abs(dx), dy === 0 ? Infinity : rect.height / 2 / Math.abs(dy));
   return { x: c.x + dx * scale, y: c.y + dy * scale };
 }
 

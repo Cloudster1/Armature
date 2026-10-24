@@ -6,7 +6,20 @@ import { scenario } from "../runner.mjs";
 import { expect, goto, openAccountMenu, openDrawer, openPalette, signUp, unique, WAIT, waitForApp, waitForPath, withViewport } from "../helpers.mjs";
 
 const PERSONAL = ["Your profile", "Notification settings", "Watching", "Themes", "Access tokens"];
-const SETTINGS = ["Installation", "Access", "Users", "Holidays", "Workflows", "Labels", "Automation", "Fields", "Issue view", "Connected apps", "Webhooks", "Audit log"];
+const SETTINGS = [
+  "Installation",
+  "Access",
+  "Users",
+  "Holidays",
+  "Workflows",
+  "Labels",
+  "Automation",
+  "Fields",
+  "Issue view",
+  "Connected apps",
+  "Webhooks",
+  "Audit log",
+];
 
 /** The words of the open avatar menu's entries, in order. */
 async function accountEntries(page) {
@@ -59,7 +72,10 @@ scenario("an administrator's avatar menu holds their pages, Settings and the way
   await waitForPath(page, "/projects");
 
   const offered = await paletteOffers(page, "audit");
-  expect.truthy(offered.some((o) => o.includes("Settings / Audit log")), `the palette reaches the audit log: ${offered.join(", ")}`);
+  expect.truthy(
+    offered.some((o) => o.includes("Settings / Audit log")),
+    `the palette reaches the audit log: ${offered.join(", ")}`,
+  );
 });
 
 scenario("a member sees no Settings in the avatar menu, the settings area or the palette", async ({ page }) => {
@@ -107,7 +123,8 @@ scenario("at phone width a drawer holds every group and closes on following a li
     expect.equal(await page.$('[data-sidebar="open"], [data-sidebar="rail"]'), null, "and so does the sidebar");
 
     await openDrawer(page);
-    for (const group of ["work", "project"]) expect.truthy(await page.$(`[data-sidebar="drawer"] [data-sidebar-group="${group}"]`), `the drawer holds the ${group} group`);
+    for (const group of ["work", "project"])
+      expect.truthy(await page.$(`[data-sidebar="drawer"] [data-sidebar-group="${group}"]`), `the drawer holds the ${group} group`);
     const foot = await page.$eval("[data-drawer-foot]", (el) => el.innerText);
     for (const word of [...PERSONAL, "Settings", "Sign out"]) expect.contains(foot, word, `the drawer's foot offers ${word}`);
     expect.truthy(await page.$('[data-drawer-foot] [data-action="theme"]'), "and the theme switch");

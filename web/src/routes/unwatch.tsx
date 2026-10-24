@@ -14,8 +14,7 @@ import { Button, ErrorBanner } from "@/components/ui";
 export const unwatchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/unwatch",
-  validateSearch: (search: Record<string, unknown>): { token?: string } =>
-    typeof search.token === "string" ? { token: search.token } : {},
+  validateSearch: (search: Record<string, unknown>): { token?: string } => (typeof search.token === "string" ? { token: search.token } : {}),
   component: UnwatchPage,
 });
 
@@ -41,7 +40,12 @@ function UnwatchPage() {
         <div className="space-y-4">
           <p className="text-sm text-ink-muted">Somebody added you to follow a request. Press the button and the mails stop.</p>
           {unwatch.error && <ErrorBanner>{(unwatch.error as Error).message}</ErrorBanner>}
-          <Button className="w-full" loading={unwatch.isPending} disabled={!token} onClick={() => token && unwatch.mutate(token, { onSuccess: () => setDone(true) })}>
+          <Button
+            className="w-full"
+            loading={unwatch.isPending}
+            disabled={!token}
+            onClick={() => token && unwatch.mutate(token, { onSuccess: () => setDone(true) })}
+          >
             Stop following
           </Button>
         </div>

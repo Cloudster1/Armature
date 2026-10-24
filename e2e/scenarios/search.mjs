@@ -96,8 +96,7 @@ const PAGER = 'nav[aria-label="Issue pages"]';
 async function showsRange(page, range, rows) {
   await page.waitForFunction(
     (pager, want, count) =>
-      document.querySelector(`${pager} [data-page-range]`)?.textContent.trim() === want &&
-      document.querySelectorAll("[data-issue-row]").length === count,
+      document.querySelector(`${pager} [data-page-range]`)?.textContent.trim() === want && document.querySelectorAll("[data-issue-row]").length === count,
     { timeout: WAIT },
     PAGER,
     range,
@@ -122,19 +121,23 @@ scenario("search and the project's issue list page past the first hundred", asyn
   await goto(page, `/projects/${key}`);
 
   // Filed through the API: two hundred trips through the dialog would test the dialog.
-  const filed = await page.evaluate(async (projectKey, count) => {
-    let made = 0;
-    for (let i = 0; i < count; i += 1) {
-      const response = await fetch(`/api/v1/projects/${projectKey}/issues`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary: `listed work ${i}` }),
-      });
-      if (response.ok) made += 1;
-    }
-    return made;
-  }, key, PAST_TWO_PAGES);
+  const filed = await page.evaluate(
+    async (projectKey, count) => {
+      let made = 0;
+      for (let i = 0; i < count; i += 1) {
+        const response = await fetch(`/api/v1/projects/${projectKey}/issues`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ summary: `listed work ${i}` }),
+        });
+        if (response.ok) made += 1;
+      }
+      return made;
+    },
+    key,
+    PAST_TWO_PAGES,
+  );
   expect.equal(filed, PAST_TWO_PAGES, "the work was filed");
 
   // The project's list says how much of the whole it shows, and pages to the rest.
@@ -153,7 +156,11 @@ scenario("search and the project's issue list page past the first hundred", asyn
   // Search pages the same result, and a selection covers only the page it was made on.
   await goto(page, `/search?q=${encodeURIComponent(`project = ${key}`)}`);
   await showsRange(page, "1 to 100 of 205", 100);
-  expect.equal(await page.$eval('[data-testid="search-count"]', (el) => el.textContent.trim()), "1 to 100 of 205 issues", "the count says which of the result is shown");
+  expect.equal(
+    await page.$eval('[data-testid="search-count"]', (el) => el.textContent.trim()),
+    "1 to 100 of 205 issues",
+    "the count says which of the result is shown",
+  );
   await nextPage(page);
   await showsRange(page, "101 to 200 of 205", 100);
   expect.equal(new URL(page.url()).searchParams.get("offset"), "100", "the page is in the address");

@@ -31,10 +31,7 @@ scenario("a project made from the Scrum template shows only the running sprint",
 
   // Nothing is running, so the board says so instead of drawing empty columns.
   await goto(page, `/projects/${key}/board`);
-  await page.waitForFunction(
-    () => document.body.innerText.includes("No sprint is running"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("No sprint is running"), { timeout: WAIT });
   expect.contains(await bodyText(page), "Scrum", "the board says what kind it is");
 
   await createSprint(page, key, "Sprint 1");
@@ -43,10 +40,7 @@ scenario("a project made from the Scrum template shows only the running sprint",
 
   // Committed is not running: the board is still empty until the sprint starts.
   await goto(page, `/projects/${key}/board`);
-  await page.waitForFunction(
-    () => document.body.innerText.includes("No sprint is running"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("No sprint is running"), { timeout: WAIT });
 
   await startSprint(page, key, "Sprint 1");
 
@@ -109,10 +103,7 @@ scenario("the Task tracking template gives a project a simple workflow of its ow
 
   // The workflow is the project's own, and the settings page says where from.
   await goto(page, `/projects/${key}/workflows`);
-  await page.waitForFunction(
-    () => document.body.innerText.includes("Simple task workflow"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("Simple task workflow"), { timeout: WAIT });
   expect.contains(await bodyText(page), "Task tracking workflows", "the scheme the template brought");
 
   await openProjectRow(page, key);

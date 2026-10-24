@@ -43,9 +43,7 @@ export function ScheduleField({ issue }: { issue: Issue }) {
           Clear dates
         </Button>
       )}
-      {schedule.error && (
-        <span className="text-right text-2xs text-danger">{(schedule.error as Error).message}</span>
-      )}
+      {schedule.error && <span className="text-right text-2xs text-danger">{(schedule.error as Error).message}</span>}
     </span>
   );
 }

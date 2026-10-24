@@ -68,10 +68,7 @@ scenario("a project overrides one issue type and inherits the rest", async ({ pa
   await goto(page, `/projects/${key}/workflows`);
   await pickBySearch(page, "#project-scheme", triageScheme);
   await clickButton(page, "Use this scheme");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("This project uses its own scheme"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
 
   const rows = await assignmentRows(page, key);
   expect.contains(rows.Bug, triage, "bugs use the project's workflow");
@@ -158,10 +155,7 @@ scenario("a project administrator picks a workflow for one issue type without dr
 
   // Handing the last type back leaves nothing of the project's own behind.
   await assignWorkflow(page, key, "Bug", "Follow the default");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("This project follows the default"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("This project follows the default"), { timeout: WAIT });
 });
 
 scenario("a project can hand the decision back to the default", async ({ page }) => {
@@ -177,16 +171,10 @@ scenario("a project can hand the decision back to the default", async ({ page })
   await goto(page, `/projects/${key}/workflows`);
   await pickBySearch(page, "#project-scheme", leanScheme);
   await clickButton(page, "Use this scheme");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("This project uses its own scheme"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
 
   await clickButton(page, "Follow the default");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("This project follows the default"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("This project follows the default"), { timeout: WAIT });
 
   const rows = await assignmentRows(page, key);
   expect.contains(rows.Bug, "All projects", "bugs follow the default again");
@@ -208,10 +196,9 @@ scenario("a workflow that could not work is refused with a reason", async ({ pag
   // The designer says so first, and the server says so when asked anyway.
   expect.contains(await bodyText(page), "Every transition needs a name", "the designer warns before the round trip");
   await clickButton(page, "Create workflow");
-  await page.waitForFunction(
-    () => [...document.querySelectorAll('[role="alert"]')].some((el) => /every transition needs a name/i.test(el.textContent)),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => [...document.querySelectorAll('[role="alert"]')].some((el) => /every transition needs a name/i.test(el.textContent)), {
+    timeout: WAIT,
+  });
 });
 
 scenario("a workflow drawn on the canvas comes back as it was left, rules included", async ({ page }) => {
@@ -272,17 +259,11 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   await goto(page, `/projects/${key}/workflows`);
   await pickBySearch(page, "#project-scheme", drawnScheme);
   await clickButton(page, "Use this scheme");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("This project uses its own scheme"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
   const issueKey = await createIssue(page, key, "needs a word first", { type: "Bug", visit: false });
   await goto(page, `/issues/${issueKey}`);
   await clickButton(page, "Start");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("This transition needs a comment."),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("This transition needs a comment."), { timeout: WAIT });
 });
 
 scenario("deleting a scheme a project uses is refused and says which", async ({ page }) => {
@@ -298,10 +279,7 @@ scenario("deleting a scheme a project uses is refused and says which", async ({ 
   await goto(page, `/projects/${key}/workflows`);
   await pickBySearch(page, "#project-scheme", leanScheme);
   await clickButton(page, "Use this scheme");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("This project uses its own scheme"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
 
   await deleteScheme(page, leanScheme);
   await page.waitForFunction((k) => document.body.innerText.includes(`${k} still uses it`), { timeout: WAIT }, key);

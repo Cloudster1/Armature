@@ -51,13 +51,17 @@ describe("compiling a theme", () => {
   it("replaces an icon by masking the glyph with the file, or with path data drawn inline", () => {
     const css = themed({ icons: { home: { assetId: file }, search: { paths: ["M2 2h12"] } } });
     expect(css).toContain('svg[data-icon="home"] > path {\n  display: none;');
-    expect(css).toContain(`svg[data-icon="home"] {\n  background-color: currentColor;\n  -webkit-mask: url("${themeAssetURL(id, file)}") center / contain no-repeat;`);
+    expect(css).toContain(
+      `svg[data-icon="home"] {\n  background-color: currentColor;\n  -webkit-mask: url("${themeAssetURL(id, file)}") center / contain no-repeat;`,
+    );
     expect(css).toContain(`svg[data-icon="search"] {\n  background-color: currentColor;\n  -webkit-mask: url("${pathsAsImage(["M2 2h12"])}")`);
     expect(pathsAsImage(["M2 2h12"])).toMatch(/^data:image\/svg\+xml,/);
   });
 
   it("draws the backdrop as a picture, covering or tiled", () => {
-    expect(themed({ backdrop: { assetId: file, fit: "cover" } })).toContain(`.bg-backdrop {\n  background: url("${themeAssetURL(id, file)}") center / cover no-repeat;`);
+    expect(themed({ backdrop: { assetId: file, fit: "cover" } })).toContain(
+      `.bg-backdrop {\n  background: url("${themeAssetURL(id, file)}") center / cover no-repeat;`,
+    );
     expect(themed({ backdrop: { assetId: file, fit: "tile" } })).toContain(`.bg-backdrop {\n  background: url("${themeAssetURL(id, file)}") repeat;`);
   });
 

@@ -5,8 +5,38 @@ import { appRoute } from "./app";
 import { useMe } from "@/api/auth";
 import { formatSize, useUploadAttachment, useUploadLimit } from "@/api/attachments";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
-import { useDesks, useFollow, useMyRequests, usePortalArticle, usePortalArticles, useRaiseRequest, useReply, useRequest, useRequestWatchers, useUnfollow, type PortalRequest, type RequestType } from "@/api/desk";
-import { Button, Card, Checkbox, EmptyState, ErrorBanner, Field, Input, OptionCard, Page, PageHeader, SectionTitle, Select, Table, Td, Th, Textarea } from "@/components/ui";
+import {
+  useDesks,
+  useFollow,
+  useMyRequests,
+  usePortalArticle,
+  usePortalArticles,
+  useRaiseRequest,
+  useReply,
+  useRequest,
+  useRequestWatchers,
+  useUnfollow,
+  type PortalRequest,
+  type RequestType,
+} from "@/api/desk";
+import {
+  Button,
+  Card,
+  Checkbox,
+  EmptyState,
+  ErrorBanner,
+  Field,
+  Input,
+  OptionCard,
+  Page,
+  PageHeader,
+  SectionTitle,
+  Select,
+  Table,
+  Td,
+  Th,
+  Textarea,
+} from "@/components/ui";
 import { Avatar, StatusBadge, RelativeTime } from "@/features/issues/badges";
 import { groupByCategory, prefillDetails } from "@/features/desk/templates";
 import { sharedByCompany } from "@/features/desk/company";
@@ -49,12 +79,25 @@ function ArticleSearch({ projectKey }: { projectKey: string | undefined }) {
   if (!projectKey || (articles.length === 0 && !query)) return null;
   return (
     <div className="space-y-2" data-article-search>
-      <Field label="Is it one of these?" id="field-article-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="A word or two about it" hint="What the desk has written down; it may answer you now." />
+      <Field
+        label="Is it one of these?"
+        id="field-article-search"
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="A word or two about it"
+        hint="What the desk has written down; it may answer you now."
+      />
       {articles.length > 0 ? (
         <ul className="grid gap-2 sm:grid-cols-2">
           {articles.map((a) => (
             <li key={a.id}>
-              <Link to="/portal/articles/$articleId" params={{ articleId: a.id }} className="block rounded-control border border-border p-3 hover:bg-surface-raised" data-article={a.title}>
+              <Link
+                to="/portal/articles/$articleId"
+                params={{ articleId: a.id }}
+                className="block rounded-control border border-border p-3 hover:bg-surface-raised"
+                data-article={a.title}
+              >
                 <span className="block text-sm font-medium text-ink">{a.title}</span>
                 <span className="block truncate text-xs text-ink-muted">{a.body.slice(0, 100)}</span>
               </Link>
@@ -113,10 +156,7 @@ function MyRequests() {
         title={desk ? `Your requests at ${desk}` : "Your requests"}
         meta={data ? `${requests.length} request${requests.length === 1 ? "" : "s"}` : undefined}
         actions={
-          <Link
-            to="/portal/new"
-            className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm font-medium text-on-primary hover:bg-primary-hover"
-          >
+          <Link to="/portal/new" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm font-medium text-on-primary hover:bg-primary-hover">
             Raise a request
           </Link>
         }
@@ -172,7 +212,9 @@ function RequestTable({ requests, showReporter = false }: { requests: PortalRequ
             <Td>
               <StatusBadge name={r.status.name} category={r.status.category} />
             </Td>
-            <Td className="text-right text-sm whitespace-nowrap text-ink-subtle"><RelativeTime iso={r.updatedAt} /></Td>
+            <Td className="text-right text-sm whitespace-nowrap text-ink-subtle">
+              <RelativeTime iso={r.updatedAt} />
+            </Td>
           </tr>
         ))}
       </tbody>
@@ -305,12 +347,17 @@ function RaiseRequest() {
               <div role="radiogroup" aria-label="Request type" className="space-y-3">
                 {groups.map((group) => (
                   <div key={group.name} data-request-category={group.name}>
-                    {groups.length > 1 && (
-                      <p className="mb-1.5 text-xs font-medium tracking-wide text-ink-subtle uppercase">{group.name}</p>
-                    )}
+                    {groups.length > 1 && <p className="mb-1.5 text-xs font-medium tracking-wide text-ink-subtle uppercase">{group.name}</p>}
                     <div className="grid gap-2 sm:grid-cols-3">
                       {group.types.map((t: RequestType) => (
-                        <OptionCard key={t.id} checked={t.id === chosen?.id} data-request-type={t.name} onSelect={() => setTypeId(t.id)} title={t.name} description={t.description || undefined} />
+                        <OptionCard
+                          key={t.id}
+                          checked={t.id === chosen?.id}
+                          data-request-type={t.name}
+                          onSelect={() => setTypeId(t.id)}
+                          title={t.name}
+                          description={t.description || undefined}
+                        />
                       ))}
                     </div>
                   </div>
@@ -318,14 +365,7 @@ function RaiseRequest() {
               </div>
             </fieldset>
 
-            <Field
-              label="Summary"
-              required
-              autoFocus
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              placeholder="What do you need?"
-            />
+            <Field label="Summary" required autoFocus value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="What do you need?" />
             <Field
               label="Details"
               id="portal-description"
@@ -337,7 +377,12 @@ function RaiseRequest() {
 
             {desk?.company && (
               <div>
-                <Checkbox label={`Share with ${desk.company.name}`} checked={share} onChange={(e) => setShare(e.target.checked)} data-share-with-company={desk.company.name} />
+                <Checkbox
+                  label={`Share with ${desk.company.name}`}
+                  checked={share}
+                  onChange={(e) => setShare(e.target.checked)}
+                  data-share-with-company={desk.company.name}
+                />
                 <p className="mt-1 text-xs text-ink-subtle">Your colleagues there can then read it, reply and add files. Nobody else sees it.</p>
               </div>
             )}
@@ -357,7 +402,13 @@ function RaiseRequest() {
                     <li key={f.name} className="flex items-center gap-3 px-3 py-1.5 text-sm" data-attach-queued-file={f.name}>
                       <span className="min-w-0 flex-1 truncate text-ink">{f.name}</span>
                       <span className="text-ink-subtle tabular-nums">{formatSize(f.size)}</span>
-                      <Button type="button" size="sm" variant="ghost" aria-label={`Do not attach ${f.name}`} onClick={() => setFiles((current) => current.filter((c) => c !== f))}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Do not attach ${f.name}`}
+                        onClick={() => setFiles((current) => current.filter((c) => c !== f))}
+                      >
                         Remove
                       </Button>
                     </li>
@@ -368,7 +419,8 @@ function RaiseRequest() {
 
             {failed ? (
               <ErrorBanner>
-                Your request {failed.key} was sent, but {failed.names.length === 1 ? "one file" : `${failed.names.length} files`} could not be attached: {failed.names.join(", ")}.{" "}
+                Your request {failed.key} was sent, but {failed.names.length === 1 ? "one file" : `${failed.names.length} files`} could not be attached:{" "}
+                {failed.names.join(", ")}.{" "}
                 <Link to="/portal/requests/$issueKey" params={{ issueKey: failed.key }} className="underline">
                   Open the request
                 </Link>{" "}
@@ -540,7 +592,11 @@ function Followers({ issueKey, reporterId }: { issueKey: string; reporterId?: st
               <Avatar name={w.name} size="sm" />
               <span className="min-w-0 flex-1 truncate text-ink">{w.email ?? w.name}</span>
               {(mine || w.userId === me) && (
-                <Button variant="link" className="text-xs text-ink-subtle hover:text-danger" onClick={() => unfollow.mutate({ key: issueKey, userId: w.userId })}>
+                <Button
+                  variant="link"
+                  className="text-xs text-ink-subtle hover:text-danger"
+                  onClick={() => unfollow.mutate({ key: issueKey, userId: w.userId })}
+                >
                   {w.userId === me ? "Stop following" : "Remove"}
                 </Button>
               )}

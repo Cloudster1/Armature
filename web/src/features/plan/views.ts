@@ -220,10 +220,20 @@ export function sprintRows(items: PlanItem[], sprints: SprintPlan[], collapsed: 
     }
   };
   for (const plan of sprints) {
-    group(`sprint:${plan.sprint.id}`, plan.sprint.name, plan, all.filter((item) => item.issue.sprintId === plan.sprint.id));
+    group(
+      `sprint:${plan.sprint.id}`,
+      plan.sprint.name,
+      plan,
+      all.filter((item) => item.issue.sprintId === plan.sprint.id),
+    );
   }
   const known = new Set(sprints.map((plan) => plan.sprint.id));
-  group(BACKLOG_KEY, "Backlog", null, all.filter((item) => !item.issue.sprintId || !known.has(item.issue.sprintId)));
+  group(
+    BACKLOG_KEY,
+    "Backlog",
+    null,
+    all.filter((item) => !item.issue.sprintId || !known.has(item.issue.sprintId)),
+  );
   return out;
 }
 

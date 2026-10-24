@@ -3,7 +3,16 @@ import { chipFilters, orderFilters } from "./SavedFilterBar";
 import type { SavedFilter } from "@/api/filters";
 
 const f = (name: string, ownerId: string, starred: boolean): SavedFilter => ({
-  id: name, ownerId, ownerName: "", name, query: "x", shared: true, columns: [], starred, createdAt: "", updatedAt: "",
+  id: name,
+  ownerId,
+  ownerName: "",
+  name,
+  query: "x",
+  shared: true,
+  columns: [],
+  starred,
+  createdAt: "",
+  updatedAt: "",
 });
 
 describe("orderFilters", () => {

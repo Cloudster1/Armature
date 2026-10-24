@@ -49,11 +49,7 @@ scenario("an administrator makes a local user who can sign in, then resets and s
   await press(page, `[data-user="${who.email}"] [data-action="user-menu"]`);
   await press(page, '[data-action="deactivate-user"]');
   await confirm(page);
-  await page.waitForFunction(
-    (e) => document.querySelector(`[data-user="${e}"]`)?.getAttribute("data-user-active") === "false",
-    { timeout: WAIT },
-    who.email,
-  );
+  await page.waitForFunction((e) => document.querySelector(`[data-user="${e}"]`)?.getAttribute("data-user-active") === "false", { timeout: WAIT }, who.email);
 
   await signInThroughForm(page, who.email, reset);
   await page.waitForSelector("[role=alert]", { timeout: WAIT });

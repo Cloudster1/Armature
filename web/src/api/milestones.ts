@@ -71,10 +71,7 @@ export const milestonesQueryKey = ["milestones"] as const;
 export function useMilestones(projectKey: string, includeClosed = false) {
   return useQuery({
     queryKey: [...milestonesQueryKey, projectKey, { includeClosed }],
-    queryFn: () =>
-      request<{ milestones: Milestone[] }>(
-        `/projects/${projectKey}/milestones${includeClosed ? "?closed=true" : ""}`,
-      ),
+    queryFn: () => request<{ milestones: Milestone[] }>(`/projects/${projectKey}/milestones${includeClosed ? "?closed=true" : ""}`),
     enabled: Boolean(projectKey),
   });
 }
@@ -108,15 +105,11 @@ export function useUpdateMilestone() {
 }
 
 export function useCloseMilestone() {
-  return useMilestoneMutation((id: string) =>
-    request<{ milestone: Milestone }>(`/milestones/${id}/close`, { method: "POST", body: {} }),
-  );
+  return useMilestoneMutation((id: string) => request<{ milestone: Milestone }>(`/milestones/${id}/close`, { method: "POST", body: {} }));
 }
 
 export function useReopenMilestone() {
-  return useMilestoneMutation((id: string) =>
-    request<{ milestone: Milestone }>(`/milestones/${id}/reopen`, { method: "POST", body: {} }),
-  );
+  return useMilestoneMutation((id: string) => request<{ milestone: Milestone }>(`/milestones/${id}/reopen`, { method: "POST", body: {} }));
 }
 
 export function useDeleteMilestone() {

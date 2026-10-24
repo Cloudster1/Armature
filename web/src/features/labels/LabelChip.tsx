@@ -16,27 +16,21 @@ export const LABEL_CLASSES: Record<LabelColor, string> = {
 };
 
 /** One label, as a coloured word. */
-export function LabelChip({
-  label,
-  onRemove,
-  className,
-}: {
-  label: Pick<LabelRef, "name" | "color">;
-  onRemove?: () => void;
-  className?: string;
-}) {
+export function LabelChip({ label, onRemove, className }: { label: Pick<LabelRef, "name" | "color">; onRemove?: () => void; className?: string }) {
   return (
     <span
       data-label={label.name}
-      className={cx(
-        "inline-flex items-center gap-1 rounded px-1.5 py-px text-2xs font-medium",
-        LABEL_CLASSES[label.color] ?? LABEL_CLASSES.gray,
-        className,
-      )}
+      className={cx("inline-flex items-center gap-1 rounded px-1.5 py-px text-2xs font-medium", LABEL_CLASSES[label.color] ?? LABEL_CLASSES.gray, className)}
     >
       {label.name}
       {onRemove && (
-        <IconButton icon={<Icon.X className="size-3" />} label={`Remove label ${label.name}`} size="xs" onClick={onRemove} className="-mr-1 size-4 text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" />
+        <IconButton
+          icon={<Icon.X className="size-3" />}
+          label={`Remove label ${label.name}`}
+          size="xs"
+          onClick={onRemove}
+          className="-mr-1 size-4 text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100"
+        />
       )}
     </span>
   );

@@ -58,7 +58,10 @@ export function ReleaseList({ projectKey, canPlan }: { projectKey: string; canPl
         ]}
       />
       {isLoading ? null : versions.length === 0 ? (
-        <EmptyState title={view === "unreleased" ? "Nothing planned" : `Nothing ${view}`} description="A version is what the project ships. Name it on the issues that fix it, and it tracks how close it is; release it, and its notes list the finished work." />
+        <EmptyState
+          title={view === "unreleased" ? "Nothing planned" : `Nothing ${view}`}
+          description="A version is what the project ships. Name it on the issues that fix it, and it tracks how close it is; release it, and its notes list the finished work."
+        />
       ) : (
         <Table>
           <thead>
@@ -85,7 +88,9 @@ export function ReleaseList({ projectKey, canPlan }: { projectKey: string; canPl
                     <span className="block h-1 rounded-full bg-accent" style={{ width: `${v.progress.percent}%` }} />
                   </span>
                 </Td>
-                <Td className="text-sm text-ink-muted">{v.releasedAt ? `released ${format.relative(v.releasedAt)}` : v.releaseOn ? format.date(v.releaseOn) : "no date"}</Td>
+                <Td className="text-sm text-ink-muted">
+                  {v.releasedAt ? `released ${format.relative(v.releasedAt)}` : v.releaseOn ? format.date(v.releaseOn) : "no date"}
+                </Td>
                 <Td>
                   <Tag>{v.archivedAt ? "Archived" : v.releasedAt ? "Released" : "Unreleased"}</Tag>
                 </Td>
@@ -93,25 +98,49 @@ export function ReleaseList({ projectKey, canPlan }: { projectKey: string; canPl
                   <Menu
                     label={`Actions for ${v.name}`}
                     align="end"
-                    trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${v.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-version-menu={v.name} />}
+                    trigger={(props) => (
+                      <IconButton
+                        icon={<Icon.More />}
+                        label={`Actions for ${v.name}`}
+                        size="sm"
+                        onClick={props.toggle}
+                        aria-haspopup={props["aria-haspopup"]}
+                        aria-expanded={props["aria-expanded"]}
+                        data-version-menu={v.name}
+                      />
+                    )}
                     items={[
                       { label: "Release notes", icon: <Icon.Download />, onSelect: () => setNotesOf(v), attrs: { "data-action": "version-notes" } },
                       ...(canPlan && !v.archivedAt
                         ? [
                             v.releasedAt
-                              ? { label: "Take the release back", icon: <Icon.ChevronLeft />, onSelect: () => unrelease.mutate(v.id), attrs: { "data-action": "version-unrelease" } }
-                              : { label: "Release", icon: <Icon.Check />, onSelect: () => release.mutate(v.id, { onSuccess: () => toast.success(`${v.name} released`) }), attrs: { "data-action": "version-release" } },
+                              ? {
+                                  label: "Take the release back",
+                                  icon: <Icon.ChevronLeft />,
+                                  onSelect: () => unrelease.mutate(v.id),
+                                  attrs: { "data-action": "version-unrelease" },
+                                }
+                              : {
+                                  label: "Release",
+                                  icon: <Icon.Check />,
+                                  onSelect: () => release.mutate(v.id, { onSuccess: () => toast.success(`${v.name} released`) }),
+                                  attrs: { "data-action": "version-release" },
+                                },
                             { label: "Edit", icon: <Icon.Edit />, onSelect: () => setEditing(v), attrs: { "data-action": "version-edit" } },
                           ]
                         : []),
-                      ...(canPlan && v.releasedAt && !v.archivedAt ? [{ label: "Archive", icon: <Icon.Archive />, onSelect: () => archive.mutate(v.id), attrs: { "data-action": "version-archive" } }] : []),
+                      ...(canPlan && v.releasedAt && !v.archivedAt
+                        ? [{ label: "Archive", icon: <Icon.Archive />, onSelect: () => archive.mutate(v.id), attrs: { "data-action": "version-archive" } }]
+                        : []),
                       ...(canPlan
                         ? [
                             {
                               label: "Delete",
                               icon: <Icon.Trash />,
                               danger: true,
-                              onSelect: async () => (await confirm({ noun: "version", verb: "Delete", body: `${v.name} goes; the issues that named it simply stop naming it.` })) && remove.mutate(v.id),
+                              onSelect: async () =>
+                                (await confirm({ noun: "version", verb: "Delete", body: `${v.name} goes; the issues that named it simply stop naming it.` })) &&
+                                remove.mutate(v.id),
                               attrs: { "data-action": "version-delete" },
                             },
                           ]
@@ -141,7 +170,13 @@ function NewVersion({ projectKey }: { projectKey: string }) {
     if (!name.trim()) return;
     create.mutate(
       { name: name.trim(), description: description.trim(), releaseOn: releaseOn || undefined },
-      { onSuccess: () => { setName(""); setReleaseOn(""); setDescription(""); } },
+      {
+        onSuccess: () => {
+          setName("");
+          setReleaseOn("");
+          setDescription("");
+        },
+      },
     );
   }
 
@@ -153,7 +188,13 @@ function NewVersion({ projectKey }: { projectKey: string }) {
         </div>
         <Field label="Release on" id="field-version-release" type="date" value={releaseOn} onChange={(e) => setReleaseOn(e.target.value)} className="w-40" />
         <div className="min-w-56 flex-[2]">
-          <Field label="What is in it" id="field-version-description" value={description} placeholder="Optional." onChange={(e) => setDescription(e.target.value)} />
+          <Field
+            label="What is in it"
+            id="field-version-description"
+            value={description}
+            placeholder="Optional."
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
         <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
           Add version
@@ -178,7 +219,15 @@ function EditVersion({ version, onClose }: { version: Version; onClose: () => vo
   function submit(event: FormEvent) {
     event.preventDefault();
     update.mutate(
-      { id: version.id, name: name.trim(), description: description.trim(), startOn: startOn || undefined, clearStart: !startOn, releaseOn: releaseOn || undefined, clearRelease: !releaseOn },
+      {
+        id: version.id,
+        name: name.trim(),
+        description: description.trim(),
+        startOn: startOn || undefined,
+        clearStart: !startOn,
+        releaseOn: releaseOn || undefined,
+        clearRelease: !releaseOn,
+      },
       { onSuccess: onClose },
     );
   }
@@ -208,7 +257,9 @@ function NotesPanel({ version, onClose }: { version: Version; onClose: () => voi
   return (
     <Drawer open onClose={onClose} title={`Release notes for ${version.name}`} attrs={{ "data-release-notes": version.name }}>
       {!notes ? null : notes.groups.length === 0 ? (
-        <p className="text-sm text-ink-muted">Nothing is finished for this version yet{notes.open ? `; ${notes.open} open issue${notes.open === 1 ? "" : "s"} name it` : ""}.</p>
+        <p className="text-sm text-ink-muted">
+          Nothing is finished for this version yet{notes.open ? `; ${notes.open} open issue${notes.open === 1 ? "" : "s"} name it` : ""}.
+        </p>
       ) : (
         <div className="space-y-4">
           {notes.groups.map((g) => (
@@ -223,7 +274,11 @@ function NotesPanel({ version, onClose }: { version: Version; onClose: () => voi
               </ul>
             </section>
           ))}
-          {notes.open > 0 && <p className="text-sm text-ink-subtle">{notes.open} more issue{notes.open === 1 ? "" : "s"} name this version and are not done yet.</p>}
+          {notes.open > 0 && (
+            <p className="text-sm text-ink-subtle">
+              {notes.open} more issue{notes.open === 1 ? "" : "s"} name this version and are not done yet.
+            </p>
+          )}
           <Button
             variant="secondary"
             size="sm"

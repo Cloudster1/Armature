@@ -133,26 +133,36 @@ export function MentionTextarea({
       />
       {open &&
         createPortal(
-        <div ref={listRef} role="listbox" aria-label="People to mention" data-mention-list style={place} className="fixed z-30 min-w-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2">
-          {matches.map((person, i) => (
-            <div
-              key={person.id}
-              role="option"
-              aria-selected={i === highlighted}
-              data-mention-option={person.name}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                take(person);
-              }}
-              onMouseEnter={() => setActive(i)}
-              className={cx("flex cursor-pointer items-baseline gap-2 rounded-control px-2 py-1.5 text-sm", i === highlighted ? "bg-surface-raised text-ink" : "text-ink-muted")}
-            >
-              <span className="font-medium text-ink">{person.name}</span>
-              {person.email && <span className="truncate text-xs text-ink-subtle">{person.email}</span>}
-            </div>
-          ))}
-        </div>,
-        document.body,
+          <div
+            ref={listRef}
+            role="listbox"
+            aria-label="People to mention"
+            data-mention-list
+            style={place}
+            className="fixed z-30 min-w-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+          >
+            {matches.map((person, i) => (
+              <div
+                key={person.id}
+                role="option"
+                aria-selected={i === highlighted}
+                data-mention-option={person.name}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  take(person);
+                }}
+                onMouseEnter={() => setActive(i)}
+                className={cx(
+                  "flex cursor-pointer items-baseline gap-2 rounded-control px-2 py-1.5 text-sm",
+                  i === highlighted ? "bg-surface-raised text-ink" : "text-ink-muted",
+                )}
+              >
+                <span className="font-medium text-ink">{person.name}</span>
+                {person.email && <span className="truncate text-xs text-ink-subtle">{person.email}</span>}
+              </div>
+            ))}
+          </div>,
+          document.body,
         )}
     </div>
   );

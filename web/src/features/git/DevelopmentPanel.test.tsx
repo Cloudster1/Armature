@@ -23,16 +23,33 @@ const { DevelopmentPanel, firstRepositoryToBranch } = await import("./Developmen
 
 function repository(over: Partial<Repository> = {}): Repository {
   return {
-    id: "r1", projectId: "p", projectKey: "CP", host: "github", name: "acme/portal",
-    url: "https://github.com/acme/portal", apiBaseUrl: "https://api.github.com", defaultBranch: "main",
-    hasToken: false, commitCount: 0, openPullRequestCount: 0, createdAt: "", updatedAt: "", ...over,
+    id: "r1",
+    projectId: "p",
+    projectKey: "CP",
+    host: "github",
+    name: "acme/portal",
+    url: "https://github.com/acme/portal",
+    apiBaseUrl: "https://api.github.com",
+    defaultBranch: "main",
+    hasToken: false,
+    commitCount: 0,
+    openPullRequestCount: 0,
+    createdAt: "",
+    updatedAt: "",
+    ...over,
   };
 }
 
 function run(name: string, status: CIStatus): CIRun {
   return {
-    id: `run-${name}`, repository: "acme/portal", externalId: `check_run:${name}`, name, status,
-    url: `https://github.com/acme/portal/runs/${name}`, sha: "abc1234567", startedAt: "",
+    id: `run-${name}`,
+    repository: "acme/portal",
+    externalId: `check_run:${name}`,
+    name,
+    status,
+    url: `https://github.com/acme/portal/runs/${name}`,
+    sha: "abc1234567",
+    startedAt: "",
   };
 }
 
@@ -97,10 +114,17 @@ describe("DevelopmentPanel", () => {
       branches: [],
       commits: [],
       runs: [],
-      pullRequests: [{
-        id: "q1", repository: "acme/portal", number: 7, title: "CP-4 fix", state: "open", openedAt: "",
-        ci: { status: "failure", checks: [run("build", "failure")] },
-      }],
+      pullRequests: [
+        {
+          id: "q1",
+          repository: "acme/portal",
+          number: 7,
+          title: "CP-4 fix",
+          state: "open",
+          openedAt: "",
+          ci: { status: "failure", checks: [run("build", "failure")] },
+        },
+      ],
     };
     render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     expect(screen.getByText("CP-4 fix", { exact: false })).toBeInTheDocument();
@@ -116,10 +140,17 @@ describe("DevelopmentPanel", () => {
       branches: [],
       commits: [],
       runs: [],
-      pullRequests: [{
-        id: "q1", repository: "acme/portal", number: 7, title: "CP-4 fix", state: "open", openedAt: "",
-        ci: { status: "failure", checks: [run("lint", "success"), run("test", "failure")] },
-      }],
+      pullRequests: [
+        {
+          id: "q1",
+          repository: "acme/portal",
+          number: 7,
+          title: "CP-4 fix",
+          state: "open",
+          openedAt: "",
+          ci: { status: "failure", checks: [run("lint", "success"), run("test", "failure")] },
+        },
+      ],
     };
     render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />);
     const badge = screen.getByRole("button", { name: "CI failed" });
@@ -141,10 +172,16 @@ describe("DevelopmentPanel", () => {
       branches: [],
       pullRequests: [],
       runs: [run("lint", "success"), run("test", "pending")],
-      commits: [{
-        id: "c1", repository: "acme/portal", sha: "abc1234567", message: "CP-4 fix", committedAt: new Date().toISOString(),
-        ci: { status: "pending", checks: [run("lint", "success"), run("test", "pending")] },
-      }],
+      commits: [
+        {
+          id: "c1",
+          repository: "acme/portal",
+          sha: "abc1234567",
+          message: "CP-4 fix",
+          committedAt: new Date().toISOString(),
+          ci: { status: "pending", checks: [run("lint", "success"), run("test", "pending")] },
+        },
+      ],
     };
     render(<DevelopmentPanel issueKey="CP-4" projectKey="CP" />, { wrapper: asReader("en-GB") });
     expect(screen.getByRole("button", { name: "CI running" })).toHaveAttribute("data-ci", "pending");
@@ -163,10 +200,7 @@ describe("DevelopmentPanel", () => {
 
     fireEvent.change(name, { target: { value: "feature/CP-4-thing" } });
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
-    expect(createBranch).toHaveBeenCalledWith(
-      { repositoryId: "r1", name: "feature/CP-4-thing", from: "develop" },
-      expect.anything(),
-    );
+    expect(createBranch).toHaveBeenCalledWith({ repositoryId: "r1", name: "feature/CP-4-thing", from: "develop" }, expect.anything());
   });
 
   it("shows how far a branch has come, and that it merged", () => {
@@ -199,8 +233,15 @@ describe("DevelopmentPanel", () => {
       pullRequests: [],
       branches: [
         {
-          id: "b1", repository: "acme/portal", name: "CP-4-fix", url: "https://github.com/acme/portal/tree/CP-4-fix", headSha: "abcdef1234567",
-          commitCount: 2, mergedAt: "2026-09-01T00:00:00Z", deletedAt: "2026-09-01T00:01:00Z", createdAt: "",
+          id: "b1",
+          repository: "acme/portal",
+          name: "CP-4-fix",
+          url: "https://github.com/acme/portal/tree/CP-4-fix",
+          headSha: "abcdef1234567",
+          commitCount: 2,
+          mergedAt: "2026-09-01T00:00:00Z",
+          deletedAt: "2026-09-01T00:01:00Z",
+          createdAt: "",
         },
         { id: "b2", repository: "acme/portal", name: "CP-4-fix", url: "https://github.com/acme/portal/tree/CP-4-fix", commitCount: 0, createdAt: "" },
       ],
@@ -229,7 +270,15 @@ describe("firstRepositoryToBranch", () => {
     const portal = repository({ id: "r1", name: "acme/portal", hasToken: true });
     const api = repository({ id: "r2", name: "acme/api", hasToken: true });
     const existing = [
-      { id: "b1", repository: "acme/portal", name: "CP-4-fix", commitCount: 1, mergedAt: "2026-09-01T00:00:00Z", deletedAt: "2026-09-01T00:01:00Z", createdAt: "" },
+      {
+        id: "b1",
+        repository: "acme/portal",
+        name: "CP-4-fix",
+        commitCount: 1,
+        mergedAt: "2026-09-01T00:00:00Z",
+        deletedAt: "2026-09-01T00:01:00Z",
+        createdAt: "",
+      },
       { id: "b2", repository: "acme/api", name: "CP-4-fix", commitCount: 1, createdAt: "" },
     ];
     expect(firstRepositoryToBranch([api, portal], existing, [])?.id).toBe("r1");

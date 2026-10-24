@@ -80,7 +80,15 @@ function ImportPage() {
           <Button variant="secondary" icon={<Icon.Upload />} onClick={() => fileInput.current?.click()} loading={preview.isPending} data-action="choose-file">
             Choose a CSV file
           </Button>
-          <input ref={fileInput} type="file" accept=".csv,text/csv" className="hidden" aria-label="Choose a CSV file" data-import-input onChange={(e) => chosen(e.target.files?.[0])} />
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            aria-label="Choose a CSV file"
+            data-import-input
+            onChange={(e) => chosen(e.target.files?.[0])}
+          />
           {file && (
             <span className="text-sm text-ink-muted" data-import-file>
               {file.name}

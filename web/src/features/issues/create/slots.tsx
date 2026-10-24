@@ -24,10 +24,20 @@ export interface AskProps {
  * the issue exists. Null is why the form is not simply the page's registry.
  */
 export const slotAsks: Record<Slot, ((props: AskProps) => ReactNode) | null> = {
-  description: ({ draft, set }) => <Field label="Description" rows={DESCRIPTION_ROWS} value={draft.description} onChange={(e) => set({ description: e.target.value })} placeholder="Why it matters and what done looks like" />,
+  description: ({ draft, set }) => (
+    <Field
+      label="Description"
+      rows={DESCRIPTION_ROWS}
+      value={draft.description}
+      onChange={(e) => set({ description: e.target.value })}
+      placeholder="Why it matters and what done looks like"
+    />
+  ),
   assignee: ({ draft, set }) => <PersonSelect label="Assignee" value={draft.assigneeId} onPick={(assigneeId) => set({ assigneeId })} />,
   reporter: ({ draft, set }) => <PersonSelect label="Reporter" value={draft.reporterId} onPick={(reporterId) => set({ reporterId })} customers />,
-  parent: ({ draft, set }) => <Field label="Parent" value={draft.parentKey} onChange={(e) => set({ parentKey: e.target.value })} placeholder="The key of the issue above it" />,
+  parent: ({ draft, set }) => (
+    <Field label="Parent" value={draft.parentKey} onChange={(e) => set({ parentKey: e.target.value })} placeholder="The key of the issue above it" />
+  ),
   schedule: ({ draft, set }) => (
     <div className="grid gap-3 sm:grid-cols-2">
       <Field label="Starts" type="date" value={draft.startDate} onChange={(e) => set({ startDate: e.target.value })} />
@@ -56,7 +66,16 @@ export const slotAsks: Record<Slot, ((props: AskProps) => ReactNode) | null> = {
     </Select>
   ),
   labels: (props) => <LabelAsk {...props} />,
-  time: ({ draft, set }) => <Field label="Time estimate" type="number" step="any" hint="In minutes." value={draft.timeEstimate} onChange={(e) => set({ timeEstimate: e.target.value })} />,
+  time: ({ draft, set }) => (
+    <Field
+      label="Time estimate"
+      type="number"
+      step="any"
+      hint="In minutes."
+      value={draft.timeEstimate}
+      onChange={(e) => set({ timeEstimate: e.target.value })}
+    />
+  ),
   otherFields: (props) => <OtherFieldsAsk {...props} />,
   // Both are facts about an issue that exists.
   created: null,

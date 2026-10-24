@@ -12,7 +12,25 @@ import { LabelInput } from "@/features/labels/LabelInput";
 import { CreateIssueDialog } from "@/features/issues/CreateIssueDialog";
 import { ExportDialog } from "@/features/filters/ExportDialog";
 import { quote } from "@/features/dashboard/filter";
-import { Button, EmptyState, ErrorBanner, Input, Labelled, Page, PageHeader, Pager, Popover, Segmented, Select, Skeleton, Tag, Toolbar, clampOffset, isPageOffset, shownOf } from "@/components/ui";
+import {
+  Button,
+  EmptyState,
+  ErrorBanner,
+  Input,
+  Labelled,
+  Page,
+  PageHeader,
+  Pager,
+  Popover,
+  Segmented,
+  Select,
+  Skeleton,
+  Tag,
+  Toolbar,
+  clampOffset,
+  isPageOffset,
+  shownOf,
+} from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { StatusStrip } from "@/features/projects/StatusStrip";
 import { ISSUE_PAGE_SIZE } from "@/config";
@@ -43,7 +61,19 @@ const scopeClauses: Record<Scope, string> = {
 };
 
 /** The list's narrowing in the search language, so Export writes every page of it. Labels and milestones match by name there. */
-export function listQuery({ scope, words, query, label, milestone }: { scope: Scope; words: string; query: string; label?: string; milestone?: string }): string {
+export function listQuery({
+  scope,
+  words,
+  query,
+  label,
+  milestone,
+}: {
+  scope: Scope;
+  words: string;
+  query: string;
+  label?: string;
+  milestone?: string;
+}): string {
   const parts = [scopeClauses[scope]];
   if (words.trim()) parts.push(`summary ~ ${quote(words.trim())}`);
   if (label) parts.push(`labels = ${quote(label)}`);
@@ -71,7 +101,11 @@ function ProjectDetail() {
   const [exporting, setExporting] = useState(false);
   const { data: milestoneData } = useMilestones(projectKey, true);
 
-  const { data: issueData, isLoading: loadingIssues, error: issueError } = useIssues({
+  const {
+    data: issueData,
+    isLoading: loadingIssues,
+    error: issueError,
+  } = useIssues({
     project: projectKey,
     ...scopeFilters[scope],
     text: mode === "words" ? text.trim() || undefined : undefined,
@@ -83,7 +117,8 @@ function ProjectDetail() {
     offset: offset || undefined,
   });
 
-  const turn = (next: number, replace = false) => navigate({ to: "/projects/$projectKey", params: { projectKey }, search: next ? { offset: next } : {}, replace });
+  const turn = (next: number, replace = false) =>
+    navigate({ to: "/projects/$projectKey", params: { projectKey }, search: next ? { offset: next } : {}, replace });
   // A narrower list starts again at its first page.
   function narrowing<T>(set: (value: T) => void) {
     return (value: T) => {
@@ -94,7 +129,12 @@ function ProjectDetail() {
   // Issues leave the list while it is open; a page past the end steps back.
   useEffect(() => {
     if (issueData && offset > 0 && offset >= issueData.total) {
-      navigate({ to: "/projects/$projectKey", params: { projectKey }, search: { offset: clampOffset(offset, issueData.total, ISSUE_PAGE_SIZE) || undefined }, replace: true });
+      navigate({
+        to: "/projects/$projectKey",
+        params: { projectKey },
+        search: { offset: clampOffset(offset, issueData.total, ISSUE_PAGE_SIZE) || undefined },
+        replace: true,
+      });
     }
   }, [issueData, offset, projectKey, navigate]);
 
@@ -155,7 +195,13 @@ function ProjectDetail() {
             />
             <div className="flex min-w-56 max-w-md flex-1 items-center gap-1">
               {mode === "words" ? (
-                <Input type="search" value={text} onChange={(e) => narrowing(setText)(e.target.value)} placeholder="Search summaries" aria-label="Search issues" />
+                <Input
+                  type="search"
+                  value={text}
+                  onChange={(e) => narrowing(setText)(e.target.value)}
+                  placeholder="Search summaries"
+                  aria-label="Search issues"
+                />
               ) : (
                 <QueryInput value={query} onSubmit={narrowing(setQuery)} error={issueError} compact label="Search issues with a query" project={projectKey} />
               )}
@@ -194,7 +240,13 @@ function ProjectDetail() {
                   />
                 </Labelled>
                 {milestones.length > 0 && (
-                  <Select label="Milestone" aria-label="Filter by milestone" id="filter-milestone" value={milestoneId} onChange={(e) => narrowing(setMilestoneId)(e.target.value)}>
+                  <Select
+                    label="Milestone"
+                    aria-label="Filter by milestone"
+                    id="filter-milestone"
+                    value={milestoneId}
+                    onChange={(e) => narrowing(setMilestoneId)(e.target.value)}
+                  >
                     <option value="">Any milestone</option>
                     {milestones.map((milestone) => (
                       <option key={milestone.id} value={milestone.id}>
@@ -234,7 +286,13 @@ function ProjectDetail() {
         }
       />
 
-      <ExportDialog query={exported} project={projectKey} open={exporting} onClose={() => setExporting(false)} description="Every issue this list shows, on all its pages, as a file with the columns you tick." />
+      <ExportDialog
+        query={exported}
+        project={projectKey}
+        open={exporting}
+        onClose={() => setExporting(false)}
+        description="Every issue this list shows, on all its pages, as a file with the columns you tick."
+      />
 
       {loadingIssues ? (
         <Skeleton rows={6} />

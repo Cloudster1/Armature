@@ -61,7 +61,9 @@ describe("setting up two-step sign-in", () => {
     await userEvent.click(screen.getByRole("button", { name: "Set up two-step sign-in" }));
     expect(start).toHaveBeenCalled();
 
-    started = { enrolment: { secret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", uri: "otpauth://totp/Armature:ada?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Armature" } };
+    started = {
+      enrolment: { secret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", uri: "otpauth://totp/Armature:ada?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Armature" },
+    };
     rerender(<Enrolment onDone={done} />);
     expect(screen.getByRole("img", { name: /QR code/ })).toBeInTheDocument();
     expect(document.querySelector("[data-second-factor-secret]")?.textContent?.replace(/\s/g, "")).toBe(started.enrolment.secret);

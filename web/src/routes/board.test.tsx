@@ -51,15 +51,21 @@ vi.mock("@/api/auth", () => ({ useMe: () => ({ data: { principal: { role: "owner
 vi.mock("@/features/board/BoardPicker", () => ({
   BoardPicker: ({ onPick }: { onPick: (board: BoardSummary | null) => void }) => (
     <div>
-      <button type="button" onClick={() => onPick(null)}>Portal board</button>
-      <button type="button" onClick={() => onPick(boards[1]!)}>Team flow</button>
+      <button type="button" onClick={() => onPick(null)}>
+        Portal board
+      </button>
+      <button type="button" onClick={() => onPick(boards[1]!)}>
+        Team flow
+      </button>
     </div>
   ),
 }));
 vi.mock("@/features/board/BoardView", () => ({
   BoardView: ({ boardId, filter, onFilter }: { boardId?: string; filter: QuickFilter; onFilter: (filter: QuickFilter) => void }) => (
     <div data-testid="board" data-board-id={boardId ?? ""} data-mine={String(Boolean(filter.mine))}>
-      <button type="button" onClick={() => onFilter({ ...filter, mine: true })}>Only mine</button>
+      <button type="button" onClick={() => onFilter({ ...filter, mine: true })}>
+        Only mine
+      </button>
     </div>
   ),
 }));

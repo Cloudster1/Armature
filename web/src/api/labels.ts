@@ -63,8 +63,7 @@ export function useSetIssueLabels() {
 export function useUpdateLabel() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; name?: string; color?: LabelColor }) =>
-      request<{ label: Label }>(`/labels/${id}`, { method: "PATCH", body }),
+    mutationFn: ({ id, ...body }: { id: string; name?: string; color?: LabelColor }) => request<{ label: Label }>(`/labels/${id}`, { method: "PATCH", body }),
     // A rename shows on every issue that carries the word.
     onSuccess: () => queryClient.invalidateQueries(),
   });

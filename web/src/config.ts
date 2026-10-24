@@ -333,7 +333,28 @@ export const WEBHOOK_DELIVERIES_PAGE_SIZE = 50;
 // Many issues at once, and files in and out.
 export const BULK_MAX_SELECTION = 200;
 export const CSV_PREVIEW_ROWS = 5;
-export const EXPORT_COLUMNS = ["key", "summary", "type", "status", "statusCategory", "priority", "assignee", "reporter", "labels", "sprint", "milestone", "fixVersions", "components", "estimate", "created", "updated", "resolved", "due", "start", "parent"] as const;
+export const EXPORT_COLUMNS = [
+  "key",
+  "summary",
+  "type",
+  "status",
+  "statusCategory",
+  "priority",
+  "assignee",
+  "reporter",
+  "labels",
+  "sprint",
+  "milestone",
+  "fixVersions",
+  "components",
+  "estimate",
+  "created",
+  "updated",
+  "resolved",
+  "due",
+  "start",
+  "parent",
+] as const;
 export const EXPORT_DEFAULT_COLUMNS = ["key", "summary", "type", "status", "priority", "assignee", "created"];
 
 // The one-click rating a resolution mail asks for.

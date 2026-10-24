@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { useAutomationCatalog, useCreateRule, useDeleteRule, useRuleRuns, useRules, useRunRule, useUpdateRule, useWebhooks, type Rule, type RuleInput } from "@/api/automation";
+import {
+  useAutomationCatalog,
+  useCreateRule,
+  useDeleteRule,
+  useRuleRuns,
+  useRules,
+  useRunRule,
+  useUpdateRule,
+  useWebhooks,
+  type Rule,
+  type RuleInput,
+} from "@/api/automation";
 import { Button, Drawer, EmptyState, IconButton, Menu, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -31,14 +42,36 @@ export function RulesPanel({ projectKey, canEdit }: { projectKey?: string; canEd
 
   function save(input: RuleInput) {
     if (editing === "new") {
-      create.mutate(input, { onSuccess: () => { setEditing(null); toast.success("Rule created"); } });
+      create.mutate(input, {
+        onSuccess: () => {
+          setEditing(null);
+          toast.success("Rule created");
+        },
+      });
     } else if (editing) {
-      update.mutate({ id: editing.id, ...input }, { onSuccess: () => { setEditing(null); toast.success("Rule saved"); } });
+      update.mutate(
+        { id: editing.id, ...input },
+        {
+          onSuccess: () => {
+            setEditing(null);
+            toast.success("Rule saved");
+          },
+        },
+      );
     }
   }
 
   function toggle(rule: Rule) {
-    update.mutate({ id: rule.id, name: rule.name, enabled: !rule.enabled, trigger: rule.trigger, conditions: rule.conditions, actions: rule.actions, allowOwnEvents: rule.allowOwnEvents, hourlyCap: rule.hourlyCap });
+    update.mutate({
+      id: rule.id,
+      name: rule.name,
+      enabled: !rule.enabled,
+      trigger: rule.trigger,
+      conditions: rule.conditions,
+      actions: rule.actions,
+      allowOwnEvents: rule.allowOwnEvents,
+      hourlyCap: rule.hourlyCap,
+    });
   }
 
   return (
@@ -81,17 +114,40 @@ export function RulesPanel({ projectKey, canEdit }: { projectKey?: string; canEd
                     <Menu
                       label={`Actions for ${rule.name}`}
                       align="end"
-                      trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${rule.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-rule-menu={rule.name} />}
+                      trigger={(props) => (
+                        <IconButton
+                          icon={<Icon.More />}
+                          label={`Actions for ${rule.name}`}
+                          size="sm"
+                          onClick={props.toggle}
+                          aria-haspopup={props["aria-haspopup"]}
+                          aria-expanded={props["aria-expanded"]}
+                          data-rule-menu={rule.name}
+                        />
+                      )}
                       items={[
                         { label: "Run log", icon: <Icon.Clock />, onSelect: () => setLogOf(rule), attrs: { "data-action": "rule-log" } },
-                        { label: "Run now", icon: <Icon.Bolt />, onSelect: () => run.mutate({ id: rule.id }, { onSuccess: (r) => toast.info(`Run ${r.run.outcome}${r.run.reason ? `: ${r.run.reason}` : ""}`) }), attrs: { "data-action": "rule-run" } },
+                        {
+                          label: "Run now",
+                          icon: <Icon.Bolt />,
+                          onSelect: () =>
+                            run.mutate({ id: rule.id }, { onSuccess: (r) => toast.info(`Run ${r.run.outcome}${r.run.reason ? `: ${r.run.reason}` : ""}`) }),
+                          attrs: { "data-action": "rule-run" },
+                        },
                         { label: "Edit", icon: <Icon.Edit />, onSelect: () => setEditing(rule), attrs: { "data-action": "rule-edit" } },
-                        { label: rule.enabled ? "Turn off" : "Turn on", icon: rule.enabled ? <Icon.EyeOff /> : <Icon.Eye />, onSelect: () => toggle(rule), attrs: { "data-action": "rule-toggle" } },
+                        {
+                          label: rule.enabled ? "Turn off" : "Turn on",
+                          icon: rule.enabled ? <Icon.EyeOff /> : <Icon.Eye />,
+                          onSelect: () => toggle(rule),
+                          attrs: { "data-action": "rule-toggle" },
+                        },
                         {
                           label: "Delete",
                           icon: <Icon.Trash />,
                           danger: true,
-                          onSelect: async () => (await confirm({ noun: "rule", verb: "Delete", body: `${rule.name} and its log go; nothing it did is undone.` })) && remove.mutate(rule.id),
+                          onSelect: async () =>
+                            (await confirm({ noun: "rule", verb: "Delete", body: `${rule.name} and its log go; nothing it did is undone.` })) &&
+                            remove.mutate(rule.id),
                           attrs: { "data-action": "rule-delete" },
                         },
                       ]}

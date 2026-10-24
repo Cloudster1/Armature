@@ -48,7 +48,7 @@ export function formatDuration(minutes: number | undefined | null): string {
 
 /** How far along the time is, for a bar: spent against spent plus remaining. */
 export function timeProgress(spent: number, remaining: number | undefined, estimate: number | undefined): number {
-  const total = remaining !== undefined ? spent + remaining : estimate ?? 0;
+  const total = remaining !== undefined ? spent + remaining : (estimate ?? 0);
   if (total <= 0) return spent > 0 ? 1 : 0;
   return Math.min(1, spent / total);
 }

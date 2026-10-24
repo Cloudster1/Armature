@@ -39,7 +39,21 @@ describe("DependencyArrows", () => {
   it("draws an arrow per dependency with a wide hit path that selects it", () => {
     const onSelect = vi.fn();
     const { container } = render(
-      <DependencyArrows dependencies={[dependency]} rows={rows} rowIndex={new Map([["P-1", 0], ["P-2", 1]])} scale={scale} height={68} selected={null} onSelect={onSelect} onRemove={() => {}} />,
+      <DependencyArrows
+        dependencies={[dependency]}
+        rows={rows}
+        rowIndex={
+          new Map([
+            ["P-1", 0],
+            ["P-2", 1],
+          ])
+        }
+        scale={scale}
+        height={68}
+        selected={null}
+        onSelect={onSelect}
+        onRemove={() => {}}
+      />,
     );
     expect(container.querySelectorAll("[data-plan-arrow]")).toHaveLength(1);
     fireEvent.click(container.querySelector('[data-plan-arrow-hit="P-1->P-2"]')!);
@@ -48,7 +62,21 @@ describe("DependencyArrows", () => {
 
   it("marks the selected arrow", () => {
     const { container } = render(
-      <DependencyArrows dependencies={[dependency]} rows={rows} rowIndex={new Map([["P-1", 0], ["P-2", 1]])} scale={scale} height={68} selected={dependency} onSelect={() => {}} onRemove={() => {}} />,
+      <DependencyArrows
+        dependencies={[dependency]}
+        rows={rows}
+        rowIndex={
+          new Map([
+            ["P-1", 0],
+            ["P-2", 1],
+          ])
+        }
+        scale={scale}
+        height={68}
+        selected={dependency}
+        onSelect={() => {}}
+        onRemove={() => {}}
+      />,
     );
     expect(container.querySelector('[data-plan-arrow="P-1->P-2"]')?.getAttribute("data-selected")).toBe("true");
   });
@@ -56,7 +84,21 @@ describe("DependencyArrows", () => {
   it("offers to remove a selected arrow where the arrow is", () => {
     const onRemove = vi.fn();
     const { container } = render(
-      <DependencyArrows dependencies={[dependency]} rows={rows} rowIndex={new Map([["P-1", 0], ["P-2", 1]])} scale={scale} height={68} selected={dependency} onSelect={() => {}} onRemove={onRemove} />,
+      <DependencyArrows
+        dependencies={[dependency]}
+        rows={rows}
+        rowIndex={
+          new Map([
+            ["P-1", 0],
+            ["P-2", 1],
+          ])
+        }
+        scale={scale}
+        height={68}
+        selected={dependency}
+        onSelect={() => {}}
+        onRemove={onRemove}
+      />,
     );
     const control = container.querySelector<HTMLButtonElement>('[data-plan-unlink="l1"]')!;
     expect(control.textContent).toContain("Remove dependency P-1 blocks P-2");
@@ -70,7 +112,21 @@ describe("DependencyArrows", () => {
 
   it("shows the control while the pointer is on an arrow and none is selected", () => {
     const { container } = render(
-      <DependencyArrows dependencies={[dependency]} rows={rows} rowIndex={new Map([["P-1", 0], ["P-2", 1]])} scale={scale} height={68} selected={null} onSelect={() => {}} onRemove={() => {}} />,
+      <DependencyArrows
+        dependencies={[dependency]}
+        rows={rows}
+        rowIndex={
+          new Map([
+            ["P-1", 0],
+            ["P-2", 1],
+          ])
+        }
+        scale={scale}
+        height={68}
+        selected={null}
+        onSelect={() => {}}
+        onRemove={() => {}}
+      />,
     );
     expect(container.querySelector("[data-plan-unlink]")).toBeNull();
     fireEvent.pointerEnter(container.querySelector('[data-plan-arrow-hit="P-1->P-2"]')!);
@@ -79,7 +135,16 @@ describe("DependencyArrows", () => {
 
   it("skips a dependency whose ends are not both drawn", () => {
     const { container } = render(
-      <DependencyArrows dependencies={[dependency]} rows={rows.slice(0, 1)} rowIndex={new Map([["P-1", 0]])} scale={scale} height={34} selected={null} onSelect={() => {}} onRemove={() => {}} />,
+      <DependencyArrows
+        dependencies={[dependency]}
+        rows={rows.slice(0, 1)}
+        rowIndex={new Map([["P-1", 0]])}
+        scale={scale}
+        height={34}
+        selected={null}
+        onSelect={() => {}}
+        onRemove={() => {}}
+      />,
     );
     expect(container.querySelector("[data-plan-arrow]")).toBeNull();
   });

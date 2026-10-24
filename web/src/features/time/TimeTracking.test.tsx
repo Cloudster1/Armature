@@ -61,7 +61,16 @@ describe("correcting a work log entry", () => {
   });
 
   it("sends the duration, the day and the note together, because the entry is replaced whole", async () => {
-    const entry = { id: "w1", issueId: "i", author: { id: "ada", name: "Ada" }, minutes: 480, startedOn: "2026-10-05", note: "pairing", createdAt: "", updatedAt: "" };
+    const entry = {
+      id: "w1",
+      issueId: "i",
+      author: { id: "ada", name: "Ada" },
+      minutes: 480,
+      startedOn: "2026-10-05",
+      note: "pairing",
+      createdAt: "",
+      updatedAt: "",
+    };
     const fetchMock = vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
       const body =
         init?.method === "PATCH"

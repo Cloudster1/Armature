@@ -15,15 +15,7 @@ const kinds: Array<{ kind: RuleKind; title: string; hint: string }> = [
  * the move is offered, whether the input passes, and what happens afterwards.
  * A rule is picked from what the server says it can run, never typed.
  */
-export function RuleEditor({
-  rules,
-  catalogue,
-  onChange,
-}: {
-  rules: DraftRule[];
-  catalogue: RuleType[];
-  onChange: (rules: DraftRule[]) => void;
-}) {
+export function RuleEditor({ rules, catalogue, onChange }: { rules: DraftRule[]; catalogue: RuleType[]; onChange: (rules: DraftRule[]) => void }) {
   const [picked, setPicked] = useState("");
   const [config, setConfig] = useState<Record<string, unknown>>({});
   const chosen = catalogue.find((type) => type.type === picked);
@@ -64,7 +56,13 @@ export function RuleEditor({
                       <span className="min-w-0 truncate" title={text}>
                         {text}
                       </span>
-                      <IconButton size="xs" icon={<Icon.X />} label={`Remove rule ${text}`} onClick={() => onChange(rules.filter((_, at) => at !== index))} className="text-ink-subtle hover:text-danger" />
+                      <IconButton
+                        size="xs"
+                        icon={<Icon.X />}
+                        label={`Remove rule ${text}`}
+                        onClick={() => onChange(rules.filter((_, at) => at !== index))}
+                        className="text-ink-subtle hover:text-danger"
+                      />
                     </li>
                   );
                 })}

@@ -38,9 +38,7 @@ function HierarchyPage() {
       {isLoading ? (
         <p className="text-sm text-ink-muted">Loading the tree...</p>
       ) : tree.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-ink-muted">
-          This project has no issues yet.
-        </Card>
+        <Card className="p-6 text-center text-sm text-ink-muted">This project has no issues yet.</Card>
       ) : (
         <Card className="divide-y divide-border">
           <ol>
@@ -82,20 +80,13 @@ function TreeRow({ node, depth }: { node: TreeNode; depth: number }) {
         )}
 
         <TypeBadge icon={issue.type.icon} name={issue.type.name} />
-        <Link
-          to="/issues/$issueKey"
-          params={{ issueKey: issue.key }}
-          className="shrink-0 font-mono text-2xs text-ink-muted hover:text-accent"
-        >
+        <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="shrink-0 font-mono text-2xs text-ink-muted hover:text-accent">
           {issue.key}
         </Link>
         <Link
           to="/issues/$issueKey"
           params={{ issueKey: issue.key }}
-          className={cx(
-            "min-w-0 flex-1 truncate text-sm hover:text-accent",
-            issue.status.category === "done" ? "text-ink-muted line-through" : "text-ink",
-          )}
+          className={cx("min-w-0 flex-1 truncate text-sm hover:text-accent", issue.status.category === "done" ? "text-ink-muted line-through" : "text-ink")}
         >
           {issue.summary}
         </Link>

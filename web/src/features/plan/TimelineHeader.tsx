@@ -60,23 +60,22 @@ export function TimelineHeader({
           {ticks.map((tick) => (
             <span
               key={tick.key}
-              className={cx(
-                "absolute truncate border-l px-1.5 text-2xs text-ink-subtle",
-                tick.emphasis ? "border-border-strong" : "border-border/60",
-              )}
+              className={cx("absolute truncate border-l px-1.5 text-2xs text-ink-subtle", tick.emphasis ? "border-border-strong" : "border-border/60")}
               style={{ left: tick.x, width: tick.width }}
             >
               {tick.width >= PLAN_MIN_TICK_LABEL_PX && tick.label}
             </span>
           ))}
           {daysOff.map((band) => (
-            <span key={band.key} className="absolute inset-y-0" style={{ left: band.x, width: band.width }} title={band.label} data-plan-holiday-label={band.label} />
+            <span
+              key={band.key}
+              className="absolute inset-y-0"
+              style={{ left: band.x, width: band.width }}
+              title={band.label}
+              data-plan-holiday-label={band.label}
+            />
           ))}
-          <span
-            aria-hidden="true"
-            className="absolute -top-1 w-px bg-accent"
-            style={{ left: todayX, height: PLAN_ROW_HEIGHT }}
-          />
+          <span aria-hidden="true" className="absolute -top-1 w-px bg-accent" style={{ left: todayX, height: PLAN_ROW_HEIGHT }} />
         </div>
       </div>
     </>

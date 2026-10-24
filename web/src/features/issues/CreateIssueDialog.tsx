@@ -106,9 +106,7 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
       }
     >
       <form id="create-issue" onSubmit={onSubmit} className="space-y-3" noValidate>
-        {!projectKey && (
-          <ProjectPicker label="Project" value={project} onChange={setProject} />
-        )}
+        {!projectKey && <ProjectPicker label="Project" value={project} onChange={setProject} />}
         <Field label="Summary" value={draft.summary} onChange={(e) => set({ summary: e.target.value })} autoFocus required placeholder="What needs doing" />
         <Select label="Type" id="issue-type" aria-label="Issue type" value={chosenType} onChange={(e) => setTypeId(e.target.value)}>
           {types.map((type) => (

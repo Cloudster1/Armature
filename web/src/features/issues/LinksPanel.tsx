@@ -32,9 +32,7 @@ export function LinksPanel({ issueKey, editable }: { issueKey: string; editable:
   return (
     <section data-testid="links-panel">
       <div className="mb-3 flex items-center gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
-          Links {links.length > 0 && `(${links.length})`}
-        </h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Links {links.length > 0 && `(${links.length})`}</h2>
         <span className="flex-1" />
         {editable && !adding && (
           <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
@@ -86,7 +84,12 @@ export function LinksPanel({ issueKey, editable }: { issueKey: string; editable:
               </Link>
               <span className="min-w-0 flex-1 truncate text-ink">{link.issue.summary}</span>
               {editable && (
-                <Button variant="link" onClick={() => remove.mutate({ key: issueKey, linkId: link.id })} aria-label={`Remove the link to ${link.issue.key}`} className="text-xs text-ink-subtle hover:text-danger">
+                <Button
+                  variant="link"
+                  onClick={() => remove.mutate({ key: issueKey, linkId: link.id })}
+                  aria-label={`Remove the link to ${link.issue.key}`}
+                  className="text-xs text-ink-subtle hover:text-danger"
+                >
                   Remove
                 </Button>
               )}

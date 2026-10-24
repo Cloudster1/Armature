@@ -82,7 +82,11 @@ scenario("somebody who gives the project half their week has half its hours", as
 
   await goto(page, `/projects/${key}/resources`);
   await page.waitForSelector('[data-resources="team"] [data-resource-row="Crew"]', { timeout: WAIT });
-  expect.equal((await page.$eval(`[data-resource-row="Crew"] [data-resource-week="${monday(1)}"]`, (el) => el.dataset.capacity)), "20", "the team counts half of them");
+  expect.equal(
+    await page.$eval(`[data-resource-row="Crew"] [data-resource-week="${monday(1)}"]`, (el) => el.dataset.capacity),
+    "20",
+    "the team counts half of them",
+  );
   await page.click('[data-action="group-by-person"]');
   await page.waitForSelector(`[data-resources="person"] [data-resource-row="${who.name}"]`, { timeout: WAIT });
   const halved = await weekOf(page, who.name, monday(1));

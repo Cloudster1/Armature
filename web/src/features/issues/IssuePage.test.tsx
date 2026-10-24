@@ -30,7 +30,18 @@ const state = {
   } as Issue,
   fields: [
     {
-      field: { id: "f1", projectId: "p1", projectKey: "CP", org: false, name: "Customer", kind: "text", options: [], position: 0, createdAt: "", updatedAt: "" },
+      field: {
+        id: "f1",
+        projectId: "p1",
+        projectKey: "CP",
+        org: false,
+        name: "Customer",
+        kind: "text",
+        options: [],
+        position: 0,
+        createdAt: "",
+        updatedAt: "",
+      },
       value: null,
     },
   ],
@@ -44,10 +55,21 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/api/issues", async () => ({
   ...(await vi.importActual<typeof import("@/api/issues")>("@/api/issues")),
   useIssue: () => ({ data: { issue: state.issue }, isLoading: false, error: null }),
-  useComments: nothing, useHistory: nothing, useTransitions: nothing, useIssueHierarchy: nothing,
-  useIssues: nothing, useStatuses: nothing, useWorklogs: nothing, useIssueTypes: nothing,
-  useAddComment: mutation, useTransitionIssue: mutation, useUpdateIssue: mutation,
-  useSetParent: mutation, useCreateIssue: mutation, useLogWork: mutation, useDeleteWorklog: mutation,
+  useComments: nothing,
+  useHistory: nothing,
+  useTransitions: nothing,
+  useIssueHierarchy: nothing,
+  useIssues: nothing,
+  useStatuses: nothing,
+  useWorklogs: nothing,
+  useIssueTypes: nothing,
+  useAddComment: mutation,
+  useTransitionIssue: mutation,
+  useUpdateIssue: mutation,
+  useSetParent: mutation,
+  useCreateIssue: mutation,
+  useLogWork: mutation,
+  useDeleteWorklog: mutation,
 }));
 
 vi.mock("@/api/issueReads", () => ({ useParentCandidates: nothing }));
@@ -112,27 +134,40 @@ vi.mock("@/api/arrange", async () => ({
 
 vi.mock("@/api/desk", async () => ({
   ...(await vi.importActual<typeof import("@/api/desk")>("@/api/desk")),
-  useTimers: nothing, useCannedResponses: nothing, useAddNote: mutation, useRenderCanned: mutation,
+  useTimers: nothing,
+  useCannedResponses: nothing,
+  useAddNote: mutation,
+  useRenderCanned: mutation,
 }));
 
 vi.mock("@/api/plan", async () => ({
   ...(await vi.importActual<typeof import("@/api/plan")>("@/api/plan")),
-  useLinks: nothing, useLinkTypes: nothing, useSchedule: mutation, useAddLink: mutation, useRemoveLink: mutation,
+  useLinks: nothing,
+  useLinkTypes: nothing,
+  useSchedule: mutation,
+  useAddLink: mutation,
+  useRemoveLink: mutation,
 }));
 
 vi.mock("@/api/sprints", async () => ({
   ...(await vi.importActual<typeof import("@/api/sprints")>("@/api/sprints")),
-  useSprints: nothing, useSetIssueSprint: mutation, useSetEstimate: mutation,
+  useSprints: nothing,
+  useSetIssueSprint: mutation,
+  useSetEstimate: mutation,
 }));
 
 vi.mock("@/api/milestones", async () => ({
   ...(await vi.importActual<typeof import("@/api/milestones")>("@/api/milestones")),
-  useMilestones: nothing, useSetIssueMilestone: mutation,
+  useMilestones: nothing,
+  useSetIssueMilestone: mutation,
 }));
 
 vi.mock("@/api/versions", async () => ({
   ...(await vi.importActual<typeof import("@/api/versions")>("@/api/versions")),
-  useVersions: nothing, useComponents: nothing, useSetIssueVersions: mutation, useSetIssueComponents: mutation,
+  useVersions: nothing,
+  useComponents: nothing,
+  useSetIssueVersions: mutation,
+  useSetIssueComponents: mutation,
 }));
 
 // A project with no teams says so in words instead of offering a select, so
@@ -145,32 +180,42 @@ vi.mock("@/api/teams", async () => ({
 
 vi.mock("@/api/labels", async () => ({
   ...(await vi.importActual<typeof import("@/api/labels")>("@/api/labels")),
-  useLabels: nothing, useLabelSearch: nothing, useSetIssueLabels: mutation,
+  useLabels: nothing,
+  useLabelSearch: nothing,
+  useSetIssueLabels: mutation,
 }));
 
 vi.mock("@/api/watchers", async () => ({
   ...(await vi.importActual<typeof import("@/api/watchers")>("@/api/watchers")),
-  useWatchers: nothing, useAddWatcher: mutation, useRemoveWatcher: mutation,
+  useWatchers: nothing,
+  useAddWatcher: mutation,
+  useRemoveWatcher: mutation,
 }));
 
 vi.mock("@/api/remoteLinks", async () => ({
   ...(await vi.importActual<typeof import("@/api/remoteLinks")>("@/api/remoteLinks")),
-  useRemoteLinks: nothing, useRemoveRemoteLink: mutation,
+  useRemoteLinks: nothing,
+  useRemoveRemoteLink: mutation,
 }));
 
 vi.mock("@/api/attachments", async () => ({
   ...(await vi.importActual<typeof import("@/api/attachments")>("@/api/attachments")),
-  useAttachments: nothing, useUploadAttachment: mutation, useDeleteAttachment: mutation,
+  useAttachments: nothing,
+  useUploadAttachment: mutation,
+  useDeleteAttachment: mutation,
 }));
 
 vi.mock("@/api/git", async () => ({
   ...(await vi.importActual<typeof import("@/api/git")>("@/api/git")),
-  useDevelopment: nothing, useRepositories: nothing, useCreateBranch: mutation,
+  useDevelopment: nothing,
+  useRepositories: nothing,
+  useCreateBranch: mutation,
 }));
 
 vi.mock("@/api/filters", async () => ({
   ...(await vi.importActual<typeof import("@/api/filters")>("@/api/filters")),
-  useCloneIssue: mutation, useMoveIssue: mutation,
+  useCloneIssue: mutation,
+  useMoveIssue: mutation,
 }));
 
 const { IssuePage } = await import("./IssuePage");
@@ -212,16 +257,24 @@ describe("the issue page", () => {
   it("keeps each group's facts in their order", () => {
     renderPage();
     expect(rowsIn("People")).toEqual(["Assignee", "Reporter"]);
-    expect(rowsIn("Planning")).toEqual([
-      "Parent", "Scheduled", "Sprint", "Milestone", "Fix versions", "Affects versions", "Components", "Estimate", "Team",
-    ]);
+    expect(rowsIn("Planning")).toEqual(["Parent", "Scheduled", "Sprint", "Milestone", "Fix versions", "Affects versions", "Components", "Estimate", "Team"]);
     expect(rowsIn("Tracking")).toEqual(["Priority", "Labels", "Time"]);
   });
 
   // The browser suite presses these by id, so where they live is a contract.
   it("leaves every control the browser suite presses where it was", () => {
     renderPage();
-    for (const id of ["#issue-start", "#issue-due", "#issue-sprint", "#issue-milestone", "#issue-estimate", "#issue-team", "#issue-fix-versions", "#issue-affects-versions", "#issue-components"]) {
+    for (const id of [
+      "#issue-start",
+      "#issue-due",
+      "#issue-sprint",
+      "#issue-milestone",
+      "#issue-estimate",
+      "#issue-team",
+      "#issue-fix-versions",
+      "#issue-affects-versions",
+      "#issue-components",
+    ]) {
       expect(groupOf(id), id).toBe("Planning");
     }
     expect(groupOf("[data-labels]")).toBe("Tracking");

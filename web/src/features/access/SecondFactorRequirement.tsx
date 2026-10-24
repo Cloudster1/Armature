@@ -39,7 +39,13 @@ export function SecondFactorRequirement() {
               disabled={draft === null || draft === current}
               data-action="save-second-factor-rule"
               onClick={() => {
-                if (draft) save.mutate(draft, { onSuccess: () => { setDraft(null); toast.success("Two-step sign-in requirement saved"); } });
+                if (draft)
+                  save.mutate(draft, {
+                    onSuccess: () => {
+                      setDraft(null);
+                      toast.success("Two-step sign-in requirement saved");
+                    },
+                  });
               }}
             >
               Save

@@ -61,7 +61,15 @@ export function browserLocale(): string {
   return navigator.language;
 }
 
-const WALL_CLOCK: Intl.DateTimeFormatOptions = { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" };
+const WALL_CLOCK: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+};
 
 // The clock on the wall in a zone at an instant, written as if it were UTC.
 // A zone the browser does not know reads the browser's own, as makeFormat does.

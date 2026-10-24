@@ -1,9 +1,4 @@
-import {
-  PLAN_HEADER_ROW_HEIGHT,
-  PLAN_MILESTONE_BAND_HEIGHT,
-  PLAN_MILESTONE_FLAG_WIDTH,
-  PLAN_SPRINT_BAND_HEIGHT,
-} from "@/config";
+import { PLAN_HEADER_ROW_HEIGHT, PLAN_MILESTONE_BAND_HEIGHT, PLAN_MILESTONE_FLAG_WIDTH, PLAN_SPRINT_BAND_HEIGHT } from "@/config";
 
 /**
  * The stack above the rows on the calendar side, and therefore the height of

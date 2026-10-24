@@ -30,10 +30,23 @@ export function SavedFilterBar({ query, me, active }: { query: string; me: strin
     <div className="mb-4 flex flex-wrap items-center gap-2" data-saved-filters>
       {filters.map((f) => (
         <span key={f.id} className="inline-flex items-center gap-0.5">
-          <Chip pressed={active?.id === f.id} onClick={() => navigate({ to: "/search", search: { q: f.query, f: f.id } })} title={f.query} data-filter={f.name} data-filter-shared={f.shared ? "true" : "false"}>
+          <Chip
+            pressed={active?.id === f.id}
+            onClick={() => navigate({ to: "/search", search: { q: f.query, f: f.id } })}
+            title={f.query}
+            data-filter={f.name}
+            data-filter-shared={f.shared ? "true" : "false"}
+          >
             {f.name}
           </Chip>
-          <IconButton icon={f.starred ? <Icon.Check /> : <Icon.Plus />} label={f.starred ? `Unstar ${f.name}` : `Star ${f.name}`} size="sm" onClick={() => star.mutate({ id: f.id, on: !f.starred })} data-filter-star={f.name} data-starred={f.starred ? "true" : "false"} />
+          <IconButton
+            icon={f.starred ? <Icon.Check /> : <Icon.Plus />}
+            label={f.starred ? `Unstar ${f.name}` : `Star ${f.name}`}
+            size="sm"
+            onClick={() => star.mutate({ id: f.id, on: !f.starred })}
+            data-filter-star={f.name}
+            data-starred={f.starred ? "true" : "false"}
+          />
         </span>
       ))}
       <span className="ml-auto flex items-center gap-2">

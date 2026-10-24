@@ -2,20 +2,7 @@
 // type by the project, and followed by the issue page and the create form.
 
 import { scenario } from "../runner.mjs";
-import {
-  arrangeIssue,
-  clickButton,
-  createIssue,
-  createProject,
-  expect,
-  goto,
-  groupRows,
-  selectByLabel,
-  settled,
-  signUp,
-  unique,
-  WAIT,
-} from "../helpers.mjs";
+import { arrangeIssue, clickButton, createIssue, createProject, expect, goto, groupRows, selectByLabel, settled, signUp, unique, WAIT } from "../helpers.mjs";
 
 scenario("a project arranges an issue type and the page and the form follow", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });

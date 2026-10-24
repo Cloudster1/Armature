@@ -17,7 +17,15 @@ export function Card({
   actions?: ReactNode;
 }) {
   return (
-    <div {...rest} className={cx("rounded-overlay border", elevated ? "border-border/60 bg-surface-glass shadow-3 backdrop-blur-md" : "border-border bg-surface", actions ? "relative" : null, className)}>
+    <div
+      {...rest}
+      className={cx(
+        "rounded-overlay border",
+        elevated ? "border-border/60 bg-surface-glass shadow-3 backdrop-blur-md" : "border-border bg-surface",
+        actions ? "relative" : null,
+        className,
+      )}
+    >
       {actions && (
         <div className="absolute top-3 right-3 flex items-center gap-0.5" data-card-actions>
           {actions}

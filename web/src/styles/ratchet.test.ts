@@ -26,11 +26,11 @@ function code(file: string): string {
 
 /** Controls drawn by hand before this test, with why each is not the kit's; a count may only go down. */
 const allowed: Record<string, { count: number; why: string }> = {
-  "features/themes/ThemeEditor.tsx: \"#000000\"": { count: 1, why: "a colour field's placeholder shows the person the kind of value to type" },
+  'features/themes/ThemeEditor.tsx: "#000000"': { count: 1, why: "a colour field's placeholder shows the person the kind of value to type" },
   "features/themes/ThemeEditor.tsx: 1px": { count: 1, why: "the shadow field's placeholder shows the person a CSS shadow to type" },
   "features/themes/ThemeEditor.tsx: 2px": { count: 1, why: "the shadow field's placeholder shows the person a CSS shadow to type" },
   "features/themes/ThemeEditor.tsx: rgb(0": { count: 1, why: "the shadow field's placeholder shows the person a CSS shadow to type" },
-  "lib/constellation.ts: \"#888\"": { count: 2, why: "a canvas cannot read a CSS variable, so a theme that leaves the token out is drawn grey" },
+  'lib/constellation.ts: "#888"': { count: 2, why: "a canvas cannot read a CSS variable, so a theme that leaves the token out is drawn grey" },
   "lib/constellation.ts: rgb(1": { count: 1, why: "a canvas cannot read a CSS variable, so a colour it cannot parse is drawn grey" },
 };
 

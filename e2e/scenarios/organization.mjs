@@ -55,14 +55,20 @@ scenario("the audit log says who granted a role", async ({ page }) => {
   let grants = [];
   for (const until = Date.now() + WAIT; Date.now() < until; ) {
     const rows = await auditRowsFor(page, "role.granted");
-    expect.truthy(rows.every((r) => r.action === "role.granted"), "narrowing to an action shows only it");
+    expect.truthy(
+      rows.every((r) => r.action === "role.granted"),
+      "narrowing to an action shows only it",
+    );
     grants = rows.filter((r) => r.text.includes(admin.name));
     if (grants.length) break;
   }
   expect.truthy(grants.length > 0, "the grant is in the log, naming who granted");
   expect.contains(grants[0].text, "project_administrator", "and what");
   const tokens = await auditRowsFor(page, "token.created");
-  expect.truthy(tokens.some((r) => r.text.includes(nightly)), "the token is in the log by name");
+  expect.truthy(
+    tokens.some((r) => r.text.includes(nightly)),
+    "the token is in the log by name",
+  );
   expect.truthy(await page.$('[data-action="export-audit"]'), "and the log can be exported");
 });
 

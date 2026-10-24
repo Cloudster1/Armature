@@ -110,10 +110,7 @@ async function unwrap<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const envelope = (parsed as { error?: ApiErrorBody } | undefined)?.error;
-    throw new ApiError(
-      response.status,
-      envelope ?? { code: "unexpected_response", message: `The server returned ${response.status}.` },
-    );
+    throw new ApiError(response.status, envelope ?? { code: "unexpected_response", message: `The server returned ${response.status}.` });
   }
 
   return parsed as T;

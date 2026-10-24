@@ -23,7 +23,13 @@ export function Rail({ root }: { root: RefObject<HTMLDivElement | null> }) {
   return (
     <nav aria-label="On this page" className="mb-5 flex flex-wrap gap-1 border-b border-border text-sm">
       {railStops.map((stop) => (
-        <a key={stop.id} href={`#issue-${stop.id}`} onClick={(e) => jump(e, stop.id)} className="-mb-px border-b-2 border-transparent px-2 py-1.5 text-ink-muted hover:border-border-strong hover:text-ink" data-rail={stop.id}>
+        <a
+          key={stop.id}
+          href={`#issue-${stop.id}`}
+          onClick={(e) => jump(e, stop.id)}
+          className="-mb-px border-b-2 border-transparent px-2 py-1.5 text-ink-muted hover:border-border-strong hover:text-ink"
+          data-rail={stop.id}
+        >
           {stop.label}
         </a>
       ))}

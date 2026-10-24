@@ -128,15 +128,24 @@ scenario("the roles tab shows one page of grants and finds one by typing", async
   const crew = uniqueName("Found crew");
   // Made through the API as this person: the grant, not the form, is what the tab is asked to find.
   await goto(page, "/");
-  await page.evaluate(async (name, projectKey) => {
-    const send = async (path, body) => {
-      const response = await fetch(`/api/v1${path}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (!response.ok) throw new Error(`POST ${path} was refused with ${response.status}`);
-      return response.json();
-    };
-    const { group } = await send("/groups", { name });
-    await send("/role-assignments", { role: "user", projectKey, groupId: group.id });
-  }, crew, key);
+  await page.evaluate(
+    async (name, projectKey) => {
+      const send = async (path, body) => {
+        const response = await fetch(`/api/v1${path}`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error(`POST ${path} was refused with ${response.status}`);
+        return response.json();
+      };
+      const { group } = await send("/groups", { name });
+      await send("/role-assignments", { role: "user", projectKey, groupId: group.id });
+    },
+    crew,
+    key,
+  );
 
   await goto(page, "/settings/access");
   await page.waitForSelector('[data-testid="role-assignments"] tbody tr', { timeout: WAIT });
@@ -167,10 +176,7 @@ scenario("global administration cannot be scoped to one project", async ({ page 
 
   // The scope picker is disabled rather than offering something the server
   // would refuse.
-  const disabled = await page.$eval(
-    'select[aria-label="Where the role applies"]',
-    (el) => el.disabled,
-  );
+  const disabled = await page.$eval('select[aria-label="Where the role applies"]', (el) => el.disabled);
   expect.truthy(disabled, "global administration can be pointed at one project");
 });
 
@@ -180,16 +186,10 @@ scenario("the access page explains what each role grants", async ({ page }) => {
   await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
 
   await selectByLabel(page, 'select[aria-label="Role"]', "Reader");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("Reader can see projects."),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("Reader can see projects."), { timeout: WAIT });
 
   await selectByLabel(page, 'select[aria-label="Role"]', "Scrum master");
-  await page.waitForFunction(
-    () => document.body.innerText.includes("plan sprints"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("plan sprints"), { timeout: WAIT });
 });
 
 // Serial: there is one provider for everybody, and no taking it away again.
@@ -207,13 +207,13 @@ serialScenario("single sign-on is configured once, and people sign in at one add
     // An installation an earlier run set one up in calls the button Save, and
     // so does the two-step section above it: the provider's is the last one.
     await page.evaluate(() =>
-      [...document.querySelectorAll("button")].filter((b) => ["Set up single sign-on", "Save"].includes(b.textContent.trim())).pop()?.click(),
+      [...document.querySelectorAll("button")]
+        .filter((b) => ["Set up single sign-on", "Save"].includes(b.textContent.trim()))
+        .pop()
+        ?.click(),
     );
 
-    await page.waitForFunction(
-      () => document.body.innerText.includes("People can sign in at"),
-      { timeout: WAIT },
-    );
+    await page.waitForFunction(() => document.body.innerText.includes("People can sign in at"), { timeout: WAIT });
     expect.equal(await textOf(page, "[data-sso-start]"), "/api/v1/auth/oidc/start", "the address names no organization");
 
     // The secret is never sent back, only the fact that one is stored.

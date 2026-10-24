@@ -22,7 +22,16 @@ import { BarList, LineChart, PairedBars, Progress, Stat, weekLabel } from "./cha
 import { axisLabels, burndownSeries, describeScope } from "./burndown";
 import { ChartBody } from "./ChartBody";
 import { MilestonesBody } from "./MilestonesBody";
-import { AverageAgeBody, CSATBody, ControlChartBody, CreatedResolvedBody, CumulativeFlowBody, ReleaseBurndownBody, ResolutionBody, VersionsBody } from "./FlowBodies";
+import {
+  AverageAgeBody,
+  CSATBody,
+  ControlChartBody,
+  CreatedResolvedBody,
+  CumulativeFlowBody,
+  ReleaseBurndownBody,
+  ResolutionBody,
+  VersionsBody,
+} from "./FlowBodies";
 import { useWidgetReport, type BodyProps } from "./useWidgetReport";
 import { WidgetState } from "./WidgetState";
 
@@ -205,7 +214,9 @@ function SprintBody({ projectKey, widget, narrow }: BodyProps) {
               {p.sprint.name}
               {p.sprint.teamName && <span className="text-ink-muted"> · {p.sprint.teamName}</span>}
             </span>
-            <span className="text-ink-muted">{p.daysLeft} day{p.daysLeft === 1 ? "" : "s"} left</span>
+            <span className="text-ink-muted">
+              {p.daysLeft} day{p.daysLeft === 1 ? "" : "s"} left
+            </span>
           </div>
           <Progress done={p.completed} total={p.committed} label={`${p.completed}/${p.committed} pts`} />
           <p className="mt-1 text-2xs text-ink-subtle">

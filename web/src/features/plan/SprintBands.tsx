@@ -15,11 +15,7 @@ export function SprintBands({ scale, sprints }: { scale: Scale; sprints: SprintP
   if (drawable.length === 0) return null;
 
   return (
-    <div
-      className="relative border-b border-border bg-surface-raised/50"
-      style={{ height: PLAN_SPRINT_BAND_HEIGHT }}
-      data-testid="plan-sprint-bands"
-    >
+    <div className="relative border-b border-border bg-surface-raised/50" style={{ height: PLAN_SPRINT_BAND_HEIGHT }} data-testid="plan-sprint-bands">
       {drawable.map((plan) => {
         const bar = barFor(scale, plan.sprint.startsOn, plan.sprint.endsOn);
         if (!bar) return null;

@@ -6,7 +6,12 @@ const create = vi.fn();
 const addMember = vi.fn();
 const companies: Company[] = [
   {
-    id: "c1", projectId: "p", projectKey: "HLP", name: "Globex", domains: ["globex.test"], createdAt: "2026-10-10T08:00:00Z",
+    id: "c1",
+    projectId: "p",
+    projectKey: "HLP",
+    name: "Globex",
+    domains: ["globex.test"],
+    createdAt: "2026-10-10T08:00:00Z",
     members: [{ userId: "u1", name: "Ada", email: "ada@globex.test", addedAt: "2026-10-10T08:00:00Z" }],
   },
 ];

@@ -27,7 +27,14 @@ function move(n: number): PlanMove {
 function preview(alignment: Partial<Alignment>, props: Partial<Parameters<typeof AutoPlanPreview>[0]> = {}) {
   const handlers = { onApply: vi.fn(), onCancel: vi.fn(), onPreviewAgain: vi.fn(), onPlace: vi.fn() };
   render(
-    <AutoPlanPreview alignment={{ projectKey: "PR", moves: [], unplaced: [], warnings: [], ...alignment }} locale="en-GB" applying={false} place={false} {...handlers} {...props} />,
+    <AutoPlanPreview
+      alignment={{ projectKey: "PR", moves: [], unplaced: [], warnings: [], ...alignment }}
+      locale="en-GB"
+      applying={false}
+      place={false}
+      {...handlers}
+      {...props}
+    />,
   );
   return handlers;
 }
@@ -53,7 +60,10 @@ describe("the auto plan's preview", () => {
   });
 
   it("shows a refusal and offers to preview again", () => {
-    const { onPreviewAgain } = preview({ moves: [move(2)] }, { refusal: "PR-2 was moved since these dates were read, so nothing was saved. Preview the auto plan again." });
+    const { onPreviewAgain } = preview(
+      { moves: [move(2)] },
+      { refusal: "PR-2 was moved since these dates were read, so nothing was saved. Preview the auto plan again." },
+    );
     expect(screen.getByRole("alert").textContent).toContain("PR-2 was moved since");
     expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Preview again" }));

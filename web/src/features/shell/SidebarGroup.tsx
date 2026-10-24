@@ -6,7 +6,21 @@ import { Icon } from "@/components/icons";
  * A titled fold in the sidebar. The title is the switch, so a group takes no
  * extra row; the chevron says which way it is.
  */
-export function SidebarGroup({ id, title, open, onToggle, nested = false, children }: { id: string; title: string; open: boolean; onToggle: () => void; nested?: boolean; children: ReactNode }) {
+export function SidebarGroup({
+  id,
+  title,
+  open,
+  onToggle,
+  nested = false,
+  children,
+}: {
+  id: string;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  nested?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className={cx(nested ? "mt-1" : "mb-3")} data-sidebar-group={id} data-open={open}>
       <Button

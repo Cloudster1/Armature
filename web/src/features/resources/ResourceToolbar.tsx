@@ -46,7 +46,10 @@ export function ResourceToolbar({
             options={GROUPINGS.map((g) => ({ ...g, attrs: { "data-action": `group-by-${g.value}` } }))}
           />
         ) : (
-          <Tag data-resource-grouping={method === "scrum" ? "team" : grouping} title={method === "scrum" ? "A scrum project plans by team." : "The project's administrators choose this in its settings."}>
+          <Tag
+            data-resource-grouping={method === "scrum" ? "team" : grouping}
+            title={method === "scrum" ? "A scrum project plans by team." : "The project's administrators choose this in its settings."}
+          >
             {plannedBy(method, grouping)}
           </Tag>
         )

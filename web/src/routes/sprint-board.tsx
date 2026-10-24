@@ -48,7 +48,9 @@ function SprintBoardPage() {
         projectKey={projectKey}
         sprintId={sprintId}
         filter={filter}
-        onFilter={(next) => navigate({ to: "/projects/$projectKey/sprints/$sprintId/board", params: { projectKey, sprintId }, search: toSearch(next), replace: true })}
+        onFilter={(next) =>
+          navigate({ to: "/projects/$projectKey/sprints/$sprintId/board", params: { projectKey, sprintId }, search: toSearch(next), replace: true })
+        }
       />
     </Page>
   );

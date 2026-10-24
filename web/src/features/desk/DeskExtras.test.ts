@@ -9,7 +9,15 @@ describe("business hours", () => {
   });
   it("say when nothing is open, and when days differ", () => {
     expect(describeCalendar({ timezone: "UTC", hours: {}, holidays: [], holidayCalendarId: null, holidayCalendarName: null })).toBe("never open");
-    expect(describeCalendar({ timezone: "UTC", hours: { mon: [{ from: "08:00", to: "12:00" }], wed: [{ from: "09:00", to: "17:00" }] }, holidays: [], holidayCalendarId: null, holidayCalendarName: null })).toBe("Mon, Wed varied (UTC)");
+    expect(
+      describeCalendar({
+        timezone: "UTC",
+        hours: { mon: [{ from: "08:00", to: "12:00" }], wed: [{ from: "09:00", to: "17:00" }] },
+        holidays: [],
+        holidayCalendarId: null,
+        holidayCalendarName: null,
+      }),
+    ).toBe("Mon, Wed varied (UTC)");
   });
 });
 

@@ -51,7 +51,18 @@ const emptyDoc: Doc = { type: "doc", content: [{ type: "paragraph" }] };
  * place, the markdown face edits the text it converts to. Switching converts
  * the draft, so nothing typed is lost, and the choice is kept per browser.
  */
-export function Editor({ id, value, onChange, findPeople, placeholder, autoFocus = false, rows = 4, onSubmit, "aria-label": ariaLabel = "Description", handle }: EditorProps) {
+export function Editor({
+  id,
+  value,
+  onChange,
+  findPeople,
+  placeholder,
+  autoFocus = false,
+  rows = 4,
+  onSubmit,
+  "aria-label": ariaLabel = "Description",
+  handle,
+}: EditorProps) {
   const [mode, setMode] = useEditorMode();
   const [text, setText] = useState(() => docToMarkdown(value));
   const [suggesting, setSuggesting] = useState<Suggesting | null>(null);
@@ -65,7 +76,12 @@ export function Editor({ id, value, onChange, findPeople, placeholder, autoFocus
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ underline: false, horizontalRule: false, heading: { levels: [...HEADING_LEVELS] }, link: { openOnClick: false, autolink: false } }),
+      StarterKit.configure({
+        underline: false,
+        horizontalRule: false,
+        heading: { levels: [...HEADING_LEVELS] },
+        link: { openOnClick: false, autolink: false },
+      }),
       Placeholder.configure({ placeholder: placeholder ?? "" }),
       Mention.configure({
         renderText: ({ node }) => `@${String(node.attrs.label ?? "")}`,
@@ -168,7 +184,11 @@ export function Editor({ id, value, onChange, findPeople, placeholder, autoFocus
         }
         const doc = markdownToDoc(markdown);
         if (doc && editor) {
-          editor.chain().focus("end").insertContent(doc.content as JSONContent[]).run();
+          editor
+            .chain()
+            .focus("end")
+            .insertContent(doc.content as JSONContent[])
+            .run();
         }
       },
       clear: () => {
@@ -239,7 +259,11 @@ export function Editor({ id, value, onChange, findPeople, placeholder, autoFocus
   return (
     <div className="space-y-1.5" data-editor-frame>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {mode === "rich" && editor ? <EditorToolbar editor={editor} /> : <span className="text-xs text-ink-subtle">Markdown: **bold**, *italic*, # heading, - list, &gt; quote, ``` code</span>}
+        {mode === "rich" && editor ? (
+          <EditorToolbar editor={editor} />
+        ) : (
+          <span className="text-xs text-ink-subtle">Markdown: **bold**, *italic*, # heading, - list, &gt; quote, ``` code</span>
+        )}
         <Segmented
           label="Editor mode"
           value={mode}

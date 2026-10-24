@@ -1,13 +1,5 @@
 import { useState, type FormEvent } from "react";
-import {
-  useAddToGroup,
-  useCreateGroup,
-  useDeleteGroup,
-  useGroup,
-  useGroups,
-  useRemoveFromGroup,
-  type Group,
-} from "@/api/access";
+import { useAddToGroup, useCreateGroup, useDeleteGroup, useGroup, useGroups, useRemoveFromGroup, type Group } from "@/api/access";
 import { Button, Card, EmptyState, ErrorBanner, Field } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { PersonPicker } from "@/features/people/PersonPicker";
@@ -71,8 +63,7 @@ function GroupCard({ group }: { group: Group }) {
             )}
           </h3>
           <p className="mt-0.5 text-xs text-ink-muted">
-            {group.memberCount} {group.memberCount === 1 ? "person" : "people"} ·{" "}
-            {group.roleCount} {group.roleCount === 1 ? "role" : "roles"}
+            {group.memberCount} {group.memberCount === 1 ? "person" : "people"} · {group.roleCount} {group.roleCount === 1 ? "role" : "roles"}
             {group.externalRef && ` · matches "${group.externalRef}"`}
           </p>
         </div>
@@ -81,7 +72,9 @@ function GroupCard({ group }: { group: Group }) {
           variant="ghost"
           className="shrink-0"
           loading={deleteGroup.isPending}
-          onClick={async () => (await confirm({ noun: "group", body: `${group.name} goes, and its members lose the roles it granted.` })) && deleteGroup.mutate(group.id)}
+          onClick={async () =>
+            (await confirm({ noun: "group", body: `${group.name} goes, and its members lose the roles it granted.` })) && deleteGroup.mutate(group.id)
+          }
         >
           Delete
         </Button>
@@ -96,7 +89,10 @@ function GroupCard({ group }: { group: Group }) {
                 size="sm"
                 variant="ghost"
                 className="ml-auto h-6 px-1.5 text-2xs"
-                onClick={async () => (await confirm({ noun: "member", verb: "Remove", body: `${member.name} leaves ${group.name} and loses the roles it grants.` })) && remove.mutate({ id: group.id, userId: member.userId })}
+                onClick={async () =>
+                  (await confirm({ noun: "member", verb: "Remove", body: `${member.name} leaves ${group.name} and loses the roles it grants.` })) &&
+                  remove.mutate({ id: group.id, userId: member.userId })
+                }
               >
                 Remove
               </Button>
@@ -104,11 +100,7 @@ function GroupCard({ group }: { group: Group }) {
           </li>
         ))}
         {members.length === 0 && (
-          <li className="text-sm text-ink-subtle">
-            {fromProvider
-              ? "Nobody has signed in with this group in their token yet."
-              : "Nobody in it yet."}
-          </li>
+          <li className="text-sm text-ink-subtle">{fromProvider ? "Nobody has signed in with this group in their token yet." : "Nobody in it yet."}</li>
         )}
       </ul>
 
@@ -173,7 +165,9 @@ function NewGroup() {
             Create group
           </Button>
         </div>
-        <p className="text-xs text-ink-subtle">The provider claim is the value your identity provider sends for this group; with it, membership follows sign-ins.</p>
+        <p className="text-xs text-ink-subtle">
+          The provider claim is the value your identity provider sends for this group; with it, membership follows sign-ins.
+        </p>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
       </form>
     </Card>

@@ -35,7 +35,12 @@ function onScrollbar(event: { clientX: number; currentTarget: HTMLElement }): bo
 
 // The pinned title and buttons cover the edges of the scrolling layer, so the
 // browser is told to keep what it scrolls to (a focused field, an error) clear of them.
-function useClearOfPinned(open: boolean, scroller: RefObject<HTMLElement | null>, header: RefObject<HTMLElement | null>, footer: RefObject<HTMLElement | null>) {
+function useClearOfPinned(
+  open: boolean,
+  scroller: RefObject<HTMLElement | null>,
+  header: RefObject<HTMLElement | null>,
+  footer: RefObject<HTMLElement | null>,
+) {
   useLayoutEffect(() => {
     if (!open) return;
     const pad = () => {
@@ -92,7 +97,11 @@ export function Dialog({ open, onClose, title, description, children, footer, si
         style={dialogPlace}
         className={cx("relative flex w-full flex-col rounded-overlay border border-border bg-surface-overlay shadow-2", dialogWidth[size])}
       >
-        <div ref={headerRef} className="tall:sticky tall:top-0 z-10 flex shrink-0 items-start gap-3 rounded-t-overlay bg-surface-overlay px-5 pt-4 pb-2" data-dialog-header>
+        <div
+          ref={headerRef}
+          className="tall:sticky tall:top-0 z-10 flex shrink-0 items-start gap-3 rounded-t-overlay bg-surface-overlay px-5 pt-4 pb-2"
+          data-dialog-header
+        >
           <div className="min-w-0 flex-1">
             <h2 id={titleId} className="text-base font-semibold text-ink">
               {title}
@@ -111,7 +120,11 @@ export function Dialog({ open, onClose, title, description, children, footer, si
           </div>
         )}
         {footer && (
-          <div ref={footerRef} className="tall:sticky tall:bottom-0 z-10 flex shrink-0 justify-end gap-2 rounded-b-overlay border-t border-border bg-surface-overlay px-5 py-3" data-dialog-footer>
+          <div
+            ref={footerRef}
+            className="tall:sticky tall:bottom-0 z-10 flex shrink-0 justify-end gap-2 rounded-b-overlay border-t border-border bg-surface-overlay px-5 py-3"
+            data-dialog-footer
+          >
             {footer}
           </div>
         )}
@@ -143,7 +156,12 @@ export function ConfirmDialog({
   error?: ReactNode;
 }) {
   return (
-    <Dialog open={open} onClose={onClose} title={`${verb} ${noun}?`} size="sm" attrs={{ "data-confirm": noun }}
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={`${verb} ${noun}?`}
+      size="sm"
+      attrs={{ "data-confirm": noun }}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>

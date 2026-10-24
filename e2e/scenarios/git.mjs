@@ -45,13 +45,15 @@ scenario("a commit that names an issue appears on it and moves it", async ({ pag
   const body = JSON.stringify({
     ref: "refs/heads/" + issueKey + "-wire",
     created: true,
-    commits: [{
-      id: "abc1234def5678",
-      message: issueKey + " #start-progress wire it up",
-      url: "https://github.com/acme/portal/commit/abc1234def5678",
-      timestamp: "2026-09-01T10:00:00Z",
-      author: { name: "Somebody", email: "somebody@elsewhere.example" },
-    }],
+    commits: [
+      {
+        id: "abc1234def5678",
+        message: issueKey + " #start-progress wire it up",
+        url: "https://github.com/acme/portal/commit/abc1234def5678",
+        timestamp: "2026-09-01T10:00:00Z",
+        author: { name: "Somebody", email: "somebody@elsewhere.example" },
+      },
+    ],
   });
   const signature = "sha256=" + createHmac("sha256", secret).update(body).digest("hex");
   const receipt = await page.evaluate(
@@ -146,11 +148,7 @@ scenario("a branch made from a ticket is a real branch, and what happens to it c
       "the next repository is offered",
     );
     await clickButton(page, "Create");
-    await page.waitForFunction(
-      (name) => document.querySelectorAll(`[data-branch="${name}"]`).length === 2,
-      { timeout: WAIT },
-      suggested,
-    );
+    await page.waitForFunction((name) => document.querySelectorAll(`[data-branch="${name}"]`).length === 2, { timeout: WAIT }, suggested);
     const onSecond = await gitea("GET", `/repos/${second.fullName}/branches/${suggested}`);
     expect.equal(onSecond.name, suggested, "and that branch is on its host too");
     await clickButton(page, "Done");
@@ -166,9 +164,8 @@ scenario("a branch made from a ticket is a real branch, and what happens to it c
     let detail = await bodyText(page);
     expect.contains(detail, "wire it up", "the commit is on the ticket");
     expect.contains(detail, "1 commit", "and the branch counts it");
-    const head = await page.$eval(
-      `[data-branch="${suggested}"][data-branch-repository="${repo.fullName}"] [data-branch-head]`,
-      (el) => el.getAttribute("data-branch-head"),
+    const head = await page.$eval(`[data-branch="${suggested}"][data-branch-repository="${repo.fullName}"] [data-branch-head]`, (el) =>
+      el.getAttribute("data-branch-head"),
     );
     expect.equal(head, (await gitea("GET", `/repos/${repo.fullName}/branches/${suggested}`)).commit.id, "the branch's head is the host's");
 

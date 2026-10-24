@@ -1,20 +1,7 @@
 // Epics, their children and the tree.
 
 import { scenario } from "../runner.mjs";
-import {
-  addChild,
-  bodyText,
-  clickButton,
-  createIssue,
-  createProject,
-  expect,
-  goto,
-  selectByLabel,
-  signUp,
-  treeRows,
-  unique,
-  WAIT,
-} from "../helpers.mjs";
+import { addChild, bodyText, clickButton, createIssue, createProject, expect, goto, selectByLabel, signUp, treeRows, unique, WAIT } from "../helpers.mjs";
 
 scenario("an epic holds stories and the tree shows the nesting", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
@@ -82,11 +69,7 @@ scenario("an issue can be moved to a different epic", async ({ page }) => {
   await selectByLabel(page, "#issue-parent", `${second} · Portal performance`);
 
   // The move is a change like any other, so the history has to show it.
-  await page.waitForFunction(
-    (s) => document.body.innerText.includes(s),
-    { timeout: WAIT },
-    `moved this under ${second}`,
-  );
+  await page.waitForFunction((s) => document.body.innerText.includes(s), { timeout: WAIT }, `moved this under ${second}`);
 
   await goto(page, `/issues/${first}`);
   expect.notContains(await bodyText(page), "Add password reset by email", "the old epic gave the story up");
@@ -101,9 +84,7 @@ scenario("the levels a parent may hold are the only ones offered", async ({ page
   await clickButton(page, "Add child");
   await page.waitForSelector("#child-type", { timeout: WAIT });
 
-  const offered = await page.$eval("#child-type", (el) =>
-    [...el.options].map((o) => o.textContent.trim()),
-  );
+  const offered = await page.$eval("#child-type", (el) => [...el.options].map((o) => o.textContent.trim()));
   expect.notContains(offered.join(","), "Epic", "an epic is not offered under an epic");
   expect.notContains(offered.join(","), "Subtask", "a subtask is not offered under an epic");
   expect.contains(offered.join(","), "Story", "a story is offered under an epic");

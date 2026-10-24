@@ -160,7 +160,10 @@ export function LineChart({
           return (
             <g key={s.name} data-series={s.name} className={s.tone}>
               <path
-                d={pathOf(s.points.map((p) => ({ x: px(p.x), y: py(p.y) })), Boolean(s.step))}
+                d={pathOf(
+                  s.points.map((p) => ({ x: px(p.x), y: py(p.y) })),
+                  Boolean(s.step),
+                )}
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={lone ? CHART_MARKER_PX : s.dashed ? 1 : 2}
@@ -282,7 +285,13 @@ const DONUT_HOLE = 30;
 export function Donut({ arcs, tones, total, empty = "Nothing to draw yet" }: { arcs: Arc[]; tones: Map<string, string>; total: string; empty?: string }) {
   if (arcs.length === 0) return <p className="text-sm text-ink-subtle">{empty}</p>;
   return (
-    <svg viewBox={`0 0 ${DONUT_UNIT} ${DONUT_UNIT}`} className="mx-auto block h-40 w-40" role="img" aria-label={arcs.map((a) => `${a.label} ${Math.round(a.share * 100)}%`).join(", ")} data-chart="donut">
+    <svg
+      viewBox={`0 0 ${DONUT_UNIT} ${DONUT_UNIT}`}
+      className="mx-auto block h-40 w-40"
+      role="img"
+      aria-label={arcs.map((a) => `${a.label} ${Math.round(a.share * 100)}%`).join(", ")}
+      data-chart="donut"
+    >
       {arcs.map((arc) => (
         <path
           key={arc.label}
@@ -345,20 +354,49 @@ export function stackedPaths(bands: Band[]): Array<{ name: string; tone: string;
     const top = below.map((base, i) => base + (b.values[i] ?? 0));
     const upper = top.map((y, i) => `${round(px(i))} ${round(py(y))}`);
     const lower = below.map((y, i) => `${round(px(i))} ${round(py(y))}`).reverse();
-    const d = `M${upper[0]} ${upper.slice(1).map((p) => `L${p}`).join(" ")} ${lower.map((p) => `L${p}`).join(" ")} Z`;
+    const d = `M${upper[0]} ${upper
+      .slice(1)
+      .map((p) => `L${p}`)
+      .join(" ")} ${lower.map((p) => `L${p}`).join(" ")} Z`;
     for (let i = 0; i < steps; i++) below[i] = top[i]!;
     return { name: b.name, tone: b.tone, d };
   });
 }
 
-export function StackedArea({ bands, xLabels = [], height = 160, empty = "Nothing to draw yet" }: { bands: Band[]; xLabels?: string[]; height?: number; empty?: string }) {
+export function StackedArea({
+  bands,
+  xLabels = [],
+  height = 160,
+  empty = "Nothing to draw yet",
+}: {
+  bands: Band[];
+  xLabels?: string[];
+  height?: number;
+  empty?: string;
+}) {
   const paths = stackedPaths(bands);
   if (paths.length === 0) return <p className="text-sm text-ink-subtle">{empty}</p>;
   return (
     <div data-testid="stacked-area">
-      <svg viewBox={`0 0 ${CHART_UNIT} ${CHART_UNIT}`} preserveAspectRatio="none" className="block w-full" style={{ height }} role="img" aria-label={bands.map((b) => b.name).join(", ")}>
+      <svg
+        viewBox={`0 0 ${CHART_UNIT} ${CHART_UNIT}`}
+        preserveAspectRatio="none"
+        className="block w-full"
+        style={{ height }}
+        role="img"
+        aria-label={bands.map((b) => b.name).join(", ")}
+      >
         {paths.map((p) => (
-          <path key={p.name} d={p.d} className={cx(p.tone, "opacity-80")} fill="currentColor" stroke="var(--color-surface)" strokeWidth={0.5} vectorEffect="non-scaling-stroke" data-flow-band={p.name} />
+          <path
+            key={p.name}
+            d={p.d}
+            className={cx(p.tone, "opacity-80")}
+            fill="currentColor"
+            stroke="var(--color-surface)"
+            strokeWidth={0.5}
+            vectorEffect="non-scaling-stroke"
+            data-flow-band={p.name}
+          />
         ))}
       </svg>
       {xLabels.length > 0 && (
@@ -394,13 +432,40 @@ export function Scatter({
   const py = (y: number) => CHART_UNIT - (y / maxY) * CHART_UNIT;
   return (
     <div data-testid="scatter">
-      <svg viewBox={`0 0 ${CHART_UNIT} ${CHART_UNIT}`} preserveAspectRatio="none" className="block w-full overflow-visible" style={{ height }} role="img" aria-label={`${points.length} points`}>
+      <svg
+        viewBox={`0 0 ${CHART_UNIT} ${CHART_UNIT}`}
+        preserveAspectRatio="none"
+        className="block w-full overflow-visible"
+        style={{ height }}
+        role="img"
+        aria-label={`${points.length} points`}
+      >
         <line x1={0} y1={CHART_UNIT} x2={CHART_UNIT} y2={CHART_UNIT} className="stroke-border" strokeWidth={1} vectorEffect="non-scaling-stroke" />
         {rolling.length > 1 && (
-          <path d={pathOf(rolling.map((p) => ({ x: px(p.x), y: py(p.y) })), false)} fill="none" stroke="currentColor" className="text-accent" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" data-rolling-line />
+          <path
+            d={pathOf(
+              rolling.map((p) => ({ x: px(p.x), y: py(p.y) })),
+              false,
+            )}
+            fill="none"
+            stroke="currentColor"
+            className="text-accent"
+            strokeWidth={2}
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
+            data-rolling-line
+          />
         )}
         {points.map((p, i) => (
-          <circle key={`${p.label}-${i}`} cx={px(p.x)} cy={py(p.y)} r={1.6} className="fill-ink-muted" vectorEffect="non-scaling-stroke" data-chart-point={p.label}>
+          <circle
+            key={`${p.label}-${i}`}
+            cx={px(p.x)}
+            cy={py(p.y)}
+            r={1.6}
+            className="fill-ink-muted"
+            vectorEffect="non-scaling-stroke"
+            data-chart-point={p.label}
+          >
             <title>{`${p.label}: ${yLabel ? yLabel(p.y) : p.y}`}</title>
           </circle>
         ))}

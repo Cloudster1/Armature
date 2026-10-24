@@ -74,9 +74,7 @@ export function fromWorkflow(detail: WorkflowDetail): Design {
   let design: Design = {
     name: workflow.name,
     description: workflow.description ?? "",
-    nodes: workflow.steps
-      .filter((step) => step.layout)
-      .map((step) => ({ statusId: step.status.id, x: step.layout!.x, y: step.layout!.y })),
+    nodes: workflow.steps.filter((step) => step.layout).map((step) => ({ statusId: step.status.id, x: step.layout!.x, y: step.layout!.y })),
     initialId: workflow.steps.find((step) => step.isInitial)?.status.id ?? "",
     edges: workflow.transitions.map((transition) => ({
       key: transition.id,
@@ -133,9 +131,7 @@ export function slotFor(nodes: Node[], category: StatusCategory): Point {
   const occupied = [anywhereRect(), ...nodes];
   for (let row = 0; ; row++) {
     const y = WORKFLOW_LAYOUT_ORIGIN_Y + row * WORKFLOW_ROW_GAP;
-    const taken = occupied.some(
-      (each) => Math.abs(each.x - x) < WORKFLOW_NODE_WIDTH && Math.abs(each.y - y) < WORKFLOW_NODE_HEIGHT,
-    );
+    const taken = occupied.some((each) => Math.abs(each.x - x) < WORKFLOW_NODE_WIDTH && Math.abs(each.y - y) < WORKFLOW_NODE_HEIGHT);
     if (!taken) return { x, y };
   }
 }
@@ -173,21 +169,14 @@ export function moveNode(design: Design, statusId: string, x: number, y: number)
   const snap = (value: number) => Math.max(0, Math.round(value / WORKFLOW_GRID) * WORKFLOW_GRID);
   return {
     ...design,
-    nodes: design.nodes.map((node) =>
-      node.statusId === statusId ? { ...node, x: snap(x), y: snap(y) } : node,
-    ),
+    nodes: design.nodes.map((node) => (node.statusId === statusId ? { ...node, x: snap(x), y: snap(y) } : node)),
   };
 }
 
 let nextKey = 0;
 
 /** Draws a transition. A status cannot move to itself, so that hands back nothing. */
-export function connect(
-  design: Design,
-  from: string,
-  to: string,
-  name: string,
-): { design: Design; key: string } | null {
+export function connect(design: Design, from: string, to: string, name: string): { design: Design; key: string } | null {
   if (from === to || to === ANYWHERE) return null;
   const known = (id: string) => id === ANYWHERE || design.nodes.some((node) => node.statusId === id);
   if (!known(from) || !known(to)) return null;

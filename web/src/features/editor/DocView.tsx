@@ -45,7 +45,9 @@ function Block({ node }: { node: DocNode }) {
     case "codeBlock":
       return (
         <pre>
-          <code data-language={typeof node.attrs?.language === "string" ? node.attrs.language : undefined}>{(node.content ?? []).map((n) => n.text ?? "").join("")}</code>
+          <code data-language={typeof node.attrs?.language === "string" ? node.attrs.language : undefined}>
+            {(node.content ?? []).map((n) => n.text ?? "").join("")}
+          </code>
         </pre>
       );
     default:
@@ -57,7 +59,13 @@ function items(nodes: DocNode[] | undefined): ReactNode {
   return (nodes ?? []).map((item, i) => (
     <li key={i}>
       {(item.content ?? []).map((child, k) =>
-        child.type === "paragraph" ? <span key={k} className="block whitespace-pre-wrap">{inline(child.content)}</span> : <Block key={k} node={child} />,
+        child.type === "paragraph" ? (
+          <span key={k} className="block whitespace-pre-wrap">
+            {inline(child.content)}
+          </span>
+        ) : (
+          <Block key={k} node={child} />
+        ),
       )}
     </li>
   ));
@@ -74,11 +82,7 @@ function inlineNode(node: DocNode): ReactNode {
     case "hardBreak":
       return <br />;
     case "mention":
-      return (
-        <span data-mention={String(node.attrs?.id ?? "")}>
-          @{String(node.attrs?.label ?? "")}
-        </span>
-      );
+      return <span data-mention={String(node.attrs?.id ?? "")}>@{String(node.attrs?.label ?? "")}</span>;
     default:
       return textOf(node);
   }
@@ -103,7 +107,12 @@ function marked(text: string, marks: DocNode["marks"]): ReactNode {
         break;
       case "link": {
         const href = safeHref(mark.attrs?.href);
-        if (href) out = <a href={href} rel="noopener noreferrer" target="_blank">{out}</a>;
+        if (href)
+          out = (
+            <a href={href} rel="noopener noreferrer" target="_blank">
+              {out}
+            </a>
+          );
         break;
       }
     }

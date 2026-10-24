@@ -65,7 +65,13 @@ export function PeopleCard({ people, choice, onChange }: { people: ImportPerson[
       {making && (
         <div className="mt-4 max-w-xs">
           <Labelled id="import-domain" label="Addresses are made at">
-            <Input id="import-domain" value={choice.domain ?? ""} placeholder="example.com" onChange={(e) => onChange({ ...choice, domain: e.target.value })} data-import-domain />
+            <Input
+              id="import-domain"
+              value={choice.domain ?? ""}
+              placeholder="example.com"
+              onChange={(e) => onChange({ ...choice, domain: e.target.value })}
+              data-import-domain
+            />
           </Labelled>
           <p className="mt-1 text-sm text-ink-subtle">An account made this way cannot sign in until somebody sets it up.</p>
         </div>

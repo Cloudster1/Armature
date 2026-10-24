@@ -1,5 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import type { AverageAgeReport, CSATReport, ControlChartReport, CreatedResolvedReport, CumulativeFlowReport, ReleaseBurndownReport, ResolutionReport, VersionsReport } from "@/api/reports";
+import type {
+  AverageAgeReport,
+  CSATReport,
+  ControlChartReport,
+  CreatedResolvedReport,
+  CumulativeFlowReport,
+  ReleaseBurndownReport,
+  ResolutionReport,
+  VersionsReport,
+} from "@/api/reports";
 import { useReportSource } from "@/api/reports";
 import { describeProgress } from "@/api/milestones";
 import { Tag } from "@/components/ui";
@@ -38,7 +47,11 @@ export function CumulativeFlowBody({ projectKey, widget, narrow }: BodyProps) {
   const { locale } = useFormat();
   if (!data) return <WidgetState error={error} />;
   if (data.statuses.length === 0) return <p className="text-sm text-ink-subtle">Nothing has stood in any status yet.</p>;
-  const bands = data.statuses.map((s, i) => ({ name: s.name, tone: categoryTone[s.category] ?? "text-ink-muted", values: data.days.map((d) => d.counts[i] ?? 0) }));
+  const bands = data.statuses.map((s, i) => ({
+    name: s.name,
+    tone: categoryTone[s.category] ?? "text-ink-muted",
+    values: data.days.map((d) => d.counts[i] ?? 0),
+  }));
   const today = data.days[data.days.length - 1];
   return (
     <div data-cumulative-flow>
@@ -52,7 +65,8 @@ export function CumulativeFlowBody({ projectKey, widget, narrow }: BodyProps) {
         ))}
       </ul>
       <p className="mt-1 text-2xs text-ink-subtle">
-        {data.window} days.{data.reconstructed ? " Some days were rebuilt from the changelog, which remembers status names; a renamed status may read as another." : ""}
+        {data.window} days.
+        {data.reconstructed ? " Some days were rebuilt from the changelog, which remembers status names; a renamed status may read as another." : ""}
       </p>
     </div>
   );
@@ -70,7 +84,11 @@ export function ControlChartBody({ projectKey, widget, narrow }: BodyProps) {
         <Stat value={days(data.meanDays)} label="average" />
         <Stat value={String(data.points.length)} label={`resolved in ${data.window} days`} />
       </div>
-      <Scatter points={data.points.map((p) => ({ x: at(p.resolvedAt), y: p.days, label: p.key }))} rolling={data.points.map((p) => ({ x: at(p.resolvedAt), y: p.rolling }))} yLabel={days} />
+      <Scatter
+        points={data.points.map((p) => ({ x: at(p.resolvedAt), y: p.days, label: p.key }))}
+        rolling={data.points.map((p) => ({ x: at(p.resolvedAt), y: p.rolling }))}
+        yLabel={days}
+      />
       <p className="mt-1 text-2xs text-ink-subtle">Each dot is an issue, started to resolved; the line is the rolling average.</p>
     </div>
   );
@@ -110,7 +128,13 @@ export function AverageAgeBody({ projectKey, widget, narrow }: BodyProps) {
         <Stat value={days(data.p85Days)} label="oldest sixth" />
         {data.oldestKey && <Stat value={days(data.oldestDays)} label={`oldest, ${data.oldestKey}`} />}
       </div>
-      <LineChart series={[{ name: "average age of open work", tone: "text-accent", points: data.weeks.map((w, i) => ({ x: i, y: Math.round(w.averageDays * 10) / 10 })) }]} xLabels={axisEnds(data.weeks.map((w) => weekLabel(w.start)))} height={96} />
+      <LineChart
+        series={[
+          { name: "average age of open work", tone: "text-accent", points: data.weeks.map((w, i) => ({ x: i, y: Math.round(w.averageDays * 10) / 10 })) },
+        ]}
+        xLabels={axisEnds(data.weeks.map((w) => weekLabel(w.start)))}
+        height={96}
+      />
     </div>
   );
 }
@@ -122,7 +146,9 @@ export function ResolutionBody({ projectKey, widget, narrow }: BodyProps) {
   return (
     <div data-resolution-histogram>
       <BarList rows={data.bands.map((b) => ({ label: b.label, count: b.count }))} tone={() => "bg-status-done"} />
-      <p className="mt-1 text-2xs text-ink-subtle">{data.resolved} resolved in {data.window} days, filed to resolved.</p>
+      <p className="mt-1 text-2xs text-ink-subtle">
+        {data.resolved} resolved in {data.window} days, filed to resolved.
+      </p>
     </div>
   );
 }
@@ -195,7 +221,10 @@ export function CSATBody({ projectKey, widget, narrow }: BodyProps) {
         <Stat value={data.rated ? data.average.toFixed(1) : "-"} label="average of 5" />
         <Stat value={`${Math.round(data.responseRate * 100)}%`} label={`answered, ${data.rated} of ${data.invited}`} />
       </div>
-      <BarList rows={data.scores.map((n, i) => ({ label: `${i + 1}`, count: n })).reverse()} tone={(row) => (Number(row.label) >= 4 ? "bg-status-done" : Number(row.label) === 3 ? "bg-status-progress" : "bg-danger")} />
+      <BarList
+        rows={data.scores.map((n, i) => ({ label: `${i + 1}`, count: n })).reverse()}
+        tone={(row) => (Number(row.label) >= 4 ? "bg-status-done" : Number(row.label) === 3 ? "bg-status-progress" : "bg-danger")}
+      />
     </div>
   );
 }

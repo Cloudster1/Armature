@@ -10,9 +10,7 @@ export const BLANK_TEMPLATE = "blank";
 export function dashboardTemplateShape(template: DashboardTemplate): string {
   const kinds = template.widgets.map((w) => w.title || w.kind.replace(/_/g, " "));
   const count = `${kinds.length} widget${kinds.length === 1 ? "" : "s"}`;
-  return kinds.length > 0
-    ? `${count}: ${kinds.slice(0, TEMPLATE_SHAPE_MAX_KINDS).join(", ")}${kinds.length > TEMPLATE_SHAPE_MAX_KINDS ? ", ..." : ""}`
-    : count;
+  return kinds.length > 0 ? `${count}: ${kinds.slice(0, TEMPLATE_SHAPE_MAX_KINDS).join(", ")}${kinds.length > TEMPLATE_SHAPE_MAX_KINDS ? ", ..." : ""}` : count;
 }
 
 /**
@@ -41,7 +39,13 @@ export function DashboardTemplateChooser({
     <fieldset className="space-y-1.5">
       <legend className="block text-sm font-medium text-ink">Start from</legend>
       <div role="radiogroup" aria-label="Template" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <OptionCard checked={value === BLANK_TEMPLATE} data-dashboard-template={BLANK_TEMPLATE} onSelect={() => onChange(BLANK_TEMPLATE)} title="Blank" description="An empty dashboard to arrange from scratch." />
+        <OptionCard
+          checked={value === BLANK_TEMPLATE}
+          data-dashboard-template={BLANK_TEMPLATE}
+          onSelect={() => onChange(BLANK_TEMPLATE)}
+          title="Blank"
+          description="An empty dashboard to arrange from scratch."
+        />
         {templates.map((template) => (
           <div key={template.key} className="flex flex-col gap-1">
             <OptionCard

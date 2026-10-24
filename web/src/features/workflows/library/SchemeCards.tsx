@@ -29,7 +29,14 @@ export function SchemeCards({ q, offset, onShow, canConfigure }: SchemeCardsProp
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <ListSearch aria-label="Find schemes" placeholder="Find by name" value={q} onChange={(text) => onShow({ q: text })} className="w-56" data-library-search="" />
+          <ListSearch
+            aria-label="Find schemes"
+            placeholder="Find by name"
+            value={q}
+            onChange={(text) => onShow({ q: text })}
+            className="w-56"
+            data-library-search=""
+          />
           {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, schemes.length, "scheme")}</span>}
         </div>
         {canConfigure && !editing.open && (
@@ -39,11 +46,15 @@ export function SchemeCards({ q, offset, onShow, canConfigure }: SchemeCardsProp
         )}
       </div>
       {editing.open && <SchemeEditor scheme={editing.scheme} onDone={() => setEditing({ open: false })} />}
-      {data && schemes.length === 0 && q && <EmptyState icon={<Icon.Search />} title="No scheme matches that" description="Try part of its name, or clear the search." />}
+      {data && schemes.length === 0 && q && (
+        <EmptyState icon={<Icon.Search />} title="No scheme matches that" description="Try part of its name, or clear the search." />
+      )}
       {schemes.map((scheme) => (
         <SchemeCard key={scheme.id} scheme={scheme} canConfigure={canConfigure} onEdit={() => setEditing({ open: true, scheme })} />
       ))}
-      {data && <Pager label="Scheme pages" total={data.total} offset={data.offset} pageSize={LIBRARY_PAGE_SIZE} onChange={(next) => onShow({ q, offset: next })} />}
+      {data && (
+        <Pager label="Scheme pages" total={data.total} offset={data.offset} pageSize={LIBRARY_PAGE_SIZE} onChange={(next) => onShow({ q, offset: next })} />
+      )}
     </section>
   );
 }
@@ -53,7 +64,11 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
   const remove = useDeleteScheme();
   const confirm = useConfirm();
   const error = (promote.error ?? remove.error) as Error | undefined;
-  const usedBy = scheme.isDefault ? "Used by every project that has not named one of its own." : scheme.projectKeys.length > 0 ? `Used by ${scheme.projectKeys.join(", ")}.` : "No project uses this yet.";
+  const usedBy = scheme.isDefault
+    ? "Used by every project that has not named one of its own."
+    : scheme.projectKeys.length > 0
+      ? `Used by ${scheme.projectKeys.join(", ")}.`
+      : "No project uses this yet.";
   const fallback = scheme.items.find((item) => !item.issueTypeId);
   const named = scheme.items.filter((item) => item.issueTypeId);
 
@@ -74,7 +89,9 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
                 variant="ghost"
                 data-action="delete"
                 aria-busy={remove.isPending}
-                onClick={async () => (await confirm({ noun: "scheme", body: `${scheme.name} goes; projects using it fall back to the default.` })) && remove.mutate(scheme.id)}
+                onClick={async () =>
+                  (await confirm({ noun: "scheme", body: `${scheme.name} goes; projects using it fall back to the default.` })) && remove.mutate(scheme.id)
+                }
               />
             )}
           </>

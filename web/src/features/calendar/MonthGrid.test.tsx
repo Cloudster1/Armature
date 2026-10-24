@@ -12,7 +12,18 @@ const navigated = vi.fn();
 // The router's link, as far as the calendar uses it: an address, and a click
 // that navigates unless a handler of the page prevented it.
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, params, onClick, children, ...rest }: { to: string; params?: Record<string, string>; onClick?: (e: MouseEvent) => void; children: ReactNode }) => {
+  Link: ({
+    to,
+    params,
+    onClick,
+    children,
+    ...rest
+  }: {
+    to: string;
+    params?: Record<string, string>;
+    onClick?: (e: MouseEvent) => void;
+    children: ReactNode;
+  }) => {
     const href = Object.entries(params ?? {}).reduce((path, [name, value]) => path.replace(`$${name}`, value), to);
     return (
       <a

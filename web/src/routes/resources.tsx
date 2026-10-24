@@ -72,7 +72,10 @@ function ResourcesPage() {
         (hasPlannedRows(plan.rows) ? (
           <ResourceGrid plan={plan} />
         ) : plan.grouping === "person" ? (
-          <EmptyState title="Nobody to plan against" description="Put people on a team, or assign them work dated in these weeks; their working weeks are the hours here." />
+          <EmptyState
+            title="Nobody to plan against"
+            description="Put people on a team, or assign them work dated in these weeks; their working weeks are the hours here."
+          />
         ) : (
           <EmptyState
             title="No teams to plan against"

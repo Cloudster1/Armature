@@ -6,7 +6,16 @@ import { ResourceToolbar } from "./ResourceToolbar";
 
 function toolbar(method: PlanningMethod, grouping: ResourceGrouping, canChange: boolean, onGrouping = vi.fn()) {
   render(
-    <ResourceToolbar method={method} grouping={grouping} canChange={canChange} saving={false} onGrouping={onGrouping} onPrevious={vi.fn()} onToday={vi.fn()} onNext={vi.fn()} />,
+    <ResourceToolbar
+      method={method}
+      grouping={grouping}
+      canChange={canChange}
+      saving={false}
+      onGrouping={onGrouping}
+      onPrevious={vi.fn()}
+      onToday={vi.fn()}
+      onNext={vi.fn()}
+    />,
   );
   return onGrouping;
 }

@@ -95,7 +95,8 @@ export function Menu({
         break;
       default:
         if (event.key.length === 1 && /\S/.test(event.key)) {
-          const found = options.find((el, i) => i > index && el.textContent?.trim().toLowerCase().startsWith(event.key.toLowerCase())) ??
+          const found =
+            options.find((el, i) => i > index && el.textContent?.trim().toLowerCase().startsWith(event.key.toLowerCase())) ??
             options.find((el) => el.textContent?.trim().toLowerCase().startsWith(event.key.toLowerCase()));
           found?.focus();
         }
@@ -107,60 +108,64 @@ export function Menu({
       {trigger({ open, toggle: () => setOpen((o) => !o), "aria-haspopup": "menu", "aria-expanded": open })}
       {open &&
         createPortal(
-        <div
-          ref={listRef}
-          role="menu"
-          aria-label={label}
-          onKeyDown={onKeyDown}
-          style={place}
-          className="fixed z-30 min-w-44 overflow-y-auto overscroll-contain rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
-        >
-          {header}
-          {items.map((item, i) => {
-            const className = cx(
-              "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm",
-              item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised",
-              "focus:bg-surface-raised focus:outline-none disabled:opacity-50",
-            );
-            const content = (
-              <>
-                {item.icon && <span className="text-ink-muted [&_svg]:size-4">{item.icon}</span>}
-                {item.label}
-              </>
-            );
-            return (
-              <Fragment key={i}>
-                {item.separated && !item.section && i > 0 && <div role="separator" className="my-1 border-t border-border" />}
-                {item.section && (
-                  <div role="presentation" className={cx("px-2 pt-2 pb-1 text-2xs font-semibold text-ink-subtle", i > 0 && "mt-1 border-t border-border")} data-menu-section={item.section}>
-                    {item.section}
-                  </div>
-                )}
-                {item.href ? (
-                  <a role="menuitem" href={item.href} tabIndex={-1} {...item.attrs} onClick={() => setOpen(false)} className={className}>
-                    {content}
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={item.disabled}
-                    tabIndex={-1}
-                    {...item.attrs}
-                    onClick={() => {
-                      setOpen(false);
-                      item.onSelect?.();
-                    }}
-                    className={className}
-                  >
-                    {content}
-                  </button>
-                )}
-              </Fragment>
-            );
-          })}
-        </div>,
-        document.body,
+          <div
+            ref={listRef}
+            role="menu"
+            aria-label={label}
+            onKeyDown={onKeyDown}
+            style={place}
+            className="fixed z-30 min-w-44 overflow-y-auto overscroll-contain rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+          >
+            {header}
+            {items.map((item, i) => {
+              const className = cx(
+                "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm",
+                item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised",
+                "focus:bg-surface-raised focus:outline-none disabled:opacity-50",
+              );
+              const content = (
+                <>
+                  {item.icon && <span className="text-ink-muted [&_svg]:size-4">{item.icon}</span>}
+                  {item.label}
+                </>
+              );
+              return (
+                <Fragment key={i}>
+                  {item.separated && !item.section && i > 0 && <div role="separator" className="my-1 border-t border-border" />}
+                  {item.section && (
+                    <div
+                      role="presentation"
+                      className={cx("px-2 pt-2 pb-1 text-2xs font-semibold text-ink-subtle", i > 0 && "mt-1 border-t border-border")}
+                      data-menu-section={item.section}
+                    >
+                      {item.section}
+                    </div>
+                  )}
+                  {item.href ? (
+                    <a role="menuitem" href={item.href} tabIndex={-1} {...item.attrs} onClick={() => setOpen(false)} className={className}>
+                      {content}
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={item.disabled}
+                      tabIndex={-1}
+                      {...item.attrs}
+                      onClick={() => {
+                        setOpen(false);
+                        item.onSelect?.();
+                      }}
+                      className={className}
+                    >
+                      {content}
+                    </button>
+                  )}
+                </Fragment>
+              );
+            })}
+          </div>,
+          document.body,
         )}
     </div>
   );

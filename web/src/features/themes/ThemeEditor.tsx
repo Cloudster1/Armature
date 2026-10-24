@@ -1,9 +1,46 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useChooseTheme, useCreateTheme, useDeleteThemeAsset, useThemeExamples, useUpdateTheme, useUploadThemeAsset, type Theme, type ThemeAsset, type ThemeExample, type ThemeSpec } from "@/api/themes";
-import { Button, Card, ColorField, ErrorBanner, Field, IconButton, OptionCard, SectionTitle, Segmented, SelectInput, Switch, TabPanel, Tabs, Tag, useToast } from "@/components/ui";
+import {
+  useChooseTheme,
+  useCreateTheme,
+  useDeleteThemeAsset,
+  useThemeExamples,
+  useUpdateTheme,
+  useUploadThemeAsset,
+  type Theme,
+  type ThemeAsset,
+  type ThemeExample,
+  type ThemeSpec,
+} from "@/api/themes";
+import {
+  Button,
+  Card,
+  ColorField,
+  ErrorBanner,
+  Field,
+  IconButton,
+  OptionCard,
+  SectionTitle,
+  Segmented,
+  SelectInput,
+  Switch,
+  TabPanel,
+  Tabs,
+  Tag,
+  useToast,
+} from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { KILOBYTE, THEME_ASSET_MAX_BYTES, THEME_CSS_MAX_BYTES, THEME_CSS_ROWS, THEME_CURSOR_PX, THEME_ICON_PREVIEW_PX, THEME_MAX_HOTSPOT, THEME_MAX_RADIUS, THEME_PREVIEW_DEBOUNCE_MS } from "@/config";
+import {
+  KILOBYTE,
+  THEME_ASSET_MAX_BYTES,
+  THEME_CSS_MAX_BYTES,
+  THEME_CSS_ROWS,
+  THEME_CURSOR_PX,
+  THEME_ICON_PREVIEW_PX,
+  THEME_MAX_HOTSPOT,
+  THEME_MAX_RADIUS,
+  THEME_PREVIEW_DEBOUNCE_MS,
+} from "@/config";
 import { compileTheme, emptySpec } from "@/lib/theme-css";
 import { CURSOR_KINDS, SHADOW_KEYS, TOKEN_GROUPS } from "@/lib/theme-tokens";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -70,7 +107,10 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
       setThemePreview(null);
       return;
     }
-    const timer = window.setTimeout(() => setThemePreview(compileTheme({ id: theme?.id ?? "new", spec, assets }), spec.effect ?? null), THEME_PREVIEW_DEBOUNCE_MS);
+    const timer = window.setTimeout(
+      () => setThemePreview(compileTheme({ id: theme?.id ?? "new", spec, assets }), spec.effect ?? null),
+      THEME_PREVIEW_DEBOUNCE_MS,
+    );
     return () => window.clearTimeout(timer);
   }, [preview, spec, theme?.id, assets]);
   useEffect(() => () => setThemePreview(null), []);
@@ -109,7 +149,13 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
           </label>
           <span className="ml-auto flex gap-2 pb-1">
             {theme && !theme.active && (
-              <Button type="button" variant="secondary" loading={choose.isPending} onClick={() => choose.mutate(theme.id, { onSuccess: () => toast.success(`Now using ${theme.name}`) })} data-action="use-theme">
+              <Button
+                type="button"
+                variant="secondary"
+                loading={choose.isPending}
+                onClick={() => choose.mutate(theme.id, { onSuccess: () => toast.success(`Now using ${theme.name}`) })}
+                data-action="use-theme"
+              >
                 Use this theme
               </Button>
             )}
@@ -120,19 +166,34 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
         </div>
       </Card>
 
-      {!theme && <StartFrom chosen={startedFrom} onChoose={(example) => { setStartedFrom(example?.key ?? "blank"); setSpec(example ? structuredClone(example.spec) : emptySpec()); if (example && !name.trim()) setName(example.name); }} />}
+      {!theme && (
+        <StartFrom
+          chosen={startedFrom}
+          onChoose={(example) => {
+            setStartedFrom(example?.key ?? "blank");
+            setSpec(example ? structuredClone(example.spec) : emptySpec());
+            if (example && !name.trim()) setName(example.name);
+          }}
+        />
+      )}
 
-      <Tabs<TabID> label="Theme" value={tab} onChange={setTab} panelId={panelId} tabs={tabs.map((each) => ({ ...each, attrs: { "data-theme-tab": each.label } }))} />
+      <Tabs<TabID>
+        label="Theme"
+        value={tab}
+        onChange={setTab}
+        panelId={panelId}
+        tabs={tabs.map((each) => ({ ...each, attrs: { "data-theme-tab": each.label } }))}
+      />
 
       <TabPanel id={panelId} label={tabs.find((each) => each.value === tab)?.label}>
-      {tab === "colours" && <ColoursTab spec={spec} patch={patch} />}
-      {tab === "type" && <TypeTab spec={spec} patch={patch} assets={assets} />}
-      {tab === "shape" && <ShapeTab spec={spec} patch={patch} />}
-      {tab === "cursors" && <CursorsTab spec={spec} patch={patch} assets={assets} />}
-      {tab === "icons" && <IconsTab spec={spec} patch={patch} assets={assets} />}
-      {tab === "backdrop" && <BackdropTab spec={spec} patch={patch} assets={assets} />}
-      {tab === "files" && <FilesTab theme={theme} spec={spec} />}
-      {tab === "advanced" && <AdvancedTab spec={spec} patch={patch} />}
+        {tab === "colours" && <ColoursTab spec={spec} patch={patch} />}
+        {tab === "type" && <TypeTab spec={spec} patch={patch} assets={assets} />}
+        {tab === "shape" && <ShapeTab spec={spec} patch={patch} />}
+        {tab === "cursors" && <CursorsTab spec={spec} patch={patch} assets={assets} />}
+        {tab === "icons" && <IconsTab spec={spec} patch={patch} assets={assets} />}
+        {tab === "backdrop" && <BackdropTab spec={spec} patch={patch} assets={assets} />}
+        {tab === "files" && <FilesTab theme={theme} spec={spec} />}
+        {tab === "advanced" && <AdvancedTab spec={spec} patch={patch} />}
       </TabPanel>
     </form>
   );
@@ -150,9 +211,22 @@ function StartFrom({ chosen, onChoose }: { chosen: string; onChoose: (example: T
     <Card className="p-4" data-theme-start>
       <SectionTitle className="mb-3">Start from</SectionTitle>
       <div role="radiogroup" aria-label="Start from" className="grid gap-3 sm:grid-cols-3">
-        <OptionCard title="Blank" description="Every colour is the stylesheet's until you change it." checked={chosen === "blank"} onSelect={() => onChoose(null)} data-theme-example="blank" />
+        <OptionCard
+          title="Blank"
+          description="Every colour is the stylesheet's until you change it."
+          checked={chosen === "blank"}
+          onSelect={() => onChoose(null)}
+          data-theme-example="blank"
+        />
         {examples.map((example) => (
-          <OptionCard key={example.key} title={example.name} description={example.description} checked={chosen === example.key} onSelect={() => onChoose(example)} data-theme-example={example.key} />
+          <OptionCard
+            key={example.key}
+            title={example.name}
+            description={example.description}
+            checked={chosen === example.key}
+            onSelect={() => onChoose(example)}
+            data-theme-example={example.key}
+          />
         ))}
       </div>
     </Card>
@@ -183,7 +257,11 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
             { value: "dark", label: "Dark", attrs: { "data-theme-mode": "dark" } },
           ]}
         />
-        <span className="text-sm text-ink-muted">{overridden === 0 ? "Nothing changed yet: every colour is the stylesheet's." : `${overridden} of ${TOKEN_GROUPS.reduce((n, g) => n + g.tokens.length, 0)} colours changed.`}</span>
+        <span className="text-sm text-ink-muted">
+          {overridden === 0
+            ? "Nothing changed yet: every colour is the stylesheet's."
+            : `${overridden} of ${TOKEN_GROUPS.reduce((n, g) => n + g.tokens.length, 0)} colours changed.`}
+        </span>
       </div>
       {TOKEN_GROUPS.map((group) => (
         <Card key={group.title} className="p-4">
@@ -198,14 +276,28 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
                   label={token.label}
                   value={value}
                   placeholder={stockValue(token.name) || "#000000"}
-                  onChange={(next) => patch((draft) => {
-                    if (next.trim() === "") delete draft.colors[mode][token.name];
-                    else draft.colors[mode][token.name] = next.trim();
-                  })}
+                  onChange={(next) =>
+                    patch((draft) => {
+                      if (next.trim() === "") delete draft.colors[mode][token.name];
+                      else draft.colors[mode][token.name] = next.trim();
+                    })
+                  }
                   data-token={token.name}
                   data-token-mode={mode}
                 >
-                  {value && <IconButton icon={<Icon.X />} label={`Reset ${token.label}`} size="sm" onClick={() => patch((draft) => { delete draft.colors[mode][token.name]; })} data-action="reset-token" />}
+                  {value && (
+                    <IconButton
+                      icon={<Icon.X />}
+                      label={`Reset ${token.label}`}
+                      size="sm"
+                      onClick={() =>
+                        patch((draft) => {
+                          delete draft.colors[mode][token.name];
+                        })
+                      }
+                      data-action="reset-token"
+                    />
+                  )}
                 </ColorField>
               );
             })}
@@ -216,7 +308,19 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
   );
 }
 
-function AssetSelect({ label, assets, value, onChange, attrs }: { label: string; assets: ThemeAsset[]; value: string | undefined; onChange: (id: string | undefined) => void; attrs?: Record<string, string> }) {
+function AssetSelect({
+  label,
+  assets,
+  value,
+  onChange,
+  attrs,
+}: {
+  label: string;
+  assets: ThemeAsset[];
+  value: string | undefined;
+  onChange: (id: string | undefined) => void;
+  attrs?: Record<string, string>;
+}) {
   return (
     <SelectInput aria-label={label} controlSize="sm" value={value ?? ""} onChange={(e) => onChange(e.target.value || undefined)} className="w-56" {...attrs}>
       <option value="">{assets.length === 0 ? "No files yet: add one under Files" : "Choose a file..."}</option>
@@ -243,20 +347,41 @@ function TypeTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asset
                 label={role === "sans" ? "Text family" : "Code family"}
                 value={font?.family ?? ""}
                 placeholder={role === "sans" ? "Inter" : "JetBrains Mono"}
-                onChange={(e) => patch((draft) => {
-                  const family = e.target.value;
-                  if (family.trim() === "") delete draft.fonts[role];
-                  else draft.fonts[role] = { ...(draft.fonts[role] ?? {}), family };
-                })}
+                onChange={(e) =>
+                  patch((draft) => {
+                    const family = e.target.value;
+                    if (family.trim() === "") delete draft.fonts[role];
+                    else draft.fonts[role] = { ...(draft.fonts[role] ?? {}), family };
+                  })
+                }
                 className="w-64"
                 hint="A family the reader has installed, or the name to give an uploaded file."
               />
               <span className="space-y-1 pb-5">
                 <span className="block text-sm font-medium text-ink-muted">File</span>
-                <AssetSelect label={`${role} font file`} assets={fonts} value={font?.assetId} onChange={(id) => patch((draft) => { if (draft.fonts[role]) draft.fonts[role] = { family: draft.fonts[role]!.family, ...(id ? { assetId: id } : {}) }; })} />
+                <AssetSelect
+                  label={`${role} font file`}
+                  assets={fonts}
+                  value={font?.assetId}
+                  onChange={(id) =>
+                    patch((draft) => {
+                      if (draft.fonts[role]) draft.fonts[role] = { family: draft.fonts[role]!.family, ...(id ? { assetId: id } : {}) };
+                    })
+                  }
+                />
               </span>
               {font && (
-                <Button type="button" variant="ghost" size="sm" className="mb-5" onClick={() => patch((draft) => { delete draft.fonts[role]; })}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mb-5"
+                  onClick={() =>
+                    patch((draft) => {
+                      delete draft.fonts[role];
+                    })
+                  }
+                >
                   Reset
                 </Button>
               )}
@@ -268,7 +393,21 @@ function TypeTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asset
   );
 }
 
-function NumberField({ label, value, onChange, max, placeholder, attrs }: { label: string; value: number | undefined; onChange: (value: number | undefined) => void; max: number; placeholder: string; attrs?: Record<string, string> }) {
+function NumberField({
+  label,
+  value,
+  onChange,
+  max,
+  placeholder,
+  attrs,
+}: {
+  label: string;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+  max: number;
+  placeholder: string;
+  attrs?: Record<string, string>;
+}) {
   return (
     <Field
       label={label}
@@ -290,8 +429,30 @@ function ShapeTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
       <Card className="p-4">
         <SectionTitle className="mb-3">Corners</SectionTitle>
         <div className="flex flex-wrap gap-4">
-          <NumberField label="Control radius" value={spec.shape.radiusControl} max={THEME_MAX_RADIUS} placeholder="6" onChange={(v) => patch((d) => { if (v === undefined) delete d.shape.radiusControl; else d.shape.radiusControl = v; })} />
-          <NumberField label="Overlay radius" value={spec.shape.radiusOverlay} max={THEME_MAX_RADIUS} placeholder="8" onChange={(v) => patch((d) => { if (v === undefined) delete d.shape.radiusOverlay; else d.shape.radiusOverlay = v; })} />
+          <NumberField
+            label="Control radius"
+            value={spec.shape.radiusControl}
+            max={THEME_MAX_RADIUS}
+            placeholder="6"
+            onChange={(v) =>
+              patch((d) => {
+                if (v === undefined) delete d.shape.radiusControl;
+                else d.shape.radiusControl = v;
+              })
+            }
+          />
+          <NumberField
+            label="Overlay radius"
+            value={spec.shape.radiusOverlay}
+            max={THEME_MAX_RADIUS}
+            placeholder="8"
+            onChange={(v) =>
+              patch((d) => {
+                if (v === undefined) delete d.shape.radiusOverlay;
+                else d.shape.radiusOverlay = v;
+              })
+            }
+          />
         </div>
       </Card>
       <Card className="p-4">
@@ -303,7 +464,12 @@ function ShapeTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
               label={key === "1" ? "Raised" : key === "2" ? "Overlays" : "Elevated glass"}
               value={spec.shadows[key] ?? ""}
               placeholder="0 1px 2px rgb(0 0 0 / 0.1)"
-              onChange={(e) => patch((d) => { if (e.target.value.trim() === "") delete d.shadows[key]; else d.shadows[key] = e.target.value; })}
+              onChange={(e) =>
+                patch((d) => {
+                  if (e.target.value.trim() === "") delete d.shadows[key];
+                  else d.shadows[key] = e.target.value;
+                })
+              }
               className="font-mono"
               data-shadow={key}
             />
@@ -327,12 +493,42 @@ function CursorsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; as
               <span className="w-28 pb-2 text-sm text-ink">{each.label}</span>
               <span className="space-y-1">
                 <span className="block text-sm font-medium text-ink-muted">Picture</span>
-                <AssetSelect label={`${each.label} cursor picture`} assets={images} value={cursor?.assetId} onChange={(id) => patch((d) => { if (!id) delete d.cursors[each.kind]; else d.cursors[each.kind] = { assetId: id, hotspotX: cursor?.hotspotX ?? 0, hotspotY: cursor?.hotspotY ?? 0 }; })} />
+                <AssetSelect
+                  label={`${each.label} cursor picture`}
+                  assets={images}
+                  value={cursor?.assetId}
+                  onChange={(id) =>
+                    patch((d) => {
+                      if (!id) delete d.cursors[each.kind];
+                      else d.cursors[each.kind] = { assetId: id, hotspotX: cursor?.hotspotX ?? 0, hotspotY: cursor?.hotspotY ?? 0 };
+                    })
+                  }
+                />
               </span>
               {cursor && (
                 <>
-                  <NumberField label="Point x" value={cursor.hotspotX} max={THEME_MAX_HOTSPOT} placeholder="0" onChange={(v) => patch((d) => { d.cursors[each.kind]!.hotspotX = v ?? 0; })} />
-                  <NumberField label="Point y" value={cursor.hotspotY} max={THEME_MAX_HOTSPOT} placeholder="0" onChange={(v) => patch((d) => { d.cursors[each.kind]!.hotspotY = v ?? 0; })} />
+                  <NumberField
+                    label="Point x"
+                    value={cursor.hotspotX}
+                    max={THEME_MAX_HOTSPOT}
+                    placeholder="0"
+                    onChange={(v) =>
+                      patch((d) => {
+                        d.cursors[each.kind]!.hotspotX = v ?? 0;
+                      })
+                    }
+                  />
+                  <NumberField
+                    label="Point y"
+                    value={cursor.hotspotY}
+                    max={THEME_MAX_HOTSPOT}
+                    placeholder="0"
+                    onChange={(v) =>
+                      patch((d) => {
+                        d.cursors[each.kind]!.hotspotY = v ?? 0;
+                      })
+                    }
+                  />
                 </>
               )}
             </div>
@@ -351,7 +547,10 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
     <Card className="p-4">
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <Field label="Find an icon" value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
-        <p className="pb-2 text-sm text-ink-muted">A picture is drawn in the text's colour through a mask, so an SVG's own colours do not matter. Path data is drawn on the kit's 16 pixel grid, one path per line.</p>
+        <p className="pb-2 text-sm text-ink-muted">
+          A picture is drawn in the text's colour through a mask, so an SVG's own colours do not matter. Path data is drawn on the kit's 16 pixel grid, one path
+          per line.
+        </p>
       </div>
       <div className="divide-y divide-border">
         {shown.map(({ name, Glyph }) => {
@@ -364,7 +563,17 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
               </span>
               <span className="space-y-1">
                 <span className="block text-sm font-medium text-ink-muted">Picture</span>
-                <AssetSelect label={`${name} icon picture`} assets={images} value={icon?.assetId} onChange={(id) => patch((d) => { if (!id && !(icon?.paths?.length)) delete d.icons[name]; else d.icons[name] = { ...(id ? { assetId: id } : {}), ...(icon?.paths?.length ? { paths: icon.paths } : {}) }; })} />
+                <AssetSelect
+                  label={`${name} icon picture`}
+                  assets={images}
+                  value={icon?.assetId}
+                  onChange={(id) =>
+                    patch((d) => {
+                      if (!id && !icon?.paths?.length) delete d.icons[name];
+                      else d.icons[name] = { ...(id ? { assetId: id } : {}), ...(icon?.paths?.length ? { paths: icon.paths } : {}) };
+                    })
+                  }
+                />
               </span>
               <Field
                 label={`${name} path data`}
@@ -372,15 +581,30 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
                 rows={2}
                 value={icon?.paths?.join("\n") ?? ""}
                 placeholder="M2 8h12"
-                onChange={(e) => patch((d) => {
-                  const paths = e.target.value.split("\n").map((line) => line.trim()).filter(Boolean);
-                  if (paths.length === 0 && !icon?.assetId) delete d.icons[name];
-                  else d.icons[name] = { ...(icon?.assetId ? { assetId: icon.assetId } : {}), ...(paths.length ? { paths } : {}) };
-                })}
+                onChange={(e) =>
+                  patch((d) => {
+                    const paths = e.target.value
+                      .split("\n")
+                      .map((line) => line.trim())
+                      .filter(Boolean);
+                    if (paths.length === 0 && !icon?.assetId) delete d.icons[name];
+                    else d.icons[name] = { ...(icon?.assetId ? { assetId: icon.assetId } : {}), ...(paths.length ? { paths } : {}) };
+                  })
+                }
                 className="w-72 font-mono"
               />
               {icon && (
-                <Button type="button" variant="ghost" size="sm" className="mt-6" onClick={() => patch((d) => { delete d.icons[name]; })}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-6"
+                  onClick={() =>
+                    patch((d) => {
+                      delete d.icons[name];
+                    })
+                  }
+                >
                   Reset
                 </Button>
               )}
@@ -397,11 +621,22 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
   const backdrop = spec.backdrop ?? null;
   return (
     <Card className="p-4">
-      <p className="mb-4 text-sm text-ink-muted">A picture behind the content, where the soft gradient is. The two gradient colours under Colours are what shows when there is none.</p>
+      <p className="mb-4 text-sm text-ink-muted">
+        A picture behind the content, where the soft gradient is. The two gradient colours under Colours are what shows when there is none.
+      </p>
       <div className="flex flex-wrap items-end gap-4">
         <span className="space-y-1">
           <span className="block text-sm font-medium text-ink-muted">Picture</span>
-          <AssetSelect label="Backdrop picture" assets={images} value={backdrop?.assetId} onChange={(id) => patch((d) => { d.backdrop = id ? { assetId: id, fit: backdrop?.fit ?? "cover" } : null; })} />
+          <AssetSelect
+            label="Backdrop picture"
+            assets={images}
+            value={backdrop?.assetId}
+            onChange={(id) =>
+              patch((d) => {
+                d.backdrop = id ? { assetId: id, fit: backdrop?.fit ?? "cover" } : null;
+              })
+            }
+          />
         </span>
         {backdrop && (
           <span className="pb-0.5">
@@ -409,7 +644,11 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
               label="Fit"
               size="sm"
               value={backdrop.fit}
-              onChange={(fit) => patch((d) => { if (d.backdrop) d.backdrop.fit = fit; })}
+              onChange={(fit) =>
+                patch((d) => {
+                  if (d.backdrop) d.backdrop.fit = fit;
+                })
+              }
               options={[
                 { value: "cover", label: "Cover" },
                 { value: "tile", label: "Tile" },
@@ -418,12 +657,20 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
           </span>
         )}
       </div>
-      <p className="mb-2 mt-6 text-sm text-ink-muted">A moving picture the page draws live, never the same twice: a network behind the content, or a burst of colour wherever the page is clicked. Both stand still for anyone who asked their system for less motion.</p>
+      <p className="mb-2 mt-6 text-sm text-ink-muted">
+        A moving picture the page draws live, never the same twice: a network behind the content, or a burst of colour wherever the page is clicked. Both stand
+        still for anyone who asked their system for less motion.
+      </p>
       <Segmented<"none" | "constellation" | "confetti">
         label="Moving picture"
         size="sm"
         value={spec.effect === "constellation" || spec.effect === "confetti" ? spec.effect : "none"}
-        onChange={(effect) => patch((d) => { if (effect === "none") delete d.effect; else d.effect = effect; })}
+        onChange={(effect) =>
+          patch((d) => {
+            if (effect === "none") delete d.effect;
+            else d.effect = effect;
+          })
+        }
         options={[
           { value: "none", label: "None", attrs: { "data-theme-effect": "none" } },
           { value: "constellation", label: "Constellation", attrs: { "data-theme-effect": "constellation" } },
@@ -451,7 +698,9 @@ function FilesTab({ theme, spec }: { theme?: Theme; spec: ThemeSpec }) {
   const used = new Set<string>([
     ...[spec.fonts.sans?.assetId, spec.fonts.mono?.assetId, spec.backdrop?.assetId].filter((id): id is string => Boolean(id)),
     ...Object.values(spec.cursors).map((c) => c.assetId),
-    ...Object.values(spec.icons).map((i) => i.assetId).filter((id): id is string => Boolean(id)),
+    ...Object.values(spec.icons)
+      .map((i) => i.assetId)
+      .filter((id): id is string => Boolean(id)),
   ]);
   function onFile(file: File | undefined) {
     if (!file) return;
@@ -465,11 +714,28 @@ function FilesTab({ theme, spec }: { theme?: Theme; spec: ThemeSpec }) {
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="secondary" icon={<Icon.Upload />} loading={uploadAsset.isPending} onClick={() => fileInput.current?.click()} data-action="add-theme-file">
+        <Button
+          type="button"
+          variant="secondary"
+          icon={<Icon.Upload />}
+          loading={uploadAsset.isPending}
+          onClick={() => fileInput.current?.click()}
+          data-action="add-theme-file"
+        >
           Add a file
         </Button>
-        <input ref={fileInput} type="file" accept={UPLOAD_ACCEPT} className="hidden" aria-label="Choose a file for the theme" data-theme-file-input onChange={(e) => onFile(e.target.files?.[0])} />
-        <p className="text-sm text-ink-subtle">PNG, JPEG, WebP, GIF or SVG pictures and WOFF or WOFF2 fonts, up to 12 MB each. An SVG with script or links elsewhere is refused.</p>
+        <input
+          ref={fileInput}
+          type="file"
+          accept={UPLOAD_ACCEPT}
+          className="hidden"
+          aria-label="Choose a file for the theme"
+          data-theme-file-input
+          onChange={(e) => onFile(e.target.files?.[0])}
+        />
+        <p className="text-sm text-ink-subtle">
+          PNG, JPEG, WebP, GIF or SVG pictures and WOFF or WOFF2 fonts, up to 12 MB each. An SVG with script or links elsewhere is refused.
+        </p>
       </div>
       {tooBig && <ErrorBanner>That file is over 12 MB. Make it smaller and try again.</ErrorBanner>}
       {uploadAsset.error && <ErrorBanner>{(uploadAsset.error as Error).message}</ErrorBanner>}
@@ -512,7 +778,11 @@ function AdvancedTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
         label="Extra CSS"
         rows={THEME_CSS_ROWS}
         value={spec.css}
-        onChange={(e) => patch((d) => { d.css = e.target.value; })}
+        onChange={(e) =>
+          patch((d) => {
+            d.css = e.target.value;
+          })
+        }
         className="font-mono"
         hint={`Anything the parts above do not reach. It may load only the theme's own files and inline images, never @import or another site. ${Math.round(size / KILOBYTE)} of ${THEME_CSS_MAX_BYTES / KILOBYTE} KB.`}
         data-theme-css=""

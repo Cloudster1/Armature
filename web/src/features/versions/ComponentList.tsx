@@ -19,7 +19,10 @@ export function ComponentList({ projectKey, canEdit }: { projectKey: string; can
     <div className="space-y-4">
       {canEdit && <NewComponent projectKey={projectKey} />}
       {isLoading ? null : components.length === 0 ? (
-        <EmptyState title="No components yet" description="A component is a part of the project: billing, the mobile app, the docs. Give it a lead, and, if you like, somebody who takes every new issue filed into it." />
+        <EmptyState
+          title="No components yet"
+          description="A component is a part of the project: billing, the mobile app, the docs. Give it a lead, and, if you like, somebody who takes every new issue filed into it."
+        />
       ) : (
         <Table>
           <thead>
@@ -48,14 +51,26 @@ export function ComponentList({ projectKey, canEdit }: { projectKey: string; can
                     <Menu
                       label={`Actions for ${c.name}`}
                       align="end"
-                      trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${c.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-component-menu={c.name} />}
+                      trigger={(props) => (
+                        <IconButton
+                          icon={<Icon.More />}
+                          label={`Actions for ${c.name}`}
+                          size="sm"
+                          onClick={props.toggle}
+                          aria-haspopup={props["aria-haspopup"]}
+                          aria-expanded={props["aria-expanded"]}
+                          data-component-menu={c.name}
+                        />
+                      )}
                       items={[
                         { label: "Edit", icon: <Icon.Edit />, onSelect: () => setEditing(c), attrs: { "data-action": "component-edit" } },
                         {
                           label: "Delete",
                           icon: <Icon.Trash />,
                           danger: true,
-                          onSelect: async () => (await confirm({ noun: "component", verb: "Delete", body: `${c.name} goes; the issues in it simply leave it.` })) && remove.mutate(c.id),
+                          onSelect: async () =>
+                            (await confirm({ noun: "component", verb: "Delete", body: `${c.name} goes; the issues in it simply leave it.` })) &&
+                            remove.mutate(c.id),
                           attrs: { "data-action": "component-delete" },
                         },
                       ]}
@@ -72,7 +87,19 @@ export function ComponentList({ projectKey, canEdit }: { projectKey: string; can
   );
 }
 
-function PersonSelect({ label, id, value, onChange, selected }: { label: string; id: string; value: string; onChange: (id: string) => void; selected?: Chosen }) {
+function PersonSelect({
+  label,
+  id,
+  value,
+  onChange,
+  selected,
+}: {
+  label: string;
+  id: string;
+  value: string;
+  onChange: (id: string) => void;
+  selected?: Chosen;
+}) {
   return <PersonPicker label={label} id={id} value={value} onChange={onChange} none="Nobody" staff selected={selected} />;
 }
 
@@ -87,7 +114,13 @@ function NewComponent({ projectKey }: { projectKey: string }) {
     if (!name.trim()) return;
     create.mutate(
       { name: name.trim(), leadId: lead || undefined, defaultAssigneeId: assignee || undefined },
-      { onSuccess: () => { setName(""); setLead(""); setAssignee(""); } },
+      {
+        onSuccess: () => {
+          setName("");
+          setLead("");
+          setAssignee("");
+        },
+      },
     );
   }
 
@@ -126,7 +159,15 @@ function EditComponent({ component, onClose }: { component: Component; onClose: 
   function submit(event: FormEvent) {
     event.preventDefault();
     update.mutate(
-      { id: component.id, name: name.trim(), description: description.trim(), leadId: lead || undefined, clearLead: !lead, defaultAssigneeId: assignee || undefined, clearDefaultAssignee: !assignee },
+      {
+        id: component.id,
+        name: name.trim(),
+        description: description.trim(),
+        leadId: lead || undefined,
+        clearLead: !lead,
+        defaultAssigneeId: assignee || undefined,
+        clearDefaultAssignee: !assignee,
+      },
       { onSuccess: onClose },
     );
   }
@@ -138,7 +179,13 @@ function EditComponent({ component, onClose }: { component: Component; onClose: 
         <Field label="Name" id="field-edit-component-name" required value={name} onChange={(e) => setName(e.target.value)} />
         <Field label="What it is" id="field-edit-component-description" value={description} onChange={(e) => setDescription(e.target.value)} />
         <PersonSelect label="Lead" id="field-edit-component-lead" value={lead} onChange={setLead} selected={component.lead} />
-        <PersonSelect label="New work goes to" id="field-edit-component-assignee" value={assignee} onChange={setAssignee} selected={component.defaultAssignee} />
+        <PersonSelect
+          label="New work goes to"
+          id="field-edit-component-assignee"
+          value={assignee}
+          onChange={setAssignee}
+          selected={component.defaultAssignee}
+        />
         <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
           Save component
         </Button>

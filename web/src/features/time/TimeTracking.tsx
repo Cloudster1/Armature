@@ -1,13 +1,5 @@
 import { useState, type FormEvent } from "react";
-import {
-  useDeleteWorklog,
-  useLogWork,
-  useUpdateIssue,
-  useUpdateWorklog,
-  useWorklogs,
-  type Issue,
-  type Worklog,
-} from "@/api/issues";
+import { useDeleteWorklog, useLogWork, useUpdateIssue, useUpdateWorklog, useWorklogs, type Issue, type Worklog } from "@/api/issues";
 import { Button, cx, ErrorBanner, Field, Input, Labelled } from "@/components/ui";
 import { canAdminister, useAccess } from "@/api/access";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -16,7 +8,6 @@ import { Avatar } from "@/features/issues/badges";
 import { formatDuration, parseDuration, timeProgress } from "./duration";
 import { formatDay } from "@/lib/week";
 
-
 /**
  * The time on an issue as the side panel shows it: the estimate, what is
  * left, how much was spent, and a bar of the three. Estimate and remaining
@@ -24,8 +15,7 @@ import { formatDay } from "@/lib/week";
  */
 export function TimeSummary({ issue, editable }: { issue: Issue; editable: boolean }) {
   const progress = timeProgress(issue.timeSpentMinutes, issue.timeRemainingMinutes, issue.timeEstimateMinutes);
-  const over =
-    issue.timeEstimateMinutes !== undefined && issue.timeSpentMinutes > issue.timeEstimateMinutes;
+  const over = issue.timeEstimateMinutes !== undefined && issue.timeSpentMinutes > issue.timeEstimateMinutes;
   return (
     <div className="w-full space-y-1.5" data-time-tracking>
       <div className="h-1.5 w-full overflow-hidden rounded bg-surface-raised">
@@ -167,10 +157,24 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
                   </span>
                   {mayChange(w.author?.id) && (
                     <>
-                      <Button size="sm" variant="ghost" aria-label={`Edit work log ${formatDuration(w.minutes)}`} onClick={() => setEditingID(w.id)} data-action="edit-worklog">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Edit work log ${formatDuration(w.minutes)}`}
+                        onClick={() => setEditingID(w.id)}
+                        data-action="edit-worklog"
+                      >
                         Edit
                       </Button>
-                      <Button size="sm" variant="ghost" aria-label={`Remove work log ${formatDuration(w.minutes)}`} onClick={async () => (await confirm({ noun: "work log", verb: "Remove", body: `${formatDuration(w.minutes)} comes off the time spent.` })) && remove.mutate(w.id)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Remove work log ${formatDuration(w.minutes)}`}
+                        onClick={async () =>
+                          (await confirm({ noun: "work log", verb: "Remove", body: `${formatDuration(w.minutes)} comes off the time spent.` })) &&
+                          remove.mutate(w.id)
+                        }
+                      >
                         Remove
                       </Button>
                     </>
@@ -183,7 +187,14 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
       )}
       {editable && (
         <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
-          <Field label="Time spent" id="worklog-duration" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="2h 30m" className="w-28" />
+          <Field
+            label="Time spent"
+            id="worklog-duration"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            placeholder="2h 30m"
+            className="w-28"
+          />
           <Field label="On" id="worklog-day" type="date" value={day} onChange={(e) => setDay(e.target.value)} />
           <Labelled id="worklog-note" label="What was done" className="min-w-40 flex-1">
             <Input id="worklog-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
@@ -198,9 +209,7 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
           <ErrorBanner>{error}</ErrorBanner>
         </div>
       )}
-      {worklogs.length === 0 && editable && !error && (
-        <p className="mt-2 text-sm text-ink-subtle">Nothing logged yet.</p>
-      )}
+      {worklogs.length === 0 && editable && !error && <p className="mt-2 text-sm text-ink-subtle">Nothing logged yet.</p>}
     </section>
   );
 }

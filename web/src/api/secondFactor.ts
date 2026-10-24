@@ -75,8 +75,7 @@ export function useStartSecondFactor() {
  */
 export function useConfirmSecondFactor() {
   return useMutation({
-    mutationFn: (code: string) =>
-      request<{ recoveryCodes: string[] }>("/auth/me/second-factor/confirm", { method: "POST", body: { code } }),
+    mutationFn: (code: string) => request<{ recoveryCodes: string[] }>("/auth/me/second-factor/confirm", { method: "POST", body: { code } }),
   });
 }
 
@@ -104,8 +103,7 @@ export function useRemoveSecondFactor() {
 export function useLoginSecondFactor() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { challenge: string; code: string }) =>
-      request<{ principal: Principal }>("/auth/login/second-factor", { method: "POST", body: input }),
+    mutationFn: (input: { challenge: string; code: string }) => request<{ principal: Principal }>("/auth/login/second-factor", { method: "POST", body: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: meQueryKey }),
   });
 }
@@ -120,8 +118,7 @@ export function useSecondFactorRule() {
 export function useRequireSecondFactor() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (require: SecondFactorRule) =>
-      request<{ require: SecondFactorRule }>("/settings/second-factor", { method: "PUT", body: { require } }),
+    mutationFn: (require: SecondFactorRule) => request<{ require: SecondFactorRule }>("/settings/second-factor", { method: "PUT", body: { require } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ruleQueryKey });
       void queryClient.invalidateQueries({ queryKey: meQueryKey });

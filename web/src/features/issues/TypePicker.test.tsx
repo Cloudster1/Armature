@@ -147,7 +147,13 @@ describe("changing an issue's type", () => {
 
 describe("the history of a type change", () => {
   it("reads as a sentence", async () => {
-    const entry = { id: "h1", issueId: "i1", actor: { id: "ada", name: "Ada" }, changes: [{ field: "type", from: "Task", to: "Bug" }], createdAt: "2026-09-01T09:00:00Z" };
+    const entry = {
+      id: "h1",
+      issueId: "i1",
+      actor: { id: "ada", name: "Ada" },
+      changes: [{ field: "type", from: "Task", to: "Bug" }],
+      createdAt: "2026-09-01T09:00:00Z",
+    };
     serve({ "GET /issues/CP-4/history": [200, { history: [entry] }] });
     renderInShell(<History issueKey="CP-4" />);
 

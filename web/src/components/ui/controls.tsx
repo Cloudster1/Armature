@@ -124,7 +124,13 @@ export function describedBy(id: string, hint?: string, error?: string): string |
 }
 
 /** A select on its own, named by aria-label, for a toolbar or a table cell. */
-export function SelectInput({ className, controlSize = "md", invalid, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement> & { controlSize?: ControlSize; invalid?: boolean; ref?: Ref<HTMLSelectElement> }) {
+export function SelectInput({
+  className,
+  controlSize = "md",
+  invalid,
+  children,
+  ...rest
+}: SelectHTMLAttributes<HTMLSelectElement> & { controlSize?: ControlSize; invalid?: boolean; ref?: Ref<HTMLSelectElement> }) {
   return (
     <select {...rest} aria-invalid={invalid || undefined} className={control(controlSize, "block", invalid && "border-danger", className)}>
       {children}
@@ -146,7 +152,14 @@ export function Select({
   const selectId = id ?? fieldId(label);
   return (
     <Labelled id={selectId} label={label} hint={hint} error={error}>
-      <SelectInput {...rest} id={selectId} invalid={Boolean(error)} aria-describedby={describedBy(selectId, hint, error)} controlSize={controlSize} className={cx("w-full", className)}>
+      <SelectInput
+        {...rest}
+        id={selectId}
+        invalid={Boolean(error)}
+        aria-describedby={describedBy(selectId, hint, error)}
+        controlSize={controlSize}
+        className={cx("w-full", className)}
+      >
         {children}
       </SelectInput>
     </Labelled>

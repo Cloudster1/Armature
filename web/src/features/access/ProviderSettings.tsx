@@ -42,11 +42,7 @@ export function ProviderSettings() {
           hint="Where its discovery document lives."
           onChange={(event) => setIssuer(event.target.value)}
         />
-        <Field
-          label="Client ID"
-          value={values.clientId}
-          onChange={(event) => setClientId(event.target.value)}
-        />
+        <Field label="Client ID" value={values.clientId} onChange={(event) => setClientId(event.target.value)} />
         <Field
           label="Client secret"
           type="password"
@@ -54,12 +50,7 @@ export function ProviderSettings() {
           placeholder={provider?.hasSecret ? "Stored. Leave blank to keep it." : ""}
           onChange={(event) => setSecret(event.target.value)}
         />
-        <Field
-          label="Groups claim"
-          value={values.groupsClaim}
-          hint="The claim listing somebody's groups."
-          onChange={(event) => setClaim(event.target.value)}
-        />
+        <Field label="Groups claim" value={values.groupsClaim} hint="The claim listing somebody's groups." onChange={(event) => setClaim(event.target.value)} />
       </div>
 
       <div className="space-y-1">
@@ -70,8 +61,8 @@ export function ProviderSettings() {
           data-admit-by-group
         />
         <p className="pl-6 text-xs text-ink-muted">
-          Somebody signing in here, or through Stator or Exciter, whose group from the provider holds a role is let in
-          as a member with that group's roles. Anybody else still asks to join.
+          Somebody signing in here, or through Stator or Exciter, whose group from the provider holds a role is let in as a member with that group's roles.
+          Anybody else still asks to join.
         </p>
       </div>
 

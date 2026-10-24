@@ -22,24 +22,9 @@ const categoryInk: Record<StatusCategory, string> = {
 
 // A dot and a word rather than a coloured pill: at list density a row of pills
 // is a row of shapes, and the word is what somebody actually reads.
-export function StatusBadge({
-  name,
-  category,
-  className,
-}: {
-  name: string;
-  category: StatusCategory;
-  className?: string;
-}) {
+export function StatusBadge({ name, category, className }: { name: string; category: StatusCategory; className?: string }) {
   return (
-    <span
-      className={cx(
-        "inline-flex items-center gap-1.5 text-sm whitespace-nowrap",
-        categoryInk[category],
-        `status-${category}`,
-        className,
-      )}
-    >
+    <span className={cx("inline-flex items-center gap-1.5 text-sm whitespace-nowrap", categoryInk[category], `status-${category}`, className)}>
       <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-full", categoryDot[category])} />
       {name}
     </span>
@@ -67,10 +52,7 @@ const priorityLabels: Record<Priority, string> = {
 export function PriorityBadge({ priority }: { priority: Priority }) {
   const index = priorityOrder.indexOf(priority);
   return (
-    <span
-      className={cx("inline-flex items-center gap-1 text-xs font-medium", priorityStyles[priority])}
-      title={`${priorityLabels[priority]} priority`}
-    >
+    <span className={cx("inline-flex items-center gap-1 text-xs font-medium", priorityStyles[priority])} title={`${priorityLabels[priority]} priority`}>
       {/* A small bar chart reads faster than a word at list density, but the
           word stays available to screen readers and on hover. */}
       <span aria-hidden="true" className="inline-flex items-end gap-px">

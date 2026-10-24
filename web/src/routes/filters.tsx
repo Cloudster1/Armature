@@ -60,7 +60,10 @@ function FiltersPage() {
         />
       </div>
       {isLoading ? null : filters.length === 0 ? (
-        <EmptyState title={view === "mine" ? "Nothing saved yet" : view === "shared" ? "Nothing shared with you" : "Nothing starred"} description="Run a search, then Save this search under the query. A saved search can be shared, starred and mailed to you daily or weekly." />
+        <EmptyState
+          title={view === "mine" ? "Nothing saved yet" : view === "shared" ? "Nothing shared with you" : "Nothing starred"}
+          description="Run a search, then Save this search under the query. A saved search can be shared, starred and mailed to you daily or weekly."
+        />
       ) : (
         <Table>
           <thead>
@@ -95,7 +98,10 @@ function FiltersPage() {
                     value={f.subscription?.schedule ?? ""}
                     onChange={(e) => {
                       const schedule = e.target.value as "" | "daily" | "weekly";
-                      subscribe.mutate({ id: f.id, subscription: schedule ? { schedule, hour: 8, weekday: schedule === "weekly" ? 1 : undefined } : null }, { onSuccess: () => toast.success(schedule ? `You will get ${f.name} ${schedule}` : "No more mail") });
+                      subscribe.mutate(
+                        { id: f.id, subscription: schedule ? { schedule, hour: 8, weekday: schedule === "weekly" ? 1 : undefined } : null },
+                        { onSuccess: () => toast.success(schedule ? `You will get ${f.name} ${schedule}` : "No more mail") },
+                      );
                     }}
                     data-filter-subscription={f.name}
                   >
@@ -106,19 +112,43 @@ function FiltersPage() {
                 </Td>
                 <Td>
                   <span className="flex items-center justify-end gap-1">
-                    <IconButton icon={f.starred ? <Icon.Check /> : <Icon.Plus />} label={f.starred ? `Unstar ${f.name}` : `Star ${f.name}`} size="sm" onClick={() => star.mutate({ id: f.id, on: !f.starred })} data-filter-star={f.name} data-starred={f.starred ? "true" : "false"} />
+                    <IconButton
+                      icon={f.starred ? <Icon.Check /> : <Icon.Plus />}
+                      label={f.starred ? `Unstar ${f.name}` : `Star ${f.name}`}
+                      size="sm"
+                      onClick={() => star.mutate({ id: f.id, on: !f.starred })}
+                      data-filter-star={f.name}
+                      data-starred={f.starred ? "true" : "false"}
+                    />
                     {f.ownerId === me && (
                       <Menu
                         label={`Actions for ${f.name}`}
                         align="end"
-                        trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${f.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-filter-menu={f.name} />}
+                        trigger={(props) => (
+                          <IconButton
+                            icon={<Icon.More />}
+                            label={`Actions for ${f.name}`}
+                            size="sm"
+                            onClick={props.toggle}
+                            aria-haspopup={props["aria-haspopup"]}
+                            aria-expanded={props["aria-expanded"]}
+                            data-filter-menu={f.name}
+                          />
+                        )}
                         items={[
-                          { label: f.shared ? "Stop sharing" : "Share with everyone", icon: <Icon.Share />, onSelect: () => update.mutate({ id: f.id, shared: !f.shared }), attrs: { "data-action": "filter-share" } },
+                          {
+                            label: f.shared ? "Stop sharing" : "Share with everyone",
+                            icon: <Icon.Share />,
+                            onSelect: () => update.mutate({ id: f.id, shared: !f.shared }),
+                            attrs: { "data-action": "filter-share" },
+                          },
                           {
                             label: "Delete",
                             icon: <Icon.Trash />,
                             danger: true,
-                            onSelect: async () => (await confirm({ noun: "saved search", verb: "Delete", body: `${f.name} goes for everyone it was shared with.` })) && remove.mutate(f.id),
+                            onSelect: async () =>
+                              (await confirm({ noun: "saved search", verb: "Delete", body: `${f.name} goes for everyone it was shared with.` })) &&
+                              remove.mutate(f.id),
                             attrs: { "data-action": "filter-delete" },
                           },
                         ]}

@@ -89,7 +89,9 @@ export function compileTheme(theme: CompilableTheme): string {
     const font = spec.fonts[role];
     if (!font) continue;
     if (font.assetId) {
-      out.push(`@font-face {\n  font-family: ${JSON.stringify(font.family)};\n  src: ${url(asset(font.assetId))} format("${fontFormat(assetType(font.assetId))}");\n  font-display: swap;\n}`);
+      out.push(
+        `@font-face {\n  font-family: ${JSON.stringify(font.family)};\n  src: ${url(asset(font.assetId))} format("${fontFormat(assetType(font.assetId))}");\n  font-display: swap;\n}`,
+      );
     }
     root.push(`  --font-${role}: ${JSON.stringify(font.family)}, ${fallback};`);
   }
@@ -116,7 +118,11 @@ export function compileTheme(theme: CompilableTheme): string {
 
   if (spec.backdrop) {
     const image = url(asset(spec.backdrop.assetId));
-    out.push(spec.backdrop.fit === "tile" ? `.bg-backdrop {\n  background: ${image} repeat;\n}` : `.bg-backdrop {\n  background: ${image} center / cover no-repeat;\n}`);
+    out.push(
+      spec.backdrop.fit === "tile"
+        ? `.bg-backdrop {\n  background: ${image} repeat;\n}`
+        : `.bg-backdrop {\n  background: ${image} center / cover no-repeat;\n}`,
+    );
   }
 
   if (spec.css.trim()) out.push(spec.css.trim());

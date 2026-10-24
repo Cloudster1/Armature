@@ -77,8 +77,7 @@ export function useSignupOpen() {
 export function useSignup() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: SignupInput) =>
-      request<{ principal: Principal }>("/auth/signup", { method: "POST", body: input }),
+    mutationFn: (input: SignupInput) => request<{ principal: Principal }>("/auth/signup", { method: "POST", body: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: meQueryKey }),
   });
 }
@@ -87,8 +86,7 @@ export function useSignup() {
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { email: string; password: string }) =>
-      request<LoginAnswer>("/auth/login", { method: "POST", body: input }),
+    mutationFn: (input: { email: string; password: string }) => request<LoginAnswer>("/auth/login", { method: "POST", body: input }),
     onSuccess: (answer) => {
       if (!("challenge" in answer)) void queryClient.invalidateQueries({ queryKey: meQueryKey });
     },
@@ -101,8 +99,7 @@ export const SSO_START = "/auth/oidc/start";
 /** Asks for a link to set a new password; the answer is the same for every address. */
 export function useRequestPasswordReset() {
   return useMutation({
-    mutationFn: (email: string) =>
-      request<{ expiresInSeconds: number }>("/auth/password-reset", { method: "POST", body: { email } }),
+    mutationFn: (email: string) => request<{ expiresInSeconds: number }>("/auth/password-reset", { method: "POST", body: { email } }),
   });
 }
 
@@ -110,8 +107,7 @@ export function useRequestPasswordReset() {
 export function useResetPassword() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { token: string; password: string }) =>
-      request<void>("/auth/password-reset/confirm", { method: "POST", body: input }),
+    mutationFn: (input: { token: string; password: string }) => request<void>("/auth/password-reset/confirm", { method: "POST", body: input }),
     onSuccess: () => queryClient.removeQueries({ queryKey: meQueryKey }),
   });
 }
@@ -241,8 +237,7 @@ export function useUpdateProfile() {
 export function useChangeMyPassword() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
-      request<void>("/auth/me/password", { method: "PUT", body: input }),
+    mutationFn: (input: { currentPassword: string; newPassword: string }) => request<void>("/auth/me/password", { method: "PUT", body: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: sessionsQueryKey }),
   });
 }

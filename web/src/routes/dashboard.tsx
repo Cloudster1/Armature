@@ -109,7 +109,16 @@ function DashboardPage() {
         />
       )}
       {dashboard && <SaveTemplateDialog key={dashboard.id} dashboard={dashboard} open={savingTemplate} onClose={() => setSavingTemplate(false)} />}
-      {dashboard && <ShareDialog key={`share-${dashboard.id}`} dashboardId={dashboard.id} dashboardName={dashboard.name} query={query} open={sharing} onClose={() => setSharing(false)} />}
+      {dashboard && (
+        <ShareDialog
+          key={`share-${dashboard.id}`}
+          dashboardId={dashboard.id}
+          dashboardName={dashboard.name}
+          query={query}
+          open={sharing}
+          onClose={() => setSharing(false)}
+        />
+      )}
 
       {dashboards.length > 1 && (
         <div className="mb-4">

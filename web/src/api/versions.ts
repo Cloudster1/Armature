@@ -101,7 +101,10 @@ function useVersionMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResul
 
 export function useCreateVersion(projectKey: string) {
   return useVersionMutation((input: VersionInput) =>
-    request<{ version: Version }>(`/projects/${projectKey}/versions`, { method: "POST", body: { ...input, startOn: asDay(input.startOn), releaseOn: asDay(input.releaseOn) } }),
+    request<{ version: Version }>(`/projects/${projectKey}/versions`, {
+      method: "POST",
+      body: { ...input, startOn: asDay(input.startOn), releaseOn: asDay(input.releaseOn) },
+    }),
   );
 }
 
@@ -134,11 +137,15 @@ export function useComponents(projectKey: string) {
 }
 
 export function useCreateComponent(projectKey: string) {
-  return useVersionMutation((input: ComponentInput) => request<{ component: Component }>(`/projects/${projectKey}/components`, { method: "POST", body: input }));
+  return useVersionMutation((input: ComponentInput) =>
+    request<{ component: Component }>(`/projects/${projectKey}/components`, { method: "POST", body: input }),
+  );
 }
 
 export function useUpdateComponent() {
-  return useVersionMutation(({ id, ...input }: ComponentInput & { id: string }) => request<{ component: Component }>(`/components/${id}`, { method: "PATCH", body: input }));
+  return useVersionMutation(({ id, ...input }: ComponentInput & { id: string }) =>
+    request<{ component: Component }>(`/components/${id}`, { method: "PATCH", body: input }),
+  );
 }
 
 export function useDeleteComponent() {

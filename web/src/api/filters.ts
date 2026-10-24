@@ -48,7 +48,9 @@ export function useCreateSavedFilter() {
 }
 
 export function useUpdateSavedFilter() {
-  return useFilterMutation(({ id, ...input }: SavedFilterInput & { id: string }) => request<{ filter: SavedFilter }>(`/filters/${id}`, { method: "PATCH", body: input }));
+  return useFilterMutation(({ id, ...input }: SavedFilterInput & { id: string }) =>
+    request<{ filter: SavedFilter }>(`/filters/${id}`, { method: "PATCH", body: input }),
+  );
 }
 
 export function useDeleteSavedFilter() {
@@ -56,7 +58,9 @@ export function useDeleteSavedFilter() {
 }
 
 export function useStarFilter() {
-  return useFilterMutation((input: { id: string; on: boolean }) => request<{ filter: SavedFilter }>(`/filters/${input.id}/star`, { method: input.on ? "PUT" : "DELETE" }));
+  return useFilterMutation((input: { id: string; on: boolean }) =>
+    request<{ filter: SavedFilter }>(`/filters/${input.id}/star`, { method: input.on ? "PUT" : "DELETE" }),
+  );
 }
 
 export function useSubscribeFilter() {
@@ -196,7 +200,10 @@ export function useCloneIssue() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { key: string; links: boolean; subtasks: boolean; summary?: string }) =>
-      request<{ issue: Issue }>(`/issues/${input.key}/clone`, { method: "POST", body: { links: input.links, subtasks: input.subtasks, summary: input.summary } }),
+      request<{ issue: Issue }>(`/issues/${input.key}/clone`, {
+        method: "POST",
+        body: { links: input.links, subtasks: input.subtasks, summary: input.summary },
+      }),
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }

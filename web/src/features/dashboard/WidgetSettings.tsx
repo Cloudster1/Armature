@@ -17,7 +17,12 @@ const windowed = new Set(["throughput", "workload", "team_workload", "cycle_time
 export function WidgetSettings({ projectKey, widget, onChange }: { projectKey: string; widget: Widget; onChange: (config: WidgetConfig) => void }) {
   if (windowed.has(widget.kind)) {
     return (
-      <SelectInput aria-label={`Window for ${widget.title}`} controlSize="sm" value={widget.config?.days ?? DASHBOARD_DEFAULT_WINDOW_DAYS} onChange={(e) => onChange({ ...widget.config, days: Number(e.target.value) })}>
+      <SelectInput
+        aria-label={`Window for ${widget.title}`}
+        controlSize="sm"
+        value={widget.config?.days ?? DASHBOARD_DEFAULT_WINDOW_DAYS}
+        onChange={(e) => onChange({ ...widget.config, days: Number(e.target.value) })}
+      >
         {DASHBOARD_WINDOWS.map((d) => (
           <option key={d} value={d}>
             {d} days
@@ -37,7 +42,13 @@ function VersionSettings({ projectKey, widget, onChange }: { projectKey: string;
   const { data } = useVersions(projectKey, true);
   const burndown = widget.kind === "release_burndown";
   return (
-    <SelectInput aria-label={`Version for ${widget.title}`} controlSize="sm" value={widget.config?.versionId ?? ""} onChange={(e) => onChange({ ...widget.config, versionId: e.target.value || undefined })} data-version-setting>
+    <SelectInput
+      aria-label={`Version for ${widget.title}`}
+      controlSize="sm"
+      value={widget.config?.versionId ?? ""}
+      onChange={(e) => onChange({ ...widget.config, versionId: e.target.value || undefined })}
+      data-version-setting
+    >
       <option value="">{burndown ? "Choose a version" : "All unreleased versions"}</option>
       {(data?.versions ?? []).map((v) => (
         <option key={v.id} value={v.id}>
@@ -53,7 +64,12 @@ function VersionSettings({ projectKey, widget, onChange }: { projectKey: string;
 function MilestoneSettings({ projectKey, widget, onChange }: { projectKey: string; widget: Widget; onChange: (config: WidgetConfig) => void }) {
   const { data } = useMilestones(projectKey, true);
   return (
-    <SelectInput aria-label={`Milestone for ${widget.title}`} controlSize="sm" value={widget.config?.milestoneId ?? ""} onChange={(e) => onChange({ ...widget.config, milestoneId: e.target.value || undefined })}>
+    <SelectInput
+      aria-label={`Milestone for ${widget.title}`}
+      controlSize="sm"
+      value={widget.config?.milestoneId ?? ""}
+      onChange={(e) => onChange({ ...widget.config, milestoneId: e.target.value || undefined })}
+    >
       <option value="">All open milestones</option>
       {(data?.milestones ?? []).map((milestone) => (
         <option key={milestone.id} value={milestone.id}>
@@ -77,7 +93,16 @@ function ChartSettings({ widget, onChange }: { widget: Widget; onChange: (config
       label="Chart settings"
       align="end"
       className="w-80"
-      trigger={<IconButton icon={<Icon.Settings />} label={`Settings for ${widget.title}`} size="sm" aria-expanded={open} onClick={() => setOpen((o) => !o)} data-action="chart-settings" />}
+      trigger={
+        <IconButton
+          icon={<Icon.Settings />}
+          label={`Settings for ${widget.title}`}
+          size="sm"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          data-action="chart-settings"
+        />
+      }
     >
       <div className="space-y-3" data-testid="chart-settings">
         <Segmented<ChartShape>

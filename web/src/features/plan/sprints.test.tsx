@@ -72,12 +72,7 @@ group("SprintBands", () => {
 
   // A sprint nobody has dated has nothing to draw against a calendar.
   it("has nothing to draw for a sprint with no dates", () => {
-    const { container } = render(
-      <SprintBands
-        scale={scale}
-        sprints={[plan({ sprint: sprint({ startsOn: undefined, endsOn: undefined }) })]}
-      />,
-    );
+    const { container } = render(<SprintBands scale={scale} sprints={[plan({ sprint: sprint({ startsOn: undefined, endsOn: undefined }) })]} />);
     expect(container).toBeEmptyDOMElement();
   });
 

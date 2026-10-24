@@ -60,7 +60,7 @@ scenario("an issue opens beside the list and the list stays in reach", async ({ 
     expect.equal(rows.length, 3, "three rows to walk");
 
     await openIssueBeside(page, rows[0]);
-    expect.equal(await page.$('[data-issue-drawer]'), null, "docked, not a drawer over the page");
+    expect.equal(await page.$("[data-issue-drawer]"), null, "docked, not a drawer over the page");
     const widths = await page.evaluate(() => ({
       main: document.querySelector("main").getBoundingClientRect().width,
       panel: document.querySelector("[data-issue-panel]").getBoundingClientRect().width,
@@ -121,10 +121,7 @@ scenario("Escape in the issue drawer closes only what is on top of it", async ({
   await page.waitForFunction(() => !document.querySelector('[data-confirm="work log"]'), { timeout: WAIT });
   expect.truthy(await page.$(drawer), "the issue stayed open under the confirm");
   expect.truthy(await page.$(`${drawer} [data-worklog]`), "and the work log is still there");
-  expect.truthy(
-    await page.evaluate(() => (document.activeElement?.getAttribute("aria-label") ?? "").startsWith("Remove work log")),
-    "focus is back on Remove",
-  );
+  expect.truthy(await page.evaluate(() => (document.activeElement?.getAttribute("aria-label") ?? "").startsWith("Remove work log")), "focus is back on Remove");
 
   // Escape in the header's menu closes the menu, not the issue.
   await page.focus(`${drawer} [data-action="issue-more"]`);
@@ -170,7 +167,13 @@ scenario("a board narrows to my cards, says what it hides, and keeps the filter 
   await createIssue(page, key, "nobody holds this", { visit: false });
   const mine = [toDo, asWell].sort().join(" ");
   await createBoard(page, key, "Second look", "kanban");
-  const shown = () => page.evaluate(() => [...document.querySelectorAll("[data-card]")].map((el) => el.getAttribute("data-card")).sort().join(" "));
+  const shown = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("[data-card]")]
+        .map((el) => el.getAttribute("data-card"))
+        .sort()
+        .join(" "),
+    );
   const showing = (count) => page.waitForFunction((n) => document.querySelectorAll("[data-card]").length === n, { timeout: WAIT }, count);
 
   await goto(page, `/projects/${key}/board`);
@@ -300,11 +303,7 @@ scenario("a drag the workflow forbids is refused and the card stays put", async 
   await dragCardTo(page, issueKey, "In Review");
 
   await page.waitForSelector("[role=alert]", { timeout: WAIT });
-  expect.contains(
-    await textOf(page, "[role=alert]"),
-    "does not allow that move",
-    "the refusal explains itself",
-  );
+  expect.contains(await textOf(page, "[role=alert]"), "does not allow that move", "the refusal explains itself");
   expect.equal((await cardsIn(page, "To Do")).join(","), issueKey, "the card stayed where it was");
 });
 
@@ -321,12 +320,8 @@ scenario("swimlanes can be reconfigured to cover several states", async ({ page 
 
   // Delete In Review, then add its state to the In Progress lane.
   await page.evaluate(() => {
-    const card = [...document.querySelectorAll("input")]
-      .find((i) => i.value === "In Review")
-      ?.closest("[data-swimlane-editor]");
-    [...(card?.querySelectorAll("button") ?? [])]
-      .find((b) => b.textContent.trim() === "Delete")
-      ?.click();
+    const card = [...document.querySelectorAll("input")].find((i) => i.value === "In Review")?.closest("[data-swimlane-editor]");
+    [...(card?.querySelectorAll("button") ?? [])].find((b) => b.textContent.trim() === "Delete")?.click();
   });
   await confirm(page);
   // The In Progress lane can take In Review once the board, refetched after
@@ -353,10 +348,9 @@ scenario("swimlanes can be reconfigured to cover several states", async ({ page 
   );
 
   await clickButton(page, "Done configuring");
-  await page.waitForFunction(
-    () => !document.querySelector("[data-swimlane-editor]") && document.body.innerText.includes("In Progress · In Review"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => !document.querySelector("[data-swimlane-editor]") && document.body.innerText.includes("In Progress · In Review"), {
+    timeout: WAIT,
+  });
 
   const board = await bodyText(page);
   expect.notContains(board, "IN REVIEW", "the deleted swimlane is gone");
@@ -423,19 +417,12 @@ scenario("cards in states no swimlane covers are surfaced, not hidden", async ({
     timeout: WAIT,
   });
   await page.evaluate(() => {
-    const card = [...document.querySelectorAll("input")]
-      .find((i) => i.value === "In Progress")
-      ?.closest("[data-swimlane-editor]");
-    [...(card?.querySelectorAll("button") ?? [])]
-      .find((b) => b.textContent.trim() === "Delete")
-      ?.click();
+    const card = [...document.querySelectorAll("input")].find((i) => i.value === "In Progress")?.closest("[data-swimlane-editor]");
+    [...(card?.querySelectorAll("button") ?? [])].find((b) => b.textContent.trim() === "Delete")?.click();
   });
   await confirm(page);
 
-  await page.waitForFunction(
-    () => document.body.innerText.includes("states no swimlane covers"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.body.innerText.includes("states no swimlane covers"), { timeout: WAIT });
   expect.contains(await bodyText(page), issueKey, "the orphaned card is named");
 });
 
@@ -493,11 +480,7 @@ serialScenario("a lane for a status added to the workflow is moved off the end a
 async function showBoard(page, name) {
   await page.waitForSelector(`[data-board="${name}"]`, { timeout: WAIT });
   await page.click(`[data-board="${name}"]`);
-  await page.waitForFunction(
-    (n) => document.querySelector("[data-board-showing]")?.getAttribute("data-board-showing") === n,
-    { timeout: WAIT },
-    name,
-  );
+  await page.waitForFunction((n) => document.querySelector("[data-board-showing]")?.getAttribute("data-board-showing") === n, { timeout: WAIT }, name);
 }
 
 /** The first lane's name and limit, and the grouping, the panel shows for the board on screen. */
@@ -530,10 +513,9 @@ scenario("a team board's swimlanes are configured and the first board is left al
   await page.evaluate(() => document.querySelector('[data-swimlane-editor="To Do"] button[type=submit]').click());
   await page.waitForSelector('[data-swimlane="Queued"]', { timeout: WAIT });
   await clickButton(page, "Assignee");
-  await page.waitForFunction(
-    () => [...document.querySelectorAll("button[aria-pressed=true]")].some((b) => b.textContent.trim() === "Assignee"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => [...document.querySelectorAll("button[aria-pressed=true]")].some((b) => b.textContent.trim() === "Assignee"), {
+    timeout: WAIT,
+  });
   await clickButton(page, "Done configuring");
 
   await showBoard(page, "Lanes board");
@@ -569,10 +551,7 @@ scenario("a board made by mistake is renamed, retyped and deleted", async ({ pag
   await page.waitForSelector('[data-confirm="board Release flow"]', { timeout: WAIT });
   await confirm(page);
   await page.waitForFunction(() => !document.querySelector('[data-board="Release flow"]'), { timeout: WAIT });
-  await page.waitForFunction(
-    () => document.querySelector("[data-board-showing]")?.getAttribute("data-board-showing") === "Mistakes board",
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelector("[data-board-showing]")?.getAttribute("data-board-showing") === "Mistakes board", { timeout: WAIT });
 });
 
 // How long a kanban board keeps finished work is set beside its lanes and kept.
@@ -594,9 +573,7 @@ scenario("a kanban board keeps finished work for the days it is set to", async (
   await page.waitForSelector("[data-done-for-days-editor] #board-done-for-days", { timeout: WAIT });
   expect.equal(await page.$eval("#board-done-for-days", (el) => el.value), "14", "a new board keeps finished work two weeks");
   await replaceValue(page, "#board-done-for-days", "30");
-  await page.evaluate(() =>
-    [...document.querySelectorAll("[data-done-for-days-editor] button")].find((b) => b.textContent.trim() === "Save")?.click(),
-  );
+  await page.evaluate(() => [...document.querySelectorAll("[data-done-for-days-editor] button")].find((b) => b.textContent.trim() === "Save")?.click());
   await settled(page);
 
   await reload(page);

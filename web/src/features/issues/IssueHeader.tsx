@@ -10,7 +10,12 @@ import { CloneMoveMenu } from "@/features/filters/CloneMoveMenu";
 
 export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; editable: boolean; inDrawer: boolean }) {
   return (
-    <header className={cx("z-10 mb-5 border-b border-border bg-canvas/95 pb-3 backdrop-blur", inDrawer ? "-mx-5 -mt-4 px-5 pt-4" : "sticky -top-6 -mx-8 -mt-6 px-8 pt-6")}>
+    <header
+      className={cx(
+        "z-10 mb-5 border-b border-border bg-canvas/95 pb-3 backdrop-blur",
+        inDrawer ? "-mx-5 -mt-4 px-5 pt-4" : "sticky -top-6 -mx-8 -mt-6 px-8 pt-6",
+      )}
+    >
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <Link to="/projects/$projectKey" params={{ projectKey: issue.projectKey }} className="text-ink-muted hover:text-ink">
           {issue.projectKey}
@@ -27,7 +32,12 @@ export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; edita
         <span className="flex-1" />
         <CloneMoveMenu issue={issue} editable={editable} />
         {inDrawer && (
-          <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="inline-flex items-center gap-1 text-sm text-accent hover:underline" data-open-page>
+          <Link
+            to="/issues/$issueKey"
+            params={{ issueKey: issue.key }}
+            className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+            data-open-page
+          >
             Open the page <Icon.External />
           </Link>
         )}

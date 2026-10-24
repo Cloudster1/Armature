@@ -18,11 +18,7 @@ export function MilestoneBand({ scale, milestones }: { scale: Scale; milestones:
   if (!milestones.some((m) => m.dueOn)) return null;
 
   return (
-    <div
-      className="relative border-b border-border"
-      style={{ height: PLAN_MILESTONE_BAND_HEIGHT }}
-      data-testid="plan-milestone-band"
-    >
+    <div className="relative border-b border-border" style={{ height: PLAN_MILESTONE_BAND_HEIGHT }} data-testid="plan-milestone-band">
       {markers.map(({ milestone, x }, index) => {
         const overdue = isOverdue(milestone, new Date());
         const side = flagSide(x, scale.width);
@@ -40,7 +36,9 @@ export function MilestoneBand({ scale, milestones }: { scale: Scale; milestones:
             )}
             style={side === "right" ? { left: x } : { right: scale.width - x }}
           >
-            <span aria-hidden="true" className="text-2xs">◆</span>
+            <span aria-hidden="true" className="text-2xs">
+              ◆
+            </span>
             {spoken && <span className="font-medium">{milestone.name}</span>}
             {spoken && <span className="tabular-nums opacity-80">{milestone.progress.percent}%</span>}
           </div>
@@ -87,9 +85,7 @@ export function MilestoneProgress({ projectKey, milestones }: { projectKey: stri
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-medium text-ink">
                 {milestone.name}
-                {milestone.dueOn && (
-                  <span className="ml-2 text-xs font-normal text-ink-muted">due {formatDay(milestone.dueOn, locale)}</span>
-                )}
+                {milestone.dueOn && <span className="ml-2 text-xs font-normal text-ink-muted">due {formatDay(milestone.dueOn, locale)}</span>}
               </span>
               <span className="text-ink-muted tabular-nums">{describeProgress(milestone.progress)}</span>
             </div>

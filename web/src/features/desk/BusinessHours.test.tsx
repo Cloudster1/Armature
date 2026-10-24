@@ -35,7 +35,13 @@ const renderHours = () =>
 
 beforeEach(() => {
   save.mockClear();
-  calendar = { timezone: "UTC", hours: { mon: [{ from: "09:00", to: "17:00" }] }, holidays: ["2026-12-31"], holidayCalendarId: null, holidayCalendarName: null };
+  calendar = {
+    timezone: "UTC",
+    hours: { mon: [{ from: "09:00", to: "17:00" }] },
+    holidays: ["2026-12-31"],
+    holidayCalendarId: null,
+    holidayCalendarName: null,
+  };
 });
 
 describe("a desk's holidays", () => {

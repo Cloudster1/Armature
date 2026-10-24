@@ -106,8 +106,8 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
     <section>
       <SectionTitle className="mb-2">Request types</SectionTitle>
       <p className="mb-3 text-sm text-ink-muted">
-        What a customer chooses from, under the category it belongs to. Each becomes an issue of a type, at a priority the desk decides, with a team it
-        lands with and the details a requester starts from.
+        What a customer chooses from, under the category it belongs to. Each becomes an issue of a type, at a priority the desk decides, with a team it lands
+        with and the details a requester starts from.
       </p>
       {types.length > 0 && (
         <Table>
@@ -146,7 +146,18 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
                         <Button size="sm" variant="ghost" onClick={() => setEditing(rt.id)} data-request-type-edit={rt.name}>
                           Edit
                         </Button>
-                        <Button size="sm" variant="ghost" loading={remove.isPending} onClick={async () => (await confirm({ noun: "request type", verb: "Remove", body: `${rt.name} is no longer offered; requests already raised through it keep their history.` })) && remove.mutate(rt.id)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={remove.isPending}
+                          onClick={async () =>
+                            (await confirm({
+                              noun: "request type",
+                              verb: "Remove",
+                              body: `${rt.name} is no longer offered; requests already raised through it keep their history.`,
+                            })) && remove.mutate(rt.id)
+                          }
+                        >
                           Remove
                         </Button>
                       </Td>
@@ -292,7 +303,14 @@ function EditRequestType({
               ))}
             </Select>
           </div>
-          <Field label="Details template" id={`edit-template-${type.id}`} rows={3} value={template} onChange={(e) => setTemplate(e.target.value)} className="font-mono" />
+          <Field
+            label="Details template"
+            id={`edit-template-${type.id}`}
+            rows={3}
+            value={template}
+            onChange={(e) => setTemplate(e.target.value)}
+            className="font-mono"
+          />
           <div className="flex gap-2">
             <Button type="submit" size="sm" loading={update.isPending} disabled={!name.trim()}>
               Save request type
@@ -327,8 +345,8 @@ function Policies({ projectKey }: { projectKey: string }) {
 
 function PolicyEditor({ policy }: { policy: Policy }) {
   const update = useUpdatePolicy();
-  const [hours, setHours] = useState<Record<Priority, string>>(() =>
-    Object.fromEntries(priorities.map((p) => [p, policy.goals[p] ? String(policy.goals[p]! / 60) : ""])) as Record<Priority, string>,
+  const [hours, setHours] = useState<Record<Priority, string>>(
+    () => Object.fromEntries(priorities.map((p) => [p, policy.goals[p] ? String(policy.goals[p]! / 60) : ""])) as Record<Priority, string>,
   );
 
   function onSubmit(event: FormEvent) {
@@ -346,9 +364,7 @@ function PolicyEditor({ policy }: { policy: Policy }) {
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <div className="flex items-baseline justify-between">
           <h3 className="text-sm font-medium text-ink">{policy.name}</h3>
-          <span className="text-xs text-ink-subtle">
-            {policy.pauseStatuses.length > 0 ? `pauses in ${policy.pauseStatuses.join(", ")}` : "never pauses"}
-          </span>
+          <span className="text-xs text-ink-subtle">{policy.pauseStatuses.length > 0 ? `pauses in ${policy.pauseStatuses.join(", ")}` : "never pauses"}</span>
         </div>
         <div className="grid grid-cols-5 gap-2">
           {priorities.map((p) => (
@@ -370,7 +386,10 @@ function PolicyEditor({ policy }: { policy: Policy }) {
             Save goals
           </Button>
           <span className="text-xs text-ink-subtle">
-            {priorities.map((p) => (policy.goals[p] ? `${p} ${humanDuration(policy.goals[p]! * 60)}` : null)).filter(Boolean).join(" · ")}
+            {priorities
+              .map((p) => (policy.goals[p] ? `${p} ${humanDuration(policy.goals[p]! * 60)}` : null))
+              .filter(Boolean)
+              .join(" · ")}
           </span>
         </div>
         {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}

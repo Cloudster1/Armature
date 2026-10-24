@@ -42,17 +42,7 @@ function field(over: Partial<Field> = {}): Field {
 
 function draw(over: Partial<Parameters<typeof ArrangementEditor>[0]> = {}) {
   const onSave = vi.fn();
-  const view = render(
-    <ArrangementEditor
-      arrangements={[arrangement()]}
-      fields={[field()]}
-      saving={false}
-      error={null}
-      canFollow
-      onSave={onSave}
-      {...over}
-    />,
-  );
+  const view = render(<ArrangementEditor arrangements={[arrangement()]} fields={[field()]} saving={false} error={null} canFollow onSave={onSave} {...over} />);
   return { ...view, onSave };
 }
 

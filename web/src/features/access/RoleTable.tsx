@@ -1,15 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  permissionWords,
-  useAssignments,
-  useGrantRole,
-  useGroups,
-  useRevokeRole,
-  useRoleName,
-  useRoles,
-  type Assignment,
-  type Role,
-} from "@/api/access";
+import { permissionWords, useAssignments, useGrantRole, useGroups, useRevokeRole, useRoleName, useRoles, type Assignment, type Role } from "@/api/access";
 import { Button, Card, clampOffset, cx, EmptyState, ErrorBanner, ListSearch, Pager, Select, SelectInput, shownOf, Table, Td, Th } from "@/components/ui";
 import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -106,7 +96,13 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
               <AssignmentRow
                 key={assignment.id}
                 assignment={assignment}
-                onRevoke={async () => (await confirm({ noun: "role", verb: "Revoke", body: `${roleName(assignment.role)} is taken away at once; what it allowed is refused from the next request.` })) && revoke.mutate(assignment.id)}
+                onRevoke={async () =>
+                  (await confirm({
+                    noun: "role",
+                    verb: "Revoke",
+                    body: `${roleName(assignment.role)} is taken away at once; what it allowed is refused from the next request.`,
+                  })) && revoke.mutate(assignment.id)
+                }
               />
             ))}
           </tbody>

@@ -19,7 +19,14 @@ vi.mock("./app", () => ({ appRoute: {} }));
 vi.mock("@/lib/format", () => ({ useFormat: () => ({ relative: () => "just now" }) }));
 
 const items: Notification[] = [
-  { id: "n1", kind: "absence", title: "Max Master recorded an absence for you", body: "Your profile lists the days.", link: "http://app.test/settings/profile", createdAt: "2026-10-10T08:00:00Z" },
+  {
+    id: "n1",
+    kind: "absence",
+    title: "Max Master recorded an absence for you",
+    body: "Your profile lists the days.",
+    link: "http://app.test/settings/profile",
+    createdAt: "2026-10-10T08:00:00Z",
+  },
   { id: "n2", kind: "assigned", issueKey: "CP-1", title: "Ada assigned CP-1 to you", link: "http://app.test/issues/CP-1", createdAt: "2026-10-10T07:00:00Z" },
 ];
 vi.mock("@/api/notifications", async () => {

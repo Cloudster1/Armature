@@ -126,10 +126,5 @@ export function IconButton({
 }
 
 export function Spinner({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cx("size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent", className)}
-    />
-  );
+  return <span aria-hidden="true" className={cx("size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent", className)} />;
 }

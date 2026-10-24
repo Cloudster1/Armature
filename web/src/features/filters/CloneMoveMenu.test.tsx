@@ -29,7 +29,14 @@ vi.mock("@/api/issues", async () => ({
 vi.mock("@/api/projects", async () => ({
   ...(await vi.importActual<typeof import("@/api/projects")>("@/api/projects")),
   useProject: () => ({ data: undefined }),
-  useProjectSearch: () => ({ data: { projects: [{ key: "CP", name: "Customer Portal" }, { key: "OPS", name: "Operations" }] } }),
+  useProjectSearch: () => ({
+    data: {
+      projects: [
+        { key: "CP", name: "Customer Portal" },
+        { key: "OPS", name: "Operations" },
+      ],
+    },
+  }),
 }));
 
 vi.mock("@/api/fields", async () => ({

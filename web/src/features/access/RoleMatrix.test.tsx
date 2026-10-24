@@ -28,7 +28,15 @@ vi.mock("@/components/ui", async () => {
   return { ...actual, useToast: () => ({ success: vi.fn(), info: vi.fn(), error: vi.fn() }) };
 });
 
-const admin = { role: "global_administrator", name: "Global administrator", description: "", orgWideOnly: true, builtin: true, permissions: ["read", "sprint.manage", "org.administer"], inUse: 1 };
+const admin = {
+  role: "global_administrator",
+  name: "Global administrator",
+  description: "",
+  orgWideOnly: true,
+  builtin: true,
+  permissions: ["read", "sprint.manage", "org.administer"],
+  inUse: 1,
+};
 const planner = { role: "sprint_planner", name: "Sprint planner", description: "Plans.", orgWideOnly: false, builtin: false, permissions: ["read"], inUse: 2 };
 
 describe("the role matrix", () => {

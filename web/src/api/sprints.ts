@@ -66,10 +66,7 @@ export const sprintsQueryKey = ["sprints"] as const;
 export function useSprints(projectKey: string, includeClosed = false) {
   return useQuery({
     queryKey: [...sprintsQueryKey, projectKey, { includeClosed }],
-    queryFn: () =>
-      request<{ sprints: Sprint[] }>(
-        `/projects/${projectKey}/sprints${includeClosed ? "?closed=true" : ""}`,
-      ),
+    queryFn: () => request<{ sprints: Sprint[] }>(`/projects/${projectKey}/sprints${includeClosed ? "?closed=true" : ""}`),
     enabled: Boolean(projectKey),
   });
 }
@@ -94,21 +91,15 @@ function useSprintMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult
 }
 
 export function useCreateSprint(projectKey: string) {
-  return useSprintMutation((input: SprintInput) =>
-    request<{ sprint: Sprint }>(`/projects/${projectKey}/sprints`, { method: "POST", body: input }),
-  );
+  return useSprintMutation((input: SprintInput) => request<{ sprint: Sprint }>(`/projects/${projectKey}/sprints`, { method: "POST", body: input }));
 }
 
 export function useUpdateSprint() {
-  return useSprintMutation(({ id, ...input }: SprintInput & { id: string }) =>
-    request<{ sprint: Sprint }>(`/sprints/${id}`, { method: "PATCH", body: input }),
-  );
+  return useSprintMutation(({ id, ...input }: SprintInput & { id: string }) => request<{ sprint: Sprint }>(`/sprints/${id}`, { method: "PATCH", body: input }));
 }
 
 export function useStartSprint() {
-  return useSprintMutation((id: string) =>
-    request<{ sprint: Sprint }>(`/sprints/${id}/start`, { method: "POST", body: {} }),
-  );
+  return useSprintMutation((id: string) => request<{ sprint: Sprint }>(`/sprints/${id}/start`, { method: "POST", body: {} }));
 }
 
 /** A null destination sends the unfinished work back to the backlog. */

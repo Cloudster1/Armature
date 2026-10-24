@@ -191,7 +191,10 @@ export function LabelInput({
                 add(row);
               }}
               onMouseEnter={() => setActive(i)}
-              className={cx("flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-sm", i === active ? "bg-surface-raised text-ink" : "text-ink-muted")}
+              className={cx(
+                "flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-sm",
+                i === active ? "bg-surface-raised text-ink" : "text-ink-muted",
+              )}
             >
               {row.label ? (
                 <>

@@ -39,7 +39,11 @@ export function StatusStrip({ projectKey, latest, canPost }: { projectKey: strin
       {latest ? (
         <>
           <HealthTag status={latest.status} />
-          {latest.note && <span className="text-ink" data-status-note>{latest.note}</span>}
+          {latest.note && (
+            <span className="text-ink" data-status-note>
+              {latest.note}
+            </span>
+          )}
           <span className="text-ink-subtle">
             {latest.authorName ? `${latest.authorName}, ` : ""}
             {format.relative(latest.createdAt)}
@@ -86,14 +90,33 @@ function PostDialog({ projectKey, open, onClose, initial }: { projectKey: string
     <Dialog open={open} onClose={onClose} title="How is the project doing?" attrs={{ "data-status-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {post.error && <ErrorBanner>{(post.error as Error).message}</ErrorBanner>}
-        <Segmented label="Status" value={status} onChange={setStatus} options={HEALTH.map((h) => ({ value: h.value, label: h.label, attrs: { "data-status-option": h.value } }))} />
+        <Segmented
+          label="Status"
+          value={status}
+          onChange={setStatus}
+          options={HEALTH.map((h) => ({ value: h.value, label: h.label, attrs: { "data-status-option": h.value } }))}
+        />
         <div>
           <label htmlFor="field-status-note" className="mb-1 block text-sm font-medium text-ink">
             What is happening
           </label>
-          <Textarea id="field-status-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="The vendor is late; we ship the first half on time." />
+          <Textarea
+            id="field-status-note"
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="The vendor is late; we ship the first half on time."
+          />
         </div>
-        <Field label="Aiming for" id="field-target-on" type="date" value={targetOn} onChange={(e) => setTargetOn(e.target.value)} hint="The date the project is working towards, when there is one." className="max-w-xs" />
+        <Field
+          label="Aiming for"
+          id="field-target-on"
+          type="date"
+          value={targetOn}
+          onChange={(e) => setTargetOn(e.target.value)}
+          hint="The date the project is working towards, when there is one."
+          className="max-w-xs"
+        />
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel

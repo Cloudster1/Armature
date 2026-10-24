@@ -66,10 +66,9 @@ scenario("the running sprint burns down on the dashboard and its history stays",
   await clickButton(page, "Close");
   await page.waitForFunction(() => document.body.innerText.includes("Done"), { timeout: WAIT });
   await goto(page, `/projects/${key}/dashboard`);
-  await page.waitForFunction(
-    () => document.querySelector('[data-widget="burndown"] [data-burndown-summary]')?.textContent.includes("5 of 8"),
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelector('[data-widget="burndown"] [data-burndown-summary]')?.textContent.includes("5 of 8"), {
+    timeout: WAIT,
+  });
   summary = await textOf(page, '[data-widget="burndown"] [data-burndown-summary]');
   expect.contains(summary, "1/2 issues done", "the live point counts the finished issue");
   expect.truthy(await page.$('[data-widget="burndown"] [data-series="remaining"] path'), "the remaining line is drawn");
@@ -307,15 +306,19 @@ scenario("a label field suggests an existing label as its start is typed, and sh
   const word = uniqueName("frontend", "-");
   const start = word.slice(0, -2);
   await goto(page, `/projects/${key}`);
-  await page.evaluate(async (issue, name) => {
-    const tagging = await fetch(`/api/v1/issues/${issue}/labels`, {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ labels: [name] }),
-    });
-    if (!tagging.ok) throw new Error(`tagging failed: ${tagging.status}`);
-  }, tagged, word);
+  await page.evaluate(
+    async (issue, name) => {
+      const tagging = await fetch(`/api/v1/issues/${issue}/labels`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labels: [name] }),
+      });
+      if (!tagging.ok) throw new Error(`tagging failed: ${tagging.status}`);
+    },
+    tagged,
+    word,
+  );
   await goto(page, `/projects/${key}`);
 
   // Typing the start offers it first; Enter adds the one the arrow reached.
@@ -333,7 +336,11 @@ scenario("a label field suggests an existing label as its start is typed, and sh
   await clickButton(page, "New issue");
   await page.waitForSelector("[data-create-issue] #create-labels", { timeout: WAIT });
   await settled(page);
-  expect.equal(await page.$eval("[data-create-issue]", (dialog, name) => dialog.innerText.includes(name), word), false, "the dialog draws no label nobody asked for");
+  expect.equal(
+    await page.$eval("[data-create-issue]", (dialog, name) => dialog.innerText.includes(name), word),
+    false,
+    "the dialog draws no label nobody asked for",
+  );
   await fill(page, "Summary", "picks the word from the suggestions");
   await page.type("[data-create-issue] #create-labels", start);
   await suggestedFirst("[data-create-issue] #create-labels", word);
@@ -387,7 +394,11 @@ scenario("a page another application puts on an issue is listed under Pages, a r
     );
   expect.equal(await put({ url: spec, title: "Checkout spec", source: "Stator" }), 201, "the page is put on the issue");
   expect.equal(await put({ url: spec, title: "Checkout spec, second draft", source: "Stator" }), 200, "the same page again is retitled");
-  expect.equal(await put({ url: requirement, title: "R-7 Pay by card", source: "Exciter", relation: "requirement" }), 201, "a requirement is traced to the issue");
+  expect.equal(
+    await put({ url: requirement, title: "R-7 Pay by card", source: "Exciter", relation: "requirement" }),
+    201,
+    "a requirement is traced to the issue",
+  );
 
   await goto(page, `/issues/${issueKey}`);
   const row = `[data-testid="pages-panel"] [data-remote-link-group="page"] [data-remote-link="${spec}"]`;
@@ -395,9 +406,18 @@ scenario("a page another application puts on an issue is listed under Pages, a r
   await page.waitForSelector(row, { timeout: WAIT });
   await page.waitForSelector(traced, { timeout: WAIT });
   expect.equal(await page.$$eval("[data-remote-link-group=page] [data-remote-link]", (rows) => rows.length), 1, "one row for the page");
-  expect.equal(await page.$$eval('[data-testid="pages-panel"] h2', (hs) => hs.map((h) => h.textContent.trim()).join(" | ")), "Pages (1) | Requirements (1)", "pages and requirements are headed apart, pages first");
+  expect.equal(
+    await page.$$eval('[data-testid="pages-panel"] h2', (hs) => hs.map((h) => h.textContent.trim()).join(" | ")),
+    "Pages (1) | Requirements (1)",
+    "pages and requirements are headed apart, pages first",
+  );
   expect.contains(await textOf(page, traced), "Exciter", "the requirement names where it lives");
-  const link = await page.$eval(`${row} a`, (a) => ({ text: a.textContent.trim(), href: a.getAttribute("href"), target: a.getAttribute("target"), rel: a.getAttribute("rel") }));
+  const link = await page.$eval(`${row} a`, (a) => ({
+    text: a.textContent.trim(),
+    href: a.getAttribute("href"),
+    target: a.getAttribute("target"),
+    rel: a.getAttribute("rel"),
+  }));
   expect.equal(link.text, "Checkout spec, second draft", "the row carries the latest title");
   expect.equal(link.href, spec, "and goes to the page");
   expect.equal(link.target, "_blank", "in a new tab");
@@ -504,7 +524,9 @@ scenario("a type change that leaves the issue's status behind says where it land
 
   await page.waitForSelector('[data-action="change-type"][aria-label="Issue type: Bug"]', { timeout: WAIT });
   await page.waitForSelector("header .status-todo", { timeout: WAIT });
-  await page.waitForFunction(() => document.querySelector("[data-issue-history]")?.innerText.includes("moved this from In Progress to To Do"), { timeout: WAIT });
+  await page.waitForFunction(() => document.querySelector("[data-issue-history]")?.innerText.includes("moved this from In Progress to To Do"), {
+    timeout: WAIT,
+  });
 });
 
 // The same rules Stator and Exciter draw a document with, under the production stylesheet and its policy.

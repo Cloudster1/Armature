@@ -122,7 +122,11 @@ describe("the installation page", () => {
   });
 
   it("says which key holds the suite demo off", () => {
-    suite.error = new ApiError(422, { code: "validation_failed", message: "Some fields need attention.", fields: { key: "The project key EXC is taken already." } });
+    suite.error = new ApiError(422, {
+      code: "validation_failed",
+      message: "Some fields need attention.",
+      fields: { key: "The project key EXC is taken already." },
+    });
     render(<InstallationPage />);
     expect(screen.getByText("The project key EXC is taken already.")).toBeTruthy();
   });

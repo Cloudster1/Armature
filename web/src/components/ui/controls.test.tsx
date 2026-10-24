@@ -62,7 +62,17 @@ describe("Checkbox", () => {
 describe("Segmented", () => {
   it("moves the choice with the arrow keys", async () => {
     const onChange = vi.fn();
-    render(<Segmented label="Zoom" value="weeks" options={[{ value: "weeks", label: "Weeks" }, { value: "months", label: "Months" }]} onChange={onChange} />);
+    render(
+      <Segmented
+        label="Zoom"
+        value="weeks"
+        options={[
+          { value: "weeks", label: "Weeks" },
+          { value: "months", label: "Months" },
+        ]}
+        onChange={onChange}
+      />,
+    );
     const weeks = screen.getByRole("button", { name: "Weeks" });
     expect(weeks).toHaveAttribute("aria-pressed", "true");
     weeks.focus();
@@ -74,7 +84,17 @@ describe("Segmented", () => {
 describe("Tabs", () => {
   it("selects with a click and with the arrow keys", async () => {
     const onChange = vi.fn();
-    render(<Tabs label="Activity" value="all" tabs={[{ value: "all", label: "All" }, { value: "comments", label: "Comments" }]} onChange={onChange} />);
+    render(
+      <Tabs
+        label="Activity"
+        value="all"
+        tabs={[
+          { value: "all", label: "All" },
+          { value: "comments", label: "Comments" },
+        ]}
+        onChange={onChange}
+      />,
+    );
     expect(screen.getByRole("tab", { name: "All" })).toHaveAttribute("aria-selected", "true");
     await userEvent.click(screen.getByRole("tab", { name: "Comments" }));
     expect(onChange).toHaveBeenCalledWith("comments");

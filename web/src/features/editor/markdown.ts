@@ -1,5 +1,5 @@
 import type { Doc } from "@/api/issues";
-import type { HEADING_LEVELS} from "./schema";
+import type { HEADING_LEVELS } from "./schema";
 import { safeHref, type DocMark, type DocNode } from "./schema";
 
 /**
@@ -43,7 +43,9 @@ function blockToMarkdown(block: DocNode): string {
       return (block.content ?? [])
         .map((item, i) => {
           const marker = block.type === "orderedList" ? `${i + 1}. ` : "- ";
-          const inner = blocksToMarkdown(item.content ?? []).join("\n\n").split("\n");
+          const inner = blocksToMarkdown(item.content ?? [])
+            .join("\n\n")
+            .split("\n");
           return inner.map((line, k) => (k === 0 ? marker + line : line ? " ".repeat(marker.length) + line : "")).join("\n");
         })
         .join("\n");
@@ -173,7 +175,10 @@ function parseBlocks(lines: string[]): DocNode[] {
         const body = [head[3]!];
         i++;
         // Lines indented past the marker belong to the item.
-        while (i < lines.length && (lines[i]!.startsWith(" ".repeat(width)) || (!lines[i]!.trim() && i + 1 < lines.length && lines[i + 1]!.startsWith(" ".repeat(width))))) {
+        while (
+          i < lines.length &&
+          (lines[i]!.startsWith(" ".repeat(width)) || (!lines[i]!.trim() && i + 1 < lines.length && lines[i + 1]!.startsWith(" ".repeat(width))))
+        ) {
           body.push(lines[i]!.slice(width));
           i++;
         }

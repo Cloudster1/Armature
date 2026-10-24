@@ -87,10 +87,7 @@ scenario("a customer raises a request and sees only what the desk says to them",
   await page.type("#new-comment", "Help is on the way, stay clear of the printer.");
   await clickButton(page, "Comment");
   await page.waitForFunction(() => document.body.innerText.includes("stay clear of the printer"), { timeout: WAIT });
-  await page.waitForFunction(
-    () => document.querySelector('[data-sla="first_response"]')?.getAttribute("data-sla-state") === "completed",
-    { timeout: WAIT },
-  );
+  await page.waitForFunction(() => document.querySelector('[data-sla="first_response"]')?.getAttribute("data-sla-state") === "completed", { timeout: WAIT });
 
   // The customer sees the reply, not the note.
   await signOut(page, { visit: false });

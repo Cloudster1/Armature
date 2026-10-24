@@ -44,13 +44,7 @@ export function DevelopmentPanel({ issueKey, projectKey }: { issueKey: string; p
       </div>
 
       {branching && (
-        <CreateBranch
-          issueKey={issueKey}
-          suggested={data.branchName}
-          repositories={repositories}
-          existing={branches}
-          onDone={() => setBranching(false)}
-        />
+        <CreateBranch issueKey={issueKey} suggested={data.branchName} repositories={repositories} existing={branches} onDone={() => setBranching(false)} />
       )}
 
       {empty ? (
@@ -229,11 +223,7 @@ function BranchRow({ branch }: { branch: Branch }) {
 /** Which repository to offer first: one the tracker can write to that has no branch for the issue yet. */
 export function firstRepositoryToBranch(repositories: Repository[], existing: Branch[], made: Branch[]): Repository | undefined {
   const has = (r: Repository) => [...existing, ...made].some((b) => b.repository === r.name && !b.deletedAt);
-  return (
-    repositories.find((r) => r.hasToken && !has(r)) ??
-    repositories.find((r) => r.hasToken) ??
-    repositories[0]
-  );
+  return repositories.find((r) => r.hasToken && !has(r)) ?? repositories.find((r) => r.hasToken) ?? repositories[0];
 }
 
 /**
@@ -286,12 +276,7 @@ function CreateBranch({
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="mb-3 space-y-3 rounded-md border border-border bg-surface p-3"
-      noValidate
-      data-testid="create-branch"
-    >
+    <form onSubmit={onSubmit} className="mb-3 space-y-3 rounded-md border border-border bg-surface p-3" noValidate data-testid="create-branch">
       {made.map((branch) => (
         <div
           key={branch.id}
@@ -320,21 +305,8 @@ function CreateBranch({
       )}
 
       <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
-        <Field
-          id="branch-name"
-          label="Branch name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="font-mono"
-          autoFocus
-        />
-        <Field
-          id="branch-from"
-          label="Start from"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className="font-mono"
-        />
+        <Field id="branch-name" label="Branch name" value={name} onChange={(e) => setName(e.target.value)} className="font-mono" autoFocus />
+        <Field id="branch-from" label="Start from" value={from} onChange={(e) => setFrom(e.target.value)} className="font-mono" />
       </div>
       {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
       <div className="flex gap-2">

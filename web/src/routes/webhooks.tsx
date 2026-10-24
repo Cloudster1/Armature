@@ -1,8 +1,36 @@
 import { useState, type FormEvent } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
-import { useAutomationCatalog, useCreateWebhook, useDeleteWebhook, useDeliveries, useRedeliver, useRotateWebhookSecret, useTestWebhook, useUpdateWebhook, useWebhooks, type Webhook } from "@/api/automation";
-import { Button, Card, Checkbox, Drawer, EmptyState, ErrorBanner, Field, IconButton, Menu, Page, PageHeader, Table, Tag, Td, Th, useToast } from "@/components/ui";
+import {
+  useAutomationCatalog,
+  useCreateWebhook,
+  useDeleteWebhook,
+  useDeliveries,
+  useRedeliver,
+  useRotateWebhookSecret,
+  useTestWebhook,
+  useUpdateWebhook,
+  useWebhooks,
+  type Webhook,
+} from "@/api/automation";
+import {
+  Button,
+  Card,
+  Checkbox,
+  Drawer,
+  EmptyState,
+  ErrorBanner,
+  Field,
+  IconButton,
+  Menu,
+  Page,
+  PageHeader,
+  Table,
+  Tag,
+  Td,
+  Th,
+  useToast,
+} from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useFormat } from "@/lib/format";
@@ -71,7 +99,10 @@ function WebhooksPage() {
       {fresh && (
         <Card className="mb-4 p-4" data-webhook-secret>
           <p className="text-sm text-ink">
-            The secret for <span className="font-medium">{fresh.name}</span>. Copy it now; it is not shown again. Each delivery carries <span className="font-mono">X-Armature-Signature-256: sha256=HMAC(body)</span> with it, and <span className="font-mono">X-Armature-Signature-Timestamped-256: sha256=HMAC(timestamp.body)</span> beside <span className="font-mono">X-Armature-Timestamp</span>, the Unix second it was sent; refuse a delivery whose timestamp is minutes old.
+            The secret for <span className="font-medium">{fresh.name}</span>. Copy it now; it is not shown again. Each delivery carries{" "}
+            <span className="font-mono">X-Armature-Signature-256: sha256=HMAC(body)</span> with it, and{" "}
+            <span className="font-mono">X-Armature-Signature-Timestamped-256: sha256=HMAC(timestamp.body)</span> beside{" "}
+            <span className="font-mono">X-Armature-Timestamp</span>, the Unix second it was sent; refuse a delivery whose timestamp is minutes old.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <code className="rounded-control bg-surface-raised px-2 py-1 font-mono text-sm text-ink" data-secret-value>
@@ -89,7 +120,14 @@ function WebhooksPage() {
           <form onSubmit={onSubmit} className="space-y-4" noValidate data-webhook-form>
             {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
             <Field label="Webhook name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Chat room" />
-            <Field label="Address" required value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/hooks/armature" hint="Events are posted here as JSON." />
+            <Field
+              label="Address"
+              required
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/hooks/armature"
+              hint="Events are posted here as JSON."
+            />
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium text-ink-muted">Topics</legend>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -117,7 +155,11 @@ function WebhooksPage() {
       )}
 
       {isLoading ? null : hooks.length === 0 ? (
-        <EmptyState icon={<Icon.Hook />} title="No webhooks yet" description="An endpoint is posted every event it subscribes to, signed with a secret it is shown once, with a log of every try." />
+        <EmptyState
+          icon={<Icon.Hook />}
+          title="No webhooks yet"
+          description="An endpoint is posted every event it subscribes to, signed with a secret it is shown once, with a log of every try."
+        />
       ) : (
         <Table>
           <thead>
@@ -147,18 +189,55 @@ function WebhooksPage() {
                   <Menu
                     label={`Actions for ${h.name}`}
                     align="end"
-                    trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${h.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-webhook-menu={h.name} />}
+                    trigger={(props) => (
+                      <IconButton
+                        icon={<Icon.More />}
+                        label={`Actions for ${h.name}`}
+                        size="sm"
+                        onClick={props.toggle}
+                        aria-haspopup={props["aria-haspopup"]}
+                        aria-expanded={props["aria-expanded"]}
+                        data-webhook-menu={h.name}
+                      />
+                    )}
                     items={[
                       { label: "Deliveries", icon: <Icon.Clock />, onSelect: () => setLogOf(h), attrs: { "data-action": "webhook-deliveries" } },
-                      { label: "Send a test", icon: <Icon.Bolt />, onSelect: () => test.mutate(h.id, { onSuccess: (r) => toast[r.delivery.deliveredAt ? "success" : "error"](r.delivery.deliveredAt ? `Delivered, ${r.delivery.status}` : `Not delivered: ${r.delivery.error}`) }), attrs: { "data-action": "webhook-test" } },
-                      { label: h.enabled ? "Turn off" : "Turn on", icon: h.enabled ? <Icon.EyeOff /> : <Icon.Eye />, onSelect: () => update.mutate({ id: h.id, name: h.name, url: h.url, topics: h.topics, enabled: !h.enabled }), attrs: { "data-action": "webhook-toggle" } },
+                      {
+                        label: "Send a test",
+                        icon: <Icon.Bolt />,
+                        onSelect: () =>
+                          test.mutate(h.id, {
+                            onSuccess: (r) =>
+                              toast[r.delivery.deliveredAt ? "success" : "error"](
+                                r.delivery.deliveredAt ? `Delivered, ${r.delivery.status}` : `Not delivered: ${r.delivery.error}`,
+                              ),
+                          }),
+                        attrs: { "data-action": "webhook-test" },
+                      },
+                      {
+                        label: h.enabled ? "Turn off" : "Turn on",
+                        icon: h.enabled ? <Icon.EyeOff /> : <Icon.Eye />,
+                        onSelect: () => update.mutate({ id: h.id, name: h.name, url: h.url, topics: h.topics, enabled: !h.enabled }),
+                        attrs: { "data-action": "webhook-toggle" },
+                      },
                       // A connected app's own secret is the app's to rotate.
-                      ...(h.partner ? [] : [{ label: "Rotate the secret", icon: <Icon.Key />, onSelect: () => rotate.mutate(h.id, { onSuccess: (r) => setFresh({ name: r.webhook.name, secret: r.webhook.secret ?? "" }) }), attrs: { "data-action": "webhook-rotate" } }]),
+                      ...(h.partner
+                        ? []
+                        : [
+                            {
+                              label: "Rotate the secret",
+                              icon: <Icon.Key />,
+                              onSelect: () => rotate.mutate(h.id, { onSuccess: (r) => setFresh({ name: r.webhook.name, secret: r.webhook.secret ?? "" }) }),
+                              attrs: { "data-action": "webhook-rotate" },
+                            },
+                          ]),
                       {
                         label: "Delete",
                         icon: <Icon.Trash />,
                         danger: true,
-                        onSelect: async () => (await confirm({ noun: "webhook", verb: "Delete", body: `${h.name} stops receiving at once, and its log goes with it.` })) && remove.mutate(h.id),
+                        onSelect: async () =>
+                          (await confirm({ noun: "webhook", verb: "Delete", body: `${h.name} stops receiving at once, and its log goes with it.` })) &&
+                          remove.mutate(h.id),
                         attrs: { "data-action": "webhook-delete" },
                       },
                     ]}
@@ -186,17 +265,32 @@ function DeliveryLog({ hook, onClose }: { hook: Webhook; onClose: () => void }) 
       ) : (
         <ul className="divide-y divide-border">
           {deliveries.map((d) => (
-            <li key={d.id} className="flex items-center gap-3 py-2.5 text-sm" data-delivery={d.topic} data-delivery-state={d.deliveredAt ? "delivered" : d.nextAttemptAt ? "waiting" : "failed"}>
-              <Tag className={d.deliveredAt ? "" : d.nextAttemptAt ? "text-ink-subtle" : "text-danger"}>{d.deliveredAt ? "delivered" : d.nextAttemptAt ? "waiting" : "failed"}</Tag>
+            <li
+              key={d.id}
+              className="flex items-center gap-3 py-2.5 text-sm"
+              data-delivery={d.topic}
+              data-delivery-state={d.deliveredAt ? "delivered" : d.nextAttemptAt ? "waiting" : "failed"}
+            >
+              <Tag className={d.deliveredAt ? "" : d.nextAttemptAt ? "text-ink-subtle" : "text-danger"}>
+                {d.deliveredAt ? "delivered" : d.nextAttemptAt ? "waiting" : "failed"}
+              </Tag>
               <span className="min-w-0 flex-1">
                 <span className="block text-ink">
                   {d.topic} <span className="text-ink-subtle">attempt {d.attempt}</span>
                 </span>
-                <span className="block truncate text-xs text-ink-muted">{d.deliveredAt ? `answered ${d.status}` : d.error || (d.nextAttemptAt ? `next try ${format.relative(d.nextAttemptAt)}` : "")}</span>
+                <span className="block truncate text-xs text-ink-muted">
+                  {d.deliveredAt ? `answered ${d.status}` : d.error || (d.nextAttemptAt ? `next try ${format.relative(d.nextAttemptAt)}` : "")}
+                </span>
               </span>
               <span className="text-xs text-ink-subtle">{format.relative(d.createdAt)}</span>
               {!d.nextAttemptAt && (
-                <Button variant="secondary" size="sm" loading={redeliver.isPending} onClick={() => redeliver.mutate({ endpointId: hook.id, deliveryId: d.id })} data-action="redeliver">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={redeliver.isPending}
+                  onClick={() => redeliver.mutate({ endpointId: hook.id, deliveryId: d.id })}
+                  data-action="redeliver"
+                >
                   Again
                 </Button>
               )}

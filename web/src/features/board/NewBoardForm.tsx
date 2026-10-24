@@ -45,10 +45,7 @@ export function NewBoardForm({
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    create.mutate(
-      { name: name.trim(), type, teamId: teamId || null },
-      { onSuccess: onDone },
-    );
+    create.mutate({ name: name.trim(), type, teamId: teamId || null }, { onSuccess: onDone });
   }
 
   return (
@@ -56,14 +53,7 @@ export function NewBoardForm({
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
 
-        <Field
-          label="Board name"
-          autoFocus
-          required
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Release board"
-        />
+        <Field label="Board name" autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="Release board" />
 
         <fieldset className="space-y-1.5">
           <legend className="block text-sm font-medium text-ink">Type</legend>

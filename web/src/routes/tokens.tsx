@@ -42,15 +42,18 @@ function TokensPage() {
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    create.mutate({ name, scopes: readOnly ? [READ_ONLY_SCOPE] : [], projects, expiresAt: expiryFrom(days) }, {
-      onSuccess: (result) => {
-        setFreshSecret(result.token.secret ?? null);
-        setName("");
-        setReadOnly(false);
-        setProjects([]);
-        setDays(TOKEN_DEFAULT_DAYS);
+    create.mutate(
+      { name, scopes: readOnly ? [READ_ONLY_SCOPE] : [], projects, expiresAt: expiryFrom(days) },
+      {
+        onSuccess: (result) => {
+          setFreshSecret(result.token.secret ?? null);
+          setName("");
+          setReadOnly(false);
+          setProjects([]);
+          setDays(TOKEN_DEFAULT_DAYS);
+        },
       },
-    });
+    );
   }
 
   return (
@@ -61,17 +64,14 @@ function TokensPage() {
             Settings
           </Link>
         }
-        title="Access tokens" />
+        title="Access tokens"
+      />
 
       {freshSecret && (
         <Card className="mb-6 border-accent/40 bg-accent-subtle p-4">
           <p className="text-sm font-medium text-ink">Copy this token now</p>
-          <p className="mt-1 text-sm text-ink-muted">
-            It will not be shown again. Store it somewhere safe.
-          </p>
-          <code className="mt-3 block overflow-x-auto rounded border border-border bg-surface px-3 py-2 font-mono text-xs text-ink">
-            {freshSecret}
-          </code>
+          <p className="mt-1 text-sm text-ink-muted">It will not be shown again. Store it somewhere safe.</p>
+          <code className="mt-3 block overflow-x-auto rounded border border-border bg-surface px-3 py-2 font-mono text-xs text-ink">{freshSecret}</code>
           <Button variant="ghost" size="sm" className="mt-2" onClick={() => setFreshSecret(null)}>
             Done
           </Button>
@@ -82,12 +82,7 @@ function TokensPage() {
         <form onSubmit={onSubmit} className="flex flex-col gap-3" data-guide="token-form">
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <Field
-                label="New token name"
-                placeholder="Deploy pipeline"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+              <Field label="New token name" placeholder="Deploy pipeline" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
               Create
@@ -148,43 +143,58 @@ function TokensPage() {
       {isLoading ? (
         <p className="text-sm text-ink-muted">Loading tokens...</p>
       ) : tokens.length === 0 ? (
-        <EmptyState
-          title="No tokens yet"
-          description="Create one above to call the API from a script or a CI job."
-        />
+        <EmptyState title="No tokens yet" description="Create one above to call the API from a script or a CI job." />
       ) : (
         <Card>
           <ul className="divide-y divide-border">
-            {tokens.map((token) => token.app ? (
-              <ConnectedAppRow key={token.id} token={token} disconnecting={revoke.isPending && revoke.variables === token.id} onDisconnect={async () => (await confirm({ noun: "app", verb: "Disconnect", body: `${token.app?.name} can no longer act as you; it asks again if you connect it later.` })) && revoke.mutate(token.id)} />
-            ) : (
-              <li key={token.id} className="flex items-center justify-between gap-4 px-5 py-3" data-token={token.name} data-token-scope={token.scopes.includes(READ_ONLY_SCOPE) ? READ_ONLY_SCOPE : undefined} data-token-projects={token.projects.join(",")}>
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
-                    {token.name}
-                    {token.scopes.includes(READ_ONLY_SCOPE) && <Tag>Read only</Tag>}
-                  </p>
-                  <p className="text-xs text-ink-subtle">
-                    Created {format.date(token.createdAt)}
-                    {token.lastUsedAt
-                      ? ` · last used ${format.date(token.lastUsedAt)}`
-                      : " · never used"}
-                    {token.expiresAt ? ` · expires ${format.date(token.expiresAt)}` : " · never expires"}
-                  </p>
-                  <p className="text-xs text-ink-subtle">
-                    {token.projects.length > 0 ? `Only ${token.projects.join(", ")}` : "Every project you can reach"}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => (await confirm({ noun: "token", verb: "Revoke", body: `${token.name} stops working at once; anything using it is refused.` })) && revoke.mutate(token.id)}
-                  loading={revoke.isPending && revoke.variables === token.id}
+            {tokens.map((token) =>
+              token.app ? (
+                <ConnectedAppRow
+                  key={token.id}
+                  token={token}
+                  disconnecting={revoke.isPending && revoke.variables === token.id}
+                  onDisconnect={async () =>
+                    (await confirm({
+                      noun: "app",
+                      verb: "Disconnect",
+                      body: `${token.app?.name} can no longer act as you; it asks again if you connect it later.`,
+                    })) && revoke.mutate(token.id)
+                  }
+                />
+              ) : (
+                <li
+                  key={token.id}
+                  className="flex items-center justify-between gap-4 px-5 py-3"
+                  data-token={token.name}
+                  data-token-scope={token.scopes.includes(READ_ONLY_SCOPE) ? READ_ONLY_SCOPE : undefined}
+                  data-token-projects={token.projects.join(",")}
                 >
-                  Revoke
-                </Button>
-              </li>
-            ))}
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
+                      {token.name}
+                      {token.scopes.includes(READ_ONLY_SCOPE) && <Tag>Read only</Tag>}
+                    </p>
+                    <p className="text-xs text-ink-subtle">
+                      Created {format.date(token.createdAt)}
+                      {token.lastUsedAt ? ` · last used ${format.date(token.lastUsedAt)}` : " · never used"}
+                      {token.expiresAt ? ` · expires ${format.date(token.expiresAt)}` : " · never expires"}
+                    </p>
+                    <p className="text-xs text-ink-subtle">{token.projects.length > 0 ? `Only ${token.projects.join(", ")}` : "Every project you can reach"}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () =>
+                      (await confirm({ noun: "token", verb: "Revoke", body: `${token.name} stops working at once; anything using it is refused.` })) &&
+                      revoke.mutate(token.id)
+                    }
+                    loading={revoke.isPending && revoke.variables === token.id}
+                  >
+                    Revoke
+                  </Button>
+                </li>
+              ),
+            )}
           </ul>
         </Card>
       )}

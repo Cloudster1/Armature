@@ -2,7 +2,16 @@ import { useState, type FormEvent } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { ApiError } from "@/api/client";
-import { useApproveConnectedApp, useConnectedApps, useCreateConnectedApp, useDeleteConnectedApp, useRotateConnectedAppSecret, useUpdateConnectedApp, type ConnectedApp, type ConnectedAppInput } from "@/api/oauth";
+import {
+  useApproveConnectedApp,
+  useConnectedApps,
+  useCreateConnectedApp,
+  useDeleteConnectedApp,
+  useRotateConnectedAppSecret,
+  useUpdateConnectedApp,
+  type ConnectedApp,
+  type ConnectedAppInput,
+} from "@/api/oauth";
 import { Button, Card, Checkbox, Drawer, EmptyState, ErrorBanner, Field, IconButton, Menu, Page, PageHeader, Table, Tag, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -137,16 +146,39 @@ function ConnectedAppsPage() {
                   <Menu
                     label={`Actions for ${app.name}`}
                     align="end"
-                    trigger={(props) => <IconButton icon={<Icon.More />} label={`Actions for ${app.name}`} size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} data-connected-app-menu={app.name} />}
+                    trigger={(props) => (
+                      <IconButton
+                        icon={<Icon.More />}
+                        label={`Actions for ${app.name}`}
+                        size="sm"
+                        onClick={props.toggle}
+                        aria-haspopup={props["aria-haspopup"]}
+                        aria-expanded={props["aria-expanded"]}
+                        data-connected-app-menu={app.name}
+                      />
+                    )}
                     items={[
-                      ...(app.status === "pending" ? [{ label: "Allow", icon: <Icon.Check />, onSelect: () => approve.mutate(app.id), attrs: { "data-action": "connected-app-allow" } }] : []),
+                      ...(app.status === "pending"
+                        ? [{ label: "Allow", icon: <Icon.Check />, onSelect: () => approve.mutate(app.id), attrs: { "data-action": "connected-app-allow" } }]
+                        : []),
                       { label: "Edit", icon: <Icon.Edit />, onSelect: () => setEditing(app), attrs: { "data-action": "connected-app-edit" } },
-                      ...(app.confidential ? [{ label: "Rotate the secret", icon: <Icon.Key />, onSelect: () => rotate.mutate(app.id, { onSuccess: showSecret }), attrs: { "data-action": "connected-app-rotate" } }] : []),
+                      ...(app.confidential
+                        ? [
+                            {
+                              label: "Rotate the secret",
+                              icon: <Icon.Key />,
+                              onSelect: () => rotate.mutate(app.id, { onSuccess: showSecret }),
+                              attrs: { "data-action": "connected-app-rotate" },
+                            },
+                          ]
+                        : []),
                       {
                         label: "Remove",
                         icon: <Icon.Trash />,
                         danger: true,
-                        onSelect: async () => (await confirm({ noun: "app", verb: "Remove", body: `Everybody who connected ${app.name} is disconnected at once.` })) && remove.mutate(app.id),
+                        onSelect: async () =>
+                          (await confirm({ noun: "app", verb: "Remove", body: `Everybody who connected ${app.name} is disconnected at once.` })) &&
+                          remove.mutate(app.id),
                         attrs: { "data-action": "connected-app-delete" },
                       },
                     ]}
@@ -166,7 +198,14 @@ function EditApp({ app, onClose }: { app: ConnectedApp; onClose: () => void }) {
   const update = useUpdateConnectedApp();
   return (
     <Drawer open onClose={onClose} title={`Edit ${app.name}`} attrs={{ "data-connected-app-edit": app.name }}>
-      <AppForm app={app} submit="Save" pending={update.isPending} error={update.error} onCancel={onClose} onSubmit={(input) => update.mutate({ id: app.id, ...input }, { onSuccess: onClose })} />
+      <AppForm
+        app={app}
+        submit="Save"
+        pending={update.isPending}
+        error={update.error}
+        onCancel={onClose}
+        onSubmit={(input) => update.mutate({ id: app.id, ...input }, { onSuccess: onClose })}
+      />
     </Drawer>
   );
 }
@@ -207,7 +246,14 @@ function AppForm({ app, submit, pending, error, withConfidential, onSubmit, onCa
     <form onSubmit={send} className="space-y-4" noValidate data-connected-app-form>
       {error && Object.keys(fields).length === 0 && <ErrorBanner>{error.message}</ErrorBanner>}
       <Field label="App name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Stator" error={fields.name} />
-      <Field label="App address" value={clientUri} onChange={(e) => setClientUri(e.target.value)} placeholder="https://stator.example.com" hint="Shown under its name when somebody is asked." error={fields.clientUri} />
+      <Field
+        label="App address"
+        value={clientUri}
+        onChange={(e) => setClientUri(e.target.value)}
+        placeholder="https://stator.example.com"
+        hint="Shown under its name when somebody is asked."
+        error={fields.clientUri}
+      />
       <Field
         label="Return addresses"
         rows={3}

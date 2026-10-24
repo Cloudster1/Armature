@@ -24,12 +24,23 @@ export function Choice({ checked, onSelect, className, children, ...rest }: Choi
 }
 
 /** A titled option with a sentence under it, for choosing a kind of thing. */
-export function OptionCard({ title, description, extra, checked, className, ...rest }: ChoiceProps & { title: ReactNode; description?: ReactNode; extra?: ReactNode }) {
+export function OptionCard({
+  title,
+  description,
+  extra,
+  checked,
+  className,
+  ...rest
+}: ChoiceProps & { title: ReactNode; description?: ReactNode; extra?: ReactNode }) {
   return (
     <Choice
       {...rest}
       checked={checked}
-      className={cx("rounded-overlay border p-3", checked ? "border-accent bg-accent-subtle" : "border-border bg-surface hover:border-border-strong", className)}
+      className={cx(
+        "rounded-overlay border p-3",
+        checked ? "border-accent bg-accent-subtle" : "border-border bg-surface hover:border-border-strong",
+        className,
+      )}
     >
       <span className={cx("block text-sm font-medium", checked ? "text-accent" : "text-ink")}>{title}</span>
       {description && <span className="mt-1 block text-xs text-ink-muted">{description}</span>}

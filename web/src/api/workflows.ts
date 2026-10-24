@@ -257,9 +257,7 @@ function useConfigMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult
 }
 
 export function useCreateWorkflow() {
-  return useConfigMutation((input: GraphInput) =>
-    request<{ workflow: Workflow }>("/workflows", { method: "POST", body: input }),
-  );
+  return useConfigMutation((input: GraphInput) => request<{ workflow: Workflow }>("/workflows", { method: "POST", body: input }));
 }
 
 export function useSaveWorkflow() {
@@ -279,9 +277,7 @@ export function useDeleteWorkflow() {
 }
 
 export function useCreateScheme() {
-  return useConfigMutation((input: SchemeInput) =>
-    request<{ scheme: Scheme }>("/workflow-schemes", { method: "POST", body: input }),
-  );
+  return useConfigMutation((input: SchemeInput) => request<{ scheme: Scheme }>("/workflow-schemes", { method: "POST", body: input }));
 }
 
 export function useSaveScheme() {
@@ -291,25 +287,20 @@ export function useSaveScheme() {
 }
 
 export function useSetDefaultScheme() {
-  return useConfigMutation((id: string) =>
-    request<void>(`/workflow-schemes/${id}/default`, { method: "PUT", body: {} }),
-  );
+  return useConfigMutation((id: string) => request<void>(`/workflow-schemes/${id}/default`, { method: "PUT", body: {} }));
 }
 
 export function useDeleteScheme() {
-  return useConfigMutation((id: string) =>
-    request<void>(`/workflow-schemes/${id}`, { method: "DELETE" }),
-  );
+  return useConfigMutation((id: string) => request<void>(`/workflow-schemes/${id}`, { method: "DELETE" }));
 }
 
 /** One row of the project's table: a workflow for the type, or null to follow the organization. */
 export function useSetProjectAssignment() {
-  return useConfigMutation(
-    ({ projectKey, issueTypeId, workflowId }: { projectKey: string; issueTypeId: string; workflowId: string | null }) =>
-      request<ProjectWorkflows>(`/projects/${projectKey}/workflow-assignments/${issueTypeId}`, {
-        method: "PUT",
-        body: { workflowId },
-      }),
+  return useConfigMutation(({ projectKey, issueTypeId, workflowId }: { projectKey: string; issueTypeId: string; workflowId: string | null }) =>
+    request<ProjectWorkflows>(`/projects/${projectKey}/workflow-assignments/${issueTypeId}`, {
+      method: "PUT",
+      body: { workflowId },
+    }),
   );
 }
 

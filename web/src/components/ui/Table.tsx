@@ -3,13 +3,7 @@ import { cx } from "./cx";
 
 // Tables, for lists with more than one thing worth reading per row: a card per
 // row hides the columns, a table shows them and lets the eye run down one.
-export function Table({
-  children,
-  className,
-  dense,
-  sticky,
-  ...rest
-}: HTMLAttributes<HTMLTableElement> & { dense?: boolean; sticky?: boolean }) {
+export function Table({ children, className, dense, sticky, ...rest }: HTMLAttributes<HTMLTableElement> & { dense?: boolean; sticky?: boolean }) {
   return (
     // Positioned, so a visually hidden header inside is clipped by the scroll
     // container instead of widening the whole page on a narrow screen.
@@ -27,10 +21,7 @@ export function Table({
 
 export function Th({ children, className, ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th
-      {...rest}
-      className={cx("border-b border-border px-3 py-2 text-left text-2xs font-medium tracking-wide text-ink-subtle uppercase", className)}
-    >
+    <th {...rest} className={cx("border-b border-border px-3 py-2 text-left text-2xs font-medium tracking-wide text-ink-subtle uppercase", className)}>
       {children}
     </th>
   );
