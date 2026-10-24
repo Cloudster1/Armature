@@ -1,8 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useId } from "react";
 import { useAccess } from "@/api/access";
 import { Link, Outlet, createRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
-import { Page, PageHeader, Tabs, isPageOffset } from "@/components/ui";
+import { Page, PageHeader, TabPanel, Tabs, isPageOffset } from "@/components/ui";
 import { SchemeCards } from "@/features/workflows/library/SchemeCards";
 import { StatusCards } from "@/features/workflows/library/StatusCards";
 import { WorkflowCards } from "@/features/workflows/library/WorkflowCards";
@@ -74,6 +74,7 @@ function useCanConfigure(): boolean {
 function WorkflowLibrary() {
   const pathname = useLocation({ select: (location) => location.pathname });
   const navigate = useNavigate();
+  const panelId = useId();
   const current: TabId = pathname.endsWith("/statuses") ? "statuses" : pathname.endsWith("/schemes") ? "schemes" : "workflows";
   return (
     <Page width="content">
@@ -84,9 +85,11 @@ function WorkflowLibrary() {
           </Link>
         }
         title="Workflows"
-        tabs={<Tabs label="Workflows" value={current} onChange={(next) => navigate({ to: tabs.find((t) => t.value === next)!.to as never })} tabs={tabs.map((t) => ({ value: t.value, label: t.label, attrs: { "data-workflow-tab": t.label } }))} />}
+        tabs={<Tabs label="Workflows" value={current} panelId={panelId} onChange={(next) => navigate({ to: tabs.find((t) => t.value === next)!.to as never })} tabs={tabs.map((t) => ({ value: t.value, label: t.label, attrs: { "data-workflow-tab": t.label } }))} />}
       />
-      <Outlet />
+      <TabPanel id={panelId} label={tabs.find((t) => t.value === current)?.label}>
+        <Outlet />
+      </TabPanel>
     </Page>
   );
 }

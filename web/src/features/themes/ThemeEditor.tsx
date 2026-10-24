@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useChooseTheme, useCreateTheme, useDeleteThemeAsset, useThemeExamples, useUpdateTheme, useUploadThemeAsset, type Theme, type ThemeAsset, type ThemeExample, type ThemeSpec } from "@/api/themes";
-import { Button, Card, ColorField, ErrorBanner, Field, IconButton, OptionCard, SectionTitle, Segmented, SelectInput, Switch, Tabs, Tag, useToast } from "@/components/ui";
+import { Button, Card, ColorField, ErrorBanner, Field, IconButton, OptionCard, SectionTitle, Segmented, SelectInput, Switch, TabPanel, Tabs, Tag, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { KILOBYTE, THEME_ASSET_MAX_BYTES, THEME_CSS_MAX_BYTES, THEME_CSS_ROWS, THEME_CURSOR_PX, THEME_ICON_PREVIEW_PX, THEME_MAX_HOTSPOT, THEME_MAX_RADIUS, THEME_PREVIEW_DEBOUNCE_MS } from "@/config";
 import { compileTheme, emptySpec } from "@/lib/theme-css";
@@ -51,6 +51,7 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
   const [shared, setShared] = useState(theme?.shared ?? false);
   const [spec, setSpec] = useState<ThemeSpec>(() => (theme ? structuredClone(theme.spec) : emptySpec()));
   const [tab, setTab] = useState<TabID>("colours");
+  const panelId = useId();
   const [preview, setPreview] = useState(false);
   const [startedFrom, setStartedFrom] = useState("blank");
   const assets = theme?.assets ?? [];
@@ -121,8 +122,9 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
 
       {!theme && <StartFrom chosen={startedFrom} onChoose={(example) => { setStartedFrom(example?.key ?? "blank"); setSpec(example ? structuredClone(example.spec) : emptySpec()); if (example && !name.trim()) setName(example.name); }} />}
 
-      <Tabs<TabID> label="Theme" value={tab} onChange={setTab} tabs={tabs.map((each) => ({ ...each, attrs: { "data-theme-tab": each.label } }))} />
+      <Tabs<TabID> label="Theme" value={tab} onChange={setTab} panelId={panelId} tabs={tabs.map((each) => ({ ...each, attrs: { "data-theme-tab": each.label } }))} />
 
+      <TabPanel id={panelId} label={tabs.find((each) => each.value === tab)?.label}>
       {tab === "colours" && <ColoursTab spec={spec} patch={patch} />}
       {tab === "type" && <TypeTab spec={spec} patch={patch} assets={assets} />}
       {tab === "shape" && <ShapeTab spec={spec} patch={patch} />}
@@ -131,6 +133,7 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
       {tab === "backdrop" && <BackdropTab spec={spec} patch={patch} assets={assets} />}
       {tab === "files" && <FilesTab theme={theme} spec={spec} />}
       {tab === "advanced" && <AdvancedTab spec={spec} patch={patch} />}
+      </TabPanel>
     </form>
   );
 }

@@ -7,6 +7,10 @@ const OUTSIDE_SETTINGS_KEY = "armature.outside-settings";
 
 /** The id the drawer's opening button names in aria-controls. */
 export const DRAWER_ID = "shell-drawer";
+/** The id the rail's toggle names in aria-controls. */
+export const SIDEBAR_ID = "shell-sidebar";
+/** Where the skip link sends focus: the page's own content. */
+export const MAIN_ID = "main";
 
 export type SidebarMode = "open" | "rail";
 

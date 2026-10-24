@@ -90,6 +90,30 @@ scenario("the theme choice persists across a reload", async ({ page }) => {
   expect.equal(await textOf(page, themeButton), "Dark", "the choice survived the reload");
 });
 
+scenario("the keyboard reaches the content from the top of a page through the skip link", async ({ page }) => {
+  await signUp(page);
+  await goto(page, "/projects");
+  await page.waitForSelector("main#main", { timeout: WAIT });
+  await page.evaluate(() => document.activeElement?.blur());
+
+  await page.keyboard.press("Tab");
+  const first = await page.evaluate(() => {
+    const el = document.activeElement;
+    const box = el.getBoundingClientRect();
+    return { skip: el.hasAttribute("data-skip-link"), text: el.textContent.trim(), shown: box.width > 1 && box.height > 1 };
+  });
+  expect.truthy(first.skip, "the first Tab lands on the skip link");
+  expect.equal(first.text, "Skip to the content", "the skip link's words");
+  expect.truthy(first.shown, "the skip link shows once focused");
+
+  await page.keyboard.press("Enter");
+  expect.equal(await page.evaluate(() => document.activeElement?.id), "main", "focus after the skip link");
+  expect.equal(await page.evaluate(() => location.pathname), "/projects", "the skip link left the address alone");
+
+  await page.keyboard.press("Tab");
+  expect.truthy(await page.evaluate(() => document.querySelector("main#main").contains(document.activeElement)), "the next Tab stays in the content, past the navigation");
+});
+
 scenario("nothing in the page reports a script error", async ({ page }) => {
   const problems = [];
   page.on("console", (message) => {
