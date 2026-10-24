@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import type { Alignment } from "@/api/plan";
-import { Button, Card, ErrorBanner } from "@/components/ui";
+import { Button, Card, Checkbox, ErrorBanner } from "@/components/ui";
 import { PLAN_ALIGN_MAX_MOVES } from "@/config";
-import { describeMove } from "./autoplan";
+import { describeMove, summarise } from "./autoplan";
 
 /**
  * What the auto plan would move, before anything does. Apply saves every move
@@ -13,6 +13,9 @@ export function AutoPlanPreview({
   alignment,
   locale,
   applying,
+  place,
+  onPlace,
+  reading = false,
   refusal,
   onApply,
   onCancel,
@@ -21,6 +24,11 @@ export function AutoPlanPreview({
   alignment: Alignment;
   locale: string;
   applying: boolean;
+  /** Whether issues without dates are placed too, and asking again with the other answer. */
+  place: boolean;
+  onPlace: (place: boolean) => void;
+  /** A proposal is being read again, so the one shown is about to change. */
+  reading?: boolean;
   /** Why the moves were not saved, such as an issue moved by someone else meanwhile. */
   refusal?: string;
   onApply: () => void;
@@ -44,11 +52,16 @@ export function AutoPlanPreview({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-ink">Auto plan</h2>
         <p className="text-sm text-ink-muted" data-auto-plan-count={moves.length}>
-          {moves.length === 0
-            ? "Every issue already starts after the issues blocking it."
-            : `${moves.length} issue${moves.length === 1 ? "" : "s"} would move to start after the issues blocking them. Nothing is saved until you apply.`}
+          {summarise(alignment)}
         </p>
       </div>
+      <Checkbox
+        label="Also place issues without dates, from their remaining or estimated time"
+        checked={place}
+        disabled={reading || applying}
+        onChange={(event) => onPlace(event.target.checked)}
+        data-auto-plan-place
+      />
 
       {moves.length > 0 && (
         <ul className="max-h-64 space-y-1 overflow-y-auto text-sm" data-testid="auto-plan-moves">
@@ -58,6 +71,17 @@ export function AutoPlanPreview({
                 {move.issueKey}
               </Link>
               <span className="text-ink-muted">{describeMove(move, locale)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {alignment.unplaced.length > 0 && (
+        <ul className="space-y-1 text-sm" data-testid="auto-plan-unplaced">
+          {alignment.unplaced.map((u) => (
+            <li key={u.issueKey} className="flex items-baseline gap-2" data-auto-plan-unplaced={u.issueKey}>
+              <span className="shrink-0 font-mono text-xs text-ink">{u.issueKey}</span>
+              <span className="text-ink-muted">{u.reason}</span>
             </li>
           ))}
         </ul>
@@ -91,7 +115,7 @@ export function AutoPlanPreview({
 
       <div className="flex gap-2">
         {moves.length > 0 && (
-          <Button onClick={onApply} disabled={applying || tooMany || Boolean(refusal)} data-action="auto-plan-apply">
+          <Button onClick={onApply} disabled={applying || reading || tooMany || Boolean(refusal)} data-action="auto-plan-apply">
             {applying ? "Applying..." : "Apply"}
           </Button>
         )}

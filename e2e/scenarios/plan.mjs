@@ -12,6 +12,7 @@ import {
   dragBar,
   expect,
   goto,
+  patchThroughAPI,
   scheduleIssue,
   scheduleThroughAPI,
   setDate,
@@ -224,4 +225,31 @@ scenario("cancelling an auto plan changes nothing", async ({ page }) => {
   await page.waitForSelector('[data-testid="auto-plan-preview"]', { timeout: WAIT });
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector('[data-testid="auto-plan-preview"]'), { timeout: WAIT });
+});
+
+scenario("auto plan places estimated work without dates after what blocks it", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Auto plan placing", { visit: false });
+  const blocker = await createIssue(page, key, "Design the export", { type: "Story", visit: false });
+  const undated = await createIssue(page, key, "Write the export", { type: "Story", visit: false });
+  const unsized = await createIssue(page, key, "Announce the export", { type: "Story", visit: false });
+  await scheduleThroughAPI(page, blocker, "2027-11-01", "2027-11-05");
+  await patchThroughAPI(page, undated, { timeEstimateMinutes: 2 * 8 * 60 });
+  await blockThroughAPI(page, blocker, undated);
+
+  await goto(page, `/projects/${key}/plan`);
+  await page.waitForSelector('[data-action="auto-plan"]', { timeout: WAIT });
+  await page.click('[data-action="auto-plan"]');
+  await page.waitForSelector("[data-auto-plan-place]", { timeout: WAIT });
+  expect.equal(await page.$(`[data-plan-proposed="${undated}"]`), null, "work without dates stays off the proposal until asked");
+  await page.click("[data-auto-plan-place]");
+
+  await page.waitForSelector(`[data-plan-proposed="${undated}"][data-plan-placed]`, { timeout: WAIT });
+  const ghost = await page.$eval(`[data-plan-proposed="${undated}"]`, (el) => ({ start: el.dataset.planStart, due: el.dataset.planDue }));
+  expect.equal(ghost.start, "2027-11-08", "it is placed the Monday after its blocker ends");
+  expect.equal(ghost.due, "2027-11-09", "for the two days its estimate takes");
+  expect.contains(await page.$eval(`[data-auto-plan-unplaced="${unsized}"]`, (el) => el.textContent), "no estimate", "unsized work is listed, not guessed");
+
+  await page.click('[data-action="auto-plan-apply"]');
+  await page.waitForFunction((k) => document.querySelector(`[data-plan-bar="${k}"]`)?.dataset.planStart?.startsWith("2027-11-08"), { timeout: WAIT }, undated);
 });

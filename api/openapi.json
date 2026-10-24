@@ -20647,6 +20647,9 @@
       "AlignRequest": {
         "type": "object",
         "properties": {
+          "place": {
+            "type": "boolean"
+          },
           "q": {
             "type": "string"
           }
@@ -20664,6 +20667,12 @@
           "projectKey": {
             "type": "string"
           },
+          "unplaced": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Unplaced"
+            }
+          },
           "warnings": {
             "type": "array",
             "items": {
@@ -20674,6 +20683,7 @@
         "required": [
           "projectKey",
           "moves",
+          "unplaced",
           "warnings"
         ]
       },
@@ -25904,6 +25914,9 @@
           "issueKey": {
             "type": "string"
           },
+          "placed": {
+            "type": "boolean"
+          },
           "to": {
             "$ref": "#/components/schemas/Span"
           },
@@ -25913,7 +25926,6 @@
         },
         "required": [
           "issueKey",
-          "from",
           "to",
           "workingDays",
           "after"
@@ -31325,6 +31337,21 @@
           "icon",
           "level",
           "isSubtask"
+        ]
+      },
+      "Unplaced": {
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueKey",
+          "reason"
         ]
       },
       "UnreadCount": {

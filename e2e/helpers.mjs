@@ -763,6 +763,11 @@ export async function scheduleThroughAPI(page, issueKey, start, due) {
   await callAPI(page, "PUT", `/issues/${issueKey}/schedule`, { startDate: start, dueDate: due });
 }
 
+/** Some of an issue's fields through the API, such as its time estimate in minutes. */
+export async function patchThroughAPI(page, issueKey, fields) {
+  await callAPI(page, "PATCH", `/issues/${issueKey}`, fields);
+}
+
 /** A Blocks link through the API: blocker must finish before blocked starts. */
 export async function blockThroughAPI(page, blocker, blocked) {
   await callAPI(page, "POST", `/issues/${blocker}/links`, { type: "Blocks", targetKey: blocked });

@@ -4926,11 +4926,13 @@ export interface components {
             start: string;
         };
         AlignRequest: {
+            place?: boolean;
             q?: string;
         };
         Alignment: {
             moves: components["schemas"]["Move"][];
             projectKey: string;
+            unplaced: components["schemas"]["Unplaced"][];
             warnings: components["schemas"]["Warning"][];
         };
         Allocation: {
@@ -6419,8 +6421,9 @@ export interface components {
         };
         Move: {
             after: string;
-            from: components["schemas"]["Span"];
+            from?: components["schemas"]["Span"];
             issueKey: string;
+            placed?: boolean;
             to: components["schemas"]["Span"];
             workingDays: number;
         };
@@ -7913,6 +7916,10 @@ export interface components {
             isSubtask: boolean;
             level: number;
             name: string;
+        };
+        Unplaced: {
+            issueKey: string;
+            reason: string;
         };
         UnreadCount: {
             unread: number;

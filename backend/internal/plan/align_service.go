@@ -12,10 +12,10 @@ import (
 )
 
 // Align reads a project's plan and proposes the moves that start every blocked
-// issue after its blockers. It writes nothing. A query limits which issues may
+// issue after its blockers, placing work without dates too when asked. It writes nothing. A query limits which issues may
 // move; mayRead says which other projects' blockers the person may see, since a
 // blocker they cannot see must not shape what they are shown.
-func (s *Service) Align(ctx context.Context, projectKey string, query *nql.Compiled, mayRead func(projectKey string) bool) (*Alignment, error) {
+func (s *Service) Align(ctx context.Context, projectKey string, query *nql.Compiled, place bool, mayRead func(projectKey string) bool) (*Alignment, error) {
 	tree, err := s.issues.Tree(ctx, projectKey)
 	if err != nil {
 		return nil, err
@@ -46,9 +46,13 @@ func (s *Service) Align(ctx context.Context, projectKey string, query *nql.Compi
 		return nil, err
 	}
 
-	moves := Align(items, AlignInput{Blockers: blockers, Work: work, Today: today, Matched: matched, Outside: outside})
+	proposal := Align(items, AlignInput{Blockers: blockers, Work: work, Today: today, Matched: matched, Outside: outside, Place: place})
+	moves, unplaced := proposal.Moves, proposal.Unplaced
 	if moves == nil {
 		moves = []Move{}
+	}
+	if unplaced == nil {
+		unplaced = []Unplaced{}
 	}
 
 	milestones := []milestone.Milestone{}
@@ -62,7 +66,7 @@ func (s *Service) Align(ctx context.Context, projectKey string, query *nql.Compi
 	if warnings == nil {
 		warnings = []Warning{}
 	}
-	return &Alignment{ProjectKey: project.NormalizeKey(projectKey), Moves: moves, Warnings: warnings}, nil
+	return &Alignment{ProjectKey: project.NormalizeKey(projectKey), Moves: moves, Unplaced: unplaced, Warnings: warnings}, nil
 }
 
 // outsideBlockers reads the dates of the blockers that are not rows of the plan

@@ -1,11 +1,13 @@
 package plan
 
 import (
+	"math"
 	"sort"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/availability"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/workflow"
 )
@@ -19,18 +21,37 @@ type Span struct {
 // Move is one issue the auto plan would shift so it starts after what blocks it.
 type Move struct {
 	IssueKey string `json:"issueKey"`
-	From     Span   `json:"from"`
-	To       Span   `json:"to"`
+	// From is where the issue is now, absent for one that had no dates and is placed.
+	From *Span `json:"from,omitempty"`
+	To   Span  `json:"to"`
+	// Placed says the issue had no dates and gets its first ones.
+	Placed bool `json:"placed,omitempty"`
 	// WorkingDays is the length the issue keeps, counted on its team's calendar.
 	WorkingDays int `json:"workingDays"`
-	// After is the blocker whose due date the new start follows.
+	// After is the blocker whose due date the new start follows, empty for a
+	// placed issue nothing holds back.
 	After string `json:"after"`
+}
+
+// Unplaced is an issue without dates the auto plan was asked to place and could not.
+type Unplaced struct {
+	IssueKey string `json:"issueKey"`
+	Reason   string `json:"reason"`
+}
+
+// Proposal is the moves and what could not be placed, before anything is read
+// about what the plan would then say.
+type Proposal struct {
+	Moves    []Move
+	Unplaced []Unplaced
 }
 
 // Alignment is what the auto plan proposes. It changes nothing by itself.
 type Alignment struct {
 	ProjectKey string `json:"projectKey"`
 	Moves      []Move `json:"moves"`
+	// Unplaced is the work without dates that could not be placed, when placing was asked for.
+	Unplaced []Unplaced `json:"unplaced"`
 	// Warnings are the plan's own disagreements as they would stand after the moves.
 	Warnings []Warning `json:"warnings"`
 }
@@ -45,19 +66,36 @@ type AlignInput struct {
 	// Outside holds the dates of blockers that are not rows of this plan, such as
 	// one in another project; they constrain and never move.
 	Outside map[string]Span
+	// Place gives issues without dates their first ones, from their remaining or
+	// estimated time, after what blocks them and no earlier than today.
+	Place bool
 }
+
+// notPlacedReason is what an issue without dates and without an estimate is listed with.
+const notPlacedReason = "Not placed: it has no estimate."
 
 // Align proposes the moves that start every blocked issue after its blockers.
 // Push only: an issue that already starts after them stays put, slack and all.
-func Align(items []Item, in AlignInput) []Move {
+func Align(items []Item, in AlignInput) Proposal {
 	type node struct {
 		span    Span
 		team    *uuid.UUID
 		movable bool
+		// days is the length of an issue to place, which has no span until it is placed.
+		days int
 	}
 	today := midnight(in.Today)
 	nodes := map[string]*node{}
+	var unplaced []Unplaced
 	for _, item := range Flatten(items) {
+		if in.Place && placeable(item, in.Matched) {
+			if hours := hoursOf(item.Issue); hours != nil && *hours > 0 {
+				nodes[item.Issue.Key] = &node{team: item.Issue.TeamID, movable: true, days: daysOf(*hours)}
+			} else {
+				unplaced = append(unplaced, Unplaced{IssueKey: item.Issue.Key, Reason: notPlacedReason})
+			}
+			continue
+		}
 		if !item.Scheduled() {
 			continue
 		}
@@ -107,11 +145,19 @@ func Align(items []Item, in AlignInput) []Move {
 				latest, after = due, blocker
 			}
 		}
-		if n.movable && after != "" && !n.span.Start.After(latest) {
+		switch {
+		case n.days > 0:
+			from := today
+			if after != "" && latest.AddDate(0, 0, 1).After(today) {
+				from = latest.AddDate(0, 0, 1)
+			}
+			n.span = in.Work.place(n.team, from, n.days, Span{})
+			moves = append(moves, Move{IssueKey: key, To: n.span, Placed: true, WorkingDays: n.days, After: after})
+		case n.movable && after != "" && !n.span.Start.After(latest):
 			length := in.Work.workingDays(n.team, n.span)
-			to := in.Work.place(n.team, latest.AddDate(0, 0, 1), length, n.span)
-			moves = append(moves, Move{IssueKey: key, From: n.span, To: to, WorkingDays: length, After: after})
-			n.span = to
+			was := n.span
+			n.span = in.Work.place(n.team, latest.AddDate(0, 0, 1), length, was)
+			moves = append(moves, Move{IssueKey: key, From: &was, To: n.span, WorkingDays: length, After: after})
 		}
 
 		var next []string
@@ -124,7 +170,22 @@ func Align(items []Item, in AlignInput) []Move {
 		sort.Strings(next)
 		ready = append(ready, next...)
 	}
-	return moves
+	return Proposal{Moves: moves, Unplaced: unplaced}
+}
+
+// placeable says whether an issue is work without dates the auto plan may give
+// some: a leaf, since a parent takes its span from its children, not done, and
+// matched by the query when there is one.
+func placeable(item Item, matched map[string]bool) bool {
+	if item.Start != nil || item.Due != nil || len(item.Children) > 0 || item.Issue.IsDone() {
+		return false
+	}
+	return matched == nil || matched[item.Issue.Key]
+}
+
+// daysOf is how many working days some hours of work take one person on a standard day.
+func daysOf(hours float64) int {
+	return int(math.Ceil(hours * minutesPerHour / availability.StandardDayMinutes))
 }
 
 // movable says whether the auto plan may shift an issue. Done work, work under

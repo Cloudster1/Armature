@@ -33,6 +33,8 @@ func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
 // alignRequest is the plan's query, if any; an empty object aligns the whole plan.
 type alignRequest struct {
 	Query string `json:"q,omitempty"`
+	// Place gives issues without dates their first ones from their estimates.
+	Place bool `json:"place,omitempty"`
 }
 
 // handleAlignPlan proposes the moves that start each blocked issue after its
@@ -54,7 +56,7 @@ func (s *Server) handleAlignPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	perms := PermsFrom(r.Context())
 	mayRead := func(projectKey string) bool { return perms.Can(perm.Read, projectKey) }
-	found, err := s.Plans.Align(r.Context(), r.PathValue("projectKey"), query, mayRead)
+	found, err := s.Plans.Align(r.Context(), r.PathValue("projectKey"), query, req.Place, mayRead)
 	if err != nil {
 		respondError(w, r, err)
 		return

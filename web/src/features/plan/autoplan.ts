@@ -11,7 +11,7 @@ export function dayOf(value: string): string {
 export function movesToSave(alignment: Alignment): ScheduleMoveInput[] {
   return alignment.moves.map((move) => ({
     key: move.issueKey,
-    expected: { startDate: dayOf(move.from.startDate), dueDate: dayOf(move.from.dueDate) },
+    expected: move.from ? { startDate: dayOf(move.from.startDate), dueDate: dayOf(move.from.dueDate) } : { startDate: null, dueDate: null },
     startDate: dayOf(move.to.startDate),
     dueDate: dayOf(move.to.dueDate),
   }));
@@ -26,7 +26,20 @@ export function proposedBars(alignment: Alignment | null): Map<string, { start: 
 /** One move as a line a lead reads: what moves, from when to when, and why. */
 export function describeMove(move: PlanMove, locale: string): string {
   const days = `${move.workingDays} working day${move.workingDays === 1 ? "" : "s"}`;
-  return `moves from ${formatDay(dayOf(move.from.startDate), locale)} to ${formatDay(dayOf(move.to.startDate), locale)}, ${days}, after ${move.after}`;
+  const to = formatDay(dayOf(move.to.startDate), locale);
+  const after = move.after ? `, after ${move.after}` : "";
+  if (!move.from) return `is placed from ${to}, ${days}${after}`;
+  return `moves from ${formatDay(dayOf(move.from.startDate), locale)} to ${to}, ${days}${after}`;
+}
+
+/** What the proposal would do, counted, as the preview's first line. */
+export function summarise(alignment: Alignment): string {
+  const placed = alignment.moves.filter((move) => !move.from).length;
+  const moved = alignment.moves.length - placed;
+  const issues = (n: number) => `${n} issue${n === 1 ? "" : "s"}`;
+  const parts = [moved > 0 && `${issues(moved)} would move to start after the issues blocking them`, placed > 0 && `${issues(placed)} without dates would be placed`].filter(Boolean);
+  if (parts.length === 0) return alignment.unplaced.length > 0 ? "Nothing can be placed or needs to move." : "Every issue already starts after the issues blocking it.";
+  return `${parts.join(", and ")}. Nothing is saved until you apply.`.replace(/^./, (c) => c.toUpperCase());
 }
 
 /** The moves that put an applied auto plan back, each expecting the dates it set. */
