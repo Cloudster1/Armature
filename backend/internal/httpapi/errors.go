@@ -235,6 +235,8 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That issue was not found.")
 	case errors.Is(err, issue.ErrLinkCycle):
 		return ErrConflict(err.Error())
+	case errors.Is(err, issue.ErrMovedSince):
+		return ErrConflict(err.Error())
 	case errors.Is(err, issue.ErrInvalidKey):
 		return ErrBadRequest("That is not an issue key.")
 	case errors.Is(err, project.ErrNotFound):
