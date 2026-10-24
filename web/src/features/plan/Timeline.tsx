@@ -117,6 +117,7 @@ export function Timeline({
   query = "",
   filters = NO_FILTERS,
   zoom: zoomId = "fit",
+  proposed = null,
 }: {
   projectKey: string;
   view?: PlanView;
@@ -126,8 +127,11 @@ export function Timeline({
   /** What the toolbar narrowed the rows to; the toolbar owns the state. */
   filters?: Filters;
   zoom?: Zoom["id"];
+  /** Where the auto plan would put each issue it moves. While it is shown, nothing is dragged. */
+  proposed?: Map<string, { start: string; due: string }> | null;
 }) {
   const { data, isLoading, error } = usePlan(projectKey, query);
+  const locked = proposed !== null;
   const schedule = useSchedule();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -234,7 +238,7 @@ export function Timeline({
     item: PlanItem,
     mode: DragOrigin["mode"],
   ) {
-    if (!item.start || !item.due) return;
+    if (locked || !item.start || !item.due) return;
     event.preventDefault();
     event.stopPropagation();
     dragRef.current = {
@@ -276,7 +280,7 @@ export function Timeline({
   // A dependency is drawn from the dot at the end of a bar to another row. The
   // bar's own drags start on the bar, so the dot stops the press there.
   function onLinkPointerDown(event: ReactPointerEvent<HTMLElement>, item: PlanItem) {
-    if (event.button !== 0) return;
+    if (locked || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const x0 = canvasX(event);
@@ -291,7 +295,7 @@ export function Timeline({
   }
 
   function onEmptyPointerDown(event: ReactPointerEvent<HTMLElement>, drag: EmptyDragStart) {
-    if (event.button !== 0) return;
+    if (locked || event.button !== 0) return;
     event.preventDefault();
     const anchorX = canvasX(event);
     emptyDragRef.current = { ...drag, anchorX } as EmptyDrag;
@@ -397,6 +401,7 @@ export function Timeline({
   }
 
   function putOnPlan(item: PlanItem) {
+    if (locked) return;
     const start = day(Date.now());
     schedule.mutate({
       key: item.issue.key,
@@ -410,7 +415,7 @@ export function Timeline({
   // press on them is theirs, and a press elsewhere is a drag only once it has
   // travelled.
   function onRowPointerDown(event: ReactPointerEvent<HTMLElement>, key: string) {
-    if (view !== "management" || event.button !== 0) return;
+    if (locked || view !== "management" || event.button !== 0) return;
     if ((event.target as HTMLElement).closest("a,button")) return;
     reparentRef.current = { key, clientY0: event.clientY, started: false };
     try {
@@ -601,6 +606,7 @@ export function Timeline({
                       scale={scale}
                       preview={preview?.key === row.key ? preview : null}
                       ghost={ghost?.rowKey === row.key ? ghost : null}
+                      proposed={proposed?.get(row.key) ?? null}
                       warnings={warningsByKey.get(row.key) ?? []}
                       onPointerDown={onPointerDown}
                       onLinkPointerDown={onLinkPointerDown}
@@ -881,6 +887,7 @@ function BarRow({
   scale,
   preview,
   ghost,
+  proposed = null,
   warnings,
   onPointerDown,
   onLinkPointerDown,
@@ -894,6 +901,8 @@ function BarRow({
   scale: ReturnType<typeof makeScale>;
   preview: Preview | null;
   ghost: Ghost | null;
+  /** Where the auto plan would put this issue, drawn over where it is. */
+  proposed?: { start: string; due: string } | null;
   warnings: PlanWarning[];
   onPointerDown: (e: ReactPointerEvent<HTMLElement>, item: PlanItem, mode: DragOrigin["mode"]) => void;
   onLinkPointerDown?: (e: ReactPointerEvent<HTMLElement>, item: PlanItem) => void;
@@ -906,6 +915,7 @@ function BarRow({
   const start = preview ? isoDay(preview.start) : item.start;
   const due = preview ? isoDay(preview.due) : item.due;
   const bar = barFor(scale, start, due);
+  const proposedBar = proposed ? barFor(scale, proposed.start, proposed.due) : null;
   const trouble = worstOf(warnings);
   const words = wordsOf(warnings);
 
@@ -995,6 +1005,17 @@ function BarRow({
         >
           Schedule
         </Button>
+      )}
+      {proposed && proposedBar && (
+        <span
+          aria-hidden="true"
+          data-plan-proposed={item.issue.key}
+          data-plan-start={proposed.start}
+          data-plan-due={proposed.due}
+          title={`${item.issue.key} would move to ${proposed.start} to ${proposed.due}`}
+          className="pointer-events-none absolute top-1/2 h-4 -translate-y-1/2 rounded border-2 border-dashed border-accent bg-accent-subtle/60"
+          style={{ left: proposedBar.left, width: proposedBar.width }}
+        />
       )}
     </div>
   );

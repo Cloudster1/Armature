@@ -123,6 +123,9 @@ export const PLAN_DEFAULT_CLOSED_FOR_DAYS = 14;
 /** The dot at the end of a bar that a dependency is dragged out of, in pixels across. */
 export const PLAN_LINK_HANDLE_PX = 10;
 
+/** At most this many issues move in one auto plan, as many as the server saves in one set. */
+export const PLAN_ALIGN_MAX_MOVES = 200;
+
 /** A ticket's box on the dependency graph, in pixels. */
 export const GRAPH_NODE_WIDTH = 200;
 export const GRAPH_NODE_HEIGHT = 40;
