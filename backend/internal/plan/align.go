@@ -69,6 +69,9 @@ type AlignInput struct {
 	// Place gives issues without dates their first ones, from their remaining or
 	// estimated time, after what blocks them and no earlier than today.
 	Place bool
+	// Downstream limits the moves to what this issue holds back, directly or
+	// further down, as after it was moved later by hand.
+	Downstream string
 }
 
 // notPlacedReason is what an issue without dates and without an estimate is listed with.
@@ -123,6 +126,13 @@ func Align(items []Item, in AlignInput) Proposal {
 		indegree[c.BlockedKey]++
 	}
 
+	if in.Downstream != "" {
+		reach := downstreamOf(in.Downstream, blocks)
+		for key, n := range nodes {
+			n.movable = n.movable && reach[key]
+		}
+	}
+
 	// Kahn's order, each batch sorted by key, so the same plan always proposes the same moves.
 	var ready []string
 	for key := range nodes {
@@ -171,6 +181,23 @@ func Align(items []Item, in AlignInput) Proposal {
 		ready = append(ready, next...)
 	}
 	return Proposal{Moves: moves, Unplaced: unplaced}
+}
+
+// downstreamOf is every issue that waits on key, directly or through others.
+func downstreamOf(key string, blocks map[string][]string) map[string]bool {
+	reach := map[string]bool{}
+	queue := []string{key}
+	for len(queue) > 0 {
+		next := queue[0]
+		queue = queue[1:]
+		for _, blocked := range blocks[next] {
+			if !reach[blocked] {
+				reach[blocked] = true
+				queue = append(queue, blocked)
+			}
+		}
+	}
+	return reach
 }
 
 // placeable says whether an issue is work without dates the auto plan may give

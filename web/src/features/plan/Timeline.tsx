@@ -118,6 +118,7 @@ export function Timeline({
   filters = NO_FILTERS,
   zoom: zoomId = "fit",
   proposed = null,
+  onMovedLater,
 }: {
   projectKey: string;
   view?: PlanView;
@@ -129,6 +130,8 @@ export function Timeline({
   zoom?: Zoom["id"];
   /** Where the auto plan would put each issue it moves. While it is shown, nothing is dragged. */
   proposed?: Map<string, { start: string; due: string }> | null;
+  /** Called once a drag that ends an issue later is saved, so what it blocks can be offered a move too. */
+  onMovedLater?: (key: string) => void;
 }) {
   const { data, isLoading, error } = usePlan(projectKey, query);
   const locked = proposed !== null;
@@ -360,11 +363,11 @@ export function Timeline({
     const moved =
       daysBetween(origin.start, preview.start) !== 0 || daysBetween(origin.due, preview.due) !== 0;
     if (moved) {
-      schedule.mutate({
-        key: origin.key,
-        startDate: isoDay(preview.start),
-        dueDate: isoDay(preview.due),
-      });
+      const later = daysBetween(origin.due, preview.due) > 0;
+      schedule.mutate(
+        { key: origin.key, startDate: isoDay(preview.start), dueDate: isoDay(preview.due) },
+        { onSuccess: () => later && onMovedLater?.(origin.key) },
+      );
     }
     setPreview(null);
   }

@@ -15,7 +15,7 @@ import (
 // issue after its blockers, placing work without dates too when asked. It writes nothing. A query limits which issues may
 // move; mayRead says which other projects' blockers the person may see, since a
 // blocker they cannot see must not shape what they are shown.
-func (s *Service) Align(ctx context.Context, projectKey string, query *nql.Compiled, place bool, mayRead func(projectKey string) bool) (*Alignment, error) {
+func (s *Service) Align(ctx context.Context, projectKey string, query *nql.Compiled, options AlignOptions, mayRead func(projectKey string) bool) (*Alignment, error) {
 	tree, err := s.issues.Tree(ctx, projectKey)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (s *Service) Align(ctx context.Context, projectKey string, query *nql.Compi
 		return nil, err
 	}
 
-	proposal := Align(items, AlignInput{Blockers: blockers, Work: work, Today: today, Matched: matched, Outside: outside, Place: place})
+	proposal := Align(items, AlignInput{Blockers: blockers, Work: work, Today: today, Matched: matched, Outside: outside, Place: options.Place, Downstream: options.Downstream})
 	moves, unplaced := proposal.Moves, proposal.Unplaced
 	if moves == nil {
 		moves = []Move{}
@@ -67,6 +67,14 @@ func (s *Service) Align(ctx context.Context, projectKey string, query *nql.Compi
 		warnings = []Warning{}
 	}
 	return &Alignment{ProjectKey: project.NormalizeKey(projectKey), Moves: moves, Unplaced: unplaced, Warnings: warnings}, nil
+}
+
+// AlignOptions are what a caller may ask of the auto plan besides the query.
+type AlignOptions struct {
+	// Place gives issues without dates their first ones.
+	Place bool
+	// Downstream limits the moves to what one issue holds back.
+	Downstream string
 }
 
 // outsideBlockers reads the dates of the blockers that are not rows of the plan

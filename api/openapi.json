@@ -20647,6 +20647,9 @@
       "AlignRequest": {
         "type": "object",
         "properties": {
+          "downstreamOf": {
+            "type": "string"
+          },
           "place": {
             "type": "boolean"
           },

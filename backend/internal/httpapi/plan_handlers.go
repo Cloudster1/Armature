@@ -10,6 +10,7 @@ import (
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/nql"
 	"github.com/armature/armature/backend/internal/perm"
+	"github.com/armature/armature/backend/internal/plan"
 )
 
 func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +36,8 @@ type alignRequest struct {
 	Query string `json:"q,omitempty"`
 	// Place gives issues without dates their first ones from their estimates.
 	Place bool `json:"place,omitempty"`
+	// DownstreamOf limits the moves to what this issue holds back, as after it was dragged later.
+	DownstreamOf string `json:"downstreamOf,omitempty"`
 }
 
 // handleAlignPlan proposes the moves that start each blocked issue after its
@@ -43,6 +46,10 @@ func (s *Server) handleAlignPlan(w http.ResponseWriter, r *http.Request) {
 	var req alignRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		respondError(w, r, err)
+		return
+	}
+	if req.Place && req.DownstreamOf != "" {
+		respondError(w, r, ErrBadRequest("Ask either to place issues without dates or for what one issue holds back, not both."))
 		return
 	}
 	var query *nql.Compiled
@@ -54,9 +61,10 @@ func (s *Server) handleAlignPlan(w http.ResponseWriter, r *http.Request) {
 		}
 		query = compiled
 	}
+	options := plan.AlignOptions{Place: req.Place, Downstream: strings.ToUpper(strings.TrimSpace(req.DownstreamOf))}
 	perms := PermsFrom(r.Context())
 	mayRead := func(projectKey string) bool { return perms.Can(perm.Read, projectKey) }
-	found, err := s.Plans.Align(r.Context(), r.PathValue("projectKey"), query, req.Place, mayRead)
+	found, err := s.Plans.Align(r.Context(), r.PathValue("projectKey"), query, options, mayRead)
 	if err != nil {
 		respondError(w, r, err)
 		return

@@ -4926,6 +4926,7 @@ export interface components {
             start: string;
         };
         AlignRequest: {
+            downstreamOf?: string;
             place?: boolean;
             q?: string;
         };
