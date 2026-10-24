@@ -7,6 +7,18 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the plan lines its dates up with its dependencies (#345 to #352).
+  Auto plan in the plan's toolbar previews where each issue would move, drawn
+  as ghost bars with a list of the moves, so that every blocked issue starts
+  after what blocks it, keeping its length in its team's working days. Only
+  later, never earlier; done and started issues stay where they are. Apply
+  saves every move in one go or none, refusing with a sentence when an issue
+  moved since the preview, and the toast offers to undo it in one step. The
+  preview can also place undated issues from their estimate, a Blocks link on
+  a parent holds back every issue beneath it, and dragging a blocker later
+  offers to move what it blocks along. `POST /projects/{key}/plan/align` and
+  `PUT /projects/{key}/plan/schedule` do the same over the API, and the MCP
+  tools `align_plan` and `apply_plan_schedule` offer it to an assistant.
 - Added: a partner such as Rotor clones a project's repository and pushes an
   issue's branch through Armature, as the person, while the host's token stays
   in Armature (#333). The git proxy answers git's smart HTTP at
