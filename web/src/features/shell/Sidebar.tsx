@@ -202,7 +202,7 @@ function NavDrawer({ settings, onClose, onNewIssue }: { settings: boolean; onClo
         // A strip of the page as wide as the rail stays uncovered, so there
         // is always somewhere to tap the drawer shut.
         style={{ width: `min(${SIDEBAR_WIDTH}px, calc(100vw - ${SIDEBAR_RAIL_WIDTH}px))` }}
-        className="flex h-full flex-col border-r border-border bg-surface shadow-2"
+        className="flex h-full flex-col border-r border-border bg-surface shadow-2 motion-safe:animate-drawer-in"
         data-sidebar="drawer"
         data-sidebar-area={settings ? "settings" : "work"}
       >
@@ -374,7 +374,7 @@ function CustomerMenu({ userName, avatar }: { userName: string; avatar?: string 
       trigger={(props) => (
         <Button variant="ghost" size="sm" onClick={props.toggle} aria-haspopup={props["aria-haspopup"]} aria-expanded={props["aria-expanded"]} className="px-1!" data-action="customer-menu">
           <Avatar name={userName} src={avatar} size="sm" />
-          <span className="text-sm text-ink">{userName}</span>
+          <span className="sr-only text-sm text-ink shell:not-sr-only">{userName}</span>
         </Button>
       )}
       items={[

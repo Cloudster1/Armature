@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the shell lays itself out with the breakpoint Stator and Exciter
+  share (#341). `--breakpoint-shell` in the stylesheet, the same 768px as the
+  drawer's switch in code, sets the pages' padding, so the portal's pages are
+  as narrow on a phone as the app's; the portal's header fits a phone, and the
+  drawer slides in unless less motion is asked for.
 - Changed: the shell has the landmarks and states Stator's and Exciter's have
   (#353). A "Skip to the content" link, shown when the keyboard reaches it,
   moves focus past the navigation to the page. The rail's toggle says whether
