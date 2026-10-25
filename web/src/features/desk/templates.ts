@@ -1,7 +1,13 @@
 import type { RequestType } from "@/api/desk";
+import { t } from "@/i18n";
 
-/** The heading for request types that were given no category. */
+/** The key for request types that were given no category; it is shown as categoryHeading() says. */
 export const GENERAL_CATEGORY = "General";
+
+/** The heading request types without a category stand under, in the reader's language. */
+export function categoryHeading(name: string): string {
+  return name === GENERAL_CATEGORY ? t.desk.general : name;
+}
 
 export interface CategoryGroup {
   name: string;

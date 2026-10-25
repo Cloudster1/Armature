@@ -1,3 +1,6 @@
+import { termsDe } from "./terms.de";
+import { deskDe } from "./desk.de";
+import { guideDe } from "./guide.de";
 import { workflowsDe } from "./workflows.de";
 import { accessDe } from "./access.de";
 import { looksDe } from "./looks.de";
@@ -25,6 +28,7 @@ export const de: Messages = {
     retry: "Erneut versuchen",
   },
   kit: kitDe,
+  terms: termsDe,
   shell: shellDe,
   settings: settingsDe,
   plan: planDe,
@@ -40,4 +44,6 @@ export const de: Messages = {
   looks: looksDe,
   projectSetup: projectSetupDe,
   doors: doorsDe,
+  desk: deskDe,
+  guide: guideDe,
 };

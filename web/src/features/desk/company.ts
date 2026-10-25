@@ -1,5 +1,6 @@
 import type { PortalRequest } from "@/api/desk";
 import { cleanDomain } from "./DeskExtras";
+import { t } from "@/i18n";
 
 /** Domains typed as a list: commas or spaces between them, each as the server stores it. */
 export function parseDomains(raw: string): string[] {
@@ -15,7 +16,7 @@ export function parseDomains(raw: string): string[] {
 
 /** Where a request came from, as an agent reads it: "Globex, shared" or "Globex". */
 export function companyLine(name: string, shared: boolean): string {
-  return shared ? `${name}, shared` : name;
+  return shared ? t.desk.companyShared(name) : name;
 }
 
 /** The shared requests by the company they were shared with, in the order they came. */

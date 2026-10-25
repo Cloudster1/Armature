@@ -32,12 +32,9 @@ export function Companies({ projectKey, editable }: { projectKey: string; editab
 
   return (
     <section data-guide="desk-companies">
-      <SectionTitle className="mb-2">Companies</SectionTitle>
-      <p className="mb-3 text-sm text-ink-muted">
-        Customers who work together. Whoever raises a request chooses whether their company sees it; a colleague may then read it, reply and attach files, never
-        sees the internal notes, and is not mailed about it. A customer at one of a company's domains joins it with their first request here.
-      </p>
-      {companies.length === 0 && !editable && <p className="text-sm text-ink-subtle">No companies yet.</p>}
+      <SectionTitle className="mb-2">{t.desk.companies.title}</SectionTitle>
+      <p className="mb-3 text-sm text-ink-muted">{t.desk.companies.intro}</p>
+      {companies.length === 0 && !editable && <p className="text-sm text-ink-subtle">{t.desk.companies.none}</p>}
       <div className="space-y-3">
         {companies.map((c) => (
           <CompanyCard key={c.id} company={c} editable={editable} />
@@ -48,17 +45,17 @@ export function Companies({ projectKey, editable }: { projectKey: string; editab
           <form onSubmit={onSubmit} className="space-y-3" noValidate data-testid="new-company">
             {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Company" value={name} onChange={(e) => setName(e.target.value)} placeholder="Globex" />
+              <Field label={t.desk.companies.company} value={name} onChange={(e) => setName(e.target.value)} placeholder="Globex" />
               <Field
-                label="Domains"
+                label={t.desk.companies.domains}
                 value={domains}
                 onChange={(e) => setDomains(e.target.value)}
                 placeholder="globex.test"
-                hint="Separate several with commas."
+                hint={t.desk.companies.domainsHint}
               />
             </div>
             <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-              Add company
+              {t.desk.companies.add}
             </Button>
           </form>
         </Card>
@@ -105,13 +102,19 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
         {renaming ? (
           <form onSubmit={rename} className="flex flex-1 items-end gap-2" noValidate>
             <div className="flex-1">
-              <Field label="Company" id={`field-company-rename-${company.id}`} value={name} onChange={(e) => setName(e.target.value)} controlSize="sm" />
+              <Field
+                label={t.desk.companies.company}
+                id={`field-company-rename-${company.id}`}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                controlSize="sm"
+              />
             </div>
             <Button type="submit" size="sm" loading={update.isPending} disabled={!name.trim()}>
-              Save
+              {t.desk.companies.save}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setRenaming(false)}>
-              Cancel
+              {t.kit.cancel}
             </Button>
           </form>
         ) : (
@@ -119,17 +122,17 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
         )}
         {editable && !renaming && (
           <span className="flex gap-1">
-            <IconButton icon={<Icon.Edit />} label={`Rename ${company.name}`} size="sm" onClick={() => setRenaming(true)} />
+            <IconButton icon={<Icon.Edit />} label={t.desk.companies.rename(company.name)} size="sm" onClick={() => setRenaming(true)} />
             <IconButton
               icon={<Icon.Trash />}
-              label={`Remove ${company.name}`}
+              label={t.desk.companies.remove(company.name)}
               size="sm"
               onClick={async () =>
                 (await confirm({
                   noun: t.kit.confirm.things.company,
                   verb: t.kit.confirm.verbs.remove,
-                  body: `${company.name} goes; its customers keep their own requests, and what they shared is shared no more.`,
-                })) && remove.mutate(company.id, { onSuccess: () => toast.success(`${company.name} removed`) })
+                  body: t.desk.companies.removeBody(company.name),
+                })) && remove.mutate(company.id, { onSuccess: () => toast.success(t.desk.companies.removed(company.name)) })
               }
             />
           </span>
@@ -137,9 +140,9 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-medium tracking-wide text-ink-subtle uppercase">Domains</p>
+        <p className="text-xs font-medium tracking-wide text-ink-subtle uppercase">{t.desk.companies.domains}</p>
         {company.domains.length === 0 ? (
-          <p className="text-sm text-ink-subtle">None; customers join only when added here.</p>
+          <p className="text-sm text-ink-subtle">{t.desk.companies.noDomains}</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {company.domains.map((d) => (
@@ -149,7 +152,7 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
                   {editable && (
                     <IconButton
                       icon={<Icon.X />}
-                      label={`Take ${d} off ${company.name}`}
+                      label={t.desk.companies.takeDomainOff(d, company.name)}
                       size="xs"
                       disabled={update.isPending}
                       onClick={() => update.mutate({ id: company.id, domains: company.domains.filter((x) => x !== d) })}
@@ -164,7 +167,7 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
           <form onSubmit={addDomain} className="flex items-end gap-2" noValidate>
             <div className="flex-1">
               <Field
-                label={`A domain for ${company.name}`}
+                label={t.desk.companies.domainFor(company.name)}
                 id={`field-company-domain-${company.id}`}
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
@@ -173,16 +176,16 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
               />
             </div>
             <Button type="submit" size="sm" variant="secondary" disabled={!cleanDomain(domain) || update.isPending}>
-              Add domain
+              {t.desk.companies.addDomain}
             </Button>
           </form>
         )}
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-medium tracking-wide text-ink-subtle uppercase">Customers</p>
+        <p className="text-xs font-medium tracking-wide text-ink-subtle uppercase">{t.desk.companies.customers}</p>
         {company.members.length === 0 ? (
-          <p className="text-sm text-ink-subtle">Nobody yet.</p>
+          <p className="text-sm text-ink-subtle">{t.desk.companies.nobody}</p>
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
             {company.members.map((m) => (
@@ -196,7 +199,7 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
                     className="text-xs text-ink-subtle hover:text-danger"
                     onClick={() => takeOut.mutate({ id: company.id, userId: m.userId })}
                   >
-                    Take out
+                    {t.desk.companies.takeOut}
                   </Button>
                 )}
               </li>
@@ -207,7 +210,7 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
           <form onSubmit={addMember} className="flex items-end gap-2" noValidate>
             <div className="flex-1">
               <Field
-                label={`A customer for ${company.name}`}
+                label={t.desk.companies.customerFor(company.name)}
                 id={`field-company-member-${company.id}`}
                 type="email"
                 value={email}
@@ -217,7 +220,7 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
               />
             </div>
             <Button type="submit" size="sm" variant="secondary" loading={add.isPending} disabled={!email.trim()}>
-              Add customer
+              {t.desk.companies.addCustomer}
             </Button>
           </form>
         )}

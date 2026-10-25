@@ -1,5 +1,7 @@
 import { GUIDE_MAX_ANSWERS, GUIDE_MIN_SCORE, GUIDE_MIN_WORDS, GUIDE_WEIGHT_KEYWORD, GUIDE_WEIGHT_SENTENCE, GUIDE_WEIGHT_TITLE } from "@/config";
+import { language } from "@/i18n";
 import { CATALOGUE, type GuideContext, type GuideEntry } from "./catalogue";
+import { KEYWORDS_DE, STOP_WORDS_DE, SYNONYMS_DE } from "./words.de";
 
 export interface Answer {
   entry: GuideEntry;
@@ -64,6 +66,8 @@ const STOP_WORDS = new Set([
   "place",
   "thing",
   "something",
+  // German questions are asked in either interface, so their filler words go too.
+  ...STOP_WORDS_DE,
 ]);
 
 /** Words readers use for what the product calls something else. */
@@ -174,15 +178,21 @@ const SYNONYMS: Record<string, string> = {
   unowned: "unassigned",
 };
 
+/** The reader's words for the product's: German ones as well while the interface speaks German. */
+function synonyms(): Record<string, string> {
+  return language() === "de" ? { ...SYNONYMS, ...SYNONYMS_DE } : SYNONYMS;
+}
+
 /** A question's words, lowered, stripped of punctuation, of stop words and of a plural s. */
 export function words(question: string): string[] {
   const out: string[] = [];
+  const known = synonyms();
   for (const raw of question
     .toLowerCase()
-    .replace(/[^a-z0-9+\-\s]/g, " ")
+    .replace(/[^a-z0-9äöüß+\-\s]/g, " ")
     .split(/\s+/)) {
     if (!raw || STOP_WORDS.has(raw)) continue;
-    const word = SYNONYMS[raw] ?? (raw.length > 3 && raw.endsWith("s") && !raw.endsWith("ss") ? raw.slice(0, -1) : raw);
+    const word = known[raw] ?? (raw.length > 3 && raw.endsWith("s") && !raw.endsWith("ss") ? raw.slice(0, -1) : raw);
     if (!out.includes(word)) out.push(word);
   }
   return out;
@@ -212,7 +222,9 @@ export function answer(question: string, ctx: GuideContext, entries: GuideEntry[
   for (const entry of entries) {
     if (!reaches(entry, ctx)) continue;
     const title = words(entry.title);
-    const keywords = new Set([...entry.keywords.map((k) => SYNONYMS[k] ?? k), ...entry.keywords]);
+    // The English keywords always count, so an English word finds its page in either language.
+    const german = language() === "de" ? (KEYWORDS_DE[entry.id] ?? []) : [];
+    const keywords = new Set([...entry.keywords.map((k) => SYNONYMS[k] ?? k), ...entry.keywords, ...german.map((k) => SYNONYMS_DE[k] ?? k), ...german]);
     const sentence = new Set(words(entry.sentence));
     let score = 0;
     let titleHits = 0;

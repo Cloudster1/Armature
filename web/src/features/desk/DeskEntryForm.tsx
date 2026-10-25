@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { useEnterOpenDoor, useEnterWithCode, useRequestCode, type DoorDesk } from "@/api/desk";
 import { Button, ErrorBanner, Field } from "@/components/ui";
+import { t } from "@/i18n";
 
 // A desk whose door is open takes a name and an address on trust; whoever
 // gives them is a customer of that desk alone and sent on to where they were going.
@@ -21,12 +22,20 @@ export function OpenDoorForm({ door, onEntered }: { door: DoorDesk; onEntered: (
 
   return (
     <form onSubmit={walkIn} className="space-y-4" noValidate data-desk-entry={door.key} data-open-door={door.key}>
-      <p className="text-sm text-ink-muted">{door.name} answers requests here. Say who you are and where to reach you; no code and no account are needed.</p>
+      <p className="text-sm text-ink-muted">{t.desk.entry.openIntro(door.name)}</p>
       {error && !fieldError && <ErrorBanner>{error.message}</ErrorBanner>}
-      <Field label="Your name" autoComplete="name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
-      <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} error={fieldError} />
+      <Field label={t.desk.entry.yourName} autoComplete="name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+      <Field
+        label={t.desk.entry.email}
+        type="email"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        error={fieldError}
+      />
       <Button type="submit" loading={enter.isPending} className="w-full" disabled={!email.trim()} data-action="enter-open">
-        Continue
+        {t.desk.entry.continue}
       </Button>
     </form>
   );
@@ -62,11 +71,20 @@ export function DeskEntryForm({ desk, deskName, onEntered }: { desk?: string; de
   if (!sentTo) {
     return (
       <form onSubmit={sendCode} className="space-y-4" noValidate data-desk-entry={desk ?? ""}>
-        <p className="text-sm text-ink-muted">{deskName} answers requests here. Say where to reach you and a code arrives by mail; no account is needed.</p>
+        <p className="text-sm text-ink-muted">{t.desk.entry.codeIntro(deskName)}</p>
         {error && !fieldError && <ErrorBanner>{error.message}</ErrorBanner>}
-        <Field label="Email" type="email" autoComplete="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} error={fieldError} />
+        <Field
+          label={t.desk.entry.email}
+          type="email"
+          autoComplete="email"
+          autoFocus
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={fieldError}
+        />
         <Button type="submit" loading={requestCode.isPending} className="w-full" disabled={!email.trim()}>
-          Send me a code
+          {t.desk.entry.sendCode}
         </Button>
       </form>
     );
@@ -75,11 +93,12 @@ export function DeskEntryForm({ desk, deskName, onEntered }: { desk?: string; de
   return (
     <form onSubmit={enterWithCode} className="space-y-4" noValidate data-desk-entry={desk ?? ""}>
       <p className="text-sm text-ink-muted">
-        A code is on its way to <span className="font-medium text-ink">{sentTo}</span>. It works for ten minutes.
+        {t.desk.entry.codeOnItsWay} <span className="font-medium text-ink">{sentTo}</span>
+        {t.desk.entry.codeWorks}
       </p>
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
       <Field
-        label="Code"
+        label={t.desk.entry.code}
         inputMode="numeric"
         autoComplete="one-time-code"
         autoFocus
@@ -89,7 +108,7 @@ export function DeskEntryForm({ desk, deskName, onEntered }: { desk?: string; de
         data-desk-code
       />
       <Button type="submit" loading={enter.isPending} className="w-full" disabled={!code.trim()}>
-        Enter
+        {t.desk.entry.enter}
       </Button>
       <Button
         variant="link"
@@ -100,7 +119,7 @@ export function DeskEntryForm({ desk, deskName, onEntered }: { desk?: string; de
           requestCode.reset();
         }}
       >
-        Use another address
+        {t.desk.entry.anotherAddress}
       </Button>
     </form>
   );

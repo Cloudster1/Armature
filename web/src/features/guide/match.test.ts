@@ -64,3 +64,47 @@ describe("the guide", () => {
     }
   });
 });
+
+describe("the guide in German", () => {
+  // Read through the module: t and the language are live, and a copy would keep English.
+  async function inGerman<T>(fn: () => T): Promise<T> {
+    const i18n = await import("@/i18n");
+    i18n.applyLanguage("de");
+    try {
+      return fn();
+    } finally {
+      i18n.applyLanguage("");
+    }
+  }
+
+  it("finds the page a German question names", async () => {
+    const ids = await inGerman(() => ({
+      plan: answer("Wo finde ich den Zeitplan?", inProject)[0]?.entry.id,
+      token: answer("Wie erstelle ich ein Zugriffstoken?", nowhere)[0]?.entry.id,
+      overdue: answer("Welche Vorgänge sind überfällig?", nowhere)[0]?.entry.id,
+      invite: answer("Wie kann ich einen Kollegen einladen?", inProject)[0]?.entry.id,
+    }));
+    expect(ids).toEqual({ plan: "page:/plan", token: "action:create-token", overdue: "intent:overdue", invite: "action:invite" });
+  });
+
+  it("still understands an English word in a German interface", async () => {
+    expect(await inGerman(() => answer("gantt", inProject)[0]?.entry.id)).toBe("page:/plan");
+  });
+
+  it("says its titles and sentences in German, and in English again after", async () => {
+    const said = await inGerman(() => {
+      const entry = CATALOGUE.find((e) => e.id === "action:share-dashboard")!;
+      const plan = CATALOGUE.find((e) => e.id === "page:/plan")!;
+      return { title: entry.title, sentence: entry.sentence, plan: plan.sentence };
+    });
+    expect(said.title).toBe("Ein Dashboard teilen");
+    expect(said.sentence).toMatch(/^Teilen auf einem Dashboard/);
+    expect(said.plan).toMatch(/^Das Projekt als Zeitleiste/);
+    expect(CATALOGUE.find((e) => e.id === "action:share-dashboard")!.title).toBe("Share a dashboard");
+  });
+
+  it("gives every entry German words to be found by", async () => {
+    const { KEYWORDS_DE } = await import("./words.de");
+    for (const entry of CATALOGUE as GuideEntry[]) expect(KEYWORDS_DE[entry.id]?.length ?? 0, entry.id).toBeGreaterThan(0);
+  });
+});

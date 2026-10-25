@@ -1,3 +1,6 @@
+import { termsEn } from "./terms.en";
+import { deskEn } from "./desk.en";
+import { guideEn } from "./guide.en";
 import { workflowsEn } from "./workflows.en";
 import { accessEn } from "./access.en";
 import { looksEn } from "./looks.en";
@@ -24,6 +27,7 @@ export const en = {
     retry: "Retry",
   },
   kit: kitEn,
+  terms: termsEn,
   shell: shellEn,
   settings: settingsEn,
   plan: planEn,
@@ -39,6 +43,8 @@ export const en = {
   looks: looksEn,
   projectSetup: projectSetupEn,
   doors: doorsEn,
+  desk: deskEn,
+  guide: guideEn,
 };
 
 export type Messages = typeof en;

@@ -566,7 +566,7 @@ function CustomerMenu({ userName, avatar }: { userName: string; avatar?: string 
   const navigate = useNavigate();
   return (
     <Menu
-      label="Your account"
+      label={t.shell.account.yours}
       align="end"
       trigger={(props) => (
         <Button
@@ -583,9 +583,14 @@ function CustomerMenu({ userName, avatar }: { userName: string; avatar?: string 
         </Button>
       )}
       items={[
-        { label: "Download my data", icon: <Icon.Download />, onSelect: () => window.open(MY_DATA_HREF, "_blank"), attrs: { "data-action": "export-me" } },
         {
-          label: "Delete my account",
+          label: t.desk.customer.downloadData,
+          icon: <Icon.Download />,
+          onSelect: () => window.open(MY_DATA_HREF, "_blank"),
+          attrs: { "data-action": "export-me" },
+        },
+        {
+          label: t.desk.customer.deleteAccount,
           icon: <Icon.Trash />,
           danger: true,
           attrs: { "data-action": "erase-me" },
@@ -594,7 +599,7 @@ function CustomerMenu({ userName, avatar }: { userName: string; avatar?: string 
               await confirm({
                 noun: t.kit.confirm.things.account,
                 verb: t.kit.confirm.verbs.delete,
-                body: `${userName}'s name, address and sessions go for good. Your requests stay, by "Former user".`,
+                body: t.desk.customer.deleteBody(userName),
               })
             ) {
               erase.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) });

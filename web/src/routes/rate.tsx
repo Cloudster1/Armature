@@ -4,6 +4,7 @@ import { rootRoute } from "./root";
 import { useRate, useRatingPage } from "@/api/desk";
 import { Button, Card, ErrorBanner, Textarea } from "@/components/ui";
 import { CSAT_SCORES } from "@/config";
+import { t } from "@/i18n";
 
 /** The one click a resolution mail asks for: no sign-in, the token in the address is the whole of it. */
 export const rateRoute = createRoute({
@@ -12,8 +13,10 @@ export const rateRoute = createRoute({
   component: RatePage,
 });
 
-/** What each score means, said in a word. */
-export const SCORE_WORDS: Record<number, string> = { 1: "Bad", 2: "Poor", 3: "Fine", 4: "Good", 5: "Great" };
+/** What each score means, said in a word, in the reader's language. */
+export function scoreWord(score: number): string {
+  return t.desk.rate.scores[score] ?? "";
+}
 
 function RatePage() {
   const { token } = rateRoute.useParams();
@@ -31,11 +34,11 @@ function RatePage() {
         {page && (
           <>
             <p className="text-xs text-ink-subtle">{page.desk}</p>
-            <h1 className="mt-1 text-lg font-semibold text-ink">How did we do with {page.issueKey}?</h1>
+            <h1 className="mt-1 text-lg font-semibold text-ink">{t.desk.rate.question(page.issueKey)}</h1>
             <p className="mt-1 text-sm text-ink-muted">{page.summary}</p>
             {done ? (
               <p className="mt-6 text-sm text-ink" data-rated>
-                Thank you. Your rating is with the desk.
+                {t.desk.rate.thanks}
               </p>
             ) : (
               <form
@@ -47,7 +50,7 @@ function RatePage() {
                 noValidate
               >
                 {rate.error && <ErrorBanner>{(rate.error as Error).message}</ErrorBanner>}
-                <div className="flex gap-2" role="radiogroup" aria-label="Your rating">
+                <div className="flex gap-2" role="radiogroup" aria-label={t.desk.rate.yourRating}>
                   {CSAT_SCORES.map((n) => (
                     <Button
                       key={n}
@@ -62,13 +65,19 @@ function RatePage() {
                     </Button>
                   ))}
                 </div>
-                <p className="text-center text-sm text-ink-muted">{score ? SCORE_WORDS[score] : "1 is bad, 5 is great."}</p>
+                <p className="text-center text-sm text-ink-muted">{score ? scoreWord(score) : t.desk.rate.scale}</p>
                 <label htmlFor="rate-comment" className="sr-only">
-                  Anything to add
+                  {t.desk.rate.anythingToAdd}
                 </label>
-                <Textarea id="rate-comment" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Anything to add? Optional." />
+                <Textarea
+                  id="rate-comment"
+                  rows={3}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder={t.desk.rate.commentPlaceholder}
+                />
                 <Button type="submit" loading={rate.isPending} disabled={!score} className="w-full" data-action="send-rating">
-                  Send
+                  {t.desk.rate.send}
                 </Button>
               </form>
             )}

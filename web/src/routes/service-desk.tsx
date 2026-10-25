@@ -17,7 +17,7 @@ import {
 } from "@/api/desk";
 import { Button, Card, ErrorBanner, Field, Page, PageHeader, SectionTitle, Select, Table, Td, Th } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
-import { categoriesOf, groupByCategory } from "@/features/desk/templates";
+import { categoriesOf, categoryHeading, groupByCategory } from "@/features/desk/templates";
 import { BusinessHours, CannedResponses, Door, KnowledgeBase } from "@/features/desk/DeskExtras";
 import { Companies } from "@/features/desk/Companies";
 import { canAdminister, useAccess } from "@/api/access";
@@ -45,7 +45,7 @@ function ServiceDeskPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Service desk"
+        title={t.desk.setup.title}
       />
       <Door projectKey={projectKey} editable={canAdminister(access, projectKey)} />
       <RequestTypes projectKey={projectKey} />
@@ -75,7 +75,7 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
   const [template, setTemplate] = useState("");
 
   const types = data?.requestTypes ?? [];
-  const issueTypes = (typeData?.issueTypes ?? []).filter((t) => t.level >= LEVEL_STANDARD);
+  const issueTypes = (typeData?.issueTypes ?? []).filter((it) => it.level >= LEVEL_STANDARD);
   const teams = teamData?.teams ?? [];
   const groups = groupByCategory(types);
   const categories = categoriesOf(types);
@@ -105,20 +105,17 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
 
   return (
     <section>
-      <SectionTitle className="mb-2">Request types</SectionTitle>
-      <p className="mb-3 text-sm text-ink-muted">
-        What a customer chooses from, under the category it belongs to. Each becomes an issue of a type, at a priority the desk decides, with a team it lands
-        with and the details a requester starts from.
-      </p>
+      <SectionTitle className="mb-2">{t.desk.setup.requestTypes}</SectionTitle>
+      <p className="mb-3 text-sm text-ink-muted">{t.desk.setup.requestTypesIntro}</p>
       {types.length > 0 && (
         <Table>
           <thead>
             <tr>
-              <Th>Name</Th>
-              <Th className="w-32">Becomes</Th>
-              <Th className="w-24">Priority</Th>
-              <Th className="w-40">Team</Th>
-              <Th className="w-32" aria-label="Actions" />
+              <Th>{t.desk.setup.name}</Th>
+              <Th className="w-32">{t.desk.setup.becomes}</Th>
+              <Th className="w-24">{t.desk.setup.priority}</Th>
+              <Th className="w-40">{t.desk.setup.team}</Th>
+              <Th className="w-32" aria-label={t.desk.setup.actions} />
             </tr>
           </thead>
           <tbody>
@@ -126,7 +123,7 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
               <Fragment key={group.name}>
                 <tr data-request-category={group.name}>
                   <Td colSpan={5} className="bg-surface-raised/60 text-xs font-medium tracking-wide text-ink-muted uppercase">
-                    {group.name}
+                    {categoryHeading(group.name)}
                   </Td>
                 </tr>
                 {group.types.map((rt) =>
@@ -139,13 +136,13 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
                         {rt.description && <span className="block text-sm text-ink-muted">{rt.description}</span>}
                       </Td>
                       <Td className="text-sm text-ink-muted">{rt.issueTypeName}</Td>
-                      <Td className="text-sm text-ink-muted capitalize">{rt.priority}</Td>
+                      <Td className="text-sm text-ink-muted capitalize">{t.issueList.priority.options[rt.priority] ?? rt.priority}</Td>
                       <Td className="text-sm text-ink-muted" data-request-type-team={rt.teamName ?? ""}>
-                        {rt.teamName ?? "Nobody in particular"}
+                        {rt.teamName ?? t.desk.setup.nobodyInParticular}
                       </Td>
                       <Td className="text-right whitespace-nowrap">
                         <Button size="sm" variant="ghost" onClick={() => setEditing(rt.id)} data-request-type-edit={rt.name}>
-                          Edit
+                          {t.desk.setup.edit}
                         </Button>
                         <Button
                           size="sm"
@@ -155,11 +152,11 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
                             (await confirm({
                               noun: t.kit.confirm.things.requestType,
                               verb: t.kit.confirm.verbs.remove,
-                              body: `${rt.name} is no longer offered; requests already raised through it keep their history.`,
+                              body: t.desk.setup.removeBody(rt.name),
                             })) && remove.mutate(rt.id)
                           }
                         >
-                          Remove
+                          {t.desk.setup.remove}
                         </Button>
                       </Td>
                     </tr>
@@ -175,9 +172,20 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
         <form onSubmit={onSubmit} className="space-y-3" noValidate>
           {(create.error ?? remove.error) && <ErrorBanner>{((create.error ?? remove.error) as Error).message}</ErrorBanner>}
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr]">
-            <Field label="Request type" value={name} onChange={(e) => setName(e.target.value)} placeholder="Laptop replacement" />
-            <Field label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="A device that has stopped working." />
-            <Field label="Category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Hardware" list="rt-categories" />
+            <Field label={t.desk.setup.requestType} value={name} onChange={(e) => setName(e.target.value)} placeholder={t.desk.setup.typePlaceholder} />
+            <Field
+              label={t.desk.setup.description}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t.desk.setup.descriptionPlaceholder}
+            />
+            <Field
+              label={t.desk.setup.category}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder={t.desk.setup.categoryPlaceholder}
+              list="rt-categories"
+            />
             <datalist id="rt-categories">
               {categories.map((c) => (
                 <option key={c} value={c} />
@@ -185,43 +193,43 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
             </datalist>
           </div>
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr]">
-            <Select id="rt-issue-type" label="Becomes" value={issueTypeId} onChange={(e) => setIssueTypeId(e.target.value)}>
-              <option value="">The first issue type</option>
-              {issueTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+            <Select id="rt-issue-type" label={t.desk.setup.becomes} value={issueTypeId} onChange={(e) => setIssueTypeId(e.target.value)}>
+              <option value="">{t.desk.setup.firstIssueType}</option>
+              {issueTypes.map((it) => (
+                <option key={it.id} value={it.id}>
+                  {it.name}
                 </option>
               ))}
             </Select>
-            <Select id="rt-priority" label="At priority" value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
+            <Select id="rt-priority" label={t.desk.setup.atPriority} value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
               {priorities.map((p) => (
                 <option key={p} value={p}>
-                  {p}
+                  {t.issueList.priority.options[p]}
                 </option>
               ))}
             </Select>
-            <Select id="rt-team" label="Lands with" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-              <option value="">Nobody in particular</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+            <Select id="rt-team" label={t.desk.setup.landsWith} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+              <option value="">{t.desk.setup.nobodyInParticular}</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
                 </option>
               ))}
             </Select>
           </div>
           <Field
-            label="Details template"
+            label={t.desk.setup.detailsTemplate}
             id="rt-template"
             rows={3}
             value={template}
             onChange={(e) => setTemplate(e.target.value)}
-            placeholder={"Device:\nWhat happened:\nSince when:"}
+            placeholder={t.desk.setup.templatePlaceholder}
             data-request-type-template
             className="font-mono"
           />
           <div className="flex items-end">
             <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-              Add request type
+              {t.desk.setup.add}
             </Button>
           </div>
         </form>
@@ -276,36 +284,42 @@ function EditRequestType({
         <form onSubmit={onSubmit} className="space-y-3 py-1" noValidate>
           {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr]">
-            <Field label="Request type" id={`edit-name-${type.id}`} value={name} onChange={(e) => setName(e.target.value)} />
-            <Field label="Description" id={`edit-description-${type.id}`} value={description} onChange={(e) => setDescription(e.target.value)} />
-            <Field label="Category" id={`edit-category-${type.id}`} value={category} onChange={(e) => setCategory(e.target.value)} list="rt-categories" />
+            <Field label={t.desk.setup.requestType} id={`edit-name-${type.id}`} value={name} onChange={(e) => setName(e.target.value)} />
+            <Field label={t.desk.setup.description} id={`edit-description-${type.id}`} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Field
+              label={t.desk.setup.category}
+              id={`edit-category-${type.id}`}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              list="rt-categories"
+            />
           </div>
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr]">
-            <Select id={`edit-type-${type.id}`} label="Becomes" value={issueTypeId} onChange={(e) => setIssueTypeId(e.target.value)}>
-              {issueTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+            <Select id={`edit-type-${type.id}`} label={t.desk.setup.becomes} value={issueTypeId} onChange={(e) => setIssueTypeId(e.target.value)}>
+              {issueTypes.map((it) => (
+                <option key={it.id} value={it.id}>
+                  {it.name}
                 </option>
               ))}
             </Select>
-            <Select id={`edit-priority-${type.id}`} label="At priority" value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
+            <Select id={`edit-priority-${type.id}`} label={t.desk.setup.atPriority} value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
               {priorities.map((p) => (
                 <option key={p} value={p}>
-                  {p}
+                  {t.issueList.priority.options[p]}
                 </option>
               ))}
             </Select>
-            <Select id={`edit-team-${type.id}`} label="Lands with" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-              <option value="">Nobody in particular</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+            <Select id={`edit-team-${type.id}`} label={t.desk.setup.landsWith} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+              <option value="">{t.desk.setup.nobodyInParticular}</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
                 </option>
               ))}
             </Select>
           </div>
           <Field
-            label="Details template"
+            label={t.desk.setup.detailsTemplate}
             id={`edit-template-${type.id}`}
             rows={3}
             value={template}
@@ -314,10 +328,10 @@ function EditRequestType({
           />
           <div className="flex gap-2">
             <Button type="submit" size="sm" loading={update.isPending} disabled={!name.trim()}>
-              Save request type
+              {t.desk.setup.save}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-              Cancel
+              {t.kit.cancel}
             </Button>
           </div>
         </form>
@@ -331,10 +345,8 @@ function Policies({ projectKey }: { projectKey: string }) {
   const policies = data?.policies ?? [];
   return (
     <section>
-      <SectionTitle className="mb-2">Goals</SectionTitle>
-      <p className="mb-3 text-sm text-ink-muted">
-        Hours the desk has, by priority. The clocks stop while a request waits on the customer. A request keeps the goal it started with.
-      </p>
+      <SectionTitle className="mb-2">{t.desk.setup.goals}</SectionTitle>
+      <p className="mb-3 text-sm text-ink-muted">{t.desk.setup.goalsIntro}</p>
       <div className="space-y-3">
         {policies.map((p) => (
           <PolicyEditor key={p.id} policy={p} />
@@ -365,14 +377,16 @@ function PolicyEditor({ policy }: { policy: Policy }) {
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <div className="flex items-baseline justify-between">
           <h3 className="text-sm font-medium text-ink">{policy.name}</h3>
-          <span className="text-xs text-ink-subtle">{policy.pauseStatuses.length > 0 ? `pauses in ${policy.pauseStatuses.join(", ")}` : "never pauses"}</span>
+          <span className="text-xs text-ink-subtle">
+            {policy.pauseStatuses.length > 0 ? t.desk.setup.pausesIn(policy.pauseStatuses.join(", ")) : t.desk.setup.neverPauses}
+          </span>
         </div>
         <div className="grid grid-cols-5 gap-2">
           {priorities.map((p) => (
             <Field
               key={p}
               id={`${policy.metric}-${p}`}
-              label={p}
+              label={t.issueList.priority.options[p]!}
               type="number"
               min={0}
               step={0.5}
@@ -384,11 +398,11 @@ function PolicyEditor({ policy }: { policy: Policy }) {
         </div>
         <div className="flex items-center gap-3">
           <Button type="submit" size="sm" variant="secondary" loading={update.isPending}>
-            Save goals
+            {t.desk.setup.saveGoals}
           </Button>
           <span className="text-xs text-ink-subtle">
             {priorities
-              .map((p) => (policy.goals[p] ? `${p} ${humanDuration(policy.goals[p]! * 60)}` : null))
+              .map((p) => (policy.goals[p] ? `${t.issueList.priority.options[p]} ${humanDuration(policy.goals[p]! * 60)}` : null))
               .filter(Boolean)
               .join(" · ")}
           </span>

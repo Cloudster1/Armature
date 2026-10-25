@@ -58,6 +58,7 @@ export const scheduleDe: typeof scheduleEn = {
     awayHalfDay: (name: string) => `${name} einen halben Tag abwesend`,
   },
   resources: {
+    nothingThisWeek: "In dieser Woche ist nichts eingeplant.",
     title: "Ressourcen",
     meta: "Eingeplante Arbeit je Woche in Stunden, die verbleibende Zeit jedes Vorgangs über seine Arbeitstage verteilt, gegen die Stunden, die nach Feiertagen und Abwesenheiten bleiben.",
     grid: "Stunden pro Woche",

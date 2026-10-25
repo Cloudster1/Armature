@@ -1,6 +1,7 @@
 import { cx } from "@/components/ui";
 import { MENU_GAP_PX, POPOVER_EDGE_PX, POPOVER_MAX_HEIGHT_PX } from "@/config";
 import type { Mentionable } from "./schema";
+import { t } from "@/i18n";
 
 /**
  * The people an at sign could mean, drawn under the caret in the rich
@@ -24,7 +25,7 @@ export function MentionList({
   return (
     <div
       role="listbox"
-      aria-label="People to mention"
+      aria-label={t.kit.mentionList}
       data-mention-list
       className="fixed z-40 min-w-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
       style={{ left: rect.left, top, maxHeight: Math.min(POPOVER_MAX_HEIGHT_PX, window.innerHeight - top - POPOVER_EDGE_PX) }}

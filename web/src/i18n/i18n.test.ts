@@ -50,6 +50,7 @@ const SAME_IN_BOTH = new Set([
   "Import",
   "Name",
   "Backlog",
+  "Link",
   "Repository",
   "Administrator",
   "App",
