@@ -40,7 +40,7 @@ func twoAdministrators(t *testing.T, own *harness) (first, second, actor uuid.UU
 		for i, ids := range []*uuid.UUID{&first, &second} {
 			var userID uuid.UUID
 			email := []string{"first@keepone.test", "second@keepone.test"}[i]
-			if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $1) RETURNING id`, email).Scan(&userID); err != nil {
+			if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id`, email, email).Scan(&userID); err != nil {
 				return err
 			}
 			if _, err := tx.Exec(ctx, `UPDATE app_user SET standing = 'member' WHERE id = $1`, userID); err != nil {
