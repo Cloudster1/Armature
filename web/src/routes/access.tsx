@@ -14,7 +14,7 @@ const tabs = [
   { id: "matrix", label: "Matrix" },
   { id: "members", label: "Members" },
   { id: "groups", label: "Groups" },
-  { id: "sign-in", label: "Sign-in" },
+  { id: "sign-in", label: "Single sign-on" },
 ] as const;
 
 type Tab = (typeof tabs)[number]["id"];

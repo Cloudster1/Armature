@@ -311,8 +311,8 @@ const actions: GuideEntry[] = [
   },
   {
     id: "action:create-token",
-    title: "Create an API token",
-    sentence: "Name it on the tokens page; tick Can only read for a token that changes nothing.",
+    title: "Create an access token",
+    sentence: "Name it on the Access tokens page; tick Can only read for a token that changes nothing.",
     keywords: ["token", "api", "key", "create", "script", "ci", "mcp", "assistant", "read-only", "readonly", "claude"],
     target: "token-form",
     to: () => ({ to: "/settings/tokens" }),
@@ -320,7 +320,7 @@ const actions: GuideEntry[] = [
   {
     id: "action:notification-settings",
     title: "Choose how you are told",
-    sentence: "The Notifications grid on your profile turns each reason on or off for the inbox and for mail, and bundles mail hourly or daily.",
+    sentence: "The Notifications grid on your profile turns each reason on or off for Notifications here and for mail, and bundles mail hourly or daily.",
     keywords: ["mail", "digest", "bundle", "quiet", "mute", "off", "preference", "notification", "settings"],
     target: "notification-settings",
     to: () => ({ to: "/settings/profile" }),

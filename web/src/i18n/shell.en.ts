@@ -16,7 +16,7 @@ export const shellEn = {
   groups: {
     work: "Work & Plan",
     project: "Project",
-    projectAdmin: "Project Admin",
+    projectAdmin: "Project admin",
     you: "You",
     settings: "Settings",
   },
@@ -82,7 +82,7 @@ export const shellEn = {
     repositories: "Repositories",
     automation: "Automation",
     import: "Import",
-    settings: "Settings",
+    settings: "Project settings",
     docs: "Docs",
   },
   projects: {
@@ -122,7 +122,7 @@ export const shellEn = {
     tryAgain: "Try again",
   },
   palette: {
-    label: "Command palette",
+    label: "Quick search",
     askLabel: "Ask where something is",
     searchLabel: "Search for an issue, a project, a page or an action",
     askPlaceholder: "Ask where something is...",

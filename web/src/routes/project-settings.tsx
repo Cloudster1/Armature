@@ -11,6 +11,7 @@ import { FEATURES } from "@/features/projects/features";
 import { ShareSettings } from "@/features/projects/ShareSettings";
 import { PlanningSettings } from "@/features/projects/PlanningSettings";
 import { PersonPicker } from "@/features/people/PersonPicker";
+import { t } from "@/i18n";
 
 export const projectSettingsRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -83,7 +84,7 @@ function ProjectSettingsPage() {
         }
         title={
           <>
-            Settings
+            {t.shell.projectPages.settings}
             <Tag className="font-mono">{projectKey}</Tag>
           </>
         }

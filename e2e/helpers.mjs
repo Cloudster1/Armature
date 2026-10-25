@@ -139,7 +139,7 @@ export async function submit(page) {
 }
 
 /**
- * Makes an API token on the settings page and returns the secret the page
+ * Makes an access token on the settings page and returns the secret the page
  * shows once; readOnly ticks the box that makes it a token that cannot write,
  * and projects confines it to those project keys.
  */

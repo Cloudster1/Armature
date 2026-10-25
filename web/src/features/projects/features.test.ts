@@ -15,7 +15,7 @@ describe("a project's features", () => {
     const labels = pagesFor(desk, [...projectWorkPages, ...projectSetupPages]).map((page) => page.label);
     expect(labels).toContain("Queues");
     expect(labels).toContain("Issues");
-    expect(labels).toContain("Settings");
+    expect(labels).toContain("Project settings");
     expect(labels).not.toContain("Sprints");
     expect(labels).not.toContain("Resources");
     expect(labels).not.toContain("Repositories");

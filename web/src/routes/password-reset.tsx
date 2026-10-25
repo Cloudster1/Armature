@@ -101,7 +101,7 @@ function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout title="Set a new password" subtitle="Every session and API token of yours ends, and you sign in with the new one." footer={<SignInLink />}>
+    <AuthLayout title="Set a new password" subtitle="Every session and access token of yours ends, and you sign in with the new one." footer={<SignInLink />}>
       <ResetPasswordForm token={token} onDone={done} />
     </AuthLayout>
   );

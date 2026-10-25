@@ -84,7 +84,7 @@ export const shellDe: typeof shellEn = {
     repositories: "Repositorys",
     automation: "Automatisierung",
     import: "Import",
-    settings: "Einstellungen",
+    settings: "Projekteinstellungen",
     docs: "Dokumentation",
   },
   projects: {
@@ -124,7 +124,7 @@ export const shellDe: typeof shellEn = {
     tryAgain: "Erneut versuchen",
   },
   palette: {
-    label: "Befehlspalette",
+    label: "Schnellsuche",
     askLabel: "Fragen, wo etwas ist",
     searchLabel: "Nach einem Vorgang, einem Projekt, einer Seite oder einer Aktion suchen",
     askPlaceholder: "Fragen Sie, wo etwas ist...",
