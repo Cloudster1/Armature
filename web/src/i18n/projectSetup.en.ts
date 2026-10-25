@@ -251,6 +251,8 @@ export const projectSetupEn = {
     merging: (transition: string) => ` · merging takes ${transition}`,
     rotate: "Rotate secret",
     disconnect: "Disconnect",
+    disconnectBody: (name: string, commits: number, pull: string) =>
+      `This removes ${name} and everything recorded from it: ${commits} commit${commits === 1 ? "" : "s"}, its branches and its ${pull}s leave the Development section of every issue. The repository on the host is not touched.`,
     replaceToken: "Replace the access token",
     addToken: "Add an access token",
     saveToken: "Save token",
