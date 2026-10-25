@@ -4,6 +4,7 @@ import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
   clickButton,
+  createIssue,
   createProject,
   enterOpenDesk,
   signOut,
@@ -216,6 +217,62 @@ scenario("a person who picks Deutsch on their profile sees the sidebar in German
   await clickButton(page, "Änderungen speichern");
   await sidebarSays("Your profile");
   expect.equal(await page.evaluate(() => document.documentElement.lang), "en", "the page's language once back");
+});
+
+// At a phone's width the page itself never scrolls sideways: a wide table, a
+// board or the plan scrolls in its own box, and everything else wraps or folds.
+scenario("at a phone's width no main page scrolls sideways, a summary keeps its width and the bulk bar folds", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Narrow", { visit: false });
+  const issueKey = await createIssue(page, key, "A summary long enough to need more room than a phone's width gives a table", { visit: false });
+  const sideways = () =>
+    page.evaluate(() => {
+      const main = document.getElementById("main");
+      return Math.max(document.documentElement.scrollWidth - window.innerWidth, main ? main.scrollWidth - main.clientWidth : 0);
+    });
+
+  await withViewport(page, 375, async () => {
+    for (const path of [
+      "/",
+      "/projects",
+      `/projects/${key}`,
+      `/projects/${key}/board`,
+      `/projects/${key}/plan`,
+      `/projects/${key}/settings`,
+      "/search",
+      "/inbox",
+      "/settings",
+      "/settings/profile",
+      "/settings/access",
+      "/settings/tokens",
+      "/settings/users",
+    ]) {
+      await goto(page, path);
+      await page.waitForSelector("main#main [data-shell-content] > *", { timeout: WAIT });
+      expect.equal(await sideways(), 0, `${path} scrolls sideways by`);
+    }
+
+    // The access page's five tabs scroll in their own row.
+    await goto(page, "/settings/access");
+    await page.waitForSelector('[role="tablist"]', { timeout: WAIT });
+    const tabs = await page.$eval('[role="tablist"]', (list) => ({ scrolls: list.scrollWidth > list.clientWidth, style: getComputedStyle(list).overflowX }));
+    expect.equal(tabs.style, "auto", "the tabs scroll in their own row");
+
+    await goto(page, `/projects/${key}`);
+    await page.waitForSelector(`a[href="/issues/${issueKey}"].truncate`, { timeout: WAIT });
+    const summary = await page.$eval(`a[href="/issues/${issueKey}"].truncate`, (a) => a.getBoundingClientRect().width);
+    expect.truthy(summary >= 160, `the summary is ${Math.round(summary)}px wide, too narrow to read`);
+
+    await goto(page, `/search?q=${encodeURIComponent(`project = ${key}`)}`);
+    await page.waitForSelector(`[data-select-issue="${issueKey}"]`, { timeout: WAIT });
+    await page.click(`[data-select-issue="${issueKey}"]`);
+    await page.waitForSelector('[data-action="bulk-unfold"]', { visible: true, timeout: WAIT });
+    expect.equal(await page.$eval("[data-bulk-fields]", (el) => getComputedStyle(el).display), "none", "the bulk bar's fields wait folded");
+    expect.equal(await page.$('[data-action="bulk-apply"]').then((b) => b?.boundingBox()), null, "and so does Apply");
+    await page.click('[data-action="bulk-unfold"]');
+    await page.waitForSelector('[data-action="bulk-apply"]', { visible: true, timeout: WAIT });
+    expect.equal(await sideways(), 0, "the unfolded bulk bar scrolls sideways by");
+  });
 });
 
 scenario("nothing in the page reports a script error", async ({ page }) => {

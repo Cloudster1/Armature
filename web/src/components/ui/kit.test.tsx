@@ -106,6 +106,13 @@ describe("Chip", () => {
     expect(chip).toHaveAttribute("data-plan-type-filter", "Bug");
   });
 
+  it("cuts a long name short to fit, and keeps the whole of it as its title", () => {
+    render(<Chip pressed={false}>An epic with a name far longer than any popover is wide</Chip>);
+    const chip = screen.getByRole("button", { name: /An epic with a name/ });
+    expect(chip).toHaveAttribute("title", "An epic with a name far longer than any popover is wide");
+    expect(chip.querySelector(".truncate")?.textContent).toBe("An epic with a name far longer than any popover is wide");
+  });
+
   it("shows the focus ring a keyboard reaches it with, as Stator's and Exciter's do", () => {
     render(<Chip pressed>Bug</Chip>);
     expect(screen.getByRole("button", { name: "Bug" }).className).toMatch(/focus-visible:outline-2 .*focus-visible:outline-focus/);

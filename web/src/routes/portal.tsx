@@ -203,7 +203,7 @@ function RequestTable({ requests, showReporter = false }: { requests: PortalRequ
           <tr key={r.key} className="group hover:bg-surface-raised/60" data-request={r.key}>
             <Td className="font-mono text-sm text-ink-muted">{r.key}</Td>
             <Td className="max-w-0">
-              <Link to="/portal/requests/$issueKey" params={{ issueKey: r.key }} className="block truncate text-ink group-hover:text-accent">
+              <Link to="/portal/requests/$issueKey" params={{ issueKey: r.key }} className="block min-w-48 truncate text-ink group-hover:text-accent">
                 {r.summary}
               </Link>
             </Td>
