@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -36,7 +37,14 @@ const (
 // suitePoll is how often the worker looks for a suite demo somebody asked for.
 const suitePoll = 2 * time.Second
 
-// ErrSuiteAdded refuses a second suite demo.
+// SuiteStale is how long a running suite demo may go without a step before its worker is taken for stopped.
+// A step is one project's issues, which a worker writes in seconds.
+const SuiteStale = 15 * time.Minute
+
+// suiteAgain is how a stopped suite demo is put right: adding it again carries on in the projects it made.
+const suiteAgain = "Add the suite demo again, and it carries on in the projects it made."
+
+// ErrSuiteAdded refuses a second suite demo while the first is built or done.
 var ErrSuiteAdded = errors.New("the suite demo was added already")
 
 // SuiteKeyTakenError is a suite demo held off by a project already under one of its keys.
@@ -83,7 +91,8 @@ func Suite(ctx context.Context, cluster *db.Cluster) (*SuiteDemo, error) {
 	return out, err
 }
 
-// QueueSuite asks the worker for the suite demo. The keys are checked first, so a refusal leaves nothing made.
+// QueueSuite asks the worker for the suite demo, or for a failed one again. The keys are checked first,
+// so a refusal leaves nothing made; a failed demo's own projects do not hold it off.
 func QueueSuite(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip string) (*SuiteDemo, db.LSN, error) {
 	ctx = db.PinPrimary(ctx)
 	snapshots, err := Snapshots()
@@ -101,10 +110,19 @@ func QueueSuite(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip 
 		if err != nil {
 			return err
 		}
-		if existing != nil {
+		if existing != nil && existing.State != SuiteFailed {
 			return ErrSuiteAdded
 		}
+		var made []string
+		if existing != nil {
+			if err := tx.QueryRow(ctx, `SELECT made FROM suite_demo`).Scan(&made); err != nil {
+				return err
+			}
+		}
 		for _, key := range SuiteKeys {
+			if slices.Contains(made, key) {
+				continue
+			}
 			free, err := projects.KeyAvailable(ctx, key)
 			if err != nil {
 				return err
@@ -115,14 +133,15 @@ func QueueSuite(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip 
 		}
 		out, err = scanSuite(tx.QueryRow(ctx, `
 			INSERT INTO suite_demo (steps, taken, actor_id) VALUES ($1, $2, $3)
+			ON CONFLICT (id) DO UPDATE SET state = $4, step = 0, steps = $1, message = '', taken = $2, actor_id = $3
 			RETURNING state, step, steps, message, taken, created_at, updated_at`,
-			SuiteSteps, snapshots[0].Taken, p.User.ID))
+			SuiteSteps, snapshots[0].Taken, p.User.ID, SuiteQueued))
 		if err != nil {
 			return err
 		}
 		return audit.Write(ctx, tx, audit.Entry{
 			Action: "installation.suite_demo_added", TargetType: "installation", Actor: p.User.ID, IP: ip,
-			Data: map[string]any{"projects": SuiteKeys, "taken": snapshots[0].Taken},
+			Data: map[string]any{"projects": SuiteKeys, "taken": snapshots[0].Taken, "again": existing != nil},
 		})
 	})
 	if err != nil {
@@ -156,7 +175,8 @@ func SeedSuite(ctx context.Context, cluster *db.Cluster, actor issue.Actor, peop
 			}
 		}
 	}
-	if err := buildSuite(ctx, cluster, snapshots, actor, people, func(int) error { return nil }, log); err != nil {
+	nothing := suiteProgress{step: func(int) error { return nil }, made: func(string) error { return nil }}
+	if err := buildSuite(ctx, cluster, snapshots, actor, people, nothing, log); err != nil {
 		return err
 	}
 	_, err = cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -199,12 +219,24 @@ func (b *SuiteBuilder) Run(ctx context.Context) error {
 }
 
 // Once builds the suite demo when it is queued, and answers 1 when it did. A failure is the demo's, in its message.
+// A build whose worker stopped is marked failed once it is stale, so it can be added again.
 func (b *SuiteBuilder) Once(ctx context.Context) (int, error) {
 	ctx = db.PinPrimary(ctx)
 	var actorID *uuid.UUID
 	claimed := false
 	_, err := b.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		err := tx.QueryRow(ctx, `
+		stale, err := tx.Exec(ctx, `
+			UPDATE suite_demo SET state = $1, message = $2
+			WHERE state = $3 AND updated_at < now() - make_interval(secs => $4)`,
+			SuiteFailed, "The suite demo stopped: its worker stopped while building it. "+suiteAgain,
+			SuiteRunning, SuiteStale.Seconds())
+		if err != nil {
+			return err
+		}
+		if stale.RowsAffected() > 0 {
+			b.log.Warn("the suite demo's build went stale, so it is marked failed", "after", SuiteStale)
+		}
+		err = tx.QueryRow(ctx, `
 			UPDATE suite_demo SET state = $1 WHERE state = $2
 			RETURNING actor_id`, SuiteRunning, SuiteQueued).Scan(&actorID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -220,7 +252,7 @@ func (b *SuiteBuilder) Once(ctx context.Context) (int, error) {
 	state, message := SuiteDone, ""
 	if built != nil {
 		b.log.Error("the suite demo stopped", "error", built)
-		state, message = SuiteFailed, "The suite demo stopped: "+built.Error()+". Look at the worker's log, then remove ARM, EXC and STA and add it again."
+		state, message = SuiteFailed, "The suite demo stopped: "+built.Error()+". Look at the worker's log for why. "+suiteAgain
 	}
 	_, err = b.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `UPDATE suite_demo SET state = $1, message = $2`, state, message)
@@ -242,14 +274,26 @@ func (b *SuiteBuilder) build(ctx context.Context, actorID *uuid.UUID) error {
 		return err
 	}
 	actor := issue.Actor{UserID: *actorID, OrgRole: auth.RoleAdmin}
-	step := func(n int) error {
+	write := func(query string, arg any) error {
 		_, err := b.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `UPDATE suite_demo SET step = $1`, n)
+			_, err := tx.Exec(ctx, query, arg)
 			return err
 		})
 		return err
 	}
-	return buildSuite(ctx, b.db, snapshots, actor, people, step, b.log)
+	progress := suiteProgress{
+		step: func(n int) error { return write(`UPDATE suite_demo SET step = $1`, n) },
+		made: func(key string) error {
+			return write(`UPDATE suite_demo SET made = array_append(made, $1::text) WHERE NOT $1::text = ANY (made)`, key)
+		},
+	}
+	return buildSuite(ctx, b.db, snapshots, actor, people, progress, b.log)
+}
+
+// suiteProgress is what a build tells its row: the step it reached, and each project it made.
+type suiteProgress struct {
+	step func(int) error
+	made func(key string) error
 }
 
 // activeMembers are the people who work the demo's issues: the installation's members, the caller first.
@@ -280,7 +324,7 @@ func activeMembers(ctx context.Context, cluster *db.Cluster, caller uuid.UUID) (
 // buildSuite writes the plan: each project, its milestones and its issues, then the links between them.
 // An issue imported before is found by its GitHub address and brought up to the snapshot.
 func buildSuite(ctx context.Context, cluster *db.Cluster, snapshots []Snapshot, actor issue.Actor,
-	people []uuid.UUID, step func(int) error, log *slog.Logger) error {
+	people []uuid.UUID, progress suiteProgress, log *slog.Logger) error {
 	if len(people) == 0 {
 		people = []uuid.UUID{actor.UserID}
 	}
@@ -300,7 +344,7 @@ func buildSuite(ctx context.Context, cluster *db.Cluster, snapshots []Snapshot, 
 	importer.Import = true
 
 	for n, p := range plan.Projects {
-		made, err := suiteProject(ctx, projects, templates, p, actor.UserID)
+		made, err := suiteProject(ctx, projects, templates, p, actor.UserID, progress.made)
 		if err != nil {
 			return err
 		}
@@ -349,7 +393,7 @@ func buildSuite(ctx context.Context, cluster *db.Cluster, snapshots []Snapshot, 
 			}
 		}
 		log.Info("suite demo project filled", "project", p.Key, "issues", len(p.Issues))
-		if err := step(n + 1); err != nil {
+		if err := progress.step(n + 1); err != nil {
 			return err
 		}
 	}
@@ -358,11 +402,12 @@ func buildSuite(ctx context.Context, cluster *db.Cluster, snapshots []Snapshot, 
 		return err
 	}
 	log.Info("suite demo linked", "links", added)
-	return step(len(plan.Projects) + 1)
+	return progress.step(len(plan.Projects) + 1)
 }
 
-// suiteProject makes the project, or finds the one an earlier run made.
-func suiteProject(ctx context.Context, projects *project.Service, templates *template.Service, p SuiteProject, actor uuid.UUID) (*project.Project, error) {
+// suiteProject makes the project, or finds the one an earlier run made, and records the one it made.
+func suiteProject(ctx context.Context, projects *project.Service, templates *template.Service, p SuiteProject, actor uuid.UUID,
+	record func(key string) error) (*project.Project, error) {
 	made, _, err := templates.Create(ctx, template.Default, project.CreateInput{
 		Key: p.Key, Name: p.Name, Description: p.Description, LeadID: &actor,
 	}, actor)
@@ -372,7 +417,7 @@ func suiteProject(ctx context.Context, projects *project.Service, templates *tem
 	if err != nil {
 		return nil, fmt.Errorf("create the %s project: %w", p.Key, err)
 	}
-	return made, nil
+	return made, record(p.Key)
 }
 
 // suiteMilestones makes the milestones the project lacks and answers all of them by name.
