@@ -300,6 +300,9 @@ func (s *Service) AcceptInvite(ctx context.Context, in AcceptInviteInput) (*Cred
 // see. Naming one would not widen the token, but it would read as if it had.
 var ErrNoSuchProject = errors.New("a token can only name projects you can already reach")
 
+// ErrPastExpiry is returned for a token that would be dead the moment it is made.
+var ErrPastExpiry = errors.New("the expiry date has to be in the future")
+
 // CreateAPIToken issues a personal access token for the caller. The secret is
 // returned once and never stored.
 func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, name string, scopes, projects []string, expiresAt *time.Time) (*APIToken, db.LSN, error) {
@@ -309,6 +312,9 @@ func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, name str
 	}
 	if err := ValidateScopes(scopes); err != nil {
 		return nil, 0, err
+	}
+	if expiresAt != nil && !expiresAt.After(time.Now()) {
+		return nil, 0, ErrPastExpiry
 	}
 	secret, digest, err := GenerateAPIToken()
 	if err != nil {

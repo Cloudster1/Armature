@@ -232,6 +232,9 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "no_second_factor", Message: capitalize(err.Error()) + "."}
 	case errors.Is(err, auth.ErrEnrolFirst):
 		return &APIError{Status: http.StatusConflict, Code: "enrol_first", Message: capitalize(err.Error()) + "."}
+	case errors.Is(err, auth.ErrPastExpiry):
+		message := "The expiry date has to be in the future. Pick a later date, or none for a token that never expires."
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: message, Fields: map[string]string{"expiresAt": message}}
 	case errors.Is(err, auth.ErrBadSecondFactorRule):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
 	case errors.Is(err, auth.ErrWrongPassword), errors.Is(err, auth.ErrPasswordTooShort),
@@ -249,6 +252,10 @@ func toAPIError(err error) *APIError {
 		return ErrConflict(project.ErrKeyTaken.Error())
 	case errors.Is(err, project.ErrArchived):
 		return ErrConflict("That project is archived.")
+	case errors.Is(err, project.ErrAlreadyArchived):
+		return ErrConflict("That project is already archived. Restore it to bring it back.")
+	case errors.Is(err, project.ErrNotArchived):
+		return ErrConflict("That project is not archived, so there is nothing to restore.")
 	case errors.Is(err, project.ErrNotADesk):
 		return ErrConflict("Only a service desk has a door; make the project a service desk first.")
 	case errors.Is(err, project.ErrBadDomain):
@@ -282,9 +289,10 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, perm.ErrRoleKey), errors.Is(err, perm.ErrRoleName), errors.Is(err, perm.ErrUnknownPermission):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
 	case errors.Is(err, perm.ErrNotAMember):
-		return ErrBadRequest(perm.ErrNotAMember.Error())
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed",
+			Message: "That person is not a member here. Invite them first, then try again."}
 	case errors.Is(err, perm.ErrNameTaken):
-		return ErrConflict(perm.ErrNameTaken.Error())
+		return ErrConflict("There is already a group with that name. Choose another.")
 	case errors.Is(err, perm.ErrScope):
 		return ErrBadRequest(withoutSentinel(err, perm.ErrScope))
 	case errors.Is(err, perm.ErrManagedElsewhere):
@@ -294,9 +302,10 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, team.ErrNegativeCapacity):
 		return ErrBadRequest(capitalize(team.ErrNegativeCapacity.Error()) + ".")
 	case errors.Is(err, team.ErrNameTaken):
-		return ErrConflict(team.ErrNameTaken.Error())
+		return ErrConflict("This project already has a team with that name. Choose another.")
 	case errors.Is(err, team.ErrNotAMember):
-		return ErrBadRequest(team.ErrNotAMember.Error())
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed",
+			Message: "That person is not a member here. Only people who work here join a team; invite them first."}
 	case errors.Is(err, team.ErrInUse):
 		return ErrConflict(withoutSentinel(err, team.ErrInUse))
 	case errors.Is(err, issue.ErrTeamNotFound), errors.Is(err, board.ErrTeamNotFound),
