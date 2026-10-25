@@ -9,6 +9,9 @@ export const issueViewDe: typeof issueViewEn = {
     nowReads: "Sie lautet jetzt:",
     saveOver: ". Drücken Sie die Eingabetaste, um Ihre Fassung darüber zu speichern.",
     nowhereToGo: "Dieser Vorgang kann von hier aus nirgendwohin wechseln.",
+    delete: "Diesen Vorgang löschen",
+    deleteBody: (key: string) => `${key} wird endgültig gelöscht, mit seinen Kommentaren, Dateien, seinem Verlauf und allen Vorgängen darunter.`,
+    deleted: (key: string) => `${key} wurde gelöscht.`,
   },
   sections: {
     onThisPage: "Auf dieser Seite",

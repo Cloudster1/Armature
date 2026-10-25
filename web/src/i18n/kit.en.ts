@@ -83,6 +83,7 @@ export const kitEn = {
       file: "file",
       group: "group",
       invitation: "invitation",
+      issue: (key: string) => `issue ${key}`,
       label: "label",
       link: "link",
       member: "member",

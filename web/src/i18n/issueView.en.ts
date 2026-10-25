@@ -7,6 +7,9 @@ export const issueViewEn = {
     nowReads: "It now reads:",
     saveOver: ". Press Enter to save yours over it.",
     nowhereToGo: "This issue has nowhere to go from here.",
+    delete: "Delete this issue",
+    deleteBody: (key: string) => `${key} goes for good, with its comments, files, history and every issue under it.`,
+    deleted: (key: string) => `${key} was deleted.`,
   },
   sections: {
     onThisPage: "On this page",
