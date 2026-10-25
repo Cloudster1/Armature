@@ -590,27 +590,34 @@ func (s *Service) SetWorkflowScheme(ctx context.Context, key string, schemeID *u
 func (s *Service) Archive(ctx context.Context, key string, actor uuid.UUID) (db.LSN, error) {
 	return s.markArchived(ctx, "project.archived", `
 		UPDATE project SET archived_at = now()
-		WHERE key = $1 AND archived_at IS NULL RETURNING id`, key, actor)
+		WHERE key = $1 AND archived_at IS NULL RETURNING id`, key, actor, ErrAlreadyArchived)
 }
 
 // Restore brings an archived project back.
 func (s *Service) Restore(ctx context.Context, key string, actor uuid.UUID) (db.LSN, error) {
 	return s.markArchived(ctx, "project.restored", `
 		UPDATE project SET archived_at = NULL
-		WHERE key = $1 AND archived_at IS NOT NULL RETURNING id`, key, actor)
+		WHERE key = $1 AND archived_at IS NOT NULL RETURNING id`, key, actor, ErrNotArchived)
 }
 
 // markArchived runs one of the two updates and says who did it, which the
-// audit log keeps for both directions.
-func (s *Service) markArchived(ctx context.Context, topic, update, key string, actor uuid.UUID) (db.LSN, error) {
+// audit log keeps for both directions. A project already there answers already.
+func (s *Service) markArchived(ctx context.Context, topic, update, key string, actor uuid.UUID, already error) (db.LSN, error) {
 	key = NormalizeKey(key)
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, update, key).Scan(&id); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrNotFound
+			if !errors.Is(err, pgx.ErrNoRows) {
+				return err
 			}
-			return err
+			var exists bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM project WHERE key = $1)`, key).Scan(&exists); err != nil {
+				return err
+			}
+			if exists {
+				return already
+			}
+			return ErrNotFound
 		}
 		return events.Emit(ctx, tx, topic, map[string]any{"projectId": id, "key": key, "actorId": actor})
 	})

@@ -281,9 +281,13 @@ func TestAPITokens(t *testing.T) {
 	})
 
 	t.Run("an expired token does not authenticate", func(t *testing.T) {
-		past := time.Now().Add(-time.Minute)
-		token, _, err := svc.CreateAPIToken(ctx, userID, "already expired", nil, nil, &past)
+		// A token cannot be made already dead, so this one is aged in the database.
+		soon := time.Now().Add(time.Hour)
+		token, _, err := svc.CreateAPIToken(ctx, userID, "already expired", nil, nil, &soon)
 		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := h.super.Exec(ctx, `UPDATE api_token SET expires_at = now() - interval '1 minute' WHERE id = $1`, token.ID); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := svc.Authenticate(ctx, token.Secret); !errors.Is(err, auth.ErrInvalidToken) {
