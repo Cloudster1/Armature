@@ -12,6 +12,7 @@ import {
 import { Button, Card, Checkbox, Chip, ErrorBanner, Field, Input, cx } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useProjectStatuses, type Status } from "@/api/issues";
+import { t } from "@/i18n";
 
 const groupings: Array<{ value: Grouping; label: string }> = [
   { value: "none", label: "No rows" },
@@ -244,8 +245,10 @@ function SwimlaneRow({
             disabled={!canDelete}
             loading={remove.isPending}
             onClick={async () =>
-              (await confirm({ noun: "swimlane", body: `${swimlane.name} goes from the board; the statuses it showed move to the next one.` })) &&
-              remove.mutate({ boardId, swimlaneId: swimlane.id })
+              (await confirm({
+                noun: t.kit.confirm.things.swimlane,
+                body: `${swimlane.name} goes from the board; the statuses it showed move to the next one.`,
+              })) && remove.mutate({ boardId, swimlaneId: swimlane.id })
             }
             title={canDelete ? "Delete this swimlane" : "A board needs at least one swimlane"}
           >

@@ -5,6 +5,7 @@ import { Button, IconButton } from "./Button";
 import { cx } from "./cx";
 import { useEscape, useFocusReturn, useScrollLock } from "./overlay";
 import { Icon } from "../icons";
+import { t } from "@/i18n";
 
 type DialogProps = {
   open: boolean;
@@ -112,7 +113,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
               </p>
             )}
           </div>
-          <IconButton icon={<Icon.X />} label="Close" size="sm" onClick={close} data-focus-last="" />
+          <IconButton icon={<Icon.X />} label={t.kit.close} size="sm" onClick={close} data-focus-last="" />
         </div>
         {children && (
           <div className="px-5 pt-2 pb-4" data-dialog-body>
@@ -141,7 +142,7 @@ export function ConfirmDialog({
   onClose,
   onConfirm,
   noun,
-  verb = "Delete",
+  verb = t.kit.confirm.verbs.delete,
   body,
   loading,
   error,
@@ -159,16 +160,16 @@ export function ConfirmDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={`${verb} ${noun}?`}
+      title={t.kit.confirm.title(verb, noun)}
       size="sm"
       attrs={{ "data-confirm": noun }}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button variant="danger" onClick={onConfirm} loading={loading} data-action="confirm">
-            {verb} {noun}
+            {t.kit.confirm.action(verb, noun)}
           </Button>
         </>
       }
@@ -200,7 +201,7 @@ function PanelHeader({ titleId, title, actions, onClose }: { titleId: string; ti
         {title}
       </h2>
       {actions}
-      <IconButton icon={<Icon.X />} label="Close" size="sm" onClick={onClose} data-focus-last="" />
+      <IconButton icon={<Icon.X />} label={t.kit.close} size="sm" onClick={onClose} data-focus-last="" />
     </div>
   );
 }

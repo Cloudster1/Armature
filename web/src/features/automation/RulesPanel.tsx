@@ -17,6 +17,7 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useFormat } from "@/lib/format";
 import { describeRule } from "./describe";
 import { RuleEditor } from "./RuleEditor";
+import { t } from "@/i18n";
 
 // The rules of a project, or of the organization with no key: a table of
 // sentences, an editor, and a log per rule that says why each run did what
@@ -146,8 +147,11 @@ export function RulesPanel({ projectKey, canEdit }: { projectKey?: string; canEd
                           icon: <Icon.Trash />,
                           danger: true,
                           onSelect: async () =>
-                            (await confirm({ noun: "rule", verb: "Delete", body: `${rule.name} and its log go; nothing it did is undone.` })) &&
-                            remove.mutate(rule.id),
+                            (await confirm({
+                              noun: t.kit.confirm.things.rule,
+                              verb: t.kit.confirm.verbs.delete,
+                              body: `${rule.name} and its log go; nothing it did is undone.`,
+                            })) && remove.mutate(rule.id),
                           attrs: { "data-action": "rule-delete" },
                         },
                       ]}

@@ -8,6 +8,7 @@ import { Avatar, StatusBadge, TypeBadge, RelativeTime } from "@/features/issues/
 import { SlaBadge } from "@/features/desk/SlaBadge";
 import { companyLine } from "@/features/desk/company";
 import { QUEUE_PAGE_SIZE } from "@/config";
+import { t } from "@/i18n";
 
 export const queuesRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -55,7 +56,7 @@ function QueuesPage() {
           </Link>
         }
         title="Queues"
-        meta={data ? countOf(total, "request") : undefined}
+        meta={data ? countOf(total, t.kit.counted.request) : undefined}
       />
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <Segmented label="Queue" value={filter} onChange={choose} options={filters} />

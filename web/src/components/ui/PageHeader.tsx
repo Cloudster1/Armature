@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
+import { t } from "@/i18n";
 
 /**
  * Where a page's head is drawn. The shell provides the strip over the
@@ -19,7 +20,7 @@ export interface Crumb {
 export function Breadcrumbs({ crumbs, className }: { crumbs: Crumb[]; className?: string }) {
   if (crumbs.length === 0) return null;
   return (
-    <nav aria-label="Breadcrumb" className={cx("text-sm text-ink-muted", className)}>
+    <nav aria-label={t.kit.breadcrumb} className={cx("text-sm text-ink-muted", className)}>
       <ol className="flex flex-wrap items-center gap-1.5">
         {crumbs.map((crumb, index) => (
           <li key={index} className="flex items-center gap-1.5">

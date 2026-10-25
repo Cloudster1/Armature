@@ -175,8 +175,11 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
                         variant="ghost"
                         aria-label={t.issuePanels.time.removeWorklog(formatDuration(w.minutes))}
                         onClick={async () =>
-                          (await confirm({ noun: "work log", verb: "Remove", body: t.issuePanels.time.comesOff(formatDuration(w.minutes)) })) &&
-                          remove.mutate(w.id)
+                          (await confirm({
+                            noun: t.kit.confirm.things.workLog,
+                            verb: t.kit.confirm.verbs.remove,
+                            body: t.issuePanels.time.comesOff(formatDuration(w.minutes)),
+                          })) && remove.mutate(w.id)
                         }
                       >
                         {t.issuePanels.common.remove}

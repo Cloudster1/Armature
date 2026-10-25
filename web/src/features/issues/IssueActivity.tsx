@@ -65,7 +65,7 @@ function CommentItem({ comment, issueKey, mine, administers }: { comment: Commen
 
   async function deleteComment() {
     const body = comment.internal ? t.issuePanels.activity.noteGone : t.issuePanels.activity.commentGone;
-    if (await confirm({ noun: "comment", verb: "Delete", body })) remove.mutate({ key: issueKey, id: comment.id });
+    if (await confirm({ noun: t.kit.confirm.things.comment, verb: t.kit.confirm.verbs.delete, body })) remove.mutate({ key: issueKey, id: comment.id });
   }
 
   return (

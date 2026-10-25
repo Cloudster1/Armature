@@ -4,6 +4,7 @@ import { Avatar, Card, EmptyState, ErrorBanner, Pager, SectionTitle, Tag, clampO
 import { PeopleSearch } from "@/features/people/PeopleSearch";
 import { PEOPLE_PAGE_SIZE } from "@/config";
 import { InvitePanel } from "./InvitePanel";
+import { t } from "@/i18n";
 
 /** What the members list shows: a search and where in its matches the page starts. */
 export interface MembersShown {
@@ -34,7 +35,7 @@ export function MemberList({ q = "", offset = 0, show }: MembersShown & { show: 
           <div className="flex items-center gap-2">
             {data && (
               <span className="text-sm text-ink-muted" data-members-total={data.total}>
-                {countOf(data.total, "member")}
+                {countOf(data.total, t.kit.counted.member)}
               </span>
             )}
             <PeopleSearch label="Find members" value={q} onChange={(text) => show({ q: text })} />

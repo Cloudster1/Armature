@@ -3,6 +3,7 @@ import { Textarea } from "./controls";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
 import { useAnchored } from "./overlay";
+import { t } from "@/i18n";
 
 /** Somebody who can be named: the whole name is what gets inserted. */
 export interface Mentionable {
@@ -136,7 +137,7 @@ export function MentionTextarea({
           <div
             ref={listRef}
             role="listbox"
-            aria-label="People to mention"
+            aria-label={t.kit.mentionList}
             data-mention-list
             style={place}
             className="fixed z-30 min-w-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"

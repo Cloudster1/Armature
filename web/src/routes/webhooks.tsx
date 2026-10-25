@@ -34,6 +34,7 @@ import {
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 /** Where the organization's events are posted, signed, with a log of every try. */
 export const webhooksRoute = createRoute({
@@ -236,8 +237,11 @@ function WebhooksPage() {
                         icon: <Icon.Trash />,
                         danger: true,
                         onSelect: async () =>
-                          (await confirm({ noun: "webhook", verb: "Delete", body: `${h.name} stops receiving at once, and its log goes with it.` })) &&
-                          remove.mutate(h.id),
+                          (await confirm({
+                            noun: t.kit.confirm.things.webhook,
+                            verb: t.kit.confirm.verbs.delete,
+                            body: `${h.name} stops receiving at once, and its log goes with it.`,
+                          })) && remove.mutate(h.id),
                         attrs: { "data-action": "webhook-delete" },
                       },
                     ]}

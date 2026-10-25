@@ -1,6 +1,7 @@
 import { useRef, type ReactNode } from "react";
 import { Button } from "./Button";
 import { useRevealed } from "./overlay";
+import { t } from "@/i18n";
 
 /**
  * A non-blocking error banner, used for whole-form failures. With reveal it
@@ -14,7 +15,7 @@ export function ErrorBanner({ children, onRetry, reveal = false }: { children: R
       <span className="min-w-0 flex-1">{children}</span>
       {onRetry && (
         <Button size="sm" variant="ghost" onClick={onRetry} className="-my-1 text-danger hover:text-danger">
-          Retry
+          {t.kit.retry}
         </Button>
       )}
     </div>

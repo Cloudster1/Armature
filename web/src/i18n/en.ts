@@ -1,4 +1,5 @@
 import { issueListEn } from "./issueList.en";
+import { kitEn } from "./kit.en";
 import { issuePanelsEn } from "./issuePanels.en";
 import { issueViewEn } from "./issueView.en";
 import { planEn } from "./plan.en";
@@ -13,6 +14,7 @@ export const en = {
     save: "Save",
     retry: "Retry",
   },
+  kit: kitEn,
   shell: shellEn,
   settings: settingsEn,
   plan: planEn,

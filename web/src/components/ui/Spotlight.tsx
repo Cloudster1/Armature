@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { SPOTLIGHT_GAP_PX, SPOTLIGHT_HEIGHT_PX, SPOTLIGHT_RING_PX, SPOTLIGHT_WAIT_MS, SPOTLIGHT_WIDTH_PX } from "@/config";
 import { Button } from "./Button";
 import { useEscape } from "./overlay";
+import { t } from "@/i18n";
 
 interface Spot {
   top: number;
@@ -69,7 +70,7 @@ export function Spotlight({ target, text, onDone, onMissing }: { target: string;
       <div aria-hidden className="pointer-events-none fixed z-50 rounded-control ring-2 ring-accent" style={spot.ring} />
       <div
         role="dialog"
-        aria-label="Where it is"
+        aria-label={t.kit.spotlight}
         className="fixed z-50 rounded-overlay border border-border bg-surface-overlay p-3 shadow-2"
         style={{ top: spot.top, left: spot.left, width: Math.min(SPOTLIGHT_WIDTH_PX, window.innerWidth - SPOTLIGHT_GAP_PX * 2) }}
         data-guide-callout
@@ -77,7 +78,7 @@ export function Spotlight({ target, text, onDone, onMissing }: { target: string;
         <p className="text-sm text-ink">{text}</p>
         <div className="mt-2 flex justify-end">
           <Button size="sm" onClick={onDone} autoFocus>
-            Got it
+            {t.kit.gotIt}
           </Button>
         </div>
       </div>

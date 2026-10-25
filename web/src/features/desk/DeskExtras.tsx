@@ -24,6 +24,7 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { ApiError } from "@/api/client";
 import { useProject, useUpdateProject } from "@/api/projects";
 import { useHolidayCalendars } from "@/api/availability";
+import { t } from "@/i18n";
 
 // The desk's extras, as sections of its setup page.
 
@@ -174,7 +175,11 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
                       label={`Delete ${a.title}`}
                       size="sm"
                       onClick={async () =>
-                        (await confirm({ noun: "article", verb: "Delete", body: `${a.title} goes; customers stop finding it.` })) && remove.mutate(a.id)
+                        (await confirm({
+                          noun: t.kit.confirm.things.article,
+                          verb: t.kit.confirm.verbs.delete,
+                          body: `${a.title} goes; customers stop finding it.`,
+                        })) && remove.mutate(a.id)
                       }
                     />
                   </span>
@@ -295,7 +300,10 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
                       icon={<Icon.Trash />}
                       label={`Delete ${c.name}`}
                       size="sm"
-                      onClick={async () => (await confirm({ noun: "canned response", verb: "Delete", body: `${c.name} goes.` })) && remove.mutate(c.id)}
+                      onClick={async () =>
+                        (await confirm({ noun: t.kit.confirm.things.cannedResponse, verb: t.kit.confirm.verbs.delete, body: `${c.name} goes.` })) &&
+                        remove.mutate(c.id)
+                      }
                     />
                   </span>
                 </Td>

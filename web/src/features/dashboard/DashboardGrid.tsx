@@ -21,6 +21,7 @@ import { WidgetCard } from "./WidgetCard";
 import { WidgetSettings } from "./WidgetSettings";
 import { AddWidget } from "./AddWidget";
 import { composeQuery, isEmpty, type FilterSpec, type SavedQueryLookup } from "./filter";
+import { t } from "@/i18n";
 
 /** The widgets of one dashboard, and what arranging them offers. */
 export function DashboardGrid({
@@ -153,7 +154,7 @@ export function DashboardGrid({
             loading={deleteDashboard.isPending}
             onClick={async () =>
               (await confirm({
-                noun: "dashboard",
+                noun: t.kit.confirm.things.dashboard,
                 body: `${dashboard.name} and its arrangement go; the numbers are computed from the issues and lose nothing.`,
               })) && deleteDashboard.mutate(dashboard.id)
             }

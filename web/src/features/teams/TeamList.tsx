@@ -7,6 +7,7 @@ import { Button, Card, EmptyState, ErrorBanner, Field, Input } from "@/component
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { Avatar } from "@/features/issues/badges";
+import { t } from "@/i18n";
 
 /**
  * The teams inside a project, and who is on them.
@@ -126,7 +127,7 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
             variant="ghost"
             loading={deleteTeam.isPending}
             onClick={async () =>
-              (await confirm({ noun: "team", body: `${team.name} goes with its board and backlog; its issues keep their assignees.` })) &&
+              (await confirm({ noun: t.kit.confirm.things.team, body: `${team.name} goes with its board and backlog; its issues keep their assignees.` })) &&
               deleteTeam.mutate(team.id)
             }
           >
@@ -157,7 +158,7 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
               variant="ghost"
               className={managesTeams ? "h-6 px-1.5 text-2xs" : "ml-auto h-6 px-1.5 text-2xs"}
               onClick={async () =>
-                (await confirm({ noun: "member", verb: "Remove", body: `${member.name} leaves ${team.name}.` })) &&
+                (await confirm({ noun: t.kit.confirm.things.member, verb: t.kit.confirm.verbs.remove, body: `${member.name} leaves ${team.name}.` })) &&
                 remove.mutate({ id: team.id, userId: member.userId })
               }
             >

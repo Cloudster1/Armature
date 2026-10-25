@@ -592,8 +592,8 @@ function CustomerMenu({ userName, avatar }: { userName: string; avatar?: string 
           onSelect: async () => {
             if (
               await confirm({
-                noun: "account",
-                verb: "Delete",
+                noun: t.kit.confirm.things.account,
+                verb: t.kit.confirm.verbs.delete,
                 body: `${userName}'s name, address and sessions go for good. Your requests stay, by "Former user".`,
               })
             ) {

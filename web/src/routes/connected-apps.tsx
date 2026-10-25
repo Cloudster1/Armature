@@ -16,6 +16,7 @@ import { Button, Card, Checkbox, Drawer, EmptyState, ErrorBanner, Field, IconBut
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { CONNECTED_APP_SCOPES } from "@/config";
+import { t } from "@/i18n";
 
 /** The partner tools that may ask people for a token, which administrators decide. */
 export const connectedAppsRoute = createRoute({
@@ -177,8 +178,11 @@ function ConnectedAppsPage() {
                         icon: <Icon.Trash />,
                         danger: true,
                         onSelect: async () =>
-                          (await confirm({ noun: "app", verb: "Remove", body: `Everybody who connected ${app.name} is disconnected at once.` })) &&
-                          remove.mutate(app.id),
+                          (await confirm({
+                            noun: t.kit.confirm.things.app,
+                            verb: t.kit.confirm.verbs.remove,
+                            body: `Everybody who connected ${app.name} is disconnected at once.`,
+                          })) && remove.mutate(app.id),
                         attrs: { "data-action": "connected-app-delete" },
                       },
                     ]}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Input, Labelled, describedBy, fieldId } from "./controls";
 import { cx } from "./cx";
+import { t } from "@/i18n";
 
 // A colour: the browser's picker beside the value as text, so a colour can be
 // pointed at or typed. The picker only knows six-digit hex, so anything else
@@ -33,7 +34,7 @@ export function ColorField({
       <span className="flex items-center gap-2">
         <input
           type="color"
-          aria-label={`Pick ${label}`}
+          aria-label={t.kit.pick(label)}
           value={pickable}
           onChange={(e) => onChange(e.target.value)}
           className={cx("size-8 shrink-0 cursor-pointer rounded-control border border-border-strong bg-surface p-0.5")}

@@ -21,6 +21,7 @@ import { categoriesOf, groupByCategory } from "@/features/desk/templates";
 import { BusinessHours, CannedResponses, Door, KnowledgeBase } from "@/features/desk/DeskExtras";
 import { Companies } from "@/features/desk/Companies";
 import { canAdminister, useAccess } from "@/api/access";
+import { t } from "@/i18n";
 
 export const serviceDeskRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -152,8 +153,8 @@ function RequestTypes({ projectKey }: { projectKey: string }) {
                           loading={remove.isPending}
                           onClick={async () =>
                             (await confirm({
-                              noun: "request type",
-                              verb: "Remove",
+                              noun: t.kit.confirm.things.requestType,
+                              verb: t.kit.confirm.verbs.remove,
                               body: `${rt.name} is no longer offered; requests already raised through it keep their history.`,
                             })) && remove.mutate(rt.id)
                           }

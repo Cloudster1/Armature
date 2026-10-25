@@ -3,6 +3,7 @@ import { Button, Card, ErrorBanner, SectionTitle, Tag, useToast } from "@/compon
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { deviceName } from "@/lib/device";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 // Where the person is signed in, so a session left open on a shared machine
 // ends without a password change, which a provider's account cannot make.
@@ -19,14 +20,14 @@ export function ActiveSessions() {
   async function signOut(session: ActiveSession) {
     const device = deviceName(session.userAgent);
     const where = session.ip ? `${device} at ${session.ip}` : device;
-    if (await confirm({ noun: device, verb: "Sign out", body: `${where} is signed out, and its next step lands on the sign-in page.` })) {
+    if (await confirm({ noun: device, verb: t.kit.confirm.verbs.signOut, body: `${where} is signed out, and its next step lands on the sign-in page.` })) {
       end.mutate(session.id, { onSuccess: () => toast.success(`Signed out of ${device}`) });
     }
   }
 
   async function signOutOthers() {
     const body = others.length === 1 ? "The one other session ends." : `The ${others.length} other sessions end.`;
-    if (await confirm({ noun: "everywhere else", verb: "Sign out", body: `${body} This one stays signed in.` })) {
+    if (await confirm({ noun: t.kit.confirm.things.everywhereElse, verb: t.kit.confirm.verbs.signOut, body: `${body} This one stays signed in.` })) {
       endOthers.mutate(undefined, { onSuccess: () => toast.success("Signed out everywhere else") });
     }
   }

@@ -15,6 +15,7 @@ import { TOAST_MAX, TOAST_MS } from "@/config";
 import { Icon } from "../icons";
 import { IconButton } from "./Button";
 import { cx } from "./cx";
+import { t } from "@/i18n";
 
 export type ToastKind = "success" | "error" | "info";
 
@@ -137,7 +138,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 {toast.action.label}
               </button>
             )}
-            <IconButton icon={<Icon.X />} label="Dismiss" size="sm" onClick={() => dismiss(toast.id)} className="-my-1 -mr-1" />
+            <IconButton icon={<Icon.X />} label={t.kit.dismiss} size="sm" onClick={() => dismiss(toast.id)} className="-my-1 -mr-1" />
           </div>
         ))}
       </div>

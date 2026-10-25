@@ -8,6 +8,7 @@ import { ProjectPicker } from "@/features/projects/ProjectPicker";
 import { useFormat } from "@/lib/format";
 import { CONNECTED_APP_SCOPES, READ_ONLY_SCOPE, TOKEN_DAY_CHOICES, TOKEN_DEFAULT_DAYS } from "@/config";
 import type { ApiToken } from "@/api/auth";
+import { t } from "@/i18n";
 
 /** Days from now as the API wants it, or nothing at all for a token that never expires. */
 function expiryFrom(days: number): string | undefined {
@@ -155,8 +156,8 @@ function TokensPage() {
                   disconnecting={revoke.isPending && revoke.variables === token.id}
                   onDisconnect={async () =>
                     (await confirm({
-                      noun: "app",
-                      verb: "Disconnect",
+                      noun: t.kit.confirm.things.app,
+                      verb: t.kit.confirm.verbs.disconnect,
                       body: `${token.app?.name} can no longer act as you; it asks again if you connect it later.`,
                     })) && revoke.mutate(token.id)
                   }
@@ -185,8 +186,11 @@ function TokensPage() {
                     variant="ghost"
                     size="sm"
                     onClick={async () =>
-                      (await confirm({ noun: "token", verb: "Revoke", body: `${token.name} stops working at once; anything using it is refused.` })) &&
-                      revoke.mutate(token.id)
+                      (await confirm({
+                        noun: t.kit.confirm.things.token,
+                        verb: t.kit.confirm.verbs.revoke,
+                        body: `${token.name} stops working at once; anything using it is refused.`,
+                      })) && revoke.mutate(token.id)
                     }
                     loading={revoke.isPending && revoke.variables === token.id}
                   >

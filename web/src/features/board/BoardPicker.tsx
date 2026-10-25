@@ -3,6 +3,7 @@ import { useBoards, useCreateBoard, useDeleteBoard, useUpdateBoard, type BoardSu
 import { useTeams } from "@/api/teams";
 import { Button, ErrorBanner, Field, Segmented } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { t } from "@/i18n";
 
 /** Chooses between a project's boards, which differ in whose work they draw;
  * most projects have one, and then there is nothing to choose. */
@@ -92,7 +93,7 @@ function ManageBoard({ board, isLast, onDeleted }: { board: BoardSummary; isLast
 
   async function deleteBoard() {
     const sure = await confirm({
-      noun: `board ${board.name}`,
+      noun: t.kit.confirm.things.board(board.name),
       body: `${board.name} and its swimlanes go. The issues it showed stay in the project.`,
     });
     // Not mutate's onSuccess: the refetched list can hide the picker first, and

@@ -3,6 +3,7 @@ import { useCreateInvite, useInvites, useWithdrawInvite, type CreatedInvite, typ
 import { Button, Card, ErrorBanner, Field, SectionTitle, Select, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 const roleChoices: Array<{
   value: InvitableRole;
@@ -144,8 +145,8 @@ function PendingInvites() {
               aria-label={`Withdraw the invitation for ${invite.email}`}
               onClick={async () =>
                 (await confirm({
-                  noun: "invitation",
-                  verb: "Withdraw",
+                  noun: t.kit.confirm.things.invitation,
+                  verb: t.kit.confirm.verbs.withdraw,
                   body: `The link sent to ${invite.email} stops working.`,
                 })) && withdraw.mutate(invite.id)
               }

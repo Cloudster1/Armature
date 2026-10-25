@@ -6,6 +6,7 @@ import { Button, Card, EmptyState, ErrorBanner, IconButton, ListSearch, Pager, S
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { LIBRARY_PAGE_SIZE } from "@/config";
+import { t } from "@/i18n";
 
 interface WorkflowCardsProps {
   focused?: string;
@@ -44,7 +45,7 @@ export function WorkflowCards({ focused, q, offset, onShow, canConfigure }: Work
             className="w-56"
             data-library-search=""
           />
-          {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, workflows.length, "workflow")}</span>}
+          {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, workflows.length, t.kit.counted.workflow)}</span>}
         </div>
         {canConfigure && (
           <Button size="sm" variant="secondary" onClick={() => navigate({ to: "/settings/workflows/new" })}>
@@ -131,7 +132,8 @@ function WorkflowCard({
                 data-action="delete"
                 aria-busy={remove.isPending}
                 onClick={async () =>
-                  (await confirm({ noun: "workflow", body: `${workflow.name} goes, if nothing still uses it.` })) && remove.mutate(workflow.id)
+                  (await confirm({ noun: t.kit.confirm.things.workflow, body: `${workflow.name} goes, if nothing still uses it.` })) &&
+                  remove.mutate(workflow.id)
                 }
               />
             )}

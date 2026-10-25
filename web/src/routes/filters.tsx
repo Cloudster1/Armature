@@ -6,6 +6,7 @@ import { useDeleteSavedFilter, useSavedFilters, useStarFilter, useSubscribeFilte
 import { EmptyState, IconButton, Menu, Page, PageHeader, Segmented, SelectInput, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { t } from "@/i18n";
 
 type View = "mine" | "shared" | "starred";
 
@@ -147,8 +148,11 @@ function FiltersPage() {
                             icon: <Icon.Trash />,
                             danger: true,
                             onSelect: async () =>
-                              (await confirm({ noun: "saved search", verb: "Delete", body: `${f.name} goes for everyone it was shared with.` })) &&
-                              remove.mutate(f.id),
+                              (await confirm({
+                                noun: t.kit.confirm.things.savedSearch,
+                                verb: t.kit.confirm.verbs.delete,
+                                body: `${f.name} goes for everyone it was shared with.`,
+                              })) && remove.mutate(f.id),
                             attrs: { "data-action": "filter-delete" },
                           },
                         ]}

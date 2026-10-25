@@ -4,6 +4,7 @@ import { Button, Checkbox, Dialog, ErrorBanner, Field, Tag, useToast } from "@/c
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useFormat } from "@/lib/format";
 import { absenceProblem, absencesListedFrom, formatAbsence, today } from "@/lib/week";
+import { t } from "@/i18n";
 
 /**
  * Somebody's absences with a form to add one, and each to change or take back.
@@ -37,7 +38,13 @@ export function AbsenceEditor({ userId, absences, empty, truncated = false }: { 
                   variant="ghost"
                   data-action="remove-absence"
                   onClick={async () => {
-                    if (!(await confirm({ noun: "absence", verb: "Remove", body: `${formatAbsence(absence, format.locale)} is no longer marked as away.` })))
+                    if (
+                      !(await confirm({
+                        noun: t.kit.confirm.things.absence,
+                        verb: t.kit.confirm.verbs.remove,
+                        body: `${formatAbsence(absence, format.locale)} is no longer marked as away.`,
+                      }))
+                    )
                       return;
                     remove.mutate(absence.id, { onSuccess: () => toast.success("Absence removed") });
                     if (editing?.id === absence.id) setEditing(null);

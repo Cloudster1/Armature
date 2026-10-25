@@ -17,6 +17,8 @@ import {
 import { Button, EmptyState, ErrorBanner, IconButton, Menu, Page, PageHeader, Segmented, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+// Named apart: this page calls each theme t.
+import { t as words } from "@/i18n";
 
 type View = "mine" | "shared";
 
@@ -267,7 +269,13 @@ function ThemesPage() {
                                 : t.inUse === 1
                                   ? "The one person using it goes back to the built-in theme."
                                   : `The ${t.inUse} people using it go back to the built-in theme.`;
-                            if (await confirm({ noun: "theme", verb: "Delete", body: `${t.name} and its files go for good. ${using}` })) {
+                            if (
+                              await confirm({
+                                noun: words.kit.confirm.things.theme,
+                                verb: words.kit.confirm.verbs.delete,
+                                body: `${t.name} and its files go for good. ${using}`,
+                              })
+                            ) {
                               remove.mutate(t.id, { onSuccess: () => toast.success(`Deleted ${t.name}`) });
                             }
                           },

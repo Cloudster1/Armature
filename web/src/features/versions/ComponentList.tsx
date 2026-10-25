@@ -4,6 +4,7 @@ import { Button, Card, Drawer, EmptyState, ErrorBanner, Field, IconButton, Menu,
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { PersonPicker, type Chosen } from "@/features/people/PersonPicker";
+import { t } from "@/i18n";
 
 // A project's parts, each with who looks after it and, when it says so, who
 // new work in it goes to.
@@ -69,8 +70,11 @@ export function ComponentList({ projectKey, canEdit }: { projectKey: string; can
                           icon: <Icon.Trash />,
                           danger: true,
                           onSelect: async () =>
-                            (await confirm({ noun: "component", verb: "Delete", body: `${c.name} goes; the issues in it simply leave it.` })) &&
-                            remove.mutate(c.id),
+                            (await confirm({
+                              noun: t.kit.confirm.things.component,
+                              verb: t.kit.confirm.verbs.delete,
+                              body: `${c.name} goes; the issues in it simply leave it.`,
+                            })) && remove.mutate(c.id),
                           attrs: { "data-action": "component-delete" },
                         },
                       ]}
