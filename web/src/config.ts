@@ -444,6 +444,10 @@ export const WORKING_HOURS_STEP = 0.25;
 export const WORKING_HOURS_DECIMALS = 2;
 /** A Monday, for naming the weekdays in the reader's language. */
 export const WEEKDAY_REFERENCE_MONDAY = "2024-01-01";
+/** A weekly rule's day as the server counts it, 0 for Sunday; a rule without one runs on Sunday. */
+export const RULE_WEEKDAY_ABSENT = 0;
+/** The day a rule switched to weekly runs on until another is picked: Monday. */
+export const RULE_WEEKDAY_DEFAULT = 1;
 /** What the holiday import offers to pick: iCalendar files. */
 export const HOLIDAY_FILE_ACCEPT = ".ics,text/calendar";
 /** The longest name a holiday or a calendar may have; the server holds the same bound. */

@@ -174,7 +174,7 @@ type Descriptor struct {
 	Label       string            `json:"label"`
 	Description string            `json:"description"`
 	Options     []workflow.Option `json:"options"`
-	// NeedsIssue says the action does nothing without an issue to act on.
+	// NeedsIssue says the condition or action means nothing without an issue.
 	NeedsIssue bool `json:"needsIssue,omitempty"`
 }
 
@@ -192,8 +192,8 @@ func Catalog() []Descriptor {
 		{Kind: "trigger", Type: TriggerScheduled, Label: "On a schedule", Description: "Runs every N hours, daily or weekly, over every issue a query matches.", Options: []workflow.Option{text("query", "Query", true)}},
 		{Kind: "trigger", Type: TriggerIncoming, Label: "An incoming call", Description: "Runs when something posts to the rule's address; the body may name an issueKey."},
 
-		{Kind: "condition", Type: ConditionNQL, Label: "The issue matches a query", Description: "Only when the issue is in the query's result.", Options: []workflow.Option{text("query", "Query", true)}},
-		{Kind: "condition", Type: ConditionFieldEqual, Label: "A field equals", Description: "status, priority, type, assignee (an id, or none) or label.", Options: []workflow.Option{text("field", "Field", true), text("value", "Value", true)}},
+		{Kind: "condition", Type: ConditionNQL, Label: "The issue matches a query", Description: "Only when the issue is in the query's result.", NeedsIssue: conditionNeedsIssue[ConditionNQL], Options: []workflow.Option{text("query", "Query", true)}},
+		{Kind: "condition", Type: ConditionFieldEqual, Label: "A field equals", Description: "status, priority, type, assignee (an id, or none) or label.", NeedsIssue: conditionNeedsIssue[ConditionFieldEqual], Options: []workflow.Option{text("field", "Field", true), text("value", "Value", true)}},
 		{Kind: "condition", Type: ConditionActorRole, Label: "The actor holds a role", Description: "Only when whoever caused the event holds one of these.", Options: []workflow.Option{{Name: "roles", Label: "Roles", Kind: workflow.OptionRoles, Required: true, Choices: workflow.OrgRoles}}},
 
 		{Kind: "action", Type: ActionSetField, Label: "Set a field", Description: "priority (lowest to highest), summary, or due as +N days.", NeedsIssue: true, Options: []workflow.Option{text("field", "Field", true), text("value", "Value", true)}},

@@ -4,6 +4,7 @@ import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Labelled, Sel
 import { Icon } from "@/components/icons";
 import { LabelInput } from "@/features/labels/LabelInput";
 import { t } from "@/i18n";
+import { RULE_WEEKDAY_ABSENT, RULE_WEEKDAY_DEFAULT } from "@/config";
 
 function blankInput(): RuleInput {
   return { name: "", trigger: { kind: "issue.created" }, conditions: [], actions: [{ kind: "add_label" }], allowOwnEvents: false };
@@ -130,16 +131,20 @@ export function RuleEditor({
                   label={t.projectSetup.editor.rhythm}
                   id="field-rhythm"
                   value={draft.trigger.schedule?.unit ?? "hours"}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const unit = e.target.value as "hours" | "daily" | "weekly";
+                    // A weekly rule is given its day at once, so what the select shows is what is saved.
+                    const weekday = unit === "weekly" ? (draft.trigger.schedule?.weekday ?? RULE_WEEKDAY_DEFAULT) : draft.trigger.schedule?.weekday;
                     setTrigger({
                       schedule: {
                         ...(draft.trigger.schedule ?? {}),
-                        unit: e.target.value as "hours" | "daily" | "weekly",
+                        unit,
                         every: draft.trigger.schedule?.every ?? 1,
                         at: draft.trigger.schedule?.at ?? "09:00",
+                        weekday,
                       },
-                    })
-                  }
+                    });
+                  }}
                 >
                   <option value="hours">{t.projectSetup.editor.everyHours}</option>
                   <option value="daily">{t.projectSetup.editor.daily}</option>
@@ -165,7 +170,7 @@ export function RuleEditor({
                   <Select
                     label={t.projectSetup.editor.on}
                     id="field-weekday"
-                    value={String(draft.trigger.schedule?.weekday ?? 1)}
+                    value={String(draft.trigger.schedule?.weekday ?? RULE_WEEKDAY_ABSENT)}
                     onChange={(e) => setTrigger({ schedule: { ...(draft.trigger.schedule ?? { unit: "weekly" }), weekday: Number(e.target.value) } })}
                   >
                     {t.projectSetup.editor.weekdays.map((day, i) => (
