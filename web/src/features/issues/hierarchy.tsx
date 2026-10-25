@@ -5,6 +5,7 @@ import { useCreateIssue, useIssueHierarchy, useIssueTypes, useSetParent, type Is
 import { useParentCandidates } from "@/api/issueReads";
 import { Button, ErrorBanner, Input, ProgressBar as Bar, SelectInput, Textarea, cx } from "@/components/ui";
 import { Avatar, StatusBadge, TypeBadge } from "./badges";
+import { t } from "@/i18n";
 
 /**
  * A roll-up of the work directly underneath an issue. Three segments rather
@@ -17,7 +18,7 @@ export function ProgressBar({ progress, className }: { progress: Progress; class
       <Bar
         value={progress.done}
         max={progress.total}
-        label={`${progress.done} of ${progress.total} done`}
+        label={t.issuePanels.hierarchy.progress(progress.done, progress.total)}
         size="xs"
         className="min-w-24 flex-1"
         segments={[
@@ -25,9 +26,7 @@ export function ProgressBar({ progress, className }: { progress: Progress; class
           { value: progress.inProgress, tone: "accent" },
         ]}
       />
-      <span className="shrink-0 text-2xs whitespace-nowrap text-ink-muted">
-        {progress.done}/{progress.total} done
-      </span>
+      <span className="shrink-0 text-2xs whitespace-nowrap text-ink-muted">{t.issuePanels.hierarchy.progressShort(progress.done, progress.total)}</span>
     </div>
   );
 }
@@ -37,7 +36,7 @@ export function Ancestry({ ancestors }: { ancestors: Issue[] }) {
   if (ancestors.length === 0) return null;
 
   return (
-    <nav aria-label="Parent issues" className="flex flex-wrap items-center gap-1.5 text-xs">
+    <nav aria-label={t.issuePanels.hierarchy.parentIssues} className="flex flex-wrap items-center gap-1.5 text-xs">
       {ancestors.map((ancestor) => (
         <span key={ancestor.id} className="flex items-center gap-1.5">
           <TypeBadge icon={ancestor.type.icon} name={ancestor.type.name} />
@@ -69,18 +68,20 @@ export function ChildrenPanel({ issueKey }: { issueKey: string }) {
   return (
     <section>
       <div className="mb-3 flex items-center gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Child issues {data.children.length > 0 && `(${data.children.length})`}</h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
+          {t.issuePanels.hierarchy.childIssues} {data.children.length > 0 && `(${data.children.length})`}
+        </h2>
         <ProgressBar progress={data.progress} className="max-w-56 flex-1" />
         <span className="flex-1" />
         {canHaveChildren && !adding && (
           <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-            Add child
+            {t.issuePanels.hierarchy.addChild}
           </Button>
         )}
       </div>
 
       {data.children.length === 0 ? (
-        <p className="text-sm text-ink-subtle">Nothing underneath this yet.</p>
+        <p className="text-sm text-ink-subtle">{t.issuePanels.hierarchy.nothingUnder}</p>
       ) : (
         <ul className="divide-y divide-border rounded-md border border-border">
           {data.children.map((child) => (
@@ -148,7 +149,7 @@ function AddChildForm({
       {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
       <div className="flex gap-2">
         <label htmlFor="child-type" className="sr-only">
-          Child type
+          {t.issuePanels.hierarchy.childType}
         </label>
         <SelectInput id="child-type" value={typeId} onChange={(e) => setTypeId(e.target.value)} controlSize="sm">
           {types.map((type) => (
@@ -158,33 +159,33 @@ function AddChildForm({
           ))}
         </SelectInput>
         <label htmlFor="child-summary" className="sr-only">
-          What needs doing
+          {t.issuePanels.hierarchy.whatNeedsDoing}
         </label>
         <Input
           id="child-summary"
           value={summary}
           autoFocus
           onChange={(e) => setSummary(e.target.value)}
-          placeholder="What needs doing?"
+          placeholder={t.issuePanels.hierarchy.whatNeedsDoingPlaceholder}
           controlSize="sm"
           className="min-w-0 flex-1"
         />
         <Button type="submit" size="sm" loading={create.isPending} disabled={!summary.trim()}>
-          Add
+          {t.issuePanels.common.add}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-          Cancel
+          {t.issuePanels.common.cancel}
         </Button>
       </div>
       <label htmlFor="child-description" className="sr-only">
-        Description
+        {t.issuePanels.hierarchy.description}
       </label>
       <Textarea
         id="child-description"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={2}
-        placeholder="Description, if a line is not enough. Optional."
+        placeholder={t.issuePanels.hierarchy.descriptionPlaceholder}
       />
     </form>
   );
@@ -210,13 +211,13 @@ export function ParentPicker({ issue }: { issue: Issue }) {
   const detachable = issue.type.level >= 0;
 
   if (!words && candidates.length === 0) {
-    return <span className="text-xs text-ink-subtle">Nothing to sit under</span>;
+    return <span className="text-xs text-ink-subtle">{t.issuePanels.hierarchy.nothingToSitUnder}</span>;
   }
 
   return (
     <span className="flex flex-col items-end gap-1">
       <label htmlFor="issue-parent-search" className="sr-only">
-        Find a parent
+        {t.issuePanels.hierarchy.findParent}
       </label>
       <Input
         id="issue-parent-search"
@@ -224,11 +225,11 @@ export function ParentPicker({ issue }: { issue: Issue }) {
         controlSize="sm"
         value={words}
         onChange={(e) => setWords(e.target.value)}
-        placeholder="Find a parent"
+        placeholder={t.issuePanels.hierarchy.findParent}
         className="max-w-44 text-xs"
       />
       <label htmlFor="issue-parent" className="sr-only">
-        Parent
+        {t.issuePanels.hierarchy.parent}
       </label>
       <SelectInput
         id="issue-parent"
@@ -237,7 +238,7 @@ export function ParentPicker({ issue }: { issue: Issue }) {
         controlSize="sm"
         className="max-w-44 truncate text-xs"
       >
-        {(detachable || !issue.parent) && <option value="">None</option>}
+        {(detachable || !issue.parent) && <option value="">{t.issuePanels.hierarchy.none}</option>}
         {candidates.map((candidate) => (
           <option key={candidate.id} value={candidate.key}>
             {candidate.key} · {candidate.summary}

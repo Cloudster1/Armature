@@ -6,6 +6,7 @@ import { Icon } from "@/components/icons";
 import { useIssueDrawer, useIssueList } from "./IssueDrawer";
 import { Avatar, PriorityBadge, StatusBadge, TypeBadge, RelativeTime } from "./badges";
 import { LabelChips } from "@/features/labels/LabelChip";
+import { t } from "@/i18n";
 
 /**
  * Issues as rows. The columns are the things somebody scans a list for, in the
@@ -47,22 +48,22 @@ export function IssueTable({
           {selecting && (
             <Th className="w-8">
               <Checkbox
-                label={<span className="sr-only">Select every issue on this page</span>}
+                label={<span className="sr-only">{t.issueList.table.selectAll}</span>}
                 checked={allTicked}
                 onChange={(e) => onSelect(e.target.checked ? new Set(issues.map((i) => i.key)) : new Set())}
                 data-select-all
               />
             </Th>
           )}
-          <Th className="w-8" aria-label="Type" />
-          <Th className="w-24">Key</Th>
-          <Th>Summary</Th>
-          {showProject && <Th className="w-28">Project</Th>}
-          <Th className="w-16" aria-label="Priority" />
-          <Th className="w-36">Status</Th>
-          <Th className="w-10" aria-label="Assignee" />
-          <Th className="w-24 text-right">Updated</Th>
-          <Th className="w-10" aria-label="Open beside the list" />
+          <Th className="w-8" aria-label={t.issueList.table.type} />
+          <Th className="w-24">{t.issueList.table.key}</Th>
+          <Th>{t.issueList.table.summary}</Th>
+          {showProject && <Th className="w-28">{t.issueList.table.project}</Th>}
+          <Th className="w-16" aria-label={t.issueList.table.priority} />
+          <Th className="w-36">{t.issueList.table.status}</Th>
+          <Th className="w-10" aria-label={t.issueList.table.assignee} />
+          <Th className="w-24 text-right">{t.issueList.table.updated}</Th>
+          <Th className="w-10" aria-label={t.issueList.table.openBeside} />
         </tr>
       </thead>
       <tbody>
@@ -78,7 +79,7 @@ export function IssueTable({
             {selecting && (
               <Td>
                 <Checkbox
-                  label={<span className="sr-only">Select {issue.key}</span>}
+                  label={<span className="sr-only">{t.issueList.table.select(issue.key)}</span>}
                   checked={selected.has(issue.key)}
                   onChange={(e) => toggle(issue.key, e.target.checked)}
                   data-select-issue={issue.key}
@@ -117,7 +118,7 @@ export function IssueTable({
             <Td className="text-right">
               <IconButton
                 icon={<Icon.ChevronRight />}
-                label={`Open ${issue.key} beside the list`}
+                label={t.issueList.table.openKeyBeside(issue.key)}
                 size="sm"
                 onClick={() => drawer.open(issue.key)}
                 data-open-drawer={issue.key}

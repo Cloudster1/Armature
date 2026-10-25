@@ -4,6 +4,7 @@ import { ISSUE_PANEL_DOCK_MIN_PX, ISSUE_PANEL_WIDTH } from "@/config";
 import { useMinWidth } from "@/features/shell/state";
 import { indexOf, useIssueDrawer } from "./IssueDrawer";
 import { IssuePage } from "./IssuePage";
+import { t } from "@/i18n";
 
 /**
  * The issue beside the list: a docked column on a wide screen, the drawer on
@@ -16,8 +17,15 @@ export function IssuePanel() {
   const at = indexOf(keys, current);
   const actions = keys.length > 0 && (
     <>
-      <IconButton icon={<Icon.ChevronUp />} label="Previous issue" size="sm" onClick={() => step(-1)} disabled={at <= 0} data-action="panel-prev" />
-      <IconButton icon={<Icon.ChevronDown />} label="Next issue" size="sm" onClick={() => step(1)} disabled={at >= keys.length - 1} data-action="panel-next" />
+      <IconButton icon={<Icon.ChevronUp />} label={t.issueView.panel.previous} size="sm" onClick={() => step(-1)} disabled={at <= 0} data-action="panel-prev" />
+      <IconButton
+        icon={<Icon.ChevronDown />}
+        label={t.issueView.panel.next}
+        size="sm"
+        onClick={() => step(1)}
+        disabled={at >= keys.length - 1}
+        data-action="panel-next"
+      />
     </>
   );
   // Keyed by issue, so nothing typed on one issue is drawn under the next.

@@ -15,6 +15,7 @@ import { WorklogPanel } from "@/features/time/TimeTracking";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { keyOf, namedFields, placesIn } from "./view/areas";
 import { renderPlace } from "./view/slots";
+import { t } from "@/i18n";
 
 /** What the issue is and what happened on it, in the order the rail offers. */
 export function IssueMain({ issue, editable, me, isDesk, places }: { issue: Issue; editable: boolean; me?: string; isDesk: boolean; places: Placement[] }) {
@@ -28,7 +29,7 @@ export function IssueMain({ issue, editable, me, isDesk, places }: { issue: Issu
   return (
     <div className="min-w-0 space-y-6">
       {described && (
-        <Section id="description" title="Description" hidden>
+        <Section id="description" title={t.issueView.sections.description} hidden>
           <Description issueKey={issue.key} doc={issue.description ?? null} updatedAt={issue.updatedAt} editable={editable} />
         </Section>
       )}
@@ -41,11 +42,11 @@ export function IssueMain({ issue, editable, me, isDesk, places }: { issue: Issu
           </dl>
         </Card>
       )}
-      <Section id="activity" title="Activity">
+      <Section id="activity" title={t.issueView.sections.activity}>
         <Activity issueKey={issue.key} me={me} />
       </Section>
       <Section id="attachments" hidden>
-        <AttachmentPanel issueKey={issue.key} editable={editable} note={isDesk ? "The customer sees these files on their request." : undefined} />
+        <AttachmentPanel issueKey={issue.key} editable={editable} note={isDesk ? t.issueView.sections.customerSeesFiles : undefined} />
       </Section>
       <Section id="work" hidden>
         <WorklogPanel issue={issue} editable={editable} me={me} />
@@ -59,13 +60,13 @@ export function IssueMain({ issue, editable, me, isDesk, places }: { issue: Issu
       <Section id="links" hidden>
         <LinksPanel issueKey={issue.key} editable={editable} />
       </Section>
-      <Section id="pages" title="References" hidden>
+      <Section id="pages" title={t.issueView.sections.references} hidden>
         <PagesPanel issueKey={issue.key} editable={editable} />
       </Section>
       <Section id="watchers" hidden>
         <WatchersPanel issueKey={issue.key} editable={editable} me={me} />
       </Section>
-      <Section id="history" title="History">
+      <Section id="history" title={t.issueView.sections.history}>
         <History issueKey={issue.key} />
       </Section>
     </div>

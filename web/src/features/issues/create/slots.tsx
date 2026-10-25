@@ -10,6 +10,7 @@ import { Field, Select } from "@/components/ui";
 import { DESCRIPTION_ROWS } from "@/config";
 import type { Answer, Draft } from "./draft";
 import { FieldAnswer, LabelPicks, ManyOf, OneOf, PersonSelect } from "./controls";
+import { t } from "@/i18n";
 
 export interface AskProps {
   draft: Draft;
@@ -26,22 +27,29 @@ export interface AskProps {
 export const slotAsks: Record<Slot, ((props: AskProps) => ReactNode) | null> = {
   description: ({ draft, set }) => (
     <Field
-      label="Description"
+      label={t.issueList.create.description}
       rows={DESCRIPTION_ROWS}
       value={draft.description}
       onChange={(e) => set({ description: e.target.value })}
-      placeholder="Why it matters and what done looks like"
+      placeholder={t.issueList.create.descriptionPlaceholder}
     />
   ),
-  assignee: ({ draft, set }) => <PersonSelect label="Assignee" value={draft.assigneeId} onPick={(assigneeId) => set({ assigneeId })} />,
-  reporter: ({ draft, set }) => <PersonSelect label="Reporter" value={draft.reporterId} onPick={(reporterId) => set({ reporterId })} customers />,
+  assignee: ({ draft, set }) => <PersonSelect label={t.issueList.create.assignee} value={draft.assigneeId} onPick={(assigneeId) => set({ assigneeId })} />,
+  reporter: ({ draft, set }) => (
+    <PersonSelect label={t.issueList.create.reporter} value={draft.reporterId} onPick={(reporterId) => set({ reporterId })} customers />
+  ),
   parent: ({ draft, set }) => (
-    <Field label="Parent" value={draft.parentKey} onChange={(e) => set({ parentKey: e.target.value })} placeholder="The key of the issue above it" />
+    <Field
+      label={t.issueList.create.parent}
+      value={draft.parentKey}
+      onChange={(e) => set({ parentKey: e.target.value })}
+      placeholder={t.issueList.create.parentPlaceholder}
+    />
   ),
   schedule: ({ draft, set }) => (
     <div className="grid gap-3 sm:grid-cols-2">
-      <Field label="Starts" type="date" value={draft.startDate} onChange={(e) => set({ startDate: e.target.value })} />
-      <Field label="Due" type="date" value={draft.dueDate} onChange={(e) => set({ dueDate: e.target.value })} />
+      <Field label={t.issueList.create.starts} type="date" value={draft.startDate} onChange={(e) => set({ startDate: e.target.value })} />
+      <Field label={t.issueList.create.due} type="date" value={draft.dueDate} onChange={(e) => set({ dueDate: e.target.value })} />
     </div>
   ),
   sprint: (props) => <SprintAsk {...props} />,
@@ -49,18 +57,20 @@ export const slotAsks: Record<Slot, ((props: AskProps) => ReactNode) | null> = {
   fixVersions: (props) => <VersionAsk {...props} role="fix" />,
   affectsVersions: (props) => <VersionAsk {...props} role="affects" />,
   components: (props) => <ComponentAsk {...props} />,
-  estimate: ({ draft, set }) => <Field label="Estimate" type="number" step="any" value={draft.estimate} onChange={(e) => set({ estimate: e.target.value })} />,
+  estimate: ({ draft, set }) => (
+    <Field label={t.issueList.create.estimate} type="number" step="any" value={draft.estimate} onChange={(e) => set({ estimate: e.target.value })} />
+  ),
   team: (props) => <TeamAsk {...props} />,
   // The portal decides what a request was raised as, and a goal is a clock the
   // desk starts; neither is anybody's to answer here.
   request: null,
   goals: null,
   priority: ({ draft, set }) => (
-    <Select label="Priority" value={draft.priority} onChange={(e) => set({ priority: e.target.value as Priority })} className="capitalize">
-      <option value="">The project's usual</option>
+    <Select label={t.issueList.create.priority} value={draft.priority} onChange={(e) => set({ priority: e.target.value as Priority })} className="capitalize">
+      <option value="">{t.issueList.create.usualPriority}</option>
       {PRIORITIES.map((priority) => (
         <option key={priority} value={priority}>
-          {priority}
+          {t.issueList.priority.options[priority]}
         </option>
       ))}
     </Select>
@@ -68,10 +78,10 @@ export const slotAsks: Record<Slot, ((props: AskProps) => ReactNode) | null> = {
   labels: (props) => <LabelAsk {...props} />,
   time: ({ draft, set }) => (
     <Field
-      label="Time estimate"
+      label={t.issueList.create.timeEstimate}
       type="number"
       step="any"
-      hint="In minutes."
+      hint={t.issueList.create.inMinutes}
       value={draft.timeEstimate}
       onChange={(e) => set({ timeEstimate: e.target.value })}
     />
@@ -100,31 +110,57 @@ function keep(props: AskProps, fieldId: string, answer: Answer) {
 function SprintAsk({ draft, set, projectKey }: AskProps) {
   const { data } = useSprints(projectKey);
   const open = (data?.sprints ?? []).filter((sprint) => sprint.state !== "closed");
-  return <OneOf label="Sprint" options={open} value={draft.sprintId} onPick={(sprintId) => set({ sprintId })} none="The backlog" />;
+  return (
+    <OneOf label={t.issueList.create.sprint} options={open} value={draft.sprintId} onPick={(sprintId) => set({ sprintId })} none={t.issueList.create.backlog} />
+  );
 }
 
 function MilestoneAsk({ draft, set, projectKey }: AskProps) {
   const { data } = useMilestones(projectKey);
-  return <OneOf label="Milestone" options={data?.milestones ?? []} value={draft.milestoneId} onPick={(milestoneId) => set({ milestoneId })} />;
+  return (
+    <OneOf label={t.issueList.create.milestone} options={data?.milestones ?? []} value={draft.milestoneId} onPick={(milestoneId) => set({ milestoneId })} />
+  );
 }
 
 function TeamAsk({ draft, set, projectKey }: AskProps) {
   const { data } = useTeams(projectKey);
-  return <OneOf label="Team" options={data?.teams ?? []} value={draft.teamId} onPick={(teamId) => set({ teamId })} none="The project at large" />;
+  return (
+    <OneOf
+      label={t.issueList.create.team}
+      options={data?.teams ?? []}
+      value={draft.teamId}
+      onPick={(teamId) => set({ teamId })}
+      none={t.issueList.create.wholeProject}
+    />
+  );
 }
 
 function VersionAsk({ draft, set, projectKey, role }: AskProps & { role: "fix" | "affects" }) {
   const { data } = useVersions(projectKey);
   const open = (data?.versions ?? []).filter((version) => !version.archivedAt);
   if (role === "affects") {
-    return <ManyOf label="Affects versions" options={open} chosen={draft.affectsVersionIds} onChange={(affectsVersionIds) => set({ affectsVersionIds })} />;
+    return (
+      <ManyOf
+        label={t.issueList.create.affectsVersions}
+        options={open}
+        chosen={draft.affectsVersionIds}
+        onChange={(affectsVersionIds) => set({ affectsVersionIds })}
+      />
+    );
   }
-  return <ManyOf label="Fix versions" options={open} chosen={draft.fixVersionIds} onChange={(fixVersionIds) => set({ fixVersionIds })} />;
+  return <ManyOf label={t.issueList.create.fixVersions} options={open} chosen={draft.fixVersionIds} onChange={(fixVersionIds) => set({ fixVersionIds })} />;
 }
 
 function ComponentAsk({ draft, set, projectKey }: AskProps) {
   const { data } = useComponents(projectKey);
-  return <ManyOf label="Components" options={data?.components ?? []} chosen={draft.componentIds} onChange={(componentIds) => set({ componentIds })} />;
+  return (
+    <ManyOf
+      label={t.issueList.create.components}
+      options={data?.components ?? []}
+      chosen={draft.componentIds}
+      onChange={(componentIds) => set({ componentIds })}
+    />
+  );
 }
 
 function LabelAsk({ draft, set }: AskProps) {

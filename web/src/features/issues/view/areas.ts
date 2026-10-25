@@ -1,11 +1,32 @@
 import type { Area, Placement } from "@/api/arrange";
+import { t } from "@/i18n";
 
 /** The groups the facts fold into, and what each is called on the page. */
 export const ASIDE_AREAS: { area: Area; title: string }[] = [
-  { area: "people", title: "People" },
-  { area: "planning", title: "Planning" },
-  { area: "tracking", title: "Tracking" },
-  { area: "more", title: "Fields" },
+  {
+    area: "people",
+    get title() {
+      return t.issueView.areas.people;
+    },
+  },
+  {
+    area: "planning",
+    get title() {
+      return t.issueView.areas.planning;
+    },
+  },
+  {
+    area: "tracking",
+    get title() {
+      return t.issueView.areas.tracking;
+    },
+  },
+  {
+    area: "more",
+    get title() {
+      return t.issueView.areas.fields;
+    },
+  },
 ];
 
 /** What a place is called: a slot this tracker knows, or one of the project's own fields. */

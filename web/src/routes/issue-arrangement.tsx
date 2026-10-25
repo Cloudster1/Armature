@@ -4,6 +4,7 @@ import { useProject } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
 import { EmptyState, Page, PageHeader } from "@/components/ui";
 import { ProjectArrangement } from "@/features/arrange/pages";
+import { t } from "@/i18n";
 
 /** Which fields an issue of each type shows here, where, and in what order. */
 export const issueArrangementRoute = createRoute({
@@ -24,13 +25,13 @@ function IssueArrangementPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Issue view"
-        meta="Which fields an issue shows, where, and in what order, for each issue type. What this project says nothing about follows the default for all projects."
+        title={t.issueView.arrangement.title}
+        meta={t.issueView.arrangement.meta}
       />
       {canAdminister(access, projectKey) ? (
         <ProjectArrangement projectKey={projectKey} />
       ) : (
-        <EmptyState title="Only the project's administrators arrange its issues" description="Ask one of them to change what an issue shows." />
+        <EmptyState title={t.issueView.arrangement.onlyAdmins} description={t.issueView.arrangement.askOne} />
       )}
     </Page>
   );

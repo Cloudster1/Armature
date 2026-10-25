@@ -7,6 +7,7 @@ import { StatusBadge } from "./badges";
 import { Ancestry } from "./hierarchy";
 import { TypeField } from "./TypePicker";
 import { CloneMoveMenu } from "@/features/filters/CloneMoveMenu";
+import { t } from "@/i18n";
 
 export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; editable: boolean; inDrawer: boolean }) {
   return (
@@ -38,7 +39,7 @@ export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; edita
             className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
             data-open-page
           >
-            Open the page <Icon.External />
+            {t.issueView.header.openPage} <Icon.External />
           </Link>
         )}
       </div>
@@ -103,7 +104,7 @@ function SummaryEditor({ issueKey, summary, updatedAt, editable }: { issueKey: s
     return (
       <div className="min-w-0 flex-1">
         <Input
-          aria-label="Summary"
+          aria-label={t.issueView.header.summary}
           value={draft}
           autoFocus
           onChange={(e) => setDraft(e.target.value)}
@@ -117,7 +118,8 @@ function SummaryEditor({ issueKey, summary, updatedAt, editable }: { issueKey: s
         {update.error && <p className="mt-1 text-sm text-danger">{(update.error as Error).message}</p>}
         {overtaken && (
           <p className="mt-1 text-sm text-ink-muted" data-newer-summary>
-            It now reads: <span className="font-medium text-ink">{summary}</span>. Press Enter to save yours over it.
+            {t.issueView.header.nowReads} <span className="font-medium text-ink">{summary}</span>
+            {t.issueView.header.saveOver}
           </p>
         )}
       </div>
@@ -126,7 +128,7 @@ function SummaryEditor({ issueKey, summary, updatedAt, editable }: { issueKey: s
   return (
     <div className="flex min-w-0 flex-1 items-start gap-1">
       <h1 className="min-w-0 text-lg font-semibold tracking-tight text-ink">{summary}</h1>
-      {editable && <IconButton icon={<Icon.Edit />} label="Edit the summary" size="sm" onClick={start} data-action="edit-summary" />}
+      {editable && <IconButton icon={<Icon.Edit />} label={t.issueView.header.editSummary} size="sm" onClick={start} data-action="edit-summary" />}
     </div>
   );
 }
@@ -143,7 +145,7 @@ function TransitionBar({ issueKey }: { issueKey: string }) {
   return (
     <div className="flex max-w-full min-w-0 flex-col items-end gap-2">
       {transitions.length === 0 ? (
-        <p className="text-sm text-ink-subtle">This issue has nowhere to go from here.</p>
+        <p className="text-sm text-ink-subtle">{t.issueView.header.nowhereToGo}</p>
       ) : (
         <div className="flex flex-wrap justify-end gap-2">
           {transitions.map((t) => (

@@ -9,6 +9,7 @@ import { applyRest, type Leftover } from "./create/apply";
 import { askedPlaces, createBody, emptyDraft, type Draft } from "./create/draft";
 import { renderAsk } from "./create/slots";
 import { ProjectPicker } from "@/features/projects/ProjectPicker";
+import { t } from "@/i18n";
 
 // One dialog for making an issue from anywhere. It asks for what the project
 // arranged for this issue type, in the order the issue page draws it.
@@ -61,10 +62,10 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
       void navigate({ to: "/issues/$issueKey", params: { issueKey: issue.key } });
       return;
     }
-    toast.success(`Created ${issue.key}`, {
+    toast.success(t.issueList.create.created(issue.key), {
       link: (
         <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="font-medium text-accent hover:underline">
-          Open
+          {t.issueList.create.open}
         </Link>
       ),
     });
@@ -89,26 +90,39 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
     <Dialog
       open={open}
       onClose={onClose}
-      title="New issue"
+      title={t.issueList.create.title}
       attrs={{ "data-create-issue": "" }}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            {made ? "Done" : "Cancel"}
+            {made ? t.issueList.create.done : t.issueList.create.cancel}
           </Button>
           <Button variant="secondary" onClick={() => submit(true)} loading={create.isPending} disabled={!ready}>
-            Create and open
+            {t.issueList.create.createAndOpen}
           </Button>
           <Button type="submit" form="create-issue" loading={create.isPending} disabled={!ready}>
-            Create issue
+            {t.issueList.create.create}
           </Button>
         </>
       }
     >
       <form id="create-issue" onSubmit={onSubmit} className="space-y-3" noValidate>
-        {!projectKey && <ProjectPicker label="Project" value={project} onChange={setProject} />}
-        <Field label="Summary" value={draft.summary} onChange={(e) => set({ summary: e.target.value })} autoFocus required placeholder="What needs doing" />
-        <Select label="Type" id="issue-type" aria-label="Issue type" value={chosenType} onChange={(e) => setTypeId(e.target.value)}>
+        {!projectKey && <ProjectPicker label={t.issueList.create.project} value={project} onChange={setProject} />}
+        <Field
+          label={t.issueList.create.summary}
+          value={draft.summary}
+          onChange={(e) => set({ summary: e.target.value })}
+          autoFocus
+          required
+          placeholder={t.issueList.create.summaryPlaceholder}
+        />
+        <Select
+          label={t.issueList.create.type}
+          id="issue-type"
+          aria-label={t.issueList.create.issueType}
+          value={chosenType}
+          onChange={(e) => setTypeId(e.target.value)}
+        >
           {types.map((type) => (
             <option key={type.id} value={type.id}>
               {type.name}
@@ -133,11 +147,9 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
 function Refused({ issueKey, left }: { issueKey: string; left: Leftover[] }) {
   return (
     <ErrorBanner reveal>
-      <span data-create-refused={issueKey}>
-        {issueKey} was created, but this did not stick: {left.map((each) => `${each.what} (${each.why})`).join("; ")}. Close this and set it on the issue.
-      </span>{" "}
+      <span data-create-refused={issueKey}>{t.issueList.create.refused(issueKey, left.map((each) => `${each.what} (${each.why})`).join("; "))}</span>{" "}
       <Link to="/issues/$issueKey" params={{ issueKey }} className="font-medium underline">
-        Open {issueKey}
+        {t.issueList.create.openKey(issueKey)}
       </Link>
     </ErrorBanner>
   );

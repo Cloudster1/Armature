@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { useRemoteLinks, useRemoveRemoteLink, type RemoteLink } from "@/api/remoteLinks";
 import { Button, ErrorBanner } from "@/components/ui";
+import { t } from "@/i18n";
 
 type Relation = RemoteLink["relation"];
 
 // Each relation under a heading of its own, pages first, since most links are.
-const groups: { relation: Relation; heading: string; noun: string }[] = [
-  { relation: "page", heading: "Pages", noun: "page" },
-  { relation: "requirement", heading: "Requirements", noun: "requirement" },
-];
+const relations: Relation[] = ["page", "requirement"];
 
 /**
  * Pages and requirements in other applications about the issue, put here by the
@@ -24,7 +22,8 @@ export function PagesPanel({ issueKey, editable }: { issueKey: string; editable:
   return (
     <section data-testid="pages-panel" className="space-y-4">
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
-      {groups.map(({ relation, heading, noun }) => {
+      {relations.map((relation) => {
+        const heading = t.issuePanels.pages.headings[relation]!;
         const held = links.filter((link) => link.relation === relation);
         if (held.length === 0) return null;
         return (
@@ -44,10 +43,10 @@ export function PagesPanel({ issueKey, editable }: { issueKey: string; editable:
                     <Button
                       variant="link"
                       onClick={() => remove.mutate({ key: issueKey, id: link.id })}
-                      aria-label={`Remove the ${noun} ${link.title}`}
+                      aria-label={t.issuePanels.pages.remove[relation]!(link.title)}
                       className="text-xs text-ink-subtle hover:text-danger"
                     >
-                      Remove
+                      {t.issuePanels.common.remove}
                     </Button>
                   )}
                 </li>

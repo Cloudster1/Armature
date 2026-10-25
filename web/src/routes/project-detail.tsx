@@ -34,6 +34,7 @@ import {
 import { Icon } from "@/components/icons";
 import { StatusStrip } from "@/features/projects/StatusStrip";
 import { ISSUE_PAGE_SIZE } from "@/config";
+import { t } from "@/i18n";
 
 export const projectDetailRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -162,7 +163,7 @@ function ProjectDetail() {
       <PageHeader
         crumb={
           <Link to="/projects" className="hover:text-ink">
-            Projects
+            {t.issueList.page.crumb}
           </Link>
         }
         title={
@@ -171,26 +172,26 @@ function ProjectDetail() {
             <Tag className="font-mono">{projectKey}</Tag>
           </>
         }
-        meta={project ? `${project.openIssueCount} open of ${project.issueCount}${project.leadName ? ` · led by ${project.leadName}` : ""}` : undefined}
-        actions={<Button onClick={() => setCreating(true)}>New issue</Button>}
+        meta={project ? t.issueList.page.meta(project.openIssueCount, project.issueCount, project.leadName ?? "") : undefined}
+        actions={<Button onClick={() => setCreating(true)}>{t.issueList.page.newIssue}</Button>}
       />
 
       <CreateIssueDialog open={creating} onClose={() => setCreating(false)} projectKey={projectKey} />
       <StatusStrip projectKey={projectKey} latest={project?.status} canPost={canAdminister(access, projectKey)} />
 
       <Toolbar
-        label="Narrow the issues"
+        label={t.issueList.page.narrow}
         start={
           <>
             <Segmented
-              label="Filter issues"
+              label={t.issueList.page.filterIssues}
               value={scope}
               onChange={narrowing(setScope)}
               options={(["open", "all", "mine"] as Scope[]).map((option) => ({
                 value: option,
                 // Drawn capitalised but lower case in the DOM, which is how the
                 // filter reads in a sentence and in a test.
-                label: <span className="capitalize">{option}</span>,
+                label: <span className="capitalize">{t.issueList.page.scopes[option]}</span>,
               }))}
             />
             <div className="flex min-w-56 max-w-md flex-1 items-center gap-1">
@@ -199,41 +200,49 @@ function ProjectDetail() {
                   type="search"
                   value={text}
                   onChange={(e) => narrowing(setText)(e.target.value)}
-                  placeholder="Search summaries"
-                  aria-label="Search issues"
+                  placeholder={t.issueList.page.searchSummaries}
+                  aria-label={t.issueList.page.searchIssues}
                 />
               ) : (
-                <QueryInput value={query} onSubmit={narrowing(setQuery)} error={issueError} compact label="Search issues with a query" project={projectKey} />
+                <QueryInput
+                  value={query}
+                  onSubmit={narrowing(setQuery)}
+                  error={issueError}
+                  compact
+                  label={t.issueList.page.searchWithQuery}
+                  project={projectKey}
+                />
               )}
               <Segmented<SearchMode>
-                label="Search mode"
+                label={t.issueList.page.searchMode}
                 size="sm"
                 value={mode}
                 onChange={narrowing(setMode)}
                 options={[
-                  { value: "words", label: "Words" },
-                  { value: "query", label: "Query" },
+                  { value: "words", label: t.issueList.page.words },
+                  { value: "query", label: t.issueList.page.query },
                 ]}
               />
             </div>
             <Popover
               open={filtersOpen}
               onClose={() => setFiltersOpen(false)}
-              label="Filters"
+              label={t.issueList.page.filters}
               trigger={
                 <Button variant="secondary" icon={<Icon.Filter />} onClick={() => setFiltersOpen((o) => !o)} aria-expanded={filtersOpen} data-action="filters">
-                  Filters{activeFilters > 0 && <Tag className="ml-1 bg-accent-subtle text-accent">{activeFilters}</Tag>}
+                  {t.issueList.page.filters}
+                  {activeFilters > 0 && <Tag className="ml-1 bg-accent-subtle text-accent">{activeFilters}</Tag>}
                 </Button>
               }
             >
               <div className="w-64 space-y-3">
-                <Labelled id="filter-label" label="Label">
+                <Labelled id="filter-label" label={t.issueList.page.label}>
                   <LabelInput
                     id="filter-label"
-                    aria-label="Filter by label"
+                    aria-label={t.issueList.page.filterByLabel}
                     mode="one"
                     create={false}
-                    placeholder="Any label"
+                    placeholder={t.issueList.page.anyLabel}
                     value={label ? [label.name] : []}
                     known={label ? [label] : []}
                     onChange={(_, chosen) => narrowing(setLabel)(chosen[0] ?? null)}
@@ -241,13 +250,13 @@ function ProjectDetail() {
                 </Labelled>
                 {milestones.length > 0 && (
                   <Select
-                    label="Milestone"
-                    aria-label="Filter by milestone"
+                    label={t.issueList.page.milestone}
+                    aria-label={t.issueList.page.filterByMilestone}
                     id="filter-milestone"
                     value={milestoneId}
                     onChange={(e) => narrowing(setMilestoneId)(e.target.value)}
                   >
-                    <option value="">Any milestone</option>
+                    <option value="">{t.issueList.page.anyMilestone}</option>
                     {milestones.map((milestone) => (
                       <option key={milestone.id} value={milestone.id}>
                         {milestone.name} ({milestone.progress.issues})
@@ -264,7 +273,7 @@ function ProjectDetail() {
                       setMilestoneId("");
                     })}
                   >
-                    Clear filters
+                    {t.issueList.page.clearFilters}
                   </Button>
                 )}
               </div>
@@ -276,11 +285,11 @@ function ProjectDetail() {
             <span className="text-sm text-ink-subtle tabular-nums">{issueData ? shownOf(issueData.total, issueData.offset, issues.length, "issue") : ""}</span>
             {mode === "query" && (
               <Link to="/search" search={{ q: asQuery }} className="text-sm text-accent hover:underline">
-                Open in search
+                {t.issueList.page.openInSearch}
               </Link>
             )}
             <Button variant="secondary" size="sm" icon={<Icon.Download />} onClick={() => setExporting(true)} data-action="export-list">
-              Export
+              {t.issueList.page.export}
             </Button>
           </>
         }
@@ -291,7 +300,7 @@ function ProjectDetail() {
         project={projectKey}
         open={exporting}
         onClose={() => setExporting(false)}
-        description="Every issue this list shows, on all its pages, as a file with the columns you tick."
+        description={t.issueList.page.exportDescription}
       />
 
       {loadingIssues ? (
@@ -299,14 +308,14 @@ function ProjectDetail() {
       ) : issues.length === 0 ? (
         <EmptyState
           icon={<Icon.Issue />}
-          title={narrowed ? "Nothing matches that search" : scope === "mine" ? "Nothing assigned to you" : "No issues yet"}
-          description={narrowed || scope !== "open" ? undefined : "File the first one and it lands on the board."}
-          action={!narrowed && scope === "open" ? <Button onClick={() => setCreating(true)}>New issue</Button> : undefined}
+          title={narrowed ? t.issueList.page.nothingMatches : scope === "mine" ? t.issueList.page.nothingAssigned : t.issueList.page.noIssues}
+          description={narrowed || scope !== "open" ? undefined : t.issueList.page.fileFirst}
+          action={!narrowed && scope === "open" ? <Button onClick={() => setCreating(true)}>{t.issueList.page.newIssue}</Button> : undefined}
         />
       ) : (
         <IssueTable issues={issues} />
       )}
-      {issueData && <Pager label="Issue pages" total={issueData.total} offset={issueData.offset} pageSize={ISSUE_PAGE_SIZE} onChange={turn} />}
+      {issueData && <Pager label={t.issueList.page.pages} total={issueData.total} offset={issueData.offset} pageSize={ISSUE_PAGE_SIZE} onChange={turn} />}
     </Page>
   );
 }

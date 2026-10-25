@@ -7,6 +7,8 @@ import { todayIn, useFormat } from "@/lib/format";
 import { Avatar } from "@/features/issues/badges";
 import { formatDuration, parseDuration, timeProgress } from "./duration";
 import { formatDay } from "@/lib/week";
+import { t } from "@/i18n";
+import { APP_NAME } from "@/config";
 
 /**
  * The time on an issue as the side panel shows it: the estimate, what is
@@ -26,10 +28,10 @@ export function TimeSummary({ issue, editable }: { issue: Issue; editable: boole
         />
       </div>
       <dl className="grid grid-cols-3 gap-2 text-xs">
-        <TimeCell label="Estimated" minutes={issue.timeEstimateMinutes} field="timeEstimateMinutes" issue={issue} editable={editable} />
-        <TimeCell label="Remaining" minutes={issue.timeRemainingMinutes} field="timeRemainingMinutes" issue={issue} editable={editable} />
+        <TimeCell label={t.issuePanels.time.estimated} minutes={issue.timeEstimateMinutes} field="timeEstimateMinutes" issue={issue} editable={editable} />
+        <TimeCell label={t.issuePanels.time.remaining} minutes={issue.timeRemainingMinutes} field="timeRemainingMinutes" issue={issue} editable={editable} />
         <div>
-          <dt className="text-ink-subtle">Spent</dt>
+          <dt className="text-ink-subtle">{t.issuePanels.time.spent}</dt>
           <dd className="text-ink" data-time-spent>
             {formatDuration(issue.timeSpentMinutes) || "0m"}
           </dd>
@@ -61,7 +63,7 @@ function TimeCell({
     if (text === null) return;
     const parsed = parseDuration(text);
     if (parsed === null) {
-      setRefused(`${label} takes time such as 2h 30m, 1d or 45m.`);
+      setRefused(t.issuePanels.time.notTime(label));
       return;
     }
     setRefused(null);
@@ -78,7 +80,7 @@ function TimeCell({
           <Input
             aria-label={label}
             value={shown}
-            placeholder="none"
+            placeholder={t.issuePanels.time.none}
             onChange={(e) => setText(e.target.value)}
             onBlur={save}
             onKeyDown={(e) => {
@@ -87,7 +89,7 @@ function TimeCell({
             controlSize="sm"
           />
         ) : (
-          <span>{formatDuration(minutes) || "none"}</span>
+          <span>{formatDuration(minutes) || t.issuePanels.time.none}</span>
         )}
         {refused && <p className="mt-1 text-2xs text-danger">{refused}</p>}
       </dd>
@@ -119,7 +121,7 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
     event.preventDefault();
     const minutes = parseDuration(duration);
     if (minutes === null || minutes <= 0) {
-      setRefused("Say how long, such as 2h 30m, 1d or 45m.");
+      setRefused(t.issuePanels.time.sayHowLong);
       return;
     }
     setRefused(null);
@@ -139,7 +141,7 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
   return (
     <section data-worklogs>
       <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">
-        Work log {worklogs.length > 0 && `(${formatDuration(issue.timeSpentMinutes)})`}
+        {t.issuePanels.time.workLog} {worklogs.length > 0 && `(${formatDuration(issue.timeSpentMinutes)})`}
       </h2>
       {worklogs.length > 0 && (
         <ul className="mb-4 divide-y divide-border rounded-md border border-border">
@@ -151,31 +153,33 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
                 <>
                   <Avatar name={w.author?.name} src={w.author?.avatarUrl} size="sm" />
                   <span className="w-16 shrink-0 font-medium text-ink tabular-nums">{formatDuration(w.minutes)}</span>
-                  <span className="min-w-0 flex-1 truncate text-ink-muted">{w.note || <span className="text-ink-subtle">No note</span>}</span>
+                  <span className="min-w-0 flex-1 truncate text-ink-muted">
+                    {w.note || <span className="text-ink-subtle">{t.issuePanels.time.noNote}</span>}
+                  </span>
                   <span className="shrink-0 text-sm text-ink-subtle">
-                    {w.author?.name ?? "Armature"} · {formatDay(w.startedOn.slice(0, 10), locale)}
+                    {w.author?.name ?? APP_NAME} · {formatDay(w.startedOn.slice(0, 10), locale)}
                   </span>
                   {mayChange(w.author?.id) && (
                     <>
                       <Button
                         size="sm"
                         variant="ghost"
-                        aria-label={`Edit work log ${formatDuration(w.minutes)}`}
+                        aria-label={t.issuePanels.time.editWorklog(formatDuration(w.minutes))}
                         onClick={() => setEditingID(w.id)}
                         data-action="edit-worklog"
                       >
-                        Edit
+                        {t.issuePanels.time.edit}
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
-                        aria-label={`Remove work log ${formatDuration(w.minutes)}`}
+                        aria-label={t.issuePanels.time.removeWorklog(formatDuration(w.minutes))}
                         onClick={async () =>
-                          (await confirm({ noun: "work log", verb: "Remove", body: `${formatDuration(w.minutes)} comes off the time spent.` })) &&
+                          (await confirm({ noun: "work log", verb: "Remove", body: t.issuePanels.time.comesOff(formatDuration(w.minutes)) })) &&
                           remove.mutate(w.id)
                         }
                       >
-                        Remove
+                        {t.issuePanels.common.remove}
                       </Button>
                     </>
                   )}
@@ -188,19 +192,19 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
       {editable && (
         <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
           <Field
-            label="Time spent"
+            label={t.issuePanels.time.timeSpent}
             id="worklog-duration"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
             placeholder="2h 30m"
             className="w-28"
           />
-          <Field label="On" id="worklog-day" type="date" value={day} onChange={(e) => setDay(e.target.value)} />
-          <Labelled id="worklog-note" label="What was done" className="min-w-40 flex-1">
-            <Input id="worklog-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+          <Field label={t.issuePanels.time.on} id="worklog-day" type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+          <Labelled id="worklog-note" label={t.issuePanels.time.whatWasDone} className="min-w-40 flex-1">
+            <Input id="worklog-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.issuePanels.time.optional} />
           </Labelled>
           <Button type="submit" size="sm" loading={log.isPending} disabled={!duration.trim()}>
-            Log work
+            {t.issuePanels.time.logWork}
           </Button>
         </form>
       )}
@@ -209,7 +213,7 @@ export function WorklogPanel({ issue, editable, me }: { issue: Issue; editable: 
           <ErrorBanner>{error}</ErrorBanner>
         </div>
       )}
-      {worklogs.length === 0 && editable && !error && <p className="mt-2 text-sm text-ink-subtle">Nothing logged yet.</p>}
+      {worklogs.length === 0 && editable && !error && <p className="mt-2 text-sm text-ink-subtle">{t.issuePanels.time.nothingLogged}</p>}
     </section>
   );
 }
@@ -229,7 +233,7 @@ function WorklogEditor({ worklog, close }: { worklog: Worklog; close: () => void
     event.preventDefault();
     const minutes = parseDuration(duration);
     if (minutes === null || minutes <= 0) {
-      setRefused("Say how long, such as 2h 30m, 1d or 45m.");
+      setRefused(t.issuePanels.time.sayHowLong);
       return;
     }
     setRefused(null);
@@ -242,16 +246,16 @@ function WorklogEditor({ worklog, close }: { worklog: Worklog; close: () => void
   return (
     <form onSubmit={onSubmit} className="w-full space-y-2" data-worklog-editor>
       <div className="flex flex-wrap items-end gap-2">
-        <Field label="Time spent" id={`${prefix}-duration`} value={duration} onChange={(e) => setDuration(e.target.value)} className="w-28" />
-        <Field label="On" id={`${prefix}-day`} type="date" value={day} onChange={(e) => setDay(e.target.value)} />
-        <Labelled id={`${prefix}-note`} label="What was done" className="min-w-40 flex-1">
-          <Input id={`${prefix}-note`} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+        <Field label={t.issuePanels.time.timeSpent} id={`${prefix}-duration`} value={duration} onChange={(e) => setDuration(e.target.value)} className="w-28" />
+        <Field label={t.issuePanels.time.on} id={`${prefix}-day`} type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+        <Labelled id={`${prefix}-note`} label={t.issuePanels.time.whatWasDone} className="min-w-40 flex-1">
+          <Input id={`${prefix}-note`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.issuePanels.time.optional} />
         </Labelled>
         <Button type="submit" size="sm" loading={update.isPending} disabled={!duration.trim()} data-action="save-worklog">
-          Save
+          {t.issuePanels.common.save}
         </Button>
         <Button size="sm" variant="ghost" onClick={close}>
-          Cancel
+          {t.issuePanels.common.cancel}
         </Button>
       </div>
       {error && <ErrorBanner>{error}</ErrorBanner>}

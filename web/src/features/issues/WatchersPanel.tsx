@@ -3,6 +3,7 @@ import { useAddWatcher, useRemoveWatcher, useWatchers } from "@/api/watchers";
 import { Button, ErrorBanner, Input } from "@/components/ui";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { Avatar } from "./badges";
+import { t } from "@/i18n";
 
 /**
  * Who is told about the issue. Colleagues are picked from the members; anyone
@@ -32,21 +33,23 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
   return (
     <section data-testid="watchers-panel">
       <div className="mb-3 flex items-center gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Watchers {watchers.length > 0 && `(${watchers.length})`}</h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
+          {t.issuePanels.watchers.title} {watchers.length > 0 && `(${watchers.length})`}
+        </h2>
         <span className="flex-1" />
         {me &&
           (watching ? (
             <Button variant="ghost" size="sm" loading={remove.isPending} onClick={() => remove.mutate({ key: issueKey, userId: me })} data-action="unwatch">
-              Stop watching
+              {t.issuePanels.watchers.stop}
             </Button>
           ) : (
             <Button variant="ghost" size="sm" loading={add.isPending} onClick={() => add.mutate({ key: issueKey })} data-action="watch">
-              Watch
+              {t.issuePanels.watchers.watch}
             </Button>
           ))}
         {editable && !adding && (
           <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-            Add watcher
+            {t.issuePanels.watchers.add}
           </Button>
         )}
       </div>
@@ -54,16 +57,16 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
       {adding && (
         <form onSubmit={submit} className="mb-3 flex flex-wrap items-center gap-2" noValidate>
           <PersonPicker
-            aria-label="A member to add"
-            none="Somebody here"
+            aria-label={t.issuePanels.watchers.member}
+            none={t.issuePanels.watchers.somebodyHere}
             value={memberId}
             onChange={setMemberId}
             exclude={watchers.map((w) => w.userId)}
             className="max-w-52"
           />
-          <span className="text-sm text-ink-muted">or</span>
+          <span className="text-sm text-ink-muted">{t.issuePanels.watchers.or}</span>
           <Input
-            aria-label="An address to add"
+            aria-label={t.issuePanels.watchers.address}
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -72,10 +75,10 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
             data-watcher-address
           />
           <Button type="submit" size="sm" loading={add.isPending} disabled={!email.trim() && !memberId}>
-            Add
+            {t.issuePanels.common.add}
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => setAdding(false)}>
-            Done
+            {t.issuePanels.common.done}
           </Button>
         </form>
       )}
@@ -83,7 +86,7 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
 
       {watchers.length === 0 ? (
-        <p className="text-sm text-ink-subtle">Nobody is watching this yet.</p>
+        <p className="text-sm text-ink-subtle">{t.issuePanels.watchers.none}</p>
       ) : (
         <ul className="divide-y divide-border rounded-md border border-border">
           {watchers.map((w) => (
@@ -95,10 +98,10 @@ export function WatchersPanel({ issueKey, editable, me }: { issueKey: string; ed
                 <Button
                   variant="link"
                   onClick={() => remove.mutate({ key: issueKey, userId: w.userId })}
-                  aria-label={`Stop ${w.name} watching`}
+                  aria-label={t.issuePanels.watchers.stopWatcher(w.name)}
                   className="text-xs text-ink-subtle hover:text-danger"
                 >
-                  Remove
+                  {t.issuePanels.common.remove}
                 </Button>
               )}
             </li>

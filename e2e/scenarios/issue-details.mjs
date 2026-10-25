@@ -23,6 +23,7 @@ import {
   openFilters,
   openIssueBeside,
   patchThroughAPI,
+  speakThroughAPI,
   planSprint,
   reload,
   pickPerson,
@@ -560,4 +561,25 @@ scenario("a description is drawn with the document styles Stator and Exciter sha
   expect.containsInsensitive(look.inlineCode, "mono", "inline code's font");
   expect.truthy(look.block !== "rgba(0, 0, 0, 0)", `a code block's ground is ${look.block}`);
   expect.equal(refused.length, 0, `the policy refused: ${refused.join(" | ")}`);
+});
+
+// The issue list, an issue's page and its panels speak the person's language (#371).
+scenario("a person whose profile says German reads the issue list and an issue's page in German", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Deutsch", { visit: false });
+  const issueKey = await createIssue(page, key, "Ein Vorgang auf Deutsch", { visit: false });
+  await speakThroughAPI(page, "de-DE");
+
+  await goto(page, `/projects/${key}`);
+  await page.waitForFunction(() => document.documentElement.lang === "de", { timeout: WAIT });
+  await page.waitForSelector(`a[href="/issues/${issueKey}"]`, { timeout: WAIT });
+  const list = await bodyText(page);
+  expect.containsInsensitive(list, "Zusammenfassung", "the list's summary column");
+  expect.notContains(list, "SUMMARY", "the English column heading");
+
+  await goto(page, `/issues/${issueKey}`);
+  await page.waitForSelector("[data-description]", { timeout: WAIT });
+  const view = await bodyText(page);
+  for (const word of ["Beschreibung", "Aktivität", "Verlauf", "Bearbeiter"]) expect.containsInsensitive(view, word, `the issue's page says ${word}`);
+  expect.notContains(view, "Activity", "the English section name");
 });

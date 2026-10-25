@@ -5,6 +5,7 @@ import { LabelInput } from "@/features/labels/LabelInput";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { inputTypeFor, valueFromInput } from "@/features/fields/values";
 import type { Answer } from "./draft";
+import { t } from "@/i18n";
 
 /** Anything with a name the form can offer by id. */
 export interface Named {
@@ -14,7 +15,7 @@ export interface Named {
 
 /** One of the people here, found by name, or nobody; a reporter may be a customer. */
 export function PersonSelect({ label, value, onPick, customers = false }: { label: string; value: string; onPick: (id: string) => void; customers?: boolean }) {
-  return <PersonPicker label={label} value={value} onChange={onPick} none="Nobody" staff={!customers} />;
+  return <PersonPicker label={label} value={value} onChange={onPick} none={t.issueList.create.nobody} staff={!customers} />;
 }
 
 /** One of a list, or none of it. */
@@ -23,7 +24,7 @@ export function OneOf({
   options,
   value,
   onPick,
-  none = "None",
+  none,
 }: {
   label: string;
   options: Named[];
@@ -33,7 +34,7 @@ export function OneOf({
 }) {
   return (
     <Select label={label} value={value} onChange={(e) => onPick(e.target.value)}>
-      <option value="">{none}</option>
+      <option value="">{none ?? t.issueList.create.none}</option>
       {options.map((option) => (
         <option key={option.id} value={option.id}>
           {option.name}
@@ -71,8 +72,8 @@ export function ManyOf({ label, options, chosen, onChange }: { label: string; op
 /** Words rather than ids: a label nobody has used yet is coined here. */
 export function LabelPicks({ chosen, onChange }: { chosen: string[]; onChange: (names: string[]) => void }) {
   return (
-    <Labelled id="create-labels" label="Labels">
-      <LabelInput id="create-labels" placeholder="Type a label, then Enter" value={chosen} onChange={onChange} />
+    <Labelled id="create-labels" label={t.issueList.create.labels}>
+      <LabelInput id="create-labels" placeholder={t.issueList.create.labelPlaceholder} value={chosen} onChange={onChange} />
     </Labelled>
   );
 }
@@ -85,7 +86,7 @@ export function FieldAnswer({ field, answer, onAnswer }: { field: Field; answer:
   if (field.kind === "select") {
     return (
       <Select label={field.name} value={typeof answer?.value === "string" ? answer.value : ""} onChange={(e) => keep(e.target.value)}>
-        <option value="">None</option>
+        <option value="">{t.issueList.create.none}</option>
         {field.options.map((option) => (
           <option key={option} value={option}>
             {option}

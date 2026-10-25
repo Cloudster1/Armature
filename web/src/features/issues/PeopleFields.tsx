@@ -1,6 +1,7 @@
 import { useUpdateIssue, type Issue } from "@/api/issues";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { Avatar } from "./badges";
+import { t } from "@/i18n";
 
 /**
  * Who has the issue and who raised it, each found by name among everyone
@@ -14,10 +15,10 @@ export function AssigneeField({ issue, editable }: { issue: Issue; editable: boo
       <Avatar name={issue.assignee?.name} src={issue.assignee?.avatarUrl} size="sm" />
       {editable ? (
         <PersonPicker
-          aria-label="Assignee"
+          aria-label={t.issueView.details.assignee}
           controlSize="sm"
           staff
-          none="Unassigned"
+          none={t.issueView.details.unassigned}
           value={issue.assignee?.id ?? ""}
           selected={issue.assignee}
           onChange={(id) => update.mutate({ key: issue.key, assigneeId: id || null })}
@@ -25,7 +26,7 @@ export function AssigneeField({ issue, editable }: { issue: Issue; editable: boo
           selectClassName="truncate"
         />
       ) : (
-        <span className="text-ink">{issue.assignee?.name ?? "Unassigned"}</span>
+        <span className="text-ink">{issue.assignee?.name ?? t.issueView.details.unassigned}</span>
       )}
     </span>
   );
@@ -39,9 +40,9 @@ export function ReporterField({ issue, editable }: { issue: Issue; editable: boo
       <Avatar name={issue.reporter?.name} src={issue.reporter?.avatarUrl} size="sm" />
       {editable ? (
         <PersonPicker
-          aria-label="Reporter"
+          aria-label={t.issueView.details.reporter}
           controlSize="sm"
-          none={issue.reporter ? undefined : "Unknown"}
+          none={issue.reporter ? undefined : t.issueView.details.unknown}
           value={issue.reporter?.id ?? ""}
           selected={issue.reporter}
           onChange={(id) => id && update.mutate({ key: issue.key, reporterId: id })}
@@ -49,7 +50,7 @@ export function ReporterField({ issue, editable }: { issue: Issue; editable: boo
           selectClassName="truncate"
         />
       ) : (
-        <span className="text-ink">{issue.reporter?.name ?? "Unknown"}</span>
+        <span className="text-ink">{issue.reporter?.name ?? t.issueView.details.unknown}</span>
       )}
     </span>
   );
