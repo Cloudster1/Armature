@@ -24,6 +24,9 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
   const [result, setResult] = useState<BulkResult | null>(null);
   const [exporting, setExporting] = useState(false);
   const tooMany = keys.length > BULK_MAX_SELECTION;
+  // On a phone the bar is the count and one button until that button opens the rest.
+  const [open, setOpen] = useState(false);
+  const folded = open ? "contents" : "contents max-shell:hidden";
 
   function apply() {
     const next: BulkChange = { ...change };
@@ -46,48 +49,53 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
         start={
           <div className="flex flex-wrap items-end gap-3" data-bulk-bar={keys.length}>
             <span className="pb-2 text-sm font-medium text-ink">{keys.length} selected on this page</span>
-            <Select
-              label="Priority"
-              id="field-bulk-priority"
-              controlSize="sm"
-              value={change.priority ?? ""}
-              onChange={(e) => setChange({ ...change, priority: e.target.value || undefined })}
-            >
-              <option value="">Leave</option>
-              {["lowest", "low", "medium", "high", "highest"].map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </Select>
-            <PersonPicker
-              label="Assignee"
-              id="field-bulk-assignee"
-              controlSize="sm"
-              staff
-              none="Leave"
-              value={change.assignee === undefined ? "" : change.assignee === null ? "-" : change.assignee}
-              onChange={(value) => setChange({ ...change, assignee: value === "" ? undefined : value === "-" ? null : value })}
-              className="w-48"
-            >
-              <option value="-">Nobody</option>
-            </PersonPicker>
-            <Labelled id="field-bulk-labels" label="Add labels" className="w-48">
-              <LabelInput id="field-bulk-labels" controlSize="sm" placeholder="Type a label" value={labels} onChange={setLabels} onTyping={setTyping} />
-            </Labelled>
-            <Field
-              label="Transition"
-              id="field-bulk-transition"
-              controlSize="sm"
-              value={change.transition ?? ""}
-              onChange={(e) => setChange({ ...change, transition: e.target.value || undefined })}
-              placeholder="Start progress"
-              className="w-40"
-            />
+            <Button variant="secondary" size="sm" className="mb-1 shell:hidden" aria-expanded={open} onClick={() => setOpen(!open)} data-action="bulk-unfold">
+              {open ? "Fewer" : `Change ${keys.length}`}
+            </Button>
+            <div className={folded} data-bulk-fields>
+              <Select
+                label="Priority"
+                id="field-bulk-priority"
+                controlSize="sm"
+                value={change.priority ?? ""}
+                onChange={(e) => setChange({ ...change, priority: e.target.value || undefined })}
+              >
+                <option value="">Leave</option>
+                {["lowest", "low", "medium", "high", "highest"].map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </Select>
+              <PersonPicker
+                label="Assignee"
+                id="field-bulk-assignee"
+                controlSize="sm"
+                staff
+                none="Leave"
+                value={change.assignee === undefined ? "" : change.assignee === null ? "-" : change.assignee}
+                onChange={(value) => setChange({ ...change, assignee: value === "" ? undefined : value === "-" ? null : value })}
+                className="w-48"
+              >
+                <option value="-">Nobody</option>
+              </PersonPicker>
+              <Labelled id="field-bulk-labels" label="Add labels" className="w-48">
+                <LabelInput id="field-bulk-labels" controlSize="sm" placeholder="Type a label" value={labels} onChange={setLabels} onTyping={setTyping} />
+              </Labelled>
+              <Field
+                label="Transition"
+                id="field-bulk-transition"
+                controlSize="sm"
+                value={change.transition ?? ""}
+                onChange={(e) => setChange({ ...change, transition: e.target.value || undefined })}
+                placeholder="Start progress"
+                className="w-40"
+              />
+            </div>
           </div>
         }
         end={
-          <div className="flex items-center gap-2">
+          <div className={folded === "contents" ? "flex flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2 max-shell:hidden"}>
             {tooMany && <span className="text-sm text-danger">At most {BULK_MAX_SELECTION} at once.</span>}
             <Button variant="ghost" size="sm" onClick={onClear}>
               Clear

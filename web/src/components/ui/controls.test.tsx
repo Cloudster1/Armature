@@ -103,6 +103,13 @@ describe("Tabs", () => {
     expect(onChange).toHaveBeenLastCalledWith("comments");
   });
 
+  it("scrolls its own row on a narrow screen, so a page with many tabs never widens", () => {
+    render(<Tabs label="Access" value="a" tabs={["a", "b", "c", "d", "e"].map((v) => ({ value: v, label: v }))} onChange={() => {}} className="mb-4" />);
+    const list = screen.getByRole("tablist", { name: "Access" });
+    expect(list.className).toContain("overflow-x-auto");
+    expect(list.parentElement!.className).toContain("mb-4");
+  });
+
   it("names the panel it switches, and names nothing when there is none", () => {
     const { unmount } = render(
       <>

@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: no main page scrolls sideways on a phone (#275). Tabs scroll in
+  their own row, a toolbar's buttons and an issue's transitions wrap, a
+  summary in the issue, queue and portal tables keeps room to be read and
+  the table scrolls in its box instead, a chip cuts a long name short with
+  the whole of it as its title, and the bulk bar folds to its count and one
+  button until that button opens the rest.
 - Changed: Armature uses the names Stator and Exciter use (#309), in English
   and German. The palette is Quick search, a project's settings page is
   Project settings, its group Project admin, the Access tab Sign-in is Single

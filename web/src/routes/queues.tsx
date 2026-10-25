@@ -111,7 +111,7 @@ function QueuesPage() {
                   </Td>
                   <Td className="font-mono text-sm text-ink-muted">{row.issue.key}</Td>
                   <Td className="max-w-0">
-                    <Link to="/issues/$issueKey" params={{ issueKey: row.issue.key }} className="block truncate text-ink group-hover:text-accent">
+                    <Link to="/issues/$issueKey" params={{ issueKey: row.issue.key }} className="block min-w-48 truncate text-ink group-hover:text-accent">
                       {row.issue.summary}
                     </Link>
                   </Td>

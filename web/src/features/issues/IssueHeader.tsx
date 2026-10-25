@@ -141,7 +141,7 @@ function TransitionBar({ issueKey }: { issueKey: string }) {
   if (isLoading) return null;
 
   return (
-    <div className="flex shrink-0 flex-col items-end gap-2">
+    <div className="flex max-w-full min-w-0 flex-col items-end gap-2">
       {transitions.length === 0 ? (
         <p className="text-sm text-ink-subtle">This issue has nowhere to go from here.</p>
       ) : (

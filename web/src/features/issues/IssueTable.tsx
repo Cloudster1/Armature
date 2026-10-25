@@ -90,7 +90,7 @@ export function IssueTable({
             </Td>
             <Td className="font-mono text-sm text-ink-muted">{issue.key}</Td>
             <Td className="max-w-0">
-              <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="block truncate text-ink group-hover:text-accent">
+              <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="block min-w-48 truncate text-ink group-hover:text-accent">
                 {issue.summary}
               </Link>
               <LabelChips labels={issue.labels ?? []} className="mt-0.5" />
