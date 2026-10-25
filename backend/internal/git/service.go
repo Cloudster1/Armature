@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
@@ -305,18 +306,40 @@ func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID, actor uuid.UUI
 	return out, lsn, nil
 }
 
-// Disconnect removes a repository and everything recorded from it. The issues
-// keep their own history; what goes is the mirror of the host's.
-func (s *Service) Disconnect(ctx context.Context, id uuid.UUID) (db.LSN, error) {
+// Disconnect removes a repository and the mirror of the host's history with it,
+// so the log keeps who took it and how much went along.
+func (s *Service) Disconnect(ctx context.Context, id uuid.UUID, actor uuid.UUID, ip string) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM git_repository WHERE id = $1`, id)
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() == 0 {
+		var (
+			projectID                       uuid.UUID
+			projectKey, host, name          string
+			commits, branches, pullRequests int
+		)
+		err := tx.QueryRow(ctx, `
+			SELECT r.project_id, p.key, r.host, r.name,
+			       (SELECT count(*) FROM git_commit c WHERE c.repository_id = r.id),
+			       (SELECT count(*) FROM git_branch b WHERE b.repository_id = r.id),
+			       (SELECT count(*) FROM pull_request q WHERE q.repository_id = r.id)
+			FROM git_repository r
+			JOIN project p ON p.id = r.project_id
+			WHERE r.id = $1
+			FOR UPDATE OF r`, id).Scan(&projectID, &projectKey, &host, &name, &commits, &branches, &pullRequests)
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
-		return nil
+		if err != nil {
+			return fmt.Errorf("find repository: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM git_repository WHERE id = $1`, id); err != nil {
+			return fmt.Errorf("disconnect repository: %w", err)
+		}
+		return audit.Write(ctx, tx, audit.Entry{
+			Action: "vcs.repository.disconnected", TargetType: "repository", TargetID: &id, Actor: actor, IP: ip,
+			Data: map[string]any{
+				"projectId": projectID, "project": projectKey, "host": host, "name": name,
+				"commits": commits, "branches": branches, "pullRequests": pullRequests,
+			},
+		})
 	})
 }
 

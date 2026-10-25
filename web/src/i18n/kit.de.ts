@@ -87,6 +87,7 @@ export const kitDe: typeof kitEn = {
       link: "Link",
       member: "Mitglied",
       milestone: "Meilenstein",
+      repository: (name: string) => `Repository ${name}`,
       requestType: "Anfragetyp",
       role: "Rolle",
       rule: "Regel",

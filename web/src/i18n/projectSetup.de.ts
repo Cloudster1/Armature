@@ -255,6 +255,8 @@ export const projectSetupDe: typeof projectSetupEn = {
     merging: (transition: string) => ` · Zusammenführen führt ${transition} aus`,
     rotate: "Geheimnis erneuern",
     disconnect: "Trennen",
+    disconnectBody: (name: string, commits: number, pull: string) =>
+      `Damit wird ${name} mit allem entfernt, was von dort aufgezeichnet wurde: ${mehrzahl(commits, "Commit", "Commits")}, die Branches und die ${pull}s verschwinden aus dem Abschnitt Entwicklung jedes Vorgangs. Das Repository beim Host bleibt unberührt.`,
     replaceToken: "Zugriffstoken ersetzen",
     addToken: "Zugriffstoken hinzufügen",
     saveToken: "Token speichern",

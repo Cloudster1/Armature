@@ -87,6 +87,7 @@ export const kitEn = {
       link: "link",
       member: "member",
       milestone: "milestone",
+      repository: (name: string) => `repository ${name}`,
       requestType: "request type",
       role: "role",
       rule: "rule",

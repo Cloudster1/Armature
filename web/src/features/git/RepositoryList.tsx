@@ -13,17 +13,15 @@ import {
 } from "@/api/git";
 import { useProjectWorkflows, useWorkflow } from "@/api/workflows";
 import { Button, Card, EmptyState, ErrorBanner, Field, Select, Tag, cx } from "@/components/ui";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 // Named apart: the transitions here are each called t.
 import { t as words } from "@/i18n";
 
 /**
- * The repositories connected to a project.
- *
- * Connecting one hands back a webhook address and a secret exactly once, the
- * way a personal access token is handed back: the host needs both, and the
- * tracker keeps only what it needs to check a delivery.
+ * The repositories connected to a project. Connecting hands back the webhook secret once, as a
+ * personal token is; the controls are drawn only for those the server lets administer the project.
  */
-export function RepositoryList({ projectKey }: { projectKey: string }) {
+export function RepositoryList({ projectKey, canManage }: { projectKey: string; canManage: boolean }) {
   const { data, isLoading, error } = useRepositories(projectKey);
   const [connecting, setConnecting] = useState(false);
   const [handed, setHanded] = useState<Connected | null>(null);
@@ -36,7 +34,7 @@ export function RepositoryList({ projectKey }: { projectKey: string }) {
     <div className="space-y-4">
       {handed && <WebhookHandout connected={handed} onDone={() => setHanded(null)} />}
 
-      {connecting ? (
+      {!canManage ? null : connecting ? (
         <ConnectForm
           projectKey={projectKey}
           onConnected={(connected) => {
@@ -54,7 +52,7 @@ export function RepositoryList({ projectKey }: { projectKey: string }) {
       {isLoading ? null : repositories.length === 0 && !connecting ? (
         <EmptyState title={words.projectSetup.repositories.empty} description={words.projectSetup.repositories.emptyDetail} />
       ) : (
-        repositories.map((repository) => <RepositoryCard key={repository.id} repository={repository} projectKey={projectKey} onRotated={setHanded} />)
+        repositories.map((repository) => <RepositoryCard key={repository.id} repository={repository} canManage={canManage} onRotated={setHanded} />)
       )}
     </div>
   );
@@ -215,14 +213,23 @@ function WebhookHandout({ connected, onDone }: { connected: Connected; onDone: (
   );
 }
 
-function RepositoryCard({ repository, projectKey, onRotated }: { repository: Repository; projectKey: string; onRotated: (connected: Connected) => void }) {
+function RepositoryCard({ repository, canManage, onRotated }: { repository: Repository; canManage: boolean; onRotated: (connected: Connected) => void }) {
   const update = useUpdateRepository();
   const rotate = useRotateSecret();
   const disconnect = useDisconnectRepository();
+  const confirm = useConfirm();
   const [token, setToken] = useState("");
-  void projectKey;
 
   const error = (update.error ?? rotate.error ?? disconnect.error) as Error | undefined;
+
+  async function onDisconnect() {
+    const sure = await confirm({
+      noun: words.kit.confirm.things.repository(repository.name),
+      verb: words.kit.confirm.verbs.disconnect,
+      body: words.projectSetup.repositories.disconnectBody(repository.name, repository.commitCount, pullWord(repository.host)),
+    });
+    if (sure) disconnect.mutate(repository.id);
+  }
 
   return (
     <Card className="p-4" data-repository={repository.name}>
@@ -247,40 +254,44 @@ function RepositoryCard({ repository, projectKey, onRotated }: { repository: Rep
             {repository.transitionOnMerge ? words.projectSetup.repositories.merging(repository.transitionOnMerge) : ""}
           </p>
         </div>
-        <div className="flex shrink-0 gap-1">
-          <Button size="sm" variant="secondary" loading={rotate.isPending} onClick={() => rotate.mutate(repository.id, { onSuccess: onRotated })}>
-            {words.projectSetup.repositories.rotate}
-          </Button>
-          <Button size="sm" variant="ghost" loading={disconnect.isPending} onClick={() => disconnect.mutate(repository.id)}>
-            {words.projectSetup.repositories.disconnect}
-          </Button>
-        </div>
+        {canManage && (
+          <div className="flex shrink-0 gap-1">
+            <Button size="sm" variant="secondary" loading={rotate.isPending} onClick={() => rotate.mutate(repository.id, { onSuccess: onRotated })}>
+              {words.projectSetup.repositories.rotate}
+            </Button>
+            <Button size="sm" variant="ghost" loading={disconnect.isPending} onClick={onDisconnect}>
+              {words.projectSetup.repositories.disconnect}
+            </Button>
+          </div>
+        )}
       </div>
 
-      <form
-        className="mt-3 flex flex-wrap items-end gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          update.mutate({ id: repository.id, accessToken: token }, { onSuccess: () => setToken("") });
-        }}
-      >
-        <Field
-          id={`token-${repository.id}`}
-          label={repository.hasToken ? words.projectSetup.repositories.replaceToken : words.projectSetup.repositories.addToken}
-          type="password"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          className="w-72"
-        />
-        <Button type="submit" size="sm" variant="secondary" loading={update.isPending} disabled={!token.trim()}>
-          {words.projectSetup.repositories.saveToken}
-        </Button>
-        {repository.hasToken && (
-          <Button type="button" size="sm" variant="ghost" onClick={() => update.mutate({ id: repository.id, accessToken: "" })}>
-            {words.projectSetup.repositories.removeToken}
+      {canManage && (
+        <form
+          className="mt-3 flex flex-wrap items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            update.mutate({ id: repository.id, accessToken: token }, { onSuccess: () => setToken("") });
+          }}
+        >
+          <Field
+            id={`token-${repository.id}`}
+            label={repository.hasToken ? words.projectSetup.repositories.replaceToken : words.projectSetup.repositories.addToken}
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="w-72"
+          />
+          <Button type="submit" size="sm" variant="secondary" loading={update.isPending} disabled={!token.trim()}>
+            {words.projectSetup.repositories.saveToken}
           </Button>
-        )}
-      </form>
+          {repository.hasToken && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => update.mutate({ id: repository.id, accessToken: "" })}>
+              {words.projectSetup.repositories.removeToken}
+            </Button>
+          )}
+        </form>
+      )}
 
       {error && (
         <div className="mt-3">
