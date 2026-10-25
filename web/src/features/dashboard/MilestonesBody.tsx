@@ -9,6 +9,7 @@ import { figure } from "./chart";
 import { Stat } from "./charts";
 import { useWidgetReport, type BodyProps } from "./useWidgetReport";
 import { Loading, WidgetState } from "./WidgetState";
+import { t } from "@/i18n";
 
 /** How far a due day is from today, in whole days; negative once it has passed. */
 export function daysUntil(dueOn: string, today: Date): number {
@@ -19,15 +20,15 @@ export function daysUntil(dueOn: string, today: Date): number {
 
 /** "Due 24 Sep 2026, 12 days left", "Due 24 Sep 2026, overdue by 3 days", or the close. */
 export function describeDue(row: MilestoneRow, today: Date, locale: string): string {
-  if (row.closedAt) return `Closed ${formatDay(row.closedAt, locale)}`;
-  if (!row.dueOn) return "No due day yet";
+  const words = t.dashboard.milestones;
+  if (row.closedAt) return words.closed(formatDay(row.closedAt, locale));
+  if (!row.dueOn) return words.noDueDay;
   const left = daysUntil(row.dueOn, today);
   const when = formatDay(row.dueOn, locale);
-  if (left > 1) return `Due ${when}, ${left} days left`;
-  if (left === 1) return `Due ${when}, tomorrow`;
-  if (left === 0) return `Due ${when}, today`;
-  const over = -left;
-  return `Due ${when}, overdue by ${over} ${over === 1 ? "day" : "days"}`;
+  if (left > 1) return words.dueLeft(when, left);
+  if (left === 1) return words.dueTomorrow(when);
+  if (left === 0) return words.dueToday(when);
+  return words.overdueBy(when, -left);
 }
 
 /**
@@ -44,16 +45,16 @@ export function MilestonesBody({ projectKey, widget, narrow }: BodyProps) {
   const one = widget.config?.milestoneId;
   if (one) {
     const row = data.milestones[0];
-    if (!row) return <p className="text-sm text-ink-subtle">That milestone is gone. Pick another in the widget's settings.</p>;
+    if (!row) return <p className="text-sm text-ink-subtle">{t.dashboard.milestones.gone}</p>;
     return <OneMilestone row={row} today={today} />;
   }
   if (data.milestones.length === 0) {
     return (
       <p className="text-sm text-ink-subtle">
-        No open milestones.{" "}
+        {t.dashboard.milestones.noneOpen}{" "}
         {!readOnly && (
           <Link to="/projects/$projectKey/milestones" params={{ projectKey }} className="text-accent hover:underline">
-            Set one on the milestones page.
+            {t.dashboard.milestones.setOne}
           </Link>
         )}
       </p>
@@ -70,7 +71,7 @@ export function MilestonesBody({ projectKey, widget, narrow }: BodyProps) {
           <ProgressBar progress={row.progress} />
           <p className="mt-1 flex items-center gap-2 text-2xs text-ink-subtle">
             {describeDue(row, today, locale)}
-            {isOverdue(row, today) && <Tag className="bg-danger-subtle text-danger">Overdue</Tag>}
+            {isOverdue(row, today) && <Tag className="bg-danger-subtle text-danger">{t.dashboard.milestones.overdue}</Tag>}
           </p>
         </li>
       ))}
@@ -88,30 +89,30 @@ function OneMilestone({ row, today }: { row: MilestoneRow; today: Date }) {
           <p className="truncate text-sm font-medium text-ink">{row.name}</p>
           <p className="mt-0.5 flex items-center gap-2 text-xs text-ink-muted">
             {describeDue(row, today, locale)}
-            {overdue && <Tag className="bg-danger-subtle text-danger">Overdue</Tag>}
-            {row.closedAt && <Tag>Closed</Tag>}
+            {overdue && <Tag className="bg-danger-subtle text-danger">{t.dashboard.milestones.overdue}</Tag>}
+            {row.closedAt && <Tag>{t.dashboard.milestones.closedTag}</Tag>}
           </p>
         </div>
-        <Stat value={`${row.progress.percent}%`} label="done" />
+        <Stat value={`${row.progress.percent}%`} label={t.dashboard.milestones.doneStat} />
       </div>
       <ProgressBar progress={row.progress} className="mt-3" />
       <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
         <div>
-          <dt className="text-ink-subtle">Done</dt>
+          <dt className="text-ink-subtle">{t.dashboard.milestones.done}</dt>
           <dd className="font-medium text-ink tabular-nums">{row.progress.done}</dd>
         </div>
         <div>
-          <dt className="text-ink-subtle">In progress</dt>
+          <dt className="text-ink-subtle">{t.dashboard.milestones.inProgress}</dt>
           <dd className="font-medium text-ink tabular-nums">{row.progress.inProgress}</dd>
         </div>
         <div>
-          <dt className="text-ink-subtle">To do</dt>
+          <dt className="text-ink-subtle">{t.dashboard.milestones.todo}</dt>
           <dd className="font-medium text-ink tabular-nums">{row.progress.todo}</dd>
         </div>
       </dl>
       <p className="mt-2 text-xs text-ink-subtle tabular-nums" data-milestone-progress="">
         {describeProgress(row.progress)}
-        {row.points > 0 && ` · ${figure(row.donePoints)} of ${figure(row.points)} pts`}
+        {row.points > 0 && t.dashboard.milestones.ofPoints(figure(row.donePoints), figure(row.points))}
       </p>
     </div>
   );

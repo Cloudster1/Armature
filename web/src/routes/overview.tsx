@@ -5,6 +5,7 @@ import { useIssues } from "@/api/issues";
 import { useProjects } from "@/api/projects";
 import { EmptyState, Page, PageHeader, SectionTitle, Table, Td, Th } from "@/components/ui";
 import { IssueTable } from "@/features/issues/IssueTable";
+import { t } from "@/i18n";
 
 export const overviewRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -35,41 +36,34 @@ function Home() {
 
   return (
     <Page width="content">
-      <PageHeader
-        title={firstName ? `${firstName}'s work` : "Your work"}
-        meta={mine ? `${mine.total} open issue${mine.total === 1 ? "" : "s"} assigned to you` : undefined}
-      />
+      <PageHeader title={firstName ? t.search.home.titleOf(firstName) : t.search.home.title} meta={mine ? t.search.home.openAssigned(mine.total) : undefined} />
 
       <section className="mb-8">
-        <SectionTitle className="mb-2">Assigned to you</SectionTitle>
+        <SectionTitle className="mb-2">{t.search.home.assigned}</SectionTitle>
         {mine && issues.length === 0 ? (
-          <EmptyState title="Nothing assigned to you" description="Issues land here when somebody assigns them to you, or when you start progress on one." />
+          <EmptyState title={t.search.home.nothingAssigned} description={t.search.home.nothingAssignedHint} />
         ) : (
           <IssueTable issues={issues} showProject />
         )}
-        {mine && mine.total > issues.length && (
-          <p className="mt-2 text-sm text-ink-subtle">
-            Showing {issues.length} of {mine.total}. The rest are in their projects.
-          </p>
-        )}
+        {mine && mine.total > issues.length && <p className="mt-2 text-sm text-ink-subtle">{t.search.home.showingIssues(issues.length, mine.total)}</p>}
       </section>
 
       <section>
         <div className="mb-2 flex items-baseline justify-between">
-          <SectionTitle>Projects</SectionTitle>
+          <SectionTitle>{t.search.home.projects}</SectionTitle>
           <Link to="/projects" className="text-sm text-ink-muted hover:text-ink">
-            All projects
+            {t.search.home.allProjects}
           </Link>
         </div>
         {projectData && projects.length === 0 ? (
-          <EmptyState title="No projects yet" description="Projects hold issues. Make one from the projects page." />
+          <EmptyState title={t.search.home.noProjects} description={t.search.home.noProjectsHint} />
         ) : (
           <Table>
             <thead>
               <tr>
-                <Th className="w-20">Key</Th>
-                <Th>Project</Th>
-                <Th className="w-24 text-right">Open</Th>
+                <Th className="w-20">{t.search.home.key}</Th>
+                <Th>{t.search.home.project}</Th>
+                <Th className="w-24 text-right">{t.search.home.open}</Th>
               </tr>
             </thead>
             <tbody>
@@ -92,7 +86,7 @@ function Home() {
         )}
         {projectData && projectData.total > projects.length && (
           <p className="mt-2 text-sm text-ink-subtle" data-projects-more>
-            Showing {projects.length} of {projectData.total}. The projects page finds the rest.
+            {t.search.home.showingProjects(projects.length, projectData.total)}
           </p>
         )}
       </section>

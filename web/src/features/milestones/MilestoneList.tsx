@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { useIssues } from "@/api/issues";
 import {
   dayOf,
-  describeProgress,
   formatDay,
   isOverdue,
   useCloseMilestone,
@@ -20,7 +19,7 @@ import { StatusBadge, TypeBadge } from "@/features/issues/badges";
 import { MAX_PAGE_SIZE } from "@/config";
 import { useFormat } from "@/lib/format";
 import { MilestoneDashboardDialog } from "./MilestoneDashboardDialog";
-import { ProgressBar } from "./ProgressBar";
+import { ProgressBar, progressWords } from "./ProgressBar";
 import { t } from "@/i18n";
 
 /**
@@ -41,12 +40,7 @@ export function MilestoneList({ projectKey }: { projectKey: string }) {
     <div className="space-y-6">
       <NewMilestone projectKey={projectKey} />
 
-      {milestones.length === 0 && (
-        <EmptyState
-          title="No milestones yet"
-          description="A milestone is a point the project is heading for. Assign issues to it and it tracks how close you are."
-        />
-      )}
+      {milestones.length === 0 && <EmptyState title={t.schedule.milestones.empty} description={t.schedule.milestones.emptyDetail} />}
 
       {open.map((milestone) => (
         <MilestoneCard key={milestone.id} milestone={milestone} />
@@ -54,7 +48,7 @@ export function MilestoneList({ projectKey }: { projectKey: string }) {
 
       {closed.length > 0 && (
         <section>
-          <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Closed</h2>
+          <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">{t.schedule.milestones.closedHeading}</h2>
           <div className="space-y-3">
             {closed.map((milestone) => (
               <MilestoneCard key={milestone.id} milestone={milestone} />
@@ -91,20 +85,33 @@ function NewMilestone({ projectKey }: { projectKey: string }) {
     <Card className="p-4">
       <form onSubmit={submit} className="flex flex-wrap items-end gap-3" data-testid="new-milestone">
         <div className="min-w-48 flex-1">
-          <Field label="Milestone" id="field-milestone-name" value={name} placeholder="Release 1.0" onChange={(event) => setName(event.target.value)} />
+          <Field
+            label={t.schedule.milestones.milestone}
+            id="field-milestone-name"
+            value={name}
+            placeholder={t.schedule.milestones.namePlaceholder}
+            onChange={(event) => setName(event.target.value)}
+          />
         </div>
-        <Field label="Due on" id="field-milestone-due" type="date" value={dueOn} onChange={(event) => setDueOn(event.target.value)} className="w-40" />
+        <Field
+          label={t.schedule.milestones.dueOn}
+          id="field-milestone-due"
+          type="date"
+          value={dueOn}
+          onChange={(event) => setDueOn(event.target.value)}
+          className="w-40"
+        />
         <div className="min-w-56 flex-[2]">
           <Field
-            label="What it means"
+            label={t.schedule.milestones.meaning}
             id="field-milestone-description"
             value={description}
-            placeholder="Optional."
+            placeholder={t.schedule.milestones.optional}
             onChange={(event) => setDescription(event.target.value)}
           />
         </div>
         <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-          Add milestone
+          {t.schedule.milestones.add}
         </Button>
       </form>
       {create.error && (
@@ -144,9 +151,9 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
         <div className="min-w-0">
           {editing ? (
             <form onSubmit={save} className="flex flex-wrap items-end gap-2">
-              <Field label="Name" id={`milestone-${milestone.id}-name`} value={name} onChange={(e) => setName(e.target.value)} />
+              <Field label={t.schedule.milestones.name} id={`milestone-${milestone.id}-name`} value={name} onChange={(e) => setName(e.target.value)} />
               <Field
-                label="Due on"
+                label={t.schedule.milestones.dueOn}
                 id={`milestone-${milestone.id}-due`}
                 type="date"
                 value={dueOn}
@@ -154,21 +161,25 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
                 className="w-40"
               />
               <Button type="submit" size="sm" loading={update.isPending}>
-                Save
+                {t.schedule.milestones.save}
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                Cancel
+                {t.schedule.milestones.cancel}
               </Button>
             </form>
           ) : (
             <>
               <h3 className="text-sm font-semibold text-ink">
                 {milestone.name}
-                {isClosed && <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs font-medium text-ink-muted">Closed</span>}
-                {overdue && <span className="ml-2 rounded-full bg-danger-subtle px-2 py-0.5 text-2xs font-medium text-danger">Overdue</span>}
+                {isClosed && (
+                  <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs font-medium text-ink-muted">{t.schedule.milestones.closed}</span>
+                )}
+                {overdue && (
+                  <span className="ml-2 rounded-full bg-danger-subtle px-2 py-0.5 text-2xs font-medium text-danger">{t.schedule.milestones.overdue}</span>
+                )}
               </h3>
               <p className="mt-0.5 text-xs text-ink-muted">
-                {milestone.dueOn ? `Due ${formatDay(milestone.dueOn, locale)}` : "No date yet"}
+                {milestone.dueOn ? t.schedule.milestones.due(formatDay(milestone.dueOn, locale)) : t.schedule.milestones.noDate}
                 {milestone.description && ` · ${milestone.description}`}
               </p>
             </>
@@ -176,24 +187,24 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
         </div>
         <div className="flex gap-1">
           <Button size="sm" variant="ghost" onClick={() => setShowing((v) => !v)}>
-            {showing ? "Hide issues" : "Show issues"}
+            {showing ? t.schedule.milestones.hideIssues : t.schedule.milestones.showIssues}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setDashboarding(true)} data-action="milestone-dashboard" data-guide="milestone-dashboard">
-            Dashboard
+            {t.schedule.milestones.dashboard}
           </Button>
           {dashboarding && <MilestoneDashboardDialog milestone={milestone} open onClose={() => setDashboarding(false)} />}
           {!isClosed && !editing && (
             <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-              Edit
+              {t.schedule.milestones.edit}
             </Button>
           )}
           {isClosed ? (
             <Button size="sm" variant="ghost" loading={reopen.isPending} onClick={() => reopen.mutate(milestone.id)}>
-              Reopen
+              {t.schedule.milestones.reopen}
             </Button>
           ) : (
             <Button size="sm" variant="ghost" loading={close.isPending} onClick={() => close.mutate(milestone.id)}>
-              Close milestone
+              {t.schedule.milestones.close}
             </Button>
           )}
           <Button
@@ -203,11 +214,11 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
             onClick={async () =>
               (await confirm({
                 noun: t.kit.confirm.things.milestone,
-                body: `${milestone.name} goes; the issues counting towards it stay and count towards nothing.`,
+                body: t.schedule.milestones.deleteBody(milestone.name),
               })) && remove.mutate(milestone.id)
             }
           >
-            Delete
+            {t.schedule.milestones.delete}
           </Button>
         </div>
       </div>
@@ -215,12 +226,12 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
       <div className="mt-3 flex items-center gap-3">
         <ProgressBar progress={milestone.progress} className="flex-1" />
         <span className="shrink-0 text-sm text-ink-muted tabular-nums" data-milestone-progress>
-          {describeProgress(milestone.progress)}
+          {progressWords(milestone.progress)}
         </span>
       </div>
       {milestone.progress.issues > 0 && (
         <p className="mt-1 text-xs text-ink-subtle">
-          {milestone.progress.done} done, {milestone.progress.inProgress} in progress, {milestone.progress.todo} to do
+          {t.schedule.milestones.breakdown(milestone.progress.done, milestone.progress.inProgress, milestone.progress.todo)}
         </p>
       )}
 
@@ -238,7 +249,7 @@ function MilestoneIssues({ milestone }: { milestone: Milestone }) {
   const { data } = useIssues({ project: milestone.projectKey, milestone: milestone.id, limit: MAX_PAGE_SIZE });
   const issues = data?.issues ?? [];
   if (data && issues.length === 0) {
-    return <p className="mt-3 text-sm text-ink-muted">Nothing counts towards this yet. Assign issues to it from their page.</p>;
+    return <p className="mt-3 text-sm text-ink-muted">{t.schedule.milestones.nothingYet}</p>;
   }
   return (
     <ul className="mt-3 divide-y divide-border rounded-md border border-border">

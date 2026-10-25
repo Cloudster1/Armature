@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { exportHref } from "@/api/filters";
 import { Button, ButtonLink, Checkbox, Dialog } from "@/components/ui";
 import { EXPORT_COLUMNS, EXPORT_DEFAULT_COLUMNS } from "@/config";
+import { t } from "@/i18n";
 
 /** The query that matches exactly these issues, for exporting them and nothing else. */
 export function keysQuery(keys: string[]): string {
@@ -15,7 +16,7 @@ export function ExportDialog({
   project,
   open,
   onClose,
-  description = "The issues this search matches, as a file with the columns you tick.",
+  description = t.search.export.description,
 }: {
   query: string;
   project?: string;
@@ -28,16 +29,16 @@ export function ExportDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="Export as CSV"
+      title={t.search.export.title}
       description={description}
       attrs={{ "data-export-dialog": "" }}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t.search.export.cancel}
           </Button>
           <ButtonLink href={exportHref(query, columns, project)} download variant="primary" onClick={onClose} data-action="download-csv">
-            Download
+            {t.search.export.download}
           </ButtonLink>
         </>
       }

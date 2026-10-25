@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the work pages speak German as well as English (#371): the board
+  and its quick filters, teams, the hierarchy, dashboards and their widgets,
+  sprints, the calendar, resources, milestones, releases, holidays,
+  absences, search with its query help, saved searches, the bulk bar, the
+  notifications page, the home page and the projects list. NQL itself, its
+  fields, operators and functions, reads the same in both languages.
 - Added: the kit's own words speak German too (#371): the confirm dialog
   asks with the thing first ("Kommentar löschen?"), every confirmation's
   noun and verb come from `web/src/i18n`, counts take the plural the

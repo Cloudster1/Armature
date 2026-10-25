@@ -34,7 +34,7 @@ export function BoardPicker({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Segmented
-        label="Board"
+        label={t.board.picker.label}
         // The first board is the one the project opens on, and is addressed by
         // the project rather than by id.
         value={boardId ?? boards[0]?.id ?? ""}
@@ -49,7 +49,7 @@ export function BoardPicker({
             <>
               {board.name}
               <span aria-hidden="true" className="ml-1.5 text-2xs font-normal text-ink-subtle uppercase">
-                {board.type === "scrum" ? "scrum" : "kanban"}
+                {board.type === "scrum" ? t.board.types.scrum : t.board.types.kanban}
               </span>
             </>
           ),
@@ -64,9 +64,9 @@ export function BoardPicker({
           size="sm"
           variant="secondary"
           loading={create.isPending}
-          onClick={() => create.mutate({ name: `${team.name} board`, teamId: team.id })}
+          onClick={() => create.mutate({ name: t.board.picker.teamBoardName(team.name), teamId: team.id })}
         >
-          Give {team.name} a board
+          {t.board.picker.giveTeamBoard(team.name)}
         </Button>
       ))}
 
@@ -94,7 +94,7 @@ function ManageBoard({ board, isLast, onDeleted }: { board: BoardSummary; isLast
   async function deleteBoard() {
     const sure = await confirm({
       noun: t.kit.confirm.things.board(board.name),
-      body: `${board.name} and its swimlanes go. The issues it showed stay in the project.`,
+      body: t.board.picker.deleteBody(board.name),
     });
     // Not mutate's onSuccess: the refetched list can hide the picker first, and
     // an unmounted observer drops it, leaving the page on a board that is gone.
@@ -105,37 +105,37 @@ function ManageBoard({ board, isLast, onDeleted }: { board: BoardSummary; isLast
     <>
       {renaming ? (
         <form onSubmit={rename} className="flex items-end gap-2" noValidate>
-          <Field label="Board name" autoFocus required value={name} onChange={(event) => setName(event.target.value)} />
+          <Field label={t.board.picker.boardName} autoFocus required value={name} onChange={(event) => setName(event.target.value)} />
           <Button type="submit" size="sm" loading={update.isPending} disabled={!name.trim()}>
-            Save name
+            {t.board.picker.saveName}
           </Button>
           <Button type="button" size="sm" variant="secondary" onClick={() => setRenaming(false)}>
-            Cancel
+            {t.board.picker.cancel}
           </Button>
         </form>
       ) : (
         <div className="flex items-center gap-1">
           <Button size="sm" variant="ghost" onClick={() => setRenaming(true)}>
-            Rename
+            {t.board.picker.rename}
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            title={`Make ${board.name} a ${other} board`}
+            title={t.board.picker.makeType(board.name, t.board.types[other])}
             disabled={update.isPending}
             onClick={() => update.mutate({ id: board.id, type: other })}
           >
-            Change type
+            {t.board.picker.changeType}
           </Button>
           <Button
             size="sm"
             variant="ghost"
             disabled={isLast}
             loading={remove.isPending}
-            title={isLast ? "A project keeps at least one board" : `Delete ${board.name}`}
+            title={isLast ? t.board.picker.keepOne : t.board.picker.deleteNamed(board.name)}
             onClick={deleteBoard}
           >
-            Delete
+            {t.board.picker.delete}
           </Button>
         </div>
       )}

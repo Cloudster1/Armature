@@ -1,17 +1,23 @@
 import { cx } from "@/components/ui";
 import { CHART_AXIS_LABELS, CHART_MARKER_PX, CHART_VALUE_LABEL_MAX_COLUMNS } from "@/config";
-import { arcPath, figure, round, type Arc, type Column } from "./chart";
+import { OTHER, arcPath, figure, round, type Arc, type Column } from "./chart";
+import { t } from "@/i18n";
 
 /**
  * The few shapes a dashboard needs, drawn by hand. A chart library would be a
  * dependency for six rectangles; these are rectangles.
  */
 
+/** A group's name as a reader sees it: the fold of the tail is Other in their language. */
+function shown(label: string): string {
+  return label === OTHER ? t.dashboard.chart.other : label;
+}
+
 /** Rows of label, bar and count, the bar sized against the largest. */
 export function BarList({
   rows,
   tone = () => "bg-accent",
-  empty = "Nothing to count",
+  empty = t.dashboard.chart.nothingToCount,
 }: {
   rows: Array<{ label: string; count: number; key?: string }>;
   tone?: (row: { label: string; count: number }) => string;
@@ -64,7 +70,7 @@ export function PairedBars({
     <div>
       {/* Each group is h-full so the bars' percentage heights resolve against
           the chart rather than against a wrapper as tall as its own bars. */}
-      <div className="flex h-28 items-end gap-1.5" role="img" aria-label={`${a.name} against ${b.name}`}>
+      <div className="flex h-28 items-end gap-1.5" role="img" aria-label={t.dashboard.chart.against(a.name, b.name)}>
         {groups.map((g) => (
           <div key={g.label} className="flex h-full min-w-0 flex-1 items-end justify-center gap-px" title={`${g.label}: ${g.a} ${a.name}, ${g.b} ${b.name}`}>
             <span className={cx("w-[45%] rounded-t-sm", a.tone)} style={{ height: `${(g.a / max) * 100}%`, minHeight: g.a ? 2 : 0 }} />
@@ -104,7 +110,7 @@ export function Stat({ value, label }: { value: string; label: string }) {
 /** A week's start as a short date. Weeks start at midnight UTC, so they are read in UTC wherever the reader is. */
 export function weekLabel(iso: string): string {
   const d = new Date(iso);
-  return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+  return t.dashboard.chart.dayMonth(d.getUTCDate(), d.getUTCMonth() + 1);
 }
 
 /** One line on a chart. Stepped series hold each value until the next sample. */
@@ -129,7 +135,7 @@ export function LineChart({
   series,
   xLabels = [],
   height = 128,
-  empty = "Nothing to draw yet",
+  empty = t.dashboard.chart.nothingToDraw,
 }: {
   series: Series[];
   xLabels?: string[];
@@ -220,7 +226,7 @@ export function Columns({
   tones,
   segmentTones,
   height = 128,
-  empty = "Nothing to draw yet",
+  empty = t.dashboard.chart.nothingToDraw,
 }: {
   columns: Column[];
   /** A tone class per column label, for plain bars. */
@@ -248,7 +254,7 @@ export function Columns({
                       className={cx("w-full bg-current", segmentTones.get(segment.label), index === all.length - 1 && "rounded-t")}
                       style={{ flexGrow: segment.value }}
                       data-chart-part={segment.label}
-                      title={`${column.label}: ${segment.label} ${figure(segment.value)}`}
+                      title={`${shown(column.label)}: ${shown(segment.label)} ${figure(segment.value)}`}
                     />
                   ))}
               </div>
@@ -256,7 +262,7 @@ export function Columns({
               <div
                 className={cx("mx-auto w-full max-w-6 rounded-t bg-current", tones.get(column.label))}
                 style={{ height: `${column.height * 100}%` }}
-                title={`${column.label}: ${figure(column.value)}`}
+                title={`${shown(column.label)}: ${figure(column.value)}`}
               />
             )}
           </div>
@@ -264,8 +270,8 @@ export function Columns({
       </div>
       <div className="mt-1 flex gap-3">
         {columns.map((column) => (
-          <span key={column.label} className="min-w-0 flex-1 truncate text-center text-2xs text-ink-subtle" title={column.label}>
-            {column.label}
+          <span key={column.label} className="min-w-0 flex-1 truncate text-center text-2xs text-ink-subtle" title={shown(column.label)}>
+            {shown(column.label)}
           </span>
         ))}
       </div>
@@ -282,14 +288,24 @@ const DONUT_HOLE = 30;
  * Shares of a whole as a ring, with the total in the hole. Slices are cut by
  * a hairline of surface, and a slice too thin to read is still in the legend.
  */
-export function Donut({ arcs, tones, total, empty = "Nothing to draw yet" }: { arcs: Arc[]; tones: Map<string, string>; total: string; empty?: string }) {
+export function Donut({
+  arcs,
+  tones,
+  total,
+  empty = t.dashboard.chart.nothingToDraw,
+}: {
+  arcs: Arc[];
+  tones: Map<string, string>;
+  total: string;
+  empty?: string;
+}) {
   if (arcs.length === 0) return <p className="text-sm text-ink-subtle">{empty}</p>;
   return (
     <svg
       viewBox={`0 0 ${DONUT_UNIT} ${DONUT_UNIT}`}
       className="mx-auto block h-40 w-40"
       role="img"
-      aria-label={arcs.map((a) => `${a.label} ${Math.round(a.share * 100)}%`).join(", ")}
+      aria-label={arcs.map((a) => `${shown(a.label)} ${Math.round(a.share * 100)}%`).join(", ")}
       data-chart="donut"
     >
       {arcs.map((arc) => (
@@ -302,7 +318,7 @@ export function Donut({ arcs, tones, total, empty = "Nothing to draw yet" }: { a
           data-chart-group={arc.label}
           data-value={figure(arc.value)}
         >
-          <title>{`${arc.label}: ${figure(arc.value)} (${Math.round(arc.share * 100)}%)`}</title>
+          <title>{`${shown(arc.label)}: ${figure(arc.value)} (${Math.round(arc.share * 100)}%)`}</title>
         </path>
       ))}
       <text x={DONUT_UNIT / 2} y={DONUT_UNIT / 2} textAnchor="middle" dominantBaseline="middle" className="fill-ink text-xl font-semibold">
@@ -319,7 +335,7 @@ export function Legend({ items, tones }: { items: Array<{ label: string; value: 
       {items.map((item) => (
         <li key={item.label} className="flex min-w-0 items-center gap-2">
           <span className={cx("inline-block size-2.5 shrink-0 rounded-sm bg-current", tones.get(item.label))} aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate text-ink">{item.label}</span>
+          <span className="min-w-0 flex-1 truncate text-ink">{shown(item.label)}</span>
           <span className="tabular-nums">
             {figure(item.value)}
             {item.share !== undefined && <span className="ml-1 text-ink-subtle">{Math.round(item.share * 100)}%</span>}
@@ -367,7 +383,7 @@ export function StackedArea({
   bands,
   xLabels = [],
   height = 160,
-  empty = "Nothing to draw yet",
+  empty = t.dashboard.chart.nothingToDraw,
 }: {
   bands: Band[];
   xLabels?: string[];
@@ -415,7 +431,7 @@ export function Scatter({
   points,
   rolling,
   height = 160,
-  empty = "Nothing to draw yet",
+  empty = t.dashboard.chart.nothingToDraw,
   yLabel,
 }: {
   points: Array<{ x: number; y: number; label: string }>;
@@ -438,7 +454,7 @@ export function Scatter({
         className="block w-full overflow-visible"
         style={{ height }}
         role="img"
-        aria-label={`${points.length} points`}
+        aria-label={t.dashboard.chart.pointCount(points.length)}
       >
         <line x1={0} y1={CHART_UNIT} x2={CHART_UNIT} y2={CHART_UNIT} className="stroke-border" strokeWidth={1} vectorEffect="non-scaling-stroke" />
         {rolling.length > 1 && (

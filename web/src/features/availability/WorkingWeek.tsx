@@ -4,6 +4,7 @@ import { Button, Dialog, ErrorBanner, Input, Select, Table, Td, Th, useToast } f
 import { HOURS_PER_DAY, WORKING_HOURS_STEP } from "@/config";
 import { useFormat } from "@/lib/format";
 import { hoursText, minutesFromHours, weekTotal, weekdayName } from "@/lib/week";
+import { t } from "@/i18n";
 
 /** A person's week as a table of hours, with the calendar whose days they have off. */
 export function WorkingWeekTable({ week }: { week: WorkingWeek }) {
@@ -11,11 +12,11 @@ export function WorkingWeekTable({ week }: { week: WorkingWeek }) {
   return (
     <div className="space-y-3" data-working-week>
       <p className="text-sm text-ink-muted">
-        Days off from{" "}
+        {t.schedule.week.daysOffFrom}{" "}
         <span className="text-ink" data-week-calendar>
-          {week.calendar?.name ?? "no calendar yet"}
+          {week.calendar?.name ?? t.schedule.week.noCalendar}
         </span>
-        {week.calendarId === null && week.calendar ? ", everyone's default" : ""}.{!week.saved && " Nobody has set your week, so it is the standard one."}
+        {week.calendarId === null && week.calendar ? t.schedule.week.everyonesDefault : ""}.{!week.saved && t.schedule.week.notSet}
       </p>
       <Table dense>
         <thead>
@@ -25,17 +26,17 @@ export function WorkingWeekTable({ week }: { week: WorkingWeek }) {
                 {weekdayName(day, format.locale, "short")}
               </Th>
             ))}
-            <Th className="text-right">Week</Th>
+            <Th className="text-right">{t.schedule.week.week}</Th>
           </tr>
         </thead>
         <tbody>
           <tr>
             {WEEKDAYS.map((day) => (
               <Td key={day} className="text-right" data-week-hours={day}>
-                {hoursText(week.minutes[day] ?? 0)} h
+                {t.schedule.week.hours(hoursText(week.minutes[day] ?? 0))}
               </Td>
             ))}
-            <Td className="text-right font-medium text-ink">{hoursText(weekTotal(week.minutes))} h</Td>
+            <Td className="text-right font-medium text-ink">{t.schedule.week.hours(hoursText(weekTotal(week.minutes)))}</Td>
           </tr>
         </tbody>
       </Table>
@@ -50,8 +51,8 @@ export function WorkingWeekDialog({ userId, name, onClose }: { userId: string; n
     <Dialog
       open
       onClose={onClose}
-      title={`${name}'s working week`}
-      description="Hours on each weekday, and the holiday calendar whose days they have off."
+      title={t.schedule.week.dialogTitle(name)}
+      description={t.schedule.week.dialogDetail}
       attrs={{ "data-working-week-dialog": userId }}
     >
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
@@ -80,7 +81,7 @@ function WorkingWeekForm({ week, name, onClose }: { week: WorkingWeek; name: str
       { userId: week.userId, calendarId: calendarId || null, minutes: minutes as Record<string, number> },
       {
         onSuccess: () => {
-          toast.success(`Saved ${name}'s working week`);
+          toast.success(t.schedule.week.saved(name));
           onClose();
         },
       },
@@ -89,8 +90,8 @@ function WorkingWeekForm({ week, name, onClose }: { week: WorkingWeek; name: str
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Select label="Holiday calendar" value={calendarId} onChange={(e) => setCalendarId(e.target.value)} data-week-calendar-select>
-        <option value="">The default{fallback ? ` (${fallback.name})` : ""}</option>
+      <Select label={t.schedule.week.calendar} value={calendarId} onChange={(e) => setCalendarId(e.target.value)} data-week-calendar-select>
+        <option value="">{t.schedule.week.theDefault(fallback?.name)}</option>
         {(calendars?.calendars ?? []).map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}
@@ -109,7 +110,7 @@ function WorkingWeekForm({ week, name, onClose }: { week: WorkingWeek; name: str
               step={WORKING_HOURS_STEP}
               value={hours[day]}
               invalid={minutes[day] === null}
-              aria-label={`Hours on ${weekdayName(day, format.locale)}`}
+              aria-label={t.schedule.week.hoursOn(weekdayName(day, format.locale))}
               onChange={(e) => setHours({ ...hours, [day]: e.target.value })}
               className="text-right"
               data-week-day={day}
@@ -119,16 +120,16 @@ function WorkingWeekForm({ week, name, onClose }: { week: WorkingWeek; name: str
       </div>
       <p className="text-sm text-ink-muted">
         {unreadable.length > 0
-          ? `A day holds from 0 to ${HOURS_PER_DAY} hours. Fix ${unreadable.map((day) => weekdayName(day, format.locale)).join(", ")}.`
-          : `${hoursText(weekTotal(minutes as Record<string, number>))} hours a week. Leave a day at 0 when it is not worked.`}
+          ? t.schedule.week.unreadable(HOURS_PER_DAY, unreadable.map((day) => weekdayName(day, format.locale)).join(", "))
+          : t.schedule.week.total(hoursText(weekTotal(minutes as Record<string, number>)))}
       </p>
       {save.error && <ErrorBanner>{(save.error as Error).message}</ErrorBanner>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onClose}>
-          Cancel
+          {t.schedule.week.cancel}
         </Button>
         <Button type="submit" loading={save.isPending} disabled={unreadable.length > 0} data-action="save-working-week">
-          Save week
+          {t.schedule.week.save}
         </Button>
       </div>
     </form>

@@ -45,7 +45,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
     const unsaved = draft ? unsavedDays(draft, calendar.days ?? []) : 0;
     if (unsaved > 0) {
       const noun = t.kit.confirm.things.unsavedDays(unsaved);
-      const body = `What you changed in the table and did not save is lost, and the days in ${file.name} are added to ${calendar.name}. To keep your changes, cancel and press "Save days" first.`;
+      const body = t.schedule.holidays.importBody(file.name, calendar.name);
       if (!(await confirm({ noun, verb: t.kit.confirm.verbs.importAndDiscard, body }))) return;
     }
     importDays.mutate(
@@ -53,7 +53,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       {
         onSuccess: ({ imported }) => {
           setDraft(null);
-          toast.success(`Added ${imported} ${imported === 1 ? "day" : "days"} to ${calendar.name}`);
+          toast.success(t.schedule.holidays.imported(imported, calendar.name));
         },
       },
     );
@@ -66,7 +66,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       {
         onSuccess: () => {
           setDraft(null);
-          toast.success(`Saved the days of ${calendar.name}`);
+          toast.success(t.schedule.holidays.savedDays(calendar.name));
         },
       },
     );
@@ -75,7 +75,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
   return (
     <section className="mt-8" data-holiday-calendar={calendar.name}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <SectionTitle>Days off in {calendar.name}</SectionTitle>
+        <SectionTitle>{t.schedule.holidays.daysOffIn(calendar.name)}</SectionTitle>
         {canAdminister && (
           <span className="flex gap-2">
             <Button
@@ -86,7 +86,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
               onClick={() => fileInput.current?.click()}
               data-action="import-holidays"
             >
-              Import .ics
+              {t.schedule.holidays.importIcs}
             </Button>
             <Button
               size="sm"
@@ -95,14 +95,14 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
               onClick={() => setDraft([...days, { day: "", name: "", halfDay: false }])}
               data-action="add-holiday"
             >
-              Add a day
+              {t.schedule.holidays.addDay}
             </Button>
             <input
               ref={fileInput}
               type="file"
               accept={HOLIDAY_FILE_ACCEPT}
               className="hidden"
-              aria-label="Choose an .ics file"
+              aria-label={t.schedule.holidays.chooseFile}
               data-holiday-file
               onChange={(e) => void onFile(e.target.files?.[0])}
             />
@@ -112,22 +112,15 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       {importDays.error && <ErrorBanner>{(importDays.error as Error).message}</ErrorBanner>}
       {setDays.error && <ErrorBanner>{(setDays.error as Error).message}</ErrorBanner>}
       {days.length === 0 ? (
-        <EmptyState
-          title="No days off yet"
-          description={
-            canAdminister
-              ? "Add the days by hand, or import the .ics file a calendar application exports. Recurring events need to be exported as separate days."
-              : "An administrator adds the days off here."
-          }
-        />
+        <EmptyState title={t.schedule.holidays.empty} description={canAdminister ? t.schedule.holidays.emptyAdmin : t.schedule.holidays.emptyOthers} />
       ) : (
         <Card>
           <Table dense>
             <thead>
               <tr>
-                <Th className="w-44">Day</Th>
-                <Th>Name</Th>
-                <Th className="w-28">Half day</Th>
+                <Th className="w-44">{t.schedule.holidays.day}</Th>
+                <Th>{t.schedule.holidays.name}</Th>
+                <Th className="w-28">{t.schedule.holidays.halfDay}</Th>
                 {canAdminister && <Th className="w-10" />}
               </tr>
             </thead>
@@ -136,20 +129,26 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
                 canAdminister ? (
                   <tr key={index} data-holiday-day={day.day}>
                     <Td>
-                      <Input type="date" controlSize="sm" value={day.day} aria-label="Day" onChange={(e) => change(index, { day: e.target.value })} />
+                      <Input
+                        type="date"
+                        controlSize="sm"
+                        value={day.day}
+                        aria-label={t.schedule.holidays.day}
+                        onChange={(e) => change(index, { day: e.target.value })}
+                      />
                     </Td>
                     <Td>
                       <Input
                         controlSize="sm"
                         value={day.name}
                         maxLength={HOLIDAY_NAME_MAX_LENGTH}
-                        aria-label="Name"
+                        aria-label={t.schedule.holidays.name}
                         onChange={(e) => change(index, { name: e.target.value })}
                       />
                     </Td>
                     <Td>
                       <Checkbox
-                        label={<span className="sr-only">Half day</span>}
+                        label={<span className="sr-only">{t.schedule.holidays.halfDay}</span>}
                         checked={day.halfDay}
                         onChange={(e) => change(index, { halfDay: e.target.checked })}
                       />
@@ -157,7 +156,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
                     <Td className="text-right">
                       <IconButton
                         icon={<Icon.X />}
-                        label={`Remove ${day.name || "this day"}`}
+                        label={t.schedule.holidays.removeDay(day.name)}
                         size="sm"
                         onClick={() => setDraft(days.filter((_, i) => i !== index))}
                       />
@@ -167,7 +166,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
                   <tr key={day.day} data-holiday-day={day.day}>
                     <Td>{formatDay(day.day, format.locale)}</Td>
                     <Td className="text-ink">{day.name}</Td>
-                    <Td>{day.halfDay && <Tag>Half day</Tag>}</Td>
+                    <Td>{day.halfDay && <Tag>{t.schedule.holidays.halfDay}</Tag>}</Td>
                   </tr>
                 ),
               )}
@@ -178,10 +177,10 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       {canAdminister && draft && (
         <div className="mt-3 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setDraft(null)}>
-            Discard changes
+            {t.schedule.holidays.discard}
           </Button>
           <Button loading={setDays.isPending} onClick={save} data-action="save-holidays">
-            Save days
+            {t.schedule.holidays.saveDays}
           </Button>
         </div>
       )}

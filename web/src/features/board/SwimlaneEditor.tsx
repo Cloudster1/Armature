@@ -14,11 +14,12 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useProjectStatuses, type Status } from "@/api/issues";
 import { t } from "@/i18n";
 
-const groupings: Array<{ value: Grouping; label: string }> = [
-  { value: "none", label: "No rows" },
-  { value: "assignee", label: "Assignee" },
-  { value: "priority", label: "Priority" },
-  { value: "type", label: "Issue type" },
+// Read while rendering, so the chips speak the language on screen.
+const groupings = (): Array<{ value: Grouping; label: string }> => [
+  { value: "none", label: t.board.swimlanes.none },
+  { value: "assignee", label: t.board.swimlanes.assignee },
+  { value: "priority", label: t.board.swimlanes.priority },
+  { value: "type", label: t.board.swimlanes.type },
 ];
 
 /** Maps ticket states onto the lanes of the board it is handed, the one on
@@ -31,7 +32,7 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
   const reorder = useReorderSwimlanes();
   const [adding, setAdding] = useState(false);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.board.swimlanes.loading}</p>;
 
   const board = data?.board;
   const statuses = statusData?.statuses ?? [];
@@ -61,10 +62,10 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
       {updateBoard.error && <ErrorBanner>{(updateBoard.error as Error).message}</ErrorBanner>}
 
       <Card className="p-4">
-        <h3 className="text-sm font-medium text-ink">Rows within each swimlane</h3>
-        <p className="mt-1 text-sm text-ink-muted">Swimlanes are made of ticket states. This groups the cards inside them a second way.</p>
+        <h3 className="text-sm font-medium text-ink">{t.board.swimlanes.rowsTitle}</h3>
+        <p className="mt-1 text-sm text-ink-muted">{t.board.swimlanes.rowsHint}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {groupings.map((option) => (
+          {groupings().map((option) => (
             <Chip key={option.value} pressed={board.groupBy === option.value} onClick={() => updateBoard.mutate({ id: boardId, groupBy: option.value })}>
               {option.label}
             </Chip>
@@ -76,12 +77,8 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
 
       {unclaimed.length > 0 && (
         <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-          <strong className="font-medium text-ink">
-            {unclaimed.length} state{unclaimed.length === 1 ? "" : "s"} not on the board
-          </strong>{" "}
-          <span className="text-ink-muted">
-            ({unclaimed.map((s) => s.name).join(", ")}). Cards in {unclaimed.length === 1 ? "it" : "them"} will not appear in any swimlane.
-          </span>
+          <strong className="font-medium text-ink">{t.board.swimlanes.unclaimed(unclaimed.length)}</strong>{" "}
+          <span className="text-ink-muted">{t.board.swimlanes.unclaimedHint(unclaimed.map((s) => s.name).join(", "), unclaimed.length)}</span>
         </div>
       )}
 
@@ -107,7 +104,7 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
         <AddSwimlaneForm boardId={boardId} available={unclaimed} onDone={() => setAdding(false)} />
       ) : (
         <Button variant="secondary" onClick={() => setAdding(true)}>
-          Add swimlane
+          {t.board.swimlanes.add}
         </Button>
       )}
     </div>
@@ -126,10 +123,8 @@ function FinishedWork({ boardId, days }: { boardId: string; days: number }) {
 
   return (
     <Card className="p-4" data-done-for-days-editor="">
-      <h3 className="text-sm font-medium text-ink">Finished work</h3>
-      <p className="mt-1 text-sm text-ink-muted">
-        A done issue leaves the board this many days after it was finished, so the last lane stays readable. The board links to what it leaves out.
-      </p>
+      <h3 className="text-sm font-medium text-ink">{t.board.swimlanes.finishedTitle}</h3>
+      <p className="mt-1 text-sm text-ink-muted">{t.board.swimlanes.finishedHint}</p>
       {update.error && (
         <div className="mt-3">
           <ErrorBanner>{(update.error as Error).message}</ErrorBanner>
@@ -137,7 +132,7 @@ function FinishedWork({ boardId, days }: { boardId: string; days: number }) {
       )}
       <form onSubmit={save} className="mt-3 flex flex-wrap items-center gap-2">
         <label htmlFor="board-done-for-days" className="text-sm text-ink-muted">
-          Finished work stays for
+          {t.board.swimlanes.staysFor}
         </label>
         <Input
           id="board-done-for-days"
@@ -150,13 +145,13 @@ function FinishedWork({ boardId, days }: { boardId: string; days: number }) {
           onChange={(event) => setText(event.target.value)}
           className="max-w-20 text-right tabular-nums"
         />
-        <span className="text-sm text-ink-muted">days</span>
+        <span className="text-sm text-ink-muted">{t.board.swimlanes.days}</span>
         <Button type="submit" size="sm" variant="secondary" loading={update.isPending}>
-          Save
+          {t.board.swimlanes.save}
         </Button>
       </form>
       <p id="board-done-for-days-hint" className="mt-1 text-xs text-ink-subtle">
-        0 keeps it on the board.
+        {t.board.swimlanes.zeroKeeps}
       </p>
     </Card>
   );
@@ -222,21 +217,28 @@ function SwimlaneRow({
       <div className="flex items-start gap-3">
         <form onSubmit={saveDetails} className="flex flex-1 flex-wrap items-end gap-3">
           <div className="min-w-40 flex-1">
-            <Field label={`Swimlane ${swimlane.position + 1} name`} value={name} onChange={(e) => setName(e.target.value)} />
+            <Field label={t.board.swimlanes.laneName(swimlane.position + 1)} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="w-28">
-            <Field label="Card limit" type="number" min={0} value={wipLimit} onChange={(e) => setWipLimit(e.target.value)} placeholder="None" />
+            <Field
+              label={t.board.swimlanes.limit}
+              type="number"
+              min={0}
+              value={wipLimit}
+              onChange={(e) => setWipLimit(e.target.value)}
+              placeholder={t.board.swimlanes.noLimit}
+            />
           </div>
           <Button type="submit" size="sm" variant="secondary" loading={update.isPending}>
-            Save
+            {t.board.swimlanes.save}
           </Button>
         </form>
 
         <div className="flex shrink-0 items-center gap-1 pt-6">
-          <Button size="sm" variant="ghost" disabled={isFirst || moving} onClick={() => onMove(-1)} aria-label={`Move ${swimlane.name} left`}>
+          <Button size="sm" variant="ghost" disabled={isFirst || moving} onClick={() => onMove(-1)} aria-label={t.board.swimlanes.moveLeft(swimlane.name)}>
             &larr;
           </Button>
-          <Button size="sm" variant="ghost" disabled={isLast || moving} onClick={() => onMove(1)} aria-label={`Move ${swimlane.name} right`}>
+          <Button size="sm" variant="ghost" disabled={isLast || moving} onClick={() => onMove(1)} aria-label={t.board.swimlanes.moveRight(swimlane.name)}>
             &rarr;
           </Button>
           <Button
@@ -247,18 +249,18 @@ function SwimlaneRow({
             onClick={async () =>
               (await confirm({
                 noun: t.kit.confirm.things.swimlane,
-                body: `${swimlane.name} goes from the board; the statuses it showed move to the next one.`,
+                body: t.board.swimlanes.deleteBody(swimlane.name),
               })) && remove.mutate({ boardId, swimlaneId: swimlane.id })
             }
-            title={canDelete ? "Delete this swimlane" : "A board needs at least one swimlane"}
+            title={canDelete ? t.board.swimlanes.deleteThis : t.board.swimlanes.needsOne}
           >
-            Delete
+            {t.board.swimlanes.delete}
           </Button>
         </div>
       </div>
 
       <fieldset className="mt-3">
-        <legend className="text-xs font-medium text-ink-muted">States in this swimlane</legend>
+        <legend className="text-xs font-medium text-ink-muted">{t.board.swimlanes.states}</legend>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {offered.map((status) => {
             const mine = selected.has(status.id);
@@ -270,7 +272,7 @@ function SwimlaneRow({
                 label={status.name}
                 checked={mine}
                 disabled={takenByAnother}
-                title={takenByAnother ? `Already in ${owner}` : undefined}
+                title={takenByAnother ? t.board.swimlanes.alreadyIn(owner ?? "") : undefined}
                 onChange={() => toggleStatus(status.id)}
                 className={cx("rounded border px-2 py-1 text-xs", mine ? "border-accent bg-accent-subtle text-accent" : "border-border")}
               />
@@ -296,10 +298,17 @@ function AddSwimlaneForm({ boardId, available, onDone }: { boardId: string; avai
     <Card className="p-4">
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         {add.error && <ErrorBanner>{(add.error as Error).message}</ErrorBanner>}
-        <Field label="New swimlane name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="Blocked" />
+        <Field
+          label={t.board.swimlanes.newName}
+          autoFocus
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t.board.swimlanes.newPlaceholder}
+        />
         {available.length > 0 && (
           <fieldset>
-            <legend className="text-xs font-medium text-ink-muted">States for it (only ones not already on the board)</legend>
+            <legend className="text-xs font-medium text-ink-muted">{t.board.swimlanes.newStates}</legend>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {available.map((status) => (
                 <Checkbox
@@ -318,10 +327,10 @@ function AddSwimlaneForm({ boardId, available, onDone }: { boardId: string; avai
         )}
         <div className="flex gap-2">
           <Button type="submit" loading={add.isPending} disabled={!name.trim()}>
-            Add swimlane
+            {t.board.swimlanes.add}
           </Button>
           <Button type="button" variant="secondary" onClick={onDone}>
-            Cancel
+            {t.board.swimlanes.cancel}
           </Button>
         </div>
       </form>

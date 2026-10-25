@@ -4,6 +4,7 @@ import { utilisation, type Utilisation } from "@/features/plan/load";
 import { number } from "@/features/plan/SprintBands";
 import { DAYS_PER_WEEK, addDays, day, isoDay } from "@/features/plan/scale";
 import { today } from "@/lib/week";
+import { t } from "@/i18n";
 
 /** How a week stands against the hours there are, in the plan's four words. */
 export function cellState(week: ResourceWeek): Utilisation {
@@ -33,16 +34,20 @@ export function hours(value: number): string {
 
 /** What a week says on hover: "32 of 40 h; 1 day away; 1 holiday", and the share of the week when it is not all of it. */
 export function describeHours(week: ResourceWeek, sharePercent?: number): string {
-  const share = sharePercent !== undefined ? ` (${sharePercent}% of the week)` : "";
-  const parts = [week.capacityHours !== undefined ? `${hours(week.loadHours)} of ${hours(week.capacityHours)} h${share}` : `${hours(week.loadHours)} h`];
-  if (week.daysAway) parts.push(`${number(week.daysAway)} day${week.daysAway === 1 ? "" : "s"} away`);
-  if (week.holidays) parts.push(`${week.holidays} holiday${week.holidays === 1 ? "" : "s"}`);
+  const share = sharePercent !== undefined ? t.schedule.resources.share(sharePercent) : "";
+  const parts = [
+    week.capacityHours !== undefined
+      ? t.schedule.resources.loadOfLong(hours(week.loadHours), hours(week.capacityHours), share)
+      : t.schedule.resources.hours(hours(week.loadHours)),
+  ];
+  if (week.daysAway) parts.push(t.schedule.resources.daysAway(number(week.daysAway), week.daysAway));
+  if (week.holidays) parts.push(t.schedule.resources.holidays(week.holidays));
   return parts.join("; ");
 }
 
 /** The cell's whole title: whose week, which week, and its hours. */
 export function describeCell(row: ResourceRow, week: ResourceWeek, locale: string): string {
-  return `${row.name}, week of ${weekLabel(week.start, locale)}: ${describeHours(week, row.sharePercent)}`;
+  return `${t.schedule.resources.weekOf(row.name, weekLabel(week.start, locale))}: ${describeHours(week, row.sharePercent)}`;
 }
 
 /** A week's column heading: its Monday, as "3 Mar" in the reader's language. */

@@ -1,6 +1,7 @@
 import type { BurndownPoint, SprintBurndown } from "@/api/reports";
 import { MS_PER_DAY } from "@/features/plan/scale";
 import type { Series } from "./charts";
+import { t } from "@/i18n";
 
 /** Days from the sprint's first day to a date, so every series shares an axis. */
 function dayIndex(from: Date, iso: string): number {
@@ -40,9 +41,9 @@ export function burndownSeries(curve: SprintBurndown): Series[] {
       ]
     : [];
   return [
-    { name: "scope", tone: "text-ink-subtle", points: scope, step: true },
-    { name: "ideal", tone: "text-ink-muted", points: ideal, dashed: true },
-    { name: "remaining", tone: "text-accent", points: remaining },
+    { name: t.dashboard.burndown.scope, tone: "text-ink-subtle", points: scope, step: true },
+    { name: t.dashboard.burndown.ideal, tone: "text-ink-muted", points: ideal, dashed: true },
+    { name: t.dashboard.burndown.remaining, tone: "text-accent", points: remaining },
   ];
 }
 
@@ -50,18 +51,19 @@ export function burndownSeries(curve: SprintBurndown): Series[] {
 export function describeScope(curve: SprintBurndown): string {
   const first = curve.points[0];
   const last = curve.points[curve.points.length - 1];
-  if (!first || !last) return "No day has been written down yet.";
-  const parts = [`${last.remaining} of ${last.scope} pts left`];
-  if (last.scope !== first.scope) parts.push(`scope ${first.scope} to ${last.scope} pts`);
-  if (last.unestimated > 0) parts.push(`${last.unestimated} unestimated`);
-  parts.push(`${last.issuesDone}/${last.issues} issues done`);
+  const words = t.dashboard.burndown;
+  if (!first || !last) return words.noDay;
+  const parts = [words.left(last.remaining, last.scope)];
+  if (last.scope !== first.scope) parts.push(words.scopeMoved(first.scope, last.scope));
+  if (last.unestimated > 0) parts.push(words.unestimated(last.unestimated));
+  parts.push(words.issuesDone(last.issuesDone, last.issues));
   return parts.join(" · ");
 }
 
 /** Short day labels for the axis: the first day, the last, and the middle. */
 export function axisLabels(curve: SprintBurndown): string[] {
   const { from, to } = chartSpan(curve);
-  const label = (d: Date) => `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+  const label = (d: Date) => t.dashboard.chart.dayMonth(d.getUTCDate(), d.getUTCMonth() + 1);
   const mid = new Date((from.getTime() + to.getTime()) / 2);
   return [label(from), label(mid), label(to)];
 }

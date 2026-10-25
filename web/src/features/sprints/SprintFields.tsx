@@ -1,6 +1,7 @@
 import { useSprints, useSetEstimate, useSetIssueSprint } from "@/api/sprints";
 import type { Issue } from "@/api/issues";
 import { Input, SelectInput, cx } from "@/components/ui";
+import { t } from "@/i18n";
 
 /** Commits an issue to a sprint, or sends it back to the backlog. */
 export function SprintField({ issue }: { issue: Issue }) {
@@ -12,7 +13,7 @@ export function SprintField({ issue }: { issue: Issue }) {
   return (
     <span className="flex flex-col items-end gap-1">
       <label htmlFor="issue-sprint" className="sr-only">
-        Sprint
+        {t.schedule.sprints.sprint}
       </label>
       <SelectInput
         controlSize="sm"
@@ -21,11 +22,11 @@ export function SprintField({ issue }: { issue: Issue }) {
         onChange={(event) => setSprint.mutate({ key: issue.key, sprintId: event.target.value || null })}
         className="text-xs"
       >
-        <option value="">Backlog</option>
+        <option value="">{t.schedule.sprints.backlog}</option>
         {sprints.map((sprint) => (
           <option key={sprint.id} value={sprint.id}>
             {sprint.name}
-            {sprint.state === "active" ? " (running)" : ""}
+            {sprint.state === "active" ? t.schedule.sprints.runningSuffix : ""}
           </option>
         ))}
         {/* A closed sprint is not offered, but the issue may already be in one. */}
@@ -46,7 +47,7 @@ export function EstimateField({ issue }: { issue: Issue }) {
   return (
     <span className="flex flex-col items-end gap-1">
       <label htmlFor="issue-estimate" className="sr-only">
-        Estimate in points
+        {t.schedule.sprints.estimateLabel}
       </label>
       <Input
         controlSize="sm"
@@ -54,7 +55,7 @@ export function EstimateField({ issue }: { issue: Issue }) {
         type="number"
         min={0}
         step="0.5"
-        placeholder="Not sized"
+        placeholder={t.schedule.sprints.notSized}
         defaultValue={issue.estimate ?? ""}
         onBlur={(event) => {
           const raw = event.target.value.trim();

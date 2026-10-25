@@ -57,14 +57,7 @@ function SearchPage() {
 
   return (
     <Page width="content">
-      <PageHeader
-        title={active ? active.name : "Search"}
-        meta={
-          active
-            ? `A saved search${active.ownerName ? ` by ${active.ownerName}` : ""}`
-            : "Every issue you can see, narrowed by a query. Without one, the newest first."
-        }
-      />
+      <PageHeader title={active ? active.name : t.search.page.title} meta={active ? t.search.page.savedBy(active.ownerName ?? "") : t.search.page.meta} />
 
       <div className="mb-3">
         <QueryInput value={q} autoFocus error={error} onSubmit={(next) => navigate({ to: "/search", search: { q: next } })} />
@@ -74,7 +67,7 @@ function SearchPage() {
 
       {recent.length > 0 && (
         <p className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-ink-subtle" data-recent-queries>
-          <span>Recent</span>
+          <span>{t.search.page.recent}</span>
           {recent.map((query) => (
             <Button key={query} variant="link" className="font-mono" onClick={() => navigate({ to: "/search", search: { q: query } })}>
               {query}
@@ -90,10 +83,7 @@ function SearchPage() {
       {isLoading ? (
         <Skeleton rows={6} />
       ) : issues.length === 0 ? (
-        <EmptyState
-          title={error ? "The query needs fixing first" : "Nothing matches that query"}
-          description={error ? undefined : "Loosen a condition, or check a name against the help beside the query."}
-        />
+        <EmptyState title={error ? t.search.page.needsFixing : t.search.page.nothingMatches} description={error ? undefined : t.search.page.loosen} />
       ) : (
         <IssueTable issues={issues} showProject selected={selected} onSelect={setSelected} />
       )}
@@ -104,7 +94,7 @@ function SearchPage() {
           <BulkBar keys={[...selected]} onClear={() => setSelected(new Set())} />
         </div>
       )}
-      {data && <Pager label="Issue pages" total={data.total} offset={data.offset} pageSize={SEARCH_PAGE_SIZE} onChange={turn} />}
+      {data && <Pager label={t.search.page.pages} total={data.total} offset={data.offset} pageSize={SEARCH_PAGE_SIZE} onChange={turn} />}
     </Page>
   );
 }

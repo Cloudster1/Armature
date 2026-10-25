@@ -3,6 +3,7 @@ import { projectRoute } from "./project";
 import { Page, PageHeader } from "@/components/ui";
 import { useProject } from "@/api/projects";
 import { MilestoneList } from "@/features/milestones/MilestoneList";
+import { t } from "@/i18n";
 
 export const milestonesRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -22,7 +23,7 @@ function MilestonesPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Milestones"
+        title={t.schedule.milestones.title}
       />
       <MilestoneList projectKey={projectKey} />
     </Page>

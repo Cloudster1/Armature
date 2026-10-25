@@ -6,6 +6,7 @@ import { BULK_MAX_SELECTION } from "@/config";
 import { LabelInput } from "@/features/labels/LabelInput";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { ExportDialog, keysQuery } from "./ExportDialog";
+import { t } from "@/i18n";
 
 /** Whether a change asks for anything; the Apply button waits until it does. */
 export function changeIsEmpty(change: BulkChange): boolean {
@@ -45,50 +46,57 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
   return (
     <>
       <Toolbar
-        label="Change the selected issues"
+        label={t.search.bulk.label}
         start={
           <div className="flex flex-wrap items-end gap-3" data-bulk-bar={keys.length}>
-            <span className="pb-2 text-sm font-medium text-ink">{keys.length} selected on this page</span>
+            <span className="pb-2 text-sm font-medium text-ink">{t.search.bulk.selected(keys.length)}</span>
             <Button variant="secondary" size="sm" className="mb-1 shell:hidden" aria-expanded={open} onClick={() => setOpen(!open)} data-action="bulk-unfold">
-              {open ? "Fewer" : `Change ${keys.length}`}
+              {open ? t.search.bulk.fewer : t.search.bulk.change(keys.length)}
             </Button>
             <div className={folded} data-bulk-fields>
               <Select
-                label="Priority"
+                label={t.search.bulk.priority}
                 id="field-bulk-priority"
                 controlSize="sm"
                 value={change.priority ?? ""}
                 onChange={(e) => setChange({ ...change, priority: e.target.value || undefined })}
               >
-                <option value="">Leave</option>
+                <option value="">{t.search.bulk.leave}</option>
                 {["lowest", "low", "medium", "high", "highest"].map((p) => (
                   <option key={p} value={p}>
-                    {p}
+                    {t.issueList.priority.options[p] ?? p}
                   </option>
                 ))}
               </Select>
               <PersonPicker
-                label="Assignee"
+                label={t.search.bulk.assignee}
                 id="field-bulk-assignee"
                 controlSize="sm"
                 staff
-                none="Leave"
+                none={t.search.bulk.leave}
                 value={change.assignee === undefined ? "" : change.assignee === null ? "-" : change.assignee}
                 onChange={(value) => setChange({ ...change, assignee: value === "" ? undefined : value === "-" ? null : value })}
                 className="w-48"
               >
-                <option value="-">Nobody</option>
+                <option value="-">{t.search.bulk.nobody}</option>
               </PersonPicker>
-              <Labelled id="field-bulk-labels" label="Add labels" className="w-48">
-                <LabelInput id="field-bulk-labels" controlSize="sm" placeholder="Type a label" value={labels} onChange={setLabels} onTyping={setTyping} />
+              <Labelled id="field-bulk-labels" label={t.search.bulk.addLabels} className="w-48">
+                <LabelInput
+                  id="field-bulk-labels"
+                  controlSize="sm"
+                  placeholder={t.search.bulk.typeLabel}
+                  value={labels}
+                  onChange={setLabels}
+                  onTyping={setTyping}
+                />
               </Labelled>
               <Field
-                label="Transition"
+                label={t.search.bulk.transition}
                 id="field-bulk-transition"
                 controlSize="sm"
                 value={change.transition ?? ""}
                 onChange={(e) => setChange({ ...change, transition: e.target.value || undefined })}
-                placeholder="Start progress"
+                placeholder={t.search.bulk.transitionPlaceholder}
                 className="w-40"
               />
             </div>
@@ -96,13 +104,13 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
         }
         end={
           <div className={folded === "contents" ? "flex flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2 max-shell:hidden"}>
-            {tooMany && <span className="text-sm text-danger">At most {BULK_MAX_SELECTION} at once.</span>}
+            {tooMany && <span className="text-sm text-danger">{t.search.bulk.atMost(BULK_MAX_SELECTION)}</span>}
             <Button variant="ghost" size="sm" onClick={onClear}>
-              Clear
+              {t.search.bulk.clear}
             </Button>
             {/* Reading changes nothing, so neither a chosen change nor the bulk limit stands in its way. */}
             <Button variant="secondary" size="sm" icon={<Icon.Download />} onClick={() => setExporting(true)} data-action="export-selected">
-              Export {keys.length} selected
+              {t.search.bulk.export(keys.length)}
             </Button>
             <Button
               size="sm"
@@ -111,17 +119,12 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
               disabled={tooMany || changeIsEmpty({ ...change, addLabels: adding })}
               data-action="bulk-apply"
             >
-              Apply to {keys.length}
+              {t.search.bulk.apply(keys.length)}
             </Button>
           </div>
         }
       />
-      <ExportDialog
-        query={keysQuery(keys)}
-        open={exporting}
-        onClose={() => setExporting(false)}
-        description={`The ${keys.length} selected issues, as a file with the columns you tick.`}
-      />
+      <ExportDialog query={keysQuery(keys)} open={exporting} onClose={() => setExporting(false)} description={t.search.bulk.exportDescription(keys.length)} />
       {edit.error && <ErrorBanner>{(edit.error as Error).message}</ErrorBanner>}
       <Dialog
         open={result !== null}
@@ -129,7 +132,7 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
           setResult(null);
           onClear();
         }}
-        title={result ? `${result.applied.length} changed${result.refused.length ? `, ${result.refused.length} not` : ""}` : ""}
+        title={result ? t.search.bulk.result(result.applied.length, result.refused.length) : ""}
         attrs={{ "data-bulk-result": "" }}
         footer={
           <Button
@@ -138,7 +141,7 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
               onClear();
             }}
           >
-            Done
+            {t.search.bulk.done}
           </Button>
         }
       >
@@ -151,7 +154,7 @@ export function BulkBar({ keys, onDone, onClear }: { keys: string[]; onDone?: (r
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-ink-muted">Every selected issue took the change.</p>
+          <p className="text-sm text-ink-muted">{t.search.bulk.allTook}</p>
         )}
       </Dialog>
     </>

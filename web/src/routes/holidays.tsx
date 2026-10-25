@@ -34,17 +34,13 @@ function HolidaysPage() {
   const open = calendars.find((c) => c.id === chosen) ?? calendars[0];
 
   async function onDelete(calendar: HolidayCalendar) {
-    const one = calendar.desks.length === 1;
-    const kept =
-      calendar.desks.length === 0
-        ? ""
-        : ` The ${inWords(calendar.desks)} ${one ? "desk takes its" : "desks take their"} days off from it; choose another one on ${one ? "its service desk page" : "their service desk pages"} first.`;
-    const body = `${calendar.name} and its ${calendar.dayCount} days go. The ${calendar.peopleCount} people given it keep the default instead.${kept}`;
+    const kept = calendar.desks.length === 0 ? "" : t.schedule.holidays.desksKeep(inWords(calendar.desks), calendar.desks.length);
+    const body = t.schedule.holidays.deleteBody(calendar.name, calendar.dayCount, calendar.peopleCount, kept);
     if (await confirm({ noun: t.kit.confirm.things.calendar, verb: t.kit.confirm.verbs.delete, body })) {
       remove.mutate(calendar.id, {
         onSuccess: () => {
           setChosen(null);
-          toast.success(`Deleted ${calendar.name}`);
+          toast.success(t.schedule.holidays.deleted(calendar.name));
         },
       });
     }
@@ -55,11 +51,11 @@ function HolidaysPage() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Holidays"
-        meta="Calendars of days off. Everybody keeps the default until given another under Users, where their working week is set too."
+        title={t.schedule.holidays.title}
+        meta={t.schedule.holidays.meta}
       />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
@@ -70,9 +66,9 @@ function HolidaysPage() {
           <Table>
             <thead>
               <tr>
-                <Th>Calendar</Th>
-                <Th className="w-20 text-right">Days</Th>
-                <Th className="w-20 text-right">People</Th>
+                <Th>{t.schedule.holidays.calendar}</Th>
+                <Th className="w-20 text-right">{t.schedule.holidays.days}</Th>
+                <Th className="w-20 text-right">{t.schedule.holidays.people}</Th>
                 <Th className="w-10" />
               </tr>
             </thead>
@@ -83,21 +79,21 @@ function HolidaysPage() {
                     <Button variant="link" onClick={() => setChosen(calendar.id)} data-action="open-calendar">
                       {calendar.name}
                     </Button>{" "}
-                    {calendar.default && <Tag data-default-calendar>Default</Tag>}
+                    {calendar.default && <Tag data-default-calendar>{t.schedule.holidays.default}</Tag>}
                   </Td>
                   <Td className="text-right">{calendar.dayCount}</Td>
-                  <Td className="text-right" title="Given this calendar by name; everyone else keeps the default.">
+                  <Td className="text-right" title={t.schedule.holidays.peopleHint}>
                     {calendar.peopleCount}
                   </Td>
                   <Td className="text-right">
                     {canAdminister && (
                       <Menu
-                        label={`Actions for ${calendar.name}`}
+                        label={t.schedule.releases.actionsFor(calendar.name)}
                         align="end"
                         trigger={(props) => (
                           <IconButton
                             icon={<Icon.More />}
-                            label={`Actions for ${calendar.name}`}
+                            label={t.schedule.releases.actionsFor(calendar.name)}
                             size="sm"
                             onClick={props.toggle}
                             aria-haspopup={props["aria-haspopup"]}
@@ -106,17 +102,25 @@ function HolidaysPage() {
                           />
                         )}
                         items={[
-                          { label: "Rename", icon: <Icon.Edit />, onSelect: () => setRenaming(calendar), attrs: { "data-action": "rename-calendar" } },
                           {
-                            label: "Make the default",
+                            label: t.schedule.holidays.rename,
+                            icon: <Icon.Edit />,
+                            onSelect: () => setRenaming(calendar),
+                            attrs: { "data-action": "rename-calendar" },
+                          },
+                          {
+                            label: t.schedule.holidays.makeDefault,
                             icon: <Icon.Check />,
                             disabled: calendar.default,
                             onSelect: () =>
-                              update.mutate({ id: calendar.id, default: true }, { onSuccess: () => toast.success(`${calendar.name} is now the default`) }),
+                              update.mutate(
+                                { id: calendar.id, default: true },
+                                { onSuccess: () => toast.success(t.schedule.holidays.nowDefault(calendar.name)) },
+                              ),
                             attrs: { "data-action": "default-calendar" },
                           },
                           {
-                            label: "Delete",
+                            label: t.schedule.holidays.delete,
                             icon: <Icon.Trash />,
                             danger: true,
                             disabled: calendar.default,
@@ -141,7 +145,7 @@ function HolidaysPage() {
 
 /** Names in a sentence, as the server writes them: A, B and C. */
 function inWords(names: string[]): string {
-  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")}${t.schedule.holidays.and}${names[names.length - 1]}`;
 }
 
 function NewCalendarForm({ onMade }: { onMade: (id: string) => void }) {
@@ -158,7 +162,7 @@ function NewCalendarForm({ onMade }: { onMade: (id: string) => void }) {
         onSuccess: ({ calendar }) => {
           setName("");
           onMade(calendar.id);
-          toast.success(`Made ${calendar.name}`);
+          toast.success(t.schedule.holidays.made(calendar.name));
         },
       },
     );
@@ -167,15 +171,15 @@ function NewCalendarForm({ onMade }: { onMade: (id: string) => void }) {
   return (
     <form onSubmit={onSubmit} className="mb-4 flex flex-wrap items-end gap-3" noValidate data-new-calendar>
       <Field
-        label="New calendar"
-        placeholder="Portugal, or Office in Lisbon"
+        label={t.schedule.holidays.newCalendar}
+        placeholder={t.schedule.holidays.newPlaceholder}
         value={name}
         maxLength={HOLIDAY_NAME_MAX_LENGTH}
         onChange={(e) => setName(e.target.value)}
         className="w-64"
       />
       <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-        Add calendar
+        {t.schedule.holidays.add}
       </Button>
       {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
     </form>
@@ -191,16 +195,16 @@ function RenameDialog({ calendar, onClose }: { calendar: HolidayCalendar; onClos
     update.mutate({ id: calendar.id, name: name.trim() }, { onSuccess: onClose });
   }
   return (
-    <Dialog open onClose={onClose} title={`Rename ${calendar.name}`}>
+    <Dialog open onClose={onClose} title={t.schedule.holidays.renameTitle(calendar.name)}>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <Field label="Name" autoFocus value={name} maxLength={HOLIDAY_NAME_MAX_LENGTH} onChange={(e) => setName(e.target.value)} />
+        <Field label={t.schedule.holidays.name} autoFocus value={name} maxLength={HOLIDAY_NAME_MAX_LENGTH} onChange={(e) => setName(e.target.value)} />
         {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t.schedule.holidays.cancel}
           </Button>
           <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
-            Rename
+            {t.schedule.holidays.rename}
           </Button>
         </div>
       </form>

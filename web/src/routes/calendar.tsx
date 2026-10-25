@@ -4,6 +4,7 @@ import { useProject } from "@/api/projects";
 import { canWriteIssues, useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
 import { MonthGrid } from "@/features/calendar/MonthGrid";
+import { t } from "@/i18n";
 
 /** A month of the project's dated work, sprints, milestones, versions and days off. */
 export const calendarRoute = createRoute({
@@ -24,8 +25,8 @@ function CalendarPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Calendar"
-        meta="Issues on their dates, with the sprints, milestones, versions, holidays and absences around them. Drag an issue to move both its dates."
+        title={t.schedule.calendar.title}
+        meta={t.schedule.calendar.meta}
       />
       <MonthGrid projectKey={projectKey} canWrite={canWriteIssues(access, projectKey)} />
     </Page>

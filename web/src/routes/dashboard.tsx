@@ -12,6 +12,7 @@ import { SaveTemplateDialog } from "@/features/dashboard/SaveTemplateDialog";
 import { ShareDialog } from "@/features/dashboard/ShareDialog";
 import { Icon } from "@/components/icons";
 import { EMPTY_FILTER, FILTER_TEXT_KEYS, composeQuery, isEmpty, parseSearch, toSearch, type FilterSearch, type FilterSpec } from "@/features/dashboard/filter";
+import { t } from "@/i18n";
 
 /** The filter, plus which dashboard is open, so a link lands on the one that was meant. */
 type DashboardSearch = FilterSearch & { d?: string };
@@ -65,33 +66,33 @@ function DashboardPage() {
             {projectData?.project?.name ?? projectKey}
           </Link>
         }
-        title={dashboard?.name ?? "Dashboard"}
-        meta={dashboard ? `${dashboard.widgets.length} widget${dashboard.widgets.length === 1 ? "" : "s"}` : undefined}
+        title={dashboard?.name ?? t.dashboard.page.title}
+        meta={dashboard ? t.dashboard.page.widgets(dashboard.widgets.length) : undefined}
         actions={
           canConfigure && (
             <>
               {!creating && (
                 <Button variant="secondary" onClick={() => setCreating(true)} data-guide="add-dashboard">
-                  New dashboard
+                  {t.dashboard.page.newDashboard}
                 </Button>
               )}
               {arranging && dashboard && (
                 <Button variant="secondary" onClick={() => setSavingTemplate(true)} data-action="save-template">
-                  Save as a template
+                  {t.dashboard.page.saveTemplate}
                 </Button>
               )}
               {dashboard && (
                 <>
                   <ButtonLink href={pdfHref(dashboard.id, query)} download icon={<Icon.Download />} data-action="export-pdf" data-guide="export-pdf">
-                    Export as PDF
+                    {t.dashboard.page.exportPdf}
                   </ButtonLink>
                   <Button variant="secondary" icon={<Icon.Share />} onClick={() => setSharing(true)} data-action="share" data-guide="share">
-                    Share
+                    {t.dashboard.page.share}
                   </Button>
                 </>
               )}
               <Button variant={arranging ? "primary" : "secondary"} onClick={() => setArranging(!arranging)} data-guide="arrange">
-                {arranging ? "Done arranging" : "Arrange"}
+                {arranging ? t.dashboard.page.doneArranging : t.dashboard.page.arrange}
               </Button>
             </>
           )
@@ -123,7 +124,7 @@ function DashboardPage() {
       {dashboards.length > 1 && (
         <div className="mb-4">
           <Segmented
-            label="Dashboard"
+            label={t.dashboard.page.chooser}
             value={dashboard?.id ?? ""}
             onChange={choose}
             options={dashboards.map((d) => ({ value: d.id, label: d.name, attrs: { "data-dashboard": d.name } }))}

@@ -65,12 +65,13 @@ function ProjectsPage() {
   const archiveProject = useCallback(
     (project: Project) =>
       archive(project.key, {
-        onSuccess: () => toast.success(`Archived ${project.name}`, { action: { label: "Undo", onClick: () => restore(project.key) } }),
+        onSuccess: () =>
+          toast.success(t.search.projects.archivedToast(project.name), { action: { label: t.search.projects.undo, onClick: () => restore(project.key) } }),
       }),
     [archive, restore, toast],
   );
   const restoreProject = useCallback(
-    (project: Project) => restore(project.key, { onSuccess: () => toast.success(`Restored ${project.name}`) }),
+    (project: Project) => restore(project.key, { onSuccess: () => toast.success(t.search.projects.restored(project.name)) }),
     [restore, toast],
   );
 
@@ -92,14 +93,14 @@ function ProjectsPage() {
   return (
     <Page width="content">
       <PageHeader
-        title="Projects"
+        title={t.search.projects.title}
         meta={data ? countOf(data.total, t.kit.counted.project) : undefined}
         actions={
           <>
             <ProjectSearch value={q} onChange={(text) => show({ q: text, archived })} />
-            <Switch label="Show archived" checked={archived} onChange={(on) => show({ q, archived: on })} data-show-archived="" />
-            <span className="text-sm text-ink-muted">Show archived</span>
-            {canCreate && !creating && <Button onClick={() => setCreating(true)}>New project</Button>}
+            <Switch label={t.search.projects.showArchived} checked={archived} onChange={(on) => show({ q, archived: on })} data-show-archived="" />
+            <span className="text-sm text-ink-muted">{t.search.projects.showArchived}</span>
+            {canCreate && !creating && <Button onClick={() => setCreating(true)}>{t.search.projects.newProject}</Button>}
           </>
         }
       />
@@ -109,26 +110,26 @@ function ProjectsPage() {
       {isLoading ? (
         <Skeleton rows={4} />
       ) : projects.length === 0 && q ? (
-        <EmptyState icon={<Icon.Search />} title="No project matches that" description="Try part of its key or its name, or clear the search." />
+        <EmptyState icon={<Icon.Search />} title={t.search.projects.noMatch} description={t.search.projects.noMatchHint} />
       ) : projects.length === 0 && !creating ? (
         <EmptyState
           icon={<Icon.Board />}
-          title="No projects yet"
-          description={canCreate ? "A project holds issues, boards and a plan. Make the first one." : "An administrator makes the first project."}
-          action={canCreate ? <Button onClick={() => setCreating(true)}>New project</Button> : undefined}
+          title={t.search.projects.none}
+          description={canCreate ? t.search.projects.noneCanCreate : t.search.projects.noneAsk}
+          action={canCreate ? <Button onClick={() => setCreating(true)}>{t.search.projects.newProject}</Button> : undefined}
         />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th className="w-20">Key</Th>
-              <Th>Project</Th>
-              <Th className="w-28">Kind</Th>
-              <Th className="w-40">Lead</Th>
-              <Th className="w-28">Status</Th>
-              <Th className="w-40 text-right">Issues</Th>
-              <Th className="w-24 text-right">Updated</Th>
-              <Th className="w-10" aria-label="Actions" />
+              <Th className="w-20">{t.search.projects.key}</Th>
+              <Th>{t.search.projects.project}</Th>
+              <Th className="w-28">{t.search.projects.kind}</Th>
+              <Th className="w-40">{t.search.projects.lead}</Th>
+              <Th className="w-28">{t.search.projects.status}</Th>
+              <Th className="w-40 text-right">{t.search.projects.issues}</Th>
+              <Th className="w-24 text-right">{t.search.projects.updated}</Th>
+              <Th className="w-10" aria-label={t.search.projects.actions} />
             </tr>
           </thead>
           <tbody>
@@ -146,7 +147,7 @@ function ProjectsPage() {
       )}
       {data && (
         <Pager
-          label="Project pages"
+          label={t.search.projects.pages}
           total={data.total}
           offset={data.offset}
           pageSize={PROJECT_PAGE_SIZE}
@@ -161,8 +162,8 @@ function ProjectsPage() {
 function ProjectSearch({ value, onChange }: { value: string; onChange: (text: string) => void }) {
   return (
     <ListSearch
-      aria-label="Find projects"
-      placeholder="Find by key or name"
+      aria-label={t.search.projects.find}
+      placeholder={t.search.projects.findPlaceholder}
       value={value}
       onChange={onChange}
       delayMs={PROJECT_SEARCH_DELAY_MS}
@@ -193,16 +194,16 @@ const ProjectRow = memo(function ProjectRow({
         <Link to="/projects/$projectKey" params={{ projectKey: project.key }} className="font-medium text-ink group-hover:text-accent">
           {project.name}
         </Link>
-        {archived && <span className="ml-2 text-xs text-ink-subtle">archived</span>}
+        {archived && <span className="ml-2 text-xs text-ink-subtle">{t.search.projects.archived}</span>}
       </Td>
       <Td className="text-sm text-ink-muted">{project.template ? templateLabel(project.template) : templateLabel(project.kind)}</Td>
       <Td className="text-sm text-ink-muted">{project.leadName || ""}</Td>
       <Td className="text-sm" title={project.status?.note}>
-        {project.status ? <HealthTag status={project.status.status} /> : <span className="text-ink-subtle">Not said</span>}
+        {project.status ? <HealthTag status={project.status.status} /> : <span className="text-ink-subtle">{t.search.projects.notSaid}</span>}
       </Td>
       <Td className="text-right text-sm whitespace-nowrap tabular-nums">
-        <span className="text-ink">{project.openIssueCount} open</span>
-        <span className="text-ink-subtle"> · {project.issueCount} total</span>
+        <span className="text-ink">{t.search.projects.open(project.openIssueCount)}</span>
+        <span className="text-ink-subtle">{t.search.projects.total(project.issueCount)}</span>
       </Td>
       <Td className="text-right text-sm whitespace-nowrap text-ink-subtle tabular-nums">
         <RelativeTime iso={project.updatedAt} />
@@ -210,12 +211,12 @@ const ProjectRow = memo(function ProjectRow({
       <Td className="text-right">
         {admin && (
           <Menu
-            label={`Actions for ${project.name}`}
+            label={t.search.projects.actionsFor(project.name)}
             align="end"
             trigger={(props) => (
               <IconButton
                 icon={<Icon.More />}
-                label={`Actions for ${project.name}`}
+                label={t.search.projects.actionsFor(project.name)}
                 size="sm"
                 onClick={props.toggle}
                 aria-haspopup={props["aria-haspopup"]}
@@ -225,15 +226,22 @@ const ProjectRow = memo(function ProjectRow({
             )}
             items={
               archived
-                ? [{ label: "Restore", icon: <Icon.Archive />, onSelect: () => onRestore(project), attrs: { "data-action": "restore-project" } }]
+                ? [
+                    {
+                      label: t.search.projects.restore,
+                      icon: <Icon.Archive />,
+                      onSelect: () => onRestore(project),
+                      attrs: { "data-action": "restore-project" },
+                    },
+                  ]
                 : [
                     {
-                      label: "Settings",
+                      label: t.search.projects.settings,
                       icon: <Icon.Settings />,
                       onSelect: () => navigate({ to: "/projects/$projectKey/settings", params: { projectKey: project.key } }),
                     },
                     {
-                      label: "Archive",
+                      label: t.search.projects.archive,
                       icon: <Icon.Archive />,
                       danger: true,
                       attrs: { "data-action": "archive-project" },
@@ -278,7 +286,7 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
       {
         onSuccess: ({ project }) => {
           onDone();
-          toast.success(`Created ${project.name}`);
+          toast.success(t.search.projects.created(project.name));
           navigate({ to: "/projects/$projectKey", params: { projectKey: project.key } });
         },
       },
@@ -291,14 +299,21 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
 
         <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
-          <Field label="Project name" required autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer Portal" />
           <Field
-            label="Key"
+            label={t.search.projects.name}
+            required
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t.search.projects.namePlaceholder}
+          />
+          <Field
+            label={t.search.projects.keyLabel}
             value={effectiveKey}
             onChange={(e) => setKey(e.target.value.toUpperCase())}
             className="font-mono uppercase"
-            hint="Prefixes every issue, as in ABC-1."
-            error={keyTaken ? "That key is already in use." : keyInvalid ? "Use 2 to 10 letters or digits, starting with a letter." : undefined}
+            hint={t.search.projects.keyHint}
+            error={keyTaken ? t.search.projects.keyTaken : keyInvalid ? t.search.projects.keyInvalid : undefined}
           />
         </div>
 
@@ -306,10 +321,10 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
 
         <div className="flex gap-2">
           <Button type="submit" loading={create.isPending} disabled={!name.trim() || keyTaken || keyInvalid}>
-            Create project
+            {t.search.projects.create}
           </Button>
           <Button type="button" variant="ghost" onClick={onDone}>
-            Cancel
+            {t.search.projects.cancel}
           </Button>
         </div>
       </form>

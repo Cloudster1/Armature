@@ -5,6 +5,7 @@ import { Avatar, Button, Chip, Input, Popover, Toolbar } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TypeBadge } from "@/features/issues/badges";
 import { EMPTY_QUICK_FILTER, UNASSIGNED, isFiltered, type QuickFilter, type QuickFilterOptions } from "./quickFilter";
+import { t } from "@/i18n";
 
 /** The chips above a board's lanes, which narrow the cards it already has. */
 export function QuickFilters({
@@ -53,14 +54,15 @@ export function QuickFilters({
 
   return (
     <Toolbar
-      label="Board filters"
+      label={t.board.filters.label}
       start={
         <>
           <Chip pressed={Boolean(filter.mine)} onClick={() => onChange({ ...filter, mine: !filter.mine || undefined })} data-quick-filter="mine">
-            Only mine
+            {t.board.filters.onlyMine}
           </Chip>
           <Pick
-            name="Assignee"
+            id="assignee"
+            name={t.board.filters.assignee}
             chosen={filter.assignees}
             onChange={(assignees) => onChange({ ...filter, assignees })}
             values={options.assignees.map((person) => ({
@@ -70,19 +72,22 @@ export function QuickFilters({
             }))}
           />
           <Pick
-            name="Label"
+            id="label"
+            name={t.board.filters.labels}
             chosen={filter.labels}
             onChange={(labels) => onChange({ ...filter, labels })}
             values={options.labels.map((label) => ({ value: label.id, label: label.name }))}
           />
           <Pick
-            name="Type"
+            id="type"
+            name={t.board.filters.type}
             chosen={filter.types}
             onChange={(types) => onChange({ ...filter, types })}
             values={options.types.map((each) => ({ value: each.name, label: each.name, icon: <TypeBadge icon={each.icon} name={each.name} /> }))}
           />
           <Pick
-            name="Epic"
+            id="epic"
+            name={t.board.filters.epic}
             chosen={filter.epics}
             onChange={(epics) => onChange({ ...filter, epics })}
             values={options.epics.map((epic) => ({ value: epic.key, label: epic.summary }))}
@@ -92,8 +97,8 @@ export function QuickFilters({
             controlSize="sm"
             value={text}
             onChange={(event) => type(event.target.value)}
-            placeholder="Key or summary"
-            aria-label="Filter cards by key or summary"
+            placeholder={t.board.filters.searchPlaceholder}
+            aria-label={t.board.filters.searchLabel}
             className="max-w-56"
           />
         </>
@@ -106,10 +111,10 @@ export function QuickFilters({
                 <Link
                   to="/search"
                   search={{ q: leftOut.query }}
-                  title={`Finished more than ${leftOut.days} day${leftOut.days === 1 ? "" : "s"} ago. Open them in search.`}
+                  title={t.board.filters.leftOutTitle(leftOut.days)}
                   className="hover:text-accent hover:underline"
                 >
-                  {leftOut.count} finished issue{leftOut.count === 1 ? "" : "s"} left out
+                  {t.board.filters.leftOut(leftOut.count)}
                 </Link>
               </span>
             )}
@@ -117,11 +122,11 @@ export function QuickFilters({
               <>
                 {hidden > 0 && (
                   <span role="status" className="text-xs text-ink-muted" data-hidden-cards={hidden}>
-                    {hidden} card{hidden === 1 ? "" : "s"} hidden by the filters
+                    {t.board.filters.hidden(hidden)}
                   </span>
                 )}
                 <Button size="sm" variant="ghost" onClick={clear}>
-                  Clear filters
+                  {t.board.filters.clear}
                 </Button>
               </>
             )}
@@ -134,11 +139,14 @@ export function QuickFilters({
 
 /** One kind of chip, whose values open beside it; a kind the board has none of is not offered. */
 function Pick({
+  id,
   name,
   values,
   chosen,
   onChange,
 }: {
+  /** What the chip is in the address and to the tests, whatever the language says. */
+  id: string;
   name: string;
   values: Array<{ value: string; label: string; icon?: ReactNode }>;
   chosen: string[];
@@ -151,9 +159,9 @@ function Pick({
     <Popover
       open={open}
       onClose={() => setOpen(false)}
-      label={`Filter by ${name.toLowerCase()}`}
+      label={t.board.filters.filterBy(name)}
       trigger={
-        <Chip pressed={chosen.length > 0} aria-expanded={open} onClick={() => setOpen((was) => !was)} data-quick-filter={name.toLowerCase()}>
+        <Chip pressed={chosen.length > 0} aria-expanded={open} onClick={() => setOpen((was) => !was)} data-quick-filter={id}>
           {name}
           {chosen.length > 0 && <span className="tabular-nums">{chosen.length}</span>}
           <Icon.ChevronDown />
@@ -161,7 +169,7 @@ function Pick({
       }
       className="w-80"
     >
-      <div className="flex flex-wrap gap-1" role="group" aria-label={`Filter by ${name.toLowerCase()}`}>
+      <div className="flex flex-wrap gap-1" role="group" aria-label={t.board.filters.filterBy(name)}>
         {values.map((each) => (
           <Chip key={each.value} pressed={chosen.includes(each.value)} onClick={() => toggle(each.value)} data-quick-filter-value={each.value}>
             {each.icon}

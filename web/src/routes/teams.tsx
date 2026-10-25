@@ -3,6 +3,7 @@ import { projectRoute } from "./project";
 import { Page, PageHeader } from "@/components/ui";
 import { useProject } from "@/api/projects";
 import { TeamList } from "@/features/teams/TeamList";
+import { t } from "@/i18n";
 
 export const teamsRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -22,7 +23,7 @@ function TeamsPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Teams"
+        title={t.board.teams.title}
       />
 
       <TeamList projectKey={projectKey} />

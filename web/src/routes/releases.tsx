@@ -5,6 +5,7 @@ import { canAdminister, holds, useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
 import { ReleaseList } from "@/features/versions/ReleaseList";
 import { ComponentList } from "@/features/versions/ComponentList";
+import { t } from "@/i18n";
 
 /** What the project ships, in order. */
 export const releasesRoute = createRoute({
@@ -34,8 +35,8 @@ function ReleasesPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Releases"
-        meta="What ships, and how close each version is"
+        title={t.schedule.releases.title}
+        meta={t.schedule.releases.meta}
       />
       <ReleaseList projectKey={projectKey} canPlan={canPlan} />
     </Page>
@@ -54,8 +55,8 @@ function ComponentsPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Components"
-        meta="The project's parts, and who looks after each"
+        title={t.schedule.components.title}
+        meta={t.schedule.components.meta}
       />
       <ComponentList projectKey={projectKey} canEdit={Boolean(canAdminister(access, projectKey))} />
     </Page>

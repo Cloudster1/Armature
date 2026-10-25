@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 /**
  * What a query can say, written once for the help panel and the tests. The
  * server's catalog is the authority; this is its description for a reader.
@@ -9,33 +11,195 @@ export interface QueryField {
 }
 
 export const QUERY_FIELDS: QueryField[] = [
-  { name: "project", takes: "a project key", example: "project = EVR" },
-  { name: "key", takes: "an issue key", example: "key IN (EVR-1, EVR-2)" },
-  { name: "summary", takes: "words, with ~", example: 'summary ~ "reset email"' },
-  { name: "description", takes: "words, with ~", example: "description ~ smtp" },
-  { name: "text", takes: "words in the summary or the description", example: "text ~ login" },
-  { name: "type", takes: "an issue type's name", example: "type = Bug" },
-  { name: "status", takes: "a status name", example: 'status IN ("To Do", "In Progress")' },
-  { name: "statusCategory", takes: "todo, in_progress or done", example: "statusCategory != done" },
-  { name: "priority", takes: "lowest to highest, in that order", example: "priority >= high" },
-  { name: "assignee", takes: "an email, a name or currentUser()", example: "assignee = currentUser()" },
-  { name: "reporter", takes: "an email, a name or currentUser()", example: "reporter = ada@armature.test" },
-  { name: "watcher", takes: "an email, a name or currentUser()", example: "watcher = currentUser()" },
-  { name: "parent", takes: "an issue key", example: "parent = EVR-7" },
-  { name: "sprint", takes: "a sprint name or openSprints()", example: "sprint IN (openSprints())" },
-  { name: "team", takes: "a team name", example: "team = Alpha" },
-  { name: "milestone", takes: "a milestone name", example: 'milestone = "1.0"' },
-  { name: "company", takes: "a desk's company name", example: "company = Globex" },
-  { name: "labels", takes: "label names", example: "labels IN (backend, security)" },
-  { name: "fixVersion", takes: "a version name, unreleasedVersions() or releasedVersions()", example: "fixVersion IN (unreleasedVersions())" },
-  { name: "affectsVersion", takes: "a version name, unreleasedVersions() or releasedVersions()", example: 'affectsVersion = "1.2"' },
-  { name: "component", takes: "a component name", example: "component = Billing" },
-  { name: "estimate", takes: "a number", example: "estimate > 3" },
-  { name: "created", takes: "a date, a duration or a date function", example: "created >= -7d" },
-  { name: "updated", takes: "a date, a duration or a date function", example: "updated >= startOfWeek()" },
-  { name: "resolved", takes: "a date, a duration or a date function", example: "resolved >= startOfMonth(-1w)" },
-  { name: "due", takes: "a day", example: "due <= endOfWeek()" },
-  { name: "start", takes: "a day", example: "start >= 2026-09-01" },
+  {
+    name: "project",
+    get takes() {
+      return t.search.help.fields.project!;
+    },
+    example: "project = EVR",
+  },
+  {
+    name: "key",
+    get takes() {
+      return t.search.help.fields.key!;
+    },
+    example: "key IN (EVR-1, EVR-2)",
+  },
+  {
+    name: "summary",
+    get takes() {
+      return t.search.help.fields.summary!;
+    },
+    example: 'summary ~ "reset email"',
+  },
+  {
+    name: "description",
+    get takes() {
+      return t.search.help.fields.description!;
+    },
+    example: "description ~ smtp",
+  },
+  {
+    name: "text",
+    get takes() {
+      return t.search.help.fields.text!;
+    },
+    example: "text ~ login",
+  },
+  {
+    name: "type",
+    get takes() {
+      return t.search.help.fields.type!;
+    },
+    example: "type = Bug",
+  },
+  {
+    name: "status",
+    get takes() {
+      return t.search.help.fields.status!;
+    },
+    example: 'status IN ("To Do", "In Progress")',
+  },
+  {
+    name: "statusCategory",
+    get takes() {
+      return t.search.help.fields.statusCategory!;
+    },
+    example: "statusCategory != done",
+  },
+  {
+    name: "priority",
+    get takes() {
+      return t.search.help.fields.priority!;
+    },
+    example: "priority >= high",
+  },
+  {
+    name: "assignee",
+    get takes() {
+      return t.search.help.fields.assignee!;
+    },
+    example: "assignee = currentUser()",
+  },
+  {
+    name: "reporter",
+    get takes() {
+      return t.search.help.fields.reporter!;
+    },
+    example: "reporter = ada@armature.test",
+  },
+  {
+    name: "watcher",
+    get takes() {
+      return t.search.help.fields.watcher!;
+    },
+    example: "watcher = currentUser()",
+  },
+  {
+    name: "parent",
+    get takes() {
+      return t.search.help.fields.parent!;
+    },
+    example: "parent = EVR-7",
+  },
+  {
+    name: "sprint",
+    get takes() {
+      return t.search.help.fields.sprint!;
+    },
+    example: "sprint IN (openSprints())",
+  },
+  {
+    name: "team",
+    get takes() {
+      return t.search.help.fields.team!;
+    },
+    example: "team = Alpha",
+  },
+  {
+    name: "milestone",
+    get takes() {
+      return t.search.help.fields.milestone!;
+    },
+    example: 'milestone = "1.0"',
+  },
+  {
+    name: "company",
+    get takes() {
+      return t.search.help.fields.company!;
+    },
+    example: "company = Globex",
+  },
+  {
+    name: "labels",
+    get takes() {
+      return t.search.help.fields.labels!;
+    },
+    example: "labels IN (backend, security)",
+  },
+  {
+    name: "fixVersion",
+    get takes() {
+      return t.search.help.fields.fixVersion!;
+    },
+    example: "fixVersion IN (unreleasedVersions())",
+  },
+  {
+    name: "affectsVersion",
+    get takes() {
+      return t.search.help.fields.affectsVersion!;
+    },
+    example: 'affectsVersion = "1.2"',
+  },
+  {
+    name: "component",
+    get takes() {
+      return t.search.help.fields.component!;
+    },
+    example: "component = Billing",
+  },
+  {
+    name: "estimate",
+    get takes() {
+      return t.search.help.fields.estimate!;
+    },
+    example: "estimate > 3",
+  },
+  {
+    name: "created",
+    get takes() {
+      return t.search.help.fields.created!;
+    },
+    example: "created >= -7d",
+  },
+  {
+    name: "updated",
+    get takes() {
+      return t.search.help.fields.updated!;
+    },
+    example: "updated >= startOfWeek()",
+  },
+  {
+    name: "resolved",
+    get takes() {
+      return t.search.help.fields.resolved!;
+    },
+    example: "resolved >= startOfMonth(-1w)",
+  },
+  {
+    name: "due",
+    get takes() {
+      return t.search.help.fields.due!;
+    },
+    example: "due <= endOfWeek()",
+  },
+  {
+    name: "start",
+    get takes() {
+      return t.search.help.fields.start!;
+    },
+    example: "start >= 2026-09-01",
+  },
 ];
 
 export const QUERY_CUSTOM_FIELD_EXAMPLE = '"Customer" = Globex';

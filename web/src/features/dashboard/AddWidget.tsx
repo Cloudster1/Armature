@@ -1,5 +1,6 @@
 import { useAddWidget, useReportKinds, type ReportKind } from "@/api/reports";
 import { Card, ErrorBanner, OptionCard } from "@/components/ui";
+import { t } from "@/i18n";
 
 /** The reports this kind of project can show, offered as cards; a kind the dashboard can only have once is left out while it has it. */
 export function AddWidget({ projectKey, dashboardId, exclude }: { projectKey: string; dashboardId: string; exclude: ReportKind[] }) {
@@ -8,7 +9,7 @@ export function AddWidget({ projectKey, dashboardId, exclude }: { projectKey: st
   const kinds = (data?.kinds ?? []).filter((k) => !exclude.includes(k.kind));
   return (
     <Card className="p-4">
-      <h2 className="mb-2 text-2xs font-medium tracking-wide text-ink-subtle uppercase">Add a widget</h2>
+      <h2 className="mb-2 text-2xs font-medium tracking-wide text-ink-subtle uppercase">{t.dashboard.grid.addWidget}</h2>
       <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {kinds.map((k) => (
           <OptionCard

@@ -10,15 +10,16 @@ import { MS_PER_DAY } from "@/features/plan/scale";
 import { useMe } from "@/api/auth";
 import { QuickFilters } from "./QuickFilters";
 import { filterCards, isFiltered, optionsFrom, type QuickFilter } from "./quickFilter";
+import { t } from "@/i18n";
 
 /** How a sprint's end reads on the board: in days, since that is how a sprint is felt. */
 export function describeEnd(endsOn: string, today = new Date()): string {
   const end = new Date(endsOn);
   const days = Math.round((end.getTime() - today.setHours(0, 0, 0, 0)) / MS_PER_DAY);
-  if (days === 0) return "ends today";
-  if (days === 1) return "ends tomorrow";
-  if (days > 1) return `ends in ${days} days`;
-  return `ended ${-days === 1 ? "yesterday" : `${-days} days ago`}`;
+  if (days === 0) return t.board.view.endsToday;
+  if (days === 1) return t.board.view.endsTomorrow;
+  if (days > 1) return t.board.view.endsIn(days);
+  return -days === 1 ? t.board.view.endedYesterday : t.board.view.endedAgo(-days);
 }
 
 /** What is being dragged, and where it came from. */
@@ -102,7 +103,7 @@ export function BoardView({
   // Cards in column order, top to bottom, so the panel's next is the card below.
   useIssueList((lanes ?? []).flatMap((lane) => (visible.get(lane.id) ?? []).map((card) => card.key)));
 
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading the board...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.board.view.loading}</p>;
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
 
   const board = data?.board;
@@ -119,15 +120,15 @@ export function BoardView({
     return (
       <div data-board-showing={board.name}>
         <EmptyState
-          title="No sprint is running"
-          description="A scrum board shows the sprint that is running. Plan one from the backlog and start it, and its work appears here."
+          title={t.board.view.noSprint}
+          description={t.board.view.noSprintBody}
           action={
             <Link
               to="/projects/$projectKey/sprints"
               params={{ projectKey }}
               className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-on-accent hover:bg-accent-hover"
             >
-              Go to sprints
+              {t.board.view.goToSprints}
             </Link>
           }
         />
@@ -176,7 +177,7 @@ export function BoardView({
         afterKey: above?.key,
         beforeKey: below,
       },
-      { onSuccess: (moved) => toast.success(`${current.issueKey} moved to ${swimlane.name}${moved?.transition ? ` (${moved.transition})` : ""}`) },
+      { onSuccess: (moved) => toast.success(`${t.board.view.moved(current.issueKey, swimlane.name)}${moved?.transition ? ` (${moved.transition})` : ""}`) },
     );
   }
 
@@ -199,16 +200,14 @@ export function BoardView({
       {move.error && <ErrorBanner>{(move.error as Error).message}</ErrorBanner>}
       {move.data?.transition && (
         <p className="text-xs text-ink-subtle" role="status">
-          Moved through the workflow: {move.data.transition}
+          {t.board.view.movedThrough} {move.data.transition}
         </p>
       )}
 
       {unmapped.length > 0 && (
         <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink">
-          <strong className="font-medium">
-            {unmapped.length} card{unmapped.length === 1 ? "" : "s"} in states no swimlane covers
-          </strong>{" "}
-          <span className="text-ink-muted">({unmapped.map((c) => c.key).join(", ")}). Add those states to a swimlane to see them on the board.</span>
+          <strong className="font-medium">{t.board.view.unmapped(unmapped.length)}</strong>{" "}
+          <span className="text-ink-muted">{t.board.view.unmappedHint(unmapped.map((c) => c.key).join(", "))}</span>
         </div>
       )}
 
@@ -298,15 +297,15 @@ function SwimlaneColumn({
           title={
             filtered
               ? swimlane.wipLimit > 0
-                ? `${cards.length} shown; the ${swimlane.wipLimit} card limit counts all ${total}`
-                : `${cards.length} of ${total} cards shown`
+                ? t.board.view.shownOfLimit(cards.length, swimlane.wipLimit, total)
+                : t.board.view.shownOf(cards.length, total)
               : swimlane.wipLimit > 0
-                ? `${total} of a ${swimlane.wipLimit} card limit`
-                : `${total} cards`
+                ? t.board.view.ofLimit(total, swimlane.wipLimit)
+                : t.board.view.cards(total)
           }
           data-lane-count={filtered ? `${cards.length} of ${total}` : String(total)}
         >
-          {filtered ? `${cards.length} of ${total}` : total}
+          {filtered ? t.board.view.count(cards.length, total) : total}
           {!filtered && swimlane.wipLimit > 0 && ` / ${swimlane.wipLimit}`}
         </span>
       </header>
@@ -315,14 +314,12 @@ function SwimlaneColumn({
           decides which cards land here and which drags are possible. */}
       {!(swimlane.statuses.length === 1 && swimlane.statuses[0]!.name === swimlane.name) && (
         <p className="border-b border-border px-3 py-1.5 text-2xs text-ink-subtle">
-          {swimlane.statuses.length === 0 ? "No states: nothing can be here" : swimlane.statuses.map((s) => s.name).join(" · ")}
+          {swimlane.statuses.length === 0 ? t.board.view.noStates : swimlane.statuses.map((s) => s.name).join(" · ")}
         </p>
       )}
 
       <div className={cx("flex-1 space-y-2 p-2", busy && "opacity-60")}>
-        {cards.length === 0 && (
-          <p className="px-1 py-6 text-center text-xs text-ink-subtle">{total === 0 ? "Drop cards here" : "No card here matches the filters"}</p>
-        )}
+        {cards.length === 0 && <p className="px-1 py-6 text-center text-xs text-ink-subtle">{total === 0 ? t.board.view.dropHere : t.board.view.noMatch}</p>}
 
         {rows.map((row) => (
           <div key={row.name || "all"} className="space-y-2">
@@ -422,7 +419,7 @@ function IssueCard({
         <Avatar name={card.assignee?.name} src={card.assignee?.avatarUrl} size="sm" />
         <IconButton
           icon={<Icon.ChevronRight />}
-          label={`Open ${card.key} beside the board`}
+          label={t.board.view.openBeside(card.key)}
           size="sm"
           onClick={() => drawer.open(card.key)}
           data-open-drawer={card.key}

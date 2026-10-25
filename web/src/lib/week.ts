@@ -8,6 +8,7 @@ import {
   WORKING_HOURS_DECIMALS,
 } from "@/config";
 import { WEEKDAYS, type Absence, type Weekday } from "@/api/availability";
+import { t } from "@/i18n";
 
 /** Minutes as the hours a person types: 480 is "8", 450 is "7.5". */
 export function hoursText(minutes: number): string {
@@ -65,17 +66,17 @@ export function absencesListedFrom(now: Date = new Date()): string {
 
 /** What is wrong with an absence before it is sent, as a sentence; null when nothing is. */
 export function absenceProblem(startsOn: string, endsOn: string, halfDay: boolean): string | null {
-  if (!startsOn) return "Choose the first day away.";
-  if (endsOn < startsOn) return "The last day is before the first. Swap them.";
+  if (!startsOn) return t.schedule.absences.problems.noFirstDay;
+  if (endsOn < startsOn) return t.schedule.absences.problems.lastBeforeFirst;
   const days = (Date.parse(`${endsOn}T00:00:00Z`) - Date.parse(`${startsOn}T00:00:00Z`)) / MS_PER_DAY;
-  if (days >= ABSENCE_MAX_DAYS) return `One absence runs at most ${ABSENCE_MAX_DAYS} days. Record a longer one in parts.`;
-  if (halfDay && endsOn !== startsOn) return "Only a single day can be a half day. Make the last day the first, or untick half day.";
+  if (days >= ABSENCE_MAX_DAYS) return t.schedule.absences.problems.tooLong(ABSENCE_MAX_DAYS);
+  if (halfDay && endsOn !== startsOn) return t.schedule.absences.problems.halfDayIsOneDay;
   return null;
 }
 
 /** An absence's days in the reader's language: one day, half of one, or a first and a last. */
 export function formatAbsence(absence: Pick<Absence, "startsOn" | "endsOn" | "halfDay">, locale: string): string {
   const first = formatDay(absence.startsOn, locale);
-  if (absence.startsOn !== absence.endsOn) return `${first} to ${formatDay(absence.endsOn, locale)}`;
-  return absence.halfDay ? `${first}, half the day` : first;
+  if (absence.startsOn !== absence.endsOn) return t.schedule.absences.range(first, formatDay(absence.endsOn, locale));
+  return absence.halfDay ? t.schedule.absences.halfOf(first) : first;
 }

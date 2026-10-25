@@ -1,3 +1,7 @@
+import { boardDe } from "./board.de";
+import { dashboardDe } from "./dashboard.de";
+import { scheduleDe } from "./schedule.de";
+import { searchDe } from "./search.de";
 import type { Messages } from "./en";
 import { issueListDe } from "./issueList.de";
 import { kitDe } from "./kit.de";
@@ -22,4 +26,8 @@ export const de: Messages = {
   issueList: issueListDe,
   issueView: issueViewDe,
   issuePanels: issuePanelsDe,
+  board: boardDe,
+  dashboard: dashboardDe,
+  schedule: scheduleDe,
+  search: searchDe,
 };

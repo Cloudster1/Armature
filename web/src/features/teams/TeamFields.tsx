@@ -1,6 +1,7 @@
 import { useSetIssueTeam, useTeams } from "@/api/teams";
 import type { Issue } from "@/api/issues";
 import { SelectInput } from "@/components/ui";
+import { t } from "@/i18n";
 
 /**
  * Hands an issue to a team, or takes it back to the project at large.
@@ -15,13 +16,13 @@ export function TeamField({ issue }: { issue: Issue }) {
   const teams = data?.teams ?? [];
 
   if (teams.length === 0) {
-    return <span className="text-xs text-ink-subtle">This project has no teams</span>;
+    return <span className="text-xs text-ink-subtle">{t.board.teams.none}</span>;
   }
 
   return (
     <span className="flex flex-col items-end gap-1">
       <label htmlFor="issue-team" className="sr-only">
-        Team
+        {t.board.teams.team}
       </label>
       <SelectInput
         id="issue-team"
@@ -30,7 +31,7 @@ export function TeamField({ issue }: { issue: Issue }) {
         onChange={(event) => setTeam.mutate({ key: issue.key, teamId: event.target.value || null })}
         className="max-w-48"
       >
-        <option value="">Nobody in particular</option>
+        <option value="">{t.board.teams.nobody}</option>
         {teams.map((team) => (
           <option key={team.id} value={team.id}>
             {team.name}

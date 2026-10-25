@@ -52,9 +52,9 @@ export function ShareDialog({
   async function copy(url: string) {
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Copied the link");
+      toast.success(t.dashboard.share.copied);
     } catch {
-      toast.error("Copy the link from the field; the clipboard was not reachable.");
+      toast.error(t.dashboard.share.copyFailed);
     }
   }
 
@@ -62,39 +62,52 @@ export function ShareDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={`Share ${dashboardName}`}
+      title={t.dashboard.share.title(dashboardName)}
       size="lg"
       attrs={{ "data-share-dialog": "" }}
-      description="A link shows the dashboard as it is filtered now, to anybody who has it, until you revoke it."
+      description={t.dashboard.share.description}
     >
       <div className="space-y-5">
         {made && (
           <div className="rounded-overlay border border-accent bg-accent-subtle p-3" data-share-made="">
-            <p className="text-sm font-medium text-ink">{made.share.name} is ready. Copy the address now; it is not shown again.</p>
+            <p className="text-sm font-medium text-ink">{t.dashboard.share.ready(made.share.name)}</p>
             <div className="mt-2 flex items-center gap-2">
               <Input
                 readOnly
                 value={made.url}
-                aria-label="Link address"
+                aria-label={t.dashboard.share.address}
                 className="min-w-0 flex-1 font-mono text-xs"
                 data-share-url={made.url}
                 onFocus={(e) => e.currentTarget.select()}
               />
-              <IconButton icon={<Icon.Copy />} label="Copy the link" size="md" onClick={() => copy(made.url)} data-action="copy-share" />
+              <IconButton icon={<Icon.Copy />} label={t.dashboard.share.copy} size="md" onClick={() => copy(made.url)} data-action="copy-share" />
             </div>
           </div>
         )}
 
         <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2" noValidate>
-          <Field label="Link name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Lobby screen" className="w-56" />
-          <Field label="Expires on" type="date" value={expiresOn} onChange={(e) => setExpiresOn(e.target.value)} className="w-44" hint="Optional" />
+          <Field
+            label={t.dashboard.share.name}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t.dashboard.share.namePlaceholder}
+            className="w-56"
+          />
+          <Field
+            label={t.dashboard.share.expiresOn}
+            type="date"
+            value={expiresOn}
+            onChange={(e) => setExpiresOn(e.target.value)}
+            className="w-44"
+            hint={t.dashboard.share.optional}
+          />
           <Button type="submit" loading={create.isPending} disabled={!name.trim()} icon={<Icon.Share />}>
-            New link
+            {t.dashboard.share.newLink}
           </Button>
         </form>
         {query && (
           <p className="text-xs text-ink-subtle">
-            Frozen into a new link: <code className="font-mono text-ink-muted">{query}</code>
+            {t.dashboard.share.frozen} <code className="font-mono text-ink-muted">{query}</code>
           </p>
         )}
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
@@ -104,10 +117,10 @@ export function ShareDialog({
           <Table dense>
             <thead>
               <tr>
-                <Th>Link</Th>
-                <Th>Made</Th>
-                <Th>Expires</Th>
-                <Th className="w-24" aria-label="Revoke" />
+                <Th>{t.dashboard.share.link}</Th>
+                <Th>{t.dashboard.share.made}</Th>
+                <Th>{t.dashboard.share.expires}</Th>
+                <Th className="w-24" aria-label={t.dashboard.share.revoke} />
               </tr>
             </thead>
             <tbody>
@@ -115,7 +128,7 @@ export function ShareDialog({
                 <tr key={share.id} data-share={share.name}>
                   <Td className="font-medium text-ink">{share.name}</Td>
                   <Td className="text-ink-muted">{format.date(share.createdAt)}</Td>
-                  <Td className="text-ink-muted">{share.expiresAt ? format.date(share.expiresAt) : "Never"}</Td>
+                  <Td className="text-ink-muted">{share.expiresAt ? format.date(share.expiresAt) : t.dashboard.share.never}</Td>
                   <Td className="text-right">
                     <Button
                       size="sm"
@@ -125,11 +138,11 @@ export function ShareDialog({
                         (await confirm({
                           noun: t.kit.confirm.things.link,
                           verb: t.kit.confirm.verbs.revoke,
-                          body: `${share.name} stops opening the dashboard. Anybody holding it sees that it is no longer valid.`,
+                          body: t.dashboard.share.revokeBody(share.name),
                         })) && revoke.mutate({ dashboardId, shareId: share.id })
                       }
                     >
-                      Revoke
+                      {t.dashboard.share.revoke}
                     </Button>
                   </Td>
                 </tr>
@@ -137,7 +150,7 @@ export function ShareDialog({
             </tbody>
           </Table>
         ) : (
-          <p className="text-sm text-ink-subtle">No links yet.</p>
+          <p className="text-sm text-ink-subtle">{t.dashboard.share.none}</p>
         )}
       </div>
     </Dialog>

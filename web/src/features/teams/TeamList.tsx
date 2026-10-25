@@ -26,10 +26,8 @@ export function TeamList({ projectKey }: { projectKey: string }) {
     <div className="space-y-6">
       <NewTeam projectKey={projectKey} />
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading...</p>}
-      {!isLoading && teams.length === 0 && (
-        <EmptyState title="No teams yet" description="A project without teams has one board and one backlog, which is all most projects need." />
-      )}
+      {isLoading && <p className="text-sm text-ink-muted">{t.board.teams.loading}</p>}
+      {!isLoading && teams.length === 0 && <EmptyState title={t.board.teams.emptyTitle} description={t.board.teams.emptyBody} />}
 
       <div className="space-y-4">
         {teams.map((team) => (
@@ -59,7 +57,7 @@ function CapacityField({ team }: { team: Team }) {
 
   return (
     <label className="mt-2 flex items-center gap-2 text-xs text-ink-muted">
-      <span>Capacity</span>
+      <span>{t.board.teams.capacity}</span>
       <Input
         type="number"
         min={0}
@@ -70,13 +68,13 @@ function CapacityField({ team }: { team: Team }) {
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        placeholder="not said"
-        aria-label={`Weekly capacity of ${team.name}`}
+        placeholder={t.board.teams.notSaid}
+        aria-label={t.board.teams.capacityOf(team.name)}
         data-team-capacity={team.name}
         controlSize="sm"
         className="w-20 text-right"
       />
-      <span>pts/week</span>
+      <span>{t.board.teams.perWeek}</span>
       {update.error && <span className="text-danger">{(update.error as Error).message}</span>}
     </label>
   );
@@ -103,10 +101,7 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-ink">{team.name}</h2>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            {team.memberCount} {team.memberCount === 1 ? "person" : "people"} · {team.issueCount} {team.issueCount === 1 ? "issue" : "issues"} ·{" "}
-            {team.boardCount} {team.boardCount === 1 ? "board" : "boards"}
-          </p>
+          <p className="mt-0.5 text-xs text-ink-muted">{t.board.teams.counts(team.memberCount, team.issueCount, team.boardCount)}</p>
           {team.description && <p className="mt-1 text-sm text-ink-muted">{team.description}</p>}
           <CapacityField team={team} />
         </div>
@@ -117,21 +112,18 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
               size="sm"
               variant="secondary"
               loading={createBoard.isPending}
-              onClick={() => createBoard.mutate({ name: `${team.name} board`, teamId: team.id })}
+              onClick={() => createBoard.mutate({ name: t.board.picker.teamBoardName(team.name), teamId: team.id })}
             >
-              Give it a board
+              {t.board.teams.giveBoard}
             </Button>
           )}
           <Button
             size="sm"
             variant="ghost"
             loading={deleteTeam.isPending}
-            onClick={async () =>
-              (await confirm({ noun: t.kit.confirm.things.team, body: `${team.name} goes with its board and backlog; its issues keep their assignees.` })) &&
-              deleteTeam.mutate(team.id)
-            }
+            onClick={async () => (await confirm({ noun: t.kit.confirm.things.team, body: t.board.teams.deleteBody(team.name) })) && deleteTeam.mutate(team.id)}
           >
-            Delete
+            {t.board.teams.delete}
           </Button>
         </div>
       </div>
@@ -141,7 +133,7 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
           <li key={member.userId} className="flex items-center gap-2 text-sm" data-team-member={member.name}>
             <Avatar name={member.name} />
             <span className="text-ink">{member.name}</span>
-            {member.lead && <span className="rounded-full bg-accent-subtle px-2 py-0.5 text-2xs font-medium text-accent">Lead</span>}
+            {member.lead && <span className="rounded-full bg-accent-subtle px-2 py-0.5 text-2xs font-medium text-accent">{t.board.teams.lead}</span>}
             {managesTeams && (
               <Button
                 size="sm"
@@ -150,7 +142,7 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
                 onClick={() => setAway({ userId: member.userId, name: member.name })}
                 data-action="record-member-absence"
               >
-                Away
+                {t.board.teams.away}
               </Button>
             )}
             <Button
@@ -158,23 +150,26 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
               variant="ghost"
               className={managesTeams ? "h-6 px-1.5 text-2xs" : "ml-auto h-6 px-1.5 text-2xs"}
               onClick={async () =>
-                (await confirm({ noun: t.kit.confirm.things.member, verb: t.kit.confirm.verbs.remove, body: `${member.name} leaves ${team.name}.` })) &&
-                remove.mutate({ id: team.id, userId: member.userId })
+                (await confirm({
+                  noun: t.kit.confirm.things.member,
+                  verb: t.kit.confirm.verbs.remove,
+                  body: t.board.teams.removeBody(member.name, team.name),
+                })) && remove.mutate({ id: team.id, userId: member.userId })
               }
             >
-              Remove
+              {t.board.teams.remove}
             </Button>
           </li>
         ))}
-        {members.length === 0 && <li className="text-sm text-ink-subtle">Nobody on it yet.</li>}
+        {members.length === 0 && <li className="text-sm text-ink-subtle">{t.board.teams.empty}</li>}
       </ul>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {/* A portal customer is not somebody who can be put on a team. */}
         <PersonPicker
           id={`add-${team.id}`}
-          aria-label={`Add somebody to ${team.name}`}
-          none="Add somebody..."
+          aria-label={t.board.teams.addTo(team.name)}
+          none={t.board.teams.addPlaceholder}
           staff
           exclude={members.map((member) => member.userId)}
           value={picked}
@@ -189,7 +184,7 @@ function TeamCard({ team, projectKey }: { team: Team; projectKey: string }) {
             setPicked("");
           }}
         >
-          Add
+          {t.board.teams.add}
         </Button>
       </div>
 
@@ -211,9 +206,15 @@ function NewTeam({ projectKey }: { projectKey: string }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
-      <Field label="New team" value={name} placeholder="Platform" onChange={(event) => setName(event.target.value)} className="w-56" />
+      <Field
+        label={t.board.teams.newTeam}
+        value={name}
+        placeholder={t.board.teams.newPlaceholder}
+        onChange={(event) => setName(event.target.value)}
+        className="w-56"
+      />
       <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-        Form team
+        {t.board.teams.form}
       </Button>
       {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
     </form>

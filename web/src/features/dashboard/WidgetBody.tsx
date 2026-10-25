@@ -34,6 +34,7 @@ import {
 } from "./FlowBodies";
 import { useWidgetReport, type BodyProps } from "./useWidgetReport";
 import { WidgetState } from "./WidgetState";
+import { t } from "@/i18n";
 
 const categoryTone: Record<string, string> = {
   todo: "bg-status-todo",
@@ -102,9 +103,9 @@ function BreakdownBody({ projectKey, widget, narrow }: BodyProps) {
       <BarList
         rows={data.buckets.map((b) => ({ label: b.label, count: b.count, key: b.label + b.category }))}
         tone={(row) => categoryTone[data.buckets.find((b) => b.label === row.label)?.category ?? ""] ?? "bg-accent"}
-        empty="No issues yet"
+        empty={t.dashboard.widgets.noIssues}
       />
-      <p className="mt-2 text-2xs text-ink-subtle">{data.total} in all</p>
+      <p className="mt-2 text-2xs text-ink-subtle">{t.dashboard.widgets.inAll(data.total)}</p>
     </div>
   );
 }
@@ -115,13 +116,13 @@ function ThroughputBody({ projectKey, widget, narrow }: BodyProps) {
   return (
     <div>
       <div className="mb-3 flex gap-6">
-        <Stat value={String(data.created)} label={`created in ${data.days} days`} />
-        <Stat value={String(data.resolved)} label="resolved" />
+        <Stat value={String(data.created)} label={t.dashboard.widgets.createdIn(data.days)} />
+        <Stat value={String(data.resolved)} label={t.dashboard.widgets.resolved} />
       </div>
       <PairedBars
         groups={data.weeks.map((w) => ({ label: weekLabel(w.start), a: w.created, b: w.resolved }))}
-        a={{ name: "created", tone: "bg-status-todo" }}
-        b={{ name: "resolved", tone: "bg-status-done" }}
+        a={{ name: t.dashboard.widgets.created, tone: "bg-status-todo" }}
+        b={{ name: t.dashboard.widgets.resolved, tone: "bg-status-done" }}
       />
     </div>
   );
@@ -130,16 +131,16 @@ function ThroughputBody({ projectKey, widget, narrow }: BodyProps) {
 function WorkloadBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<WorkloadReport>(projectKey, widget, narrow);
   if (!data) return <WidgetState error={error} />;
-  if (data.rows.length === 0) return <p className="text-sm text-ink-subtle">Nobody is carrying anything yet.</p>;
+  if (data.rows.length === 0) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.nobodyCarrying}</p>;
   return (
     <table className="w-full text-sm" data-testid="workload">
       <thead>
         <tr className="text-left text-2xs tracking-wide text-ink-subtle uppercase">
-          <th className="pb-1 font-medium">Who</th>
-          <th className="pb-1 text-right font-medium">Open</th>
-          <th className="pb-1 text-right font-medium">Doing</th>
-          <th className="pb-1 text-right font-medium">Points</th>
-          <th className="pb-1 text-right font-medium">Done {data.days}d</th>
+          <th className="pb-1 font-medium">{t.dashboard.widgets.who}</th>
+          <th className="pb-1 text-right font-medium">{t.dashboard.widgets.open}</th>
+          <th className="pb-1 text-right font-medium">{t.dashboard.widgets.doing}</th>
+          <th className="pb-1 text-right font-medium">{t.dashboard.widgets.points}</th>
+          <th className="pb-1 text-right font-medium">{t.dashboard.widgets.doneIn(data.days)}</th>
         </tr>
       </thead>
       <tbody>
@@ -160,17 +161,15 @@ function WorkloadBody({ projectKey, widget, narrow }: BodyProps) {
 function CycleTimeBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<CycleTimeReport>(projectKey, widget, narrow);
   if (!data) return <WidgetState error={error} />;
-  if (data.resolved === 0) return <p className="text-sm text-ink-subtle">Nothing resolved in the last {data.days} days.</p>;
+  if (data.resolved === 0) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.nothingResolved(data.days)}</p>;
   return (
     <div>
       <div className="flex gap-6">
-        <Stat value={hours(data.medianHours)} label="median" />
-        <Stat value={hours(data.averageHours)} label="average" />
-        <Stat value={hours(data.p90Hours)} label="slowest tenth" />
+        <Stat value={hours(data.medianHours)} label={t.dashboard.widgets.median} />
+        <Stat value={hours(data.averageHours)} label={t.dashboard.widgets.average} />
+        <Stat value={hours(data.p90Hours)} label={t.dashboard.widgets.slowestTenth} />
       </div>
-      <p className="mt-2 text-2xs text-ink-subtle">
-        {data.resolved} resolved in {data.days} days, filed to resolved.
-      </p>
+      <p className="mt-2 text-2xs text-ink-subtle">{t.dashboard.widgets.resolvedIn(data.resolved, data.days)}</p>
     </div>
   );
 }
@@ -179,7 +178,7 @@ function EpicsBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<EpicsReport>(projectKey, widget, narrow);
   const { readOnly } = useReportSource();
   if (!data) return <WidgetState error={error} />;
-  if (data.epics.length === 0) return <p className="text-sm text-ink-subtle">No open epics.</p>;
+  if (data.epics.length === 0) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.noEpics}</p>;
   return (
     <ul className="space-y-2">
       {data.epics.map((e) => (
@@ -194,7 +193,7 @@ function EpicsBody({ projectKey, widget, narrow }: BodyProps) {
             )}
             <span className="shrink-0 font-mono text-2xs text-ink-subtle">{e.key}</span>
           </div>
-          <Progress done={e.done} total={e.total} label={e.total ? `${share(e.done, e.total)}%` : "empty"} />
+          <Progress done={e.done} total={e.total} label={e.total ? `${share(e.done, e.total)}%` : t.dashboard.widgets.empty} />
         </li>
       ))}
     </ul>
@@ -204,7 +203,7 @@ function EpicsBody({ projectKey, widget, narrow }: BodyProps) {
 function SprintBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<SprintReport>(projectKey, widget, narrow);
   if (!data) return <WidgetState error={error} />;
-  if (!data.active) return <p className="text-sm text-ink-subtle">No sprint is running.</p>;
+  if (!data.active) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.noSprintRunning}</p>;
   return (
     <div className="space-y-3">
       {data.plans.map((p) => (
@@ -214,15 +213,13 @@ function SprintBody({ projectKey, widget, narrow }: BodyProps) {
               {p.sprint.name}
               {p.sprint.teamName && <span className="text-ink-muted"> · {p.sprint.teamName}</span>}
             </span>
-            <span className="text-ink-muted">
-              {p.daysLeft} day{p.daysLeft === 1 ? "" : "s"} left
-            </span>
+            <span className="text-ink-muted">{t.dashboard.widgets.daysLeft(p.daysLeft)}</span>
           </div>
-          <Progress done={p.completed} total={p.committed} label={`${p.completed}/${p.committed} pts`} />
+          <Progress done={p.completed} total={p.committed} label={t.dashboard.widgets.sprintPoints(p.completed, p.committed)} />
           <p className="mt-1 text-2xs text-ink-subtle">
-            {p.issues} issue{p.issues === 1 ? "" : "s"}
-            {p.unestimated > 0 ? `, ${p.unestimated} unestimated` : ""}
-            {p.sprint.capacity ? ` · capacity ${p.sprint.capacity}` : ""}
+            {t.dashboard.widgets.issueCount(p.issues)}
+            {p.unestimated > 0 ? t.dashboard.widgets.unestimated(p.unestimated) : ""}
+            {p.sprint.capacity ? t.dashboard.widgets.capacity(p.sprint.capacity) : ""}
           </p>
         </div>
       ))}
@@ -233,12 +230,12 @@ function SprintBody({ projectKey, widget, narrow }: BodyProps) {
 function VelocityBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<VelocityReport>(projectKey, widget, narrow);
   if (!data) return <WidgetState error={error} />;
-  if (data.sprints.length === 0) return <p className="text-sm text-ink-subtle">No sprint has been completed yet.</p>;
+  if (data.sprints.length === 0) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.noSprintCompleted}</p>;
   return (
     <PairedBars
       groups={data.sprints.map((s) => ({ label: s.name, a: s.committed, b: s.completed }))}
-      a={{ name: "committed", tone: "bg-status-todo" }}
-      b={{ name: "completed", tone: "bg-status-done" }}
+      a={{ name: t.dashboard.widgets.committed, tone: "bg-status-todo" }}
+      b={{ name: t.dashboard.widgets.completed, tone: "bg-status-done" }}
     />
   );
 }
@@ -246,7 +243,7 @@ function VelocityBody({ projectKey, widget, narrow }: BodyProps) {
 function BurndownBody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<BurndownReport>(projectKey, widget, narrow);
   if (!data) return <WidgetState error={error} />;
-  if (data.sprints.length === 0) return <p className="text-sm text-ink-subtle">No sprint is running.</p>;
+  if (data.sprints.length === 0) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.noSprintRunning}</p>;
   return (
     <div className="space-y-4">
       {data.sprints.map((curve) => (
@@ -264,7 +261,7 @@ function BurndownChart({ curve }: { curve: SprintBurndown }) {
           {curve.sprint.name}
           {curve.sprint.teamName && <span className="text-ink-muted"> · {curve.sprint.teamName}</span>}
         </span>
-        {curve.live && <span className="text-2xs text-ink-subtle">today is live</span>}
+        {curve.live && <span className="text-2xs text-ink-subtle">{t.dashboard.widgets.todayLive}</span>}
       </div>
       <LineChart series={burndownSeries(curve)} xLabels={axisLabels(curve)} />
       <p className="mt-1 text-2xs text-ink-subtle" data-burndown-summary>
@@ -280,16 +277,16 @@ function SprintHistoryBody({ projectKey, widget, narrow }: BodyProps) {
   const { readOnly } = useReportSource();
   const [curveOf, setCurveOf] = useState<string | null>(null);
   if (!data) return <WidgetState error={error} />;
-  if (data.sprints.length === 0) return <p className="text-sm text-ink-subtle">No sprint has been completed yet.</p>;
+  if (data.sprints.length === 0) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.noSprintCompleted}</p>;
   return (
     <div className="space-y-2">
       <table className="w-full text-sm">
         <thead className="text-2xs text-ink-muted">
           <tr>
-            <th className="py-1 text-left font-medium">Sprint</th>
-            <th className="py-1 text-right font-medium">Committed</th>
-            <th className="py-1 text-right font-medium">Completed</th>
-            <th className="py-1 text-right font-medium">Issues</th>
+            <th className="py-1 text-left font-medium">{t.dashboard.widgets.sprint}</th>
+            <th className="py-1 text-right font-medium">{t.dashboard.widgets.committedHead}</th>
+            <th className="py-1 text-right font-medium">{t.dashboard.widgets.completedHead}</th>
+            <th className="py-1 text-right font-medium">{t.dashboard.widgets.issuesHead}</th>
             {!readOnly && <th className="py-1"></th>}
           </tr>
         </thead>
@@ -300,15 +297,13 @@ function SprintHistoryBody({ projectKey, widget, narrow }: BodyProps) {
                 {s.name}
                 {s.team && <span className="text-ink-muted"> · {s.team}</span>}
               </td>
-              <td className="py-1.5 text-right text-ink-muted tabular-nums">{s.committed} pts</td>
-              <td className="py-1.5 text-right text-ink tabular-nums">{s.completed} pts</td>
-              <td className="py-1.5 text-right text-ink-muted tabular-nums">
-                {s.finished} finished, {s.carried} carried
-              </td>
+              <td className="py-1.5 text-right text-ink-muted tabular-nums">{t.dashboard.widgets.pts(s.committed)}</td>
+              <td className="py-1.5 text-right text-ink tabular-nums">{t.dashboard.widgets.pts(s.completed)}</td>
+              <td className="py-1.5 text-right text-ink-muted tabular-nums">{t.dashboard.widgets.finishedCarried(s.finished, s.carried)}</td>
               {!readOnly && (
                 <td className="py-1.5 text-right">
                   <Button size="sm" variant="ghost" onClick={() => setCurveOf(curveOf === s.id ? null : s.id)}>
-                    {curveOf === s.id ? "Hide" : "Curve"}
+                    {curveOf === s.id ? t.dashboard.widgets.hide : t.dashboard.widgets.curve}
                   </Button>
                 </td>
               )}
@@ -326,14 +321,14 @@ function PastBurndown({ projectKey, sprintId }: { projectKey: string; sprintId: 
   const { data, error } = useReport<BurndownReport>(projectKey, "burndown", { sprintId });
   if (!data) return <WidgetState error={error} />;
   const curve = data.sprints[0];
-  if (!curve) return <p className="text-sm text-ink-subtle">Nothing was written down for that sprint.</p>;
+  if (!curve) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.nothingWritten}</p>;
   return <BurndownChart curve={curve} />;
 }
 
 function SLABody({ projectKey, widget, narrow }: BodyProps) {
   const { data, error } = useWidgetReport<SLAReport>(projectKey, widget, narrow);
   if (!data) return <WidgetState error={error} />;
-  if (data.metrics.length === 0) return <p className="text-sm text-ink-subtle">No goals measured in the last {data.days} days.</p>;
+  if (data.metrics.length === 0) return <p className="text-sm text-ink-subtle">{t.dashboard.widgets.noGoals(data.days)}</p>;
   return (
     <div className="space-y-3">
       {data.metrics.map((m) => {
@@ -343,8 +338,8 @@ function SLABody({ projectKey, widget, narrow }: BodyProps) {
             <div className="flex items-baseline justify-between text-sm">
               <span className="text-ink">{m.name}</span>
               <span className="text-ink-muted">
-                {decided ? `${share(m.met, decided)}% met` : "nothing decided yet"}
-                {m.running ? ` · ${m.running} running` : ""}
+                {decided ? t.dashboard.widgets.metShare(share(m.met, decided)) : t.dashboard.widgets.nothingDecided}
+                {m.running ? t.dashboard.widgets.running(m.running) : ""}
               </span>
             </div>
             <div className="mt-1 flex h-2 overflow-hidden rounded-sm bg-surface-raised">
@@ -352,7 +347,8 @@ function SLABody({ projectKey, widget, narrow }: BodyProps) {
               <span className="bg-danger" style={{ width: `${share(m.breached, Math.max(decided, 1))}%` }} />
             </div>
             <p className="mt-1 text-2xs text-ink-subtle">
-              {m.met} met, {m.breached} missed{m.averageHours ? `, ${hours(m.averageHours)} on average` : ""}
+              {t.dashboard.widgets.metMissed(m.met, m.breached)}
+              {m.averageHours ? t.dashboard.widgets.onAverage(hours(m.averageHours)) : ""}
             </p>
           </div>
         );
