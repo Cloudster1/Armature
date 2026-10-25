@@ -16,6 +16,7 @@ import (
 	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/mail"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // FanOut runs in the worker: an event about an issue, or about somebody's days
@@ -118,12 +119,38 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 		e.ID = uuid.New()
 	}
 	at := place{issueID: &s.id, link: f.appURL + "/issues/" + s.key, tag: "[" + s.key + "] ", byDesk: s.isRequest}
+	reads := map[uuid.UUID]bool{}
 	for _, t := range tellsFor(e.Topic, p, s) {
+		may, asked := reads[t.user]
+		if !asked {
+			if may, err = f.reads(ctx, t.user, s.key); err != nil {
+				return err
+			}
+			reads[t.user] = may
+		}
+		if !may {
+			continue
+		}
 		if err := f.deliver(ctx, e.ID, at, t); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// reads is asked at delivery, not when somebody started watching: access taken
+// away since then stops what they are told about the issue.
+func (f *FanOut) reads(ctx context.Context, userID uuid.UUID, issueKey string) (bool, error) {
+	projectKey, _, err := issue.ParseKey(issueKey)
+	if err != nil {
+		return false, err
+	}
+	var may bool
+	err = f.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		may, err = perm.Reads(ctx, tx, userID, projectKey)
+		return err
+	})
+	return may, err
 }
 
 // tellsFor decides who hears what. Pure, so the rules can be read in a test.
@@ -335,8 +362,8 @@ type place struct {
 	byDesk bool
 }
 
-// deliver writes one row and, when it is new and wanted, mails it or queues
-// it for the digest. A request's people are mailed by the desk, not here.
+// deliver writes one row and mails it or queues it for the digest. A row wanted
+// only by mail is kept hidden, since it is what stops a second pass mailing again.
 func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, at place, t tell) error {
 	var (
 		prefs    Preferences
@@ -348,14 +375,16 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, at place, t tel
 		if err := readPreferences(ctx, tx, t.user, &prefs); err != nil {
 			return err
 		}
-		if !prefs.shows(t.kind) {
+		shows := prefs.shows(t.kind)
+		mails := prefs.mails(t.kind) && !at.byDesk && f.mailer != nil
+		if !shows && !mails {
 			return nil
 		}
 		err := tx.QueryRow(ctx, `
-			INSERT INTO notification (user_id, issue_id, kind, title, body, link, event_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			INSERT INTO notification (user_id, issue_id, kind, title, body, link, event_id, hidden)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			ON CONFLICT (user_id, event_id, kind) DO NOTHING
-			RETURNING id`, t.user, at.issueID, t.kind, t.title, t.body, at.link, eventID).Scan(&id)
+			RETURNING id`, t.user, at.issueID, t.kind, t.title, t.body, at.link, eventID, !shows).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -363,7 +392,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, at place, t tel
 			return err
 		}
 		inserted = true
-		if !prefs.mails(t.kind) || at.byDesk || f.mailer == nil {
+		if !mails {
 			return nil
 		}
 		if prefs.Digest != DigestOff {

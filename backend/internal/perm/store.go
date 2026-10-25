@@ -96,6 +96,24 @@ func (s *Store) ResolveFor(ctx context.Context, userID uuid.UUID, owner bool) (S
 	return set, err
 }
 
+// Reads says whether one person may read a project, asked in the caller's
+// transaction on behalf of somebody who is not the one signed in.
+func Reads(ctx context.Context, tx db.DBTX, userID uuid.UUID, projectKey string) (bool, error) {
+	var owner bool
+	err := tx.QueryRow(ctx, `SELECT COALESCE(standing = 'owner', false) FROM app_user WHERE id = $1`, userID).Scan(&owner)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	set, err := (&Store{}).Resolve(ctx, tx, userID, owner)
+	if err != nil {
+		return false, err
+	}
+	return set.Can(Read, projectKey), nil
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

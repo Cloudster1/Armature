@@ -189,3 +189,43 @@ func TestAReplyLeftInDoneIsToldToTheAgents(t *testing.T) {
 		t.Errorf("tells = %+v, want whoever finished it", got)
 	}
 }
+
+// The preferences page offers a switch for every kind and nothing else, so
+// each one must be a kind some event is told as (#411).
+func TestEveryKindIsOneSomethingIsToldAs(t *testing.T) {
+	ada, bob, cy, dee, eve := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	s := &subject{key: "CP-7", summary: "Oil the hinge", assignee: &bob, reporter: &cy, watchers: []uuid.UUID{dee}, actor: "Ada", comment: "done?"}
+	p := payload{ActorID: ada, UserID: eve, Mentions: []uuid.UUID{eve}, ToStatus: "Done", Status: "Resolved", Metric: "time_to_resolution", Changes: []struct {
+		Field string `json:"field"`
+	}{{Field: "assignee"}}}
+
+	told := map[string]bool{}
+	for _, topic := range []string{
+		events.TopicIssueCreated, events.TopicIssueUpdated, events.TopicIssueTransitioned, events.TopicCommentAdded,
+		events.TopicRequestStaysDone, events.TopicWatcherAdded, events.TopicSLABreached,
+	} {
+		for _, tl := range tellsFor(topic, p, s) {
+			told[tl.kind] = true
+		}
+	}
+	for _, topic := range []string{events.TopicAbsenceRecorded, events.TopicAbsenceChanged, events.TopicAbsenceRemoved} {
+		if tl, ok := absenceTell(topic, p, "Ada"); ok {
+			told[tl.kind] = true
+		}
+	}
+
+	for _, kind := range Kinds {
+		if !told[kind] {
+			t.Errorf("%q is offered on the preferences page but no event is told as it", kind)
+		}
+		delete(told, kind)
+	}
+	for kind := range told {
+		t.Errorf("%q is told but has no switch on the preferences page", kind)
+	}
+	for _, gone := range []string{"rule", "filter"} {
+		if err := (Preferences{Digest: DigestOff, InApp: map[string]bool{gone: false}}).Validate(); err == nil {
+			t.Errorf("a switch for %q was accepted, though nothing is ever told as it", gone)
+		}
+	}
+}

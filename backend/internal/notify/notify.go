@@ -24,13 +24,11 @@ const (
 	KindTransitioned = "transitioned"
 	KindWatching     = "watching"
 	KindSLABreached  = "sla_breached"
-	KindRule         = "rule"
-	KindFilter       = "filter"
 	KindAbsence      = "absence"
 )
 
 // Kinds lists every reason, in the order a preferences page shows them.
-var Kinds = []string{KindAssigned, KindMentioned, KindCommented, KindTransitioned, KindWatching, KindSLABreached, KindRule, KindFilter, KindAbsence}
+var Kinds = []string{KindAssigned, KindMentioned, KindCommented, KindTransitioned, KindWatching, KindSLABreached, KindAbsence}
 
 // Digest schedules: mail at once, or bundled into one mail an hour or a day.
 const (
@@ -124,7 +122,8 @@ func (s *Service) Inbox(ctx context.Context, userID uuid.UUID, unreadOnly bool, 
 	if limit > MaxInboxLimit {
 		limit = MaxInboxLimit
 	}
-	query := selectNotifications
+	// A hidden row was wanted by mail alone; the digest still reads it.
+	query := selectNotifications + ` AND NOT n.hidden`
 	if unreadOnly {
 		query += ` AND n.read_at IS NULL`
 	}
@@ -152,7 +151,7 @@ func (s *Service) Inbox(ctx context.Context, userID uuid.UUID, unreadOnly bool, 
 func (s *Service) Unread(ctx context.Context, userID uuid.UUID) (int, error) {
 	var n int
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT count(*) FROM notification WHERE user_id = $1 AND read_at IS NULL`, userID).Scan(&n)
+		return tx.QueryRow(ctx, `SELECT count(*) FROM notification WHERE user_id = $1 AND read_at IS NULL AND NOT hidden`, userID).Scan(&n)
 	})
 	return n, err
 }
