@@ -194,16 +194,20 @@ A repository's host reported a CI run.
 - `repositoryId` (uuid), `externalId` (string), `sha` (string).
 - `status` (string): `pending`, `success`, `failure` or `cancelled`.
 
-### ci.deployment.succeeded
-
-Offered for subscription; nothing sends it yet.
-
 ### sla.breached
 
 A service desk request ran past a target.
 
 - `issueKey` (string), `timerId` (uuid).
 - `metric` (string): `first_response` or `resolution`.
+
+### request.stays_done
+
+A customer replied to a finished request its workflow has no way out of, so
+somebody at the desk has to move it by hand.
+
+- `key` (string), `commentId` (uuid), `actorId` (uuid): the customer.
+- `status` (string): the status it stays in.
 
 ### attachment.added
 
@@ -233,14 +237,6 @@ A page or a requirement elsewhere was put on an issue.
 
 A page or a requirement elsewhere was taken off an issue. The same fields as
 `issue.remote_link.added`, as the link was.
-
-### request.stays_done
-
-Only to `*`. A customer replied to a finished request its workflow has no way
-out of, so somebody at the desk has to move it by hand.
-
-- `key` (string), `commentId` (uuid), `actorId` (uuid): the customer.
-- `status` (string): the status it stays in.
 
 ### absence.recorded, absence.changed, absence.removed
 

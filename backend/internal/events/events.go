@@ -27,16 +27,15 @@ const (
 	TopicIssueUpdated      = "issue.updated"
 	TopicIssueTransitioned = "issue.transitioned"
 	// An issue gone for good, so a copy kept elsewhere can let it go too.
-	TopicIssueDeleted        = "issue.deleted"
-	TopicCommentAdded        = "comment.added"
-	TopicPullRequestLinked   = "vcs.pull_request.linked"
-	TopicCommitLinked        = "vcs.commit.linked"
-	TopicCIRunRecorded       = "ci.run.recorded"
-	TopicDeploymentSucceeded = "ci.deployment.succeeded"
-	TopicSLABreached         = "sla.breached"
-	TopicAttachmentAdded     = "attachment.added"
-	TopicWorkLogged          = "worklog.added"
-	TopicWatcherAdded        = "watcher.added"
+	TopicIssueDeleted      = "issue.deleted"
+	TopicCommentAdded      = "comment.added"
+	TopicPullRequestLinked = "vcs.pull_request.linked"
+	TopicCommitLinked      = "vcs.commit.linked"
+	TopicCIRunRecorded     = "ci.run.recorded"
+	TopicSLABreached       = "sla.breached"
+	TopicAttachmentAdded   = "attachment.added"
+	TopicWorkLogged        = "worklog.added"
+	TopicWatcherAdded      = "watcher.added"
 	// A customer replied to a finished request its workflow has no way out of,
 	// so somebody at the desk has to move it by hand.
 	TopicRequestStaysDone = "request.stays_done"
@@ -56,11 +55,12 @@ const (
 	TopicAbsenceRemoved  = "absence.removed"
 )
 
-// Topics lists every topic, in the order a subscription picker shows them.
+// Topics lists every topic, in the order a subscription picker shows them. topics_test.go
+// holds it to what the code publishes.
 var Topics = []string{
 	TopicMemberJoined, TopicIssueCreated, TopicIssueUpdated, TopicIssueTransitioned, TopicIssueDeleted,
-	TopicCommentAdded, TopicPullRequestLinked, TopicCommitLinked, TopicCIRunRecorded, TopicDeploymentSucceeded,
-	TopicSLABreached, TopicAttachmentAdded, TopicWorkLogged, TopicWatcherAdded,
+	TopicCommentAdded, TopicPullRequestLinked, TopicCommitLinked, TopicCIRunRecorded,
+	TopicSLABreached, TopicRequestStaysDone, TopicAttachmentAdded, TopicWorkLogged, TopicWatcherAdded,
 	TopicRemoteLinkAdded, TopicRemoteLinkRemoved,
 	TopicAutomationScheduled, TopicAutomationIncoming, TopicAutomationManual,
 }
