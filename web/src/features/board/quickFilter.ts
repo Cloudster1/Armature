@@ -1,5 +1,6 @@
 import type { Card } from "@/api/boards";
 import type { LabelRef, ParentRef, TypeRef, UserRef } from "@/api/issues";
+import { t } from "@/i18n";
 
 /** Narrows the cards a board already loaded, for the moment, leaving its stored scope alone.
  * Chips of different kinds AND together; the values within one chip OR together. */
@@ -65,7 +66,7 @@ export function optionsFrom(cards: Card[]): QuickFilterOptions {
   }
   const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name);
   return {
-    assignees: [...[...assignees.values()].sort(byName), ...(unassigned ? [{ id: UNASSIGNED, name: "Unassigned" }] : [])],
+    assignees: [...[...assignees.values()].sort(byName), ...(unassigned ? [{ id: UNASSIGNED, name: t.kit.unassigned }] : [])],
     labels: [...labels.values()].sort(byName),
     types: [...types.values()].sort(byName),
     epics: [...epics.values()].sort((a, b) => a.summary.localeCompare(b.summary)),

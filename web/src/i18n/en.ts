@@ -1,3 +1,7 @@
+import { boardEn } from "./board.en";
+import { dashboardEn } from "./dashboard.en";
+import { scheduleEn } from "./schedule.en";
+import { searchEn } from "./search.en";
 import { issueListEn } from "./issueList.en";
 import { kitEn } from "./kit.en";
 import { issuePanelsEn } from "./issuePanels.en";
@@ -21,6 +25,10 @@ export const en = {
   issueList: issueListEn,
   issueView: issueViewEn,
   issuePanels: issuePanelsEn,
+  board: boardEn,
+  dashboard: dashboardEn,
+  schedule: scheduleEn,
+  search: searchEn,
 };
 
 export type Messages = typeof en;

@@ -583,3 +583,21 @@ scenario("a person whose profile says German reads the issue list and an issue's
   for (const word of ["Beschreibung", "Aktivität", "Verlauf", "Bearbeiter"]) expect.containsInsensitive(view, word, `the issue's page says ${word}`);
   expect.notContains(view, "Activity", "the English section name");
 });
+
+// The work pages speak the person's language too (#371): the board, search and the milestones.
+scenario("a person whose profile says German works on the board, in search and among milestones in German", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Arbeit", { visit: false });
+  await speakThroughAPI(page, "de-DE");
+
+  await goto(page, `/projects/${key}/board`);
+  await page.waitForFunction(() => document.documentElement.lang === "de", { timeout: WAIT });
+  await page.waitForSelector('input[aria-label="Karten nach Schlüssel oder Zusammenfassung filtern"]', { timeout: WAIT });
+
+  await goto(page, "/search");
+  await page.waitForFunction(() => document.body.innerText.includes("Jeder Vorgang, den Sie sehen können"), { timeout: WAIT });
+
+  await goto(page, `/projects/${key}/milestones`);
+  await page.waitForFunction(() => document.body.innerText.includes("Noch keine Meilensteine"), { timeout: WAIT });
+  expect.notContains(await bodyText(page), "No milestones yet", "the English empty state");
+});

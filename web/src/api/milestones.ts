@@ -3,6 +3,7 @@ import { useMutation } from "./mutation";
 import { request } from "./client";
 import type { Issue } from "./issues";
 import { formatDay as formatCalendarDay } from "@/lib/week";
+import { t } from "@/i18n";
 
 /**
  * How far a milestone has got, counted by the status category of the issues
@@ -62,8 +63,8 @@ export function formatDay(iso: string, locale: string): string {
 
 /** The one line a person reads off a milestone: how much of it is done. */
 export function describeProgress(progress: Progress): string {
-  if (progress.issues === 0) return "Nothing assigned yet";
-  return `${progress.done} of ${progress.issues} done, ${progress.percent}%`;
+  if (progress.issues === 0) return t.schedule.milestones.nothingAssigned;
+  return t.schedule.milestones.progress(progress.done, progress.issues, progress.percent);
 }
 
 export const milestonesQueryKey = ["milestones"] as const;

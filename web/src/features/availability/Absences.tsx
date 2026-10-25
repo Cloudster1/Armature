@@ -28,10 +28,10 @@ export function AbsenceEditor({ userId, absences, empty, truncated = false }: { 
           {absences.map((absence) => (
             <li key={absence.id} className="flex flex-wrap items-center gap-2 py-2 text-sm" data-absence={absence.startsOn}>
               <span className={absence.endsOn < now ? "text-ink-subtle" : "text-ink"}>{formatAbsence(absence, format.locale)}</span>
-              {absence.endsOn < now && <Tag>Past</Tag>}
+              {absence.endsOn < now && <Tag>{t.schedule.absences.past}</Tag>}
               <span className="ml-auto flex gap-1">
                 <Button size="sm" variant="ghost" onClick={() => setEditing(absence)} data-action="edit-absence">
-                  Change
+                  {t.schedule.absences.change}
                 </Button>
                 <Button
                   size="sm"
@@ -42,15 +42,15 @@ export function AbsenceEditor({ userId, absences, empty, truncated = false }: { 
                       !(await confirm({
                         noun: t.kit.confirm.things.absence,
                         verb: t.kit.confirm.verbs.remove,
-                        body: `${formatAbsence(absence, format.locale)} is no longer marked as away.`,
+                        body: t.schedule.absences.removeBody(formatAbsence(absence, format.locale)),
                       }))
                     )
                       return;
-                    remove.mutate(absence.id, { onSuccess: () => toast.success("Absence removed") });
+                    remove.mutate(absence.id, { onSuccess: () => toast.success(t.schedule.absences.removed) });
                     if (editing?.id === absence.id) setEditing(null);
                   }}
                 >
-                  Remove
+                  {t.schedule.absences.remove}
                 </Button>
               </span>
             </li>
@@ -59,7 +59,7 @@ export function AbsenceEditor({ userId, absences, empty, truncated = false }: { 
       )}
       {truncated && (
         <p className="text-sm text-ink-muted" data-absences-truncated>
-          More absences follow the last one listed. They appear here as the earlier ones pass.
+          {t.schedule.absences.truncated}
         </p>
       )}
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
@@ -91,15 +91,15 @@ function AbsenceForm({ userId, editing, onDone }: { userId: string; editing: Abs
     event.preventDefault();
     if (!startsOn || problem) return;
     const days = { startsOn, endsOn: last, halfDay };
-    if (editing) update.mutate({ id: editing.id, ...days }, { onSuccess: () => done("Absence changed") });
-    else record.mutate({ userId, ...days }, { onSuccess: () => done("Absence recorded") });
+    if (editing) update.mutate({ id: editing.id, ...days }, { onSuccess: () => done(t.schedule.absences.changed) });
+    else record.mutate({ userId, ...days }, { onSuccess: () => done(t.schedule.absences.recorded) });
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-3" noValidate data-absence-form>
       <div className="flex flex-wrap items-end gap-3">
         <Field
-          label="First day"
+          label={t.schedule.absences.firstDay}
           id={`absence-from-${userId}`}
           type="date"
           value={startsOn}
@@ -108,17 +108,17 @@ function AbsenceForm({ userId, editing, onDone }: { userId: string; editing: Abs
           className="w-44"
         />
         <Field
-          label="Last day"
+          label={t.schedule.absences.lastDay}
           id={`absence-to-${userId}`}
           type="date"
           value={endsOn}
           min={startsOn || undefined}
           onChange={(e) => setEndsOn(e.target.value)}
-          hint="Leave empty for one day."
+          hint={t.schedule.absences.lastDayHint}
           data-absence-to
           className="w-44"
         />
-        <Checkbox label="Half of the day" checked={halfDay} onChange={(e) => setHalfDay(e.target.checked)} data-absence-half />
+        <Checkbox label={t.schedule.absences.halfDay} checked={halfDay} onChange={(e) => setHalfDay(e.target.checked)} data-absence-half />
       </div>
       {problem && (
         <p className="text-sm text-danger" role="alert">
@@ -128,11 +128,11 @@ function AbsenceForm({ userId, editing, onDone }: { userId: string; editing: Abs
       {failed && <ErrorBanner>{failed.message}</ErrorBanner>}
       <div className="flex gap-2">
         <Button type="submit" loading={record.isPending || update.isPending} disabled={!startsOn || Boolean(problem)} data-action="record-absence">
-          {editing ? "Save absence" : "Record absence"}
+          {editing ? t.schedule.absences.save : t.schedule.absences.record}
         </Button>
         {editing && (
           <Button type="button" variant="secondary" onClick={onDone}>
-            Cancel
+            {t.schedule.absences.cancel}
           </Button>
         )}
       </div>
@@ -147,12 +147,12 @@ export function AbsenceDialog({ userId, name, onClose }: { userId: string; name:
     <Dialog
       open
       onClose={onClose}
-      title={`${name} is away`}
-      description="The days only. There is nowhere to say why, and colleagues see nothing more."
+      title={t.schedule.absences.dialogTitle(name)}
+      description={t.schedule.absences.dialogDetail}
       attrs={{ "data-absence-dialog": userId }}
     >
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
-      {data && <AbsenceEditor userId={userId} absences={data.absences} truncated={data.truncated} empty={`${name} is not away from a month ago on.`} />}
+      {data && <AbsenceEditor userId={userId} absences={data.absences} truncated={data.truncated} empty={t.schedule.absences.notAway(name)} />}
     </Dialog>
   );
 }

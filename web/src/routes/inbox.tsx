@@ -5,6 +5,7 @@ import { useInbox, useMarkRead, type Notification } from "@/api/notifications";
 import { Button, Card, EmptyState, Page, PageHeader, Segmented } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 /** What you were told, newest first; opening one marks it read and goes there. */
 export const inboxRoute = createRoute({
@@ -30,33 +31,33 @@ function InboxPage() {
   return (
     <Page width="narrow">
       <PageHeader
-        title="Notifications"
-        meta={items.length ? `${items.length} ${view === "unread" ? "unread" : "recent"}` : undefined}
+        title={t.search.inbox.title}
+        meta={items.length ? (view === "unread" ? t.search.inbox.unreadCount(items.length) : t.search.inbox.recentCount(items.length)) : undefined}
         actions={
           <Button variant="secondary" size="sm" onClick={() => markRead.mutate({ all: true })} loading={markRead.isPending} data-action="mark-all-read">
-            Mark all as read
+            {t.search.inbox.markAllRead}
           </Button>
         }
       />
       <div className="mb-4">
         <Segmented<View>
-          label="Show"
+          label={t.search.inbox.show}
           value={view}
           onChange={setView}
           options={[
-            { value: "unread", label: "Unread", attrs: { "data-inbox-view": "unread" } },
-            { value: "all", label: "Everything", attrs: { "data-inbox-view": "all" } },
+            { value: "unread", label: t.search.inbox.unread, attrs: { "data-inbox-view": "unread" } },
+            { value: "all", label: t.search.inbox.everything, attrs: { "data-inbox-view": "all" } },
           ]}
         />
       </div>
       {isLoading ? null : items.length === 0 ? (
         <EmptyState
           icon={<Icon.Bell />}
-          title={view === "unread" ? "Nothing unread" : "Nothing yet"}
-          description="You are told here when an issue of yours moves, somebody mentions you, or work is assigned to you. How you are told is yours to set."
+          title={view === "unread" ? t.search.inbox.nothingUnread : t.search.inbox.nothingYet}
+          description={t.search.inbox.emptyHint}
           action={
             <Link to="/settings/profile" className="text-sm text-accent hover:underline">
-              Notification settings
+              {t.search.inbox.settings}
             </Link>
           }
         />

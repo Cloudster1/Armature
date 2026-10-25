@@ -11,6 +11,7 @@ import { ResourceGrid } from "@/features/resources/ResourceGrid";
 import { ResourceToolbar } from "@/features/resources/ResourceToolbar";
 import { UnplacedWork } from "@/features/resources/UnplacedWork";
 import { hasPlannedRows, mondayOf, shiftWeeks, windowFrom } from "@/features/resources/cells";
+import { t } from "@/i18n";
 
 /** The work per team or person per week, in hours, against the hours they have. */
 export const resourcesRoute = createRoute({
@@ -43,8 +44,8 @@ function ResourcesPage() {
             {project?.name ?? projectKey}
           </Link>
         }
-        title="Resources"
-        meta="Scheduled work per week in hours, each issue's remaining time spread over its working days, against the hours left after holidays and absences."
+        title={t.schedule.resources.title}
+        meta={t.schedule.resources.meta}
       />
       {project && (
         <ResourceToolbar
@@ -72,17 +73,14 @@ function ResourcesPage() {
         (hasPlannedRows(plan.rows) ? (
           <ResourceGrid plan={plan} />
         ) : plan.grouping === "person" ? (
-          <EmptyState
-            title="Nobody to plan against"
-            description="Put people on a team, or assign them work dated in these weeks; their working weeks are the hours here."
-          />
+          <EmptyState title={t.schedule.resources.nobody} description={t.schedule.resources.nobodyDetail} />
         ) : (
           <EmptyState
-            title="No teams to plan against"
-            description="Form a team and add its members; their working weeks, less holidays and absences, are the hours here."
+            title={t.schedule.resources.noTeams}
+            description={t.schedule.resources.noTeamsDetail}
             action={
               <Link to="/projects/$projectKey/teams" params={{ projectKey }} className="text-sm font-medium text-accent hover:underline">
-                Go to teams
+                {t.schedule.resources.goToTeams}
               </Link>
             }
           />

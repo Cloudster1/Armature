@@ -70,9 +70,9 @@ export function DashboardGrid({
   function removeWidget(widget: Widget) {
     remove.mutate(widget.id, {
       onSuccess: () =>
-        toast.info(`Removed ${widget.title}`, {
+        toast.info(t.dashboard.grid.removed(widget.title), {
           action: {
-            label: "Undo",
+            label: t.dashboard.grid.undo,
             onClick: () => add.mutate({ dashboardId: dashboard.id, kind: widget.kind, title: widget.title, width: widget.width, config: widget.config }),
           },
         }),
@@ -93,7 +93,7 @@ export function DashboardGrid({
       {arranging && <AddWidget projectKey={projectKey} dashboardId={dashboard.id} exclude={filterWidget ? ["filter"] : []} />}
 
       {widgets.length === 0 ? (
-        <EmptyState title="Nothing on this dashboard" description="Arrange it and add a widget." />
+        <EmptyState title={t.dashboard.grid.nothingTitle} description={t.dashboard.grid.nothingDetail} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2" data-testid="dashboard">
           {widgets.map((widget, index) => (
@@ -108,19 +108,19 @@ export function DashboardGrid({
                     <Button
                       size="sm"
                       variant="ghost"
-                      title="Narrower or wider"
+                      title={t.dashboard.grid.widthTitle}
                       onClick={() => update.mutate({ id: widget.id, width: widget.width === 2 ? 1 : 2 })}
                     >
-                      {widget.width === 2 ? "Half" : "Full"}
+                      {widget.width === 2 ? t.dashboard.grid.half : t.dashboard.grid.full}
                     </Button>
-                    <Button size="sm" variant="ghost" title="Move earlier" onClick={() => move(index, -1)} disabled={index === 0}>
+                    <Button size="sm" variant="ghost" title={t.dashboard.grid.earlier} onClick={() => move(index, -1)} disabled={index === 0}>
                       ←
                     </Button>
-                    <Button size="sm" variant="ghost" title="Move later" onClick={() => move(index, 1)} disabled={index === widgets.length - 1}>
+                    <Button size="sm" variant="ghost" title={t.dashboard.grid.later} onClick={() => move(index, 1)} disabled={index === widgets.length - 1}>
                       →
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => removeWidget(widget)}>
-                      Remove
+                      {t.dashboard.grid.remove}
                     </Button>
                   </div>
                 ) : null
@@ -155,11 +155,11 @@ export function DashboardGrid({
             onClick={async () =>
               (await confirm({
                 noun: t.kit.confirm.things.dashboard,
-                body: `${dashboard.name} and its arrangement go; the numbers are computed from the issues and lose nothing.`,
+                body: t.dashboard.grid.deleteBody(dashboard.name),
               })) && deleteDashboard.mutate(dashboard.id)
             }
           >
-            Delete this dashboard
+            {t.dashboard.grid.deleteThis}
           </Button>
         </div>
       )}

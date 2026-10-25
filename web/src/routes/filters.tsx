@@ -40,39 +40,39 @@ function FiltersPage() {
   return (
     <Page width="content">
       <PageHeader
-        title="Saved searches"
-        meta="A query with a name: yours, shared, or starred; mailed to you on a schedule if you like"
+        title={t.search.filters.title}
+        meta={t.search.filters.meta}
         actions={
           <Link to="/search" search={{ q: "" }} className="text-sm text-accent hover:underline">
-            New search
+            {t.search.filters.newSearch}
           </Link>
         }
       />
       <div className="mb-4">
         <Segmented<View>
-          label="Show"
+          label={t.search.filters.show}
           value={view}
           onChange={setView}
           options={[
-            { value: "mine", label: "Mine", attrs: { "data-filters-view": "mine" } },
-            { value: "shared", label: "Shared with me", attrs: { "data-filters-view": "shared" } },
-            { value: "starred", label: "Starred", attrs: { "data-filters-view": "starred" } },
+            { value: "mine", label: t.search.filters.mine, attrs: { "data-filters-view": "mine" } },
+            { value: "shared", label: t.search.filters.sharedWithMe, attrs: { "data-filters-view": "shared" } },
+            { value: "starred", label: t.search.filters.starred, attrs: { "data-filters-view": "starred" } },
           ]}
         />
       </div>
       {isLoading ? null : filters.length === 0 ? (
         <EmptyState
-          title={view === "mine" ? "Nothing saved yet" : view === "shared" ? "Nothing shared with you" : "Nothing starred"}
-          description="Run a search, then Save this search under the query. A saved search can be shared, starred and mailed to you daily or weekly."
+          title={view === "mine" ? t.search.filters.nothingSaved : view === "shared" ? t.search.filters.nothingShared : t.search.filters.nothingStarred}
+          description={t.search.filters.emptyHint}
         />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th>Name</Th>
-              <Th>Query</Th>
-              <Th>Owner</Th>
-              <Th>Mail me</Th>
+              <Th>{t.search.filters.name}</Th>
+              <Th>{t.search.filters.query}</Th>
+              <Th>{t.search.filters.owner}</Th>
+              <Th>{t.search.filters.mailMe}</Th>
               <Th className="w-24" />
             </tr>
           </thead>
@@ -83,15 +83,15 @@ function FiltersPage() {
                   <Link to="/search" search={{ q: f.query, f: f.id }} className="font-medium text-ink hover:text-accent">
                     {f.name}
                   </Link>
-                  {f.shared && <Tag className="ml-2">Shared</Tag>}
+                  {f.shared && <Tag className="ml-2">{t.search.filters.shared}</Tag>}
                 </Td>
                 <Td className="max-w-sm truncate font-mono text-xs text-ink-muted" title={f.query}>
                   {f.query}
                 </Td>
-                <Td className="text-sm text-ink-muted">{f.ownerId === me ? "you" : f.ownerName}</Td>
+                <Td className="text-sm text-ink-muted">{f.ownerId === me ? t.search.filters.you : f.ownerName}</Td>
                 <Td>
                   <label htmlFor={`field-subscription-${f.id}`} className="sr-only">
-                    Mail me {f.name}
+                    {t.search.filters.mailMeFor(f.name)}
                   </label>
                   <SelectInput
                     id={`field-subscription-${f.id}`}
@@ -101,21 +101,26 @@ function FiltersPage() {
                       const schedule = e.target.value as "" | "daily" | "weekly";
                       subscribe.mutate(
                         { id: f.id, subscription: schedule ? { schedule, hour: 8, weekday: schedule === "weekly" ? 1 : undefined } : null },
-                        { onSuccess: () => toast.success(schedule ? `You will get ${f.name} ${schedule}` : "No more mail") },
+                        {
+                          onSuccess: () =>
+                            toast.success(
+                              schedule ? t.search.filters.willGet(f.name, t.search.filters.schedules[schedule] ?? schedule) : t.search.filters.noMoreMail,
+                            ),
+                        },
                       );
                     }}
                     data-filter-subscription={f.name}
                   >
-                    <option value="">Never</option>
-                    <option value="daily">Daily at 08:00</option>
-                    <option value="weekly">Mondays at 08:00</option>
+                    <option value="">{t.search.filters.never}</option>
+                    <option value="daily">{t.search.filters.daily}</option>
+                    <option value="weekly">{t.search.filters.weekly}</option>
                   </SelectInput>
                 </Td>
                 <Td>
                   <span className="flex items-center justify-end gap-1">
                     <IconButton
                       icon={f.starred ? <Icon.Check /> : <Icon.Plus />}
-                      label={f.starred ? `Unstar ${f.name}` : `Star ${f.name}`}
+                      label={f.starred ? t.search.saved.unstar(f.name) : t.search.saved.star(f.name)}
                       size="sm"
                       onClick={() => star.mutate({ id: f.id, on: !f.starred })}
                       data-filter-star={f.name}
@@ -123,12 +128,12 @@ function FiltersPage() {
                     />
                     {f.ownerId === me && (
                       <Menu
-                        label={`Actions for ${f.name}`}
+                        label={t.search.filters.actionsFor(f.name)}
                         align="end"
                         trigger={(props) => (
                           <IconButton
                             icon={<Icon.More />}
-                            label={`Actions for ${f.name}`}
+                            label={t.search.filters.actionsFor(f.name)}
                             size="sm"
                             onClick={props.toggle}
                             aria-haspopup={props["aria-haspopup"]}
@@ -138,20 +143,20 @@ function FiltersPage() {
                         )}
                         items={[
                           {
-                            label: f.shared ? "Stop sharing" : "Share with everyone",
+                            label: f.shared ? t.search.filters.stopSharing : t.search.filters.shareWithEveryone,
                             icon: <Icon.Share />,
                             onSelect: () => update.mutate({ id: f.id, shared: !f.shared }),
                             attrs: { "data-action": "filter-share" },
                           },
                           {
-                            label: "Delete",
+                            label: t.search.filters.delete,
                             icon: <Icon.Trash />,
                             danger: true,
                             onSelect: async () =>
                               (await confirm({
                                 noun: t.kit.confirm.things.savedSearch,
                                 verb: t.kit.confirm.verbs.delete,
-                                body: `${f.name} goes for everyone it was shared with.`,
+                                body: t.search.filters.deleteBody(f.name),
                               })) && remove.mutate(f.id),
                             attrs: { "data-action": "filter-delete" },
                           },

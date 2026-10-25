@@ -8,6 +8,7 @@ import { Avatar, PriorityBadge, StatusBadge, TypeBadge } from "@/features/issues
 import { Card, ErrorBanner, IconButton, Page, PageHeader, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { MAX_TREE_DEPTH } from "@/config";
+import { t } from "@/i18n";
 
 export const hierarchyRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -30,15 +31,15 @@ function HierarchyPage() {
             {projectData?.project?.name ?? projectKey}
           </Link>
         }
-        title="Hierarchy"
+        title={t.board.hierarchy.title}
       />
 
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
 
       {isLoading ? (
-        <p className="text-sm text-ink-muted">Loading the tree...</p>
+        <p className="text-sm text-ink-muted">{t.board.hierarchy.loading}</p>
       ) : tree.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-ink-muted">This project has no issues yet.</Card>
+        <Card className="p-6 text-center text-sm text-ink-muted">{t.board.hierarchy.empty}</Card>
       ) : (
         <Card className="divide-y divide-border">
           <ol>
@@ -71,7 +72,7 @@ function TreeRow({ node, depth }: { node: TreeNode; depth: number }) {
           <IconButton
             size="xs"
             icon={<Icon.ChevronRight className={cx("transition-transform", open && "rotate-90")} />}
-            label={`${open ? "Collapse" : "Expand"} ${issue.key}`}
+            label={open ? t.board.hierarchy.collapse(issue.key) : t.board.hierarchy.expand(issue.key)}
             aria-expanded={open}
             onClick={() => setOpen(!open)}
           />

@@ -8,6 +8,7 @@ import { Icon } from "@/components/icons";
 import { SUGGEST_MIN_CHARS, SUGGEST_RESULTS } from "@/config";
 import { QUERY_CUSTOM_FIELD_EXAMPLE, QUERY_EXAMPLES, QUERY_FIELDS, QUERY_FUNCTIONS, QUERY_OPERATORS, caretLine } from "./help";
 import { useRecentQueries } from "./recent";
+import { t } from "@/i18n";
 
 /** One row under the bar: a word to put in, an issue to open, or a query to run again. */
 interface Suggestion {
@@ -49,7 +50,7 @@ export function QueryInput({
   error,
   compact = false,
   autoFocus = false,
-  label = "Query",
+  label = t.search.query.label,
   project,
 }: {
   value: string;
@@ -244,7 +245,7 @@ export function QueryInput({
             <div
               id={listId}
               role="listbox"
-              aria-label="Suggestions"
+              aria-label={t.search.query.suggestions}
               data-query-suggestions
               className="absolute left-0 right-0 z-30 mt-1 max-h-80 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
             >
@@ -275,7 +276,7 @@ export function QueryInput({
                     <>
                       <span className="truncate font-mono text-ink">{row.text}</span>
                       {row.detail && <span className="shrink-0 text-xs text-ink-subtle">{row.detail}</span>}
-                      {row.kind === "recent" && <span className="shrink-0 text-xs text-ink-subtle">recent</span>}
+                      {row.kind === "recent" && <span className="shrink-0 text-xs text-ink-subtle">{t.search.query.recent}</span>}
                     </>
                   )}
                 </div>
@@ -288,13 +289,13 @@ export function QueryInput({
             <Popover
               open={help}
               onClose={() => setHelp(false)}
-              label="What a query can say"
+              label={t.search.query.help}
               align="end"
               className="w-5xl max-w-[calc(100vw-20rem)]"
               trigger={
                 <IconButton
                   icon={<Icon.Info />}
-                  label="What a query can say"
+                  label={t.search.query.help}
                   variant="secondary"
                   size="lg"
                   aria-expanded={help}
@@ -311,7 +312,7 @@ export function QueryInput({
               />
             </Popover>
             <Button type="submit" size="lg">
-              Search
+              {t.search.query.search}
             </Button>
           </>
         )}
@@ -347,23 +348,25 @@ export function QueryHelp({ onExample }: { onExample?: (example: string) => void
               </tr>
             ))}
             <tr className="align-top">
-              <td className="pr-3 font-mono text-ink">"Field name"</td>
-              <td className="pr-3">a custom field, by its name</td>
+              <td className="pr-3 font-mono text-ink">{t.search.help.customField}</td>
+              <td className="pr-3">{t.search.help.customFieldTakes}</td>
               <td className="font-mono text-ink-subtle">{QUERY_CUSTOM_FIELD_EXAMPLE}</td>
             </tr>
           </tbody>
         </table>
         <div className="min-w-0 space-y-2 break-words">
           <p>
-            <span className="text-ink">Operators</span> {QUERY_OPERATORS.join("  ")}
+            <span className="text-ink">{t.search.help.operators}</span> {QUERY_OPERATORS.join("  ")}
           </p>
           <p>
-            <span className="text-ink">Functions</span> {QUERY_FUNCTIONS.join(", ")}; a date function takes a shift, as in startOfWeek(-1w).
+            <span className="text-ink">{t.search.help.functions}</span> {QUERY_FUNCTIONS.join(", ")}
+            {t.search.help.functionsTail}
           </p>
           <p>
-            <span className="text-ink">Join</span> conditions with AND, OR, NOT and brackets; end with ORDER BY field DESC.
+            <span className="text-ink">{t.search.help.join}</span>
+            {t.search.help.joinTail}
           </p>
-          <p className="text-ink">For example</p>
+          <p className="text-ink">{t.search.help.forExample}</p>
           <ul className="space-y-1 font-mono text-ink-subtle [&_button]:whitespace-normal [&_button]:text-left">
             {QUERY_EXAMPLES.map((example) => (
               <li key={example}>

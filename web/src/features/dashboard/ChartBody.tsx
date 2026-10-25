@@ -1,9 +1,10 @@
 import type { ChartReport, ChartSeriesReport } from "@/api/reports";
 import { Table, Td, Th } from "@/components/ui";
-import { columnLayout, describeChart, donutLayout, fieldLabel, figure, foldTail, segmentNames, seriesFrom, tonesFor, type GroupField } from "./chart";
+import { OTHER, columnLayout, describeChart, donutLayout, fieldLabel, figure, foldTail, segmentNames, seriesFrom, tonesFor, type GroupField } from "./chart";
 import { Columns, Donut, Legend, LineChart, weekLabel } from "./charts";
 import { useWidgetReport, type BodyProps } from "./useWidgetReport";
 import { Loading, WidgetState } from "./WidgetState";
+import { t } from "@/i18n";
 
 /** One chart widget: groups as bars, a stack or a donut, or buckets as lines. */
 export function ChartBody({ projectKey, widget, narrow }: BodyProps) {
@@ -18,7 +19,8 @@ function GroupsBody({ projectKey, widget, narrow }: BodyProps) {
   const groups = foldTail(data.groups);
   const tones = tonesFor(groups);
   const shape = widget.config?.shape ?? "bar";
-  const unit = data.measure === "points" ? "pts" : "issues";
+  const unit = data.measure === "points" ? t.dashboard.chart.unitPoints : t.dashboard.chart.unitIssues;
+  const shown = (label: string) => (label === OTHER ? t.dashboard.chart.other : label);
   const legend = groups.map((g) => ({ label: g.label, value: g.value, share: data.total > 0 ? g.value / data.total : 0 }));
   const stacked = shape === "stacked" && Boolean(data.splitBy);
   const partTones = stacked ? tonesFor(segmentNames(groups).map((label) => ({ label, value: 0, parts: [] }))) : undefined;
@@ -42,11 +44,9 @@ function GroupsBody({ projectKey, widget, narrow }: BodyProps) {
       ) : (
         groups.length >= 2 && <Legend items={legend} tones={tones} />
       )}
-      <p className="mt-2 text-xs text-ink-subtle tabular-nums">
-        {figure(data.total)} {unit} in all
-      </p>
+      <p className="mt-2 text-xs text-ink-subtle tabular-nums">{t.dashboard.chart.inAll(figure(data.total), unit)}</p>
       <details className="mt-2 text-xs">
-        <summary className="cursor-pointer text-ink-muted">As a table</summary>
+        <summary className="cursor-pointer text-ink-muted">{t.dashboard.chart.asTable}</summary>
         <div className="mt-2">
           <Table dense>
             <thead>
@@ -61,14 +61,14 @@ function GroupsBody({ projectKey, widget, narrow }: BodyProps) {
                 stacked && g.parts.length > 0
                   ? g.parts.map((part) => (
                       <tr key={`${g.label}-${part.label}`}>
-                        <Td>{g.label}</Td>
-                        <Td>{part.label}</Td>
+                        <Td>{shown(g.label)}</Td>
+                        <Td>{shown(part.label)}</Td>
                         <Td className="text-right tabular-nums">{figure(part.value)}</Td>
                       </tr>
                     ))
                   : [
                       <tr key={g.label}>
-                        <Td>{g.label}</Td>
+                        <Td>{shown(g.label)}</Td>
                         {stacked && <Td />}
                         <Td className="text-right tabular-nums">{figure(g.value)}</Td>
                       </tr>,
@@ -94,12 +94,12 @@ function LinesBody({ projectKey, widget, narrow }: BodyProps) {
       <p className="mb-3 text-xs text-ink-subtle">{describeChart(widget.config ?? {})}</p>
       <LineChart series={series} xLabels={labels} />
       <details className="mt-2 text-xs">
-        <summary className="cursor-pointer text-ink-muted">As a table</summary>
+        <summary className="cursor-pointer text-ink-muted">{t.dashboard.chart.asTable}</summary>
         <div className="mt-2">
           <Table dense>
             <thead>
               <tr>
-                <Th>{data.interval === "month" ? "Month" : "Week"}</Th>
+                <Th>{data.interval === "month" ? t.dashboard.chart.month : t.dashboard.chart.week}</Th>
                 {data.series.map((line) => (
                   <Th key={line.name} className="text-right">
                     {line.name}

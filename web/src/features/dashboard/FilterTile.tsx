@@ -9,6 +9,7 @@ import { PersonPicker } from "@/features/people/PersonPicker";
 import { caretLine } from "@/features/search/help";
 import { UNASSIGNED, activeCount, composeQuery, type Category, type DateField, type FilterSpec, type SavedQueryLookup } from "./filter";
 import { useSavedFilters } from "@/api/filters";
+import { t } from "@/i18n";
 
 /** What the server said about the composed query, when it refused it. */
 export interface QueryFailure {
@@ -67,7 +68,7 @@ export function FilterTile({
 
   return (
     <div className="space-y-4" data-filter-tile="">
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by type">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t.dashboard.filter.byType}>
         {types.map((type) => {
           const on = spec.types.includes(type.name);
           return (
@@ -80,14 +81,14 @@ export function FilterTile({
         <span className="flex-1" />
         {active > 0 && (
           <Tag className="bg-accent-subtle text-accent" data-filter-count={active}>
-            {active} {active === 1 ? "filter" : "filters"}
+            {t.dashboard.filter.count(active)}
           </Tag>
         )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Select label="Team" value={spec.team} onChange={(event) => onChange({ ...spec, team: event.target.value })}>
-          <option value="">Any team</option>
+        <Select label={t.dashboard.filter.team} value={spec.team} onChange={(event) => onChange({ ...spec, team: event.target.value })}>
+          <option value="">{t.dashboard.filter.anyTeam}</option>
           {teams.map((team) => (
             <option key={team.id} value={team.name}>
               {team.name}
@@ -96,74 +97,74 @@ export function FilterTile({
         </Select>
         {/* The query names somebody by address, or by name for one without. */}
         <PersonPicker
-          label="Assignee"
-          none="Anyone"
+          label={t.dashboard.filter.assignee}
+          none={t.dashboard.filter.anyone}
           staff
           optionValue={(member) => member.email || member.name}
           value={spec.assignee}
           selected={spec.assignee && spec.assignee !== UNASSIGNED ? { id: spec.assignee, name: spec.assignee } : null}
           onChange={(assignee) => onChange({ ...spec, assignee })}
         >
-          <option value={UNASSIGNED}>Nobody yet</option>
+          <option value={UNASSIGNED}>{t.dashboard.filter.nobodyYet}</option>
         </PersonPicker>
         <Select
-          label="Saved search"
+          label={t.dashboard.filter.savedSearch}
           id="field-saved-search"
           value={spec.filterId}
           onChange={(event) => onChange({ ...spec, filterId: event.target.value })}
           hint={spec.filterId ? savedQuery(spec.filterId) : undefined}
         >
-          <option value="">None</option>
+          <option value="">{t.dashboard.filter.none}</option>
           {(savedData?.filters ?? []).map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
             </option>
           ))}
         </Select>
-        <Select label="Milestone" value={spec.milestone} onChange={(event) => onChange({ ...spec, milestone: event.target.value })}>
-          <option value="">Any milestone</option>
+        <Select label={t.dashboard.filter.milestone} value={spec.milestone} onChange={(event) => onChange({ ...spec, milestone: event.target.value })}>
+          <option value="">{t.dashboard.filter.anyMilestone}</option>
           {milestones.map((milestone) => (
             <option key={milestone.id} value={milestone.name}>
               {milestone.name}
-              {milestone.closedAt ? " (closed)" : ""}
+              {milestone.closedAt ? t.dashboard.filter.closed : ""}
             </option>
           ))}
         </Select>
-        <Select label="Since" value={String(spec.days)} onChange={(event) => onChange({ ...spec, days: Number(event.target.value) })}>
-          <option value="0">Any time</option>
+        <Select label={t.dashboard.filter.since} value={String(spec.days)} onChange={(event) => onChange({ ...spec, days: Number(event.target.value) })}>
+          <option value="0">{t.dashboard.filter.anyTime}</option>
           {DASHBOARD_FILTER_WINDOWS.map((days) => (
             <option key={days} value={days}>
-              Last {days} days
+              {t.dashboard.filter.lastDays(days)}
             </option>
           ))}
         </Select>
         <Select
-          label="Counted by"
+          label={t.dashboard.filter.countedBy}
           value={spec.field}
           disabled={spec.days === 0}
           onChange={(event) => onChange({ ...spec, field: event.target.value as DateField })}
         >
-          <option value="created">When created</option>
-          <option value="updated">When updated</option>
-          <option value="resolved">When resolved</option>
+          <option value="created">{t.dashboard.filter.whenCreated}</option>
+          <option value="updated">{t.dashboard.filter.whenUpdated}</option>
+          <option value="resolved">{t.dashboard.filter.whenResolved}</option>
         </Select>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
         <Segmented<Category>
-          label="Status"
+          label={t.dashboard.filter.status}
           value={spec.category}
           onChange={(category) => onChange({ ...spec, category })}
           options={[
-            { value: "", label: "Any status", attrs: { "data-filter-category": "any" } },
-            { value: "todo", label: "To do", attrs: { "data-filter-category": "todo" } },
-            { value: "in_progress", label: "In progress", attrs: { "data-filter-category": "in_progress" } },
-            { value: "done", label: "Done", attrs: { "data-filter-category": "done" } },
+            { value: "", label: t.dashboard.filter.anyStatus, attrs: { "data-filter-category": "any" } },
+            { value: "todo", label: t.dashboard.filter.todo, attrs: { "data-filter-category": "todo" } },
+            { value: "in_progress", label: t.dashboard.filter.inProgress, attrs: { "data-filter-category": "in_progress" } },
+            { value: "done", label: t.dashboard.filter.done, attrs: { "data-filter-category": "done" } },
           ]}
         />
         <form onSubmit={applyQuery} className="min-w-64 flex-1" noValidate>
           <Field
-            label="Narrow with a query"
+            label={t.dashboard.filter.narrow}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onBlur={() => applyQuery()}
@@ -172,7 +173,7 @@ export function FilterTile({
             autoComplete="off"
             className="font-mono text-sm"
             error={failure?.message}
-            hint="Anything the controls cannot say, in the language of Search."
+            hint={t.dashboard.filter.narrowHint}
           />
           {failure && failure.position !== undefined && (
             <pre className="m-0 mt-1 overflow-x-auto font-mono text-sm leading-tight text-ink" data-query-error>
@@ -189,12 +190,12 @@ export function FilterTile({
             variant="ghost"
             onClick={() => onChange({ ...spec, types: [], team: "", assignee: "", category: "", days: 0, milestone: "", query: "", filterId: "" })}
           >
-            Clear filter
+            {t.dashboard.filter.clear}
           </Button>
         )}
         {arranging && (
           <Button variant="secondary" disabled={!dirty} loading={saving} onClick={() => onSaveDefault(spec)} data-action="save-filter">
-            Save as the default
+            {t.dashboard.filter.saveDefault}
           </Button>
         )}
       </div>

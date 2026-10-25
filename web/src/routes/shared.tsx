@@ -12,6 +12,7 @@ import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { useFormat } from "@/lib/format";
 import { WidgetBody } from "@/features/dashboard/WidgetBody";
 import { WidgetCard } from "@/features/dashboard/WidgetCard";
+import { t } from "@/i18n";
 
 /**
  * A dashboard opened by a link, with no sign-in and nothing to press: the
@@ -28,7 +29,8 @@ export const sharedRoute = createRoute({
   component: SharedDashboardPage,
 });
 
-const themeLabels: Record<Theme, string> = { system: "Auto", light: "Light", dark: "Dark" };
+// Read while rendering, so the words follow the language.
+const themeWord = (theme: Theme): string => (theme === "system" ? t.shell.theme.auto : theme === "light" ? t.shell.theme.light : t.shell.theme.dark);
 
 function SharedDashboardPage() {
   const { token } = sharedRoute.useParams();
@@ -51,16 +53,16 @@ function SharedDashboardPage() {
   if (error) {
     return (
       <AuthLayout
-        title="This link is no longer valid."
-        subtitle="The dashboard it opened may have been unshared, or the link expired."
+        title={t.dashboard.shared.goneTitle}
+        subtitle={t.dashboard.shared.goneSubtitle}
         footer={
           <Link to="/login" className="font-medium text-accent hover:underline">
-            Sign in
+            {t.dashboard.shared.signIn}
           </Link>
         }
       >
         <p className="text-sm text-ink-muted" data-share-gone="">
-          Ask whoever sent it for a new one.
+          {t.dashboard.shared.askNew}
         </p>
       </AuthLayout>
     );
@@ -88,14 +90,14 @@ function SharedDashboardPage() {
             <span className="text-sm text-ink-muted">{data.projectName}</span>
             <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{data.dashboard.name}</h1>
             <span className="text-xs text-ink-subtle tabular-nums" data-shared-updated="">
-              Updated {updated}
+              {t.dashboard.shared.updated(updated)}
             </span>
             <ButtonLink href={sharedPdfHref(token)} download size="sm" icon={<Icon.Download />} data-action="download-pdf">
-              Download PDF
+              {t.dashboard.shared.downloadPdf}
             </ButtonLink>
             <IconButton
               icon={theme === "system" ? <Icon.Monitor /> : theme === "light" ? <Icon.Sun /> : <Icon.Moon />}
-              label={themeLabels[theme]}
+              label={themeWord(theme)}
               size="sm"
               onClick={cycleTheme}
               data-action="theme"
@@ -106,11 +108,11 @@ function SharedDashboardPage() {
           <div className={cx("mx-auto max-w-dashboard px-8", print ? "py-2" : "py-6")}>
             {data.share.query && (
               <p className="mb-4 text-xs text-ink-subtle" data-shared-query="">
-                Narrowed to <code className="font-mono text-ink-muted">{data.share.query}</code>
+                {t.dashboard.shared.narrowedTo} <code className="font-mono text-ink-muted">{data.share.query}</code>
               </p>
             )}
             {widgets.length === 0 ? (
-              <ErrorBanner>This dashboard has nothing on it yet.</ErrorBanner>
+              <ErrorBanner>{t.dashboard.shared.nothingOn}</ErrorBanner>
             ) : (
               <div className="grid gap-4 md:grid-cols-2" data-testid="dashboard">
                 {widgets.map((widget) => (

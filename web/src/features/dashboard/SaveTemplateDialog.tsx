@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useSaveTemplate, type Dashboard } from "@/api/reports";
 import { Button, Dialog, ErrorBanner, Field, useToast } from "@/components/ui";
+import { t } from "@/i18n";
 
 /** Keeps the dashboard's arrangement as one of the organization's templates. */
 export function SaveTemplateDialog({ dashboard, open, onClose }: { dashboard: Dashboard; open: boolean; onClose: () => void }) {
@@ -15,7 +16,7 @@ export function SaveTemplateDialog({ dashboard, open, onClose }: { dashboard: Da
       { dashboardId: dashboard.id, name: name.trim(), description: description.trim() },
       {
         onSuccess: (made) => {
-          toast.success(`Saved ${made.template.name} as a template`);
+          toast.success(t.dashboard.templates.saved(made.template.name));
           onClose();
         },
       },
@@ -25,20 +26,25 @@ export function SaveTemplateDialog({ dashboard, open, onClose }: { dashboard: Da
     <Dialog
       open={open}
       onClose={onClose}
-      title="Save as a template"
-      description="The arrangement and each widget's settings are kept for everyone. Anything tied to this project, such as a team, is left out."
+      title={t.dashboard.templates.saveTitle}
+      description={t.dashboard.templates.saveDescription}
       attrs={{ "data-save-template": "" }}
     >
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <Field label="Template name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
-        <Field label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What it is for" />
+        <Field label={t.dashboard.templates.name} autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+        <Field
+          label={t.dashboard.templates.description}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={t.dashboard.templates.descriptionPlaceholder}
+        />
         {save.error && <ErrorBanner>{(save.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button type="submit" loading={save.isPending} disabled={!name.trim()}>
-            Save template
+            {t.dashboard.templates.save}
           </Button>
         </div>
       </form>

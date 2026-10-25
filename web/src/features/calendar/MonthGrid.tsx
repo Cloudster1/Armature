@@ -9,8 +9,10 @@ import { useIssueDrawer, useIssueList } from "@/features/issues/IssueDrawer";
 import { draggedSchedule, isoDay, labelOf, listedItems, monthGrid, monthTitle, placeItems, shiftMonth, withHolidays, type Placed } from "./grid";
 import { useShowDaysOff } from "./settings";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Read while drawing, so the weekdays follow the language.
+const weekdays = (): string[] => t.schedule.calendar.weekdays;
 
 /** The colour a kind of item wears; a done issue goes quiet. */
 function toneOf(item: CalendarItem): string {
@@ -110,30 +112,30 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
         </h2>
         <div className="flex items-center gap-1">
           <label className="mr-3 flex items-center gap-2 text-xs text-ink-muted">
-            <Switch checked={showDaysOff} onChange={setShowDaysOff} label="Show holidays and absences" data-action="calendar-days-off" />
-            Holidays and absences
+            <Switch checked={showDaysOff} onChange={setShowDaysOff} label={t.schedule.calendar.showDaysOff} data-action="calendar-days-off" />
+            {t.schedule.calendar.daysOff}
           </label>
           <Button size="sm" variant="ghost" onClick={() => setMonth(shiftMonth(year, month, -1))} data-action="calendar-prev">
-            Previous
+            {t.schedule.calendar.previous}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setMonth({ year: today.getFullYear(), month: today.getMonth() + 1 })} data-action="calendar-today">
-            Today
+            {t.schedule.calendar.today}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setMonth(shiftMonth(year, month, 1))} data-action="calendar-next">
-            Next
+            {t.schedule.calendar.next}
           </Button>
         </div>
       </div>
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {schedule.error && <ErrorBanner>{(schedule.error as Error).message}</ErrorBanner>}
-      {data?.month.truncated && <p className="text-sm text-ink-muted">More is dated this month than the calendar draws; the plan has all of it.</p>}
+      {data?.month.truncated && <p className="text-sm text-ink-muted">{t.schedule.calendar.truncated}</p>}
       <div
         className="grid grid-cols-7 gap-px rounded-control border border-border bg-border text-xs"
         role="grid"
         aria-label={monthTitle(year, month, locale)}
         data-issue-list=""
       >
-        {WEEKDAYS.map((d) => (
+        {weekdays().map((d) => (
           <div key={d} className="bg-surface px-2 py-1 font-medium text-ink-muted" role="columnheader">
             {d}
           </div>
@@ -174,7 +176,11 @@ export function MonthGrid({ projectKey, canWrite }: { projectKey: string; canWri
                     onClick={onClick}
                   />
                 ))}
-                {onDay.more > 0 && <li className="px-1 text-ink-subtle" data-calendar-more={onDay.more}>{`+${onDay.more} more`}</li>}
+                {onDay.more > 0 && (
+                  <li className="px-1 text-ink-subtle" data-calendar-more={onDay.more}>
+                    {t.schedule.calendar.more(onDay.more)}
+                  </li>
+                )}
               </ul>
             </div>
           );

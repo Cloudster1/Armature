@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Widget } from "@/api/reports";
 import { Card, cx } from "@/components/ui";
+import { t } from "@/i18n";
 
 /**
  * One widget on a grid: its title, its body, and the note when the filter does
@@ -32,7 +33,7 @@ export function WidgetCard({
       {children}
       {notNarrowed && (
         <p className="mt-3 text-xs text-ink-subtle" data-not-narrowed="">
-          Not narrowed by the filter: this widget counts sprints, not issues.
+          {t.dashboard.grid.notNarrowed}
         </p>
       )}
     </Card>

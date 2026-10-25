@@ -1,6 +1,7 @@
 import type { ChartGroup, ChartSeriesReport, WidgetConfig } from "@/api/reports";
 import { CHART_MAX_GROUPS } from "@/config";
 import type { Series } from "./charts";
+import { t } from "@/i18n";
 
 /**
  * The maths behind the chart widget, kept apart from the drawing so it can be
@@ -13,37 +14,61 @@ export const GROUP_FIELDS = ["status", "statusCategory", "type", "priority", "as
 export type GroupField = (typeof GROUP_FIELDS)[number];
 export type ChartShape = "bar" | "stacked" | "donut" | "line";
 
+// Getters, so each name is read in the language shown when it is asked for.
 export const fieldLabel: Record<GroupField, string> = {
-  status: "Status",
-  statusCategory: "Status category",
-  type: "Issue type",
-  priority: "Priority",
-  assignee: "Assignee",
-  team: "Team",
-  milestone: "Milestone",
-  label: "Label",
-  fixVersion: "Fix version",
-  component: "Component",
+  get status() {
+    return t.dashboard.chart.fields.status;
+  },
+  get statusCategory() {
+    return t.dashboard.chart.fields.statusCategory;
+  },
+  get type() {
+    return t.dashboard.chart.fields.type;
+  },
+  get priority() {
+    return t.dashboard.chart.fields.priority;
+  },
+  get assignee() {
+    return t.dashboard.chart.fields.assignee;
+  },
+  get team() {
+    return t.dashboard.chart.fields.team;
+  },
+  get milestone() {
+    return t.dashboard.chart.fields.milestone;
+  },
+  get label() {
+    return t.dashboard.chart.fields.label;
+  },
+  get fixVersion() {
+    return t.dashboard.chart.fields.fixVersion;
+  },
+  get component() {
+    return t.dashboard.chart.fields.component;
+  },
 };
 
 /** What the chart says it is, from its settings: "Issues by type, split by status category". */
 export function describeChart(config: WidgetConfig): string {
-  const what = config.measure === "points" ? "Points" : "Issues";
+  const words = t.dashboard.chart;
+  const what = config.measure === "points" ? words.points : words.issues;
   if (config.shape === "line") {
-    const counts = config.series === "resolved" ? "resolved" : config.series === "open" ? "open" : "created";
-    const by = config.groupBy && config.groupBy in fieldLabel ? `, by ${fieldLabel[config.groupBy as GroupField].toLowerCase()}` : "";
-    return `${what} ${counts} per ${config.interval === "month" ? "month" : "week"}${by}`;
+    const counts = config.series === "resolved" ? words.resolved : config.series === "open" ? words.open : words.created;
+    const by = config.groupBy && config.groupBy in fieldLabel ? words.lineBy(words.inSentence(fieldLabel[config.groupBy as GroupField])) : "";
+    return words.perInterval(what, counts, config.interval === "month", by);
   }
-  const by = fieldLabel[(config.groupBy as GroupField) ?? "status"] ?? "status";
+  const by = fieldLabel[(config.groupBy as GroupField) ?? "status"] ?? fieldLabel.status;
   const split =
-    config.shape === "stacked" && config.splitBy && config.splitBy in fieldLabel ? `, split by ${fieldLabel[config.splitBy as GroupField].toLowerCase()}` : "";
-  return `${what} by ${by.toLowerCase()}${split}`;
+    config.shape === "stacked" && config.splitBy && config.splitBy in fieldLabel
+      ? words.splitBy(words.inSentence(fieldLabel[config.splitBy as GroupField]))
+      : "";
+  return words.byField(what, words.inSentence(by), split);
 }
 
 /** The six series colours, in the order a dashboard hands them out; literal so Tailwind sees them. */
 export const CHART_TONES = ["text-chart-1", "text-chart-2", "text-chart-3", "text-chart-4", "text-chart-5", "text-chart-6"] as const;
 
-/** The fold of everything past the sixth group. */
+/** The fold of everything past the sixth group: its key, which the charts show in the reader's language. */
 export const OTHER = "Other";
 const OTHER_TONE = "text-ink-subtle";
 

@@ -10,7 +10,7 @@ export const BLANK_TEMPLATE = "blank";
 /** How a template's contents read on its card: "6 widgets: Filter, Milestones, ...". */
 export function dashboardTemplateShape(template: DashboardTemplate): string {
   const kinds = template.widgets.map((w) => w.title || w.kind.replace(/_/g, " "));
-  const count = `${kinds.length} widget${kinds.length === 1 ? "" : "s"}`;
+  const count = t.dashboard.page.widgets(kinds.length);
   return kinds.length > 0 ? `${count}: ${kinds.slice(0, TEMPLATE_SHAPE_MAX_KINDS).join(", ")}${kinds.length > TEMPLATE_SHAPE_MAX_KINDS ? ", ..." : ""}` : count;
 }
 
@@ -34,18 +34,18 @@ export function DashboardTemplateChooser({
   const remove = useDeleteTemplate();
   const confirm = useConfirm();
   const templates = data?.templates ?? [];
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading templates...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.dashboard.templates.loading}</p>;
 
   return (
     <fieldset className="space-y-1.5">
-      <legend className="block text-sm font-medium text-ink">Start from</legend>
-      <div role="radiogroup" aria-label="Template" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <legend className="block text-sm font-medium text-ink">{t.dashboard.templates.startFrom}</legend>
+      <div role="radiogroup" aria-label={t.dashboard.templates.template} className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <OptionCard
           checked={value === BLANK_TEMPLATE}
           data-dashboard-template={BLANK_TEMPLATE}
           onSelect={() => onChange(BLANK_TEMPLATE)}
-          title="Blank"
-          description="An empty dashboard to arrange from scratch."
+          title={t.dashboard.templates.blank}
+          description={t.dashboard.templates.blankDetail}
         />
         {templates.map((template) => (
           <div key={template.key} className="flex flex-col gap-1">
@@ -54,7 +54,7 @@ export function DashboardTemplateChooser({
               data-dashboard-template={template.key}
               onSelect={() => onChange(template.key)}
               title={template.name}
-              description={template.description || (template.builtIn ? "" : "Saved here for everyone.")}
+              description={template.description || (template.builtIn ? "" : t.dashboard.templates.savedHere)}
               extra={dashboardTemplateShape(template)}
               className="flex-1"
             />
@@ -68,14 +68,14 @@ export function DashboardTemplateChooser({
                   if (
                     await confirm({
                       noun: t.kit.confirm.things.template,
-                      body: `${template.name} goes from this list. Dashboards made from it stay as they are.`,
+                      body: t.dashboard.templates.removeBody(template.name),
                     })
                   ) {
                     remove.mutate(template.id!, { onSuccess: () => value === template.key && onChange(BLANK_TEMPLATE) });
                   }
                 }}
               >
-                Remove template
+                {t.dashboard.templates.remove}
               </Button>
             )}
           </div>

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useCreateDashboard, type Dashboard } from "@/api/reports";
 import { Button, Card, ErrorBanner, Field } from "@/components/ui";
 import { BLANK_TEMPLATE, DashboardTemplateChooser } from "./DashboardTemplateChooser";
+import { t } from "@/i18n";
 
 /** A dashboard is named and started from a template, or from nothing. */
 export function NewDashboard({
@@ -24,14 +25,21 @@ export function NewDashboard({
   return (
     <Card className="mb-4 p-4">
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
-        <Field label="Dashboard name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Release readiness" className="w-64" />
+        <Field
+          label={t.dashboard.create.name}
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t.dashboard.create.namePlaceholder}
+          className="w-64"
+        />
         <DashboardTemplateChooser projectKey={projectKey} value={template} onChange={setTemplate} canRemove={canRemoveTemplates} />
         <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-            Create dashboard
+            {t.dashboard.create.create}
           </Button>
           <Button type="button" variant="ghost" onClick={() => onDone()}>
-            Cancel
+            {t.kit.cancel}
           </Button>
         </div>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}

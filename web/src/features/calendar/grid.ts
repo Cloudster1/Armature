@@ -1,5 +1,6 @@
 import type { CalendarItem } from "@/api/calendar";
 import { CALENDAR_GRID_DAYS, CALENDAR_MAX_ITEMS_PER_DAY } from "@/config";
+import { t } from "@/i18n";
 
 /**
  * The geometry of a month: which days the grid shows, and what lies on each.
@@ -114,7 +115,7 @@ export function withHolidays(cells: Cell[], items: CalendarItem[]): Cell[] {
   const names = new Map<string, string>();
   for (const item of items) {
     if (!isDefaultHoliday(item)) continue;
-    names.set(item.from, item.halfDay ? `${item.title} (half day)` : item.title);
+    names.set(item.from, item.halfDay ? t.schedule.calendar.halfDay(item.title) : item.title);
   }
   return cells.map((cell) => (names.has(cell.day) ? { ...cell, holiday: names.get(cell.day) } : cell));
 }
@@ -132,7 +133,7 @@ export function listedItems(items: CalendarItem[], showDaysOff: boolean): Calend
 
 /** What an item's chip says; an absence says who and nothing more. */
 export function labelOf(item: CalendarItem): string {
-  if (item.kind === "absence") return item.halfDay ? `${item.title} away half the day` : `${item.title} away`;
-  if (item.kind === "holiday" && item.halfDay) return `${item.title} (half day)`;
+  if (item.kind === "absence") return item.halfDay ? t.schedule.calendar.awayHalfDay(item.title) : t.schedule.calendar.away(item.title);
+  if (item.kind === "holiday" && item.halfDay) return t.schedule.calendar.halfDay(item.title);
   return item.key ? `${item.key} ${item.title}` : item.title;
 }

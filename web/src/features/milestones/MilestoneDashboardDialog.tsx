@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { Milestone } from "@/api/milestones";
 import { useCreateDashboard, useDashboardTemplates } from "@/api/reports";
 import { Button, Dialog, ErrorBanner, Field, Select } from "@/components/ui";
+import { t as words } from "@/i18n";
 
 /** The built-in template a milestone's dashboard starts from unless another is chosen. */
 const MILESTONE_TEMPLATE = "milestone";
@@ -37,27 +38,27 @@ export function MilestoneDashboardDialog({ milestone, open, onClose }: { milesto
     <Dialog
       open={open}
       onClose={onClose}
-      title={`A dashboard for ${milestone.name}`}
-      description="Every widget on it counts only the issues heading for this milestone."
+      title={words.schedule.milestones.dashboardFor(milestone.name)}
+      description={words.schedule.milestones.dashboardDetail}
       attrs={{ "data-milestone-dashboard": milestone.name }}
     >
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <Field label="Dashboard name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
-        <Select label="Template" value={template} onChange={(e) => setTemplate(e.target.value)}>
+        <Field label={words.schedule.milestones.dashboardName} autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+        <Select label={words.schedule.milestones.template} value={template} onChange={(e) => setTemplate(e.target.value)}>
           {templates.map((t) => (
             <option key={t.key} value={t.key}>
               {t.name}
-              {t.builtIn ? "" : " (saved)"}
+              {t.builtIn ? "" : words.schedule.milestones.saved}
             </option>
           ))}
         </Select>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {words.schedule.milestones.cancel}
           </Button>
           <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-            Create dashboard
+            {words.schedule.milestones.createDashboard}
           </Button>
         </div>
       </form>

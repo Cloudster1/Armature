@@ -7,6 +7,7 @@ import { RESOURCE_BAR_HEIGHT, RESOURCE_WEEK_MIN_PX } from "@/config";
 import { useFormat } from "@/lib/format";
 import type { Utilisation } from "@/features/plan/load";
 import { cellShares, cellState, describeCell, describeHours, hours, weekLabel } from "./cells";
+import { t } from "@/i18n";
 
 const tone: Record<Utilisation, string> = {
   unmeasured: "bg-status-todo/70",
@@ -22,10 +23,10 @@ export function ResourceGrid({ plan }: { plan: ResourcePlan }) {
   const columns = `minmax(9rem, 14rem) repeat(${plan.weeks.length}, minmax(${RESOURCE_WEEK_MIN_PX}px, 1fr))`;
   return (
     <div className="overflow-x-auto rounded-control border border-border bg-surface" data-resources={plan.grouping}>
-      <div role="grid" aria-label="Hours per week" className="grid min-w-max text-xs" style={{ gridTemplateColumns: columns }}>
+      <div role="grid" aria-label={t.schedule.resources.grid} className="grid min-w-max text-xs" style={{ gridTemplateColumns: columns }}>
         <div role="row" className="contents">
           <div role="columnheader" className="sticky left-0 z-10 bg-surface px-3 py-2 font-medium text-ink-muted">
-            {plan.grouping === "person" ? "Person" : "Team"}
+            {plan.grouping === "person" ? t.schedule.resources.person : t.schedule.resources.team}
           </div>
           {plan.weeks.map((start) => (
             <div
@@ -75,7 +76,7 @@ function Cell({ row, week, open, onToggle, onClose }: { row: ResourceRow; week: 
       <Popover
         open={open}
         onClose={onClose}
-        label={`${row.name}, week of ${weekLabel(week.start, locale)}`}
+        label={t.schedule.resources.weekOf(row.name, weekLabel(week.start, locale))}
         trigger={
           <Choice
             onSelect={onToggle}
@@ -91,7 +92,9 @@ function Cell({ row, week, open, onToggle, onClose }: { row: ResourceRow; week: 
             className="flex w-full flex-col gap-1 px-1 pt-0.5 hover:bg-surface-raised"
           >
             <span className={cx("text-2xs tabular-nums", state === "over" ? "font-medium text-danger" : "text-ink-muted")}>
-              {week.capacityHours !== undefined ? `${hours(week.loadHours)} / ${hours(week.capacityHours)} h` : `${hours(week.loadHours)} h`}
+              {week.capacityHours !== undefined
+                ? t.schedule.resources.loadOf(hours(week.loadHours), hours(week.capacityHours))
+                : t.schedule.resources.hours(hours(week.loadHours))}
             </span>
             <span aria-hidden="true" className="relative block w-full" style={{ height: RESOURCE_BAR_HEIGHT }}>
               {daysOff && (

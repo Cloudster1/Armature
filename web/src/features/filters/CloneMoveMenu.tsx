@@ -7,6 +7,7 @@ import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Menu, Select,
 import { Icon } from "@/components/icons";
 import { ExportDialog, keysQuery } from "./ExportDialog";
 import { ProjectPicker } from "@/features/projects/ProjectPicker";
+import { t } from "@/i18n";
 
 // Copy, move and export behind one More button on the issue's head; a reader
 // is offered only the export. A copy opens; a moved issue gets another key.
@@ -16,19 +17,19 @@ export function CloneMoveMenu({ issue, editable }: { issue: Issue; editable: boo
   const [exporting, setExporting] = useState(false);
   const changes: MenuItem[] = editable
     ? [
-        { label: "Clone", icon: <Icon.Copy />, onSelect: () => setCloning(true), attrs: { "data-action": "clone" } },
-        { label: "Move to another project", icon: <Icon.External />, onSelect: () => setMoving(true), attrs: { "data-action": "move" } },
+        { label: t.search.issueMenu.clone, icon: <Icon.Copy />, onSelect: () => setCloning(true), attrs: { "data-action": "clone" } },
+        { label: t.search.issueMenu.move, icon: <Icon.External />, onSelect: () => setMoving(true), attrs: { "data-action": "move" } },
       ]
     : [];
   return (
     <>
       <Menu
-        label="More about this issue"
+        label={t.search.issueMenu.more}
         align="end"
         trigger={(props) => (
           <IconButton
             icon={<Icon.More />}
-            label="More about this issue"
+            label={t.search.issueMenu.more}
             size="sm"
             onClick={props.toggle}
             aria-haspopup={props["aria-haspopup"]}
@@ -36,16 +37,14 @@ export function CloneMoveMenu({ issue, editable }: { issue: Issue; editable: boo
             data-action="issue-more"
           />
         )}
-        items={[...changes, { label: "Export as CSV", icon: <Icon.Download />, onSelect: () => setExporting(true), attrs: { "data-action": "export-issue" } }]}
+        items={[
+          ...changes,
+          { label: t.search.issueMenu.exportCsv, icon: <Icon.Download />, onSelect: () => setExporting(true), attrs: { "data-action": "export-issue" } },
+        ]}
       />
       {cloning && <CloneDialog issue={issue} onClose={() => setCloning(false)} />}
       {moving && <MoveDialog issue={issue} onClose={() => setMoving(false)} />}
-      <ExportDialog
-        query={keysQuery([issue.key])}
-        open={exporting}
-        onClose={() => setExporting(false)}
-        description={`${issue.key} alone, as a file with the columns you tick.`}
-      />
+      <ExportDialog query={keysQuery([issue.key])} open={exporting} onClose={() => setExporting(false)} description={t.search.issueMenu.exportOne(issue.key)} />
     </>
   );
 }
@@ -61,13 +60,13 @@ function CloneDialog({ issue, onClose }: { issue: Issue; onClose: () => void }) 
     <Dialog
       open
       onClose={onClose}
-      title={`Clone ${issue.key}`}
-      description="A new issue with the same fields, labels, versions and components; its history starts now."
+      title={t.search.issueMenu.cloneTitle(issue.key)}
+      description={t.search.issueMenu.cloneDescription}
       attrs={{ "data-clone-dialog": "" }}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t.search.issueMenu.cancel}
           </Button>
           <Button
             loading={clone.isPending}
@@ -78,7 +77,7 @@ function CloneDialog({ issue, onClose }: { issue: Issue; onClose: () => void }) 
                 {
                   onSuccess: (r) => {
                     onClose();
-                    toast.success(`${r.issue.key} made from ${issue.key}`);
+                    toast.success(t.search.issueMenu.cloned(r.issue.key, issue.key));
                     navigate({ to: "/issues/$issueKey", params: { issueKey: r.issue.key } });
                   },
                 },
@@ -86,16 +85,16 @@ function CloneDialog({ issue, onClose }: { issue: Issue; onClose: () => void }) 
             }
             data-action="clone-go"
           >
-            Clone
+            {t.search.issueMenu.clone}
           </Button>
         </>
       }
     >
       <div className="space-y-3">
         {clone.error && <ErrorBanner>{(clone.error as Error).message}</ErrorBanner>}
-        <Field label="Summary" id="field-clone-summary" value={summary} onChange={(e) => setSummary(e.target.value)} />
-        <Checkbox label="Copy its links" checked={links} onChange={(e) => setLinks(e.target.checked)} id="field-clone-links" />
-        <Checkbox label="Copy its subtasks" checked={subtasks} onChange={(e) => setSubtasks(e.target.checked)} id="field-clone-subtasks" />
+        <Field label={t.search.issueMenu.summary} id="field-clone-summary" value={summary} onChange={(e) => setSummary(e.target.value)} />
+        <Checkbox label={t.search.issueMenu.copyLinks} checked={links} onChange={(e) => setLinks(e.target.checked)} id="field-clone-links" />
+        <Checkbox label={t.search.issueMenu.copySubtasks} checked={subtasks} onChange={(e) => setSubtasks(e.target.checked)} id="field-clone-subtasks" />
       </div>
     </Dialog>
   );
@@ -120,13 +119,13 @@ export function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => vo
     <Dialog
       open
       onClose={onClose}
-      title={`Move ${issue.key}`}
-      description="The issue keeps its history, comments and files, gets the other project's next key, and its old address still finds it. Sprint, team, milestone, versions, components and answers to this project's own fields stay behind."
+      title={t.search.issueMenu.moveTitle(issue.key)}
+      description={t.search.issueMenu.moveDescription}
       attrs={{ "data-move-dialog": "" }}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t.search.issueMenu.cancel}
           </Button>
           <Button
             loading={move.isPending}
@@ -137,7 +136,7 @@ export function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => vo
                 {
                   onSuccess: (r) => {
                     onClose();
-                    toast.success(`${issue.key} is now ${r.issue.key}`);
+                    toast.success(t.search.issueMenu.moved(issue.key, r.issue.key));
                     navigate({ to: "/issues/$issueKey", params: { issueKey: r.issue.key } });
                   },
                 },
@@ -145,17 +144,17 @@ export function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => vo
             }
             data-action="move-go"
           >
-            Move
+            {t.search.issueMenu.moveButton}
           </Button>
         </>
       }
     >
       <div className="space-y-3">
         {move.error && <ErrorBanner>{(move.error as Error).message}</ErrorBanner>}
-        <ProjectPicker label="Project" id="field-move-project" value={projectKey} onChange={setProjectKey} exclude={[issue.projectKey]} />
+        <ProjectPicker label={t.search.issueMenu.project} id="field-move-project" value={projectKey} onChange={setProjectKey} exclude={[issue.projectKey]} />
         {dropped.length > 0 && (
           <div className="space-y-1 text-sm" data-move-dropped="">
-            <p className="text-ink-muted">These answers belong to fields of {issue.projectKey} alone and are dropped by the move; its history keeps them.</p>
+            <p className="text-ink-muted">{t.search.issueMenu.dropped(issue.projectKey)}</p>
             <ul className="list-disc pl-5">
               {dropped.map((v) => (
                 <li key={v.field.id}>
@@ -167,13 +166,13 @@ export function MoveDialog({ issue, onClose }: { issue: Issue; onClose: () => vo
         )}
         {(needsStatus || statusId) && (
           <Select
-            label="Status there"
+            label={t.search.issueMenu.statusThere}
             id="field-move-status"
             value={statusId}
             onChange={(e) => setStatusId(e.target.value)}
-            hint="The other project's workflow does not have this issue's status; choose one it has."
+            hint={t.search.issueMenu.statusHint}
           >
-            <option value="">Choose a status</option>
+            <option value="">{t.search.issueMenu.chooseStatus}</option>
             {(statuses?.statuses ?? []).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}

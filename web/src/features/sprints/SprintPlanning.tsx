@@ -49,17 +49,17 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
   const states = sprints.map((sprint) => `${sprint.id}:${sprint.state}`).join("|");
 
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.schedule.loading}</p>;
 
   return (
     <div className="space-y-6">
       {teams.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <Segmented
-            label="Whose backlog"
+            label={t.schedule.sprints.whoseBacklog}
             value={teamId}
             onChange={setTeamId}
-            options={[{ id: "", name: "Nobody in particular" }, ...teams].map((team) => ({
+            options={[{ id: "", name: t.schedule.sprints.nobodyInParticular }, ...teams].map((team) => ({
               value: team.id,
               label: team.name,
               attrs: { "data-backlog-of": team.name },
@@ -84,10 +84,10 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
 
       <section data-testid="backlog">
         <h2 className="mb-2 text-sm font-semibold text-ink">
-          Backlog <span className="font-normal text-ink-muted">({backlog.length})</span>
+          {t.schedule.sprints.backlog} <span className="font-normal text-ink-muted">({backlog.length})</span>
         </h2>
         {backlog.length === 0 ? (
-          <EmptyState title="Nothing in the backlog" description="Every unfinished issue here is committed to a sprint." />
+          <EmptyState title={t.schedule.sprints.backlogEmpty} description={t.schedule.sprints.backlogEmptyDetail} />
         ) : (
           <Card className="divide-y divide-border">
             {backlog.map((issue) => (
@@ -129,8 +129,8 @@ function SprintCard({ sprint, plan, others }: { sprint: Sprint; plan?: SprintPla
             <p className="mt-0.5 text-xs text-ink-muted">
               {dates(sprint, locale)}
               {plan && ` · ${describe(plan)}`}
-              {plan && plan.unestimated > 0 && ` · ${plan.unestimated} unestimated`}
-              {closed && sprint.completed != null && ` · ${sprint.completed} completed`}
+              {plan && plan.unestimated > 0 && ` · ${t.schedule.sprints.unestimated(plan.unestimated)}`}
+              {closed && sprint.completed != null && ` · ${t.schedule.sprints.completedCount(sprint.completed)}`}
             </p>
             {sprint.goal && <p className="mt-1 text-sm text-ink-muted">{sprint.goal}</p>}
           </div>
@@ -142,12 +142,12 @@ function SprintCard({ sprint, plan, others }: { sprint: Sprint; plan?: SprintPla
               data-sprint-board={sprint.name}
               className="inline-flex h-7 items-center rounded-md px-2.5 text-sm font-medium text-ink-muted hover:bg-surface-raised hover:text-ink"
             >
-              Board
+              {t.schedule.sprints.board}
             </Link>
             {sprint.state === "future" && (
               <>
                 <Button size="sm" loading={start.isPending} onClick={() => start.mutate(sprint.id)}>
-                  Start sprint
+                  {t.schedule.sprints.start}
                 </Button>
                 {empty && (
                   <Button
@@ -155,11 +155,10 @@ function SprintCard({ sprint, plan, others }: { sprint: Sprint; plan?: SprintPla
                     variant="ghost"
                     loading={remove.isPending}
                     onClick={async () =>
-                      (await confirm({ noun: t.kit.confirm.things.sprint, body: `${sprint.name} goes; its issues return to the backlog.` })) &&
-                      remove.mutate(sprint.id)
+                      (await confirm({ noun: t.kit.confirm.things.sprint, body: t.schedule.sprints.deleteBody(sprint.name) })) && remove.mutate(sprint.id)
                     }
                   >
-                    Delete
+                    {t.schedule.sprints.delete}
                   </Button>
                 )}
               </>
@@ -167,29 +166,25 @@ function SprintCard({ sprint, plan, others }: { sprint: Sprint; plan?: SprintPla
             {sprint.state === "active" && (
               <>
                 <label htmlFor={`carry-${sprint.id}`} className="sr-only">
-                  Carry unfinished work to
+                  {t.schedule.sprints.carryLabel}
                 </label>
                 <SelectInput id={`carry-${sprint.id}`} value={moveTo} onChange={(event) => setMoveTo(event.target.value)}>
-                  <option value="">Carry the rest to the backlog</option>
+                  <option value="">{t.schedule.sprints.carryToBacklog}</option>
                   {others.map((other) => (
                     <option key={other.id} value={other.id}>
-                      Carry the rest to {other.name}
+                      {t.schedule.sprints.carryTo(other.name)}
                     </option>
                   ))}
                 </SelectInput>
                 <Button size="sm" loading={complete.isPending} onClick={() => complete.mutate({ id: sprint.id, moveTo: moveTo || null })}>
-                  Complete sprint
+                  {t.schedule.sprints.complete}
                 </Button>
               </>
             )}
           </div>
         </div>
 
-        {over && plan && (
-          <p className="mt-2 text-sm text-danger">
-            {describe(plan)} committed. This is more than the team said fits, which is worth deciding on rather than discovering later.
-          </p>
-        )}
+        {over && plan && <p className="mt-2 text-sm text-danger">{t.schedule.sprints.overCommitted(describe(plan))}</p>}
 
         {!closed && <SprintSettings sprint={sprint} hours={plan ? teamHours(plan) : null} />}
 
@@ -216,14 +211,14 @@ function StateBadge({ state }: { state: Sprint["state"] }) {
         state === "active" ? "bg-accent-subtle text-accent" : "bg-surface-raised text-ink-muted",
       )}
     >
-      {state === "active" ? "Running" : "Completed"}
+      {state === "active" ? t.schedule.sprints.running : t.schedule.sprints.completed}
     </span>
   );
 }
 
 function dates(sprint: Sprint, locale: string): string {
-  if (!sprint.startsOn || !sprint.endsOn) return "No dates yet";
-  return `${shortDay(sprint.startsOn, locale)} to ${shortDay(sprint.endsOn, locale)}`;
+  if (!sprint.startsOn || !sprint.endsOn) return t.schedule.sprints.noDates;
+  return t.schedule.sprints.span(shortDay(sprint.startsOn, locale), shortDay(sprint.endsOn, locale));
 }
 
 function shortDay(iso: string, locale: string): string {
@@ -245,7 +240,7 @@ function SprintSettings({ sprint, hours }: { sprint: Sprint; hours: string | nul
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-      <label htmlFor={`from-${sprint.id}`}>From</label>
+      <label htmlFor={`from-${sprint.id}`}>{t.schedule.sprints.from}</label>
       <div className="w-36">
         <DateInput
           id={`from-${sprint.id}`}
@@ -254,12 +249,12 @@ function SprintSettings({ sprint, hours }: { sprint: Sprint; hours: string | nul
           onCommit={(day) => set("startsOn", day)}
         />
       </div>
-      <label htmlFor={`to-${sprint.id}`}>to</label>
+      <label htmlFor={`to-${sprint.id}`}>{t.schedule.sprints.to}</label>
       <div className="w-36">
         <DateInput id={`to-${sprint.id}`} controlSize="sm" value={sprint.endsOn ? sprint.endsOn.slice(0, 10) : ""} onCommit={(day) => set("endsOn", day)} />
       </div>
       <label htmlFor={`capacity-${sprint.id}`} className="ml-2">
-        Capacity
+        {t.schedule.sprints.capacity}
       </label>
       <Input
         id={`capacity-${sprint.id}`}
@@ -267,7 +262,7 @@ function SprintSettings({ sprint, hours }: { sprint: Sprint; hours: string | nul
         type="number"
         min={0}
         step="1"
-        placeholder="Not set"
+        placeholder={t.schedule.sprints.notSet}
         defaultValue={sprint.capacity ?? ""}
         onBlur={(event) => {
           const raw = event.target.value.trim();
@@ -278,7 +273,7 @@ function SprintSettings({ sprint, hours }: { sprint: Sprint; hours: string | nul
         }}
         className="w-24 text-right"
       />
-      <span>points</span>
+      <span>{t.schedule.sprints.points}</span>
       {hours && (
         <span className="ml-2" data-sprint-hours={sprint.name}>
           {hours}
@@ -301,11 +296,13 @@ function IssueRow({ issue, sprints, current }: { issue: Issue; sprints: Sprint[]
       </Link>
       <span className="min-w-0 flex-1 truncate text-ink">{issue.summary}</span>
       <StatusBadge name={issue.status.name} category={issue.status.category} />
-      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink-muted">{issue.estimate != null ? `${issue.estimate} pts` : "unsized"}</span>
+      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink-muted">
+        {issue.estimate != null ? t.schedule.sprints.pts(issue.estimate) : t.schedule.sprints.unsized}
+      </span>
       {movable && (
         <>
           <label htmlFor={`move-${issue.key}`} className="sr-only">
-            Move {issue.key} to
+            {t.schedule.sprints.moveTo(issue.key)}
           </label>
           <SelectInput
             id={`move-${issue.key}`}
@@ -314,7 +311,7 @@ function IssueRow({ issue, sprints, current }: { issue: Issue; sprints: Sprint[]
             controlSize="sm"
             className="text-xs"
           >
-            <option value="">Backlog</option>
+            <option value="">{t.schedule.sprints.backlog}</option>
             {current && <option value={current.id}>{current.name}</option>}
             {sprints.map((sprint) => (
               <option key={sprint.id} value={sprint.id}>
@@ -340,9 +337,15 @@ function NewSprint({ projectKey, teamId }: { projectKey: string; teamId: string 
 
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
-      <Field label="New sprint" value={name} placeholder="Sprint 4" onChange={(event) => setName(event.target.value)} className="w-56" />
+      <Field
+        label={t.schedule.sprints.newSprint}
+        value={name}
+        placeholder={t.schedule.sprints.newSprintPlaceholder}
+        onChange={(event) => setName(event.target.value)}
+        className="w-56"
+      />
       <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-        Add sprint
+        {t.schedule.sprints.add}
       </Button>
       {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
     </form>

@@ -3,6 +3,7 @@ import type { Issue } from "@/api/issues";
 import { useComponents, useSetIssueComponents, useSetIssueVersions, useVersions } from "@/api/versions";
 import { Button, Checkbox, Popover, Tag } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { t } from "@/i18n";
 
 // A set of names picked from a list: the tags show what is chosen, a popover
 // with checkboxes changes it, and the whole set is sent at once.
@@ -42,11 +43,18 @@ function NamePicker({
           label={label}
           align="end"
           trigger={
-            <Button variant="ghost" size="sm" icon={<Icon.Edit />} onClick={() => setOpen((o) => !o)} aria-label={`Change ${label.toLowerCase()}`} id={id} />
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Icon.Edit />}
+              onClick={() => setOpen((o) => !o)}
+              aria-label={t.schedule.versionFields.change(label)}
+              id={id}
+            />
           }
         >
           {all.length === 0 ? (
-            <p className="text-sm text-ink-muted">Nothing to choose from yet.</p>
+            <p className="text-sm text-ink-muted">{t.schedule.versionFields.nothingToChoose}</p>
           ) : (
             <div className="flex flex-col gap-1.5" role="group" aria-label={label}>
               {all.map((o) => (
@@ -80,11 +88,11 @@ export function VersionField({ issue, editable, role }: { issue: Issue; editable
     <>
       <NamePicker
         id={role === "fix" ? "issue-fix-versions" : "issue-affects-versions"}
-        label={role === "fix" ? "Fix versions" : "Affects versions"}
+        label={role === "fix" ? t.schedule.versionFields.fixVersions : t.schedule.versionFields.affectsVersions}
         chosen={chosen}
         options={versions}
         editable={editable}
-        emptyWord="None"
+        emptyWord={t.schedule.versionFields.none}
         onChange={change}
       />
       {set.error && <span className="block text-right text-2xs text-danger">{(set.error as Error).message}</span>}
@@ -100,11 +108,11 @@ export function ComponentField({ issue, editable }: { issue: Issue; editable: bo
     <>
       <NamePicker
         id="issue-components"
-        label="Components"
+        label={t.schedule.versionFields.components}
         chosen={issue.components ?? []}
         options={data?.components ?? []}
         editable={editable}
-        emptyWord="None"
+        emptyWord={t.schedule.versionFields.none}
         onChange={(ids) => set.mutate({ key: issue.key, components: ids })}
       />
       {set.error && <span className="block text-right text-2xs text-danger">{(set.error as Error).message}</span>}

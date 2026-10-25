@@ -1,6 +1,7 @@
 import { useMilestones, useSetIssueMilestone } from "@/api/milestones";
 import type { Issue } from "@/api/issues";
 import { SelectInput } from "@/components/ui";
+import { t } from "@/i18n";
 
 /** Makes an issue count towards a milestone, or towards none. */
 export function MilestoneField({ issue }: { issue: Issue }) {
@@ -11,7 +12,7 @@ export function MilestoneField({ issue }: { issue: Issue }) {
   return (
     <span className="flex flex-col items-end gap-1">
       <label htmlFor="issue-milestone" className="sr-only">
-        Milestone
+        {t.schedule.milestones.milestone}
       </label>
       <SelectInput
         id="issue-milestone"
@@ -20,7 +21,7 @@ export function MilestoneField({ issue }: { issue: Issue }) {
         onChange={(event) => setMilestone.mutate({ key: issue.key, milestoneId: event.target.value || null })}
         className="max-w-48"
       >
-        <option value="">None</option>
+        <option value="">{t.schedule.milestones.none}</option>
         {milestones.map((milestone) => (
           <option key={milestone.id} value={milestone.id}>
             {milestone.name}

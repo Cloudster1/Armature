@@ -10,6 +10,7 @@ import { BoardView } from "@/features/board/BoardView";
 import { SwimlaneEditor } from "@/features/board/SwimlaneEditor";
 import { parseSearch, toSearch, type QuickFilter, type QuickFilterSearch } from "@/features/board/quickFilter";
 import { Button, Page, PageHeader, Tag, cx } from "@/components/ui";
+import { t } from "@/i18n";
 
 export const boardRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -42,7 +43,7 @@ function BoardPage() {
   // them and a heading that just says "Board" is a page you cannot read.
   const boards = boardData?.boards ?? [];
   const showing = boardId ? boards.find((each) => each.id === boardId) : boards[0];
-  const shown = showing?.name ?? "Board";
+  const shown = showing?.name ?? t.board.page.fallback;
   const scrum = showing?.type === "scrum";
 
   const canConfigure = me?.principal.role === "owner" || me?.principal.role === "admin";
@@ -58,21 +59,21 @@ function BoardPage() {
         title={
           <>
             {shown}
-            {showing && <Tag data-board-type={showing.type}>{scrum ? "Scrum" : "Kanban"}</Tag>}
+            {showing && <Tag data-board-type={showing.type}>{scrum ? t.board.page.scrum : t.board.page.kanban}</Tag>}
           </>
         }
-        meta={scrum ? "Shows the sprint that is running." : "Shows the work in flight and what was finished lately."}
+        meta={scrum ? t.board.page.metaScrum : t.board.page.metaKanban}
         tabs={<BoardPicker projectKey={projectKey} boardId={boardId} onPick={(picked) => go({ board: picked?.id, filter }, false)} canManage={canConfigure} />}
         actions={
           canConfigure && (
             <>
               {!adding && (
                 <Button variant="secondary" onClick={() => setAdding(true)}>
-                  New board
+                  {t.board.page.newBoard}
                 </Button>
               )}
               <Button variant={configuring ? "primary" : "secondary"} onClick={() => setConfiguring(!configuring)}>
-                {configuring ? "Done configuring" : "Configure swimlanes"}
+                {configuring ? t.board.page.doneConfiguring : t.board.page.configure}
               </Button>
             </>
           )
@@ -90,7 +91,7 @@ function BoardPage() {
         </div>
         {configuring && showing && (
           <aside className="min-w-0">
-            <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">Swimlanes</h2>
+            <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">{t.board.page.swimlanes}</h2>
             <SwimlaneEditor boardId={showing.id} />
           </aside>
         )}

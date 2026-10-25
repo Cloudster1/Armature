@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useDeleteVersion, useCreateVersion, useReleaseNotes, useUpdateVersion, useVersionAction, useVersions, type Version } from "@/api/versions";
-import { dayOf, describeProgress } from "@/api/milestones";
+import { dayOf } from "@/api/milestones";
+import { progressWords } from "@/features/milestones/ProgressBar";
 import { Button, Card, Drawer, EmptyState, ErrorBanner, Field, IconButton, Menu, Segmented, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -18,7 +19,7 @@ export function inView(v: Pick<Version, "releasedAt" | "archivedAt">, view: View
 
 /** The notes as text somebody pastes into a changelog. */
 export function notesAsText(groups: Array<{ type: string; issues: Array<{ key: string; summary: string }> }>, name: string): string {
-  const lines = [`Release ${name}`, ""];
+  const lines = [t.schedule.releases.notesHeading(name), ""];
   for (const g of groups) {
     lines.push(`${g.type}`);
     for (const i of g.issues) lines.push(`- ${i.key} ${i.summary}`);
@@ -49,28 +50,34 @@ export function ReleaseList({ projectKey, canPlan }: { projectKey: string; canPl
     <div className="space-y-4">
       {canPlan && <NewVersion projectKey={projectKey} />}
       <Segmented<View>
-        label="Versions"
+        label={t.schedule.releases.versions}
         value={view}
         onChange={setView}
         options={[
-          { value: "unreleased", label: "Unreleased", attrs: { "data-versions-view": "unreleased" } },
-          { value: "released", label: "Released", attrs: { "data-versions-view": "released" } },
-          { value: "archived", label: "Archived", attrs: { "data-versions-view": "archived" } },
+          { value: "unreleased", label: t.schedule.releases.unreleased, attrs: { "data-versions-view": "unreleased" } },
+          { value: "released", label: t.schedule.releases.released, attrs: { "data-versions-view": "released" } },
+          { value: "archived", label: t.schedule.releases.archived, attrs: { "data-versions-view": "archived" } },
         ]}
       />
       {isLoading ? null : versions.length === 0 ? (
         <EmptyState
-          title={view === "unreleased" ? "Nothing planned" : `Nothing ${view}`}
-          description="A version is what the project ships. Name it on the issues that fix it, and it tracks how close it is; release it, and its notes list the finished work."
+          title={
+            view === "unreleased"
+              ? t.schedule.releases.nothingPlanned
+              : view === "released"
+                ? t.schedule.releases.nothingReleased
+                : t.schedule.releases.nothingArchived
+          }
+          description={t.schedule.releases.emptyDetail}
         />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th>Version</Th>
-              <Th>Progress</Th>
-              <Th>Release</Th>
-              <Th>State</Th>
+              <Th>{t.schedule.releases.version}</Th>
+              <Th>{t.schedule.releases.progress}</Th>
+              <Th>{t.schedule.releases.release}</Th>
+              <Th>{t.schedule.releases.state}</Th>
               <Th className="w-12" />
             </tr>
           </thead>
@@ -83,26 +90,30 @@ export function ReleaseList({ projectKey, canPlan }: { projectKey: string; canPl
                 </Td>
                 <Td className="min-w-48">
                   <span className="block text-sm text-ink-muted" data-version-progress={v.progress.percent}>
-                    {describeProgress(v.progress)}
+                    {progressWords(v.progress)}
                   </span>
                   <span className="mt-1 block h-1 w-full rounded-full bg-surface-raised" aria-hidden>
                     <span className="block h-1 rounded-full bg-accent" style={{ width: `${v.progress.percent}%` }} />
                   </span>
                 </Td>
                 <Td className="text-sm text-ink-muted">
-                  {v.releasedAt ? `released ${format.relative(v.releasedAt)}` : v.releaseOn ? format.date(v.releaseOn) : "no date"}
+                  {v.releasedAt
+                    ? t.schedule.releases.releasedAgo(format.relative(v.releasedAt))
+                    : v.releaseOn
+                      ? format.date(v.releaseOn)
+                      : t.schedule.releases.noDate}
                 </Td>
                 <Td>
-                  <Tag>{v.archivedAt ? "Archived" : v.releasedAt ? "Released" : "Unreleased"}</Tag>
+                  <Tag>{v.archivedAt ? t.schedule.releases.archived : v.releasedAt ? t.schedule.releases.released : t.schedule.releases.unreleased}</Tag>
                 </Td>
                 <Td>
                   <Menu
-                    label={`Actions for ${v.name}`}
+                    label={t.schedule.releases.actionsFor(v.name)}
                     align="end"
                     trigger={(props) => (
                       <IconButton
                         icon={<Icon.More />}
-                        label={`Actions for ${v.name}`}
+                        label={t.schedule.releases.actionsFor(v.name)}
                         size="sm"
                         onClick={props.toggle}
                         aria-haspopup={props["aria-haspopup"]}
@@ -111,39 +122,46 @@ export function ReleaseList({ projectKey, canPlan }: { projectKey: string; canPl
                       />
                     )}
                     items={[
-                      { label: "Release notes", icon: <Icon.Download />, onSelect: () => setNotesOf(v), attrs: { "data-action": "version-notes" } },
+                      { label: t.schedule.releases.notes, icon: <Icon.Download />, onSelect: () => setNotesOf(v), attrs: { "data-action": "version-notes" } },
                       ...(canPlan && !v.archivedAt
                         ? [
                             v.releasedAt
                               ? {
-                                  label: "Take the release back",
+                                  label: t.schedule.releases.unrelease,
                                   icon: <Icon.ChevronLeft />,
                                   onSelect: () => unrelease.mutate(v.id),
                                   attrs: { "data-action": "version-unrelease" },
                                 }
                               : {
-                                  label: "Release",
+                                  label: t.schedule.releases.releaseAction,
                                   icon: <Icon.Check />,
-                                  onSelect: () => release.mutate(v.id, { onSuccess: () => toast.success(`${v.name} released`) }),
+                                  onSelect: () => release.mutate(v.id, { onSuccess: () => toast.success(t.schedule.releases.releasedToast(v.name)) }),
                                   attrs: { "data-action": "version-release" },
                                 },
-                            { label: "Edit", icon: <Icon.Edit />, onSelect: () => setEditing(v), attrs: { "data-action": "version-edit" } },
+                            { label: t.schedule.releases.edit, icon: <Icon.Edit />, onSelect: () => setEditing(v), attrs: { "data-action": "version-edit" } },
                           ]
                         : []),
                       ...(canPlan && v.releasedAt && !v.archivedAt
-                        ? [{ label: "Archive", icon: <Icon.Archive />, onSelect: () => archive.mutate(v.id), attrs: { "data-action": "version-archive" } }]
+                        ? [
+                            {
+                              label: t.schedule.releases.archive,
+                              icon: <Icon.Archive />,
+                              onSelect: () => archive.mutate(v.id),
+                              attrs: { "data-action": "version-archive" },
+                            },
+                          ]
                         : []),
                       ...(canPlan
                         ? [
                             {
-                              label: "Delete",
+                              label: t.schedule.releases.delete,
                               icon: <Icon.Trash />,
                               danger: true,
                               onSelect: async () =>
                                 (await confirm({
                                   noun: t.kit.confirm.things.version,
                                   verb: t.kit.confirm.verbs.delete,
-                                  body: `${v.name} goes; the issues that named it simply stop naming it.`,
+                                  body: t.schedule.releases.deleteBody(v.name),
                                 })) && remove.mutate(v.id),
                               attrs: { "data-action": "version-delete" },
                             },
@@ -188,20 +206,27 @@ function NewVersion({ projectKey }: { projectKey: string }) {
     <Card className="p-4" data-guide="new-version">
       <form onSubmit={submit} className="flex flex-wrap items-end gap-3" data-testid="new-version">
         <div className="min-w-40 flex-1">
-          <Field label="Version" id="field-version-name" value={name} placeholder="1.0" onChange={(e) => setName(e.target.value)} />
+          <Field label={t.schedule.releases.version} id="field-version-name" value={name} placeholder="1.0" onChange={(e) => setName(e.target.value)} />
         </div>
-        <Field label="Release on" id="field-version-release" type="date" value={releaseOn} onChange={(e) => setReleaseOn(e.target.value)} className="w-40" />
+        <Field
+          label={t.schedule.releases.releaseOn}
+          id="field-version-release"
+          type="date"
+          value={releaseOn}
+          onChange={(e) => setReleaseOn(e.target.value)}
+          className="w-40"
+        />
         <div className="min-w-56 flex-[2]">
           <Field
-            label="What is in it"
+            label={t.schedule.releases.contents}
             id="field-version-description"
             value={description}
-            placeholder="Optional."
+            placeholder={t.schedule.releases.optional}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
         <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-          Add version
+          {t.schedule.releases.add}
         </Button>
       </form>
       {create.error && (
@@ -237,17 +262,23 @@ function EditVersion({ version, onClose }: { version: Version; onClose: () => vo
   }
 
   return (
-    <Drawer open onClose={onClose} title={`Edit ${version.name}`} attrs={{ "data-version-editor": version.name }}>
+    <Drawer open onClose={onClose} title={t.schedule.releases.editTitle(version.name)} attrs={{ "data-version-editor": version.name }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
-        <Field label="Name" id="field-edit-version-name" required value={name} onChange={(e) => setName(e.target.value)} />
-        <Field label="What is in it" id="field-edit-version-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <Field label={t.schedule.releases.name} id="field-edit-version-name" required value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label={t.schedule.releases.contents} id="field-edit-version-description" value={description} onChange={(e) => setDescription(e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Start on" id="field-edit-version-start" type="date" value={startOn} onChange={(e) => setStartOn(e.target.value)} />
-          <Field label="Release on" id="field-edit-version-release" type="date" value={releaseOn} onChange={(e) => setReleaseOn(e.target.value)} />
+          <Field label={t.schedule.releases.startOn} id="field-edit-version-start" type="date" value={startOn} onChange={(e) => setStartOn(e.target.value)} />
+          <Field
+            label={t.schedule.releases.releaseOn}
+            id="field-edit-version-release"
+            type="date"
+            value={releaseOn}
+            onChange={(e) => setReleaseOn(e.target.value)}
+          />
         </div>
         <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
-          Save version
+          {t.schedule.releases.save}
         </Button>
       </form>
     </Drawer>
@@ -259,11 +290,9 @@ function NotesPanel({ version, onClose }: { version: Version; onClose: () => voi
   const toast = useToast();
   const notes = data?.notes;
   return (
-    <Drawer open onClose={onClose} title={`Release notes for ${version.name}`} attrs={{ "data-release-notes": version.name }}>
+    <Drawer open onClose={onClose} title={t.schedule.releases.notesFor(version.name)} attrs={{ "data-release-notes": version.name }}>
       {!notes ? null : notes.groups.length === 0 ? (
-        <p className="text-sm text-ink-muted">
-          Nothing is finished for this version yet{notes.open ? `; ${notes.open} open issue${notes.open === 1 ? "" : "s"} name it` : ""}.
-        </p>
+        <p className="text-sm text-ink-muted">{t.schedule.releases.nothingFinished(notes.open)}</p>
       ) : (
         <div className="space-y-4">
           {notes.groups.map((g) => (
@@ -278,19 +307,15 @@ function NotesPanel({ version, onClose }: { version: Version; onClose: () => voi
               </ul>
             </section>
           ))}
-          {notes.open > 0 && (
-            <p className="text-sm text-ink-subtle">
-              {notes.open} more issue{notes.open === 1 ? "" : "s"} name this version and are not done yet.
-            </p>
-          )}
+          {notes.open > 0 && <p className="text-sm text-ink-subtle">{t.schedule.releases.moreOpen(notes.open)}</p>}
           <Button
             variant="secondary"
             size="sm"
             icon={<Icon.Copy />}
-            onClick={() => navigator.clipboard.writeText(notesAsText(notes.groups, version.name)).then(() => toast.success("Notes copied"))}
+            onClick={() => navigator.clipboard.writeText(notesAsText(notes.groups, version.name)).then(() => toast.success(t.schedule.releases.copied))}
             data-action="copy-notes"
           >
-            Copy as text
+            {t.schedule.releases.copy}
           </Button>
         </div>
       )}

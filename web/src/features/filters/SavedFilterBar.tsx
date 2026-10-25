@@ -4,6 +4,7 @@ import { useCreateSavedFilter, useSavedFilters, useStarFilter, type SavedFilter 
 import { Button, ButtonLink, Checkbox, Chip, Dialog, ErrorBanner, Field, IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ExportDialog } from "./ExportDialog";
+import { t } from "@/i18n";
 
 /** Starred first, then mine, then shared; by name inside each. */
 export function orderFilters(filters: SavedFilter[], me: string | undefined): SavedFilter[] {
@@ -41,7 +42,7 @@ export function SavedFilterBar({ query, me, active }: { query: string; me: strin
           </Chip>
           <IconButton
             icon={f.starred ? <Icon.Check /> : <Icon.Plus />}
-            label={f.starred ? `Unstar ${f.name}` : `Star ${f.name}`}
+            label={f.starred ? t.search.saved.unstar(f.name) : t.search.saved.star(f.name)}
             size="sm"
             onClick={() => star.mutate({ id: f.id, on: !f.starred })}
             data-filter-star={f.name}
@@ -52,12 +53,12 @@ export function SavedFilterBar({ query, me, active }: { query: string; me: strin
       <span className="ml-auto flex items-center gap-2">
         {query && (
           <Button variant="secondary" size="sm" onClick={() => setSaving(true)} data-action="save-search" data-guide="save-search">
-            Save this search
+            {t.search.saved.save}
           </Button>
         )}
         <ExportMenu query={query} />
         <ButtonLink href="/filters" variant="ghost" size="sm" data-action="all-filters">
-          All saved searches
+          {t.search.saved.allSaved}
         </ButtonLink>
       </span>
       {saving && <SaveDialog query={query} onClose={() => setSaving(false)} />}
@@ -88,24 +89,31 @@ function SaveDialog({ query, onClose }: { query: string; onClose: () => void }) 
     <Dialog
       open
       onClose={onClose}
-      title="Save this search"
+      title={t.search.saved.save}
       description={<span className="font-mono text-xs">{query}</span>}
       attrs={{ "data-save-filter": "" }}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t.search.saved.cancel}
           </Button>
           <Button type="submit" form="save-filter-form" loading={create.isPending} disabled={!name.trim()}>
-            Save
+            {t.search.saved.saveButton}
           </Button>
         </>
       }
     >
       <form id="save-filter-form" onSubmit={submit} className="space-y-3" noValidate>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
-        <Field label="Filter name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="My open work" autoFocus />
-        <Checkbox label="Share with everyone" checked={shared} onChange={(e) => setShared(e.target.checked)} id="field-share-filter" />
+        <Field
+          label={t.search.saved.name}
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t.search.saved.namePlaceholder}
+          autoFocus
+        />
+        <Checkbox label={t.search.saved.share} checked={shared} onChange={(e) => setShared(e.target.checked)} id="field-share-filter" />
       </form>
     </Dialog>
   );
@@ -116,7 +124,7 @@ function ExportMenu({ query }: { query: string }) {
   return (
     <>
       <Button variant="secondary" size="sm" icon={<Icon.Download />} onClick={() => setOpen(true)} data-action="export-csv" data-guide="export-csv">
-        Export
+        {t.search.saved.export}
       </Button>
       <ExportDialog query={query} open={open} onClose={() => setOpen(false)} />
     </>

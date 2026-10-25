@@ -20,18 +20,15 @@ export function ComponentList({ projectKey, canEdit }: { projectKey: string; can
     <div className="space-y-4">
       {canEdit && <NewComponent projectKey={projectKey} />}
       {isLoading ? null : components.length === 0 ? (
-        <EmptyState
-          title="No components yet"
-          description="A component is a part of the project: billing, the mobile app, the docs. Give it a lead, and, if you like, somebody who takes every new issue filed into it."
-        />
+        <EmptyState title={t.schedule.components.empty} description={t.schedule.components.emptyDetail} />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th>Component</Th>
-              <Th>Lead</Th>
-              <Th>New work goes to</Th>
-              <Th>Issues</Th>
+              <Th>{t.schedule.components.component}</Th>
+              <Th>{t.schedule.components.lead}</Th>
+              <Th>{t.schedule.components.newWorkTo}</Th>
+              <Th>{t.schedule.components.issues}</Th>
               {canEdit && <Th className="w-12" />}
             </tr>
           </thead>
@@ -42,20 +39,20 @@ export function ComponentList({ projectKey, canEdit }: { projectKey: string; can
                   <span className="block font-medium text-ink">{c.name}</span>
                   {c.description && <span className="block text-sm text-ink-muted">{c.description}</span>}
                 </Td>
-                <Td className="text-sm text-ink-muted">{c.lead?.name ?? "nobody"}</Td>
+                <Td className="text-sm text-ink-muted">{c.lead?.name ?? t.schedule.components.nobody}</Td>
                 <Td className="text-sm text-ink-muted" data-component-assignee={c.defaultAssignee?.name ?? ""}>
-                  {c.defaultAssignee?.name ?? "whoever files it says"}
+                  {c.defaultAssignee?.name ?? t.schedule.components.whoeverFiles}
                 </Td>
                 <Td className="text-sm text-ink-muted">{c.issues}</Td>
                 {canEdit && (
                   <Td>
                     <Menu
-                      label={`Actions for ${c.name}`}
+                      label={t.schedule.releases.actionsFor(c.name)}
                       align="end"
                       trigger={(props) => (
                         <IconButton
                           icon={<Icon.More />}
-                          label={`Actions for ${c.name}`}
+                          label={t.schedule.releases.actionsFor(c.name)}
                           size="sm"
                           onClick={props.toggle}
                           aria-haspopup={props["aria-haspopup"]}
@@ -64,16 +61,16 @@ export function ComponentList({ projectKey, canEdit }: { projectKey: string; can
                         />
                       )}
                       items={[
-                        { label: "Edit", icon: <Icon.Edit />, onSelect: () => setEditing(c), attrs: { "data-action": "component-edit" } },
+                        { label: t.schedule.components.edit, icon: <Icon.Edit />, onSelect: () => setEditing(c), attrs: { "data-action": "component-edit" } },
                         {
-                          label: "Delete",
+                          label: t.schedule.components.delete,
                           icon: <Icon.Trash />,
                           danger: true,
                           onSelect: async () =>
                             (await confirm({
                               noun: t.kit.confirm.things.component,
                               verb: t.kit.confirm.verbs.delete,
-                              body: `${c.name} goes; the issues in it simply leave it.`,
+                              body: t.schedule.components.deleteBody(c.name),
                             })) && remove.mutate(c.id),
                           attrs: { "data-action": "component-delete" },
                         },
@@ -104,7 +101,7 @@ function PersonSelect({
   onChange: (id: string) => void;
   selected?: Chosen;
 }) {
-  return <PersonPicker label={label} id={id} value={value} onChange={onChange} none="Nobody" staff selected={selected} />;
+  return <PersonPicker label={label} id={id} value={value} onChange={onChange} none={t.schedule.components.nobodyOption} staff selected={selected} />;
 }
 
 function NewComponent({ projectKey }: { projectKey: string }) {
@@ -132,16 +129,22 @@ function NewComponent({ projectKey }: { projectKey: string }) {
     <Card className="p-4" data-guide="new-component">
       <form onSubmit={submit} className="flex flex-wrap items-end gap-3" data-testid="new-component">
         <div className="min-w-40 flex-1">
-          <Field label="Component" id="field-component-name" value={name} placeholder="Billing" onChange={(e) => setName(e.target.value)} />
+          <Field
+            label={t.schedule.components.component}
+            id="field-component-name"
+            value={name}
+            placeholder={t.schedule.components.placeholder}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div className="min-w-40">
-          <PersonSelect label="Lead" id="field-component-lead" value={lead} onChange={setLead} />
+          <PersonSelect label={t.schedule.components.lead} id="field-component-lead" value={lead} onChange={setLead} />
         </div>
         <div className="min-w-40">
-          <PersonSelect label="New work goes to" id="field-component-assignee" value={assignee} onChange={setAssignee} />
+          <PersonSelect label={t.schedule.components.newWorkTo} id="field-component-assignee" value={assignee} onChange={setAssignee} />
         </div>
         <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-          Add component
+          {t.schedule.components.add}
         </Button>
       </form>
       {create.error && (
@@ -177,21 +180,26 @@ function EditComponent({ component, onClose }: { component: Component; onClose: 
   }
 
   return (
-    <Drawer open onClose={onClose} title={`Edit ${component.name}`} attrs={{ "data-component-editor": component.name }}>
+    <Drawer open onClose={onClose} title={t.schedule.releases.editTitle(component.name)} attrs={{ "data-component-editor": component.name }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
-        <Field label="Name" id="field-edit-component-name" required value={name} onChange={(e) => setName(e.target.value)} />
-        <Field label="What it is" id="field-edit-component-description" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <PersonSelect label="Lead" id="field-edit-component-lead" value={lead} onChange={setLead} selected={component.lead} />
+        <Field label={t.schedule.components.name} id="field-edit-component-name" required value={name} onChange={(e) => setName(e.target.value)} />
+        <Field
+          label={t.schedule.components.whatItIs}
+          id="field-edit-component-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <PersonSelect label={t.schedule.components.lead} id="field-edit-component-lead" value={lead} onChange={setLead} selected={component.lead} />
         <PersonSelect
-          label="New work goes to"
+          label={t.schedule.components.newWorkTo}
           id="field-edit-component-assignee"
           value={assignee}
           onChange={setAssignee}
           selected={component.defaultAssignee}
         />
         <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
-          Save component
+          {t.schedule.components.save}
         </Button>
       </form>
     </Drawer>
