@@ -38,6 +38,11 @@ export function useSavedFilters() {
   return useQuery({ queryKey: filtersQueryKey, queryFn: () => request<{ filters: SavedFilter[] }>("/filters") });
 }
 
+/** One saved search, which answers not found when the reader may not see it. */
+export function useSavedFilter(id: string) {
+  return useQuery({ queryKey: [...filtersQueryKey, id], queryFn: () => request<{ filter: SavedFilter }>(`/filters/${id}`) });
+}
+
 function useFilterMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: run, onSuccess: () => queryClient.invalidateQueries({ queryKey: filtersQueryKey }) });

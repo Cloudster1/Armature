@@ -213,11 +213,12 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, in Input) (*Filte
 	return out, lsn, err
 }
 
-// Update changes a filter; only its owner may.
+// Update changes a filter; only its owner may. One the actor may not see is not
+// found, as Get answers, so the refusal never tells it exists.
 func (s *Service) Update(ctx context.Context, id, actor uuid.UUID, in Input) (*Filter, db.LSN, error) {
 	var out *Filter
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		current, err := scan(tx.QueryRow(ctx, selectFilters+` WHERE f.id = $2 FOR UPDATE OF f`, actor, id))
+		current, err := scan(tx.QueryRow(ctx, selectFilters+` WHERE f.id = $2 AND`+visible+` FOR UPDATE OF f`, actor, id))
 		if err != nil {
 			return err
 		}
@@ -258,11 +259,12 @@ func (s *Service) Update(ctx context.Context, id, actor uuid.UUID, in Input) (*F
 	return out, lsn, err
 }
 
-// Delete removes a filter; only its owner may.
+// Delete removes a filter; only its owner may, and one the actor may not see is
+// not found.
 func (s *Service) Delete(ctx context.Context, id, actor uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var owner uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT owner_id FROM saved_filter WHERE id = $1`, id).Scan(&owner)
+		err := tx.QueryRow(ctx, `SELECT f.owner_id FROM saved_filter f WHERE f.id = $2 AND`+visible+` FOR UPDATE`, actor, id).Scan(&owner)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

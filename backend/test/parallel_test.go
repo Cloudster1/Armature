@@ -67,6 +67,7 @@ var sequentialTests = map[string]string{
 	"TestADailyDigestGoesInOnePassAtTheDigestHour":              "runs the digest over everybody",
 	"TestADigestBundlesTheQueue":                                "runs the digest over everybody",
 	"TestASavedFilterIsAQueryWithAName":                         "mails every due filter subscription",
+	"TestASubscriptionNobodyMayReadIsDroppedNotSent":            "mails every due filter subscription and counts the pass",
 	"TestTheWorkerSnapshotsEveryProjectsSprints":                "snapshots every running sprint in the installation",
 	"TestASprintIsSnapshottedDayByDay":                          "snapshots every running sprint in the installation",
 

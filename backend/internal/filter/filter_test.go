@@ -1,9 +1,33 @@
 package filter
 
 import (
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/workflow"
 )
+
+// The mail ends with the page that runs the saved search, which is the web
+// app's /filters/$filterId (#412), not the list of them.
+func TestASubscriptionMailLinksToItsSavedSearch(t *testing.T) {
+	id := uuid.New()
+	s := &Subscriptions{appURL: "http://app.test"}
+	m := s.mail("ada@armature.test", "My open work", id, &issue.Result{
+		Total:  1,
+		Issues: []issue.Issue{{Key: "CP-1", Summary: "Oil the hinge", Status: workflow.Status{Name: "To Do"}}},
+	})
+	want := "Open the search at http://app.test/filters/" + id.String() + "\n"
+	if !strings.HasSuffix(m.Body, want) {
+		t.Errorf("body = %q, want it to end %q", m.Body, want)
+	}
+	if !strings.Contains(m.Body, "- CP-1  Oil the hinge  [To Do]") || m.Subject != "My open work: 1 issue" {
+		t.Errorf("mail = %+v, want the issue listed under the search's name", m)
+	}
+}
 
 func TestDue(t *testing.T) {
 	now := time.Date(2026, 9, 7, 9, 30, 0, 0, time.UTC) // a Monday

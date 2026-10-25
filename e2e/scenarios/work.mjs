@@ -222,6 +222,15 @@ scenario("a search is saved, starred and offered on the search page", async ({ p
   await page.click(`[data-filter-star="${open}"]`);
   await page.waitForSelector(`[data-filter-star="${open}"][data-starred="true"]`, { timeout: WAIT });
 
+  // The address a subscription mail links to runs the saved search.
+  const id = await page.evaluate(
+    async (name) => (await (await fetch("/api/v1/filters", { credentials: "include" })).json()).filters.find((f) => f.name === name).id,
+    open,
+  );
+  await goto(page, `/filters/${id}`);
+  await waitForPath(page, "/search");
+  await page.waitForFunction((n) => document.body.innerText.includes(n) && document.body.innerText.includes("Something open"), { timeout: WAIT }, open);
+
   await goto(page, "/filters");
   await page.waitForSelector(`[data-filter-row="${open}"]`, { timeout: WAIT });
   await page.click('[data-filters-view="starred"]');
