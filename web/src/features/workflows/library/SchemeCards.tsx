@@ -76,6 +76,9 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
     : scheme.projectKeys.length > 0
       ? t.workflows.library.usedByProjects(scheme.projectKeys.join(", "))
       : t.workflows.library.noProject;
+  // The server refuses to delete a scheme a project uses, so it is not offered until they move.
+  const inUse = scheme.projectKeys.length > 0;
+  const deletable = !scheme.isDefault && !inUse;
   const fallback = scheme.items.find((item) => !item.issueTypeId);
   const named = scheme.items.filter((item) => item.issueTypeId);
 
@@ -88,7 +91,7 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
         canConfigure ? (
           <>
             <IconButton icon={<Icon.Edit />} label={t.workflows.library.edit(scheme.name)} size="sm" variant="ghost" data-action="edit" onClick={onEdit} />
-            {!scheme.isDefault && (
+            {deletable && (
               <IconButton
                 icon={<Icon.Trash />}
                 label={t.workflows.library.delete(scheme.name)}
@@ -112,6 +115,11 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
             {scheme.isDefault && <Tag className="text-accent">{t.workflows.library.default}</Tag>}
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">{usedBy}</p>
+          {canConfigure && !scheme.isDefault && inUse && (
+            <p className="mt-0.5 text-xs text-ink-muted" data-scheme-move-first="">
+              {t.workflows.library.moveFirst(scheme.projectKeys.join(", "))}
+            </p>
+          )}
           <ul className="mt-2 space-y-0.5 text-sm text-ink-muted">
             {fallback && (
               <li>

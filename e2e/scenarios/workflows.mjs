@@ -30,6 +30,7 @@ import {
   selectNode,
   signIn,
   signUp,
+  textOf,
   unique,
   uniqueName,
   WAIT,
@@ -295,7 +296,7 @@ scenario("a move that needs a resolution asks for one on the issue page and reco
   await page.waitForFunction(() => document.querySelector("[data-issue-history]")?.innerText.includes("resolved this as Won't do"), { timeout: WAIT });
 });
 
-scenario("deleting a scheme a project uses is refused and says which", async ({ page }) => {
+scenario("a scheme a project uses is not offered for deletion and says which project to move", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   // Workflows and schemes are everybody's, so these have names nobody else took.
   const leanScheme = uniqueName("Lean scheme");
@@ -310,6 +311,16 @@ scenario("deleting a scheme a project uses is refused and says which", async ({ 
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
 
+  await goto(page, `/settings/workflows/schemes?q=${encodeURIComponent(leanScheme)}`);
+  const card = `[data-scheme-card="${leanScheme}"]`;
+  await page.waitForSelector(`${card} [data-scheme-move-first]`, { timeout: WAIT });
+  expect.contains(await textOf(page, `${card} [data-scheme-move-first]`), `move ${key} to another scheme first`, "the card names the project to move");
+  expect.truthy(!(await page.$(`${card} [data-action="delete"]`)), "and offers no delete the server would refuse");
+
+  // Once the project hands the decision back, the scheme can go.
+  await goto(page, `/projects/${key}/workflows`);
+  await clickButton(page, "Follow the default");
+  await page.waitForFunction(() => document.body.innerText.includes("This project follows the default"), { timeout: WAIT });
   await deleteScheme(page, leanScheme);
-  await page.waitForFunction((k) => document.body.innerText.includes(`${k} still uses it`), { timeout: WAIT }, key);
+  await page.waitForFunction((sel) => !document.querySelector(sel), { timeout: WAIT }, card);
 });
