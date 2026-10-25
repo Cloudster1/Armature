@@ -47,10 +47,23 @@ const boards: BoardSummary[] = [
 
 vi.mock("@/api/boards", () => ({ useBoards: () => ({ data: { boards } }) }));
 vi.mock("@/api/projects", () => ({ useProject: () => ({ data: { project: { name: "Portal" } } }) }));
-vi.mock("@/api/auth", () => ({ useMe: () => ({ data: { principal: { role: "owner" } } }) }));
+// What the signed-in person holds, per project, as /access/me answers it.
+const held = vi.hoisted(() => ({
+  access: {
+    grants: [],
+    projects: ["CP"],
+    canAdministerOrg: false,
+    canCreateProject: false,
+    permissions: { org: [] as string[], projects: { CP: ["board.configure", "project.administer"] } as Record<string, string[]> },
+  },
+}));
+vi.mock("@/api/access", async (importActual) => ({
+  ...(await importActual<typeof import("@/api/access")>()),
+  useAccess: () => ({ data: held.access }),
+}));
 vi.mock("@/features/board/BoardPicker", () => ({
-  BoardPicker: ({ onPick }: { onPick: (board: BoardSummary | null) => void }) => (
-    <div>
+  BoardPicker: ({ onPick, canManage }: { onPick: (board: BoardSummary | null) => void; canManage: boolean }) => (
+    <div data-testid="picker" data-can-manage={String(canManage)}>
       <button type="button" onClick={() => onPick(null)}>
         Portal board
       </button>
@@ -81,6 +94,31 @@ describe("the board page", () => {
   beforeEach(() => {
     address.set({});
     address.navigations.length = 0;
+    held.access.permissions = { org: [], projects: { CP: ["board.configure", "project.administer"] } };
+  });
+
+  // The controls followed the installation role, so a project role that grants
+  // board.configure never saw them.
+  it("offers the board's configuration to a plain member who may configure boards in the project", () => {
+    held.access.permissions = { org: ["issue.read"], projects: { CP: ["board.configure"] } };
+    render(<BoardPage />);
+    expect(screen.getByRole("button", { name: "Configure swimlanes" })).toBeInTheDocument();
+    expect(screen.getByTestId("picker")).toHaveAttribute("data-can-manage", "true");
+    // Making a board is administering the project, which this person does not.
+    expect(screen.queryByRole("button", { name: "New board" })).not.toBeInTheDocument();
+  });
+
+  it("hides the board's configuration from a member who may not configure boards in the project", () => {
+    held.access.permissions = { org: ["issue.read"], projects: { CP: ["issue.write"], OTHER: ["board.configure", "project.administer"] } };
+    render(<BoardPage />);
+    expect(screen.queryByRole("button", { name: "Configure swimlanes" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New board" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("picker")).toHaveAttribute("data-can-manage", "false");
+  });
+
+  it("offers a new board to whoever administers the project", () => {
+    render(<BoardPage />);
+    expect(screen.getByRole("button", { name: "New board" })).toBeInTheDocument();
   });
 
   // The editor used to be handed only the project, and so always edited the

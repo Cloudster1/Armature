@@ -271,6 +271,8 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That board was not found.")
 	case errors.Is(err, board.ErrNotOnThisBoard):
 		return ErrNotFound("That card is not on this board.")
+	case errors.Is(err, board.ErrBoardChanged):
+		return ErrConflict("The board changed while you moved the card. Reload the board and drop the card again.")
 	case errors.Is(err, perm.ErrNotFound):
 		return ErrNotFound("That was not found.")
 	case errors.Is(err, perm.ErrRoleNotFound):

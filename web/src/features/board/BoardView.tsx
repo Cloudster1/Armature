@@ -155,19 +155,16 @@ export function BoardView({
     if (!current) return;
 
     const cards = swimlane.cards;
-    const beforeIndex = beforeKey ? cards.findIndex((c) => c.key === beforeKey) : cards.length;
+    // The lane as it would be without the moved card, and where in it the card
+    // lands. Dropped on itself, it lands where it already is.
+    const others = cards.filter((c) => c.key !== current.issueKey);
+    const from = cards.findIndex((c) => c.key === current.issueKey);
+    const found = beforeKey === current.issueKey ? from : beforeKey ? others.findIndex((c) => c.key === beforeKey) : -1;
+    const at = found < 0 ? others.length : found;
+    if (from >= 0 && at === from) return; // dropped exactly where it already was
 
-    // The card immediately above the drop point, skipping the card being moved
-    // so it is not treated as its own neighbour.
-    const above = cards
-      .slice(0, beforeIndex)
-      .filter((c) => c.key !== current.issueKey)
-      .at(-1);
-    const below = beforeKey && beforeKey !== current.issueKey ? beforeKey : undefined;
-
-    if (current.fromSwimlaneId === swimlane.id && above?.key === undefined && below === undefined) {
-      return; // dropped exactly where it already was
-    }
+    const above = others[at - 1];
+    const below = others[at]?.key;
 
     move.mutate(
       {
