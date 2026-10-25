@@ -20,6 +20,7 @@ const SCENARIO_FILES = [
   "organization",
   "installation",
   "board",
+  "board-access",
   "hierarchy",
   "plan",
   "workflows",

@@ -114,7 +114,7 @@ func (s *Server) handleDisconnectRepository(w http.ResponseWriter, r *http.Reque
 		respondError(w, r, ErrBadRequest("Invalid repository id."))
 		return
 	}
-	lsn, err := s.Git.Disconnect(r.Context(), id)
+	lsn, err := s.Git.Disconnect(r.Context(), id, userFrom(r), clientIP(r))
 	if err != nil {
 		respondError(w, r, err)
 		return

@@ -98,6 +98,8 @@ export const searchEn = {
     shareWithEveryone: "Share with everyone",
     delete: "Delete",
     deleteBody: (name: string) => `${name} goes for everyone it was shared with.`,
+    gone: "This saved search is not here",
+    goneHint: "It was deleted or is no longer shared with you. Your saved searches list every one you can run.",
   },
   bulk: {
     label: "Change the selected issues",

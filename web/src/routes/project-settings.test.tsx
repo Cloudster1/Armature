@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import type { Project } from "@/api/projects";
@@ -11,6 +11,7 @@ const idle = { mutate: vi.fn(), isPending: false, error: null };
 const live = { id: "p1", key: "CP", name: "Portal", description: "", kind: "software", features: ["board"] } as unknown as Project;
 const archived = { ...live, archivedAt: "2026-10-01T08:00:00Z" } as Project;
 let shown: Project = live;
+let saving: { mutate: () => void; isPending: boolean; error: Error | null } = idle;
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
@@ -19,7 +20,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("./project", () => ({ projectRoute: {} }));
 vi.mock("@/api/projects", () => ({
   useProject: () => ({ data: { project: shown } }),
-  useUpdateProject: () => idle,
+  useUpdateProject: () => saving,
   useArchiveProject: () => ({ mutate: archive, isPending: false, error: null }),
   useRestoreProject: () => ({ mutate: restore, isPending: false, error: null }),
 }));
@@ -42,6 +43,7 @@ function renderPage() {
 
 beforeEach(() => {
   shown = live;
+  saving = idle;
   archive.mockReset().mockImplementation((_key: string, options?: { onSuccess?: () => void }) => options?.onSuccess?.());
   restore.mockReset();
 });
@@ -70,5 +72,18 @@ describe("the settings of a project", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Restore project" }));
     expect(restore).toHaveBeenCalledWith("CP", expect.anything());
+  });
+
+  // On a phone Save is a screen below the top of the form.
+  it("says a refused save beside Save, below the fields", () => {
+    const refused = "Another project is already called Portal. Choose another name.";
+    saving = { ...idle, error: new Error(refused) };
+    renderPage();
+    const save = screen.getByRole("button", { name: "Save changes" });
+    // The features switch is made by the same hook, so the mock refuses it too; only the form's own is looked at.
+    const said = within(save.closest("form") as HTMLElement).getByRole("alert");
+    expect(said).toHaveTextContent(refused);
+    expect(said.nextElementSibling?.contains(save)).toBe(true);
+    expect(screen.getByLabelText("Link name").compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

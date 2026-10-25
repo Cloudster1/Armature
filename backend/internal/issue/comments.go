@@ -387,7 +387,9 @@ func (s *Service) mentionWatchers(ctx context.Context, tx db.DBTX, issueID uuid.
 		}
 	}
 	for _, id := range mentioned {
-		if _, err := s.watch(ctx, tx, issueID, issueKey, id, actor); err != nil {
+		// Naming somebody who may not see the project keeps the comment; it
+		// just does not make them a watcher.
+		if _, err := s.watch(ctx, tx, issueID, issueKey, id, actor); err != nil && !errors.Is(err, ErrWatcherMayNotRead) {
 			return nil, err
 		}
 	}

@@ -30,8 +30,6 @@ export const NOTIFICATION_KINDS: Array<{ kind: string; label: string }> = [
   { kind: "transitioned", label: "My issues move" },
   { kind: "watching", label: "Issues I watch change" },
   { kind: "sla_breached", label: "A request misses its goal" },
-  { kind: "rule", label: "An automation rule writes to me" },
-  { kind: "filter", label: "A saved search reports" },
   { kind: "absence", label: "Somebody else changes my absences" },
 ];
 

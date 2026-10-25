@@ -412,7 +412,7 @@ func TestABranchIsMadeOnTheHost(t *testing.T) {
 		if _, _, err := svc.CreateBranch(ws.ctx, found.Key, repo.ID, "", "", ws.actor.UserID); !errors.Is(err, git.ErrNoToken) {
 			t.Errorf("err = %v, want ErrNoToken", err)
 		}
-		if _, err := svc.Disconnect(ws.ctx, repo.ID); err != nil {
+		if _, err := svc.Disconnect(ws.ctx, repo.ID, ws.actor.UserID, ""); err != nil {
 			t.Fatal(err)
 		}
 	})

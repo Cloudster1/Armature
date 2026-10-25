@@ -3,7 +3,7 @@ import { useIssue } from "@/api/issues";
 import { useArrangements } from "@/api/arrange";
 import { useMe } from "@/api/auth";
 import { useProject } from "@/api/projects";
-import { canWriteIssues, useAccess } from "@/api/access";
+import { canAdminister, canWriteIssues, useAccess } from "@/api/access";
 import { ErrorBanner, Skeleton, cx } from "@/components/ui";
 import { IssueHeader } from "./IssueHeader";
 import { Rail } from "./IssueRail";
@@ -27,6 +27,8 @@ export function IssuePage({ issueKey, inDrawer = false }: { issueKey: string; in
   const issue = data?.issue;
   if (!issue) return null;
   const editable = canWriteIssues(access, issue.projectKey);
+  // The server lets only those who administer the project delete an issue.
+  const deletable = editable && canAdminister(access, issue.projectKey);
   const me = session?.principal?.user.id;
   // On a desk the files are part of what the customer is told.
   const isDesk = projectData?.project?.kind === "service";
@@ -36,7 +38,7 @@ export function IssuePage({ issueKey, inDrawer = false }: { issueKey: string; in
 
   return (
     <div data-issue-page={issue.key} ref={rootRef}>
-      <IssueHeader issue={issue} editable={editable} inDrawer={inDrawer} />
+      <IssueHeader issue={issue} editable={editable} deletable={deletable} inDrawer={inDrawer} />
       <Rail root={rootRef} />
       {arrangement ? (
         <div className={cx("grid gap-8", inDrawer ? "grid-cols-1" : "lg:grid-cols-[1fr_20rem]")}>

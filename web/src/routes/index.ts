@@ -18,6 +18,7 @@ import { inboxRoute } from "./inbox";
 import { automationRoute, orgAutomationRoute } from "./automation";
 import { componentsRoute, releasesRoute } from "./releases";
 import { filtersRoute } from "./filters";
+import { savedFilterRoute } from "./saved-filter";
 import { importRoute } from "./import";
 import { webhooksRoute } from "./webhooks";
 import { connectedAppsRoute } from "./connected-apps";
@@ -108,6 +109,7 @@ const routeTree = rootRoute.addChildren([
     profileRoute,
     inboxRoute,
     filtersRoute,
+    savedFilterRoute,
     orgAutomationRoute,
     webhooksRoute,
     connectedAppsRoute,

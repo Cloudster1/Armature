@@ -194,10 +194,14 @@ func (s *Service) run(ctx context.Context, r Rule, e events.Event, p payload) er
 		keys = []string{p.key()}
 	}
 
-	// Conditions are asked of the event's issue; a scheduled rule's query is
-	// its condition, and a call with no issue has nothing to test but the actor.
-	if len(keys) == 1 && e.Topic != events.TopicAutomationScheduled {
-		ok, why, err := s.conditionsHold(ctx, r, keys[0], p, actor.UserID)
+	// Conditions are asked of the event's issue, or of no issue for a call that
+	// names none; a scheduled rule's query is its condition.
+	if e.Topic != events.TopicAutomationScheduled {
+		key := ""
+		if len(keys) == 1 {
+			key = keys[0]
+		}
+		ok, why, err := s.conditionsHold(ctx, r, key, p, actor.UserID)
 		if err != nil {
 			return finish(OutcomeFailed, err.Error(), nil)
 		}
@@ -248,12 +252,16 @@ func (s *Service) matching(ctx context.Context, query, projectKey string, as uui
 }
 
 // conditionsHold tests every condition; the first that fails names itself.
+// Without an issue, one about the issue cannot hold, so it skips the run.
 func (s *Service) conditionsHold(ctx context.Context, r Rule, key string, p payload, as uuid.UUID) (bool, string, error) {
 	if len(r.Conditions) == 0 {
 		return true, "", nil
 	}
 	var subject *issue.Issue
 	for _, c := range r.Conditions {
+		if key == "" && conditionNeedsIssue[c.Kind] {
+			return false, fmt.Sprintf("the %s condition needs an issue, and this run has none", c.Kind), nil
+		}
 		switch c.Kind {
 		case ConditionNQL:
 			found, err := s.matching(ctx, c.Query, "", as, []string{key})
@@ -291,6 +299,9 @@ func (s *Service) conditionsHold(ctx context.Context, r Rule, key string, p payl
 	}
 	return true, "", nil
 }
+
+// conditionNeedsIssue names the conditions asked of an issue rather than of the actor.
+var conditionNeedsIssue = map[string]bool{ConditionNQL: true, ConditionFieldEqual: true}
 
 func orNobody(role string) string {
 	if role == "" {

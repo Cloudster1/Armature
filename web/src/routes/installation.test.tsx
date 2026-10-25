@@ -115,10 +115,12 @@ describe("the installation page", () => {
     expect(invalidate).toHaveBeenCalled();
   });
 
-  it("says why the suite demo stopped", () => {
-    suite.demo = { ...building("failed", 1), message: "The suite demo stopped: create the EXC project. Look at the worker's log." };
+  it("says why the suite demo stopped, and offers it again", async () => {
+    suite.demo = { ...building("failed", 1), message: "The suite demo stopped: create the EXC project. Look at the worker's log for why." };
     render(<InstallationPage />);
     expect(screen.getByText(/Look at the worker's log/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Add the suite demo" }));
+    expect(addSuite).toHaveBeenCalled();
   });
 
   it("says which key holds the suite demo off", () => {

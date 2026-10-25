@@ -196,8 +196,6 @@ export const doorsDe: typeof doorsEn = {
       transitioned: "Meine Vorgänge wechseln den Status",
       watching: "Beobachtete Vorgänge ändern sich",
       sla_breached: "Eine Anfrage verfehlt ihr Ziel",
-      rule: "Eine Automatisierungsregel schreibt mir",
-      filter: "Eine gespeicherte Suche meldet sich",
       absence: "Jemand anderes ändert meine Abwesenheiten",
     },
   },

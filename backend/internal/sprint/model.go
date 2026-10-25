@@ -101,4 +101,7 @@ var (
 	// ErrOtherTeam is returned when carrying unfinished work into a sprint
 	// another team plans, where neither team's Sprints page would show it.
 	ErrOtherTeam = errors.New("unfinished work stays with its own team's sprints")
+	// ErrIntoItself is returned when completing a sprint names that same sprint
+	// as where its unfinished work goes.
+	ErrIntoItself = errors.New("a sprint cannot carry its work into itself")
 )

@@ -385,6 +385,25 @@ export function isStaleEdit(error: unknown): boolean {
   return error instanceof ApiError && error.status === 409 && error.code === "stale_edit";
 }
 
+/** Whether a query is about this one issue, by its key among the query's parts. */
+export function isAboutIssue(queryKey: readonly unknown[], issueKey: string): boolean {
+  return queryKey.includes(issueKey);
+}
+
+/**
+ * Deletes an issue for good. What listed or counted it is read again; its own
+ * queries are not, since the page still showing it would only ask for a 404.
+ */
+export function useDeleteIssue() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => request<void>(`/issues/${key}`, { method: "DELETE" }),
+    onSuccess: (_, key) => {
+      void queryClient.invalidateQueries({ predicate: (query) => !isAboutIssue(query.queryKey, key) });
+    },
+  });
+}
+
 export function useUpdateIssue() {
   const queryClient = useQueryClient();
   return useMutation({

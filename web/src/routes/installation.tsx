@@ -145,7 +145,7 @@ function SuiteDemoCard() {
       {demo?.state === "failed" && <ErrorBanner>{demo.message}</ErrorBanner>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-md text-sm text-ink-muted">{t.access.installation.suiteDetail}</p>
-        {data && !demo && (
+        {data && (!demo || demo.state === "failed") && (
           <Button variant="secondary" loading={add.isPending} data-action="add-suite-demo" onClick={() => add.mutate()}>
             {t.access.installation.addSuite}
           </Button>

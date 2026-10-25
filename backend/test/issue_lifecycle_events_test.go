@@ -148,7 +148,7 @@ func TestEveryIssueThatComesOrGoesIsAnnounced(t *testing.T) {
 	})
 
 	t.Run("an import is announced, marked, and tells nobody", func(t *testing.T) {
-		bob := h.joinExisting(t, h.email(t, "bob"), "member")
+		bob := h.joinAsMember(t, h.email(t, "bob"))
 		importer := ws.actor
 		importer.Import = true
 		made, _, err := ws.issues.Import(ws.ctx, issue.ImportInput{

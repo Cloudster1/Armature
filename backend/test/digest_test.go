@@ -26,7 +26,7 @@ func TestADailyDigestGoesInOnePassAtTheDigestHour(t *testing.T) {
 	first := h.newProject(t, "digestfirst")
 	second := h.newProject(t, "digestsecond")
 	address := h.email(t, "twodigests")
-	bob := h.joinExisting(t, address, "member")
+	bob := h.joinAsMember(t, address)
 
 	prefs := notify.DefaultPreferences()
 	prefs.Digest = notify.DigestDaily

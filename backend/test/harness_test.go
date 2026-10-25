@@ -520,3 +520,14 @@ func (h *harness) joinExisting(t *testing.T, email, role string) uuid.UUID {
 	})
 	return id
 }
+
+// joinAsMember is joinExisting with the role a member joins with, for somebody
+// who must read the projects to be told about their issues.
+func (h *harness) joinAsMember(t *testing.T, email string) uuid.UUID {
+	t.Helper()
+	id := h.joinExisting(t, email, string(auth.RoleMember))
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO role_assignment (role, user_id) VALUES ($1, $2)`, auth.RoleMember.AppRole(), id); err != nil {
+		t.Fatalf("give %s the member's role: %v", email, err)
+	}
+	return id
+}

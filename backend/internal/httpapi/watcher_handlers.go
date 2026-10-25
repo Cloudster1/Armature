@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -45,6 +46,8 @@ func (s *Server) watcherFrom(r *http.Request, req addWatcherRequest) (uuid.UUID,
 	}
 }
 
+const watcherMayNotRead = "That person may not see this project, so they cannot watch its issues. Give them a role in the project first, then add them."
+
 func (s *Server) handleAddWatcher(w http.ResponseWriter, r *http.Request) {
 	var req addWatcherRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -57,6 +60,10 @@ func (s *Server) handleAddWatcher(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	added, _, lsn, err := s.Issues.AddWatcher(r.Context(), r.PathValue("issueKey"), userID, actorFrom(r))
+	if errors.Is(err, issue.ErrWatcherMayNotRead) {
+		respondError(w, r, &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: watcherMayNotRead})
+		return
+	}
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return

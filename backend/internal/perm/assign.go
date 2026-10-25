@@ -255,6 +255,17 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 	return out, lsn, nil
 }
 
+// globalAdministratorsLock serializes taking global administration away. The
+// database's guard on role_assignment (00951) takes the same one.
+const globalAdministratorsLock = "armature.global_administrators"
+
+// KeepsAnAdministrator names the trigger's refusal, so a removal it stops, such as erasing the last
+// administrator's account, reads as ErrLastGlobalAdministrator.
+const KeepsAnAdministrator = "role_assignment_keeps_an_administrator"
+
+// ErrLastGlobalAdministrator refuses taking away the last global administrator assignment.
+var ErrLastGlobalAdministrator = errors.New("this is the last global administrator, so granting another one has to come first")
+
 // Revoke takes a role away.
 //
 // The last global administrator cannot be revoked. An organization with nobody
@@ -269,6 +280,11 @@ func (s *Store) Revoke(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.L
 		}
 
 		if found.Role == GlobalAdministrator {
+			// Counted under the lock, so two revokes at once cannot each count
+			// the other as the one that stays.
+			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, globalAdministratorsLock); err != nil {
+				return fmt.Errorf("wait for other revokes: %w", err)
+			}
 			var remaining int
 			if err := tx.QueryRow(ctx, `
 				SELECT count(*) FROM role_assignment
@@ -276,7 +292,7 @@ func (s *Store) Revoke(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.L
 				return err
 			}
 			if remaining == 0 {
-				return errors.New("this is the last global administrator, so granting another one has to come first")
+				return ErrLastGlobalAdministrator
 			}
 		}
 

@@ -29,13 +29,14 @@ let desks: Desk[] = [];
 let opened: RequestRead | undefined;
 let followers: PortalFollower[] = [];
 const raise = vi.fn();
+let raiseRefused: Error | null = null;
 vi.mock("@/api/desk", async () => {
   const actual = await vi.importActual<typeof import("@/api/desk")>("@/api/desk");
   return {
     ...actual,
     useMyRequests: () => ({ data: lists, isLoading: false }),
     useDesks: () => ({ data: { desks } }),
-    useRaiseRequest: () => ({ mutateAsync: raise, isPending: false, error: null }),
+    useRaiseRequest: () => ({ mutateAsync: raise, isPending: false, error: raiseRefused }),
     usePortalArticles: () => ({ data: { articles: [] } }),
     useRequest: () => ({ data: opened, isLoading: false, error: null }),
     useRequestWatchers: () => ({ data: { watchers: followers } }),
@@ -101,6 +102,23 @@ describe("raising a request", () => {
     desks = [{ projectId: "p", projectKey: "HLP", name: "Help", requestTypes: [typeOf], repliesByMail: false }];
     render(<RaisePage />);
     expect(screen.queryByLabelText(/Share with/)).toBeNull();
+  });
+
+  // On a phone the top of the form is a screen above Send.
+  it("says a refused request beside Send, below the details and the files", () => {
+    desks = [{ projectId: "p", projectKey: "HLP", name: "Help", requestTypes: [typeOf], repliesByMail: false }];
+    raiseRefused = new Error("The desk is not taking requests right now. Try again in a few minutes.");
+    try {
+      render(<RaisePage />);
+      const said = screen.getByRole("alert");
+      expect(said).toHaveTextContent(raiseRefused.message);
+      const send = screen.getByRole("button", { name: "Send request" });
+      expect(said.closest("[data-portal-send]")?.contains(send)).toBe(true);
+      const files = screen.getByRole("button", { name: "Attach files" });
+      expect(files.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    } finally {
+      raiseRefused = null;
+    }
   });
 });
 

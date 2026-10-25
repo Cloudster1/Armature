@@ -69,25 +69,40 @@ func (s *Service) Move(ctx context.Context, projectKey string, in MoveInput, act
 		return nil, 0, err
 	}
 
-	result := &MoveResult{Issue: current}
-
-	// Moving within the swimlane the card is already in is a reorder, not a
-	// transition, so the workflow is not involved at all.
+	// The transition is chosen before anything is written, and taken in the
+	// same transaction as the rank, so a card that cannot be placed keeps its status.
+	var chosen *workflowTransition
 	if !containsStatus(target.statuses, current.Status.ID) {
-		moved, transitionName, err := s.transitionInto(ctx, current, target, actor)
-		if err != nil {
+		if chosen, err = s.transitionInto(ctx, current, target, actor); err != nil {
 			return nil, 0, err
 		}
-		result.Issue = moved
-		result.Transition = transitionName
 	}
 
-	newRank, lsn, err := s.reorder(ctx, result.Issue.ID, in)
+	result := &MoveResult{Issue: current}
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		newRank, err := placeCard(ctx, tx, current.ID, in)
+		if err != nil {
+			return err
+		}
+		if chosen != nil {
+			moved, err := s.issues.TransitionIn(ctx, tx, current.Key, issue.TransitionInput{TransitionID: chosen.ID}, actor)
+			if err != nil {
+				// A validator refusing the move is worth reporting as itself:
+				// "this needs an assignee" is actionable, "cannot move" is not.
+				return err
+			}
+			result.Issue = moved
+			result.Transition = chosen.Name
+		}
+		if _, err := tx.Exec(ctx, `UPDATE issue SET rank = $2 WHERE id = $1`, current.ID, newRank); err != nil {
+			return err
+		}
+		result.Rank = newRank
+		return nil
+	})
 	if err != nil {
 		return nil, 0, err
 	}
-	result.Rank = newRank
-
 	return result, lsn, nil
 }
 
@@ -164,44 +179,35 @@ func (s *Service) swimlaneStatuses(ctx context.Context, swimlaneID uuid.UUID) (*
 	return target, nil
 }
 
-// transitionInto moves an issue into one of a swimlane's statuses by taking a
-// transition the workflow offers.
+// transitionInto picks the transition that moves an issue into one of a
+// swimlane's statuses, from those the workflow offers the actor.
 //
 // Where a swimlane holds several statuses, the first reachable one wins, in the
 // swimlane's own status order. That makes a merged lane such as "In Progress
 // and In Review" land on the earlier of the two, which is what dragging a card
 // into the start of that lane should mean.
-func (s *Service) transitionInto(ctx context.Context, current *issue.Issue, target *swimlaneTarget, actor issue.Actor) (*issue.Issue, string, error) {
+func (s *Service) transitionInto(ctx context.Context, current *issue.Issue, target *swimlaneTarget, actor issue.Actor) (*workflowTransition, error) {
 	available, err := s.issues.Transitions(ctx, current.Key, actor)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// The transitions are named by their destination step, so resolve each to
 	// the status it actually lands on.
 	destinations, err := s.transitionDestinations(ctx, current, available)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	for _, status := range target.statuses {
-		for _, t := range available {
-			if destinations[t.ID] != status.id {
-				continue
+		for i := range available {
+			if destinations[available[i].ID] == status.id {
+				return &available[i], nil
 			}
-			moved, _, err := s.issues.Transition(ctx, current.Key, issue.TransitionInput{
-				TransitionID: t.ID,
-			}, actor)
-			if err != nil {
-				// A validator refusing the move is worth reporting as itself:
-				// "this needs an assignee" is actionable, "cannot move" is not.
-				return nil, "", err
-			}
-			return moved, t.Name, nil
 		}
 	}
 
-	return nil, "", fmt.Errorf("%w: there is no transition from %q to %s",
+	return nil, fmt.Errorf("%w: there is no transition from %q to %s",
 		ErrNoTransition, current.Status.Name, describeStatuses(target.statuses))
 }
 
@@ -240,46 +246,38 @@ func (s *Service) transitionDestinations(ctx context.Context, current *issue.Iss
 	return out, err
 }
 
-// reorder writes the card's new rank, derived from the neighbours it was
-// dropped between.
-func (s *Service) reorder(ctx context.Context, issueID uuid.UUID, in MoveInput) (string, db.LSN, error) {
-	var newRank string
-
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		after, err := rankOf(ctx, tx, in.AfterKey)
-		if err != nil {
-			return err
-		}
-		before, err := rankOf(ctx, tx, in.BeforeKey)
-		if err != nil {
-			return err
-		}
-
-		// Dropping at the end of a swimlane gives no neighbours at all, so fall
-		// back to the last rank in the whole project.
-		if after == "" && before == "" {
-			if err := tx.QueryRow(ctx, `
-				SELECT COALESCE(max(rank), '')
-				FROM issue
-				WHERE project_id = (SELECT project_id FROM issue WHERE id = $1) AND id <> $1`,
-				issueID).Scan(&after); err != nil {
-				return err
-			}
-		}
-
-		generated, err := rank.Between(after, before)
-		if err != nil {
-			return fmt.Errorf("place the card: %w", err)
-		}
-		newRank = generated
-
-		_, err = tx.Exec(ctx, `UPDATE issue SET rank = $2 WHERE id = $1`, issueID, newRank)
-		return err
-	})
+// placeCard works out the card's new rank from the neighbours it was dropped
+// between, refusing neighbours that are no longer in that order.
+func placeCard(ctx context.Context, tx db.DBTX, issueID uuid.UUID, in MoveInput) (string, error) {
+	after, err := rankOf(ctx, tx, in.AfterKey)
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
-	return newRank, lsn, nil
+	before, err := rankOf(ctx, tx, in.BeforeKey)
+	if err != nil {
+		return "", err
+	}
+
+	// Dropping at the end of a swimlane gives no neighbours at all, so fall
+	// back to the last rank in the whole project.
+	if after == "" && before == "" {
+		if err := tx.QueryRow(ctx, `
+			SELECT COALESCE(max(rank), '')
+			FROM issue
+			WHERE project_id = (SELECT project_id FROM issue WHERE id = $1) AND id <> $1`,
+			issueID).Scan(&after); err != nil {
+			return "", err
+		}
+	}
+
+	generated, err := rank.Between(after, before)
+	if errors.Is(err, rank.ErrOutOfOrder) {
+		return "", fmt.Errorf("%w: %w", ErrBoardChanged, err)
+	}
+	if err != nil {
+		return "", fmt.Errorf("place the card: %w", err)
+	}
+	return generated, nil
 }
 
 // rankOf reads one issue's rank by key, or empty when no key was given.

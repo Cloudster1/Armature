@@ -5,6 +5,7 @@ import { scenario } from "../runner.mjs";
 import {
   bodyText,
   clickButton,
+  confirm,
   createIssue,
   createProject,
   eventually,
@@ -83,6 +84,15 @@ scenario("a commit that names an issue appears on it and moves it", async ({ pag
   await goto(page, `/projects/${key}/repositories`);
   await page.waitForSelector('[data-repository="acme/portal"]', { timeout: WAIT });
   expect.contains(await bodyText(page), "1 commit", "the repository counts what it has sent");
+
+  // Disconnecting takes the commit off the issue, so it asks first and says so.
+  await clickButton(page, "Disconnect");
+  await page.waitForSelector('[role="dialog"] [data-action="confirm"]', { timeout: WAIT });
+  const asked = await textOf(page, '[role="dialog"]');
+  expect.contains(asked, "Disconnect repository acme/portal?", "the question names the repository");
+  expect.contains(asked, "1 commit, its branches and its pull requests", "and what goes with it");
+  await confirm(page);
+  await page.waitForFunction(() => !document.querySelector('[data-repository="acme/portal"]'), { timeout: WAIT });
 });
 
 scenario("a branch made from a ticket is a real branch, and what happens to it comes back to the ticket", async ({ page }) => {

@@ -206,7 +206,7 @@ func (s *Service) resolveDestination(ctx context.Context, tx db.DBTX, from *Spri
 		return nil, nil
 	}
 	if *moveTo == from.ID {
-		return nil, errors.New("a sprint cannot carry its work into itself")
+		return nil, ErrIntoItself
 	}
 	destination, err := scanSprint(tx.QueryRow(ctx, selectSprint+` WHERE s.id = $1`, *moveTo))
 	if err != nil {

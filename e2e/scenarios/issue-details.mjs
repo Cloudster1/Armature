@@ -25,6 +25,7 @@ import {
   patchThroughAPI,
   speakThroughAPI,
   planSprint,
+  press,
   reload,
   pickPerson,
   selectByLabel,
@@ -637,4 +638,21 @@ scenario("a person whose profile says German reads the queues and asks the guide
   await page.waitForSelector('[data-palette-mode="ask"] input', { timeout: WAIT });
   await page.type('[data-palette-mode="ask"] input', "Wie erstelle ich ein Zugriffstoken?");
   await page.waitForSelector('[data-palette-option="answer:action:create-token"]', { timeout: WAIT });
+});
+
+scenario("an issue made by mistake is deleted from its page and is gone", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Tidying up", { visit: false });
+  const issueKey = await createIssue(page, key, "filed by mistake", { visit: false });
+
+  await goto(page, `/issues/${issueKey}`);
+  await press(page, '[data-action="delete-issue"]');
+  await page.waitForSelector(`[data-confirm="issue ${issueKey}"]`, { timeout: WAIT });
+  expect.contains(await textOf(page, '[role="dialog"]'), `Delete issue ${issueKey}?`, "the question names the issue by its key");
+  await confirm(page);
+
+  // The page it stood on is left for the project, and the issue is not found any more.
+  await page.waitForFunction((k) => location.pathname.startsWith(`/projects/${k}`), { timeout: WAIT }, key);
+  await goto(page, `/issues/${issueKey}`);
+  await page.waitForFunction(() => document.body.innerText.includes("That issue was not found."), { timeout: WAIT });
 });

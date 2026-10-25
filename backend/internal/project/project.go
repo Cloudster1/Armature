@@ -88,6 +88,10 @@ var (
 	ErrKeyTaken = errors.New("that project key is already in use")
 	// ErrArchived is returned when writing to an archived project.
 	ErrArchived = errors.New("this project is archived")
+	// ErrAlreadyArchived and ErrNotArchived are returned when archiving or
+	// restoring a project that is already where it was asked to go.
+	ErrAlreadyArchived = errors.New("this project is already archived")
+	ErrNotArchived     = errors.New("this project is not archived")
 	// ErrNotADesk is returned when a software project is told to leave its door open.
 	ErrNotADesk = errors.New("only a service desk has a door to leave open")
 	// ErrRequestTypeElsewhere is returned for a mail request type that is not

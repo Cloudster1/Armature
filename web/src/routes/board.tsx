@@ -3,7 +3,7 @@ import { Link, createRoute, useNavigate } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useBoards } from "@/api/boards";
 import { useProject } from "@/api/projects";
-import { useMe } from "@/api/auth";
+import { holds, useAccess } from "@/api/access";
 import { BoardPicker } from "@/features/board/BoardPicker";
 import { NewBoardForm } from "@/features/board/NewBoardForm";
 import { BoardView } from "@/features/board/BoardView";
@@ -27,7 +27,7 @@ export const boardRoute = createRoute({
 function BoardPage() {
   const { projectKey } = boardRoute.useParams();
   const { data } = useProject(projectKey);
-  const { data: me } = useMe();
+  const { data: access } = useAccess();
   const [configuring, setConfiguring] = useState(false);
   const [adding, setAdding] = useState(false);
   const { data: boardData } = useBoards(projectKey);
@@ -46,7 +46,10 @@ function BoardPage() {
   const shown = showing?.name ?? t.board.page.fallback;
   const scrum = showing?.type === "scrum";
 
-  const canConfigure = me?.principal.role === "owner" || me?.principal.role === "admin";
+  // Decided per project as the server decides it: a project role can grant
+  // these, and an installation role need not.
+  const canConfigure = holds(access, "board.configure", projectKey);
+  const canAddBoard = holds(access, "project.administer", projectKey);
 
   return (
     <Page width="wide">
@@ -65,22 +68,24 @@ function BoardPage() {
         meta={scrum ? t.board.page.metaScrum : t.board.page.metaKanban}
         tabs={<BoardPicker projectKey={projectKey} boardId={boardId} onPick={(picked) => go({ board: picked?.id, filter }, false)} canManage={canConfigure} />}
         actions={
-          canConfigure && (
+          (canConfigure || canAddBoard) && (
             <>
-              {!adding && (
+              {canAddBoard && !adding && (
                 <Button variant="secondary" onClick={() => setAdding(true)}>
                   {t.board.page.newBoard}
                 </Button>
               )}
-              <Button variant={configuring ? "primary" : "secondary"} onClick={() => setConfiguring(!configuring)}>
-                {configuring ? t.board.page.doneConfiguring : t.board.page.configure}
-              </Button>
+              {canConfigure && (
+                <Button variant={configuring ? "primary" : "secondary"} onClick={() => setConfiguring(!configuring)}>
+                  {configuring ? t.board.page.doneConfiguring : t.board.page.configure}
+                </Button>
+              )}
             </>
           )
         }
       />
 
-      {adding && <NewBoardForm projectKey={projectKey} defaultType={boards[0]?.type ?? "kanban"} onDone={() => setAdding(false)} />}
+      {canAddBoard && adding && <NewBoardForm projectKey={projectKey} defaultType={boards[0]?.type ?? "kanban"} onDone={() => setAdding(false)} />}
 
       <div className={cx(configuring && "grid gap-6 xl:grid-cols-[1fr_28rem]")}>
         {/* min-w-0 lets the grid track shrink below the board's natural width.
@@ -89,7 +94,7 @@ function BoardPage() {
         <div className="min-w-0">
           <BoardView projectKey={projectKey} boardId={boardId} filter={filter} onFilter={(next) => go({ board: boardId, filter: next }, true)} />
         </div>
-        {configuring && showing && (
+        {canConfigure && configuring && showing && (
           <aside className="min-w-0">
             <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">{t.board.page.swimlanes}</h2>
             <SwimlaneEditor boardId={showing.id} />
