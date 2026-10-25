@@ -2736,9 +2736,10 @@ export async function chooseDesk(page, projectKey) {
 
 /**
  * Has one issue type follow a workflow of its own in one project, drawn from
- * statuses by name: issues open in the first, and each leads to the next.
+ * statuses by name: issues open in the first, and each leads to the next,
+ * carrying the rules given, such as a validator.
  */
-export async function followWorkflow(page, projectKey, typeName, { name, statuses }) {
+export async function followWorkflow(page, projectKey, typeName, { name, statuses, rules = [] }) {
   const { statuses: known } = await callAPI(page, "GET", "/statuses");
   const idOf = (status) => {
     const found = known.find((each) => each.name === status);
@@ -2746,7 +2747,7 @@ export async function followWorkflow(page, projectKey, typeName, { name, statuse
     return found.id;
   };
   const steps = statuses.map((status, i) => ({ statusId: idOf(status), isInitial: i === 0 }));
-  const transitions = statuses.slice(1).map((status, i) => ({ name: `To ${status}`, fromStatusId: idOf(statuses[i]), toStatusId: idOf(status) }));
+  const transitions = statuses.slice(1).map((status, i) => ({ name: `To ${status}`, fromStatusId: idOf(statuses[i]), toStatusId: idOf(status), rules }));
   const { workflow } = await callAPI(page, "POST", "/workflows", { name, steps, transitions });
   const typeId = await issueTypeId(page, typeName);
   await callAPI(page, "PUT", `/projects/${projectKey}/workflow-assignments/${typeId}`, { workflowId: workflow.id });

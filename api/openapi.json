@@ -31230,6 +31230,12 @@
           "name": {
             "type": "string"
           },
+          "needs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "position": {
             "type": "integer"
           },

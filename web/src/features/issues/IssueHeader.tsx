@@ -1,11 +1,12 @@
 import { useState, type KeyboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { type Issue, isStaleEdit, useIssueHierarchy, useTransitionIssue, useTransitions, useUpdateIssue } from "@/api/issues";
+import { type Issue, isStaleEdit, useIssueHierarchy, useUpdateIssue } from "@/api/issues";
 import { Icon } from "@/components/icons";
-import { Button, ErrorBanner, IconButton, Input, cx } from "@/components/ui";
+import { IconButton, Input, cx } from "@/components/ui";
 import { StatusBadge } from "./badges";
 import { Ancestry } from "./hierarchy";
 import { TypeField } from "./TypePicker";
+import { TransitionBar } from "./TransitionBar";
 import { DeleteIssueButton } from "./DeleteIssue";
 import { CloneMoveMenu } from "@/features/filters/CloneMoveMenu";
 import { t } from "@/i18n";
@@ -131,40 +132,6 @@ function SummaryEditor({ issueKey, summary, updatedAt, editable }: { issueKey: s
     <div className="flex min-w-0 flex-1 items-start gap-1">
       <h1 className="min-w-0 text-lg font-semibold tracking-tight text-ink">{summary}</h1>
       {editable && <IconButton icon={<Icon.Edit />} label={t.issueView.header.editSummary} size="sm" onClick={start} data-action="edit-summary" />}
-    </div>
-  );
-}
-
-// The transitions the workflow currently allows. The server decides what is
-// offered, so a transition the user may not take never appears as a button.
-function TransitionBar({ issueKey }: { issueKey: string }) {
-  const { data, isLoading } = useTransitions(issueKey);
-  const transition = useTransitionIssue();
-  const transitions = data?.transitions ?? [];
-
-  if (isLoading) return null;
-
-  return (
-    <div className="flex max-w-full min-w-0 flex-col items-end gap-2">
-      {transitions.length === 0 ? (
-        <p className="text-sm text-ink-subtle">{t.issueView.header.nowhereToGo}</p>
-      ) : (
-        <div className="flex flex-wrap justify-end gap-2">
-          {transitions.map((t) => (
-            <Button
-              key={t.id}
-              size="sm"
-              variant="secondary"
-              title={t.description || undefined}
-              loading={transition.isPending && transition.variables?.transitionId === t.id}
-              onClick={() => transition.mutate({ key: issueKey, transitionId: t.id })}
-            >
-              {t.name}
-            </Button>
-          ))}
-        </div>
-      )}
-      {transition.error && <ErrorBanner>{(transition.error as Error).message}</ErrorBanner>}
     </div>
   );
 }

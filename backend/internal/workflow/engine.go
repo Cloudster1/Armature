@@ -56,12 +56,33 @@ func (e *Engine) Available(w *Workflow, subject Subject, actor Actor) ([]Transit
 		if err != nil {
 			return nil, err
 		}
-		if allowed {
-			out = append(out, t)
+		if !allowed {
+			continue
 		}
+		if t.Needs, err = e.needs(t, subject, actor); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
 	}
 
 	slices.SortStableFunc(out, func(a, b Transition) int { return a.Position - b.Position })
+	return out, nil
+}
+
+// needs asks each validator what it would refuse a bare move for, so the answer
+// follows the rules themselves, an issue that already has an assignee included.
+func (e *Engine) needs(t Transition, subject Subject, actor Actor) ([]string, error) {
+	var out []string
+	for _, rule := range rulesOfKind(t.Rules, KindValidator) {
+		validator, err := e.registry.buildValidator(rule)
+		if err != nil {
+			return nil, fmt.Errorf("transition %q: %w", t.Name, err)
+		}
+		var refused *RuleError
+		if errors.As(validator.Validate(subject, actor, Input{}), &refused) && refused.Field != "" && !slices.Contains(out, refused.Field) {
+			out = append(out, refused.Field)
+		}
+	}
 	return out, nil
 }
 

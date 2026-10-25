@@ -15,6 +15,7 @@ import {
   dragConnect,
   dragNode,
   expect,
+  followWorkflow,
   goto,
   grantRole,
   inviteMember,
@@ -22,12 +23,14 @@ import {
   nodePosition,
   openWorkflowDesign,
   pickBySearch,
+  press,
   replaceValue,
   revokeAll,
   selectByLabel,
   selectNode,
   signIn,
   signUp,
+  textOf,
   unique,
   uniqueName,
   WAIT,
@@ -254,7 +257,7 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   await page.waitForSelector('[data-rule="validator.comment_required"]', { timeout: WAIT });
 
   // And the rule drawn there is the rule that holds: a bug on this workflow
-  // cannot be started without a comment.
+  // is not started until somebody says why.
   await createScheme(page, { name: drawnScheme, issueType: "Bug", workflow: drawn });
   await goto(page, `/projects/${key}/workflows`);
   await pickBySearch(page, "#project-scheme", drawnScheme);
@@ -263,10 +266,37 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   const issueKey = await createIssue(page, key, "needs a word first", { type: "Bug", visit: false });
   await goto(page, `/issues/${issueKey}`);
   await clickButton(page, "Start");
-  await page.waitForFunction(() => document.body.innerText.includes("This transition needs a comment."), { timeout: WAIT });
+  await page.waitForSelector("[data-transition-dialog] textarea", { timeout: WAIT });
+  await page.type("[data-transition-dialog] textarea", "Picking this up now.");
+  await press(page, '[data-transition-dialog] [data-action="transition-go"]');
+  await page.waitForSelector("header .status-in_progress", { timeout: WAIT });
 });
 
-scenario("deleting a scheme a project uses is refused and says which", async ({ page }) => {
+scenario("a move that needs a resolution asks for one on the issue page and records it", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Resolving", { visit: false });
+  // Workflows are everybody's, so this one has a name nobody else took.
+  await followWorkflow(page, key, "Bug", {
+    name: uniqueName("Closed with a reason"),
+    statuses: ["To Do", "Done"],
+    rules: [
+      { kind: "validator", type: "validator.resolution_required" },
+      { kind: "postfunction", type: "postfunction.set_resolved" },
+    ],
+  });
+  const issueKey = await createIssue(page, key, "nobody wants this", { type: "Bug", visit: false });
+
+  await goto(page, `/issues/${issueKey}`);
+  await clickButton(page, "To Done");
+  await page.waitForSelector("[data-transition-dialog] select", { timeout: WAIT });
+  await selectByLabel(page, "[data-transition-dialog] select", "Won't do");
+  await press(page, '[data-transition-dialog] [data-action="transition-go"]');
+
+  await page.waitForSelector("header .status-done", { timeout: WAIT });
+  await page.waitForFunction(() => document.querySelector("[data-issue-history]")?.innerText.includes("resolved this as Won't do"), { timeout: WAIT });
+});
+
+scenario("a scheme a project uses is not offered for deletion and says which project to move", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   // Workflows and schemes are everybody's, so these have names nobody else took.
   const leanScheme = uniqueName("Lean scheme");
@@ -281,6 +311,16 @@ scenario("deleting a scheme a project uses is refused and says which", async ({ 
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
 
+  await goto(page, `/settings/workflows/schemes?q=${encodeURIComponent(leanScheme)}`);
+  const card = `[data-scheme-card="${leanScheme}"]`;
+  await page.waitForSelector(`${card} [data-scheme-move-first]`, { timeout: WAIT });
+  expect.contains(await textOf(page, `${card} [data-scheme-move-first]`), `move ${key} to another scheme first`, "the card names the project to move");
+  expect.truthy(!(await page.$(`${card} [data-action="delete"]`)), "and offers no delete the server would refuse");
+
+  // Once the project hands the decision back, the scheme can go.
+  await goto(page, `/projects/${key}/workflows`);
+  await clickButton(page, "Follow the default");
+  await page.waitForFunction(() => document.body.innerText.includes("This project follows the default"), { timeout: WAIT });
   await deleteScheme(page, leanScheme);
-  await page.waitForFunction((k) => document.body.innerText.includes(`${k} still uses it`), { timeout: WAIT }, key);
+  await page.waitForFunction((sel) => !document.querySelector(sel), { timeout: WAIT }, card);
 });

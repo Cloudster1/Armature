@@ -11,6 +11,21 @@ export const issueViewEn = {
     deleteBody: (key: string) => `${key} goes for good, with its comments, files, history and every issue under it.`,
     deleted: (key: string) => `${key} was deleted.`,
   },
+  transition: {
+    needs: "This move asks for a few things first. Fill them in to make it.",
+    comment: "Comment",
+    resolution: "Resolution",
+    chooseResolution: "Choose a resolution",
+    resolutions: {
+      done: "Done",
+      wontDo: "Won't do",
+      duplicate: "Duplicate",
+      cannotReproduce: "Cannot reproduce",
+    },
+    assignee: "Assignee",
+    chooseAssignee: "Choose somebody",
+    cancel: "Cancel",
+  },
   sections: {
     onThisPage: "On this page",
     description: "Description",

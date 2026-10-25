@@ -381,6 +381,9 @@ export const ACTIVITY_FOLD = 12;
 /** Lines a description box shows before it scrolls, in the create form. */
 export const DESCRIPTION_ROWS = 4;
 
+/** Lines the comment box shows when a transition asks for one. */
+export const TRANSITION_COMMENT_ROWS = 3;
+
 /** Placeholder rows the create dialog shows while it learns the arrangement. */
 export const DIALOG_SKELETON_LINES = 3;
 

@@ -114,7 +114,10 @@ type Transition struct {
 	ToStepID    uuid.UUID  `json:"toStepId"`
 	Description string     `json:"description,omitempty"`
 	Position    int        `json:"position"`
-	Rules       []Rule     `json:"-"`
+	// Needs names what the move has to come with (comment, resolution, assignee),
+	// so a client can ask for it first; only a transition on offer carries it.
+	Needs []string `json:"needs,omitempty"`
+	Rules []Rule   `json:"-"`
 }
 
 // IsGlobal reports whether the transition can be taken from any status.

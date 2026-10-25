@@ -427,3 +427,52 @@ func TestAWorkflowWithoutTransitionsListsNone(t *testing.T) {
 		}
 	}
 }
+
+// The issue page asks for what a move needs before sending it, and asks after a
+// refusal it did not see coming, so the offer and the refusal both name the field.
+func TestAPITransitionSaysWhatItNeeds(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	needKey := h.projectKey(t, "NEED")
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signIn(t, h.person(t, "needs", auth.RoleOwner))
+
+	want(t, owner.post("/api/v1/projects", map[string]string{"name": "Needs", "key": needKey}), http.StatusCreated, "create project")
+	task := find(t, owner.get("/api/v1/issue-types").Body["issueTypes"], "name", "Task")["id"].(string)
+	key := obj(t, want(t, owner.post("/api/v1/projects/"+needKey+"/issues", map[string]any{"summary": "Ask first", "typeId": task}), http.StatusCreated, "file"), "issue")["key"].(string)
+	offered := func(name string) map[string]any {
+		t.Helper()
+		return find(t, want(t, owner.get("/api/v1/issues/"+key+"/transitions"), http.StatusOK, "transitions").Body["transitions"], "name", name)
+	}
+
+	// Starting assigns the issue to whoever starts it; unassigning reaches the validator.
+	started := want(t, owner.post("/api/v1/issues/"+key+"/transitions", map[string]any{"transitionId": offered("Start progress")["id"]}), http.StatusOK, "start")
+	me := obj(t, started, "issue", "assignee")["id"]
+	want(t, owner.patch("/api/v1/issues/"+key, map[string]any{"assigneeId": nil}), http.StatusOK, "unassign")
+
+	t.Run("an unassigned issue's move says it needs an assignee", func(t *testing.T) {
+		needs, _ := offered("Ready for review")["needs"].([]any)
+		if len(needs) != 1 || needs[0] != "assignee" {
+			t.Errorf("needs = %v, want [assignee]", needs)
+		}
+	})
+
+	t.Run("the refusal names the field it wants", func(t *testing.T) {
+		resp := owner.post("/api/v1/issues/"+key+"/transitions", map[string]any{"transitionId": offered("Ready for review")["id"]})
+		if resp.Status != http.StatusUnprocessableEntity {
+			t.Fatalf("returned %d: %s", resp.Status, resp.Raw)
+		}
+		fields, _ := resp.Error()["fields"].(map[string]any)
+		if fields["assignee"] != "This transition needs an assignee." {
+			t.Errorf("fields = %v, want the assignee named", fields)
+		}
+	})
+
+	t.Run("an assigned issue's move needs nothing more", func(t *testing.T) {
+		want(t, owner.patch("/api/v1/issues/"+key, map[string]any{"assigneeId": me}), http.StatusOK, "assign")
+		if needs, ok := offered("Ready for review")["needs"]; ok {
+			t.Errorf("needs = %v, want none", needs)
+		}
+	})
+}
