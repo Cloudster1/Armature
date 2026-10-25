@@ -620,3 +620,21 @@ scenario("a person whose profile says German sets things up and signs in again i
   await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Anmelden"), { timeout: WAIT });
   expect.containsInsensitive(await bodyText(page), "Passwort vergessen?", "the way back in");
 });
+
+// The service desk's queues and the guide speak German too (#371): a German
+// question in the guide finds the page it asks about. A desk has no plan, so
+// the question is one every project answers.
+scenario("a person whose profile says German reads the queues and asks the guide in German", async ({ page }) => {
+  await signUp(page);
+  const key = await createProject(page, "Hilfe", { template: "service-desk", visit: false });
+  await speakThroughAPI(page, "de-DE");
+
+  await goto(page, `/projects/${key}/queues`);
+  await page.waitForFunction(() => document.documentElement.lang === "de", { timeout: WAIT });
+  await page.waitForFunction(() => document.body.innerText.includes("Warteschlangen"), { timeout: WAIT });
+
+  await page.click('[data-action="guide"]');
+  await page.waitForSelector('[data-palette-mode="ask"] input', { timeout: WAIT });
+  await page.type('[data-palette-mode="ask"] input', "Wie erstelle ich ein Zugriffstoken?");
+  await page.waitForSelector('[data-palette-option="answer:action:create-token"]', { timeout: WAIT });
+});

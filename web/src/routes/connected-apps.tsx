@@ -278,7 +278,7 @@ function AppForm({ app, submit, pending, error, withConfidential, onSubmit, onCa
             key={s.scope}
             label={
               <span>
-                {s.words} <span className="font-mono text-xs text-ink-subtle">{s.scope}</span>
+                {t.terms.scopes[s.scope] ?? s.words} <span className="font-mono text-xs text-ink-subtle">{s.scope}</span>
               </span>
             }
             checked={scopes.includes(s.scope)}

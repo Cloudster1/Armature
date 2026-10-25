@@ -207,7 +207,7 @@ function TokensPage() {
 /** A connected app's grant: what it may do in the consent page's words, and Disconnect. */
 function ConnectedAppRow({ token, disconnecting, onDisconnect }: { token: ApiToken; disconnecting: boolean; onDisconnect: () => void }) {
   const format = useFormat();
-  const words = token.scopes.map((scope) => CONNECTED_APP_SCOPES.find((s) => s.scope === scope)?.words ?? scope);
+  const words = token.scopes.map((scope) => t.terms.scopes[scope] ?? CONNECTED_APP_SCOPES.find((s) => s.scope === scope)?.words ?? scope);
   return (
     <li className="flex items-center justify-between gap-4 px-5 py-3" data-token={token.name} data-connected-app-grant={token.app?.name}>
       <div className="min-w-0">

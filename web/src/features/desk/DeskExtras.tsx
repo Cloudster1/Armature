@@ -28,15 +28,16 @@ import { t } from "@/i18n";
 
 // The desk's extras, as sections of its setup page.
 
-export const WEEKDAYS: Array<{ key: string; label: string }> = [
-  { key: "mon", label: "Monday" },
-  { key: "tue", label: "Tuesday" },
-  { key: "wed", label: "Wednesday" },
-  { key: "thu", label: "Thursday" },
-  { key: "fri", label: "Friday" },
-  { key: "sat", label: "Saturday" },
-  { key: "sun", label: "Sunday" },
-];
+/** The week's days, keyed as the server keys them; their words are read in the reader's language. */
+export const WEEKDAYS: Array<{ key: string; label: string; short: string }> = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((key) => ({
+  key,
+  get label() {
+    return t.desk.hours.weekdays[key]!.label;
+  },
+  get short() {
+    return t.desk.hours.weekdays[key]!.short;
+  },
+}));
 
 /** Nine to five, Monday to Friday, in the browser's zone: what a new desk starts from. */
 export function defaultCalendar(timezone: string): BusinessCalendar {
@@ -48,13 +49,12 @@ export function defaultCalendar(timezone: string): BusinessCalendar {
 /** The hours in a sentence: Mon to Fri 09:00 to 17:00 (Europe/Berlin). */
 export function describeCalendar(c: BusinessCalendar): string {
   const open = WEEKDAYS.filter((d) => (c.hours[d.key] ?? []).length > 0);
-  if (open.length === 0) return "never open";
+  if (open.length === 0) return t.desk.hours.neverOpen;
   const first = open[0]!;
   const same = open.every((d) => JSON.stringify(c.hours[d.key]) === JSON.stringify(c.hours[first.key]));
-  const span = (c.hours[first.key] ?? []).map((s) => `${s.from} to ${s.to}`).join(", ");
-  const days =
-    same && open.length > 1 ? `${first.label.slice(0, 3)} to ${open[open.length - 1]!.label.slice(0, 3)}` : open.map((d) => d.label.slice(0, 3)).join(", ");
-  return `${days} ${same ? span : "varied"} (${c.timezone})`;
+  const span = (c.hours[first.key] ?? []).map((s) => t.desk.hours.span(s.from, s.to)).join(", ");
+  const days = same && open.length > 1 ? t.desk.hours.dayRange(first.short, open[open.length - 1]!.short) : open.map((d) => d.short).join(", ");
+  return `${days} ${same ? span : t.desk.hours.varied} (${c.timezone})`;
 }
 
 export function KnowledgeBase({ projectKey }: { projectKey: string }) {
@@ -97,29 +97,29 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
 
   return (
     <section data-guide="knowledge-base">
-      <SectionTitle className="mb-2">Knowledge base</SectionTitle>
-      <p className="mb-3 text-sm text-ink-muted">Articles a customer is offered before raising a request. A draft is yours until you publish it.</p>
+      <SectionTitle className="mb-2">{t.desk.knowledge.title}</SectionTitle>
+      <p className="mb-3 text-sm text-ink-muted">{t.desk.knowledge.intro}</p>
       <Card className="mb-4 p-4">
         <form onSubmit={submit} className="space-y-3" noValidate data-testid="new-article">
           {(create.error ?? update.error) && <ErrorBanner>{((create.error ?? update.error) as Error).message}</ErrorBanner>}
           <Field
-            label="Article title"
+            label={t.desk.knowledge.articleTitle}
             id="field-article-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Resetting your password"
+            placeholder={t.desk.knowledge.titlePlaceholder}
           />
           <Field
-            label="Article body"
+            label={t.desk.knowledge.articleBody}
             id="field-article-body"
             rows={4}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Plain words, in the order a reader does them."
+            placeholder={t.desk.knowledge.bodyPlaceholder}
           />
           <div className="flex gap-2">
             <Button type="submit" loading={create.isPending || update.isPending} disabled={!title.trim()}>
-              {editing ? "Save article" : "Add article"}
+              {editing ? t.desk.knowledge.save : t.desk.knowledge.add}
             </Button>
             {editing && (
               <Button
@@ -130,7 +130,7 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
                   setBody("");
                 }}
               >
-                Cancel
+                {t.kit.cancel}
               </Button>
             )}
           </div>
@@ -140,8 +140,8 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
         <Table>
           <thead>
             <tr>
-              <Th>Article</Th>
-              <Th>State</Th>
+              <Th>{t.desk.knowledge.article}</Th>
+              <Th>{t.desk.knowledge.state}</Th>
               <Th className="w-40" />
             </tr>
           </thead>
@@ -153,16 +153,16 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
                   <span className="block truncate text-sm text-ink-muted">{a.body.slice(0, 120)}</span>
                 </Td>
                 <Td>
-                  <Tag>{a.published ? "Published" : "Draft"}</Tag>
+                  <Tag>{a.published ? t.desk.knowledge.published : t.desk.knowledge.draft}</Tag>
                 </Td>
                 <Td>
                   <span className="flex justify-end gap-1">
                     <Button variant="secondary" size="sm" onClick={() => update.mutate({ id: a.id, published: !a.published })} data-action="article-publish">
-                      {a.published ? "Unpublish" : "Publish"}
+                      {a.published ? t.desk.knowledge.unpublish : t.desk.knowledge.publish}
                     </Button>
                     <IconButton
                       icon={<Icon.Edit />}
-                      label={`Edit ${a.title}`}
+                      label={t.desk.knowledge.edit(a.title)}
                       size="sm"
                       onClick={() => {
                         setEditing(a);
@@ -172,13 +172,13 @@ export function KnowledgeBase({ projectKey }: { projectKey: string }) {
                     />
                     <IconButton
                       icon={<Icon.Trash />}
-                      label={`Delete ${a.title}`}
+                      label={t.desk.knowledge.delete(a.title)}
                       size="sm"
                       onClick={async () =>
                         (await confirm({
                           noun: t.kit.confirm.things.article,
                           verb: t.kit.confirm.verbs.delete,
-                          body: `${a.title} goes; customers stop finding it.`,
+                          body: t.desk.knowledge.deleteBody(a.title),
                         })) && remove.mutate(a.id)
                       }
                     />
@@ -233,27 +233,33 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
 
   return (
     <section data-guide="canned-responses">
-      <SectionTitle className="mb-2">Canned responses</SectionTitle>
+      <SectionTitle className="mb-2">{t.desk.canned.title}</SectionTitle>
       <p className="mb-3 text-sm text-ink-muted">
-        Replies agents keep ready. <span className="font-mono text-xs">{"{{customer.name}}"}</span>,{" "}
-        <span className="font-mono text-xs">{"{{issue.key}}"}</span>, <span className="font-mono text-xs">{"{{issue.summary}}"}</span> and{" "}
-        <span className="font-mono text-xs">{"{{agent.name}}"}</span> are filled in when one is inserted.
+        {t.desk.canned.introStart} <span className="font-mono text-xs">{"{{customer.name}}"}</span>,{" "}
+        <span className="font-mono text-xs">{"{{issue.key}}"}</span>, <span className="font-mono text-xs">{"{{issue.summary}}"}</span> {t.desk.canned.and}{" "}
+        <span className="font-mono text-xs">{"{{agent.name}}"}</span> {t.desk.canned.introEnd}
       </p>
       <Card className="mb-4 p-4">
         <form onSubmit={submit} className="space-y-3" noValidate data-testid="new-canned">
           {(create.error ?? update.error) && <ErrorBanner>{((create.error ?? update.error) as Error).message}</ErrorBanner>}
-          <Field label="Response name" id="field-canned-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Greeting" />
           <Field
-            label="Response body"
+            label={t.desk.canned.name}
+            id="field-canned-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t.desk.canned.namePlaceholder}
+          />
+          <Field
+            label={t.desk.canned.body}
             id="field-canned-body"
             rows={3}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Hello {{customer.name}}, thanks for writing about {{issue.summary}}."
+            placeholder={t.desk.canned.bodyPlaceholder}
           />
           <div className="flex gap-2">
             <Button type="submit" loading={create.isPending || update.isPending} disabled={!name.trim() || !body.trim()}>
-              {editing ? "Save response" : "Add response"}
+              {editing ? t.desk.canned.save : t.desk.canned.add}
             </Button>
             {editing && (
               <Button
@@ -264,7 +270,7 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
                   setBody("");
                 }}
               >
-                Cancel
+                {t.kit.cancel}
               </Button>
             )}
           </div>
@@ -274,8 +280,8 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
         <Table>
           <thead>
             <tr>
-              <Th>Name</Th>
-              <Th>Words</Th>
+              <Th>{t.desk.canned.nameHead}</Th>
+              <Th>{t.desk.canned.words}</Th>
               <Th className="w-24" />
             </tr>
           </thead>
@@ -288,7 +294,7 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
                   <span className="flex justify-end gap-1">
                     <IconButton
                       icon={<Icon.Edit />}
-                      label={`Edit ${c.name}`}
+                      label={t.desk.canned.edit(c.name)}
                       size="sm"
                       onClick={() => {
                         setEditing(c);
@@ -298,11 +304,14 @@ export function CannedResponses({ projectKey }: { projectKey: string }) {
                     />
                     <IconButton
                       icon={<Icon.Trash />}
-                      label={`Delete ${c.name}`}
+                      label={t.desk.canned.delete(c.name)}
                       size="sm"
                       onClick={async () =>
-                        (await confirm({ noun: t.kit.confirm.things.cannedResponse, verb: t.kit.confirm.verbs.delete, body: `${c.name} goes.` })) &&
-                        remove.mutate(c.id)
+                        (await confirm({
+                          noun: t.kit.confirm.things.cannedResponse,
+                          verb: t.kit.confirm.verbs.delete,
+                          body: t.desk.canned.deleteBody(c.name),
+                        })) && remove.mutate(c.id)
                       }
                     />
                   </span>
@@ -335,8 +344,8 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
 
   return (
     <section data-guide="business-hours">
-      <SectionTitle className="mb-2">Business hours</SectionTitle>
-      <p className="mb-3 text-sm text-ink-muted">When the desk is open. A goal that counts business hours stops at closing time and resumes in the morning.</p>
+      <SectionTitle className="mb-2">{t.desk.hours.title}</SectionTitle>
+      <p className="mb-3 text-sm text-ink-muted">{t.desk.hours.intro}</p>
       <Card className="p-4">
         <form
           onSubmit={(e) => {
@@ -344,7 +353,7 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
             save.mutate(calendar, {
               onSuccess: () => {
                 setDraft(null);
-                toast.success("Business hours saved");
+                toast.success(t.desk.hours.saved);
               },
             });
           }}
@@ -364,16 +373,16 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
                     <>
                       <Input
                         type="time"
-                        aria-label={`${d.label} opens`}
+                        aria-label={t.desk.hours.opens(d.label)}
                         controlSize="sm"
                         value={spans[0]!.from}
                         onChange={(e) => setSpan(d.key, "from", e.target.value)}
                         className="w-28"
                       />
-                      <span className="text-sm text-ink-subtle">to</span>
+                      <span className="text-sm text-ink-subtle">{t.desk.hours.to}</span>
                       <Input
                         type="time"
-                        aria-label={`${d.label} closes`}
+                        aria-label={t.desk.hours.closes(d.label)}
                         controlSize="sm"
                         value={spans[0]!.to}
                         onChange={(e) => setSpan(d.key, "to", e.target.value)}
@@ -386,25 +395,25 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
             })}
           </div>
           <Field
-            label="Time zone"
+            label={t.desk.hours.timezone}
             id="field-calendar-timezone"
             value={calendar.timezone}
             onChange={(e) => setDraft({ ...calendar, timezone: e.target.value })}
-            hint="The zone the hours are read in, such as Europe/Berlin."
+            hint={t.desk.hours.timezoneHint}
             className="max-w-xs"
           />
           <Select
-            label="Holidays from"
+            label={t.desk.hours.holidaysFrom}
             id="field-calendar-holiday-calendar"
             value={calendar.holidayCalendarId ?? ""}
             onChange={(e) => {
               const chosen = holidayCalendars?.calendars.find((c) => c.id === e.target.value);
               setDraft({ ...calendar, holidayCalendarId: chosen?.id ?? null, holidayCalendarName: chosen?.name ?? null });
             }}
-            hint="A holiday calendar from Settings, Holidays. The desk is closed on its days, and open half its hours on a half day."
+            hint={t.desk.hours.holidaysHint}
             className="max-w-xs"
           >
-            <option value="">None</option>
+            <option value="">{t.desk.hours.none}</option>
             {(holidayCalendars?.calendars ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -412,7 +421,7 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
             ))}
           </Select>
           <Field
-            label="Extra days off"
+            label={t.desk.hours.extraDays}
             id="field-calendar-holidays"
             value={calendar.holidays.join(", ")}
             onChange={(e) =>
@@ -425,20 +434,20 @@ export function BusinessHours({ projectKey }: { projectKey: string }) {
               })
             }
             placeholder="2026-12-25, 2026-12-26"
-            hint="The desk's own, beside the holiday calendar's: days written as YYYY-MM-DD, separated by commas."
+            hint={t.desk.hours.extraDaysHint}
           />
           <Button type="submit" loading={save.isPending} data-action="save-hours">
-            {saved ? "Save business hours" : "Set business hours"}
+            {saved ? t.desk.hours.save : t.desk.hours.set}
           </Button>
         </form>
       </Card>
       {saved && (
         <div className="mt-4 space-y-2" data-goal-calendars>
-          <p className="text-sm text-ink-muted">Which goals count only these hours ({describeCalendar(calendar)}):</p>
+          <p className="text-sm text-ink-muted">{t.desk.hours.whichGoals(describeCalendar(calendar))}</p>
           {(policyData?.policies ?? []).map((p) => (
             <Checkbox
               key={p.id}
-              label={`${p.name} counts business hours only`}
+              label={t.desk.hours.countsOnly(p.name)}
               checked={p.useCalendar}
               onChange={(e) => updatePolicy.mutate({ id: p.id, useCalendar: e.target.checked })}
               data-policy-calendar={p.metric}
@@ -490,7 +499,7 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
       {
         onSuccess: () => {
           setDraft("");
-          toast.success(`Trusting ${domain}`);
+          toast.success(t.desk.door.trusting(domain));
         },
       },
     );
@@ -498,8 +507,8 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
 
   return (
     <section data-guide="desk-door">
-      <SectionTitle className="mb-2">The door</SectionTitle>
-      <p className="mb-3 text-sm text-ink-muted">Where people without an account come in. Share the address; it names this desk.</p>
+      <SectionTitle className="mb-2">{t.desk.door.title}</SectionTitle>
+      <p className="mb-3 text-sm text-ink-muted">{t.desk.door.intro}</p>
       <Card className="space-y-4 p-4">
         <div className="flex items-center gap-2">
           <code className="min-w-0 flex-1 truncate rounded-control bg-surface-raised px-2 py-1 font-mono text-xs text-ink" data-desk-address>
@@ -507,37 +516,34 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
           </code>
           <IconButton
             icon={<Icon.Copy />}
-            label="Copy the address"
+            label={t.desk.door.copy}
             size="sm"
             data-action="copy-desk-address"
-            onClick={() => navigator.clipboard.writeText(address).then(() => toast.success("Address copied"))}
+            onClick={() => navigator.clipboard.writeText(address).then(() => toast.success(t.desk.door.copied))}
           />
         </div>
         <div className="flex items-start gap-3">
           <Switch
             checked={verifies}
             disabled={!editable || update.isPending}
-            label="Ask for a code by mail before letting somebody in"
+            label={t.desk.door.askCode}
             data-action="toggle-door"
             data-door-verifies={String(verifies)}
             onChange={(checked) =>
               update.mutate(
                 { key: project.key, portalVerifies: checked },
-                { onSuccess: () => toast.success(checked ? "The door asks for a code again" : "The door is open") },
+                { onSuccess: () => toast.success(checked ? t.desk.door.asksAgain : t.desk.door.isOpen) },
               )
             }
           />
           <div className="text-sm">
-            <p className="text-ink">Ask for a code by mail before letting somebody in</p>
-            <p className="text-ink-muted">
-              Off, anyone who gives an address is that address for this desk, and sees this desk alone. Turning it back on signs out everyone who came in
-              without a code.
-            </p>
+            <p className="text-ink">{t.desk.door.askCode}</p>
+            <p className="text-ink-muted">{t.desk.door.askCodeDetail}</p>
           </div>
         </div>
         <div className="space-y-2 border-t border-border pt-4" data-trusted-domains>
-          <p className="text-sm text-ink">Trusted domains</p>
-          <p className="text-sm text-ink-muted">Empty means any address. Applies to the door and to mail, replies and new requests alike.</p>
+          <p className="text-sm text-ink">{t.desk.door.trustedDomains}</p>
+          <p className="text-sm text-ink-muted">{t.desk.door.trustedHint}</p>
           {domains.length > 0 && (
             <ul className="flex flex-wrap gap-2">
               {domains.map((domain) => (
@@ -547,13 +553,13 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
                     {editable && (
                       <IconButton
                         icon={<Icon.X />}
-                        label={`Stop trusting ${domain}`}
+                        label={t.desk.door.stopTrusting(domain)}
                         size="xs"
                         disabled={update.isPending}
                         onClick={() =>
                           update.mutate(
                             { key: project.key, trustedDomains: domains.filter((d) => d !== domain) },
-                            { onSuccess: () => toast.success(`No longer trusting ${domain}`) },
+                            { onSuccess: () => toast.success(t.desk.door.noLongerTrusting(domain)) },
                           )
                         }
                       />
@@ -567,7 +573,7 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
             <form onSubmit={trust} className="flex items-end gap-2" noValidate>
               <div className="flex-1">
                 <Field
-                  label="Trusted domain"
+                  label={t.desk.door.trustedDomain}
                   id="field-trusted-domain"
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
@@ -577,28 +583,27 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
                 />
               </div>
               <Button type="submit" size="sm" variant="secondary" data-action="add-domain" disabled={!cleanDomain(draft) || update.isPending}>
-                Add
+                {t.desk.door.add}
               </Button>
             </form>
           )}
         </div>
         <div className="space-y-2 border-t border-border pt-4" data-mail-requests>
-          <p className="text-sm text-ink">New requests by mail</p>
+          <p className="text-sm text-ink">{t.desk.door.mailRequests}</p>
           {mailAddress ? (
             <p className="text-sm text-ink-muted">
-              A mail to{" "}
+              {t.desk.door.mailTo}{" "}
               <code className="rounded-control bg-surface-raised px-1 font-mono text-xs text-ink" data-desk-mail-address>
                 {mailAddress}
               </code>{" "}
-              that names no request becomes a request of this type, raised by its sender. Agents' mail and automatic replies never do. None answers it with the
-              portal's address instead.
+              {t.desk.door.mailBecomes}
             </p>
           ) : (
-            <p className="text-sm text-ink-muted">This installation reads no mailbox, so mail raises no requests here. The type chosen applies once it does.</p>
+            <p className="text-sm text-ink-muted">{t.desk.door.noMailbox}</p>
           )}
           <div className="max-w-xs">
             <Select
-              label="Request type for mail"
+              label={t.desk.door.mailType}
               id="field-mail-request-type"
               controlSize="sm"
               value={project.mailRequestTypeId ?? ""}
@@ -608,14 +613,14 @@ export function Door({ projectKey, editable }: { projectKey: string; editable: b
                 const chosen = e.target.value;
                 update.mutate(
                   { key: project.key, mailRequestTypeId: chosen || null },
-                  { onSuccess: () => toast.success(chosen ? "New mail raises requests" : "Mail raises no requests") },
+                  { onSuccess: () => toast.success(chosen ? t.desk.door.mailRaises : t.desk.door.mailRaisesNone) },
                 );
               }}
             >
-              <option value="">None</option>
-              {requestTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+              <option value="">{t.desk.door.none}</option>
+              {requestTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
                 </option>
               ))}
             </Select>

@@ -56,6 +56,7 @@ export const scheduleEn = {
     awayHalfDay: (name: string) => `${name} away half the day`,
   },
   resources: {
+    nothingThisWeek: "Nothing is scheduled this week.",
     title: "Resources",
     meta: "Scheduled work per week in hours, each issue's remaining time spread over its working days, against the hours left after holidays and absences.",
     grid: "Hours per week",

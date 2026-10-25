@@ -16,13 +16,10 @@ export const queuesRoute = createRoute({
   component: QueuesPage,
 });
 
-const filters: Array<{ value: QueueFilter; label: string }> = [
-  { value: "open", label: "Open" },
-  { value: "unassigned", label: "Unassigned" },
-  { value: "mine", label: "Mine" },
-  { value: "breached", label: "Breached" },
-  { value: "all", label: "All" },
-];
+const filterValues: QueueFilter[] = ["open", "unassigned", "mine", "breached", "all"];
+
+// Read while rendering, so the words follow the language.
+const filters = (): Array<{ value: QueueFilter; label: string }> => filterValues.map((value) => ({ value, label: t.desk.queues.filters[value]! }));
 
 /** The agents' view of a desk: what is waiting, and how long it has left. */
 function QueuesPage() {
@@ -55,14 +52,14 @@ function QueuesPage() {
             {projectData?.project?.name ?? projectKey}
           </Link>
         }
-        title="Queues"
+        title={t.desk.queues.title}
         meta={data ? countOf(total, t.kit.counted.request) : undefined}
       />
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <Segmented label="Queue" value={filter} onChange={choose} options={filters} />
+        <Segmented label={t.desk.queues.queue} value={filter} onChange={choose} options={filters()} />
         {companies.length > 0 && (
           <SelectInput
-            aria-label="Company"
+            aria-label={t.desk.queues.company}
             value={company}
             onChange={(e) => {
               setCompany(e.target.value);
@@ -71,7 +68,7 @@ function QueuesPage() {
             data-queue-company-filter
             className="w-48"
           >
-            <option value="">Every company</option>
+            <option value="">{t.desk.queues.everyCompany}</option>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -82,29 +79,29 @@ function QueuesPage() {
       </div>
 
       {isLoading ? null : rows.length === 0 ? (
-        <EmptyState title="Nothing in this queue" description="Requests customers raise land in Open, least time left first." />
+        <EmptyState title={t.desk.queues.empty} description={t.desk.queues.emptyDetail} />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th className="w-8" aria-label="Type" />
-              <Th className="w-24">Key</Th>
-              <Th>Request</Th>
-              <Th className="w-36">Kind</Th>
-              <Th className="w-32">Company</Th>
-              <Th className="w-32">Team</Th>
-              <Th className="w-40">Status</Th>
-              <Th className="w-10" aria-label="Assignee" />
-              <Th className="w-44">First response</Th>
-              <Th className="w-44">Resolution</Th>
-              <Th className="w-16">Rated</Th>
-              <Th className="w-20 text-right">Raised</Th>
+              <Th className="w-8" aria-label={t.desk.queues.type} />
+              <Th className="w-24">{t.desk.queues.key}</Th>
+              <Th>{t.desk.queues.request}</Th>
+              <Th className="w-36">{t.desk.queues.kind}</Th>
+              <Th className="w-32">{t.desk.queues.company}</Th>
+              <Th className="w-32">{t.desk.queues.team}</Th>
+              <Th className="w-40">{t.desk.queues.status}</Th>
+              <Th className="w-10" aria-label={t.desk.queues.assignee} />
+              <Th className="w-44">{t.desk.queues.firstResponse}</Th>
+              <Th className="w-44">{t.desk.queues.resolution}</Th>
+              <Th className="w-16">{t.desk.queues.rated}</Th>
+              <Th className="w-20 text-right">{t.desk.queues.raised}</Th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
-              const first = row.timers.find((t) => t.metric === "first_response");
-              const resolution = row.timers.find((t) => t.metric === "resolution");
+              const first = row.timers.find((timer) => timer.metric === "first_response");
+              const resolution = row.timers.find((timer) => timer.metric === "resolution");
               return (
                 <tr key={row.issue.id} className="group hover:bg-surface-raised/60" data-queue-row={row.issue.key}>
                   <Td>
@@ -132,7 +129,7 @@ function QueuesPage() {
                   <Td>{first && <SlaBadge timer={first} short />}</Td>
                   <Td>{resolution && <SlaBadge timer={resolution} short />}</Td>
                   <Td className="text-sm tabular-nums text-ink-muted" data-queue-csat={row.csat ?? ""}>
-                    {row.csat ? `${row.csat} / 5` : ""}
+                    {row.csat ? t.desk.queues.outOfFive(row.csat) : ""}
                   </Td>
                   <Td className="text-right text-sm whitespace-nowrap text-ink-subtle">
                     <RelativeTime iso={row.issue.createdAt} />
@@ -143,7 +140,7 @@ function QueuesPage() {
           </tbody>
         </Table>
       )}
-      <Pager label="Queue pages" total={total} offset={offset} pageSize={QUEUE_PAGE_SIZE} onChange={setOffset} />
+      <Pager label={t.desk.queues.pages} total={total} offset={offset} pageSize={QUEUE_PAGE_SIZE} onChange={setOffset} />
     </Page>
   );
 }

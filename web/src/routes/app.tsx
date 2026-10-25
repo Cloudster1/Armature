@@ -191,11 +191,11 @@ function PortalShell() {
           <SkipLink />
           <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-4 shell:px-6" data-print-hide>
             <div className="flex min-w-0 items-center gap-2 shell:gap-5">
-              <span className="min-w-0 truncate text-sm font-semibold text-ink">{principal?.installation?.name ?? "Support"}</span>
+              <span className="min-w-0 truncate text-sm font-semibold text-ink">{principal?.installation?.name ?? t.desk.portal.support}</span>
               <PortalLink to="/portal" exact>
-                Your requests
+                {t.desk.portal.yourRequests}
               </PortalLink>
-              <PortalLink to="/portal/new">Raise a request</PortalLink>
+              <PortalLink to="/portal/new">{t.desk.portal.raise}</PortalLink>
             </div>
             <div className="flex shrink-0 items-center gap-3">
               {/* On a phone the address gives way to the two links; the avatar still says who is in. */}

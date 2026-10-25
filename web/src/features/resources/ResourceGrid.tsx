@@ -133,7 +133,7 @@ export function WeekIssues({ row, week }: { row: ResourceRow; week: ResourceWeek
         <p className="text-xs text-ink-muted">{describeHours(week, row.sharePercent)}</p>
       </div>
       {week.issues.length === 0 ? (
-        <p className="text-xs text-ink-subtle">Nothing is scheduled this week.</p>
+        <p className="text-xs text-ink-subtle">{t.schedule.resources.nothingThisWeek}</p>
       ) : (
         <ul className="space-y-1">
           {week.issues.map((issue) => (

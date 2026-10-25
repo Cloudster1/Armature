@@ -38,8 +38,9 @@ import {
   Textarea,
 } from "@/components/ui";
 import { Avatar, StatusBadge, RelativeTime } from "@/features/issues/badges";
-import { groupByCategory, prefillDetails } from "@/features/desk/templates";
+import { categoryHeading, groupByCategory, prefillDetails } from "@/features/desk/templates";
 import { sharedByCompany } from "@/features/desk/company";
+import { t } from "@/i18n";
 
 /**
  * The customer portal: raise a request, follow it, reply. A customer sees
@@ -80,13 +81,13 @@ function ArticleSearch({ projectKey }: { projectKey: string | undefined }) {
   return (
     <div className="space-y-2" data-article-search>
       <Field
-        label="Is it one of these?"
+        label={t.desk.portal.oneOfThese}
         id="field-article-search"
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="A word or two about it"
-        hint="What the desk has written down; it may answer you now."
+        placeholder={t.desk.portal.searchPlaceholder}
+        hint={t.desk.portal.searchHint}
       />
       {articles.length > 0 ? (
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -105,7 +106,7 @@ function ArticleSearch({ projectKey }: { projectKey: string | undefined }) {
           ))}
         </ul>
       ) : (
-        query && <p className="text-sm text-ink-subtle">Nothing written about that; raise the request below.</p>
+        query && <p className="text-sm text-ink-subtle">{t.desk.portal.nothingWritten}</p>
       )}
     </div>
   );
@@ -120,19 +121,19 @@ function ArticlePage() {
       <PageHeader
         crumb={
           <Link to="/portal/new" className="hover:text-ink">
-            Raise a request
+            {t.desk.portal.raise}
           </Link>
         }
-        title={article?.title ?? "Article"}
+        title={article?.title ?? t.desk.portal.article}
       />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {article && (
         <Card className="p-5" data-portal-article={article.title}>
           <p className="whitespace-pre-wrap text-sm text-ink">{article.body}</p>
           <p className="mt-4 text-sm text-ink-muted">
-            Did this not help?{" "}
+            {t.desk.portal.didNotHelp}{" "}
             <Link to="/portal/new" className="text-accent hover:underline">
-              Raise a request.
+              {t.desk.portal.raiseDot}
             </Link>
           </p>
         </Card>
@@ -153,21 +154,21 @@ function MyRequests() {
   return (
     <Page width="content" className="space-y-8">
       <PageHeader
-        title={desk ? `Your requests at ${desk}` : "Your requests"}
-        meta={data ? `${requests.length} request${requests.length === 1 ? "" : "s"}` : undefined}
+        title={desk ? t.desk.portal.yourRequestsAt(desk) : t.desk.portal.yourRequests}
+        meta={data ? t.desk.portal.count(requests.length) : undefined}
         actions={
           <Link to="/portal/new" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm font-medium text-on-primary hover:bg-primary-hover">
-            Raise a request
+            {t.desk.portal.raise}
           </Link>
         }
       />
       {isLoading ? null : requests.length === 0 ? (
         <EmptyState
-          title="Nothing raised yet"
-          description="When you raise a request it appears here, with every reply the desk sends you."
+          title={t.desk.portal.nothingRaised}
+          description={t.desk.portal.nothingRaisedDetail}
           action={
             <Link to="/portal/new" className="text-sm font-medium text-accent hover:underline">
-              Raise a request
+              {t.desk.portal.raise}
             </Link>
           }
         />
@@ -176,8 +177,8 @@ function MyRequests() {
       )}
       {sharedByCompany(shared).map((group) => (
         <section key={group.company} data-shared-by={group.company}>
-          <SectionTitle className="mb-2">Shared by {group.company}</SectionTitle>
-          <p className="mb-3 text-sm text-ink-muted">What colleagues raised and chose to share with {group.company}. You can read them, reply and add files.</p>
+          <SectionTitle className="mb-2">{t.desk.portal.sharedBy(group.company)}</SectionTitle>
+          <p className="mb-3 text-sm text-ink-muted">{t.desk.portal.sharedByDetail(group.company)}</p>
           <RequestTable requests={group.requests} showReporter />
         </section>
       ))}
@@ -190,12 +191,12 @@ function RequestTable({ requests, showReporter = false }: { requests: PortalRequ
     <Table>
       <thead>
         <tr>
-          <Th className="w-24">Reference</Th>
-          <Th>Request</Th>
-          {showReporter && <Th className="w-40">Raised by</Th>}
-          <Th className="w-40">Kind</Th>
-          <Th className="w-40">Status</Th>
-          <Th className="w-24 text-right">Updated</Th>
+          <Th className="w-24">{t.desk.portal.reference}</Th>
+          <Th>{t.desk.portal.request}</Th>
+          {showReporter && <Th className="w-40">{t.desk.portal.raisedBy}</Th>}
+          <Th className="w-40">{t.desk.portal.kind}</Th>
+          <Th className="w-40">{t.desk.portal.status}</Th>
+          <Th className="w-24 text-right">{t.desk.portal.updated}</Th>
         </tr>
       </thead>
       <tbody>
@@ -243,7 +244,7 @@ function RaiseRequest() {
 
   const desk = desks.find((d) => d.projectKey === (deskKey || desks[0]?.projectKey));
   const types = desk?.requestTypes ?? [];
-  const chosen = types.find((t) => t.id === typeId) ?? types[0];
+  const chosen = types.find((type) => type.id === typeId) ?? types[0];
   const groups = groupByCategory(types);
 
   // The details start from the template of what was chosen, and a change of
@@ -260,7 +261,7 @@ function RaiseRequest() {
     const picked = Array.from(event.target.files ?? []);
     event.target.value = "";
     const large = picked.find((f) => f.size > limit);
-    setTooBig(large ? `${large.name} is ${formatSize(large.size)}; the limit is ${formatSize(limit)}.` : "");
+    setTooBig(large ? t.desk.portal.tooBig(large.name, formatSize(large.size), formatSize(limit)) : "");
     setFiles((current) => [...current, ...picked.filter((f) => f.size <= limit && !current.some((c) => c.name === f.name))]);
   }
 
@@ -300,13 +301,13 @@ function RaiseRequest() {
       <PageHeader
         crumb={
           <Link to="/portal" className="hover:text-ink">
-            Your requests
+            {t.desk.portal.yourRequests}
           </Link>
         }
-        title="Raise a request"
+        title={t.desk.portal.raise}
       />
       {data && desks.length === 0 ? (
-        <EmptyState title="No desk to raise it with" description="Nobody has set up a service desk here yet." />
+        <EmptyState title={t.desk.portal.noDesk} description={t.desk.portal.noDeskDetail} />
       ) : (
         <Card className="p-5">
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
@@ -314,7 +315,7 @@ function RaiseRequest() {
 
             {desks.length > 1 && (
               <Select
-                label="Desk"
+                label={t.desk.portal.desk}
                 id="portal-desk"
                 value={desk?.projectKey ?? ""}
                 onChange={(e) => {
@@ -334,29 +335,29 @@ function RaiseRequest() {
 
             {desk?.mailAddress && (
               <p className="text-sm text-ink-muted" data-portal-mail-address={desk.mailAddress}>
-                You can also mail this desk at{" "}
+                {t.desk.portal.mailAt}{" "}
                 <a href={`mailto:${desk.mailAddress}`} className="text-accent hover:underline">
                   {desk.mailAddress}
                 </a>
-                ; the subject becomes the summary and any files come along.
+                {t.desk.portal.mailBecomes}
               </p>
             )}
 
             <fieldset className="space-y-2">
-              <legend className="block text-sm font-medium text-ink-muted">What is it about?</legend>
-              <div role="radiogroup" aria-label="Request type" className="space-y-3">
+              <legend className="block text-sm font-medium text-ink-muted">{t.desk.portal.whatAbout}</legend>
+              <div role="radiogroup" aria-label={t.desk.portal.requestType} className="space-y-3">
                 {groups.map((group) => (
                   <div key={group.name} data-request-category={group.name}>
-                    {groups.length > 1 && <p className="mb-1.5 text-xs font-medium tracking-wide text-ink-subtle uppercase">{group.name}</p>}
+                    {groups.length > 1 && <p className="mb-1.5 text-xs font-medium tracking-wide text-ink-subtle uppercase">{categoryHeading(group.name)}</p>}
                     <div className="grid gap-2 sm:grid-cols-3">
-                      {group.types.map((t: RequestType) => (
+                      {group.types.map((type: RequestType) => (
                         <OptionCard
-                          key={t.id}
-                          checked={t.id === chosen?.id}
-                          data-request-type={t.name}
-                          onSelect={() => setTypeId(t.id)}
-                          title={t.name}
-                          description={t.description || undefined}
+                          key={type.id}
+                          checked={type.id === chosen?.id}
+                          data-request-type={type.name}
+                          onSelect={() => setTypeId(type.id)}
+                          title={type.name}
+                          description={type.description || undefined}
                         />
                       ))}
                     </div>
@@ -365,35 +366,42 @@ function RaiseRequest() {
               </div>
             </fieldset>
 
-            <Field label="Summary" required autoFocus value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="What do you need?" />
             <Field
-              label="Details"
+              label={t.desk.portal.summary}
+              required
+              autoFocus
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder={t.desk.portal.summaryPlaceholder}
+            />
+            <Field
+              label={t.desk.portal.details}
               id="portal-description"
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Anything that helps: what you did, what happened, what you expected."
+              placeholder={t.desk.portal.detailsPlaceholder}
             />
 
             {desk?.company && (
               <div>
                 <Checkbox
-                  label={`Share with ${desk.company.name}`}
+                  label={t.desk.portal.shareWith(desk.company.name)}
                   checked={share}
                   onChange={(e) => setShare(e.target.checked)}
                   data-share-with-company={desk.company.name}
                 />
-                <p className="mt-1 text-xs text-ink-subtle">Your colleagues there can then read it, reply and add files. Nobody else sees it.</p>
+                <p className="mt-1 text-xs text-ink-subtle">{t.desk.portal.shareDetail}</p>
               </div>
             )}
 
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <input ref={picker} type="file" multiple className="sr-only" aria-label="Attach files" onChange={onPick} />
+                <input ref={picker} type="file" multiple className="sr-only" aria-label={t.desk.portal.attachFiles} onChange={onPick} />
                 <Button type="button" size="sm" variant="secondary" onClick={() => picker.current?.click()}>
-                  Attach files
+                  {t.desk.portal.attachFiles}
                 </Button>
-                <span className="text-xs text-ink-subtle">Screenshots, logs and documents up to {formatSize(limit)} each.</span>
+                <span className="text-xs text-ink-subtle">{t.desk.portal.attachHint(formatSize(limit))}</span>
               </div>
               {tooBig && <ErrorBanner>{tooBig}</ErrorBanner>}
               {files.length > 0 && (
@@ -406,10 +414,10 @@ function RaiseRequest() {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        aria-label={`Do not attach ${f.name}`}
+                        aria-label={t.desk.portal.doNotAttach(f.name)}
                         onClick={() => setFiles((current) => current.filter((c) => c !== f))}
                       >
-                        Remove
+                        {t.desk.portal.remove}
                       </Button>
                     </li>
                   ))}
@@ -419,20 +427,19 @@ function RaiseRequest() {
 
             {failed ? (
               <ErrorBanner>
-                Your request {failed.key} was sent, but {failed.names.length === 1 ? "one file" : `${failed.names.length} files`} could not be attached:{" "}
-                {failed.names.join(", ")}.{" "}
+                {t.desk.portal.sentNotAttached(failed.key, failed.names.length)} {failed.names.join(", ")}.{" "}
                 <Link to="/portal/requests/$issueKey" params={{ issueKey: failed.key }} className="underline">
-                  Open the request
+                  {t.desk.portal.openRequest}
                 </Link>{" "}
-                and attach {failed.names.length === 1 ? "it" : "them"} there.
+                {t.desk.portal.attachThere(failed.names.length)}
               </ErrorBanner>
             ) : (
               <div className="flex gap-2">
                 <Button type="submit" loading={raise.isPending || attaching !== null} disabled={!chosen || !summary.trim()}>
-                  {attaching ? `Attaching ${attaching.done + 1} of ${attaching.total}` : "Send request"}
+                  {attaching ? t.desk.portal.attaching(attaching.done + 1, attaching.total) : t.desk.portal.send}
                 </Button>
                 <Link to="/portal" className="inline-flex h-8 items-center px-3 text-sm text-ink-muted hover:text-ink">
-                  Cancel
+                  {t.desk.portal.cancel}
                 </Link>
               </div>
             )}
@@ -469,7 +476,7 @@ function RequestPage() {
       <PageHeader
         crumb={
           <Link to="/portal" className="hover:text-ink">
-            Your requests
+            {t.desk.portal.yourRequests}
           </Link>
         }
         title={issue.summary}
@@ -490,18 +497,18 @@ function RequestPage() {
           <>
             <Avatar name={issue.assignee.name} src={issue.assignee.avatarUrl} size="sm" />
             <span>
-              Being handled by <span className="font-medium text-ink">{issue.assignee.name}</span>
+              {t.desk.portal.handledBy} <span className="font-medium text-ink">{issue.assignee.name}</span>
             </span>
           </>
         ) : (
-          <span>Not picked up yet</span>
+          <span>{t.desk.portal.notPickedUp}</span>
         )}
-        {issue.team && <span data-request-team={issue.team.name}>· with {issue.team.name}</span>}
+        {issue.team && <span data-request-team={issue.team.name}>{t.desk.portal.withTeam(issue.team.name)}</span>}
       </p>
 
       {waiting && (
         <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink" data-testid="waiting-on-you">
-          The desk is waiting on you. Reply below and it goes back to them.
+          {t.desk.portal.waitingOnYou}
         </div>
       )}
 
@@ -510,9 +517,9 @@ function RequestPage() {
       {!data.throughCompany && <Followers issueKey={issueKey} reporterId={issue.reporter?.id} />}
 
       <section>
-        <SectionTitle className="mb-2">Conversation</SectionTitle>
+        <SectionTitle className="mb-2">{t.desk.portal.conversation}</SectionTitle>
         {comments.length === 0 ? (
-          <p className="mb-4 text-sm text-ink-subtle">No replies yet.</p>
+          <p className="mb-4 text-sm text-ink-subtle">{t.desk.portal.noReplies}</p>
         ) : (
           <ul className="mb-4 space-y-3">
             {comments.map((c) => (
@@ -520,7 +527,7 @@ function RequestPage() {
                 <Avatar name={c.author?.name} src={c.author?.avatarUrl} />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-ink-muted">
-                    <span className="font-medium text-ink">{c.author?.name ?? "The desk"}</span> · <RelativeTime iso={c.createdAt} />
+                    <span className="font-medium text-ink">{c.author?.name ?? t.desk.portal.theDesk}</span> · <RelativeTime iso={c.createdAt} />
                   </p>
                   <DocView doc={c.body} size="sm" className="mt-1" />
                 </div>
@@ -535,12 +542,19 @@ function RequestPage() {
 
         <form onSubmit={onSubmit} className="space-y-2">
           {reply.error && <ErrorBanner>{(reply.error as Error).message}</ErrorBanner>}
-          <Textarea id="portal-reply" aria-label="Reply" value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Reply to the desk" />
+          <Textarea
+            id="portal-reply"
+            aria-label={t.desk.portal.reply}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            placeholder={t.desk.portal.replyPlaceholder}
+          />
           <div className="flex items-center gap-3">
             <Button type="submit" size="sm" loading={reply.isPending} disabled={!text.trim()}>
-              Reply
+              {t.desk.portal.reply}
             </Button>
-            {repliesByMail && <span className="text-xs text-ink-subtle">You can also answer the mail the desk sends you.</span>}
+            {repliesByMail && <span className="text-xs text-ink-subtle">{t.desk.portal.replyByMail}</span>}
           </div>
         </form>
       </section>
@@ -555,7 +569,9 @@ function RaisedBy({ issue }: { issue: PortalRequest }) {
   if (!issue.sharedWithCompany || !issue.company) return null;
   return (
     <p className="mb-2 text-sm text-ink-muted" data-request-raised-by={issue.reporter?.name ?? ""}>
-      {mine ? `Shared with ${issue.company.name}.` : `Raised by ${issue.reporter?.name ?? "a colleague"} and shared with ${issue.company.name}.`}
+      {mine
+        ? t.desk.portal.sharedWith(issue.company.name)
+        : t.desk.portal.raisedAndShared(issue.reporter?.name ?? t.desk.portal.aColleague, issue.company.name)}
     </p>
   );
 }
@@ -582,9 +598,9 @@ function Followers({ issueKey, reporterId }: { issueKey: string; reporterId?: st
 
   return (
     <section className="mb-6" data-testid="followers">
-      <SectionTitle className="mb-2">Followers</SectionTitle>
+      <SectionTitle className="mb-2">{t.desk.portal.followers}</SectionTitle>
       {watchers.length === 0 ? (
-        <p className="mb-2 text-sm text-ink-subtle">Nobody else is following this request.</p>
+        <p className="mb-2 text-sm text-ink-subtle">{t.desk.portal.noFollowers}</p>
       ) : (
         <ul className="mb-2 divide-y divide-border rounded-md border border-border">
           {watchers.map((w) => (
@@ -597,7 +613,7 @@ function Followers({ issueKey, reporterId }: { issueKey: string; reporterId?: st
                   className="text-xs text-ink-subtle hover:text-danger"
                   onClick={() => unfollow.mutate({ key: issueKey, userId: w.userId })}
                 >
-                  {w.userId === me ? "Stop following" : "Remove"}
+                  {w.userId === me ? t.desk.portal.stopFollowing : t.desk.portal.remove}
                 </Button>
               )}
             </li>
@@ -610,15 +626,15 @@ function Followers({ issueKey, reporterId }: { issueKey: string; reporterId?: st
           <Input
             id="follower-address"
             type="email"
-            aria-label="Somebody to follow this request"
+            aria-label={t.desk.portal.followerLabel}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Add somebody by mail address"
+            placeholder={t.desk.portal.followerPlaceholder}
             data-follower-address
             className="w-72"
           />
           <Button type="submit" size="sm" variant="secondary" loading={follow.isPending} disabled={!email.trim()}>
-            Add follower
+            {t.desk.portal.addFollower}
           </Button>
         </form>
       )}

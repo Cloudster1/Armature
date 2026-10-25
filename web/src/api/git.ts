@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
+import { t } from "@/i18n";
 
 /**
  * A repository connected to a project. What flows in from it is linked to
@@ -196,5 +197,5 @@ export function checkoutCommand(branch: string): string {
 
 /** The host's own word for a pull request. */
 export function pullWord(host: HostKind | string): string {
-  return host === "gitlab" ? "merge request" : "pull request";
+  return host === "gitlab" ? t.terms.pull.gitlab : t.terms.pull.github;
 }

@@ -12,6 +12,8 @@ import { MentionList } from "./MentionList";
 import { HEADING_LEVELS, isEmptyDoc, type DocNode, type Mentionable } from "./schema";
 import { EditorToolbar } from "./Toolbar";
 import { useEditorMode } from "./useEditorMode";
+// Named apart: this file calls a piece of text t.
+import { t as words } from "@/i18n";
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
 export interface EditorHandle {
@@ -60,7 +62,7 @@ export function Editor({
   autoFocus = false,
   rows = 4,
   onSubmit,
-  "aria-label": ariaLabel = "Description",
+  "aria-label": ariaLabel = words.kit.editor.description,
   handle,
 }: EditorProps) {
   const [mode, setMode] = useEditorMode();
@@ -259,18 +261,14 @@ export function Editor({
   return (
     <div className="space-y-1.5" data-editor-frame>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {mode === "rich" && editor ? (
-          <EditorToolbar editor={editor} />
-        ) : (
-          <span className="text-xs text-ink-subtle">Markdown: **bold**, *italic*, # heading, - list, &gt; quote, ``` code</span>
-        )}
+        {mode === "rich" && editor ? <EditorToolbar editor={editor} /> : <span className="text-xs text-ink-subtle">{words.kit.editor.markdownHint}</span>}
         <Segmented
-          label="Editor mode"
+          label={words.kit.editor.mode}
           value={mode}
           size="sm"
           onChange={(next) => switchTo(next as "rich" | "markdown")}
           options={[
-            { value: "rich", label: "Rich", attrs: { "data-editor-mode": "rich" } },
+            { value: "rich", label: words.kit.editor.rich, attrs: { "data-editor-mode": "rich" } },
             { value: "markdown", label: "Markdown", attrs: { "data-editor-mode": "markdown" } },
           ]}
         />

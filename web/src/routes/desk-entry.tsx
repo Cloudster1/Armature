@@ -8,6 +8,7 @@ import { useDeskEntry } from "@/api/desk";
 import { EmptyState } from "@/components/ui";
 import { DeskEntryForm, OpenDoorForm } from "@/features/desk/DeskEntryForm";
 import { safePath } from "@/lib/path";
+import { t } from "@/i18n";
 
 type DoorSearch = { next?: string; desk?: string };
 
@@ -54,14 +55,14 @@ function DeskEntryPage() {
   if (door.error || !door.data) {
     return (
       <AuthLayout
-        title="No desk here"
+        title={t.desk.doorPage.noDesk}
         footer={
           <Link to="/login" className="font-medium text-accent hover:underline">
-            Sign in instead
+            {t.desk.doorPage.signInInstead}
           </Link>
         }
       >
-        <EmptyState title="There is no service desk at this address" description="Check the link you were given, or ask whoever gave it to you." />
+        <EmptyState title={t.desk.doorPage.noDeskTitle} description={t.desk.doorPage.noDeskDetail} />
       </AuthLayout>
     );
   }
@@ -78,12 +79,12 @@ function DeskEntryPage() {
   return (
     <AuthLayout
       title={name}
-      subtitle="Raise a request, or follow one you raised."
+      subtitle={t.desk.doorPage.subtitle}
       footer={
         <>
-          Have an account?{" "}
+          {t.desk.doorPage.haveAccount}{" "}
           <Link to="/login" className="font-medium text-accent hover:underline">
-            Sign in
+            {t.desk.doorPage.signIn}
           </Link>
         </>
       }

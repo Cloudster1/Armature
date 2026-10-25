@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the service desk, its queues, the customer portal, the rating page,
+  the guide and the rich editor speak German as well as English, which
+  finishes moving the interface into `web/src/i18n` (#371). The guide
+  answers German questions as well as English ones while the interface is
+  German, and a token's scopes are described in the reader's language.
 - Added: settings, a project's setup and the sign-in pages speak German as
   well as English (#371): workflows and the designer, access, roles, groups,
   users, tokens, connected apps, webhooks, the installation and the audit

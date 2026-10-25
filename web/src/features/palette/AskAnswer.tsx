@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useConfirmProposal, type AssistantAnswer, type AssistantProposal } from "@/api/assistant";
 import { Button } from "@/components/ui";
+import { t } from "@/i18n";
 
 /**
  * What the model answered, and what it proposes to change. A proposal happens
@@ -24,21 +25,21 @@ export function AskAnswer({
 
   return (
     <div className="border-b border-border px-3 py-3 text-sm" data-assistant-answer>
-      {pending && <p className="text-ink-subtle">Asking...</p>}
+      {pending && <p className="text-ink-subtle">{t.guide.ask.asking}</p>}
       {error ? <p className="text-danger">{(error as Error).message}</p> : null}
       {answer && (
         <>
           <p className="text-ink">{answer.text}</p>
           {answer.to && (
             <Button size="sm" className="mt-2" onClick={() => onGo(answer)} data-action="go-there">
-              Go there
+              {t.guide.ask.goThere}
             </Button>
           )}
           {proposals.map((proposal) => (
             <div key={proposal.tool} className="mt-2 flex items-center gap-2" data-proposal={proposal.tool}>
               <span className="min-w-0 flex-1 text-ink-subtle">{proposal.says}</span>
               {done.includes(proposal.tool) ? (
-                <span className="text-ink-subtle">Done</span>
+                <span className="text-ink-subtle">{t.guide.ask.done}</span>
               ) : (
                 <Button
                   size="sm"
@@ -47,7 +48,7 @@ export function AskAnswer({
                   onClick={() => confirmProposal.mutate(proposal, { onSuccess: () => setDone((was) => [...was, proposal.tool]) })}
                   data-action="confirm-proposal"
                 >
-                  Confirm
+                  {t.guide.ask.confirm}
                 </Button>
               )}
             </div>
