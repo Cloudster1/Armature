@@ -7884,6 +7884,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            needs?: string[];
             position: number;
             /** Format: uuid */
             toStepId: string;

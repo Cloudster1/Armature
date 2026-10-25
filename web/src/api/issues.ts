@@ -169,6 +169,20 @@ export interface Transition {
   toStepId: string;
   description?: string;
   position: number;
+  /** What the move has to come with; the server leaves out what the issue already has. */
+  needs?: TransitionNeed[];
+}
+
+/** What a transition's rules may ask to be sent along with it. */
+export type TransitionNeed = "comment" | "resolution" | "assignee";
+
+/** A transition and what is sent along with it. */
+export interface TransitionInput {
+  key: string;
+  transitionId: string;
+  comment?: string;
+  resolution?: string;
+  assigneeId?: string;
 }
 
 export interface Comment {
@@ -388,10 +402,10 @@ export function useUpdateIssue() {
 export function useTransitionIssue() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ key, transitionId, comment }: { key: string; transitionId: string; comment?: string }) =>
+    mutationFn: ({ key, ...body }: TransitionInput) =>
       request<{ issue: Issue }>(`/issues/${key}/transitions`, {
         method: "POST",
-        body: { transitionId, comment },
+        body,
       }),
     // A transition can change the status, the assignee, the resolution, the
     // comments and the history at once, so everything about this issue is stale.

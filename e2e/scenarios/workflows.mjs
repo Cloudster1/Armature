@@ -15,6 +15,7 @@ import {
   dragConnect,
   dragNode,
   expect,
+  followWorkflow,
   goto,
   grantRole,
   inviteMember,
@@ -22,6 +23,7 @@ import {
   nodePosition,
   openWorkflowDesign,
   pickBySearch,
+  press,
   replaceValue,
   revokeAll,
   selectByLabel,
@@ -254,7 +256,7 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   await page.waitForSelector('[data-rule="validator.comment_required"]', { timeout: WAIT });
 
   // And the rule drawn there is the rule that holds: a bug on this workflow
-  // cannot be started without a comment.
+  // is not started until somebody says why.
   await createScheme(page, { name: drawnScheme, issueType: "Bug", workflow: drawn });
   await goto(page, `/projects/${key}/workflows`);
   await pickBySearch(page, "#project-scheme", drawnScheme);
@@ -263,7 +265,34 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   const issueKey = await createIssue(page, key, "needs a word first", { type: "Bug", visit: false });
   await goto(page, `/issues/${issueKey}`);
   await clickButton(page, "Start");
-  await page.waitForFunction(() => document.body.innerText.includes("This transition needs a comment."), { timeout: WAIT });
+  await page.waitForSelector("[data-transition-dialog] textarea", { timeout: WAIT });
+  await page.type("[data-transition-dialog] textarea", "Picking this up now.");
+  await press(page, '[data-transition-dialog] [data-action="transition-go"]');
+  await page.waitForSelector("header .status-in_progress", { timeout: WAIT });
+});
+
+scenario("a move that needs a resolution asks for one on the issue page and records it", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Resolving", { visit: false });
+  // Workflows are everybody's, so this one has a name nobody else took.
+  await followWorkflow(page, key, "Bug", {
+    name: uniqueName("Closed with a reason"),
+    statuses: ["To Do", "Done"],
+    rules: [
+      { kind: "validator", type: "validator.resolution_required" },
+      { kind: "postfunction", type: "postfunction.set_resolved" },
+    ],
+  });
+  const issueKey = await createIssue(page, key, "nobody wants this", { type: "Bug", visit: false });
+
+  await goto(page, `/issues/${issueKey}`);
+  await clickButton(page, "To Done");
+  await page.waitForSelector("[data-transition-dialog] select", { timeout: WAIT });
+  await selectByLabel(page, "[data-transition-dialog] select", "Won't do");
+  await press(page, '[data-transition-dialog] [data-action="transition-go"]');
+
+  await page.waitForSelector("header .status-done", { timeout: WAIT });
+  await page.waitForFunction(() => document.querySelector("[data-issue-history]")?.innerText.includes("resolved this as Won't do"), { timeout: WAIT });
 });
 
 scenario("deleting a scheme a project uses is refused and says which", async ({ page }) => {

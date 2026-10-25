@@ -268,6 +268,44 @@ func TestAssigneeRequiredAcceptsAssignmentInTheSameStep(t *testing.T) {
 	}
 }
 
+// A client asks for what a move needs before sending it, so the offer names it.
+func TestAvailableNamesWhatATransitionNeeds(t *testing.T) {
+	b := simple()
+	b.wf.Transitions[0].Rules = []Rule{
+		rule(KindValidator, ValidatorCommentRequired, ""),
+		rule(KindValidator, ValidatorResolutionRequired, ""),
+		rule(KindValidator, ValidatorAssigneeRequired, ""),
+		rule(KindPostFunction, PostSetResolved, ""),
+	}
+	engine := NewEngine(nil)
+	me := uuid.New()
+
+	offered, err := engine.Available(b.build(), Subject{StatusID: b.statusID("To Do")}, Actor{UserID: me})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(offered[0].Needs, ","); got != "comment,resolution,assignee" {
+		t.Errorf("an unassigned issue's Start needs %q, want comment,resolution,assignee", got)
+	}
+
+	// The issue's own assignee already satisfies the rule, so it is not asked for again.
+	assigned, err := engine.Available(b.build(), Subject{StatusID: b.statusID("To Do"), AssigneeID: &me}, Actor{UserID: me})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(assigned[0].Needs, ","); got != "comment,resolution" {
+		t.Errorf("an assigned issue's Start needs %q, want comment,resolution", got)
+	}
+
+	plain, err := engine.Available(b.build(), Subject{StatusID: b.statusID("In Progress")}, Actor{UserID: me})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plain[0].Needs) != 0 {
+		t.Errorf("Finish has no validators but needs %v", plain[0].Needs)
+	}
+}
+
 func TestPostFunctionsProduceEffects(t *testing.T) {
 	me := uuid.New()
 

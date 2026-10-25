@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -20,6 +21,16 @@ func userFrom(r *http.Request) uuid.UUID {
 		return p.User.ID
 	}
 	return uuid.Nil
+}
+
+// workflowRuleError names the field a validator refused, so a client that did not
+// know a transition's needs can still ask for the one missing.
+func workflowRuleError(err error) *APIError {
+	var refused *workflow.RuleError
+	if !errors.As(err, &refused) {
+		return nil
+	}
+	return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: refused.Message, Fields: map[string]string{refused.Field: refused.Message}}
 }
 
 // graphRequest is a workflow as the editor sends it: statuses, and the

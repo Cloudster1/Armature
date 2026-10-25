@@ -10,6 +10,21 @@ export const issueViewDe: typeof issueViewEn = {
     saveOver: ". Drücken Sie die Eingabetaste, um Ihre Fassung darüber zu speichern.",
     nowhereToGo: "Dieser Vorgang kann von hier aus nirgendwohin wechseln.",
   },
+  transition: {
+    needs: "Dieser Wechsel verlangt zuerst ein paar Angaben. Füllen Sie sie aus, um ihn auszuführen.",
+    comment: "Kommentar",
+    resolution: "Lösung",
+    chooseResolution: "Lösung wählen",
+    resolutions: {
+      done: "Erledigt",
+      wontDo: "Wird nicht erledigt",
+      duplicate: "Duplikat",
+      cannotReproduce: "Nicht reproduzierbar",
+    },
+    assignee: "Bearbeiter",
+    chooseAssignee: "Jemanden wählen",
+    cancel: "Abbrechen",
+  },
   sections: {
     onThisPage: "Auf dieser Seite",
     description: "Beschreibung",

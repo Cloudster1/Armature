@@ -8,6 +8,21 @@ export const issueViewEn = {
     saveOver: ". Press Enter to save yours over it.",
     nowhereToGo: "This issue has nowhere to go from here.",
   },
+  transition: {
+    needs: "This move asks for a few things first. Fill them in to make it.",
+    comment: "Comment",
+    resolution: "Resolution",
+    chooseResolution: "Choose a resolution",
+    resolutions: {
+      done: "Done",
+      wontDo: "Won't do",
+      duplicate: "Duplicate",
+      cannotReproduce: "Cannot reproduce",
+    },
+    assignee: "Assignee",
+    chooseAssignee: "Choose somebody",
+    cancel: "Cancel",
+  },
   sections: {
     onThisPage: "On this page",
     description: "Description",
