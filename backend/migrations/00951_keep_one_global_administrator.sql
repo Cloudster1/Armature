@@ -15,7 +15,7 @@ BEGIN
     PERFORM pg_advisory_xact_lock(hashtext('armature.global_administrators'));
     IF NOT EXISTS (SELECT 1 FROM role_assignment WHERE role = 'global_administrator') THEN
         RAISE EXCEPTION 'this is the last global administrator, so granting another one has to come first'
-            USING ERRCODE = 'check_violation';
+            USING ERRCODE = 'check_violation', CONSTRAINT = 'role_assignment_keeps_an_administrator';
     END IF;
     RETURN NULL;
 END;

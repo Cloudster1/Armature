@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -151,7 +152,7 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "moved_since", Message: err.Error(), Fields: map[string]string{"issueKey": moved.Key}}
 	}
 
-	if e := connectedAppError(err); e != nil {
+	if e := cmp.Or(connectedAppError(err), lastAdministratorError(err)); e != nil {
 		return e
 	}
 	var demoKey *demo.KeyTakenError
