@@ -6,10 +6,11 @@ import { Button, ErrorBanner, IconButton, Input, cx } from "@/components/ui";
 import { StatusBadge } from "./badges";
 import { Ancestry } from "./hierarchy";
 import { TypeField } from "./TypePicker";
+import { DeleteIssueButton } from "./DeleteIssue";
 import { CloneMoveMenu } from "@/features/filters/CloneMoveMenu";
 import { t } from "@/i18n";
 
-export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; editable: boolean; inDrawer: boolean }) {
+export function IssueHeader({ issue, editable, deletable = false, inDrawer }: { issue: Issue; editable: boolean; deletable?: boolean; inDrawer: boolean }) {
   return (
     <header
       className={cx(
@@ -32,6 +33,7 @@ export function IssueHeader({ issue, editable, inDrawer }: { issue: Issue; edita
         <StatusBadge name={issue.status.name} category={issue.status.category} />
         <span className="flex-1" />
         <CloneMoveMenu issue={issue} editable={editable} />
+        {deletable && <DeleteIssueButton issue={issue} />}
         {inDrawer && (
           <Link
             to="/issues/$issueKey"

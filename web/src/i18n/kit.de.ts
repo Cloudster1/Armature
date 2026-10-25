@@ -83,6 +83,7 @@ export const kitDe: typeof kitEn = {
       file: "Datei",
       group: "Gruppe",
       invitation: "Einladung",
+      issue: (key: string) => `Vorgang ${key}`,
       label: "Schlagwort",
       link: "Link",
       member: "Mitglied",
