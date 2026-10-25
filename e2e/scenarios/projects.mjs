@@ -177,7 +177,9 @@ scenario("a person can take their data and go, and their comment stays", async (
   await page.type("#new-comment", "I will look at this on Monday.");
   await clickButton(page, "Comment");
   // The editor holds the words as they are typed, so only the saved comment in the list says the server has it.
-  await page.waitForFunction(() => [...document.querySelectorAll("[data-comment]")].some((c) => c.textContent.includes("I will look at this on Monday.")), { timeout: WAIT });
+  await page.waitForFunction(() => [...document.querySelectorAll("[data-comment]")].some((c) => c.textContent.includes("I will look at this on Monday.")), {
+    timeout: WAIT,
+  });
 
   // The export is one file with everything in it.
   const exported = await page.evaluate(async () => {
