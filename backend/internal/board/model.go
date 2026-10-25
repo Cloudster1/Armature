@@ -176,6 +176,9 @@ var (
 	// ErrNoTransition is returned when a card cannot move to a swimlane
 	// because the workflow has no way to get there from where it is.
 	ErrNoTransition = errors.New("the workflow does not allow that move")
+	// ErrBoardChanged is returned when the cards a move names as neighbours
+	// are no longer in that order, so the drop has no place to land.
+	ErrBoardChanged = errors.New("the board changed while the card was moved")
 	// ErrBadDoneForDays is returned for a negative number of days to keep finished work.
 	ErrBadDoneForDays = errors.New("finished work stays on a board for 0 days or more; 0 keeps it there for good")
 	// ErrLastSwimlane is returned when deleting the only swimlane, which would
