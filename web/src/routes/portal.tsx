@@ -5,6 +5,7 @@ import { appRoute } from "./app";
 import { useMe } from "@/api/auth";
 import { formatSize, useUploadAttachment, useUploadLimit } from "@/api/attachments";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
+import { PortalSendRow, type Attaching, type NotAttached } from "@/features/desk/PortalSendRow";
 import {
   useDesks,
   useFollow,
@@ -239,8 +240,8 @@ function RaiseRequest() {
   const attach = useUploadAttachment("portal");
   // The request exists after the first call, so a file that fails to follow
   // it is reported, never a reason to send the request twice.
-  const [attaching, setAttaching] = useState<{ done: number; total: number } | null>(null);
-  const [failed, setFailed] = useState<{ key: string; names: string[] } | null>(null);
+  const [attaching, setAttaching] = useState<Attaching | null>(null);
+  const [failed, setFailed] = useState<NotAttached | null>(null);
 
   const desk = desks.find((d) => d.projectKey === (deskKey || desks[0]?.projectKey));
   const types = desk?.requestTypes ?? [];
@@ -311,8 +312,6 @@ function RaiseRequest() {
       ) : (
         <Card className="p-5">
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
-            {raise.error && <ErrorBanner>{(raise.error as Error).message}</ErrorBanner>}
-
             {desks.length > 1 && (
               <Select
                 label={t.desk.portal.desk}
@@ -425,24 +424,13 @@ function RaiseRequest() {
               )}
             </div>
 
-            {failed ? (
-              <ErrorBanner>
-                {t.desk.portal.sentNotAttached(failed.key, failed.names.length)} {failed.names.join(", ")}.{" "}
-                <Link to="/portal/requests/$issueKey" params={{ issueKey: failed.key }} className="underline">
-                  {t.desk.portal.openRequest}
-                </Link>{" "}
-                {t.desk.portal.attachThere(failed.names.length)}
-              </ErrorBanner>
-            ) : (
-              <div className="flex gap-2">
-                <Button type="submit" loading={raise.isPending || attaching !== null} disabled={!chosen || !summary.trim()}>
-                  {attaching ? t.desk.portal.attaching(attaching.done + 1, attaching.total) : t.desk.portal.send}
-                </Button>
-                <Link to="/portal" className="inline-flex h-8 items-center px-3 text-sm text-ink-muted hover:text-ink">
-                  {t.desk.portal.cancel}
-                </Link>
-              </div>
-            )}
+            <PortalSendRow
+              refusal={(raise.error as Error | null)?.message}
+              failed={failed}
+              sending={raise.isPending || attaching !== null}
+              attaching={attaching}
+              ready={Boolean(chosen && summary.trim())}
+            />
           </form>
         </Card>
       )}

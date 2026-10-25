@@ -116,8 +116,7 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
   return (
     <div className="space-y-3">
       {header}
-      {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
-      {removeFactor.error && <ErrorBanner>{(removeFactor.error as Error).message}</ErrorBanner>}
+      {/* A row's refusal is the shell's toast, as on every table: a banner up here is a screen away from a row far down. */}
       <Table>
         <thead>
           <tr>

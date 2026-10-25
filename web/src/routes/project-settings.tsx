@@ -110,7 +110,6 @@ function ProjectSettingsPage() {
       <fieldset disabled={archived} className="min-w-0">
         <Card className="p-5">
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
-            {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
             <Field label={t.projectSetup.settings.name} required value={name} onChange={(e) => setField("name", e.target.value)} />
             <Field
               label={t.projectSetup.settings.description}
@@ -146,6 +145,8 @@ function ProjectSettingsPage() {
               disabled={!docsUrl.trim()}
               error={fieldErrors.docsLabel}
             />
+            {/* Beside Save, which a phone shows a screen below the top of the form. */}
+            {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
             <div className="flex items-center gap-3">
               <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
                 {t.projectSetup.settings.save}

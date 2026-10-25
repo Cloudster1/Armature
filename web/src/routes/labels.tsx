@@ -81,7 +81,7 @@ function LabelsPage() {
         meta={t.looks.labels.meta}
       />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
-      {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
+      {/* A refused removal is the shell's toast, as on every table, rather than a banner above rows it may be far from. */}
       <div className="mb-3 flex items-center gap-3">
         <ListSearch
           aria-label={t.looks.labels.find}
