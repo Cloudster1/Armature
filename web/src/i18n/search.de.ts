@@ -101,6 +101,8 @@ export const searchDe: typeof searchEn = {
     shareWithEveryone: "Mit allen teilen",
     delete: "Löschen",
     deleteBody: (name: string) => `${name} verschwindet für alle, mit denen sie geteilt war.`,
+    gone: "Diese gespeicherte Suche gibt es hier nicht",
+    goneHint: "Sie wurde gelöscht oder ist nicht mehr mit Ihnen geteilt. Unter Gespeicherte Suchen finden Sie alle, die Sie ausführen können.",
   },
   bulk: {
     label: "Die ausgewählten Vorgänge ändern",

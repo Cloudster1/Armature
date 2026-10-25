@@ -2,6 +2,7 @@ package filter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -23,6 +24,9 @@ const (
 	subscriptionInterval = 10 * time.Minute
 	// MailRows caps how many issues one subscription mail lists.
 	MailRows = 50
+	// SavedFilterPath and an id open one saved search in the web app
+	// (web/src/routes/saved-filter.tsx), which runs it as it reads now.
+	SavedFilterPath = "/filters/"
 )
 
 // Subscriptions mails each subscribed filter's result on its schedule.
@@ -108,7 +112,12 @@ func (s *Subscriptions) Once(ctx context.Context) (int, error) {
 		if !due(r.schedule, r.hour, r.weekday, r.lastSent, now) {
 			continue
 		}
-		if err := s.send(db.PinPrimary(ctx), r.id, r.filterID, r.userID, now); err != nil {
+		err := s.send(db.PinPrimary(ctx), r.id, r.filterID, r.userID, now)
+		if errors.Is(err, errOrphaned) {
+			s.log.Info("dropped a subscription its reader may no longer see", "subscription", r.id)
+			continue
+		}
+		if err != nil {
 			s.log.Warn("could not mail a subscription", "subscription", r.id, "error", err)
 			continue
 		}
@@ -116,6 +125,10 @@ func (s *Subscriptions) Once(ctx context.Context) (int, error) {
 	}
 	return sent, nil
 }
+
+// errOrphaned is a subscription whose reader has left or may no longer see the
+// filter. It is removed when found, so it is neither sent nor looked at again.
+var errOrphaned = errors.New("the subscriber may no longer see this filter")
 
 func (s *Subscriptions) send(ctx context.Context, subID, filterID, userID uuid.UUID, now time.Time) error {
 	var (
@@ -135,7 +148,14 @@ func (s *Subscriptions) send(ctx context.Context, subID, filterID, userID uuid.U
 	// Somebody who has left, or whom the filter is no longer shared with, is
 	// not owed a mail about its issues.
 	if role == nil || !visible {
-		return nil
+		_, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+			_, err := tx.Exec(ctx, `DELETE FROM saved_filter_subscription WHERE id = $1`, subID)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+		return errOrphaned
 	}
 	parsed, err := nql.Parse(query)
 	if err != nil {
@@ -182,7 +202,7 @@ func (s *Subscriptions) mail(to, name string, filterID uuid.UUID, result *issue.
 	if result.Total > len(result.Issues) {
 		fmt.Fprintf(&b, "\n%d more, not listed here.\n", result.Total-len(result.Issues))
 	}
-	fmt.Fprintf(&b, "\nOpen the search at %s/filters/%s\n", s.appURL, filterID)
+	fmt.Fprintf(&b, "\nOpen the search at %s%s%s\n", s.appURL, SavedFilterPath, filterID)
 	return mail.Mail{To: to, Subject: fmt.Sprintf("%s: %d issue%s", name, result.Total, plural(result.Total)), Body: b.String()}
 }
 
