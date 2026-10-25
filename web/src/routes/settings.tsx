@@ -5,6 +5,7 @@ import { useMe } from "@/api/auth";
 import { Card, Page, PageHeader, SectionTitle } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { personalPlaces, placeKey, settingsFor, type Place } from "@/features/shell/places";
+import { t } from "@/i18n";
 
 /** One door to everything that is set up rather than worked on: yours, then the installation's for its administrators. */
 export const settingsRoute = createRoute({
@@ -19,16 +20,16 @@ function SettingsHub() {
   const settings = settingsFor(access?.canAdministerOrg ?? false);
   return (
     <Page width="narrow">
-      <PageHeader title="Settings" meta={data?.principal?.installation?.name} />
-      <Group title="You" places={personalPlaces} />
-      {settings.length > 0 && <Group title="Settings" places={settings} />}
+      <PageHeader title={t.shell.settingsHub.title} meta={data?.principal?.installation?.name} />
+      <Group id="You" title={t.shell.groups.you} places={personalPlaces} />
+      {settings.length > 0 && <Group id="Settings" title={t.shell.groups.settings} places={settings} />}
     </Page>
   );
 }
 
-function Group({ title, places }: { title: string; places: Place[] }) {
+function Group({ id, title, places }: { id: string; title: string; places: Place[] }) {
   return (
-    <section className="mb-8" data-settings-group={title}>
+    <section className="mb-8" data-settings-group={id}>
       <SectionTitle className="mb-2">{title}</SectionTitle>
       <Card className="divide-y divide-border">
         {places.map((place) => {

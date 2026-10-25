@@ -7,6 +7,7 @@ import { TypeBadge } from "@/features/issues/badges";
 import { EDGE_LINGER_MS, GRAPH_MIN_GRID_COLUMNS, GRAPH_NODE_WIDTH, GRAPH_ORIGIN, GRAPH_ROW_GAP } from "@/config";
 import { layoutGraph, type GraphEdge, type GraphNode } from "./graph";
 import { NO_CUT, NO_FILTERS, cutItems, filterItems, flatten, type Cut, type Filters } from "./views";
+import { t } from "@/i18n";
 
 /** What the pane is assumed to measure before it has been measured. */
 const FALLBACK_PANE_WIDTH = 900;
@@ -95,7 +96,7 @@ export function DependencyGraph({
   const layout = useMemo(() => layoutGraph(nodes, edges, { columns }), [nodes, edges, columns]);
   const dependencyById = useMemo(() => new Map((data?.dependencies ?? []).map((d) => [d.linkId, d])), [data?.dependencies]);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading the plan...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.plan.loading}</p>;
   if (error && !data) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
   if (!data) return null;
 
@@ -145,11 +146,7 @@ export function DependencyGraph({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-ink-muted">
-          {edges.length === 0
-            ? "Nothing waits on anything yet. Drag the dot at a ticket's edge onto another to say it must finish first."
-            : `${edges.length} ${edges.length === 1 ? "dependency" : "dependencies"} among ${nodes.length} tickets`}
-        </p>
+        <p className="text-sm text-ink-muted">{edges.length === 0 ? t.plan.graph.empty : t.plan.graph.counted(edges.length, nodes.length)}</p>
         {addLink.error && <ErrorBanner>{(addLink.error as Error).message}</ErrorBanner>}
         {removeLink.error && <ErrorBanner>{(removeLink.error as Error).message}</ErrorBanner>}
       </div>
@@ -212,8 +209,8 @@ export function DependencyGraph({
                       onPointerLeave={cool}
                     >
                       <title>
-                        {edge.from} blocks {edge.to}
-                        {edge.cycle ? ", which comes back around" : ""}
+                        {t.plan.timeline.blocks(edge.from, edge.to)}
+                        {edge.cycle ? t.plan.graph.comesBack : ""}
                       </title>
                     </path>
                   </g>
@@ -241,7 +238,7 @@ export function DependencyGraph({
                 <IconButton
                   size="xs"
                   icon={<Icon.X />}
-                  label={`Remove dependency ${shown.blockerKey} blocks ${shown.blockedKey}`}
+                  label={t.plan.timeline.removeDependency(shown.blockerKey, shown.blockedKey)}
                   className="absolute z-10 -translate-x-1/2 -translate-y-1/2 border border-accent bg-surface text-accent shadow-sm hover:bg-accent-subtle"
                   style={{ left: shownEdge.handle.x, top: shownEdge.handle.y }}
                   data-graph-remove
@@ -260,7 +257,7 @@ export function DependencyGraph({
                 style={{ left: GRAPH_ORIGIN, top: layout.unlinkedTop }}
                 data-graph-unlinked
               >
-                Not linked to anything
+                {t.plan.graph.unlinked}
               </span>
             )}
 
@@ -322,13 +319,13 @@ function GraphNode({
         {issueKey}
       </Link>
       <span className="min-w-0 flex-1 truncate text-ink" title={item?.issue.summary}>
-        {external ? "in another project" : item?.issue.summary}
+        {external ? t.plan.graph.elsewhere : item?.issue.summary}
       </span>
       {!external && (
         <span
           role="button"
-          aria-label={`Drag to make ${issueKey} block another issue`}
-          title="Drag onto another ticket: this must finish before that starts"
+          aria-label={t.plan.timeline.linkHandle(issueKey)}
+          title={t.plan.graph.handleHint}
           data-graph-handle={issueKey}
           onPointerDown={onStartLink}
           className="absolute top-1/2 -right-1.5 size-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-accent bg-surface hover:bg-accent-subtle"

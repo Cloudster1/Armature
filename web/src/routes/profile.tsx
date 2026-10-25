@@ -14,6 +14,7 @@ import { WorkingWeekTable } from "@/features/availability/WorkingWeek";
 import { AbsenceEditor } from "@/features/availability/Absences";
 import { SecondFactorSettings } from "@/features/auth/SecondFactor";
 import { ActiveSessions } from "@/features/auth/ActiveSessions";
+import { applyLanguage, languageOfLocale, t } from "@/i18n";
 
 /** Also reachable as /me, which is where a person guesses their own page is. */
 export const profileRoute = createRoute({
@@ -55,12 +56,22 @@ function ProfilePage() {
   }, [user]);
 
   if (!user) return null;
-  const preview = makeFormat(locale, timezones.includes(timezone) ? timezone : "UTC");
+  // An empty choice follows the browser, as the app does everywhere else.
+  const preview = makeFormat(locale || browserLocale(), timezones.includes(timezone) ? timezone : "UTC");
   const now = new Date().toISOString();
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    update.mutate({ name: name.trim(), timezone, locale }, { onSuccess: () => toast.success("Profile saved") });
+    update.mutate(
+      { name: name.trim(), timezone, locale },
+      {
+        // The new language first, so the confirmation is said in it.
+        onSuccess: () => {
+          applyLanguage(languageOfLocale(locale));
+          toast.success(t.settings.profile.saved);
+        },
+      },
+    );
   }
 
   function onPicture(file: File | undefined) {
@@ -70,7 +81,7 @@ function ProfilePage() {
       return;
     }
     setTooBig(false);
-    uploadAvatar.mutate(file, { onSuccess: () => toast.success("Picture changed") });
+    uploadAvatar.mutate(file, { onSuccess: () => toast.success(t.settings.profile.pictureChanged) });
   }
 
   return (
@@ -78,10 +89,10 @@ function ProfilePage() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Profile"
+        title={t.settings.profile.title}
         meta={user.email}
       />
 
@@ -91,15 +102,15 @@ function ProfilePage() {
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" icon={<Icon.Upload />} loading={uploadAvatar.isPending} onClick={() => fileInput.current?.click()}>
-                Upload picture
+                {t.settings.profile.uploadPicture}
               </Button>
               {user.avatarUrl && (
                 <Button
                   variant="ghost"
                   loading={removeAvatar.isPending}
-                  onClick={() => removeAvatar.mutate(undefined, { onSuccess: () => toast.success("Picture removed") })}
+                  onClick={() => removeAvatar.mutate(undefined, { onSuccess: () => toast.success(t.settings.profile.pictureRemoved) })}
                 >
-                  Remove
+                  {t.settings.profile.remove}
                 </Button>
               )}
               <input
@@ -107,13 +118,13 @@ function ProfilePage() {
                 type="file"
                 accept="image/png,image/jpeg"
                 className="hidden"
-                aria-label="Choose a picture"
+                aria-label={t.settings.profile.choosePicture}
                 data-avatar-input
                 onChange={(e) => onPicture(e.target.files?.[0])}
               />
             </div>
-            <p className="text-sm text-ink-subtle">PNG or JPEG, up to 2 MB. Shown wherever your initials were.</p>
-            {tooBig && <ErrorBanner>That picture is over 2 MB. Make it smaller and try again.</ErrorBanner>}
+            <p className="text-sm text-ink-subtle">{t.settings.profile.pictureHint}</p>
+            {tooBig && <ErrorBanner>{t.settings.profile.pictureTooBig}</ErrorBanner>}
             {uploadAvatar.error && <ErrorBanner>{(uploadAvatar.error as Error).message}</ErrorBanner>}
             {removeAvatar.error && <ErrorBanner>{(removeAvatar.error as Error).message}</ErrorBanner>}
           </div>
@@ -123,14 +134,14 @@ function ProfilePage() {
       <Card className="p-5">
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
-          <Field label="Name" required value={name} onChange={(e) => setName(e.target.value)} />
+          <Field label={t.settings.profile.name} required value={name} onChange={(e) => setName(e.target.value)} />
           <div className="space-y-1">
-            <span className="block text-sm font-medium text-ink-muted">Email</span>
+            <span className="block text-sm font-medium text-ink-muted">{t.settings.profile.email}</span>
             <p className="text-sm text-ink">
-              {user.email} <span className="text-ink-subtle">signs you in and gets the mail; it does not change here.</span>
+              {user.email} <span className="text-ink-subtle">{t.settings.profile.emailHint}</span>
             </p>
           </div>
-          <Select label="Time zone" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+          <Select label={t.settings.profile.timezone} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
             {!timezones.includes(timezone) && <option value={timezone}>{timezone}</option>}
             {timezones.map((zone) => (
               <option key={zone} value={zone}>
@@ -138,14 +149,9 @@ function ProfilePage() {
               </option>
             ))}
           </Select>
-          <Select
-            label="Language"
-            value={locale}
-            onChange={(e) => setLocale(e.target.value)}
-            hint="Changes how dates, times and numbers are written; the interface itself stays in English."
-          >
+          <Select label={t.settings.profile.language} value={locale} onChange={(e) => setLocale(e.target.value)} hint={t.settings.profile.languageHint}>
             {/* Empty is what a new account has: the browser decides, and the select says so. */}
-            <option value="">Same as the browser ({browserLocale()})</option>
+            <option value="">{t.settings.profile.followBrowser(browserLocale())}</option>
             {LOCALES.map((l) => (
               <option key={l.code} value={l.code}>
                 {l.label}
@@ -153,10 +159,10 @@ function ProfilePage() {
             ))}
           </Select>
           <p className="text-sm text-ink-muted" data-format-preview>
-            Dates are shown as <span className="text-ink tabular-nums">{preview.dateTime(now)}</span>.
+            {t.settings.profile.preview} <span className="text-ink tabular-nums">{preview.dateTime(now)}</span>.
           </p>
           <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
-            Save changes
+            {t.settings.profile.save}
           </Button>
         </form>
       </Card>

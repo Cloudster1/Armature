@@ -5,6 +5,7 @@
 
 import type { Holiday } from "@/api/availability";
 import { PLAN_MIN_PX_PER_DAY, PLAN_WEEK_LABEL_MIN_PX_PER_DAY } from "@/config";
+import { t } from "@/i18n";
 
 export const MS_PER_DAY = 86_400_000;
 export const DAYS_PER_WEEK = 7;
@@ -19,10 +20,38 @@ export interface Zoom {
 }
 
 /** Fit shows the whole plan in the space it has; the others are fixed densities that scroll. */
-export const ZOOM_FIT: Zoom = { id: "fit", label: "Fit", pxPerDay: 0, ticks: "week" };
-export const ZOOM_WEEKS: Zoom = { id: "weeks", label: "Weeks", pxPerDay: 22, ticks: "week" };
-export const ZOOM_MONTHS: Zoom = { id: "months", label: "Months", pxPerDay: 7, ticks: "week" };
-export const ZOOM_QUARTERS: Zoom = { id: "quarters", label: "Quarters", pxPerDay: 2.6, ticks: "month" };
+export const ZOOM_FIT: Zoom = {
+  id: "fit",
+  get label() {
+    return t.plan.zoom.fit;
+  },
+  pxPerDay: 0,
+  ticks: "week",
+};
+export const ZOOM_WEEKS: Zoom = {
+  id: "weeks",
+  get label() {
+    return t.plan.zoom.weeks;
+  },
+  pxPerDay: 22,
+  ticks: "week",
+};
+export const ZOOM_MONTHS: Zoom = {
+  id: "months",
+  get label() {
+    return t.plan.zoom.months;
+  },
+  pxPerDay: 7,
+  ticks: "week",
+};
+export const ZOOM_QUARTERS: Zoom = {
+  id: "quarters",
+  get label() {
+    return t.plan.zoom.quarters;
+  },
+  pxPerDay: 2.6,
+  ticks: "month",
+};
 
 export const ZOOMS: Zoom[] = [ZOOM_FIT, ZOOM_WEEKS, ZOOM_MONTHS, ZOOM_QUARTERS];
 
@@ -113,7 +142,8 @@ export interface Tick {
   emphasis: boolean;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// The month names are read when the ticks are made, so they follow the language.
+const monthName = (month: number): string => t.plan.calendar.months[month]!;
 
 /** The month row across the top of the timeline. */
 export function monthTicks(scale: Scale): Tick[] {
@@ -126,7 +156,7 @@ export function monthTicks(scale: Scale): Tick[] {
     const to = next > scale.to ? scale.to : next;
     out.push({
       key: `${cursor.getUTCFullYear()}-${cursor.getUTCMonth()}`,
-      label: `${MONTHS[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`,
+      label: t.plan.calendar.month(monthName(cursor.getUTCMonth()), cursor.getUTCFullYear()),
       x: scale.x(from),
       width: daysBetween(from, to) * scale.pxPerDay,
       emphasis: false,
@@ -152,7 +182,7 @@ export function weekTicks(scale: Scale): Tick[] {
     const to = next > scale.to ? scale.to : next;
     out.push({
       key: isoDay(cursor),
-      label: `${cursor.getUTCDate()} ${MONTHS[cursor.getUTCMonth()]}`,
+      label: t.plan.calendar.week(cursor.getUTCDate(), monthName(cursor.getUTCMonth())),
       x: scale.x(from),
       width: daysBetween(from, to) * scale.pxPerDay,
       emphasis: cursor.getUTCDate() <= DAYS_PER_WEEK,
@@ -174,7 +204,7 @@ export function quarterTicks(scale: Scale): Tick[] {
     const to = next > scale.to ? scale.to : next;
     out.push({
       key: `${cursor.getUTCFullYear()}-q${cursor.getUTCMonth() / MONTHS_PER_QUARTER}`,
-      label: `Q${cursor.getUTCMonth() / MONTHS_PER_QUARTER + 1} ${cursor.getUTCFullYear()}`,
+      label: t.plan.calendar.quarter(cursor.getUTCMonth() / MONTHS_PER_QUARTER + 1, cursor.getUTCFullYear()),
       x: scale.x(from),
       width: daysBetween(from, to) * scale.pxPerDay,
       emphasis: false,
@@ -239,7 +269,7 @@ export function holidayBands(scale: Scale, holidays: Holiday[]): HolidayBand[] {
   for (const holiday of holidays) {
     const x = scale.x(holiday.day);
     if (x < 0 || x >= scale.width) continue;
-    out.push({ key: holiday.day, label: holiday.halfDay ? `${holiday.name} (half day)` : holiday.name, x, width: scale.pxPerDay });
+    out.push({ key: holiday.day, label: holiday.halfDay ? t.plan.calendar.halfDay(holiday.name) : holiday.name, x, width: scale.pxPerDay });
   }
   return out;
 }

@@ -15,7 +15,7 @@ import (
 
 // Locales is what a person may choose to have dates written in. A short list
 // rather than every BCP 47 tag, so the picker can be a select and the API
-// never has to decide what "en-XX" means.
+// never has to decide what "en-XX" means. An empty locale follows the browser.
 var Locales = []string{"en-GB", "en-US", "de-DE", "fr-FR", "es-ES", "nl-NL", "it-IT", "pt-BR"}
 
 // NameMaxLength is the longest name a person may give themselves.
@@ -56,7 +56,7 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, in Profil
 		}
 		in.Timezone = &zone
 	}
-	if in.Locale != nil {
+	if in.Locale != nil && *in.Locale != "" {
 		found := false
 		for _, l := range Locales {
 			if l == *in.Locale {

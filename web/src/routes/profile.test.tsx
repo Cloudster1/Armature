@@ -77,3 +77,14 @@ describe("the notification settings on the profile", () => {
     expect(screen.getByRole("checkbox", { name: /Watch the issues I report or am assigned/ })).not.toBeChecked();
   });
 });
+
+describe("the profile's language", () => {
+  // The empty choice used to reach Intl as a locale of "", which throws and took the page down.
+  it("offers following the browser, and still previews the dates once it is chosen", async () => {
+    renderPage();
+    const language = screen.getByLabelText("Language");
+    expect(screen.getByRole("option", { name: /^Follow the browser \(/ })).toBeInTheDocument();
+    await userEvent.selectOptions(language, "");
+    expect(document.querySelector("[data-format-preview]")?.textContent).toMatch(/\d/);
+  });
+});

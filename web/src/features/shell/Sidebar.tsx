@@ -20,6 +20,7 @@ import { SidebarGroup } from "./SidebarGroup";
 import { ThemeButton } from "./ThemeButton";
 import { roleWord, useAccountItems } from "./AccountMenu";
 import { inSettingsArea, personalPlaces, settingsFor, workPlaces, type Place } from "./places";
+import { t } from "@/i18n";
 
 // The sidebar is the map: where you are is highlighted, where you can go is
 // listed, and a project's pages are always there once a project is chosen.
@@ -34,30 +35,173 @@ interface PageLink {
 }
 
 export const projectWorkPages: PageLink[] = [
-  { path: "", label: "Issues", icon: "Issue", exact: true },
-  { path: "/board", label: "Board", icon: "Board", feature: "board" },
-  { path: "/sprints", label: "Sprints", icon: "Sprint", feature: "sprints" },
-  { path: "/plan", label: "Plan", icon: "Plan", feature: "plan" },
-  { path: "/calendar", label: "Calendar", icon: "Calendar", feature: "calendar" },
-  { path: "/resources", label: "Resources", icon: "Capacity", feature: "resources" },
-  { path: "/milestones", label: "Milestones", icon: "Milestone", feature: "milestones" },
-  { path: "/releases", label: "Releases", icon: "Ship", feature: "releases" },
-  { path: "/dashboard", label: "Dashboard", icon: "Dashboard", feature: "dashboard" },
-  { path: "/hierarchy", label: "Hierarchy", icon: "Hierarchy", feature: "hierarchy" },
-  { path: "/queues", label: "Queues", icon: "Queue", feature: "queues" },
-  { path: "/service-desk", label: "Service desk", icon: "Desk", feature: "desk" },
+  {
+    path: "",
+    get label() {
+      return t.shell.projectPages.issues;
+    },
+    icon: "Issue",
+    exact: true,
+  },
+  {
+    path: "/board",
+    get label() {
+      return t.shell.projectPages.board;
+    },
+    icon: "Board",
+    feature: "board",
+  },
+  {
+    path: "/sprints",
+    get label() {
+      return t.shell.projectPages.sprints;
+    },
+    icon: "Sprint",
+    feature: "sprints",
+  },
+  {
+    path: "/plan",
+    get label() {
+      return t.shell.projectPages.plan;
+    },
+    icon: "Plan",
+    feature: "plan",
+  },
+  {
+    path: "/calendar",
+    get label() {
+      return t.shell.projectPages.calendar;
+    },
+    icon: "Calendar",
+    feature: "calendar",
+  },
+  {
+    path: "/resources",
+    get label() {
+      return t.shell.projectPages.resources;
+    },
+    icon: "Capacity",
+    feature: "resources",
+  },
+  {
+    path: "/milestones",
+    get label() {
+      return t.shell.projectPages.milestones;
+    },
+    icon: "Milestone",
+    feature: "milestones",
+  },
+  {
+    path: "/releases",
+    get label() {
+      return t.shell.projectPages.releases;
+    },
+    icon: "Ship",
+    feature: "releases",
+  },
+  {
+    path: "/dashboard",
+    get label() {
+      return t.shell.projectPages.dashboard;
+    },
+    icon: "Dashboard",
+    feature: "dashboard",
+  },
+  {
+    path: "/hierarchy",
+    get label() {
+      return t.shell.projectPages.hierarchy;
+    },
+    icon: "Hierarchy",
+    feature: "hierarchy",
+  },
+  {
+    path: "/queues",
+    get label() {
+      return t.shell.projectPages.queues;
+    },
+    icon: "Queue",
+    feature: "queues",
+  },
+  {
+    path: "/service-desk",
+    get label() {
+      return t.shell.projectPages.serviceDesk;
+    },
+    icon: "Desk",
+    feature: "desk",
+  },
 ];
 
 export const projectSetupPages: PageLink[] = [
-  { path: "/teams", label: "Teams", icon: "Team", feature: "teams" },
-  { path: "/workflows", label: "Workflow", icon: "Workflow" },
-  { path: "/fields", label: "Fields", icon: "Field" },
-  { path: "/issue-view", label: "Issue view", icon: "Issue" },
-  { path: "/components", label: "Components", icon: "Component", feature: "components" },
-  { path: "/repositories", label: "Repositories", icon: "Repository", feature: "repositories" },
-  { path: "/automation", label: "Automation", icon: "Bolt", feature: "automation" },
-  { path: "/import", label: "Import", icon: "Upload", feature: "import" },
-  { path: "/settings", label: "Settings", icon: "Settings" },
+  {
+    path: "/teams",
+    get label() {
+      return t.shell.projectPages.teams;
+    },
+    icon: "Team",
+    feature: "teams",
+  },
+  {
+    path: "/workflows",
+    get label() {
+      return t.shell.projectPages.workflow;
+    },
+    icon: "Workflow",
+  },
+  {
+    path: "/fields",
+    get label() {
+      return t.shell.projectPages.fields;
+    },
+    icon: "Field",
+  },
+  {
+    path: "/issue-view",
+    get label() {
+      return t.shell.projectPages.issueView;
+    },
+    icon: "Issue",
+  },
+  {
+    path: "/components",
+    get label() {
+      return t.shell.projectPages.components;
+    },
+    icon: "Component",
+    feature: "components",
+  },
+  {
+    path: "/repositories",
+    get label() {
+      return t.shell.projectPages.repositories;
+    },
+    icon: "Repository",
+    feature: "repositories",
+  },
+  {
+    path: "/automation",
+    get label() {
+      return t.shell.projectPages.automation;
+    },
+    icon: "Bolt",
+    feature: "automation",
+  },
+  {
+    path: "/import",
+    get label() {
+      return t.shell.projectPages.import;
+    },
+    icon: "Upload",
+    feature: "import",
+  },
+  {
+    path: "/settings",
+    get label() {
+      return t.shell.projectPages.settings;
+    },
+    icon: "Settings",
+  },
 ];
 
 /** The pages of the list the project has; a project still loading shows them all. */
@@ -109,7 +253,7 @@ export function Sidebar({
           data-sidebar={mode}
           data-print-hide
           data-sidebar-area={settings ? "settings" : "work"}
-          aria-label="Where you are"
+          aria-label={t.shell.nav.whereYouAre}
         >
           <div className="flex h-12 items-center gap-1 border-b border-border px-3">{settings ? <BackToArmature /> : <InstallationName />}</div>
           <div className="flex-1 overflow-y-auto px-2 py-3">{settings ? <SettingsGroups /> : <WorkGroups />}</div>
@@ -149,7 +293,7 @@ function BackToArmature() {
       data-action="back-from-settings"
     >
       <Icon.ChevronLeft className="shrink-0 text-ink-muted" />
-      <span className="truncate">Back to Armature</span>
+      <span className="truncate">{t.shell.nav.backToArmature}</span>
     </a>
   );
 }
@@ -183,13 +327,13 @@ function WorkGroups() {
     place.to === "/search" ? <kbd className="font-mono text-2xs text-ink-subtle">Ctrl K</kbd> : place.to === "/inbox" ? <UnreadBadge /> : undefined;
   return (
     <>
-      <SidebarGroup id="work" title="Work & Plan" open={isOpen("work", true)} onToggle={() => toggleGroup("work", true)}>
+      <SidebarGroup id="work" title={t.shell.groups.work} open={isOpen("work", true)} onToggle={() => toggleGroup("work", true)}>
         {workPlaces.map((place) => (
           <PlaceLink key={place.to} place={place} trailing={trailing(place)} />
         ))}
       </SidebarGroup>
 
-      <SidebarGroup id="project" title="Project" open={isOpen("project", true)} onToggle={() => toggleGroup("project", true)}>
+      <SidebarGroup id="project" title={t.shell.groups.project} open={isOpen("project", true)} onToggle={() => toggleGroup("project", true)}>
         <ProjectSwitcher projectKey={projectKey} />
         {projectKey && (
           <ProjectPages projectKey={projectKey} adminOpen={isOpen("project-admin", false)} onToggleAdmin={() => toggleGroup("project-admin", false)} />
@@ -207,13 +351,13 @@ function SettingsGroups() {
   const isOpen = (id: string) => groups[id] ?? true;
   return (
     <>
-      <SidebarGroup id="you" title="You" open={isOpen("you")} onToggle={() => toggleGroup("you", true)}>
+      <SidebarGroup id="you" title={t.shell.groups.you} open={isOpen("you")} onToggle={() => toggleGroup("you", true)}>
         {personalPlaces.map((place) => (
           <PlaceLink key={place.label} place={place} />
         ))}
       </SidebarGroup>
       {settings.length > 0 && (
-        <SidebarGroup id="settings" title="Settings" open={isOpen("settings")} onToggle={() => toggleGroup("settings", true)}>
+        <SidebarGroup id="settings" title={t.shell.groups.settings} open={isOpen("settings")} onToggle={() => toggleGroup("settings", true)}>
           {settings.map((place) => (
             <PlaceLink key={place.to} place={place} />
           ))}
@@ -237,7 +381,7 @@ function NavDrawer({ settings, onClose, onNewIssue }: { settings: boolean; onClo
         id={DRAWER_ID}
         role="dialog"
         aria-modal="true"
-        aria-label="Navigation"
+        aria-label={t.shell.nav.navigation}
         // A strip of the page as wide as the rail stays uncovered, so there
         // is always somewhere to tap the drawer shut.
         style={{ width: `min(${SIDEBAR_WIDTH}px, calc(100vw - ${SIDEBAR_RAIL_WIDTH}px))` }}
@@ -247,9 +391,9 @@ function NavDrawer({ settings, onClose, onNewIssue }: { settings: boolean; onClo
       >
         <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3">
           {settings ? <BackToArmature /> : <InstallationName />}
-          <IconButton icon={<Icon.X />} label="Close the navigation" size="sm" onClick={onClose} data-focus-last="" data-action="close-drawer" />
+          <IconButton icon={<Icon.X />} label={t.shell.nav.closeNavigation} size="sm" onClick={onClose} data-focus-last="" data-action="close-drawer" />
         </div>
-        <nav aria-label="Where you are" className="flex-1 overflow-y-auto px-2 py-3">
+        <nav aria-label={t.shell.nav.whereYouAre} className="flex-1 overflow-y-auto px-2 py-3">
           {!settings && (
             <div className="mb-3">
               <NavButton
@@ -261,7 +405,7 @@ function NavDrawer({ settings, onClose, onNewIssue }: { settings: boolean; onClo
                 }}
                 data-action="new-issue"
               >
-                New issue
+                {t.shell.nav.newIssue}
               </NavButton>
             </div>
           )}
@@ -289,7 +433,7 @@ function DrawerFoot() {
         </span>
         <ThemeButton side="top" />
       </div>
-      <ul aria-label="Your account">
+      <ul aria-label={t.shell.account.yours}>
         {items.map((item, i) => (
           <li key={i}>
             {item.section && <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-ink-subtle uppercase">{item.section}</p>}
@@ -334,10 +478,10 @@ function ProjectPages({ projectKey, adminOpen, onToggleAdmin }: { projectKey: st
       ))}
       {data?.project.docsUrl && (
         <NavLinkOut href={data.project.docsUrl} icon="External" data-project-docs={data.project.docsUrl}>
-          {data.project.docsLabel || "Docs"}
+          {data.project.docsLabel || t.shell.projectPages.docs}
         </NavLinkOut>
       )}
-      <SidebarGroup id="project-admin" title="Project Admin" open={adminOpen} onToggle={onToggleAdmin} nested>
+      <SidebarGroup id="project-admin" title={t.shell.groups.projectAdmin} open={adminOpen} onToggle={onToggleAdmin} nested>
         {pages(projectSetupPages).map((page) => (
           <NavItem key={page.path} to={`/projects/$projectKey${page.path}`} params={{ projectKey }} icon={page.icon} rail={false}>
             {page.label}
@@ -369,10 +513,10 @@ function ProjectSwitcher({ projectKey }: { projectKey: string | undefined }) {
   const { pathname } = useLocation();
   const projects = data?.projects ?? [];
   const suffix = projectKey ? pageKind(pathname, projectKey) : "";
-  const name = current?.project?.name ?? projectKey ?? "Choose a project";
+  const name = current?.project?.name ?? projectKey ?? t.shell.projects.choose;
   return (
     <Menu
-      label="Switch project"
+      label={t.shell.projects.switch}
       className="mb-1 w-full"
       trigger={(props) => (
         <Button
@@ -390,7 +534,13 @@ function ProjectSwitcher({ projectKey }: { projectKey: string | undefined }) {
       )}
       header={
         <div className="px-1 pb-1" data-project-filter>
-          <Input aria-label="Filter projects" value={filter} onChange={(e) => setFilter(e.target.value)} controlSize="sm" placeholder="Filter" />
+          <Input
+            aria-label={t.shell.projects.filter}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            controlSize="sm"
+            placeholder={t.shell.projects.filterPlaceholder}
+          />
         </div>
       }
       items={projects.map((p) => ({
@@ -464,10 +614,10 @@ export function SidebarFoot({ userName, avatar }: { userName: string; avatar?: s
     <div className="flex items-center gap-2">
       <CustomerMenu userName={userName} avatar={avatar} />
       <ThemeButton />
-      <Tooltip text="Sign out">
+      <Tooltip text={t.shell.account.signOut}>
         <IconButton
           icon={<Icon.External />}
-          label="Sign out"
+          label={t.shell.account.signOut}
           size="sm"
           onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}
           data-action="sign-out"

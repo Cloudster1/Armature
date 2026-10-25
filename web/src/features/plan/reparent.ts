@@ -2,6 +2,7 @@ import { LEVEL_STANDARD } from "@/api/issues";
 import type { PlanItem } from "@/api/plan";
 import { PLAN_ROW_HEIGHT } from "@/config";
 import { flatten, type Row } from "./views";
+import { t } from "@/i18n";
 
 /** Where a lifted row is held over: another issue's row, or the space above the rows. */
 export type DropTarget = { kind: "row"; item: PlanItem } | { kind: "top" };
@@ -26,26 +27,22 @@ export function rowAt(rows: Row[], y: number): DropTarget | null {
 export function decide(dragged: PlanItem, target: DropTarget): Decision {
   const type = dragged.issue.type;
   if (target.kind === "top") {
-    if (type.level < LEVEL_STANDARD) return { refused: `A ${type.name.toLowerCase()} needs a parent issue.` };
+    if (type.level < LEVEL_STANDARD) return { refused: t.plan.reparent.needsParent(type.name) };
     return { kind: "top", parentKey: null };
   }
   const over = target.item;
-  if (over.issue.key === dragged.issue.key) return { refused: "An issue cannot be its own parent." };
+  if (over.issue.key === dragged.issue.key) return { refused: t.plan.reparent.ownParent };
   if (flatten(dragged.children).some((child) => child.issue.key === over.issue.key)) {
-    return { refused: "That would put the issue underneath itself." };
+    return { refused: t.plan.reparent.underItself };
   }
   if (over.issue.type.level === type.level + 1) return { kind: "into", parentKey: over.issue.key };
   if (over.issue.type.level === type.level) {
     if (!over.issue.parentKey && type.level < LEVEL_STANDARD) {
-      return { refused: `A ${type.name.toLowerCase()} needs a parent issue.` };
+      return { refused: t.plan.reparent.needsParent(type.name) };
     }
     return { kind: "beside", parentKey: over.issue.parentKey ?? null };
   }
   return {
-    refused: `${over.issue.key} is ${article(over.issue.type.name)}, which cannot be the parent of ${article(type.name)}.`,
+    refused: t.plan.reparent.wrongParent(over.issue.key, over.issue.type.name, type.name),
   };
-}
-
-function article(name: string): string {
-  return (/^[aeiou]/i.test(name) ? "an " : "a ") + name;
 }

@@ -2,6 +2,7 @@ import { useSchedule } from "@/api/plan";
 import type { Issue } from "@/api/issues";
 import { Button, DateInput } from "@/components/ui";
 import { isoDay } from "./scale";
+import { t } from "@/i18n";
 
 /**
  * The two ends of a range, outside the timeline: a date you can only set by
@@ -21,15 +22,15 @@ export function ScheduleField({ issue }: { issue: Issue }) {
     <span className="flex flex-col items-end gap-1">
       {/* One date a line: two date inputs side by side do not fit a sidebar field. */}
       <span className="flex items-center gap-2 text-xs text-ink-subtle">
-        <label htmlFor="issue-start">From</label>
+        <label htmlFor="issue-start">{t.plan.schedule.from}</label>
         <span className="w-36">
-          <DateInput id="issue-start" value={start} onCommit={(day) => set("startDate", day)} controlSize="sm" aria-label="Start date" />
+          <DateInput id="issue-start" value={start} onCommit={(day) => set("startDate", day)} controlSize="sm" aria-label={t.plan.schedule.start} />
         </span>
       </span>
       <span className="flex items-center gap-2 text-xs text-ink-subtle">
-        <label htmlFor="issue-due">to</label>
+        <label htmlFor="issue-due">{t.plan.schedule.to}</label>
         <span className="w-36">
-          <DateInput id="issue-due" value={due} onCommit={(day) => set("dueDate", day)} controlSize="sm" aria-label="Due date" />
+          <DateInput id="issue-due" value={due} onCommit={(day) => set("dueDate", day)} controlSize="sm" aria-label={t.plan.schedule.due} />
         </span>
       </span>
       {(start || due) && (
@@ -40,7 +41,7 @@ export function ScheduleField({ issue }: { issue: Issue }) {
           loading={schedule.isPending}
           onClick={() => schedule.mutate({ key: issue.key, startDate: null, dueDate: null })}
         >
-          Clear dates
+          {t.plan.schedule.clear}
         </Button>
       )}
       {schedule.error && <span className="text-right text-2xs text-danger">{(schedule.error as Error).message}</span>}

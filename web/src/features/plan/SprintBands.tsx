@@ -2,6 +2,7 @@ import { overBy, type SprintPlan } from "@/api/sprints";
 import { cx } from "@/components/ui";
 import { PLAN_SPRINT_BAND_HEIGHT } from "@/config";
 import { barFor, type Scale } from "./scale";
+import { t } from "@/i18n";
 
 /**
  * The sprints drawn across the top of the timeline, so the dates below can be
@@ -50,15 +51,15 @@ export function SprintBands({ scale, sprints }: { scale: Scale; sprints: SprintP
 export function describe(plan: SprintPlan): string {
   const committed = number(plan.committed);
   if (plan.sprint.capacity === undefined || plan.sprint.capacity === null) {
-    return `${committed} pts`;
+    return t.plan.sprint.points(committed);
   }
-  return `${committed}/${number(plan.sprint.capacity)} pts`;
+  return t.plan.sprint.pointsOf(committed, number(plan.sprint.capacity));
 }
 
 /** The team's hours in the sprint, as a hint beside the points; nothing for a sprint with no team or no dates. */
 export function teamHours(plan: SprintPlan): string | null {
   if (plan.availableHours === undefined || plan.nominalHours === undefined) return null;
-  return `Team available ${number(plan.availableHours)} of ${number(plan.nominalHours)} h in this sprint`;
+  return t.plan.sprint.teamHours(number(plan.availableHours), number(plan.nominalHours));
 }
 
 /** Writes an estimate the way a person does: 5 rather than 5.00. */

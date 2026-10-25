@@ -14,6 +14,7 @@ import { PALETTE_RESULTS } from "@/config";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { pagesFor, projectSetupPages, projectWorkPages } from "@/features/shell/Sidebar";
 import { personalPlaces, placeKey, settingsFor, SETTINGS_PATH, workPlaces, type Place as ShellPlace } from "@/features/shell/places";
+import { t } from "@/i18n";
 
 interface Command {
   id: string;
@@ -132,18 +133,25 @@ export function CommandPalette({
             id: `answer:${entry.id}`,
             group: "Answers" as const,
             label: entry.title,
-            detail: entry.needs === "project" && !projectKey ? "Pick a project" : undefined,
+            detail: entry.needs === "project" && !projectKey ? t.shell.palette.pickProject : undefined,
             icon: "Help" as IconName,
             run: () => follow(entry),
           }))
         : [];
     if (mode === "ask") out.push(...answers);
     if (mode === "ask" && answers.length === 0 && trimmed && assistant?.configured) {
-      out.push({ id: "ask-assistant", group: "Answers", label: "Ask the assistant", detail: "a model looks for you", icon: "Help", run: askAssistant });
+      out.push({
+        id: "ask-assistant",
+        group: "Answers",
+        label: t.shell.palette.askAssistant,
+        detail: t.shell.palette.assistantLooks,
+        icon: "Help",
+        run: askAssistant,
+      });
     }
     if (looksLikeKey) {
       const key = trimmed.toUpperCase();
-      out.push({ id: `key:${key}`, group: "Issues", label: key, detail: "Open the issue", icon: "Issue", run: () => go(`/issues/${key}`) });
+      out.push({ id: `key:${key}`, group: "Issues", label: key, detail: t.shell.palette.openIssue, icon: "Issue", run: () => go(`/issues/${key}`) });
     }
     if (trimmed.length >= 2 && !looksLikeKey) {
       for (const issue of issueData?.issues ?? []) {
@@ -163,7 +171,7 @@ export function CommandPalette({
           out.push({
             id: `page:${page.path}`,
             group: "Pages",
-            label: `${projectKey} / ${page.label}`,
+            label: t.shell.palette.projectPage(projectKey, page.label),
             icon: page.icon,
             run: () => go(`/projects/${projectKey}${page.path}`),
           });
@@ -175,11 +183,21 @@ export function CommandPalette({
       ...workPlaces.map((place) => ({ place, label: place.label, words: place.label })),
       ...(lower
         ? [
-            ...personalPlaces.map((place) => ({ place, label: place.label, words: `you account ${place.label}` })),
+            ...personalPlaces.map((place) => ({ place, label: place.label, words: `${t.shell.palette.youWords} ${place.label}` })),
             ...(canAdministerOrg
-              ? [{ place: { to: SETTINGS_PATH, label: "Settings", icon: "Settings" as IconName }, label: "Settings", words: "settings" }]
+              ? [
+                  {
+                    place: { to: SETTINGS_PATH, label: t.shell.settingsHub.title, icon: "Settings" as IconName },
+                    label: t.shell.settingsHub.title,
+                    words: t.shell.palette.settingsWords,
+                  },
+                ]
               : []),
-            ...settingsFor(canAdministerOrg).map((place) => ({ place, label: `Settings / ${place.label}`, words: `settings ${place.label}` })),
+            ...settingsFor(canAdministerOrg).map((place) => ({
+              place,
+              label: t.shell.palette.settingsPage(place.label),
+              words: `${t.shell.palette.settingsWords} ${place.label}`,
+            })),
           ]
         : []),
     ];
@@ -190,7 +208,7 @@ export function CommandPalette({
       {
         id: "new-issue",
         group: "Actions",
-        label: "New issue",
+        label: t.shell.palette.newIssue,
         icon: "Plus",
         run: () => {
           onClose();
@@ -200,7 +218,7 @@ export function CommandPalette({
       {
         id: "theme",
         group: "Actions",
-        label: "Switch theme",
+        label: t.shell.palette.switchTheme,
         detail: readTheme(),
         icon: "Monitor",
         run: () => {
@@ -212,7 +230,7 @@ export function CommandPalette({
       {
         id: "sidebar",
         group: "Actions",
-        label: "Collapse or expand the sidebar",
+        label: t.shell.palette.toggleSidebar,
         icon: "Collapse",
         run: () => {
           onClose();
@@ -222,7 +240,7 @@ export function CommandPalette({
       {
         id: "search",
         group: "Actions",
-        label: "Search with a query",
+        label: t.shell.palette.searchQuery,
         icon: "Search",
         run: () => go(trimmed ? `/search?q=${encodeURIComponent(`text ~ "${trimmed.replace(/"/g, "")}"`)}` : "/search"),
       },
@@ -262,7 +280,7 @@ export function CommandPalette({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette"
+        aria-label={t.shell.palette.label}
         style={modalPanelStyle}
         className="flex w-full max-w-xl flex-col overflow-hidden rounded-overlay border border-border bg-surface-overlay shadow-2"
         data-palette
@@ -279,8 +297,8 @@ export function CommandPalette({
             aria-expanded="true"
             aria-controls="palette-results"
             aria-activedescendant={commands[active] ? `palette-${commands[active].id}` : undefined}
-            aria-label={mode === "ask" ? "Ask where something is" : "Search for an issue, a project, a page or an action"}
-            placeholder={mode === "ask" ? "Ask where something is..." : "Type an issue key, some words, a page or an action"}
+            aria-label={mode === "ask" ? t.shell.palette.askLabel : t.shell.palette.searchLabel}
+            placeholder={mode === "ask" ? t.shell.palette.askPlaceholder : t.shell.palette.searchPlaceholder}
             controlSize="lg"
             className="flex-1 border-0 bg-transparent px-0!"
           />
@@ -292,12 +310,12 @@ export function CommandPalette({
           <ul id="palette-results" role="listbox" className="p-1">
             {commands.length === 0 && (
               <li className="px-3 py-6 text-center text-sm text-ink-subtle" data-palette-empty>
-                {mode === "ask" ? "No answer for that yet. Try the words on the page you mean." : "Nothing matches. Try an issue key like ALP-12."}
+                {mode === "ask" ? t.shell.palette.noAnswer : t.shell.palette.nothing}
               </li>
             )}
             {commands.map((command, index) => {
               const Glyph = Icon[command.icon];
-              const heading = command.group !== lastGroup ? command.group : null;
+              const heading = command.group !== lastGroup ? t.shell.palette.groups[command.group] : null;
               lastGroup = command.group;
               return (
                 <li key={command.id} role="presentation">

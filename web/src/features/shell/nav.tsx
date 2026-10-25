@@ -5,6 +5,7 @@ import { Button, IconButton, Popover, Tooltip, cx } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { BELL_PANEL_SIZE } from "@/config";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 /** A destination in the rail or the sidebar: an icon with its word, or the icon alone with the word in a tooltip. */
 export function NavItem({
@@ -120,7 +121,7 @@ export function UnreadBadge() {
   return (
     <span className="min-w-5 rounded-full bg-accent px-1.5 text-center text-2xs leading-5 font-medium text-on-accent" data-unread-badge={unread}>
       {unread > 99 ? "99+" : unread}
-      <span className="sr-only"> unread</span>
+      <span className="sr-only">{t.shell.notifications.unreadSuffix}</span>
     </span>
   );
 }
@@ -133,12 +134,12 @@ export function NotificationsBell({ side = "bottom" }: { side?: "top" | "bottom"
   const { data } = useUnreadCount();
   const [open, setOpen] = useState(false);
   const unread = data?.unread ?? 0;
-  const label = unread > 0 ? `Notifications, ${unread} unread` : "Notifications";
+  const label = unread > 0 ? t.shell.notifications.unread(unread) : t.shell.notifications.title;
   return (
     <Popover
       open={open}
       onClose={() => setOpen(false)}
-      label="Notifications"
+      label={t.shell.notifications.title}
       align="start"
       className="w-80 p-0!"
       trigger={
@@ -184,7 +185,7 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
   return (
     <div data-notifications-panel>
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-        <span className="text-sm font-semibold text-ink">Notifications</span>
+        <span className="text-sm font-semibold text-ink">{t.shell.notifications.title}</span>
         <Button
           variant="ghost"
           size="sm"
@@ -193,12 +194,12 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
           disabled={unread === 0}
           data-action="mark-all-read"
         >
-          Mark all as read
+          {t.shell.notifications.markAllRead}
         </Button>
       </div>
       <div className="max-h-96 overflow-y-auto">
         {isLoading ? null : latest.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-ink-subtle">Nothing yet. You are told here when an issue of yours moves or somebody mentions you.</p>
+          <p className="px-3 py-6 text-center text-sm text-ink-subtle">{t.shell.notifications.empty}</p>
         ) : (
           latest.map((n) => {
             const row = {
@@ -234,7 +235,7 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 text-sm">
         <Link to="/inbox" onClick={onDone} className="text-accent hover:underline" data-action="see-all-notifications">
-          See all
+          {t.shell.notifications.seeAll}
         </Link>
         <Link
           to="/settings/profile"
@@ -243,7 +244,7 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
           className="text-ink-muted hover:text-ink hover:underline"
           data-action="notification-settings"
         >
-          Notification settings
+          {t.shell.notifications.settings}
         </Link>
       </div>
     </div>

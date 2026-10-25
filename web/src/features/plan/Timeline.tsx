@@ -27,6 +27,7 @@ import {
 } from "@/config";
 import { addDays, applyDrag, barFor, day, filled, fitted, daysBetween, isoDay, makeScale, zoomFor, type Zoom } from "./scale";
 import { TimelineHeader } from "./TimelineHeader";
+import { t } from "@/i18n";
 
 /** What the pane is assumed to measure before it has been measured. */
 const FALLBACK_PANE_WIDTH = 800;
@@ -189,7 +190,7 @@ export function Timeline({
     return map;
   }, [data?.warnings]);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading the plan...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.plan.loading}</p>;
   // A query that fails to compile is reported beside the query box, and the
   // last good plan stays drawn underneath it.
   if (error && !data) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
@@ -446,8 +447,8 @@ export function Timeline({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 text-sm" data-testid="plan-notes">
         <p className="text-ink-muted">
-          {data.unscheduled > 0 ? `${data.unscheduled} not on the plan yet` : "Everything is scheduled"}
-          {data.unestimated > 0 && `, ${data.unestimated} unestimated`}
+          {data.unscheduled > 0 ? t.plan.timeline.notOnPlan(data.unscheduled) : t.plan.timeline.allScheduled}
+          {data.unestimated > 0 && t.plan.timeline.unestimated(data.unestimated)}
         </p>
         {schedule.error && <ErrorBanner>{(schedule.error as Error).message}</ErrorBanner>}
         {(refusal || setParent.error) && <ErrorBanner>{refusal ?? (setParent.error as Error).message}</ErrorBanner>}
@@ -468,7 +469,7 @@ export function Timeline({
             onPointerCancel={onSidebarPointerUp}
           >
             <div className="relative flex items-end border-b border-border px-3 pb-1 text-xs font-medium text-ink-muted" style={{ height: headerHeight }}>
-              {view === "sprints" ? "Sprint and its work" : "Issue"}
+              {view === "sprints" ? t.plan.timeline.sprintColumn : t.plan.timeline.issueColumn}
               {lift && (
                 <span
                   data-plan-drop-top
@@ -481,7 +482,7 @@ export function Timeline({
                       : "border-border-strong text-ink-subtle",
                   )}
                 >
-                  {lift.target?.kind === "top" && lift.refused ? lift.refused : "Drop here for the top level"}
+                  {lift.target?.kind === "top" && lift.refused ? lift.refused : t.plan.timeline.dropTop}
                 </span>
               )}
             </div>
@@ -637,15 +638,15 @@ function GroupSidebarRow({ row, onToggle }: { row: Extract<Row, { kind: "group" 
       <IconButton
         size="xs"
         icon={<Icon.ChevronRight className={cx("transition-transform", !row.collapsed && "rotate-90")} />}
-        label={`${row.collapsed ? "Expand" : "Collapse"} ${row.label}`}
+        label={row.collapsed ? t.plan.timeline.expand(row.label) : t.plan.timeline.collapse(row.label)}
         onClick={onToggle}
         aria-expanded={!row.collapsed}
         className="text-ink-subtle"
       />
       <span className="min-w-0 truncate font-semibold text-ink">{row.label}</span>
-      {sprint?.state === "active" && <span className="rounded-full bg-accent-subtle px-1.5 text-2xs font-medium text-accent">Running</span>}
+      {sprint?.state === "active" && <span className="rounded-full bg-accent-subtle px-1.5 text-2xs font-medium text-accent">{t.plan.timeline.running}</span>}
       <span className="ml-auto shrink-0 text-xs text-ink-muted tabular-nums">
-        {row.detail ?? `${row.count} ${row.count === 1 ? "issue" : "issues"}`}
+        {row.detail ?? t.plan.timeline.issueCount(row.count)}
         {row.sprint && `, ${describeSprint(row.sprint)}`}
       </span>
       {sprint && (
@@ -655,7 +656,7 @@ function GroupSidebarRow({ row, onToggle }: { row: Extract<Row, { kind: "group" 
           data-sprint-board={sprint.name}
           className="shrink-0 text-xs text-ink-muted underline-offset-2 hover:text-accent hover:underline"
         >
-          Board
+          {t.plan.timeline.board}
         </Link>
       )}
     </div>
@@ -675,7 +676,7 @@ function GroupBand({ row, top, scale }: { row: Extract<Row, { kind: "group" }>; 
       {bar && (
         <span
           data-plan-group-band={row.label}
-          title={`${row.label}: ${sprint?.startsOn} to ${sprint?.endsOn}`}
+          title={t.plan.timeline.sprintSpan(row.label, String(sprint?.startsOn), String(sprint?.endsOn))}
           className={cx(
             "absolute top-1.5 bottom-1.5 rounded ring-1",
             sprint?.state === "active" ? "bg-accent-subtle ring-accent/40" : "bg-surface ring-border",
@@ -797,7 +798,7 @@ function SidebarRow({
         <IconButton
           size="xs"
           icon={<Icon.ChevronRight className={cx("transition-transform", !row.collapsed && "rotate-90")} />}
-          label={`${row.collapsed ? "Expand" : "Collapse"} ${item.issue.key}`}
+          label={row.collapsed ? t.plan.timeline.expand(item.issue.key) : t.plan.timeline.collapse(item.issue.key)}
           onClick={onToggle}
           aria-expanded={!row.collapsed}
           className="text-ink-subtle"
@@ -897,7 +898,7 @@ function BarRow({
           data-plan-bar={item.issue.key}
           data-plan-start={start}
           data-plan-due={due}
-          title={`${item.issue.key} · ${start} to ${due}${item.derived ? " (from its children)" : ""}${words ? `\n${words}` : ""}`}
+          title={`${t.plan.timeline.barTitle(item.issue.key, String(start), String(due), item.derived)}${words ? `\n${words}` : ""}`}
           onPointerDown={(event) => onPointerDown(event, item, "move")}
           className={cx(
             "group absolute flex cursor-grab items-center rounded active:cursor-grabbing",
@@ -928,8 +929,8 @@ function BarRow({
           {/* The handle comes before the end grip, which stays the bar's last span for anything that reaches for it. */}
           <span
             role="button"
-            aria-label={`Drag to make ${item.issue.key} block another issue`}
-            title="Drag onto another row: this must finish before that starts"
+            aria-label={t.plan.timeline.linkHandle(item.issue.key)}
+            title={t.plan.timeline.linkHandleRowHint}
             data-plan-link-handle={item.issue.key}
             onPointerDown={(event) => onLinkPointerDown?.(event, item)}
             className="absolute top-1/2 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-accent bg-surface opacity-0 group-hover:opacity-100 hover:bg-accent-subtle"
@@ -951,7 +952,7 @@ function BarRow({
           className="absolute top-1/2 -translate-y-1/2 border-dashed text-ink-subtle hover:text-accent"
           style={{ left: Math.max(0, todayX) }}
         >
-          Schedule
+          {t.plan.timeline.schedule}
         </Button>
       )}
       {proposed && proposedBar && (
@@ -961,7 +962,7 @@ function BarRow({
           data-plan-placed={bar ? undefined : true}
           data-plan-start={proposed.start}
           data-plan-due={proposed.due}
-          title={`${item.issue.key} would move to ${proposed.start} to ${proposed.due}`}
+          title={t.plan.timeline.wouldMove(item.issue.key, proposed.start, proposed.due)}
           className="pointer-events-none absolute top-1/2 h-4 -translate-y-1/2 rounded border-2 border-dashed border-accent bg-accent-subtle/60"
           style={{ left: proposedBar.left, width: proposedBar.width }}
         />
@@ -1079,9 +1080,7 @@ export function DependencyArrows({
                 onPointerEnter={() => hot(path.dependency.linkId)}
                 onPointerLeave={cool}
               >
-                <title>
-                  {path.dependency.blockerKey} blocks {path.dependency.blockedKey}
-                </title>
+                <title>{t.plan.timeline.blocks(path.dependency.blockerKey, path.dependency.blockedKey)}</title>
               </path>
             </g>
           );
@@ -1091,7 +1090,7 @@ export function DependencyArrows({
         <IconButton
           size="xs"
           icon={<Icon.X />}
-          label={`Remove dependency ${shown.dependency.blockerKey} blocks ${shown.dependency.blockedKey}`}
+          label={t.plan.timeline.removeDependency(shown.dependency.blockerKey, shown.dependency.blockedKey)}
           className="absolute z-10 -translate-x-1/2 -translate-y-1/2 border border-accent bg-surface text-accent shadow-sm hover:bg-accent-subtle"
           style={{ left: shown.handle.x, top: shown.handle.y }}
           data-plan-remove-dependency
@@ -1111,7 +1110,7 @@ function WarningList({ warnings }: { warnings: PlanWarning[] }) {
 
   return (
     <section>
-      <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Where the plan disagrees with itself ({warnings.length})</h2>
+      <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">{t.plan.timeline.disagrees(warnings.length)}</h2>
       <ul className="space-y-1.5" data-testid="plan-warnings">
         {warnings.map((warning) => (
           <li

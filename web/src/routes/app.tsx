@@ -19,6 +19,7 @@ import { IssuePanel } from "@/features/issues/IssuePanel";
 import { EnrolmentRequired } from "@/features/auth/SecondFactor";
 import { ThemeLoader } from "@/features/themes/ThemeLoader";
 import { BackdropEffect } from "@/features/themes/BackdropEffect";
+import { t } from "@/i18n";
 
 /**
  * The authenticated shell. Everything under it can assume a signed-in user in
@@ -52,11 +53,11 @@ function RouteError({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="p-8">
       <EmptyState
-        title="This page could not be shown"
+        title={t.shell.page.notShown}
         description={error.message}
         action={
           <Button variant="secondary" onClick={reset}>
-            Try again
+            {t.shell.page.tryAgain}
           </Button>
         }
       />
@@ -157,7 +158,7 @@ function NarrowStrip({ open, onOpen }: { open: boolean; onOpen: () => void }) {
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-narrow-strip data-print-hide>
       <IconButton
         icon={<Icon.Lines />}
-        label="Open the navigation"
+        label={t.shell.nav.openNavigation}
         size="sm"
         onClick={onOpen}
         aria-controls={DRAWER_ID}

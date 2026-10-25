@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/icons";
+import { t } from "@/i18n";
 
 /**
  * A page the shell leads to. The sidebar, the avatar menu, the settings area,
@@ -24,46 +25,221 @@ export const SETTINGS_PATH = "/settings";
 
 /** The tool's own places, the first group of the sidebar. */
 export const workPlaces: Place[] = [
-  { to: "/", label: "Home", icon: "Home" },
-  { to: "/search", label: "Search", icon: "Search" },
-  { to: "/inbox", label: "Notifications", icon: "Bell" },
-  { to: "/filters", label: "Saved searches", icon: "Filter" },
-  { to: "/projects", label: "Projects", icon: "Board" },
+  {
+    to: "/",
+    get label() {
+      return t.shell.places.home;
+    },
+    icon: "Home",
+  },
+  {
+    to: "/search",
+    get label() {
+      return t.shell.places.search;
+    },
+    icon: "Search",
+  },
+  {
+    to: "/inbox",
+    get label() {
+      return t.shell.places.notifications;
+    },
+    icon: "Bell",
+  },
+  {
+    to: "/filters",
+    get label() {
+      return t.shell.places.savedSearches;
+    },
+    icon: "Filter",
+  },
+  {
+    to: "/projects",
+    get label() {
+      return t.shell.places.projects;
+    },
+    icon: "Board",
+  },
 ];
 
 /** The person's own pages: the avatar menu and the settings area's "You", in this order. */
 export const personalPlaces: Place[] = [
-  { to: "/settings/profile", label: "Your profile", icon: "User", detail: "Your name, your picture, your working week, and how dates are written for you." },
-  { to: "/settings/profile", hash: "notifications", label: "Notification settings", icon: "Bell", detail: "What you are told about, here and by mail." },
-  { to: "/search", search: { q: WATCHING_QUERY }, label: "Watching", icon: "Eye", detail: "The issues you watch, in every project." },
-  { to: "/settings/themes", label: "Themes", icon: "Palette", detail: "Colours, type, cursors and icons, yours or shared with everyone." },
-  { to: "/settings/tokens", label: "Access tokens", icon: "Command", detail: "Call the API from a script or a CI job, and the apps you connected." },
+  {
+    to: "/settings/profile",
+    get label() {
+      return t.shell.places.profile;
+    },
+    icon: "User",
+    get detail() {
+      return t.shell.places.profileDetail;
+    },
+  },
+  {
+    to: "/settings/profile",
+    hash: "notifications",
+    get label() {
+      return t.shell.places.notificationSettings;
+    },
+    icon: "Bell",
+    get detail() {
+      return t.shell.places.notificationSettingsDetail;
+    },
+  },
+  {
+    to: "/search",
+    search: { q: WATCHING_QUERY },
+    get label() {
+      return t.shell.places.watching;
+    },
+    icon: "Eye",
+    get detail() {
+      return t.shell.places.watchingDetail;
+    },
+  },
+  {
+    to: "/settings/themes",
+    get label() {
+      return t.shell.places.themes;
+    },
+    icon: "Palette",
+    get detail() {
+      return t.shell.places.themesDetail;
+    },
+  },
+  {
+    to: "/settings/tokens",
+    get label() {
+      return t.shell.places.accessTokens;
+    },
+    icon: "Command",
+    get detail() {
+      return t.shell.places.accessTokensDetail;
+    },
+  },
 ];
 
 /** The installation's settings, for its administrators only, in the order the settings area lists them. */
 export const settingsPlaces: Place[] = [
-  { to: "/settings/installation", label: "Installation", icon: "Settings", detail: "What everybody sees it called, and the demo project to show it with." },
-  { to: "/settings/access", label: "Access", icon: "Key", detail: "Who holds which role, the groups, and single sign-on." },
-  { to: "/settings/users", label: "Users", icon: "Users", detail: "Accounts that sign in with a password here: make one, reset it, switch it off." },
-  { to: "/settings/holidays", label: "Holidays", icon: "Calendar", detail: "Calendars of days off, and which one everybody keeps by default." },
+  {
+    to: "/settings/installation",
+    get label() {
+      return t.shell.places.installation;
+    },
+    icon: "Settings",
+    get detail() {
+      return t.shell.places.installationDetail;
+    },
+  },
+  {
+    to: "/settings/access",
+    get label() {
+      return t.shell.places.access;
+    },
+    icon: "Key",
+    get detail() {
+      return t.shell.places.accessDetail;
+    },
+  },
+  {
+    to: "/settings/users",
+    get label() {
+      return t.shell.places.users;
+    },
+    icon: "Users",
+    get detail() {
+      return t.shell.places.usersDetail;
+    },
+  },
+  {
+    to: "/settings/holidays",
+    get label() {
+      return t.shell.places.holidays;
+    },
+    icon: "Calendar",
+    get detail() {
+      return t.shell.places.holidaysDetail;
+    },
+  },
   {
     to: "/settings/workflows",
-    label: "Workflows",
+    get label() {
+      return t.shell.places.workflows;
+    },
     icon: "Workflow",
-    detail: "The workflows every project follows and the schemes that hand them to issue types.",
+    get detail() {
+      return t.shell.places.workflowsDetail;
+    },
   },
-  { to: "/settings/labels", label: "Labels", icon: "Tag", detail: "Words shared by every project." },
-  { to: "/settings/automation", label: "Automation", icon: "Bolt", detail: "Rules that watch every project: when something happens, check it, do things." },
-  { to: "/settings/fields", label: "Fields", icon: "Field", detail: "What every project records about an issue beyond the standard fields." },
+  {
+    to: "/settings/labels",
+    get label() {
+      return t.shell.places.labels;
+    },
+    icon: "Tag",
+    get detail() {
+      return t.shell.places.labelsDetail;
+    },
+  },
+  {
+    to: "/settings/automation",
+    get label() {
+      return t.shell.places.automation;
+    },
+    icon: "Bolt",
+    get detail() {
+      return t.shell.places.automationDetail;
+    },
+  },
+  {
+    to: "/settings/fields",
+    get label() {
+      return t.shell.places.fields;
+    },
+    icon: "Field",
+    get detail() {
+      return t.shell.places.fieldsDetail;
+    },
+  },
   {
     to: "/settings/issue-view",
-    label: "Issue view",
+    get label() {
+      return t.shell.places.issueView;
+    },
     icon: "Issue",
-    detail: "How an issue's fields are arranged in every project that does not arrange its own.",
+    get detail() {
+      return t.shell.places.issueViewDetail;
+    },
   },
-  { to: "/settings/connected-apps", label: "Connected apps", icon: "Link", detail: "Partner tools people connect in one click, with their consent." },
-  { to: "/settings/webhooks", label: "Webhooks", icon: "Hook", detail: "Where events are posted, signed, with a log of every try." },
-  { to: "/settings/audit", label: "Audit log", icon: "Shield", detail: "Who did what, and when, kept for a year." },
+  {
+    to: "/settings/connected-apps",
+    get label() {
+      return t.shell.places.connectedApps;
+    },
+    icon: "Link",
+    get detail() {
+      return t.shell.places.connectedAppsDetail;
+    },
+  },
+  {
+    to: "/settings/webhooks",
+    get label() {
+      return t.shell.places.webhooks;
+    },
+    icon: "Hook",
+    get detail() {
+      return t.shell.places.webhooksDetail;
+    },
+  },
+  {
+    to: "/settings/audit",
+    get label() {
+      return t.shell.places.audit;
+    },
+    icon: "Shield",
+    get detail() {
+      return t.shell.places.auditDetail;
+    },
+  },
 ];
 
 /** The settings a person may open: all of them for an administrator, none for anybody else. */

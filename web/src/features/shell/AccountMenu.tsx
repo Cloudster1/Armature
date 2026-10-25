@@ -6,6 +6,7 @@ import { useConnectedTools, type ConnectedTool } from "@/api/installation";
 import { Avatar, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { personalPlaces, SETTINGS_PATH, type Place } from "./places";
+import { t } from "@/i18n";
 
 const toolIcons: Record<string, ReactNode> = { stator: <Icon.Stator />, exciter: <Icon.Exciter /> };
 
@@ -15,14 +16,15 @@ export function switchToItems(tools: ConnectedTool[] | undefined): MenuItem[] {
     label: tool.name,
     icon: toolIcons[tool.product] ?? <Icon.External />,
     href: tool.url,
-    section: i === 0 ? "Switch to" : undefined,
+    section: i === 0 ? t.shell.account.switchTo : undefined,
     attrs: { "data-switch-to": tool.product },
   }));
 }
 
 /** The seat a person holds here, as the menu's header and the drawer's foot word it. */
 export function roleWord(role: string | undefined): string {
-  return role ? role[0]!.toUpperCase() + role.slice(1) : "";
+  if (!role) return "";
+  return t.shell.account.roles[role] ?? role[0]!.toUpperCase() + role.slice(1);
 }
 
 /**
@@ -44,10 +46,18 @@ export function useAccountItems(): MenuItem[] {
     })),
     ...switchToItems(tools),
     ...(access?.canAdministerOrg
-      ? [{ label: "Settings", icon: <Icon.Settings />, separated: true, onSelect: () => navigate({ to: SETTINGS_PATH }), attrs: { "data-action": "settings" } }]
+      ? [
+          {
+            label: t.shell.account.settings,
+            icon: <Icon.Settings />,
+            separated: true,
+            onSelect: () => navigate({ to: SETTINGS_PATH }),
+            attrs: { "data-action": "settings" },
+          },
+        ]
       : []),
     {
-      label: "Sign out",
+      label: t.shell.account.signOut,
       icon: <Icon.External />,
       separated: true,
       onSelect: () => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) }),
@@ -84,13 +94,13 @@ export function AccountMenu({ userName, avatar }: { userName: string; avatar?: s
   const items = useAccountItems();
   return (
     <Menu
-      label="Your account"
+      label={t.shell.account.yours}
       align="start"
       header={<AccountHeader />}
       trigger={(props) => (
         <IconButton
           icon={<Avatar name={userName} src={avatar} size="sm" />}
-          label="Your account"
+          label={t.shell.account.yours}
           size="sm"
           onClick={props.toggle}
           aria-haspopup={props["aria-haspopup"]}

@@ -2,8 +2,10 @@ import { useState } from "react";
 import { IconButton, Tooltip } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
+import { t } from "@/i18n";
 
-const themeLabels: Record<Theme, string> = { system: "Auto", light: "Light", dark: "Dark" };
+// Read while rendering, so the words follow the language.
+const themeWord = (theme: Theme): string => (theme === "system" ? t.shell.theme.auto : theme === "light" ? t.shell.theme.light : t.shell.theme.dark);
 
 /**
  * The light and dark switch: Auto, Light, Dark in turn. It says its word to
@@ -18,8 +20,8 @@ export function ThemeButton({ side }: { side?: "top" | "bottom" | "right" }) {
   }
   const glyph = theme === "system" ? <Icon.Monitor /> : theme === "light" ? <Icon.Sun /> : <Icon.Moon />;
   return (
-    <Tooltip text={`Theme: ${themeLabels[theme]}`} side={side}>
-      <IconButton icon={glyph} label={themeLabels[theme]} size="sm" onClick={cycle} data-action="theme" data-guide="theme" />
+    <Tooltip text={t.shell.theme.tooltip(themeWord(theme))} side={side}>
+      <IconButton icon={glyph} label={themeWord(theme)} size="sm" onClick={cycle} data-action="theme" data-guide="theme" />
     </Tooltip>
   );
 }

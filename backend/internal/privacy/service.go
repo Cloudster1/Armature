@@ -431,7 +431,7 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 		}
 		_, err = tx.Exec(ctx, `
 			UPDATE app_user SET email = $2, name = $3, password_hash = NULL, avatar_url = NULL,
-			       timezone = 'UTC', locale = 'en', is_active = false, erased_at = now()
+			       timezone = 'UTC', locale = '', is_active = false, erased_at = now()
 			WHERE id = $1`, userID, tomb, ErasedName)
 		return err
 	})

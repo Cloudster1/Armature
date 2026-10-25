@@ -7,6 +7,7 @@ import { useFormat } from "@/lib/format";
 import { flagSide, labelledFlags } from "./layout";
 import { markersFor } from "./markers";
 import type { Scale } from "./scale";
+import { t } from "@/i18n";
 
 /**
  * The milestones drawn above the timeline as flags on the day they are due,
@@ -74,9 +75,9 @@ export function MilestoneProgress({ projectKey, milestones }: { projectKey: stri
   return (
     <section>
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Milestones</h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">{t.plan.milestones.title}</h2>
         <Link to="/projects/$projectKey/milestones" params={{ projectKey }} className="text-sm text-ink-muted hover:text-ink">
-          All milestones
+          {t.plan.milestones.all}
         </Link>
       </div>
       <ul className="space-y-2" data-testid="plan-milestones">
@@ -85,7 +86,9 @@ export function MilestoneProgress({ projectKey, milestones }: { projectKey: stri
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-medium text-ink">
                 {milestone.name}
-                {milestone.dueOn && <span className="ml-2 text-xs font-normal text-ink-muted">due {formatDay(milestone.dueOn, locale)}</span>}
+                {milestone.dueOn && (
+                  <span className="ml-2 text-xs font-normal text-ink-muted">{t.plan.milestones.due(formatDay(milestone.dueOn, locale))}</span>
+                )}
               </span>
               <span className="text-ink-muted tabular-nums">{describeProgress(milestone.progress)}</span>
             </div>

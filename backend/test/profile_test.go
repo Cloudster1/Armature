@@ -51,6 +51,10 @@ func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
 	me.signIn(t, myEmail)
 
 	t.Run("name, time zone and language", func(t *testing.T) {
+		fresh := want(t, me.get("/api/v1/auth/me"), http.StatusOK, "me before any change")
+		if got := principalField(t, fresh, "principal", "user", "locale"); got != "" {
+			t.Errorf("a new account's locale = %v, want empty, which follows the browser", got)
+		}
 		changed := want(t, me.patch("/api/v1/auth/me", map[string]any{"name": "Ada Lovelace", "timezone": "Europe/Berlin", "locale": "de-DE"}), http.StatusOK, "profile")
 		if principalField(t, changed, "principal", "user", "timezone") != "Europe/Berlin" || principalField(t, changed, "principal", "user", "locale") != "de-DE" {
 			t.Errorf("principal = %v", changed.Body)
@@ -61,6 +65,10 @@ func TestAPersonChangesTheirProfileAndTheirPicture(t *testing.T) {
 		}
 		want(t, me.patch("/api/v1/auth/me", map[string]any{"timezone": "Mars/Olympus"}), http.StatusBadRequest, "a zone nobody keeps")
 		want(t, me.patch("/api/v1/auth/me", map[string]any{"locale": "tlh"}), http.StatusBadRequest, "a language not offered")
+		back := want(t, me.patch("/api/v1/auth/me", map[string]any{"locale": ""}), http.StatusOK, "back to following the browser")
+		if got := principalField(t, back, "principal", "user", "locale"); got != "" {
+			t.Errorf("after choosing to follow the browser the locale = %v, want empty", got)
+		}
 		want(t, me.patch("/api/v1/auth/me", map[string]any{"name": "   "}), http.StatusBadRequest, "no name")
 	})
 
