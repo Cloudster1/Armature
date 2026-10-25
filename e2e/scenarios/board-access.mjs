@@ -62,7 +62,8 @@ scenario("a board is set up by whoever its project lets, whatever their role acr
   await waitForApp(page);
   await goto(page, `/projects/${key}/board`);
   await page.waitForSelector(`[data-card="${issueKey}"]`, { timeout: WAIT });
-  for (const label of ["Configure swimlanes", "New board", "Rename", "Change type"]) {
+  // With one board the picker, and with it Rename and Change type, is not drawn for anyone.
+  for (const label of ["Configure swimlanes", "New board"]) {
     expect.equal(await hasButton(page, label), true, `a project administrator is offered ${label}`);
   }
   await clickButton(page, "Configure swimlanes");
