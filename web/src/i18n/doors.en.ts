@@ -188,8 +188,6 @@ export const doorsEn = {
       transitioned: "My issues move",
       watching: "Issues I watch change",
       sla_breached: "A request misses its goal",
-      rule: "An automation rule writes to me",
-      filter: "A saved search reports",
       absence: "Somebody else changes my absences",
     } as Record<string, string>,
   },

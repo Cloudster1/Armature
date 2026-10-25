@@ -12,6 +12,7 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/perm"
 )
 
 // Watcher is somebody who is told about an issue. A mail address is enough to
@@ -26,6 +27,10 @@ type Watcher struct {
 
 // ErrNotWatching is returned when a watcher to remove is not there.
 var ErrNotWatching = errors.New("that person is not watching this issue")
+
+// ErrWatcherMayNotRead is returned for a watcher who may not see the issue's
+// project: every notification would tell them what they may not read.
+var ErrWatcherMayNotRead = errors.New("that person may not see this project")
 
 const selectWatchers = `
 SELECT w.user_id, u.name, u.email, w.added_by, w.created_at
@@ -114,6 +119,13 @@ func (s *Service) AddWatcher(ctx context.Context, key string, userID uuid.UUID, 
 // mention in a comment adds watchers the same way a button does. The plain
 // token comes back only when a row was made.
 func (s *Service) watch(ctx context.Context, tx db.DBTX, issueID uuid.UUID, issueKey string, userID uuid.UUID, actor Actor) (string, error) {
+	may, err := mayWatch(ctx, tx, issueID, issueKey, userID)
+	if err != nil {
+		return "", err
+	}
+	if !may {
+		return "", ErrWatcherMayNotRead
+	}
 	secret, digest, err := auth.GenerateToken()
 	if err != nil {
 		return "", err
@@ -131,6 +143,24 @@ func (s *Service) watch(ctx context.Context, tx db.DBTX, issueID uuid.UUID, issu
 	return secret, events.Emit(ctx, tx, events.TopicWatcherAdded, map[string]any{
 		"issueId": issueID, "key": issueKey, "userId": userID, "actorId": actor.UserID, "token": secret,
 	})
+}
+
+// mayWatch is the rule the issue_watcher_reads trigger keeps too: whoever may
+// read the project, and anyone on a request, whom the desk tells only replies.
+func mayWatch(ctx context.Context, tx db.DBTX, issueID uuid.UUID, issueKey string, userID uuid.UUID) (bool, error) {
+	var request bool
+	err := tx.QueryRow(ctx, `
+		SELECT p.kind = 'service' AND i.request_type_id IS NOT NULL
+		FROM issue i JOIN project p ON p.id = i.project_id
+		WHERE i.id = $1`, issueID).Scan(&request)
+	if err != nil || request {
+		return request, err
+	}
+	projectKey, _, err := ParseKey(issueKey)
+	if err != nil {
+		return false, err
+	}
+	return perm.Reads(ctx, tx, userID, projectKey)
 }
 
 // RemoveWatcher stops somebody being told.

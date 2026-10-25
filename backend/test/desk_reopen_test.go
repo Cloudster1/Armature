@@ -166,7 +166,7 @@ func TestAReplyNoWayOutOfDoneCanTakeIsToldToTheAgents(t *testing.T) {
 	ws := h.newProject(t, "noway")
 	d, p := ws.aDesk(t, h, "Dead end desk")
 	customer := ws.customerOf(t, h, "stuck")
-	bob := h.joinExisting(t, h.email(t, "bob"), "member")
+	bob := h.joinAsMember(t, h.email(t, "bob"))
 
 	// The desk follows a copy of the service request workflow that has no way
 	// back out of Resolved; every other desk keeps the original.
