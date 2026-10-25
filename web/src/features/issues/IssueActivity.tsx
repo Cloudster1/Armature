@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type FormEvent } from "react";
-import { ACTIVITY_FOLD } from "@/config";
+import { ACTIVITY_FOLD, APP_NAME } from "@/config";
 import { type Comment, type Doc, useAddComment, useComments, useDeleteComment, useUpdateComment } from "@/api/issues";
 import { useFindMentionable } from "@/api/people";
 import { canAdminister, useAccess } from "@/api/access";
@@ -12,6 +12,7 @@ import { Editor, type EditorHandle } from "@/features/editor/Editor";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { Avatar, RelativeTime } from "./badges";
 import { forgetDraft, keepDraft, readDraft } from "./drafts";
+import { t } from "@/i18n";
 
 // The conversation sits near the top, where it is read and added to; the
 // changelog is the last section, for whoever wants to know how it got here.
@@ -27,11 +28,11 @@ export function Activity({ issueKey, me }: { issueKey: string; me?: string }) {
     <div>
       {comments.length > shown.length && (
         <Button variant="ghost" size="sm" className="mb-2" onClick={() => setExpanded(true)}>
-          Show all {comments.length}
+          {t.issuePanels.common.showAll(comments.length)}
         </Button>
       )}
       {shown.length === 0 ? (
-        <p className="mb-4 text-sm text-ink-subtle">Nothing said yet.</p>
+        <p className="mb-4 text-sm text-ink-subtle">{t.issuePanels.activity.nothingSaid}</p>
       ) : (
         <ol className="mb-4 space-y-3" data-activity="comments">
           {shown.map((comment) => (
@@ -63,7 +64,7 @@ function CommentItem({ comment, issueKey, mine, administers }: { comment: Commen
   const [editing, setEditing] = useState(false);
 
   async function deleteComment() {
-    const body = comment.internal ? "The note is gone for every agent on this issue." : "It is gone for everyone who can read this issue.";
+    const body = comment.internal ? t.issuePanels.activity.noteGone : t.issuePanels.activity.commentGone;
     if (await confirm({ noun: "comment", verb: "Delete", body })) remove.mutate({ key: issueKey, id: comment.id });
   }
 
@@ -72,19 +73,27 @@ function CommentItem({ comment, issueKey, mine, administers }: { comment: Commen
       <Avatar name={comment.author?.name} src={comment.author?.avatarUrl} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-          <span className="font-medium text-ink">{comment.author?.name ?? "Armature"}</span>
+          <span className="font-medium text-ink">{comment.author?.name ?? APP_NAME}</span>
           {" · "}
           <RelativeTime iso={comment.createdAt} />
-          {comment.editedAt && <span data-comment-edited>· edited</span>}
+          {comment.editedAt && <span data-comment-edited>{t.issuePanels.activity.edited}</span>}
           {comment.internal && (
             <Tag data-internal-note className="text-warning">
-              internal note
+              {t.issuePanels.activity.internalNote}
             </Tag>
           )}
           {!editing && (mine || administers) && (
             <span className="ml-auto flex gap-1">
-              {mine && <IconButton icon={<Icon.Edit />} label="Edit comment" size="xs" onClick={() => setEditing(true)} data-action="edit-comment" />}
-              <IconButton icon={<Icon.Trash />} label="Delete comment" size="xs" onClick={deleteComment} data-action="delete-comment" />
+              {mine && (
+                <IconButton
+                  icon={<Icon.Edit />}
+                  label={t.issuePanels.activity.editComment}
+                  size="xs"
+                  onClick={() => setEditing(true)}
+                  data-action="edit-comment"
+                />
+              )}
+              <IconButton icon={<Icon.Trash />} label={t.issuePanels.activity.deleteComment} size="xs" onClick={deleteComment} data-action="delete-comment" />
             </span>
           )}
         </div>
@@ -115,16 +124,16 @@ function CommentEditor({ comment, issueKey, close }: { comment: Comment; issueKe
         onChange={setDraft}
         findPeople={findPeople}
         autoFocus
-        aria-label="Edit comment"
+        aria-label={t.issuePanels.activity.editComment}
         onSubmit={save}
       />
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
       <div className="flex gap-2">
         <Button size="sm" loading={update.isPending} disabled={!draft} onClick={save} data-action="save-comment">
-          Save
+          {t.issuePanels.common.save}
         </Button>
         <Button size="sm" variant="ghost" onClick={close}>
-          Cancel
+          {t.issuePanels.common.cancel}
         </Button>
       </div>
     </div>
@@ -195,17 +204,17 @@ function CommentForm({ issueKey }: { issueKey: string }) {
         onChange={change}
         findPeople={findPeople}
         rows={3}
-        placeholder="Add a comment; @ names somebody"
-        aria-label="Add a comment"
+        placeholder={t.issuePanels.activity.addPlaceholder}
+        aria-label={t.issuePanels.activity.addLabel}
         onSubmit={post}
         handle={(h) => (editor.current = h)}
       />
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm" loading={add.isPending || note.isPending} disabled={!body}>
-          {internal ? "Add note" : "Comment"}
+          {internal ? t.issuePanels.activity.addNote : t.issuePanels.activity.comment}
         </Button>
         <Checkbox
-          label="Internal note, not shown to the customer"
+          label={t.issuePanels.activity.internalNoteLabel}
           checked={internal}
           onChange={(e) => setInternal(e.target.checked)}
           data-action="internal-note"
@@ -213,7 +222,7 @@ function CommentForm({ issueKey }: { issueKey: string }) {
         />
         {isDesk && canned.length > 0 && (
           <Menu
-            label="Insert a canned response"
+            label={t.issuePanels.activity.insertCanned}
             trigger={(props) => (
               <Button
                 variant="ghost"
@@ -223,7 +232,7 @@ function CommentForm({ issueKey }: { issueKey: string }) {
                 aria-expanded={props["aria-expanded"]}
                 data-action="canned-responses"
               >
-                Canned response
+                {t.issuePanels.activity.canned}
               </Button>
             )}
             items={canned.map((c) => ({

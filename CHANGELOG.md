@@ -7,6 +7,10 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the issue list, the create dialog, an issue's page and its panels
+  (activity, history, links, watchers, pages, files, time and hierarchy)
+  speak German as well as English, from `web/src/i18n` (#371). Durations keep
+  the d, h and m a person types in both languages.
 - Fixed: no main page scrolls sideways on a phone (#275). Tabs scroll in
   their own row, a toolbar's buttons and an issue's transitions wrap, a
   summary in the issue, queue and portal tables keeps room to be read and

@@ -13,6 +13,8 @@ import { useMe } from "@/api/auth";
 import { Button, ErrorBanner } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { RelativeTime } from "@/features/issues/badges";
+import { t } from "@/i18n";
+import { APP_NAME } from "@/config";
 
 /**
  * The files on an issue. Uploading goes through the API to the bucket; the
@@ -49,7 +51,7 @@ export function AttachmentPanel({
     event.target.value = "";
     if (!file) return;
     if (file.size > limit) {
-      setTooBig(`${file.name} is ${formatSize(file.size)}; the limit is ${formatSize(limit)}.`);
+      setTooBig(t.issuePanels.attachments.tooBig(file.name, formatSize(file.size), formatSize(limit)));
       return;
     }
     setTooBig(null);
@@ -61,12 +63,14 @@ export function AttachmentPanel({
   return (
     <section data-attachments>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Attachments {attachments.length > 0 && `(${attachments.length})`}</h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
+          {t.issuePanels.attachments.title} {attachments.length > 0 && `(${attachments.length})`}
+        </h2>
         {editable && (
           <>
-            <input ref={input} type="file" className="sr-only" aria-label="Attach a file" onChange={onPick} />
+            <input ref={input} type="file" className="sr-only" aria-label={t.issuePanels.attachments.attach} onChange={onPick} />
             <Button size="sm" variant="secondary" loading={upload.isPending} onClick={() => input.current?.click()}>
-              Attach file
+              {t.issuePanels.attachments.attachFile}
             </Button>
           </>
         )}
@@ -85,7 +89,7 @@ export function AttachmentPanel({
       )}
 
       {attachments.length === 0 ? (
-        <p className="text-sm text-ink-subtle">Nothing attached. Screenshots, logs and documents up to {formatSize(limit)}.</p>
+        <p className="text-sm text-ink-subtle">{t.issuePanels.attachments.empty(formatSize(limit))}</p>
       ) : (
         <ul className="divide-y divide-border rounded-md border border-border">
           {attachments.map((a) => (
@@ -101,22 +105,22 @@ export function AttachmentPanel({
               </a>
               <span className="text-sm text-ink-subtle tabular-nums">{formatSize(a.size)}</span>
               <span className="hidden text-sm text-ink-subtle sm:inline">
-                {a.uploader?.name ?? "Armature"} · <RelativeTime iso={a.createdAt} />
+                {a.uploader?.name ?? APP_NAME} · <RelativeTime iso={a.createdAt} />
               </span>
               {mayRemove(a.uploader?.id) && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  aria-label={`Remove ${a.fileName}`}
+                  aria-label={t.issuePanels.attachments.removeFile(a.fileName)}
                   onClick={async () =>
                     (await confirm({
                       noun: "attachment",
                       verb: "Remove",
-                      body: `${a.fileName} goes from the ${source === "portal" ? "request" : "issue"} and from storage.`,
+                      body: source === "portal" ? t.issuePanels.attachments.goneFromRequest(a.fileName) : t.issuePanels.attachments.goneFromIssue(a.fileName),
                     })) && remove.mutate(a.id)
                   }
                 >
-                  Remove
+                  {t.issuePanels.common.remove}
                 </Button>
               )}
             </li>

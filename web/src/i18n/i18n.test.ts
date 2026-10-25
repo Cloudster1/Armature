@@ -50,6 +50,8 @@ const SAME_IN_BOTH = new Set([
   "Import",
   "Name",
   "Backlog",
+  "Sprint",
+  "Status",
   "Zoom",
   "Team",
   // A pattern with only its arguments in it, such as "month year".

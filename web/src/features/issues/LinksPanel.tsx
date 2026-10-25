@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useAddLink, useLinkTypes, useLinks, useRemoveLink } from "@/api/plan";
 import { Button, ErrorBanner, Input, SelectInput } from "@/components/ui";
 import { TypeBadge } from "./badges";
+import { t } from "@/i18n";
 
 /**
  * The issue's relationships, read from its own end, with a way to add one by
@@ -32,11 +33,13 @@ export function LinksPanel({ issueKey, editable }: { issueKey: string; editable:
   return (
     <section data-testid="links-panel">
       <div className="mb-3 flex items-center gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Links {links.length > 0 && `(${links.length})`}</h2>
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
+          {t.issuePanels.links.title} {links.length > 0 && `(${links.length})`}
+        </h2>
         <span className="flex-1" />
         {editable && !adding && (
           <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-            Add link
+            {t.issuePanels.links.add}
           </Button>
         )}
       </div>
@@ -44,7 +47,7 @@ export function LinksPanel({ issueKey, editable }: { issueKey: string; editable:
       {adding && (
         <form onSubmit={submit} className="mb-3 flex flex-wrap items-center gap-2" noValidate>
           <span className="text-sm text-ink-muted">{issueKey}</span>
-          <SelectInput aria-label="Kind of link" value={type} onChange={(event) => setType(event.target.value)} className="max-w-44">
+          <SelectInput aria-label={t.issuePanels.links.kind} value={type} onChange={(event) => setType(event.target.value)} className="max-w-44">
             {(typeData?.linkTypes ?? []).map((each) => (
               <option key={each.id} value={each.name}>
                 {each.outward}
@@ -53,7 +56,7 @@ export function LinksPanel({ issueKey, editable }: { issueKey: string; editable:
           </SelectInput>
           <Input
             id="link-target"
-            aria-label="Issue key to link to"
+            aria-label={t.issuePanels.links.target}
             value={targetKey}
             onChange={(event) => setTargetKey(event.target.value)}
             placeholder="PROJ-12"
@@ -61,10 +64,10 @@ export function LinksPanel({ issueKey, editable }: { issueKey: string; editable:
             className="w-32 font-mono uppercase"
           />
           <Button type="submit" size="sm" loading={add.isPending} disabled={!targetKey.trim()}>
-            Link
+            {t.issuePanels.links.link}
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => setAdding(false)}>
-            Done
+            {t.issuePanels.common.done}
           </Button>
         </form>
       )}
@@ -72,7 +75,7 @@ export function LinksPanel({ issueKey, editable }: { issueKey: string; editable:
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
 
       {links.length === 0 ? (
-        <p className="text-sm text-ink-subtle">Not linked to anything yet.</p>
+        <p className="text-sm text-ink-subtle">{t.issuePanels.links.none}</p>
       ) : (
         <ul className="divide-y divide-border rounded-md border border-border">
           {links.map((link) => (
@@ -87,10 +90,10 @@ export function LinksPanel({ issueKey, editable }: { issueKey: string; editable:
                 <Button
                   variant="link"
                   onClick={() => remove.mutate({ key: issueKey, linkId: link.id })}
-                  aria-label={`Remove the link to ${link.issue.key}`}
+                  aria-label={t.issuePanels.links.removeLink(link.issue.key)}
                   className="text-xs text-ink-subtle hover:text-danger"
                 >
-                  Remove
+                  {t.issuePanels.common.remove}
                 </Button>
               )}
             </li>

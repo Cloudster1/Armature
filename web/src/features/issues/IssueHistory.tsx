@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ACTIVITY_FOLD } from "@/config";
+import { ACTIVITY_FOLD, APP_NAME } from "@/config";
 import { type HistoryEntry, useHistory } from "@/api/issues";
 import { Button } from "@/components/ui";
 import { Avatar, RelativeTime } from "./badges";
 import { inOrder } from "./IssueActivity";
+import { t } from "@/i18n";
 
 export function History({ issueKey }: { issueKey: string }) {
   const { data } = useHistory(issueKey);
@@ -15,11 +16,11 @@ export function History({ issueKey }: { issueKey: string }) {
     <div data-issue-history>
       {history.length > shown.length && (
         <Button variant="ghost" size="sm" className="mb-2" onClick={() => setExpanded(true)}>
-          Show all {history.length}
+          {t.issuePanels.common.showAll(history.length)}
         </Button>
       )}
       {shown.length === 0 ? (
-        <p className="text-sm text-ink-subtle">Nothing yet.</p>
+        <p className="text-sm text-ink-subtle">{t.issuePanels.history.nothingYet}</p>
       ) : (
         <ol className="space-y-3" data-activity="history">
           {shown.map((entry) => (
@@ -38,7 +39,7 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
     <div className="flex gap-3 text-sm">
       <Avatar name={entry.actor?.name} src={entry.actor?.avatarUrl} size="sm" />
       <p className="min-w-0 flex-1 text-ink-muted">
-        <span className="font-medium text-ink">{entry.actor?.name ?? "Armature"}</span> {entry.changes.map((c) => describe(c.field, c.from, c.to)).join(", ")}
+        <span className="font-medium text-ink">{entry.actor?.name ?? APP_NAME}</span> {entry.changes.map((c) => describe(c.field, c.from, c.to)).join(", ")}
         <span className="text-ink-subtle">
           {" "}
           · <RelativeTime iso={entry.createdAt} />
@@ -48,57 +49,59 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
   );
 }
 
-/** Turns one recorded change into a sentence. */
+/** Turns one recorded change into a sentence. The values compared are the server's own words. */
 function describe(field: string, from?: string, to?: string): string {
+  const h = t.issuePanels.history;
+  const was = from ?? "";
+  const now = to ?? "";
   switch (field) {
     case "created":
-      return `created ${to}`;
+      return h.created(now);
     case "status":
-      return `moved this from ${from} to ${to}`;
-    case "assignee":
-      return to === "Unassigned" ? "unassigned this" : `assigned this to ${to}`;
-    case "resolution":
-      return to === "Unresolved" ? "reopened this" : `resolved this as ${to}`;
-    case "description":
-      return to === "cleared" ? "cleared the description" : "updated the description";
-    case "type":
-      return `changed the type from ${from} to ${to}`;
-    case "summary":
-      return `renamed this from "${from}" to "${to}"`;
-    case "attachment":
-      return to ? `attached ${to}` : `removed ${from}`;
-    case "reporter":
-      return `made ${to} the reporter`;
-    case "labels":
-      return to ? `labelled this ${to}` : `took the labels off (${from})`;
-    case "timeEstimate":
-      return to ? `estimated this at ${to}` : "removed the time estimate";
-    case "timeRemaining":
-      return to ? `has ${to} remaining` : "cleared the remaining time";
-    case "timeSpent":
-      return `logged work, ${from || "0m"} to ${to}`;
-    case "worklog":
-      return to ? `corrected a work log from ${from} to ${to}` : `removed a work log of ${from}`;
-    case "parent":
-      return to === "None" ? `took this out of ${from}` : `moved this under ${to}`;
     case "project":
-      return `moved this from ${from} to ${to}`;
+      return h.moved(was, now);
+    case "assignee":
+      return to === "Unassigned" ? h.unassigned : h.assigned(now);
+    case "resolution":
+      return to === "Unresolved" ? h.reopened : h.resolved(now);
+    case "description":
+      return to === "cleared" ? h.clearedDescription : h.updatedDescription;
+    case "type":
+      return h.retyped(was, now);
+    case "summary":
+      return h.renamedSummary(was, now);
+    case "attachment":
+      return to ? h.attached(to) : h.removedFile(was);
+    case "reporter":
+      return h.reporter(now);
+    case "labels":
+      return to ? h.labelled(to) : h.labelsOff(was);
+    case "timeEstimate":
+      return to ? h.estimated(to) : h.estimateRemoved;
+    case "timeRemaining":
+      return to ? h.remaining(to) : h.remainingCleared;
+    case "timeSpent":
+      return h.logged(from || "0m", now);
+    case "worklog":
+      return to ? h.worklogCorrected(was, to) : h.worklogRemoved(was);
+    case "parent":
+      return to === "None" ? h.takenOutOf(was) : h.movedUnder(now);
     case "key":
-      return `renamed it from ${from} to ${to}`;
+      return h.rekeyed(was, now);
     case "clonedFrom":
-      return `cloned this from ${to}`;
+      return h.cloned(now);
     case "fixVersion":
-      return to ? `set the fix versions to ${to}` : `cleared the fix versions (${from})`;
+      return to ? h.fixVersions(to) : h.fixVersionsCleared(was);
     case "affectsVersion":
-      return to ? `set the affected versions to ${to}` : `cleared the affected versions (${from})`;
+      return to ? h.affectedVersions(to) : h.affectedVersionsCleared(was);
     case "component":
-      return to ? `put this in ${to}` : `took this out of ${from}`;
+      return to ? h.putIn(to) : h.takenOutOf(was);
     case "sprint":
     case "team":
     case "milestone":
     case "company":
-      return to ? `set the ${field} to ${to}` : `cleared the ${field} (${from})`;
+      return to ? h.setField(h.fields[field] ?? field, to) : h.clearedField(h.fields[field] ?? field, was);
     default:
-      return `changed ${field} from ${from || "empty"} to ${to || "empty"}`;
+      return h.changed(field, from || h.empty, to || h.empty);
   }
 }

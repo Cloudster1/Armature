@@ -17,6 +17,7 @@ import { IssueField, IssueFields } from "@/features/fields/IssueFields";
 import { LabelPicker } from "@/features/labels/LabelPicker";
 import { TimeSummary } from "@/features/time/TimeTracking";
 import { Detail } from "./Detail";
+import { t } from "@/i18n";
 
 export interface SlotProps {
   issue: Issue;
@@ -31,63 +32,63 @@ export const slotViews: Record<Slot, (props: SlotProps) => ReactNode> = {
   // The description is a section of the left column, drawn there by name.
   description: () => null,
   assignee: ({ issue, editable }) => (
-    <Detail label="Assignee">
+    <Detail label={t.issueView.details.assignee}>
       <AssigneeField issue={issue} editable={editable} />
     </Detail>
   ),
   reporter: ({ issue, editable }) => (
-    <Detail label="Reporter">
+    <Detail label={t.issueView.details.reporter}>
       <ReporterField issue={issue} editable={editable} />
     </Detail>
   ),
   parent: ({ issue }) => (
-    <Detail label="Parent" wide>
+    <Detail label={t.issueView.details.parent} wide>
       <ParentPicker issue={issue} />
     </Detail>
   ),
   schedule: ({ issue }) => (
-    <Detail label="Scheduled" wide>
+    <Detail label={t.issueView.details.scheduled} wide>
       <ScheduleField issue={issue} />
     </Detail>
   ),
   sprint: ({ issue }) => (
-    <Detail label="Sprint">
+    <Detail label={t.issueView.details.sprint}>
       <SprintField issue={issue} />
     </Detail>
   ),
   milestone: ({ issue }) => (
-    <Detail label="Milestone">
+    <Detail label={t.issueView.details.milestone}>
       <MilestoneField issue={issue} />
     </Detail>
   ),
   fixVersions: ({ issue, editable }) => (
-    <Detail label="Fix versions" wide>
+    <Detail label={t.issueView.details.fixVersions} wide>
       <VersionField issue={issue} editable={editable} role="fix" />
     </Detail>
   ),
   affectsVersions: ({ issue, editable }) => (
-    <Detail label="Affects versions" wide>
+    <Detail label={t.issueView.details.affectsVersions} wide>
       <VersionField issue={issue} editable={editable} role="affects" />
     </Detail>
   ),
   components: ({ issue, editable }) => (
-    <Detail label="Components" wide>
+    <Detail label={t.issueView.details.components} wide>
       <ComponentField issue={issue} editable={editable} />
     </Detail>
   ),
   estimate: ({ issue }) => (
-    <Detail label="Estimate">
+    <Detail label={t.issueView.details.estimate}>
       <EstimateField issue={issue} />
     </Detail>
   ),
   team: ({ issue }) => (
-    <Detail label="Team">
+    <Detail label={t.issueView.details.team}>
       <TeamField issue={issue} />
     </Detail>
   ),
   request: ({ issue }) =>
     issue.requestTypeName || issue.company ? (
-      <Detail label="Request">
+      <Detail label={t.issueView.details.request}>
         <span className="text-ink">{issue.requestTypeName}</span>
         {issue.company && (
           <span className="block text-ink-muted" data-request-company={issue.company.name}>
@@ -98,23 +99,23 @@ export const slotViews: Record<Slot, (props: SlotProps) => ReactNode> = {
     ) : null,
   goals: ({ issue }) => <SlaDetails issueKey={issue.key} />,
   priority: ({ issue }) => (
-    <Detail label="Priority">
+    <Detail label={t.issueView.details.priority}>
       <PriorityPicker issueKey={issue.key} current={issue.priority} />
     </Detail>
   ),
   labels: ({ issue, editable }) => (
-    <Detail label="Labels" wide>
+    <Detail label={t.issueView.details.labels} wide>
       <LabelPicker issue={issue} editable={editable} />
     </Detail>
   ),
   time: ({ issue, editable }) => (
-    <Detail label="Time" wide>
+    <Detail label={t.issueView.details.time} wide>
       <TimeSummary issue={issue} editable={editable} />
     </Detail>
   ),
   otherFields: ({ issue, editable, named }) => <IssueFields issueKey={issue.key} editable={editable} except={named} />,
   created: ({ issue }) => (
-    <Detail label="Created">
+    <Detail label={t.issueView.details.created}>
       <span className="text-ink-muted">
         <RelativeTime iso={issue.createdAt} />
       </span>
@@ -122,7 +123,7 @@ export const slotViews: Record<Slot, (props: SlotProps) => ReactNode> = {
   ),
   resolved: ({ issue }) =>
     issue.resolvedAt ? (
-      <Detail label="Resolved">
+      <Detail label={t.issueView.details.resolved}>
         <span className="text-ink-muted">
           <RelativeTime iso={issue.resolvedAt} />
         </span>
@@ -142,7 +143,7 @@ function SlaDetails({ issueKey }: { issueKey: string }) {
   const timers = data?.timers ?? [];
   if (timers.length === 0) return null;
   return (
-    <Detail label="Goals" wide>
+    <Detail label={t.issueView.details.goals} wide>
       <span className="flex flex-col items-end gap-1" data-testid="sla">
         {timers.map((t) => (
           <SlaBadge key={t.id} timer={t} />
@@ -159,7 +160,7 @@ function PriorityPicker({ issueKey, current }: { issueKey: string; current: Prio
       <PriorityBadge priority={current} />
       <SelectInput
         value={current}
-        aria-label="Priority"
+        aria-label={t.issueView.details.priority}
         controlSize="sm"
         onChange={(e) => update.mutate({ key: issueKey, priority: e.target.value as Priority })}
         className="capitalize"

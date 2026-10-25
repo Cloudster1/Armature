@@ -4,6 +4,7 @@ import { Button, Menu, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { TypeBadge } from "./badges";
 import { typeChoices, useTypeChange } from "./typeChange";
+import { t } from "@/i18n";
 
 /** The issue's type in its header, which anybody who may edit can change. */
 export function TypeField({ issue, editable }: { issue: Issue; editable: boolean }) {
@@ -30,15 +31,15 @@ function TypePicker({ issue, choices }: { issue: Issue; choices: IssueType[] }) 
       return;
     }
     if (lands) {
-      const body = `Its workflow has no ${issue.status.name}, so it moves to ${lands.name}.`;
-      if (!(await confirm({ verb: "Change", noun: `${issue.key} to ${type.name}`, body }))) return;
+      const body = t.issueList.typePicker.moves(issue.status.name, lands.name);
+      if (!(await confirm({ verb: t.issueList.typePicker.change, noun: t.issueList.typePicker.changeNoun(issue.key, type.name), body }))) return;
     }
-    update.mutate({ key: issue.key, typeId: type.id }, { onSuccess: () => toast.success(`Changed to ${type.name}`) });
+    update.mutate({ key: issue.key, typeId: type.id }, { onSuccess: () => toast.success(t.issueList.typePicker.changed(type.name)) });
   }
 
   return (
     <Menu
-      label="Change the issue type"
+      label={t.issueList.typePicker.menu}
       trigger={(props) => (
         <Button
           variant="ghost"
@@ -46,8 +47,8 @@ function TypePicker({ issue, choices }: { issue: Issue; choices: IssueType[] }) 
           onClick={props.toggle}
           aria-haspopup={props["aria-haspopup"]}
           aria-expanded={props["aria-expanded"]}
-          aria-label={`Issue type: ${issue.type.name}`}
-          title="Change the type"
+          aria-label={t.issueList.typePicker.current(issue.type.name)}
+          title={t.issueList.typePicker.changeTitle}
           loading={update.isPending}
           iconRight={<Icon.ChevronDown className="size-3 text-ink-subtle" />}
           className="gap-0.5 px-1!"

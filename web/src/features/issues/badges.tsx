@@ -2,6 +2,7 @@ import type { Priority, StatusCategory } from "@/api/issues";
 import { cx } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 /**
  * Status colour carries meaning here, so it is keyed on the category rather
@@ -41,18 +42,13 @@ const priorityStyles: Record<Priority, string> = {
   highest: "text-danger",
 };
 
-const priorityLabels: Record<Priority, string> = {
-  lowest: "Lowest",
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  highest: "Highest",
-};
-
 export function PriorityBadge({ priority }: { priority: Priority }) {
   const index = priorityOrder.indexOf(priority);
   return (
-    <span className={cx("inline-flex items-center gap-1 text-xs font-medium", priorityStyles[priority])} title={`${priorityLabels[priority]} priority`}>
+    <span
+      className={cx("inline-flex items-center gap-1 text-xs font-medium", priorityStyles[priority])}
+      title={t.issueList.priority.title(t.issueList.priority.names[priority]!)}
+    >
       {/* A small bar chart reads faster than a word at list density, but the
           word stays available to screen readers and on hover. */}
       <span aria-hidden="true" className="inline-flex items-end gap-px">
@@ -67,7 +63,7 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
           />
         ))}
       </span>
-      <span className="sr-only">{priorityLabels[priority]} priority</span>
+      <span className="sr-only">{t.issueList.priority.title(t.issueList.priority.names[priority]!)}</span>
     </span>
   );
 }

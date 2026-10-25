@@ -795,6 +795,11 @@ export async function scheduleThroughAPI(page, issueKey, start, due) {
 }
 
 /** Some of an issue's fields through the API, such as its time estimate in minutes. */
+/** Sets the signed-in person's locale, such as de-DE, which the interface speaks after the next load. */
+export async function speakThroughAPI(page, locale) {
+  await callAPI(page, "PATCH", "/auth/me", { locale });
+}
+
 export async function patchThroughAPI(page, issueKey, fields) {
   await callAPI(page, "PATCH", `/issues/${issueKey}`, fields);
 }
