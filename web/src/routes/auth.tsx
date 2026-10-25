@@ -8,6 +8,7 @@ import { request } from "@/api/client";
 import { useEffect, type ReactNode } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { applyCustomTheme } from "@/lib/theme";
+import { t } from "@/i18n";
 
 /**
  * Bounces an already signed-in visitor away from the sign-in screens. It reads
@@ -67,10 +68,10 @@ export const loginRoute = createRoute({
 function LoginPage() {
   const { next, reset } = loginRoute.useSearch();
   return (
-    <AuthLayout title="Sign in" footer={<SignupOffer />}>
+    <AuthLayout title={t.doors.login.title} footer={<SignupOffer />}>
       {reset === "done" && (
         <p role="status" className="mb-4 rounded-control border border-success/30 bg-success-subtle px-3 py-2 text-sm text-success" data-password-changed>
-          Your password is changed. Sign in with it.
+          {t.doors.login.passwordChanged}
         </p>
       )}
       <LoginForm next={next} />
@@ -82,12 +83,12 @@ function LoginPage() {
 export function SignupOffer() {
   const { data } = useSignupOpen();
   if (!data) return null;
-  if (!data.open) return <>No account yet? Ask an administrator to invite you.</>;
+  if (!data.open) return <>{t.doors.login.askToBeInvited}</>;
   return (
     <>
-      No account yet?{" "}
+      {t.doors.login.noAccount}{" "}
       <Link to="/signup" className="font-medium text-accent hover:underline">
-        Create one
+        {t.doors.login.createOne}
       </Link>
     </>
   );
@@ -95,9 +96,9 @@ export function SignupOffer() {
 
 /** What the sign-up page is headed with: setting the installation up, joining it, or neither. */
 function signupHeading(state: SignupState | undefined): { title: string; subtitle?: string } {
-  if (state?.open === false) return { title: "Sign-up is closed" };
-  if (state?.first) return { title: "Set up Armature", subtitle: "Yours is the first account, and it will administer everything here." };
-  return { title: "Create your account", subtitle: "You join as a member; an administrator can give you more." };
+  if (state?.open === false) return { title: t.doors.signup.closedTitle };
+  if (state?.first) return { title: t.doors.signup.firstTitle, subtitle: t.doors.signup.firstSubtitle };
+  return { title: t.doors.signup.title, subtitle: t.doors.signup.subtitle };
 }
 
 function SignupPage() {
@@ -110,16 +111,16 @@ function SignupPage() {
       subtitle={subtitle}
       footer={
         <>
-          Already have an account?{" "}
+          {t.doors.signup.haveAccount}{" "}
           <Link to="/login" className="font-medium text-accent hover:underline">
-            Sign in
+            {t.doors.common.signIn}
           </Link>
         </>
       }
     >
       {closed ? (
         <p className="text-sm text-ink-muted" data-signup-closed>
-          Nobody signs up here. Ask an administrator to invite you.
+          {t.doors.signup.closed}
         </p>
       ) : (
         <SignupForm />

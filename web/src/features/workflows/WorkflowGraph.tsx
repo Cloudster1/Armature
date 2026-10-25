@@ -6,6 +6,7 @@ import { useWorkflow } from "@/api/workflows";
 import { Card, ErrorBanner, Skeleton } from "@/components/ui";
 import { WorkflowCanvas } from "./designer/WorkflowCanvas";
 import { fromWorkflow } from "./designer/graph";
+import { t } from "@/i18n";
 
 /**
  * One workflow, drawn as the designer left it and touchable by nobody. The
@@ -39,7 +40,7 @@ export function WorkflowGraph({ workflowId, caption }: { workflowId: string; cap
           {caption && <p className="text-xs text-ink-muted">{caption}</p>}
         </div>
         <p className="text-xs text-ink-subtle tabular-nums">
-          {steps} {steps === 1 ? "status" : "statuses"}, {transitions} {transitions === 1 ? "transition" : "transitions"}
+          {t.workflows.graph.counts(steps, transitions)}
           {access?.canAdministerOrg && (
             <>
               {" "}
@@ -48,14 +49,14 @@ export function WorkflowGraph({ workflowId, caption }: { workflowId: string; cap
                 search={{ workflow: workflow.id, q: workflow.name }}
                 className="text-ink-muted underline-offset-2 hover:text-ink hover:underline"
               >
-                Open in the designer
+                {t.workflows.graph.openInDesigner}
               </Link>
             </>
           )}
         </p>
       </div>
       <div className="overflow-x-auto">
-        <WorkflowCanvas design={design} statuses={statuses} readOnly label={`Workflow ${workflow.name}`} />
+        <WorkflowCanvas design={design} statuses={statuses} readOnly label={t.workflows.graph.label(workflow.name)} />
       </div>
     </Card>
   );

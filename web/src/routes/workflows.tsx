@@ -6,6 +6,7 @@ import { Page, PageHeader, TabPanel, Tabs, isPageOffset } from "@/components/ui"
 import { SchemeCards } from "@/features/workflows/library/SchemeCards";
 import { StatusCards } from "@/features/workflows/library/StatusCards";
 import { WorkflowCards } from "@/features/workflows/library/WorkflowCards";
+import { t } from "@/i18n";
 
 /**
  * The organization's library: its workflows, the statuses they are built
@@ -58,10 +59,11 @@ export const workflowSchemesRoute = createRoute({
 
 type TabId = "workflows" | "statuses" | "schemes";
 
-const tabs: Array<{ value: TabId; label: string; to: string }> = [
-  { value: "workflows", label: "Workflows", to: "/settings/workflows" },
-  { value: "statuses", label: "Statuses", to: "/settings/workflows/statuses" },
-  { value: "schemes", label: "Schemes", to: "/settings/workflows/schemes" },
+// hook names a tab for the tests in every language; its label is read when the page draws.
+const tabs: Array<{ value: TabId; hook: string; to: string }> = [
+  { value: "workflows", hook: "Workflows", to: "/settings/workflows" },
+  { value: "statuses", hook: "Statuses", to: "/settings/workflows/statuses" },
+  { value: "schemes", hook: "Schemes", to: "/settings/workflows/schemes" },
 ];
 
 // What the Access page granted decides, not the seat somebody holds in the
@@ -81,21 +83,21 @@ function WorkflowLibrary() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Workflows"
+        title={t.workflows.library.title}
         tabs={
           <Tabs
-            label="Workflows"
+            label={t.workflows.library.title}
             value={current}
             panelId={panelId}
-            onChange={(next) => navigate({ to: tabs.find((t) => t.value === next)!.to as never })}
-            tabs={tabs.map((t) => ({ value: t.value, label: t.label, attrs: { "data-workflow-tab": t.label } }))}
+            onChange={(next) => navigate({ to: tabs.find((tab) => tab.value === next)!.to as never })}
+            tabs={tabs.map((tab) => ({ value: tab.value, label: t.workflows.library.tabs[tab.value], attrs: { "data-workflow-tab": tab.hook } }))}
           />
         }
       />
-      <TabPanel id={panelId} label={tabs.find((t) => t.value === current)?.label}>
+      <TabPanel id={panelId} label={t.workflows.library.tabs[current]}>
         <Outlet />
       </TabPanel>
     </Page>

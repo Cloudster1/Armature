@@ -31,23 +31,23 @@ export function MemberList({ q = "", offset = 0, show }: MembersShown & { show: 
 
       <section className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <SectionTitle>Members</SectionTitle>
+          <SectionTitle>{t.access.members.title}</SectionTitle>
           <div className="flex items-center gap-2">
             {data && (
               <span className="text-sm text-ink-muted" data-members-total={data.total}>
                 {countOf(data.total, t.kit.counted.member)}
               </span>
             )}
-            <PeopleSearch label="Find members" value={q} onChange={(text) => show({ q: text })} />
+            <PeopleSearch label={t.access.members.find} value={q} onChange={(text) => show({ q: text })} />
           </div>
         </div>
         {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
         {isLoading ? (
-          <p className="text-sm text-ink-muted">Loading...</p>
+          <p className="text-sm text-ink-muted">{t.access.loading}</p>
         ) : members.length === 0 && q ? (
-          <EmptyState title="Nobody matches that" description="Try part of their name or their address, or clear the search." />
+          <EmptyState title={t.access.members.noMatch} description={t.access.members.noMatchDetail} />
         ) : members.length === 0 ? (
-          <EmptyState title="Nobody here yet" description="Invite people above." />
+          <EmptyState title={t.access.members.empty} description={t.access.members.emptyDetail} />
         ) : (
           <Card className="divide-y divide-border">
             {members.map((member) => (
@@ -57,13 +57,19 @@ export function MemberList({ q = "", offset = 0, show }: MembersShown & { show: 
                   <span className="block truncate text-ink">{member.name}</span>
                   <span className="block truncate text-xs text-ink-muted">{member.email}</span>
                 </span>
-                <Tag className="shrink-0 capitalize">{member.role}</Tag>
+                <Tag className="shrink-0 capitalize">{t.shell.account.roles[member.role] ?? member.role}</Tag>
               </div>
             ))}
           </Card>
         )}
         {data && (
-          <Pager label="Member pages" total={data.total} offset={data.offset} pageSize={PEOPLE_PAGE_SIZE} onChange={(next) => show({ q, offset: next })} />
+          <Pager
+            label={t.access.members.pages}
+            total={data.total}
+            offset={data.offset}
+            pageSize={PEOPLE_PAGE_SIZE}
+            onChange={(next) => show({ q, offset: next })}
+          />
         )}
       </section>
     </div>

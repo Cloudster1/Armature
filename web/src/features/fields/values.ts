@@ -1,4 +1,5 @@
 import type { FieldKind } from "@/api/fields";
+import { t } from "@/i18n";
 
 /**
  * How a typed answer becomes the value the API stores, per kind. The API does
@@ -58,10 +59,10 @@ export function parseOptions(text: string): string[] {
 export function badInputMessage(kind: FieldKind, name: string): string {
   switch (kind) {
     case "number":
-      return `${name} takes a number, such as 12 or 2.5.`;
+      return t.looks.fields.takesNumber(name);
     case "date":
-      return `${name} takes a date such as 2026-01-31.`;
+      return t.looks.fields.takesDate(name);
     default:
-      return `${name} cannot take that.`;
+      return t.looks.fields.cannotTake(name);
   }
 }

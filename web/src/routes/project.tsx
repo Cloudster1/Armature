@@ -5,6 +5,7 @@ import { canAdminister, useAccess } from "@/api/access";
 import { EmptyState, Page } from "@/components/ui";
 import { ApiError } from "@/api/client";
 import { featureOfPath, featureWord, hasFeature } from "@/features/projects/features";
+import { t } from "@/i18n";
 
 // Every page of a project hangs off this route, so the project is loaded once
 // and a project that does not exist is answered once.
@@ -23,11 +24,11 @@ function ProjectLayout() {
     return (
       <Page width="content">
         <EmptyState
-          title={`There is no project ${projectKey}`}
-          description="Check the key in the address, or ask an administrator for a role in the project."
+          title={t.projectSetup.project.missing(projectKey)}
+          description={t.projectSetup.project.missingDetail}
           action={
             <Link to="/projects" className="text-sm font-medium text-accent hover:underline">
-              All projects
+              {t.projectSetup.project.allProjects}
             </Link>
           }
         />
@@ -42,12 +43,12 @@ function ProjectLayout() {
       <Page width="content">
         <div data-feature-off={feature}>
           <EmptyState
-            title={`${data.project.name} does not use ${featureWord(feature)}`}
-            description="Its template left the page out. An administrator can turn it on under the project's settings."
+            title={t.projectSetup.project.featureOff(data.project.name, featureWord(feature))}
+            description={t.projectSetup.project.featureOffDetail}
             action={
               canAdminister(access, projectKey) ? (
                 <Link to="/projects/$projectKey/settings" params={{ projectKey }} className="text-sm font-medium text-accent hover:underline">
-                  Turn it on in Settings
+                  {t.projectSetup.project.turnOn}
                 </Link>
               ) : undefined
             }

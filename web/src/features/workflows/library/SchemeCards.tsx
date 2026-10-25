@@ -31,8 +31,8 @@ export function SchemeCards({ q, offset, onShow, canConfigure }: SchemeCardsProp
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <ListSearch
-            aria-label="Find schemes"
-            placeholder="Find by name"
+            aria-label={t.workflows.library.findSchemes}
+            placeholder={t.workflows.library.findByName}
             value={q}
             onChange={(text) => onShow({ q: text })}
             className="w-56"
@@ -42,19 +42,25 @@ export function SchemeCards({ q, offset, onShow, canConfigure }: SchemeCardsProp
         </div>
         {canConfigure && !editing.open && (
           <Button size="sm" variant="secondary" onClick={() => setEditing({ open: true })}>
-            New scheme
+            {t.workflows.library.newScheme}
           </Button>
         )}
       </div>
       {editing.open && <SchemeEditor scheme={editing.scheme} onDone={() => setEditing({ open: false })} />}
       {data && schemes.length === 0 && q && (
-        <EmptyState icon={<Icon.Search />} title="No scheme matches that" description="Try part of its name, or clear the search." />
+        <EmptyState icon={<Icon.Search />} title={t.workflows.library.noScheme} description={t.workflows.library.noMatchDetail} />
       )}
       {schemes.map((scheme) => (
         <SchemeCard key={scheme.id} scheme={scheme} canConfigure={canConfigure} onEdit={() => setEditing({ open: true, scheme })} />
       ))}
       {data && (
-        <Pager label="Scheme pages" total={data.total} offset={data.offset} pageSize={LIBRARY_PAGE_SIZE} onChange={(next) => onShow({ q, offset: next })} />
+        <Pager
+          label={t.workflows.library.schemePages}
+          total={data.total}
+          offset={data.offset}
+          pageSize={LIBRARY_PAGE_SIZE}
+          onChange={(next) => onShow({ q, offset: next })}
+        />
       )}
     </section>
   );
@@ -66,10 +72,10 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
   const confirm = useConfirm();
   const error = (promote.error ?? remove.error) as Error | undefined;
   const usedBy = scheme.isDefault
-    ? "Used by every project that has not named one of its own."
+    ? t.workflows.library.usedByEvery
     : scheme.projectKeys.length > 0
-      ? `Used by ${scheme.projectKeys.join(", ")}.`
-      : "No project uses this yet.";
+      ? t.workflows.library.usedByProjects(scheme.projectKeys.join(", "))
+      : t.workflows.library.noProject;
   const fallback = scheme.items.find((item) => !item.issueTypeId);
   const named = scheme.items.filter((item) => item.issueTypeId);
 
@@ -81,18 +87,17 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
       actions={
         canConfigure ? (
           <>
-            <IconButton icon={<Icon.Edit />} label={`Edit ${scheme.name}`} size="sm" variant="ghost" data-action="edit" onClick={onEdit} />
+            <IconButton icon={<Icon.Edit />} label={t.workflows.library.edit(scheme.name)} size="sm" variant="ghost" data-action="edit" onClick={onEdit} />
             {!scheme.isDefault && (
               <IconButton
                 icon={<Icon.Trash />}
-                label={`Delete ${scheme.name}`}
+                label={t.workflows.library.delete(scheme.name)}
                 size="sm"
                 variant="ghost"
                 data-action="delete"
                 aria-busy={remove.isPending}
                 onClick={async () =>
-                  (await confirm({ noun: t.kit.confirm.things.scheme, body: `${scheme.name} goes; projects using it fall back to the default.` })) &&
-                  remove.mutate(scheme.id)
+                  (await confirm({ noun: t.kit.confirm.things.scheme, body: t.workflows.library.deleteSchemeBody(scheme.name) })) && remove.mutate(scheme.id)
                 }
               />
             )}
@@ -104,31 +109,31 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 text-sm font-medium text-ink">
             {scheme.name}
-            {scheme.isDefault && <Tag className="text-accent">Default</Tag>}
+            {scheme.isDefault && <Tag className="text-accent">{t.workflows.library.default}</Tag>}
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">{usedBy}</p>
           <ul className="mt-2 space-y-0.5 text-sm text-ink-muted">
             {fallback && (
               <li>
-                Everything else uses <span className="text-ink">{fallback.workflowName}</span>
+                {t.workflows.library.everythingElseUses} <span className="text-ink">{fallback.workflowName}</span>
               </li>
             )}
             {named.map((item) => (
               <li key={item.issueTypeId}>
-                <span className="text-ink">{item.issueTypeName}</span> uses {item.workflowName}
+                <span className="text-ink">{item.issueTypeName}</span> {t.workflows.library.uses} {item.workflowName}
               </li>
             ))}
           </ul>
         </div>
         <div className="flex shrink-0 items-start gap-6">
-          <Stat label="Projects" value={scheme.isDefault ? "the rest" : scheme.projectKeys.length} />
-          <Stat label="Types" value={named.length} />
+          <Stat label={t.workflows.library.projects} value={scheme.isDefault ? t.workflows.library.theRest : scheme.projectKeys.length} />
+          <Stat label={t.workflows.library.types} value={named.length} />
         </div>
       </div>
       {canConfigure && !scheme.isDefault && (
         <div className="mt-3">
           <Button size="sm" variant="ghost" loading={promote.isPending} onClick={() => promote.mutate(scheme.id)}>
-            Make it the default
+            {t.workflows.library.makeDefault}
           </Button>
         </div>
       )}

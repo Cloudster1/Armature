@@ -22,13 +22,8 @@ export function GroupList() {
     <div className="space-y-4">
       <NewGroup />
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading...</p>}
-      {!isLoading && groups.length === 0 && (
-        <EmptyState
-          title="No groups yet"
-          description="A group is a name for a set of people, so that a role can be given once instead of to everybody in turn."
-        />
-      )}
+      {isLoading && <p className="text-sm text-ink-muted">{t.access.loading}</p>}
+      {!isLoading && groups.length === 0 && <EmptyState title={t.access.groups.empty} description={t.access.groups.emptyDetail} />}
 
       <div className="space-y-3">
         {groups.map((group) => (
@@ -59,13 +54,13 @@ function GroupCard({ group }: { group: Group }) {
             <span className="break-words">{group.name}</span>
             {fromProvider && (
               <span className="rounded-full bg-surface-raised px-2 py-0.5 text-2xs font-medium whitespace-nowrap text-ink-muted">
-                from the identity provider
+                {t.access.groups.fromProvider}
               </span>
             )}
           </h3>
           <p className="mt-0.5 text-xs text-ink-muted">
-            {group.memberCount} {group.memberCount === 1 ? "person" : "people"} · {group.roleCount} {group.roleCount === 1 ? "role" : "roles"}
-            {group.externalRef && ` · matches "${group.externalRef}"`}
+            {t.access.groups.people(group.memberCount)} · {t.access.groups.roles(group.roleCount)}
+            {group.externalRef && t.access.groups.matches(group.externalRef)}
           </p>
         </div>
         <Button
@@ -74,11 +69,10 @@ function GroupCard({ group }: { group: Group }) {
           className="shrink-0"
           loading={deleteGroup.isPending}
           onClick={async () =>
-            (await confirm({ noun: t.kit.confirm.things.group, body: `${group.name} goes, and its members lose the roles it granted.` })) &&
-            deleteGroup.mutate(group.id)
+            (await confirm({ noun: t.kit.confirm.things.group, body: t.access.groups.deleteBody(group.name) })) && deleteGroup.mutate(group.id)
           }
         >
-          Delete
+          {t.access.delete}
         </Button>
       </div>
 
@@ -95,26 +89,24 @@ function GroupCard({ group }: { group: Group }) {
                   (await confirm({
                     noun: t.kit.confirm.things.member,
                     verb: t.kit.confirm.verbs.remove,
-                    body: `${member.name} leaves ${group.name} and loses the roles it grants.`,
+                    body: t.access.groups.removeBody(member.name, group.name),
                   })) && remove.mutate({ id: group.id, userId: member.userId })
                 }
               >
-                Remove
+                {t.access.remove}
               </Button>
             )}
           </li>
         ))}
-        {members.length === 0 && (
-          <li className="text-sm text-ink-subtle">{fromProvider ? "Nobody has signed in with this group in their token yet." : "Nobody in it yet."}</li>
-        )}
+        {members.length === 0 && <li className="text-sm text-ink-subtle">{fromProvider ? t.access.groups.nobodyFromProvider : t.access.groups.nobody}</li>}
       </ul>
 
       {!fromProvider && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <PersonPicker
             id={`group-add-${group.id}`}
-            aria-label={`Add somebody to ${group.name}`}
-            none="Add somebody..."
+            aria-label={t.access.groups.addTo(group.name)}
+            none={t.access.groups.addSomebody}
             staff
             exclude={members.map((member) => member.userId)}
             value={picked}
@@ -129,7 +121,7 @@ function GroupCard({ group }: { group: Group }) {
               setPicked("");
             }}
           >
-            Add
+            {t.access.add}
           </Button>
         </div>
       )}
@@ -164,15 +156,18 @@ function NewGroup() {
     <Card className="p-4">
       <form onSubmit={onSubmit} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-          <Field label="New group" value={name} placeholder="Release managers" onChange={(event) => setName(event.target.value)} />
-          <Field label="Provider claim" value={ref} placeholder="Optional" onChange={(event) => setRef(event.target.value)} />
+          <Field
+            label={t.access.groups.newGroup}
+            value={name}
+            placeholder={t.access.groups.newGroupPlaceholder}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <Field label={t.access.groups.claim} value={ref} placeholder={t.access.optional} onChange={(event) => setRef(event.target.value)} />
           <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-            Create group
+            {t.access.groups.create}
           </Button>
         </div>
-        <p className="text-xs text-ink-subtle">
-          The provider claim is the value your identity provider sends for this group; with it, membership follows sign-ins.
-        </p>
+        <p className="text-xs text-ink-subtle">{t.access.groups.claimHint}</p>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
       </form>
     </Card>

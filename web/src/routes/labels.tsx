@@ -74,18 +74,18 @@ function LabelsPage() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Labels"
-        meta="Words shared by every project. A label is coined the first time somebody puts it on an issue."
+        title={t.looks.labels.title}
+        meta={t.looks.labels.meta}
       />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
       <div className="mb-3 flex items-center gap-3">
         <ListSearch
-          aria-label="Find labels"
-          placeholder="Find a label"
+          aria-label={t.looks.labels.find}
+          placeholder={t.looks.labels.findPlaceholder}
           value={q}
           onChange={(text) => show({ q: text })}
           className="w-56"
@@ -94,15 +94,15 @@ function LabelsPage() {
         {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, labels.length, t.kit.counted.label)}</span>}
       </div>
       {isLoading ? null : labels.length === 0 && q ? (
-        <EmptyState icon={<Icon.Search />} title="No label matches that" description="Try part of the word, or clear the search." />
+        <EmptyState icon={<Icon.Search />} title={t.looks.labels.noMatch} description={t.looks.labels.noMatchDetail} />
       ) : labels.length === 0 ? (
-        <EmptyState title="No labels yet" description="Type a word into the Labels field on any issue and it appears here." />
+        <EmptyState title={t.looks.labels.noneYet} description={t.looks.labels.noneYetDetail} />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th>Label</Th>
-              <Th className="w-24 text-right">Issues</Th>
+              <Th>{t.looks.labels.columnLabel}</Th>
+              <Th className="w-24 text-right">{t.looks.labels.columnIssues}</Th>
               {canAdminister && <Th className="w-40" />}
             </tr>
           </thead>
@@ -116,7 +116,7 @@ function LabelsPage() {
                   (await confirm({
                     noun: t.kit.confirm.things.label,
                     verb: t.kit.confirm.verbs.remove,
-                    body: `${label.name} comes off every issue carrying it.`,
+                    body: t.looks.labels.removeBody(label.name),
                   })) && remove.mutate(label.id)
                 }
               />
@@ -124,7 +124,9 @@ function LabelsPage() {
           </tbody>
         </Table>
       )}
-      {data && <Pager label="Label pages" total={data.total} offset={data.offset} pageSize={LABEL_PAGE_SIZE} onChange={(next) => show({ q, offset: next })} />}
+      {data && (
+        <Pager label={t.looks.labels.pages} total={data.total} offset={data.offset} pageSize={LABEL_PAGE_SIZE} onChange={(next) => show({ q, offset: next })} />
+      )}
     </Page>
   );
 }
@@ -149,28 +151,28 @@ function LabelRow({ label, canAdminister, onDelete }: { label: Label; canAdminis
         <Td colSpan={3}>
           <form onSubmit={save} className="flex flex-wrap items-end gap-3">
             {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
-            <Field id={`label-name-${label.id}`} label="Name" value={name} onChange={(e) => setName(e.target.value)} required className="w-48" />
+            <Field id={`label-name-${label.id}`} label={t.looks.labels.name} value={name} onChange={(e) => setName(e.target.value)} required className="w-48" />
             <div className="space-y-1">
-              <span className="block text-sm font-medium text-ink-muted">Colour</span>
-              <span className="flex gap-1" role="radiogroup" aria-label="Colour">
+              <span className="block text-sm font-medium text-ink-muted">{t.looks.labels.colour}</span>
+              <span className="flex gap-1" role="radiogroup" aria-label={t.looks.labels.colour}>
                 {LABEL_COLORS.map((option) => (
                   <Choice
                     key={option}
                     checked={option === color}
-                    aria-label={option}
+                    aria-label={t.looks.labels.colours[option] ?? option}
                     onSelect={() => setColor(option)}
                     className={option === color ? "rounded ring-2 ring-accent" : "rounded"}
                   >
-                    <LabelChip label={{ name: option, color: option }} />
+                    <LabelChip label={{ name: t.looks.labels.colours[option] ?? option, color: option }} />
                   </Choice>
                 ))}
               </span>
             </div>
             <Button type="submit" size="sm" loading={update.isPending}>
-              Save label
+              {t.looks.labels.save}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
-              Cancel
+              {t.kit.cancel}
             </Button>
           </form>
         </Td>
@@ -188,10 +190,10 @@ function LabelRow({ label, canAdminister, onDelete }: { label: Label; canAdminis
         <Td className="text-right">
           <span className="flex justify-end gap-1">
             <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-              Edit
+              {t.looks.labels.edit}
             </Button>
-            <Button size="sm" variant="ghost" aria-label={`Remove label ${label.name}`} onClick={onDelete}>
-              Remove
+            <Button size="sm" variant="ghost" aria-label={t.looks.labels.removeLabel(label.name)} onClick={onDelete}>
+              {t.looks.labels.remove}
             </Button>
           </span>
         </Td>

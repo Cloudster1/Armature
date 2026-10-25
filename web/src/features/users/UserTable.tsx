@@ -27,8 +27,11 @@ import { PeopleSearch } from "@/features/people/PeopleSearch";
 import { PEOPLE_PAGE_SIZE } from "@/config";
 import { t } from "@/i18n";
 
-const signsInWords: Record<ManagedUser["signsInWith"], string> = { password: "Password", provider: "Identity provider", none: "Nothing yet" };
-const roleWords: Record<ManagedUser["role"], string> = { owner: "Owner", admin: "Administrator", member: "Member", customer: "Customer" };
+// Read while rendering, so the words follow the language.
+const signsInWord = (way: ManagedUser["signsInWith"]): string =>
+  way === "password" ? t.access.users.password : way === "provider" ? t.access.users.provider : t.access.users.nothingYet;
+const roleWord = (role: ManagedUser["role"]): string =>
+  role === "owner" ? t.access.users.owner : role === "admin" ? t.access.invite.admin : role === "member" ? t.access.invite.member : t.access.invite.customer;
 
 /** What the users page shows: a search and where in its matches the page starts. */
 export interface UsersShown {
@@ -61,7 +64,7 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
 
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <PeopleSearch label="Find users" value={q} onChange={(text) => show({ q: text })} />
+      <PeopleSearch label={t.access.users.find} value={q} onChange={(text) => show({ q: text })} />
       {data && (
         <span className="text-sm text-ink-muted" data-users-total={data.total}>
           {countOf(data.total, t.kit.counted.account)}
@@ -71,15 +74,15 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
   );
 
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.access.loading}</p>;
   if (users.length === 0) {
     return (
       <div className="space-y-3">
         {header}
         {q ? (
-          <EmptyState title="Nobody matches that" description="Try part of their name or their address, or clear the search." />
+          <EmptyState title={t.access.members.noMatch} description={t.access.members.noMatchDetail} />
         ) : (
-          <EmptyState title="Nobody here yet" description="Make an account above, or invite somebody under Access." />
+          <EmptyState title={t.access.members.empty} description={t.access.users.emptyDetail} />
         )}
       </div>
     );
@@ -90,10 +93,10 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
       await confirm({
         noun: t.kit.confirm.things.account,
         verb: t.kit.confirm.verbs.deactivate,
-        body: `${user.name} can no longer sign in, and every session and token of theirs ends. What they wrote stays.`,
+        body: t.access.users.deactivateBody(user.name),
       })
     ) {
-      update.mutate({ id: user.id, isActive: false }, { onSuccess: () => toast.success(`Deactivated ${user.name}`) });
+      update.mutate({ id: user.id, isActive: false }, { onSuccess: () => toast.success(t.access.users.deactivated(user.name)) });
     }
   }
 
@@ -103,10 +106,10 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
       await confirm({
         noun: t.kit.confirm.things.twoStepSignIn,
         verb: t.kit.confirm.verbs.turnOff,
-        body: `${user.name} signs in with the password alone until they set it up again. Do this only when you are sure it is them asking.`,
+        body: t.access.users.secondFactorOffBody(user.name),
       })
     ) {
-      removeFactor.mutate(user.id, { onSuccess: () => toast.success(`Turned off two-step sign-in for ${user.name}`) });
+      removeFactor.mutate(user.id, { onSuccess: () => toast.success(t.access.users.secondFactorOff(user.name)) });
     }
   }
 
@@ -118,11 +121,11 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
       <Table>
         <thead>
           <tr>
-            <Th>Name</Th>
-            <Th>Email</Th>
-            <Th>Signs in with</Th>
-            <Th>Role</Th>
-            <Th>State</Th>
+            <Th>{t.access.newUser.name}</Th>
+            <Th>{t.access.newUser.email}</Th>
+            <Th>{t.access.users.signsIn}</Th>
+            <Th>{t.access.grants.role}</Th>
+            <Th>{t.access.users.state}</Th>
             <Th className="w-10" />
           </tr>
         </thead>
@@ -135,27 +138,27 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
                 <Td className="text-ink">{user.name}</Td>
                 <Td className="text-ink-muted">{user.email}</Td>
                 <Td className="text-ink-muted">
-                  {signsInWords[user.signsInWith]}
+                  {signsInWord(user.signsInWith)}
                   {user.secondFactor && (
                     <Tag className="ml-2" data-user-second-factor>
-                      Two-step
+                      {t.access.users.twoStep}
                     </Tag>
                   )}
                 </Td>
                 <Td>
-                  <Tag>{roleWords[user.role]}</Tag>
+                  <Tag>{roleWord(user.role)}</Tag>
                 </Td>
                 <Td>
-                  <Tag className={user.isActive ? "" : "text-danger"}>{user.isActive ? "Active" : "Off"}</Tag>
+                  <Tag className={user.isActive ? "" : "text-danger"}>{user.isActive ? t.access.users.active : t.access.users.off}</Tag>
                 </Td>
                 <Td className="text-right">
                   <Menu
-                    label={`Actions for ${user.name}`}
+                    label={t.access.matrix.actionsFor(user.name)}
                     align="end"
                     trigger={(props) => (
                       <IconButton
                         icon={<Icon.More />}
-                        label={`Actions for ${user.name}`}
+                        label={t.access.matrix.actionsFor(user.name)}
                         size="sm"
                         onClick={props.toggle}
                         aria-haspopup={props["aria-haspopup"]}
@@ -164,23 +167,29 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
                       />
                     )}
                     items={[
-                      { label: "Rename", icon: <Icon.Edit />, disabled: locked, onSelect: () => setRenaming(user), attrs: { "data-action": "rename-user" } },
                       {
-                        label: "Change role",
+                        label: t.access.users.rename,
+                        icon: <Icon.Edit />,
+                        disabled: locked,
+                        onSelect: () => setRenaming(user),
+                        attrs: { "data-action": "rename-user" },
+                      },
+                      {
+                        label: t.access.users.changeRole,
                         icon: <Icon.Key />,
                         disabled: locked || user.role === "owner",
                         onSelect: () => setChangingRole(user),
                         attrs: { "data-action": "change-role" },
                       },
                       {
-                        label: "Set password",
+                        label: t.access.users.setPassword,
                         icon: <Icon.Shield />,
                         disabled: locked || user.signsInWith === "provider",
                         onSelect: () => setSettingPassword(user),
                         attrs: { "data-action": "set-password" },
                       },
                       {
-                        label: "Turn off two-step sign-in",
+                        label: t.access.users.turnOffSecondFactor,
                         icon: <Icon.Key />,
                         disabled: locked || !user.secondFactor,
                         onSelect: () => void turnOffSecondFactor(user),
@@ -188,7 +197,7 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
                       },
                       // Hours worked are not the account's, so a shared account's week is set here too; a customer has none.
                       {
-                        label: "Working week",
+                        label: t.access.users.workingWeek,
                         icon: <Icon.Calendar />,
                         disabled: user.role === "customer",
                         onSelect: () => setSettingWeek(user),
@@ -196,7 +205,7 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
                       },
                       user.isActive
                         ? {
-                            label: "Deactivate",
+                            label: t.access.users.deactivate,
                             icon: <Icon.EyeOff />,
                             danger: true,
                             disabled: locked,
@@ -204,10 +213,11 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
                             attrs: { "data-action": "deactivate-user" },
                           }
                         : {
-                            label: "Reactivate",
+                            label: t.access.users.reactivate,
                             icon: <Icon.Eye />,
                             disabled: locked,
-                            onSelect: () => update.mutate({ id: user.id, isActive: true }, { onSuccess: () => toast.success(`Reactivated ${user.name}`) }),
+                            onSelect: () =>
+                              update.mutate({ id: user.id, isActive: true }, { onSuccess: () => toast.success(t.access.users.reactivated(user.name)) }),
                             attrs: { "data-action": "reactivate-user" },
                           },
                     ]}
@@ -218,7 +228,15 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
           })}
         </tbody>
       </Table>
-      {data && <Pager label="User pages" total={data.total} offset={data.offset} pageSize={PEOPLE_PAGE_SIZE} onChange={(next) => show({ q, offset: next })} />}
+      {data && (
+        <Pager
+          label={t.access.users.pages}
+          total={data.total}
+          offset={data.offset}
+          pageSize={PEOPLE_PAGE_SIZE}
+          onChange={(next) => show({ q, offset: next })}
+        />
+      )}
 
       {renaming && <RenameDialog user={renaming} onClose={() => setRenaming(null)} />}
       {changingRole && <RoleDialog user={changingRole} onClose={() => setChangingRole(null)} />}
@@ -239,23 +257,23 @@ function RenameDialog({ user, onClose }: { user: ManagedUser; onClose: () => voi
       { id: user.id, name: name.trim() },
       {
         onSuccess: () => {
-          toast.success(`Renamed to ${name.trim()}`);
+          toast.success(t.access.users.renamed(name.trim()));
           onClose();
         },
       },
     );
   }
   return (
-    <Dialog open onClose={onClose} title={`Rename ${user.name}`} attrs={{ "data-rename-user": user.email }}>
+    <Dialog open onClose={onClose} title={t.access.matrix.renameTitle(user.name)} attrs={{ "data-rename-user": user.email }}>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <Field label="New name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label={t.access.users.newName} autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
-            Rename
+            {t.access.users.rename}
           </Button>
         </div>
       </form>
@@ -273,7 +291,7 @@ function RoleDialog({ user, onClose }: { user: ManagedUser; onClose: () => void 
       { id: user.id, role },
       {
         onSuccess: () => {
-          toast.success(`${user.name} is now ${roleWords[role].toLowerCase()}`);
+          toast.success(t.access.users.nowRole(user.name, roleWord(role)));
           onClose();
         },
       },
@@ -283,22 +301,22 @@ function RoleDialog({ user, onClose }: { user: ManagedUser; onClose: () => void 
     <Dialog
       open
       onClose={onClose}
-      title={`Change ${user.name}'s role`}
-      description="An administrator holds every key to Armature; a member starts as a user in every project."
+      title={t.access.users.changeRoleTitle(user.name)}
+      description={t.access.users.changeRoleDetail}
       attrs={{ "data-change-role": user.email }}
     >
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <Select label="New role" value={role} onChange={(e) => setRole(e.target.value as "admin" | "member")}>
-          <option value="member">Member</option>
-          <option value="admin">Administrator</option>
+        <Select label={t.access.users.newRole} value={role} onChange={(e) => setRole(e.target.value as "admin" | "member")}>
+          <option value="member">{t.access.invite.member}</option>
+          <option value="admin">{t.access.invite.admin}</option>
         </Select>
         {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button type="submit" loading={update.isPending}>
-            Change role
+            {t.access.users.changeRole}
           </Button>
         </div>
       </form>
@@ -317,7 +335,7 @@ function PasswordDialog({ user, onClose }: { user: ManagedUser; onClose: () => v
       { id: user.id, password },
       {
         onSuccess: () => {
-          toast.success(`Set a new password for ${user.name}`);
+          toast.success(t.access.users.passwordSet(user.name));
           onClose();
         },
       },
@@ -327,27 +345,27 @@ function PasswordDialog({ user, onClose }: { user: ManagedUser; onClose: () => v
     <Dialog
       open
       onClose={onClose}
-      title={`Set a password for ${user.name}`}
-      description="Every session they have ends. Tell them the password another way, and ask them to change it from their profile."
+      title={t.access.users.passwordTitle(user.name)}
+      description={t.access.users.passwordDetail}
       attrs={{ "data-set-password": user.email }}
     >
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <Field
-          label="New password"
+          label={t.access.users.newPassword}
           type="password"
           autoComplete="new-password"
           autoFocus
-          hint="At least 12 characters."
+          hint={t.access.users.newPasswordHint}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
         {set.error && <ErrorBanner>{(set.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button type="submit" loading={set.isPending} disabled={!password}>
-            Set password
+            {t.access.users.setPassword}
           </Button>
         </div>
       </form>

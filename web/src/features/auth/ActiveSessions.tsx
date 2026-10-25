@@ -19,22 +19,21 @@ export function ActiveSessions() {
 
   async function signOut(session: ActiveSession) {
     const device = deviceName(session.userAgent);
-    const where = session.ip ? `${device} at ${session.ip}` : device;
-    if (await confirm({ noun: device, verb: t.kit.confirm.verbs.signOut, body: `${where} is signed out, and its next step lands on the sign-in page.` })) {
-      end.mutate(session.id, { onSuccess: () => toast.success(`Signed out of ${device}`) });
+    const where = session.ip ? t.doors.sessions.at(device, session.ip) : device;
+    if (await confirm({ noun: device, verb: t.kit.confirm.verbs.signOut, body: t.doors.sessions.signOutBody(where) })) {
+      end.mutate(session.id, { onSuccess: () => toast.success(t.doors.sessions.signedOutOf(device)) });
     }
   }
 
   async function signOutOthers() {
-    const body = others.length === 1 ? "The one other session ends." : `The ${others.length} other sessions end.`;
-    if (await confirm({ noun: t.kit.confirm.things.everywhereElse, verb: t.kit.confirm.verbs.signOut, body: `${body} This one stays signed in.` })) {
-      endOthers.mutate(undefined, { onSuccess: () => toast.success("Signed out everywhere else") });
+    if (await confirm({ noun: t.kit.confirm.things.everywhereElse, verb: t.kit.confirm.verbs.signOut, body: t.doors.sessions.othersBody(others.length) })) {
+      endOthers.mutate(undefined, { onSuccess: () => toast.success(t.doors.sessions.signedOutElsewhere) });
     }
   }
 
   return (
     <section className="mt-8">
-      <SectionTitle className="mb-2">Where you are signed in</SectionTitle>
+      <SectionTitle className="mb-2">{t.doors.sessions.title}</SectionTitle>
       <Card className="divide-y divide-border" data-sessions>
         {(error || end.error || endOthers.error) && (
           <div className="p-4">
@@ -48,23 +47,23 @@ export function ActiveSessions() {
                 <span className="truncate text-ink" title={session.userAgent}>
                   {deviceName(session.userAgent)}
                 </span>
-                {session.current && <Tag>This device</Tag>}
+                {session.current && <Tag>{t.doors.sessions.thisDevice}</Tag>}
               </div>
               <p className="truncate text-ink-subtle">
-                {[session.ip, session.current ? "active now" : `last active ${format.relative(session.lastSeenAt)}`].filter(Boolean).join(" · ")}
+                {[session.ip, session.current ? t.doors.sessions.activeNow : t.doors.sessions.lastActive(format.relative(session.lastSeenAt))]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             </div>
             {!session.current && (
               <Button variant="ghost" size="sm" onClick={() => signOut(session)} data-action="end-session">
-                Sign out
+                {t.doors.common.signOut}
               </Button>
             )}
           </div>
         ))}
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <p className="text-sm text-ink-muted">
-            {others.length ? "Not you, or not any more? End the others here." : "You are signed in here and nowhere else."}
-          </p>
+          <p className="text-sm text-ink-muted">{others.length ? t.doors.sessions.endOthers : t.doors.sessions.alone}</p>
           <Button
             variant="secondary"
             size="sm"
@@ -73,7 +72,7 @@ export function ActiveSessions() {
             onClick={signOutOthers}
             data-action="end-other-sessions"
           >
-            Sign out everywhere else
+            {t.doors.sessions.signOutEverywhere}
           </Button>
         </div>
       </Card>

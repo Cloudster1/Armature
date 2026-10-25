@@ -1,13 +1,15 @@
 import { useProjectTemplates, type ProjectTemplate } from "@/api/projects";
 import { OptionCard } from "@/components/ui";
 import { leftOut } from "./features";
+import { t } from "@/i18n";
 
 /** How a template's shape reads on its card, in the words the product uses. */
 export function templateShape(template: ProjectTemplate): string {
-  const board = template.boardType === "scrum" ? "Scrum board" : "Kanban board";
-  const workflow = template.workflowName ?? "the default workflows";
+  const words = t.projectSetup.templates;
+  const board = template.boardType === "scrum" ? words.scrumBoard : words.kanbanBoard;
+  const workflow = template.workflowName ?? words.defaultWorkflows;
   const without = leftOut(template.features);
-  return `${board} · ${workflow}` + (without.length > 0 ? ` · no ${without.join(", ")}` : "");
+  return words.shape(board, workflow) + (without.length > 0 ? words.without(without.join(", ")) : "");
 }
 
 /**
@@ -21,7 +23,7 @@ export function TemplateChooser({ value, onChange }: { value: string; onChange: 
   const { data, isLoading } = useProjectTemplates();
   const templates = data?.templates ?? [];
 
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading templates...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.projectSetup.templates.loading}</p>;
   if (templates.length === 0) return null;
 
   // Until the user picks, the server's first template is the one selected.
@@ -29,8 +31,8 @@ export function TemplateChooser({ value, onChange }: { value: string; onChange: 
 
   return (
     <fieldset className="space-y-1.5">
-      <legend className="block text-sm font-medium text-ink">Template</legend>
-      <div role="radiogroup" aria-label="Template" className="grid gap-2 sm:grid-cols-3">
+      <legend className="block text-sm font-medium text-ink">{t.projectSetup.templates.label}</legend>
+      <div role="radiogroup" aria-label={t.projectSetup.templates.label} className="grid gap-2 sm:grid-cols-3">
         {templates.map((template) => (
           <OptionCard
             key={template.key}

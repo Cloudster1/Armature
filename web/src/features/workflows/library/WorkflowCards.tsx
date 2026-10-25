@@ -38,8 +38,8 @@ export function WorkflowCards({ focused, q, offset, onShow, canConfigure }: Work
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <ListSearch
-            aria-label="Find workflows"
-            placeholder="Find by name"
+            aria-label={t.workflows.library.findWorkflows}
+            placeholder={t.workflows.library.findByName}
             value={q}
             onChange={(text) => onShow({ q: text })}
             className="w-56"
@@ -49,13 +49,13 @@ export function WorkflowCards({ focused, q, offset, onShow, canConfigure }: Work
         </div>
         {canConfigure && (
           <Button size="sm" variant="secondary" onClick={() => navigate({ to: "/settings/workflows/new" })}>
-            New workflow
+            {t.workflows.library.newWorkflow}
           </Button>
         )}
       </div>
-      {isLoading && <p className="text-sm text-ink-muted">Loading...</p>}
+      {isLoading && <p className="text-sm text-ink-muted">{t.workflows.library.loading}</p>}
       {data && workflows.length === 0 && q && (
-        <EmptyState icon={<Icon.Search />} title="No workflow matches that" description="Try part of its name, or clear the search." />
+        <EmptyState icon={<Icon.Search />} title={t.workflows.library.noWorkflow} description={t.workflows.library.noMatchDetail} />
       )}
       {workflows.map((workflow) => (
         <WorkflowCard
@@ -68,7 +68,13 @@ export function WorkflowCards({ focused, q, offset, onShow, canConfigure }: Work
         />
       ))}
       {data && (
-        <Pager label="Workflow pages" total={data.total} offset={data.offset} pageSize={LIBRARY_PAGE_SIZE} onChange={(next) => onShow({ q, offset: next })} />
+        <Pager
+          label={t.workflows.library.workflowPages}
+          total={data.total}
+          offset={data.offset}
+          pageSize={LIBRARY_PAGE_SIZE}
+          onChange={(next) => onShow({ q, offset: next })}
+        />
       )}
     </section>
   );
@@ -93,10 +99,10 @@ function WorkflowCard({
   const navigate = useNavigate();
   const error = (copy.error ?? remove.error) as Error | undefined;
   const usedBy = workflow.inDefault
-    ? "Used by every project that has not named one of its own."
+    ? t.workflows.library.usedByEvery
     : workflow.schemeCount === 0
-      ? "Used by nothing yet."
-      : `Used by ${workflow.schemeCount} ${workflow.schemeCount === 1 ? "scheme" : "schemes"}.`;
+      ? t.workflows.library.usedByNothing
+      : t.workflows.library.usedBySchemes(workflow.schemeCount);
 
   return (
     <Card
@@ -108,7 +114,7 @@ function WorkflowCard({
           <>
             <IconButton
               icon={<Icon.Edit />}
-              label={`Edit ${workflow.name}`}
+              label={t.workflows.library.edit(workflow.name)}
               size="sm"
               variant="ghost"
               data-action="edit"
@@ -116,23 +122,23 @@ function WorkflowCard({
             />
             <IconButton
               icon={<Icon.Copy />}
-              label={`Duplicate ${workflow.name}`}
+              label={t.workflows.library.duplicate(workflow.name)}
               size="sm"
               variant="ghost"
               data-action="duplicate"
               aria-busy={copy.isPending}
-              onClick={() => copy.mutate({ id: workflow.id, name: `${workflow.name} copy` })}
+              onClick={() => copy.mutate({ id: workflow.id, name: t.workflows.library.copyName(workflow.name) })}
             />
             {workflow.schemeCount === 0 && (
               <IconButton
                 icon={<Icon.Trash />}
-                label={`Delete ${workflow.name}`}
+                label={t.workflows.library.delete(workflow.name)}
                 size="sm"
                 variant="ghost"
                 data-action="delete"
                 aria-busy={remove.isPending}
                 onClick={async () =>
-                  (await confirm({ noun: t.kit.confirm.things.workflow, body: `${workflow.name} goes, if nothing still uses it.` })) &&
+                  (await confirm({ noun: t.kit.confirm.things.workflow, body: t.workflows.library.deleteWorkflowBody(workflow.name) })) &&
                   remove.mutate(workflow.id)
                 }
               />
@@ -145,17 +151,17 @@ function WorkflowCard({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 text-sm font-medium text-ink">
             {workflow.name}
-            {workflow.inDefault && <Tag className="text-accent">In the default</Tag>}
+            {workflow.inDefault && <Tag className="text-accent">{t.workflows.library.inDefault}</Tag>}
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">{usedBy}</p>
           {workflow.description && <p className="mt-2 text-sm text-ink-muted">{workflow.description}</p>}
         </div>
         <div className="flex shrink-0 gap-6">
-          <Stat label="Statuses" value={workflow.stepCount} share={statusCount ? workflow.stepCount / statusCount : undefined} />
-          <Stat label="Transitions" value={workflow.transitionCount} />
+          <Stat label={t.workflows.library.statuses} value={workflow.stepCount} share={statusCount ? workflow.stepCount / statusCount : undefined} />
+          <Stat label={t.workflows.library.transitions} value={workflow.transitionCount} />
           <Stat
-            label="Schemes"
-            value={workflow.inDefault ? "all" : workflow.schemeCount}
+            label={t.workflows.library.schemes}
+            value={workflow.inDefault ? t.workflows.library.all : workflow.schemeCount}
             share={schemeCount && !workflow.inDefault ? workflow.schemeCount / schemeCount : undefined}
             tone="done"
           />

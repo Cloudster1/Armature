@@ -1,6 +1,7 @@
 import { Card, Input, Labelled, Table, Td, Th } from "@/components/ui";
 import type { ImportPeople, ImportPerson } from "@/api/filters";
 import { PersonPicker } from "@/features/people/PersonPicker";
+import { t } from "@/i18n";
 
 /** Who the file's names are here. Jira writes a username, not an address. */
 export function PeopleCard({ people, choice, onChange }: { people: ImportPerson[]; choice: ImportPeople; onChange: (choice: ImportPeople) => void }) {
@@ -27,14 +28,14 @@ export function PeopleCard({ people, choice, onChange }: { people: ImportPerson[
 
   return (
     <Card className="mb-4 p-5" data-import-people>
-      <h2 className="mb-1 text-sm font-medium text-ink">Who these people are</h2>
-      <p className="mb-3 text-sm text-ink-muted">A name nobody here answers to leaves the field empty, unless you give that person an account.</p>
+      <h2 className="mb-1 text-sm font-medium text-ink">{t.projectSetup.import.people}</h2>
+      <p className="mb-3 text-sm text-ink-muted">{t.projectSetup.import.peopleDetail}</p>
       <Table dense>
         <thead>
           <tr>
-            <Th>In the file</Th>
-            <Th>On how many rows</Th>
-            <Th>Is</Th>
+            <Th>{t.projectSetup.import.inFile}</Th>
+            <Th>{t.projectSetup.import.rowCount}</Th>
+            <Th>{t.projectSetup.import.is}</Th>
           </tr>
         </thead>
         <tbody>
@@ -46,16 +47,16 @@ export function PeopleCard({ people, choice, onChange }: { people: ImportPerson[
                 {/* Each name searches on its own, so a file of fifty names never lists everybody fifty times. */}
                 <PersonPicker
                   id={`person-${person.name}`}
-                  aria-label={`Who ${person.name} is`}
+                  aria-label={t.projectSetup.import.who(person.name)}
                   controlSize="sm"
-                  none="Leave it empty"
+                  none={t.projectSetup.import.leaveEmpty}
                   optionLabel={(m) => `${m.name} (${m.email})`}
                   selected={person.member ? { id: person.member, name: person.email ?? person.name } : null}
                   value={valueFor(person)}
                   onChange={(value) => pick(person.name, value)}
                   data-import-person-choice={person.name}
                 >
-                  <option value="create">Make an account for them</option>
+                  <option value="create">{t.projectSetup.import.makeAccount}</option>
                 </PersonPicker>
               </Td>
             </tr>
@@ -64,7 +65,7 @@ export function PeopleCard({ people, choice, onChange }: { people: ImportPerson[
       </Table>
       {making && (
         <div className="mt-4 max-w-xs">
-          <Labelled id="import-domain" label="Addresses are made at">
+          <Labelled id="import-domain" label={t.projectSetup.import.domain}>
             <Input
               id="import-domain"
               value={choice.domain ?? ""}
@@ -73,7 +74,7 @@ export function PeopleCard({ people, choice, onChange }: { people: ImportPerson[
               data-import-domain
             />
           </Labelled>
-          <p className="mt-1 text-sm text-ink-subtle">An account made this way cannot sign in until somebody sets it up.</p>
+          <p className="mt-1 text-sm text-ink-subtle">{t.projectSetup.import.domainHint}</p>
         </div>
       )}
     </Card>

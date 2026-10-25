@@ -7,6 +7,13 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: settings, a project's setup and the sign-in pages speak German as
+  well as English (#371): workflows and the designer, access, roles, groups,
+  users, tokens, connected apps, webhooks, the installation and the audit
+  log, themes, fields, labels and the issue view's arrangement, a project's
+  settings, automation, repositories and import, and signing in and up,
+  invitations, password resets, two-step sign-in, sessions and the profile.
+  The sign-in page speaks the language the browser last used.
 - Added: the work pages speak German as well as English (#371): the board
   and its quick filters, teams, the hierarchy, dashboards and their widgets,
   sprints, the calendar, resources, milestones, releases, holidays,

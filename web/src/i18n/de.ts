@@ -1,3 +1,8 @@
+import { workflowsDe } from "./workflows.de";
+import { accessDe } from "./access.de";
+import { looksDe } from "./looks.de";
+import { projectSetupDe } from "./projectSetup.de";
+import { doorsDe } from "./doors.de";
 import { boardDe } from "./board.de";
 import { dashboardDe } from "./dashboard.de";
 import { scheduleDe } from "./schedule.de";
@@ -30,4 +35,9 @@ export const de: Messages = {
   dashboard: dashboardDe,
   schedule: scheduleDe,
   search: searchDe,
+  workflows: workflowsDe,
+  access: accessDe,
+  looks: looksDe,
+  projectSetup: projectSetupDe,
+  doors: doorsDe,
 };

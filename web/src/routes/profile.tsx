@@ -191,10 +191,10 @@ function YourWeek({ userId }: { userId: string }) {
   if (!data) return null;
   return (
     <section className="mt-8">
-      <SectionTitle className="mb-2">Working week</SectionTitle>
+      <SectionTitle className="mb-2">{t.doors.profile.weekTitle}</SectionTitle>
       <Card className="space-y-3 p-5">
         <WorkingWeekTable week={data.week} />
-        <p className="text-sm text-ink-subtle">An administrator sets your hours and calendar under Users.</p>
+        <p className="text-sm text-ink-subtle">{t.doors.profile.weekHint}</p>
       </Card>
     </section>
   );
@@ -207,12 +207,10 @@ function YourAbsences({ userId }: { userId: string }) {
   if (!data) return null;
   return (
     <section className="mt-8">
-      <SectionTitle className="mb-2">Absences</SectionTitle>
+      <SectionTitle className="mb-2">{t.doors.profile.absencesTitle}</SectionTitle>
       <Card className="space-y-3 p-5">
-        <p className="text-sm text-ink-muted">
-          The days you are away, so the plan stops counting on you. Colleagues see the days and never a reason; there is nowhere to give one.
-        </p>
-        <AbsenceEditor userId={userId} absences={data.absences} truncated={data.truncated} empty="You are not away from a month ago on." />
+        <p className="text-sm text-ink-muted">{t.doors.profile.absencesExplain}</p>
+        <AbsenceEditor userId={userId} absences={data.absences} truncated={data.truncated} empty={t.doors.profile.absencesEmpty} />
       </Card>
     </section>
   );
@@ -233,7 +231,7 @@ function ChangePassword() {
       { currentPassword: current, newPassword: next },
       {
         onSuccess: () => {
-          toast.success("Password changed");
+          toast.success(t.doors.profile.passwordChanged);
           setCurrent("");
           setNext("");
         },
@@ -243,21 +241,27 @@ function ChangePassword() {
 
   return (
     <section className="mt-8">
-      <SectionTitle className="mb-2">Password</SectionTitle>
+      <SectionTitle className="mb-2">{t.doors.profile.passwordTitle}</SectionTitle>
       <Card className="p-5">
         <form onSubmit={onSubmit} className="space-y-4" noValidate data-change-password>
           {change.error && <ErrorBanner>{(change.error as Error).message}</ErrorBanner>}
-          <Field label="Current password" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
           <Field
-            label="New password"
+            label={t.doors.profile.currentPassword}
+            type="password"
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+          />
+          <Field
+            label={t.doors.profile.newPassword}
             type="password"
             autoComplete="new-password"
-            hint="At least 12 characters. Every other session of yours ends; this one stays."
+            hint={t.doors.profile.newPasswordHint}
             value={next}
             onChange={(e) => setNext(e.target.value)}
           />
           <Button type="submit" loading={change.isPending} disabled={!current || !next} data-action="change-password">
-            Change password
+            {t.doors.profile.changePassword}
           </Button>
         </form>
       </Card>
@@ -274,20 +278,16 @@ function YourData({ name }: { name: string }) {
   const navigate = useNavigate();
   return (
     <section className="mt-8">
-      <SectionTitle className="mb-2">Your data</SectionTitle>
+      <SectionTitle className="mb-2">{t.doors.profile.dataTitle}</SectionTitle>
       <Card className="space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-ink-muted">
-            Everything held about you, as one JSON file: your profile, where you belong, your sessions, and what you reported, wrote and watched.
-          </p>
+          <p className="text-sm text-ink-muted">{t.doors.profile.dataExplain}</p>
           <ButtonLink href={MY_DATA_HREF} download icon={<Icon.Download />} data-action="export-me">
-            Download my data
+            {t.doors.profile.download}
           </ButtonLink>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <p className="text-sm text-ink-muted">
-            Deleting your account ends every session and token and takes your name and address out. Issues and comments you wrote stay, by "Former user".
-          </p>
+          <p className="text-sm text-ink-muted">{t.doors.profile.deleteExplain}</p>
           <Button
             variant="danger"
             loading={erase.isPending}
@@ -297,14 +297,14 @@ function YourData({ name }: { name: string }) {
                 await confirm({
                   noun: t.kit.confirm.things.account,
                   verb: t.kit.confirm.verbs.delete,
-                  body: `${name}'s name, address, sessions and tokens go for good. What you wrote stays, by "Former user".`,
+                  body: t.doors.profile.deleteBody(name),
                 })
               ) {
                 erase.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) });
               }
             }}
           >
-            Delete my account
+            {t.doors.profile.deleteAccount}
           </Button>
         </div>
         {erase.error && <ErrorBanner>{(erase.error as Error).message}</ErrorBanner>}
@@ -339,61 +339,64 @@ function NotificationSettings() {
     save.mutate(prefs, {
       onSuccess: () => {
         setDraft(null);
-        toast.success("Notification settings saved");
+        toast.success(t.doors.notifications.saved);
       },
     });
   }
 
   return (
     <section ref={section} id="notifications" className="mt-8 scroll-mt-24">
-      <SectionTitle className="mb-2">Notification settings</SectionTitle>
+      <SectionTitle className="mb-2">{t.doors.notifications.title}</SectionTitle>
       <Card className="p-5">
         <form onSubmit={onSubmit} className="space-y-4" noValidate data-notification-settings data-guide="notification-settings">
           {save.error && <ErrorBanner>{(save.error as Error).message}</ErrorBanner>}
           <div className="grid grid-cols-[1fr_auto_auto] gap-x-6 gap-y-2 text-sm">
-            <span className="text-ink-subtle">Tell me when</span>
-            <span className="text-ink-subtle">Here</span>
-            <span className="text-ink-subtle">Mail</span>
-            {NOTIFICATION_KINDS.map(({ kind, label }) => (
-              <Fragment key={kind}>
-                <span className="text-ink">{label}</span>
-                <Checkbox
-                  label={<span className="sr-only">{label} here, under Notifications</span>}
-                  checked={on(prefs.inapp, kind)}
-                  onChange={(e) => set("inapp", kind, e.target.checked)}
-                  data-pref-inapp={kind}
-                />
-                <Checkbox
-                  label={<span className="sr-only">{label} by mail</span>}
-                  checked={on(prefs.mail, kind)}
-                  onChange={(e) => set("mail", kind, e.target.checked)}
-                  data-pref-mail={kind}
-                />
-              </Fragment>
-            ))}
+            <span className="text-ink-subtle">{t.doors.notifications.tellMeWhen}</span>
+            <span className="text-ink-subtle">{t.doors.notifications.here}</span>
+            <span className="text-ink-subtle">{t.doors.notifications.mail}</span>
+            {NOTIFICATION_KINDS.map(({ kind, label: english }) => {
+              const label = t.doors.notifications.kinds[kind] ?? english;
+              return (
+                <Fragment key={kind}>
+                  <span className="text-ink">{label}</span>
+                  <Checkbox
+                    label={<span className="sr-only">{t.doors.notifications.hereLabel(label)}</span>}
+                    checked={on(prefs.inapp, kind)}
+                    onChange={(e) => set("inapp", kind, e.target.checked)}
+                    data-pref-inapp={kind}
+                  />
+                  <Checkbox
+                    label={<span className="sr-only">{t.doors.notifications.mailLabel(label)}</span>}
+                    checked={on(prefs.mail, kind)}
+                    onChange={(e) => set("mail", kind, e.target.checked)}
+                    data-pref-mail={kind}
+                  />
+                </Fragment>
+              );
+            })}
           </div>
           <div className="space-y-1">
             <Checkbox
-              label="Watch the issues I report or am assigned"
+              label={t.doors.notifications.watchOwn}
               checked={prefs.watchOwn}
               onChange={(e) => setDraft({ ...prefs, watchOwn: e.target.checked })}
               data-pref-watch-own
             />
-            <p className="text-sm text-ink-subtle">Off, you hear about them only when you watch one yourself, are assigned it or are mentioned.</p>
+            <p className="text-sm text-ink-subtle">{t.doors.notifications.watchOwnHint}</p>
           </div>
           <Select
-            label="Mail arrives"
+            label={t.doors.notifications.mailArrives}
             value={prefs.digest}
             onChange={(e) => setDraft({ ...prefs, digest: e.target.value as NotificationPreferences["digest"] })}
             id="field-digest"
-            hint="Bundled mail lists everything since the last one, in one message."
+            hint={t.doors.notifications.mailHint}
           >
-            <option value="off">As it happens</option>
-            <option value="hourly">Bundled, once an hour</option>
-            <option value="daily">Bundled, once a day</option>
+            <option value="off">{t.doors.notifications.asItHappens}</option>
+            <option value="hourly">{t.doors.notifications.hourly}</option>
+            <option value="daily">{t.doors.notifications.daily}</option>
           </Select>
           <Button type="submit" loading={save.isPending} disabled={!draft} data-action="save-notifications">
-            Save notification settings
+            {t.doors.notifications.save}
           </Button>
         </form>
       </Card>

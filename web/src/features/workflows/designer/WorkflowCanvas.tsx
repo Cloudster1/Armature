@@ -37,20 +37,20 @@ import {
   type StatusNode as StatusNodeType,
   type TransitionEdge as TransitionEdgeType,
 } from "./flow";
+import { t } from "@/i18n";
 
 export type Selection = { kind: "none" } | { kind: "node"; statusId: string } | { kind: "edge"; key: string };
 
-/** How a card wears its category: the tint, the border, the badge, the ring and the word. */
-const categoryLook: Record<StatusCategory, { card: string; badge: string; ring: string; word: string; glyph: typeof Icon.Check }> = {
-  todo: { card: "bg-status-todo-subtle border-status-todo/40", badge: "bg-status-todo", ring: "border-status-todo", word: "To do", glyph: Icon.Play },
+/** How a card wears its category: the tint, the border, the badge and the ring; the word is the catalogue's. */
+const categoryLook: Record<StatusCategory, { card: string; badge: string; ring: string; glyph: typeof Icon.Check }> = {
+  todo: { card: "bg-status-todo-subtle border-status-todo/40", badge: "bg-status-todo", ring: "border-status-todo", glyph: Icon.Play },
   in_progress: {
     card: "bg-status-progress-subtle border-status-progress/40",
     badge: "bg-status-progress",
     ring: "border-status-progress",
-    word: "In progress",
     glyph: Icon.Clock,
   },
-  done: { card: "bg-status-done-subtle border-status-done/40", badge: "bg-status-done", ring: "border-status-done", word: "Done", glyph: Icon.Check },
+  done: { card: "bg-status-done-subtle border-status-done/40", badge: "bg-status-done", ring: "border-status-done", glyph: Icon.Check },
 };
 
 /** Names longer than this are cut, so a card stays one size. */
@@ -80,7 +80,7 @@ export function WorkflowCanvas({
   onMove = () => {},
   onConnect = () => {},
   readOnly = false,
-  label = "Workflow canvas",
+  label = t.workflows.canvas.label,
 }: {
   design: Design;
   statuses: Map<string, Status>;
@@ -207,14 +207,15 @@ function CoverHandle({ connectable }: { connectable: boolean }) {
 }
 
 /** The ring on a card's right edge that a new transition is dragged out of, in the card's colour. */
-function ConnectHandle({ label, connectable, ring }: { label: string; connectable: boolean; ring: string }) {
+// hook names the handle for the tests, the same in every language; label is what a person reads.
+function ConnectHandle({ hook, label, connectable, ring }: { hook: string; label: string; connectable: boolean; ring: string }) {
   return (
     <Handle
       type="source"
       position={Position.Right}
       isConnectable={connectable}
-      data-connect-handle={connectable ? label : undefined}
-      title={connectable ? `Drag onto another status to add a transition from ${label}` : undefined}
+      data-connect-handle={connectable ? hook : undefined}
+      title={connectable ? t.workflows.canvas.dragHint(label) : undefined}
       className={cx("rounded-full border-2 hover:bg-accent-subtle", ring, connectable ? "cursor-crosshair" : "opacity-0")}
       style={{ width: WORKFLOW_HANDLE_SIZE, height: WORKFLOW_HANDLE_SIZE }}
     />
@@ -234,7 +235,7 @@ function StatusNode({ data, selected }: NodeProps<StatusNodeType>) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-ink">{name}</p>
         <p className="truncate text-xs text-ink-muted" data-workflow-subtitle>
-          {status.description || look.word}
+          {status.description || t.workflows.categories[status.category]}
         </p>
       </div>
       {initial && (
@@ -242,11 +243,11 @@ function StatusNode({ data, selected }: NodeProps<StatusNodeType>) {
           data-workflow-initial
           className="absolute -top-2.5 left-4 rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold tracking-wide text-on-accent uppercase"
         >
-          Start
+          {t.workflows.canvas.start}
         </span>
       )}
       <CoverHandle connectable={!readOnly} />
-      <ConnectHandle label={status.name} connectable={!readOnly} ring={look.ring} />
+      <ConnectHandle hook={status.name} label={status.name} connectable={!readOnly} ring={look.ring} />
     </div>
   );
 }
@@ -271,10 +272,10 @@ function AnywhereNode({ data }: NodeProps<AnywhereNodeType>) {
     >
       <Badge className="bg-ink-subtle" glyph={Icon.Lines} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-ink">Any status</p>
-        <p className="truncate text-xs text-ink-muted">Global transitions</p>
+        <p className="truncate text-sm font-semibold text-ink">{t.workflows.canvas.anyStatus}</p>
+        <p className="truncate text-xs text-ink-muted">{t.workflows.canvas.global}</p>
       </div>
-      <ConnectHandle label="any status" connectable={!data.readOnly} ring="border-ink-subtle" />
+      <ConnectHandle hook="any status" label={t.workflows.canvas.anyStatusLower} connectable={!data.readOnly} ring="border-ink-subtle" />
     </div>
   );
 }
@@ -304,7 +305,7 @@ function TransitionEdge({ id, data, selected }: EdgeProps<TransitionEdgeType>) {
           style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, pointerEvents: data.readOnly ? "none" : "all" }}
           onClick={() => store.getState().addSelectedEdges([id])}
         >
-          {data.name || "unnamed"}
+          {data.name || t.workflows.canvas.unnamed}
         </div>
       </EdgeLabelRenderer>
     </>

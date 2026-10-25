@@ -5,26 +5,11 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useFormat } from "@/lib/format";
 import { t } from "@/i18n";
 
-const roleChoices: Array<{
-  value: InvitableRole;
-  label: string;
-  detail: string;
-}> = [
-  {
-    value: "member",
-    label: "Member",
-    detail: "Works in the projects their roles open to them.",
-  },
-  {
-    value: "admin",
-    label: "Administrator",
-    detail: "Also manages Armature: people, roles and settings.",
-  },
-  {
-    value: "customer",
-    label: "Customer",
-    detail: "Sees only the service desk portal.",
-  },
+// Read while rendering, so the words follow the language.
+const roleChoices = (): Array<{ value: InvitableRole; label: string; detail: string }> => [
+  { value: "member", label: t.access.invite.member, detail: t.access.invite.memberDetail },
+  { value: "admin", label: t.access.invite.admin, detail: t.access.invite.adminDetail },
+  { value: "customer", label: t.access.invite.customer, detail: t.access.invite.customerDetail },
 ];
 
 /**
@@ -59,19 +44,25 @@ export function InvitePanel() {
       <Card className="p-4">
         <form onSubmit={onSubmit} className="space-y-3" data-invite-form>
           <div className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
-            <Field label="Invite by email" type="email" placeholder="colleague@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
-            <Select label="As" value={role} onChange={(event) => setRole(event.target.value as InvitableRole)}>
-              {roleChoices.map((choice) => (
+            <Field
+              label={t.access.invite.byEmail}
+              type="email"
+              placeholder="colleague@example.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            <Select label={t.access.invite.as} value={role} onChange={(event) => setRole(event.target.value as InvitableRole)}>
+              {roleChoices().map((choice) => (
                 <option key={choice.value} value={choice.value}>
                   {choice.label}
                 </option>
               ))}
             </Select>
             <Button type="submit" loading={create.isPending} disabled={!email.trim()}>
-              Send invitation
+              {t.access.invite.send}
             </Button>
           </div>
-          <p className="text-xs text-ink-subtle">{roleChoices.find((choice) => choice.value === role)?.detail}</p>
+          <p className="text-xs text-ink-subtle">{roleChoices().find((choice) => choice.value === role)?.detail}</p>
           {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
         </form>
       </Card>
@@ -87,13 +78,9 @@ function CreatedLink({ created, onDone }: { created: CreatedInvite; onDone: () =
   return (
     <Card className="border-accent/40 bg-accent-subtle p-4" data-invite-link={created.invite.email}>
       <p className="text-sm font-medium text-ink">
-        {created.mailed ? `Invitation mailed to ${created.invite.email}` : `Send this link to ${created.invite.email}`}
+        {created.mailed ? t.access.invite.mailedTo(created.invite.email) : t.access.invite.sendLinkTo(created.invite.email)}
       </p>
-      <p className="mt-1 text-sm text-ink-muted">
-        {created.mailed
-          ? "If it does not arrive, send them this link. It is shown only now, works once and expires in a week."
-          : "Mail is not set up here, so the invitation goes nowhere by itself. The link is shown only now, works once and expires in a week."}
-      </p>
+      <p className="mt-1 text-sm text-ink-muted">{created.mailed ? t.access.invite.mailedDetail : t.access.invite.unmailedDetail}</p>
       <code className="mt-3 block overflow-x-auto rounded border border-border bg-surface px-3 py-2 font-mono text-xs text-ink" data-invite-url>
         {created.link}
       </code>
@@ -103,15 +90,15 @@ function CreatedLink({ created, onDone }: { created: CreatedInvite; onDone: () =
           variant="secondary"
           onClick={() =>
             navigator.clipboard.writeText(created.link).then(
-              () => toast.success("Link copied"),
-              () => toast.error("The browser did not allow copying. Select the link and copy it by hand."),
+              () => toast.success(t.access.invite.copied),
+              () => toast.error(t.access.invite.copyRefused),
             )
           }
         >
-          Copy link
+          {t.access.invite.copy}
         </Button>
         <Button size="sm" variant="ghost" onClick={onDone}>
-          Done
+          {t.access.done}
         </Button>
       </div>
     </Card>
@@ -128,30 +115,30 @@ function PendingInvites() {
 
   return (
     <section>
-      <SectionTitle className="mb-2">Waiting for an answer</SectionTitle>
+      <SectionTitle className="mb-2">{t.access.invite.waiting}</SectionTitle>
       <Card className="divide-y divide-border">
         {invites.map((invite) => (
           <div key={invite.id} className="flex items-center gap-3 px-4 py-2.5 text-sm" data-pending-invite={invite.email}>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-ink">{invite.email}</span>
               <span className="block text-xs text-ink-muted">
-                {roleChoices.find((choice) => choice.value === invite.role)?.label ?? invite.role}, until {format.date(invite.expiresAt)}
+                {t.access.invite.until(roleChoices().find((choice) => choice.value === invite.role)?.label ?? invite.role, format.date(invite.expiresAt))}
               </span>
             </span>
             <Button
               size="sm"
               variant="ghost"
               className="shrink-0"
-              aria-label={`Withdraw the invitation for ${invite.email}`}
+              aria-label={t.access.invite.withdrawFor(invite.email)}
               onClick={async () =>
                 (await confirm({
                   noun: t.kit.confirm.things.invitation,
                   verb: t.kit.confirm.verbs.withdraw,
-                  body: `The link sent to ${invite.email} stops working.`,
+                  body: t.access.invite.withdrawBody(invite.email),
                 })) && withdraw.mutate(invite.id)
               }
             >
-              Withdraw
+              {t.access.invite.withdraw}
             </Button>
           </div>
         ))}

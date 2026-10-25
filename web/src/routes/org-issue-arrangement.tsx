@@ -3,6 +3,7 @@ import { appRoute } from "./app";
 import { useAccess } from "@/api/access";
 import { EmptyState, Page, PageHeader } from "@/components/ui";
 import { OrgArrangement } from "@/features/arrange/pages";
+import { t } from "@/i18n";
 
 /** The arrangement every project of the organization follows until it disagrees. */
 export const orgIssueArrangementRoute = createRoute({
@@ -16,11 +17,11 @@ function OrgIssueArrangementPage() {
   const canConfigure = Boolean(access?.canAdministerOrg);
   return (
     <Page width="content">
-      <PageHeader title="Issue view" meta="Which fields an issue shows, where, and in what order, for every project that has not arranged its own." />
+      <PageHeader title={t.looks.arrange.title} meta={t.looks.arrange.meta} />
       {canConfigure ? (
         <OrgArrangement canConfigure={canConfigure} />
       ) : (
-        <EmptyState title="Only administrators arrange this for all projects" description="A project's own administrators arrange that project's issues." />
+        <EmptyState title={t.looks.arrange.onlyAdmins} description={t.looks.arrange.onlyAdminsDetail} />
       )}
     </Page>
   );

@@ -3,6 +3,7 @@ import { useSetIssueLabels } from "@/api/labels";
 import { ErrorBanner } from "@/components/ui";
 import { LabelChip } from "./LabelChip";
 import { LabelInput } from "./LabelInput";
+import { t } from "@/i18n";
 
 /**
  * The labels on an issue, and a box to add one: typing offers the labels that
@@ -15,8 +16,8 @@ export function LabelPicker({ issue, editable }: { issue: Issue; editable: boole
     <div className="flex w-full flex-col items-end gap-1" data-labels>
       {editable ? (
         <LabelInput
-          aria-label="Add a label"
-          placeholder="Add a label"
+          aria-label={t.looks.labels.add}
+          placeholder={t.looks.labels.add}
           controlSize="sm"
           align="end"
           className="w-full"
@@ -29,7 +30,7 @@ export function LabelPicker({ issue, editable }: { issue: Issue; editable: boole
           {issue.labels.map((label) => (
             <LabelChip key={label.id} label={label} />
           ))}
-          {issue.labels.length === 0 && <span className="text-ink-subtle">None</span>}
+          {issue.labels.length === 0 && <span className="text-ink-subtle">{t.looks.labels.none}</span>}
         </span>
       )}
       {set.error && (

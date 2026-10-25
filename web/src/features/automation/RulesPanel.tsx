@@ -46,7 +46,7 @@ export function RulesPanel({ projectKey, canEdit }: { projectKey?: string; canEd
       create.mutate(input, {
         onSuccess: () => {
           setEditing(null);
-          toast.success("Rule created");
+          toast.success(t.projectSetup.rules.created);
         },
       });
     } else if (editing) {
@@ -55,7 +55,7 @@ export function RulesPanel({ projectKey, canEdit }: { projectKey?: string; canEd
         {
           onSuccess: () => {
             setEditing(null);
-            toast.success("Rule saved");
+            toast.success(t.projectSetup.rules.saved);
           },
         },
       );
@@ -80,24 +80,20 @@ export function RulesPanel({ projectKey, canEdit }: { projectKey?: string; canEd
       {canEdit && (
         <div className="flex justify-end">
           <Button icon={<Icon.Plus />} onClick={() => setEditing("new")} data-action="new-rule" data-guide="new-rule">
-            New rule
+            {t.projectSetup.rules.newRule}
           </Button>
         </div>
       )}
       {isLoading ? null : rules.length === 0 ? (
-        <EmptyState
-          icon={<Icon.Bolt />}
-          title="No rules yet"
-          description="A rule watches for something, checks it, and does things for you: label moved work, assign what comes in, tell a chat room."
-        />
+        <EmptyState icon={<Icon.Bolt />} title={t.projectSetup.rules.empty} description={t.projectSetup.rules.emptyDetail} />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th>Rule</Th>
-              <Th>Does</Th>
-              <Th>Last run</Th>
-              <Th>State</Th>
+              <Th>{t.projectSetup.rules.rule}</Th>
+              <Th>{t.projectSetup.rules.does}</Th>
+              <Th>{t.projectSetup.rules.lastRun}</Th>
+              <Th>{t.projectSetup.rules.state}</Th>
               {canEdit && <Th className="w-12" />}
             </tr>
           </thead>
@@ -106,19 +102,19 @@ export function RulesPanel({ projectKey, canEdit }: { projectKey?: string; canEd
               <tr key={rule.id} data-rule={rule.name} data-rule-enabled={rule.enabled ? "true" : "false"}>
                 <Td className="font-medium text-ink">{rule.name}</Td>
                 <Td className="max-w-md text-sm text-ink-muted">{describeRule(rule, catalog)}</Td>
-                <Td className="text-sm text-ink-muted">{rule.lastRunAt ? format.relative(rule.lastRunAt) : "never"}</Td>
+                <Td className="text-sm text-ink-muted">{rule.lastRunAt ? format.relative(rule.lastRunAt) : t.projectSetup.rules.never}</Td>
                 <Td>
-                  <Tag className={rule.enabled ? "" : "text-ink-subtle"}>{rule.enabled ? "On" : "Off"}</Tag>
+                  <Tag className={rule.enabled ? "" : "text-ink-subtle"}>{rule.enabled ? t.projectSetup.rules.on : t.projectSetup.rules.off}</Tag>
                 </Td>
                 {canEdit && (
                   <Td>
                     <Menu
-                      label={`Actions for ${rule.name}`}
+                      label={t.projectSetup.rules.actionsFor(rule.name)}
                       align="end"
                       trigger={(props) => (
                         <IconButton
                           icon={<Icon.More />}
-                          label={`Actions for ${rule.name}`}
+                          label={t.projectSetup.rules.actionsFor(rule.name)}
                           size="sm"
                           onClick={props.toggle}
                           aria-haspopup={props["aria-haspopup"]}
@@ -127,30 +123,30 @@ export function RulesPanel({ projectKey, canEdit }: { projectKey?: string; canEd
                         />
                       )}
                       items={[
-                        { label: "Run log", icon: <Icon.Clock />, onSelect: () => setLogOf(rule), attrs: { "data-action": "rule-log" } },
+                        { label: t.projectSetup.rules.runLog, icon: <Icon.Clock />, onSelect: () => setLogOf(rule), attrs: { "data-action": "rule-log" } },
                         {
-                          label: "Run now",
+                          label: t.projectSetup.rules.runNow,
                           icon: <Icon.Bolt />,
                           onSelect: () =>
-                            run.mutate({ id: rule.id }, { onSuccess: (r) => toast.info(`Run ${r.run.outcome}${r.run.reason ? `: ${r.run.reason}` : ""}`) }),
+                            run.mutate({ id: rule.id }, { onSuccess: (r) => toast.info(t.projectSetup.rules.ran(r.run.outcome, r.run.reason ?? "")) }),
                           attrs: { "data-action": "rule-run" },
                         },
-                        { label: "Edit", icon: <Icon.Edit />, onSelect: () => setEditing(rule), attrs: { "data-action": "rule-edit" } },
+                        { label: t.projectSetup.rules.edit, icon: <Icon.Edit />, onSelect: () => setEditing(rule), attrs: { "data-action": "rule-edit" } },
                         {
-                          label: rule.enabled ? "Turn off" : "Turn on",
+                          label: rule.enabled ? t.projectSetup.rules.turnOff : t.projectSetup.rules.turnOn,
                           icon: rule.enabled ? <Icon.EyeOff /> : <Icon.Eye />,
                           onSelect: () => toggle(rule),
                           attrs: { "data-action": "rule-toggle" },
                         },
                         {
-                          label: "Delete",
+                          label: t.projectSetup.rules.delete,
                           icon: <Icon.Trash />,
                           danger: true,
                           onSelect: async () =>
                             (await confirm({
                               noun: t.kit.confirm.things.rule,
                               verb: t.kit.confirm.verbs.delete,
-                              body: `${rule.name} and its log go; nothing it did is undone.`,
+                              body: t.projectSetup.rules.deleteBody(rule.name),
                             })) && remove.mutate(rule.id),
                           attrs: { "data-action": "rule-delete" },
                         },
@@ -187,9 +183,9 @@ function RunLog({ rule, onClose }: { rule: Rule; onClose: () => void }) {
   const format = useFormat();
   const runs = data?.runs ?? [];
   return (
-    <Drawer open onClose={onClose} title={`Runs of ${rule.name}`} attrs={{ "data-rule-log": rule.name }}>
+    <Drawer open onClose={onClose} title={t.projectSetup.rules.runsOf(rule.name)} attrs={{ "data-rule-log": rule.name }}>
       {runs.length === 0 ? (
-        <p className="text-sm text-ink-muted">This rule has not run yet.</p>
+        <p className="text-sm text-ink-muted">{t.projectSetup.rules.notRun}</p>
       ) : (
         <ul className="divide-y divide-border">
           {runs.map((r) => (
@@ -202,7 +198,7 @@ function RunLog({ rule, onClose }: { rule: Rule; onClose: () => void }) {
               {r.reason && <p className="text-ink-muted">{r.reason}</p>}
               {r.actions.map((a, i) => (
                 <p key={i} className={a.ok ? "text-ink-muted" : "text-danger"}>
-                  {a.ok ? "" : "Failed: "}
+                  {a.ok ? "" : t.projectSetup.rules.failed}
                   {a.note}
                 </p>
               ))}

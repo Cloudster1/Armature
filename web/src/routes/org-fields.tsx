@@ -3,6 +3,7 @@ import { appRoute } from "./app";
 import { useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
 import { FieldList } from "@/features/fields/FieldList";
+import { t } from "@/i18n";
 
 /** The fields every project of the organization records. */
 export const orgFieldsRoute = createRoute({
@@ -15,10 +16,7 @@ function OrgFieldsPage() {
   const { data: access } = useAccess();
   return (
     <Page width="content">
-      <PageHeader
-        title="Fields"
-        meta="What every project records about an issue beyond the standard fields. A project's own field is promoted here from its Fields page."
-      />
+      <PageHeader title={t.looks.fields.title} meta={t.looks.fields.everyoneMeta} />
       <FieldList canConfigure={Boolean(access?.canAdministerOrg)} />
     </Page>
   );

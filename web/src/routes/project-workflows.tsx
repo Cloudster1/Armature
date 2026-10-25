@@ -3,6 +3,7 @@ import { projectRoute } from "./project";
 import { Page, PageHeader } from "@/components/ui";
 import { useProject } from "@/api/projects";
 import { ProjectWorkflows } from "@/features/workflows/ProjectWorkflows";
+import { t } from "@/i18n";
 
 export const projectWorkflowsRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -22,7 +23,7 @@ function ProjectWorkflowsPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Workflow scheme"
+        title={t.workflows.project.title}
       />
 
       <ProjectWorkflows projectKey={projectKey} />

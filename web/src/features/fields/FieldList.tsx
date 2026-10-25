@@ -45,7 +45,7 @@ export function FieldList({ projectKey, canConfigure, canPromote = false }: { pr
           <NewFieldForm projectKey={projectKey} onDone={() => setAdding(false)} />
         ) : (
           <div className="flex justify-end">
-            <Button onClick={() => setAdding(true)}>New field</Button>
+            <Button onClick={() => setAdding(true)}>{t.looks.fields.newField}</Button>
           </div>
         ))}
 
@@ -53,22 +53,16 @@ export function FieldList({ projectKey, canConfigure, canPromote = false }: { pr
 
       {isLoading ? null : fields.length === 0 && !adding ? (
         <EmptyState
-          title="No custom fields"
-          description={
-            !projectKey
-              ? "Add one and every issue in every project gets a place for it."
-              : canConfigure
-                ? "Add one and every issue in this project gets a place for it: a customer, a release, a cost, a link to the spec."
-                : "This project records only the standard fields."
-          }
+          title={t.looks.fields.noneTitle}
+          description={!projectKey ? t.looks.fields.noneEveryone : canConfigure ? t.looks.fields.noneProject : t.looks.fields.noneReadOnly}
         />
       ) : fields.length > 0 ? (
         <Table>
           <thead>
             <tr>
-              <Th>Field</Th>
-              <Th className="w-28">Kind</Th>
-              <Th>Options</Th>
+              <Th>{t.looks.fields.columnField}</Th>
+              <Th className="w-28">{t.looks.fields.columnKind}</Th>
+              <Th>{t.looks.fields.columnOptions}</Th>
               {(canConfigure || canPromote) && <Th className="w-40" />}
             </tr>
           </thead>
@@ -84,7 +78,7 @@ export function FieldList({ projectKey, canConfigure, canPromote = false }: { pr
                   (await confirm({
                     noun: t.kit.confirm.things.field,
                     verb: t.kit.confirm.verbs.remove,
-                    body: `${field.name} goes from every issue ${field.org ? "in every project" : "in the project"}, with the answers it held.`,
+                    body: t.looks.fields.removeBody(field.name, field.org),
                   })) && remove.mutate(field.id)
                 }
                 onPromote={
@@ -93,8 +87,8 @@ export function FieldList({ projectKey, canConfigure, canPromote = false }: { pr
                         (await confirm({
                           noun: t.kit.confirm.things.field,
                           verb: t.kit.confirm.verbs.promote,
-                          body: `${field.name} becomes every project's; a field by the same name elsewhere is folded into it and keeps its answers.`,
-                        })) && promote.mutate(field.id, { onSuccess: () => toast.info(`${field.name} is now on every project`) })
+                          body: t.looks.fields.promoteBody(field.name),
+                        })) && promote.mutate(field.id, { onSuccess: () => toast.info(t.looks.fields.promoted(field.name)) })
                     : undefined
                 }
               />
@@ -143,17 +137,17 @@ function FieldRow({
           <form onSubmit={save} className="space-y-2">
             {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field id={`field-name-${field.id}`} label="Field name" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Field id={`field-name-${field.id}`} label={t.looks.fields.name} value={name} onChange={(e) => setName(e.target.value)} required />
               {field.kind === "select" && (
-                <Field label="Options, one per line" id={`field-options-${field.id}`} value={options} onChange={(e) => setOptions(e.target.value)} rows={3} />
+                <Field label={t.looks.fields.options} id={`field-options-${field.id}`} value={options} onChange={(e) => setOptions(e.target.value)} rows={3} />
               )}
             </div>
             <div className="flex gap-2">
               <Button type="submit" size="sm" loading={update.isPending}>
-                Save field
+                {t.looks.fields.save}
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                Cancel
+                {t.kit.cancel}
               </Button>
             </div>
           </form>
@@ -166,7 +160,7 @@ function FieldRow({
     <tr data-field={field.name} data-field-scope={field.org ? "org" : "project"}>
       <Td className="font-medium text-ink">
         {field.name}
-        {field.org && <Tag className="ml-2">All projects</Tag>}
+        {field.org && <Tag className="ml-2">{t.looks.fields.allProjects}</Tag>}
       </Td>
       <Td className="text-ink-muted">{kindTitle}</Td>
       <Td>
@@ -181,16 +175,16 @@ function FieldRow({
           <span className="flex justify-end gap-1">
             {onPromote && (
               <Button size="sm" variant="ghost" onClick={onPromote} data-action="promote-field">
-                Promote
+                {t.looks.fields.promote}
               </Button>
             )}
             {canConfigure && (
               <>
                 <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-                  Edit
+                  {t.looks.fields.edit}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={onDelete} aria-label={`Remove ${field.name}`}>
-                  Remove
+                <Button size="sm" variant="ghost" onClick={onDelete} aria-label={t.looks.fields.removeNamed(field.name)}>
+                  {t.looks.fields.remove}
                 </Button>
               </>
             )}
@@ -233,8 +227,15 @@ function NewFieldForm({ projectKey, onDone }: { projectKey?: string; onDone: () 
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
         <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-          <Field label="Field name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer" />
-          <Select id="field-kind" label="Kind" value={kind} onChange={(e) => setKind(e.target.value as FieldKind)}>
+          <Field
+            label={t.looks.fields.name}
+            autoFocus
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t.looks.fields.namePlaceholder}
+          />
+          <Select id="field-kind" label={t.looks.fields.kind} value={kind} onChange={(e) => setKind(e.target.value as FieldKind)}>
             {kinds.map((k) => (
               <option key={k.kind} value={k.kind}>
                 {k.title}
@@ -245,20 +246,20 @@ function NewFieldForm({ projectKey, onDone }: { projectKey?: string; onDone: () 
         <p className="text-sm text-ink-subtle">{kinds.find((k) => k.kind === kind)?.description}</p>
         {hasOptions && (
           <Field
-            label="Options, one per line"
+            label={t.looks.fields.options}
             id="field-options"
             value={options}
             onChange={(e) => setOptions(e.target.value)}
             rows={4}
-            placeholder={"Web\nMobile\nDesktop"}
+            placeholder={t.looks.fields.optionsPlaceholder}
           />
         )}
         <div className="flex gap-2">
           <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-            Create field
+            {t.looks.fields.create}
           </Button>
           <Button type="button" variant="ghost" onClick={onDone}>
-            Cancel
+            {t.kit.cancel}
           </Button>
         </div>
       </form>

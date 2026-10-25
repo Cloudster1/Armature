@@ -3,6 +3,7 @@ import { appRoute } from "./app";
 import type { Workflow } from "@/api/workflows";
 import { WorkflowDesigner } from "@/features/workflows/designer/WorkflowDesigner";
 import { PageHeader } from "@/components/ui";
+import { t } from "@/i18n";
 
 /** A page of its own: the canvas wants the width the settings list does not. */
 export const workflowNewRoute = createRoute({
@@ -28,7 +29,7 @@ function DesignerPage({ workflowId }: { workflowId?: string }) {
 
   return (
     <div>
-      <PageHeader title={workflowId ? "Design workflow" : "New workflow"} />
+      <PageHeader title={workflowId ? t.workflows.designer.design : t.workflows.designer.new} />
       <WorkflowDesigner workflowId={workflowId} onDone={back} onCancel={() => back()} />
     </div>
   );

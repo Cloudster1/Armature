@@ -3,6 +3,7 @@ import { appRoute } from "./app";
 import { useTheme } from "@/api/themes";
 import { ErrorBanner, Page, PageHeader } from "@/components/ui";
 import { ThemeEditor } from "@/features/themes/ThemeEditor";
+import { t } from "@/i18n";
 
 export const themeNewRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -24,18 +25,18 @@ function EditorPage({ themeId }: { themeId?: string }) {
   const crumb = (
     <>
       <Link to="/settings" className="hover:text-ink">
-        Settings
+        {t.settings.crumb}
       </Link>
       <span className="mx-1 text-ink-subtle">/</span>
       <Link to="/settings/themes" className="hover:text-ink">
-        Themes
+        {t.looks.themes.title}
       </Link>
     </>
   );
   if (themeId && error) {
     return (
       <Page width="content">
-        <PageHeader crumb={crumb} title="Theme" />
+        <PageHeader crumb={crumb} title={t.looks.editor.title} />
         <ErrorBanner>{(error as Error).message}</ErrorBanner>
       </Page>
     );
@@ -43,7 +44,7 @@ function EditorPage({ themeId }: { themeId?: string }) {
   if (themeId && (isLoading || !data)) return null;
   return (
     <Page width="content">
-      <PageHeader crumb={crumb} title={data?.theme.name ?? "New theme"} />
+      <PageHeader crumb={crumb} title={data?.theme.name ?? t.looks.themes.newTheme} />
       <ThemeEditor key={data?.theme.id ?? "new"} theme={data?.theme} />
     </Page>
   );

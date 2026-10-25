@@ -3,12 +3,11 @@ import type { RuleKind, RuleType } from "@/api/workflows";
 import { Button, Checkbox, Field, IconButton, Select } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { describeRule, type DraftRule } from "./graph";
+import { t } from "@/i18n";
 
-const kinds: Array<{ kind: RuleKind; title: string; hint: string }> = [
-  { kind: "condition", title: "Conditions", hint: "Decide who is offered the move at all." },
-  { kind: "validator", title: "Validators", hint: "Check what comes with the move, and say what is missing." },
-  { kind: "postfunction", title: "Post-functions", hint: "Happen to the issue once it has moved." },
-];
+// The kinds in the order the engine asks them; their words are read when the editor draws.
+const kindOrder: RuleKind[] = ["condition", "validator", "postfunction"];
+const kinds = (): Array<{ kind: RuleKind; title: string; hint: string }> => kindOrder.map((kind) => ({ kind, ...t.workflows.rules.kinds[kind] }));
 
 /**
  * The rules on one transition, grouped the way the engine asks them: whether
@@ -37,7 +36,7 @@ export function RuleEditor({ rules, catalogue, onChange }: { rules: DraftRule[];
 
   return (
     <div className="space-y-3" data-rule-editor>
-      {kinds.map(({ kind, title, hint }) => {
+      {kinds().map(({ kind, title, hint }) => {
         const ofKind = rules.map((rule, index) => ({ rule, index })).filter(({ rule }) => rule.kind === kind);
         return (
           <div key={kind}>
@@ -59,7 +58,7 @@ export function RuleEditor({ rules, catalogue, onChange }: { rules: DraftRule[];
                       <IconButton
                         size="xs"
                         icon={<Icon.X />}
-                        label={`Remove rule ${text}`}
+                        label={t.workflows.rules.remove(text)}
                         onClick={() => onChange(rules.filter((_, at) => at !== index))}
                         className="text-ink-subtle hover:text-danger"
                       />
@@ -74,7 +73,7 @@ export function RuleEditor({ rules, catalogue, onChange }: { rules: DraftRule[];
 
       <div className="space-y-2 border-t border-border pt-3">
         <Select
-          label="Add a rule"
+          label={t.workflows.rules.add}
           id="field-rule"
           value={picked}
           onChange={(event) => {
@@ -82,8 +81,8 @@ export function RuleEditor({ rules, catalogue, onChange }: { rules: DraftRule[];
             setConfig({});
           }}
         >
-          <option value="">Choose a rule</option>
-          {kinds.map(({ kind, title }) => (
+          <option value="">{t.workflows.rules.choose}</option>
+          {kinds().map(({ kind, title }) => (
             <optgroup key={kind} label={title}>
               {catalogue
                 .filter((type) => type.kind === kind)
@@ -131,7 +130,7 @@ export function RuleEditor({ rules, catalogue, onChange }: { rules: DraftRule[];
         )}
 
         <Button size="sm" variant="secondary" disabled={!complete} onClick={add}>
-          Add rule
+          {t.workflows.rules.addButton}
         </Button>
       </div>
     </div>

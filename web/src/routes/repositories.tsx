@@ -3,6 +3,7 @@ import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
 import { Page, PageHeader } from "@/components/ui";
 import { RepositoryList } from "@/features/git/RepositoryList";
+import { t } from "@/i18n";
 
 export const repositoriesRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -22,7 +23,7 @@ function RepositoriesPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Repositories"
+        title={t.shell.projectPages.repositories}
       />
       <RepositoryList projectKey={projectKey} />
     </Page>

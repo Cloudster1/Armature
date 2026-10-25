@@ -14,7 +14,7 @@ vi.mock("@/components/ui", async () => {
   return { ...actual, useToast: () => ({ success: vi.fn(), info: vi.fn(), error: vi.fn() }) };
 });
 
-const { PlanningSettings, SCRUM_BY_TEAM } = await import("./PlanningSettings");
+const { PlanningSettings, scrumByTeam } = await import("./PlanningSettings");
 
 function settings(planningMethod: Project["planningMethod"], resourceGrouping: Project["resourceGrouping"]) {
   const project = { key: "FLOW", planningMethod, resourceGrouping } as Project;
@@ -38,7 +38,7 @@ describe("the planning settings", () => {
     settings("scrum", "team");
     const person = screen.getByRole("radio", { name: /^By person/ });
     expect(person).toBeDisabled();
-    expect(person.textContent).toContain(SCRUM_BY_TEAM);
+    expect(person.textContent).toContain(scrumByTeam());
     await userEvent.click(screen.getByRole("radio", { name: /^Kanban/ }));
     expect(mutate).toHaveBeenCalledWith({ key: "FLOW", planningMethod: "kanban" }, expect.anything());
   });

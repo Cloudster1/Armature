@@ -5,6 +5,7 @@ import { SSO_START, useLogin, useSignup } from "@/api/auth";
 import { isChallenge } from "@/api/secondFactor";
 import { Button, ButtonLink, ErrorBanner, Field } from "@/components/ui";
 import { SecondFactorStep } from "./SecondFactor";
+import { t } from "@/i18n";
 
 /** Pulls per-field messages out of the API's validation envelope. */
 export function fieldErrors(error: unknown): Record<string, string> {
@@ -17,7 +18,7 @@ export function formError(error: unknown): string | null {
     // Field-level problems are shown against their fields instead.
     return Object.keys(error.fields).length > 0 ? null : error.message;
   }
-  return "Something went wrong. Please try again.";
+  return t.doors.common.somethingWrong;
 }
 
 /** Where to go after signing in: a path of this application, never another site. */
@@ -61,7 +62,7 @@ export function LoginForm({ next }: { next?: string } = {}) {
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
       {formError(login.error) && <ErrorBanner>{formError(login.error)}</ErrorBanner>}
       <Field
-        label="Email"
+        label={t.doors.common.email}
         type="email"
         autoComplete="username"
         required
@@ -70,7 +71,7 @@ export function LoginForm({ next }: { next?: string } = {}) {
         error={fieldErrors(login.error).email}
       />
       <Field
-        label="Password"
+        label={t.doors.common.password}
         type="password"
         autoComplete="current-password"
         required
@@ -79,10 +80,10 @@ export function LoginForm({ next }: { next?: string } = {}) {
         error={fieldErrors(login.error).password}
       />
       <Link to="/forgot-password" className="block text-sm font-medium text-accent hover:underline">
-        Forgot your password?
+        {t.doors.login.forgot}
       </Link>
       <Button type="submit" loading={login.isPending} className="w-full">
-        Sign in
+        {t.doors.login.submit}
       </Button>
 
       <SingleSignOn next={target} />
@@ -101,7 +102,7 @@ function SingleSignOn({ next }: { next?: string }) {
     <div className="space-y-2 border-t border-border pt-4">
       {failure && <ErrorBanner>{failure}</ErrorBanner>}
       <ButtonLink href={href} className="w-full" data-action="single-sign-on">
-        Continue with single sign-on
+        {t.doors.login.sso}
       </ButtonLink>
     </div>
   );
@@ -114,22 +115,24 @@ function ssoFailure(): string | null {
     case null:
       return null;
     case "not_a_member":
-      return "Your provider knows you, but nobody here has let you in yet. An administrator can do that on the Users page; sign in again once they have.";
+      return t.doors.login.ssoFailures.notAMember;
     case "not_configured":
-      return "Single sign-on is not set up here. Sign in with your password, or ask an administrator to set it up.";
+      return t.doors.login.ssoFailures.notConfigured;
     case "expired":
-      return "That sign-in took too long. Start it again.";
+      return t.doors.login.ssoFailures.expired;
     case "no_email":
-      return "Your provider did not send an email address, so there is no account to match.";
+      return t.doors.login.ssoFailures.noEmail;
     case "unverified_email":
-      return "Your provider has not verified your email address. Verify it there, then sign in again.";
+      return t.doors.login.ssoFailures.unverifiedEmail;
     default:
-      return "Signing in through your provider did not work.";
+      return t.doors.login.ssoFailures.other;
   }
 }
 
-/** Said when the two copies of a new password differ. */
-export const PASSWORD_MISMATCH = "The two passwords are not the same. Type the same password in both fields.";
+/** Said when the two copies of a new password differ, in the language shown. */
+export function passwordMismatch(): string {
+  return t.doors.password.mismatch;
+}
 
 /**
  * A new password, typed twice. A typo in a field that shows only dots would
@@ -155,24 +158,24 @@ export function NewPasswordFields({
   return (
     <>
       <Field
-        label="Password"
+        label={t.doors.common.password}
         type="password"
         autoComplete="new-password"
         required
         minLength={12}
         value={password}
         onChange={(e) => onPassword(e.target.value)}
-        hint="At least 12 characters."
+        hint={t.doors.password.hint}
         error={error}
       />
       <Field
-        label="Repeat password"
+        label={t.doors.password.repeat}
         type="password"
         autoComplete="new-password"
         required
         value={repeat}
         onChange={(e) => onRepeat(e.target.value)}
-        error={checked && !passwordsMatch(password, repeat) ? PASSWORD_MISMATCH : undefined}
+        error={checked && !passwordsMatch(password, repeat) ? passwordMismatch() : undefined}
       />
     </>
   );
@@ -205,8 +208,8 @@ export function SignupForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
       {formError(signup.error) && <ErrorBanner>{formError(signup.error)}</ErrorBanner>}
-      <Field label="Your name" required value={values.name} onChange={set("name")} error={errors.name} />
-      <Field label="Work email" type="email" autoComplete="username" required value={values.email} onChange={set("email")} error={errors.email} />
+      <Field label={t.doors.common.yourName} required value={values.name} onChange={set("name")} error={errors.name} />
+      <Field label={t.doors.signup.workEmail} type="email" autoComplete="username" required value={values.email} onChange={set("email")} error={errors.email} />
       <NewPasswordFields
         password={values.password}
         repeat={repeat}
@@ -216,7 +219,7 @@ export function SignupForm() {
         error={errors.password}
       />
       <Button type="submit" loading={signup.isPending} className="w-full">
-        Create your account
+        {t.doors.signup.submit}
       </Button>
     </form>
   );

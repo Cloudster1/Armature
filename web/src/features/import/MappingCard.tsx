@@ -1,6 +1,8 @@
 import { Card, SelectInput, Table, Td, Th } from "@/components/ui";
 import type { ImportColumn } from "@/api/filters";
 import { MANY_VALUED, TARGET_LABELS } from "./targets";
+// Named apart: the targets and types here are each called t.
+import { t as words } from "@/i18n";
 
 /** Which column of the file fills which target, by position. */
 export function MappingCard({
@@ -30,13 +32,13 @@ export function MappingCard({
 
   return (
     <Card className="mb-4 p-5" data-import-mapping>
-      <h2 className="mb-3 text-sm font-medium text-ink">Which column is which</h2>
+      <h2 className="mb-3 text-sm font-medium text-ink">{words.projectSetup.import.mapping}</h2>
       <Table dense>
         <thead>
           <tr>
-            <Th>Column in the file</Th>
-            <Th>Becomes</Th>
-            <Th>First values</Th>
+            <Th>{words.projectSetup.import.columnInFile}</Th>
+            <Th>{words.projectSetup.import.becomes}</Th>
+            <Th>{words.projectSetup.import.firstValues}</Th>
           </tr>
         </thead>
         <tbody>
@@ -48,7 +50,7 @@ export function MappingCard({
               </Td>
               <Td>
                 <label htmlFor={`field-map-${column.at}`} className="sr-only">
-                  What {column.name} becomes
+                  {words.projectSetup.import.whatBecomes(column.name)}
                 </label>
                 <SelectInput
                   id={`field-map-${column.at}`}
@@ -57,7 +59,7 @@ export function MappingCard({
                   onChange={(e) => pick(column.at, e.target.value)}
                   data-import-target={column.name}
                 >
-                  <option value="">Skip this column</option>
+                  <option value="">{words.projectSetup.import.skip}</option>
                   {targets.map((t) => (
                     <option key={t} value={t}>
                       {TARGET_LABELS[t] ?? t}

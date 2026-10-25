@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { ApiError } from "@/api/client";
-import { PASSWORD_MISMATCH } from "@/features/auth/AuthForms";
+import { passwordMismatch } from "@/features/auth/AuthForms";
 import { PASSWORD_RESET_TOKEN_KEY } from "@/config";
 
 const navigate = vi.fn();
@@ -32,7 +32,7 @@ vi.mock("@/api/auth", () => ({
   useResetPassword: () => ({ mutate: reset, isPending: false, error: state.resetError }),
 }));
 
-const { ForgotPasswordForm, RESET_LINK_SENT, readResetToken, resetPasswordRoute } = await import("./password-reset");
+const { ForgotPasswordForm, resetLinkSent, readResetToken, resetPasswordRoute } = await import("./password-reset");
 const ResetPasswordPage = (resetPasswordRoute as unknown as { component: () => ReactNode }).component;
 
 beforeEach(() => {
@@ -54,7 +54,7 @@ describe("asking for a password link", () => {
     await userEvent.click(screen.getByRole("button", { name: "Send me a link" }));
 
     expect(ask).toHaveBeenCalledWith("nobody@example.com", expect.anything());
-    expect(screen.getByText(RESET_LINK_SENT)).toBeTruthy();
+    expect(screen.getByText(resetLinkSent())).toBeTruthy();
     expect(screen.queryByLabelText("Email")).toBeNull();
   });
 
@@ -92,7 +92,7 @@ describe("the page a password link opens", () => {
     await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
 
     expect(reset).not.toHaveBeenCalled();
-    expect(screen.getByText(PASSWORD_MISMATCH)).toBeTruthy();
+    expect(screen.getByText(passwordMismatch())).toBeTruthy();
   });
 
   it("shows why a short password was refused", () => {

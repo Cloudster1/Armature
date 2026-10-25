@@ -3,6 +3,7 @@ import { useSchemes, useWorkflows } from "@/api/workflows";
 import { SearchPicker, type PickerOption } from "@/components/ui";
 import { LIST_SEARCH_DELAY_MS, WORKFLOW_PICKER_RESULTS } from "@/config";
 import { useDebounced } from "@/lib/debounce";
+import { t } from "@/i18n";
 
 interface PickerProps {
   "aria-label": string;
@@ -38,8 +39,8 @@ export function WorkflowPicker({ value, chosenName, ...rest }: PickerProps) {
       words={words}
       onWords={setWords}
       options={withChosen(found, value, chosenName)}
-      placeholder="Find a workflow"
-      nothing={nothing ? "No workflow is called that." : undefined}
+      placeholder={t.workflows.picker.findWorkflow}
+      nothing={nothing ? t.workflows.picker.noWorkflowCalled : undefined}
     />
   );
 }
@@ -60,8 +61,8 @@ export function SchemePicker({ value, chosenName, exclude = [], ...rest }: Picke
       words={words}
       onWords={setWords}
       options={withChosen(found, value, chosenName)}
-      placeholder="Find a scheme"
-      nothing={nothing ? "No other scheme is called that." : undefined}
+      placeholder={t.workflows.picker.findScheme}
+      nothing={nothing ? t.workflows.picker.noSchemeCalled : undefined}
     />
   );
 }

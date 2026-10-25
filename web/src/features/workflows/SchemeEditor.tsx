@@ -3,6 +3,7 @@ import { useIssueTypes } from "@/api/issues";
 import { useCreateScheme, useSaveScheme, type Scheme, type SchemeInput } from "@/api/workflows";
 import { Button, Card, ErrorBanner, Field, SelectInput } from "@/components/ui";
 import { WorkflowPicker } from "./WorkflowPicker";
+import { t } from "@/i18n";
 
 /** A mapping as the editor holds it. An empty issue type is the fallback; an empty workflow is not chosen yet. */
 interface DraftItem {
@@ -62,18 +63,23 @@ export function SchemeEditor({ scheme, onDone }: { scheme?: Scheme; onDone: () =
 
   return (
     <Card className="space-y-4 p-4">
-      <Field label="Scheme name" value={name} placeholder="Support project workflows" onChange={(event) => setName(event.target.value)} />
+      <Field
+        label={t.workflows.schemeEditor.name}
+        value={name}
+        placeholder={t.workflows.schemeEditor.namePlaceholder}
+        onChange={(event) => setName(event.target.value)}
+      />
 
       <div className="space-y-2">
         {items.map((item, at) => (
           <div key={at} className="flex flex-wrap items-center gap-2">
             <SelectInput
-              aria-label="Issue type"
+              aria-label={t.workflows.schemeEditor.issueType}
               value={item.issueTypeId}
               onChange={(event) => setItems((current) => current.map((each, index) => (index === at ? { ...each, issueTypeId: event.target.value } : each)))}
               className="w-44"
             >
-              <option value={FALLBACK}>Everything else</option>
+              <option value={FALLBACK}>{t.workflows.schemeEditor.everythingElse}</option>
               {issueTypes.map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name}
@@ -81,36 +87,36 @@ export function SchemeEditor({ scheme, onDone }: { scheme?: Scheme; onDone: () =
               ))}
             </SelectInput>
             <span aria-hidden="true" className="text-ink-subtle">
-              uses
+              {t.workflows.schemeEditor.uses}
             </span>
             <WorkflowPicker
-              aria-label="Workflow"
+              aria-label={t.workflows.schemeEditor.workflow}
               value={item.workflowId}
               chosenName={item.workflowName}
-              leading={!item.workflowId && <option value="">Choose a workflow</option>}
+              leading={!item.workflowId && <option value="">{t.workflows.schemeEditor.chooseWorkflow}</option>}
               onChange={(workflowId, workflowName) =>
                 setItems((current) => current.map((each, index) => (index === at ? { ...each, workflowId, workflowName } : each)))
               }
             />
             <Button variant="ghost" size="sm" onClick={() => setItems((current) => current.filter((_, index) => index !== at))}>
-              Remove
+              {t.workflows.schemeEditor.remove}
             </Button>
           </div>
         ))}
       </div>
 
       <Button variant="secondary" size="sm" onClick={() => setItems((current) => [...current, { ...UNCHOSEN }])}>
-        Add a mapping
+        {t.workflows.schemeEditor.addMapping}
       </Button>
 
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
 
       <div className="flex gap-2">
         <Button loading={pending} disabled={items.some((item) => !item.workflowId)} onClick={submit}>
-          {scheme ? "Save scheme" : "Create scheme"}
+          {scheme ? t.workflows.schemeEditor.save : t.workflows.schemeEditor.create}
         </Button>
         <Button variant="ghost" onClick={onDone}>
-          Cancel
+          {t.kit.cancel}
         </Button>
       </div>
     </Card>

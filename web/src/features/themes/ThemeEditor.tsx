@@ -50,16 +50,22 @@ import { t } from "@/i18n";
 type TabID = "colours" | "type" | "shape" | "cursors" | "icons" | "backdrop" | "files" | "advanced";
 type Mode = "light" | "dark";
 
-const tabs: Array<{ value: TabID; label: string }> = [
-  { value: "colours", label: "Colours" },
-  { value: "type", label: "Type" },
-  { value: "shape", label: "Shape" },
-  { value: "cursors", label: "Cursors" },
-  { value: "icons", label: "Icons" },
-  { value: "backdrop", label: "Backdrop" },
-  { value: "files", label: "Files" },
-  { value: "advanced", label: "Advanced" },
-];
+const TAB_IDS: TabID[] = ["colours", "type", "shape", "cursors", "icons", "backdrop", "files", "advanced"];
+
+// The tests and the guide find a tab by these, whatever language it is read in.
+const TAB_HOOKS: Record<TabID, string> = {
+  colours: "Colours",
+  type: "Type",
+  shape: "Shape",
+  cursors: "Cursors",
+  icons: "Icons",
+  backdrop: "Backdrop",
+  files: "Files",
+  advanced: "Advanced",
+};
+
+/** The tabs in the reader's language, read while rendering. */
+const tabs = (): Array<{ value: TabID; label: string }> => TAB_IDS.map((value) => ({ value, label: t.looks.editor.tabs[value] }));
 
 const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg,.woff,.woff2,font/woff,font/woff2";
 
@@ -67,6 +73,16 @@ const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.
 const glyphs: Array<{ name: string; Glyph: (typeof Icon)[keyof typeof Icon] }> = Object.values(Icon)
   .map((Glyph) => ({ name: (Glyph as unknown as { glyph: string }).glyph, Glyph }))
   .sort((a, b) => a.name.localeCompare(b.name));
+
+/** A colour's name in the reader's language, the stylesheet's own words when the catalogue has none. */
+function tokenLabel(token: { name: string; label: string }): string {
+  return t.looks.editor.tokens[token.name] ?? token.label;
+}
+
+/** A cursor's name in the reader's language. */
+function cursorLabel(cursor: { kind: string; label: string }): string {
+  return t.looks.editor.cursors[cursor.kind] ?? cursor.label;
+}
 
 function isFont(a: ThemeAsset): boolean {
   return a.contentType.startsWith("font/");
@@ -120,13 +136,13 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
     event.preventDefault();
     if (!name.trim()) return;
     if (theme) {
-      update.mutate({ id: theme.id, name: name.trim(), shared, spec }, { onSuccess: (saved) => toast.success(`Saved ${saved.theme.name}`) });
+      update.mutate({ id: theme.id, name: name.trim(), shared, spec }, { onSuccess: (saved) => toast.success(t.looks.editor.saved(saved.theme.name)) });
     } else {
       create.mutate(
         { name: name.trim(), shared, spec },
         {
           onSuccess: (made) => {
-            toast.success(`Made ${made.theme.name}`);
+            toast.success(t.looks.editor.made(made.theme.name));
             navigate({ to: "/settings/themes/$themeId", params: { themeId: made.theme.id } });
           },
         },
@@ -139,14 +155,14 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
       {(create.error || update.error || choose.error) && <ErrorBanner>{((create.error ?? update.error ?? choose.error) as Error).message}</ErrorBanner>}
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-4">
-          <Field label="Theme name" id="field-theme-name" value={name} onChange={(e) => setName(e.target.value)} required className="w-64" />
+          <Field label={t.looks.editor.name} id="field-theme-name" value={name} onChange={(e) => setName(e.target.value)} required className="w-64" />
           <label className="flex items-center gap-2 pb-2 text-sm text-ink-muted">
-            <Switch checked={shared} onChange={setShared} label="Shared with everyone" data-theme-shared={shared ? "true" : "false"} />
-            Shared with everyone
+            <Switch checked={shared} onChange={setShared} label={t.looks.editor.sharedWithEveryone} data-theme-shared={shared ? "true" : "false"} />
+            {t.looks.editor.sharedWithEveryone}
           </label>
           <label className="flex items-center gap-2 pb-2 text-sm text-ink-muted">
-            <Switch checked={preview} onChange={setPreview} label="Preview on this page" data-action="preview-theme" />
-            Preview on this page
+            <Switch checked={preview} onChange={setPreview} label={t.looks.editor.previewHere} data-action="preview-theme" />
+            {t.looks.editor.previewHere}
           </label>
           <span className="ml-auto flex gap-2 pb-1">
             {theme && !theme.active && (
@@ -154,14 +170,14 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
                 type="button"
                 variant="secondary"
                 loading={choose.isPending}
-                onClick={() => choose.mutate(theme.id, { onSuccess: () => toast.success(`Now using ${theme.name}`) })}
+                onClick={() => choose.mutate(theme.id, { onSuccess: () => toast.success(t.looks.themes.nowUsing(theme.name)) })}
                 data-action="use-theme"
               >
-                Use this theme
+                {t.looks.editor.useThis}
               </Button>
             )}
             <Button type="submit" loading={saving} disabled={!name.trim()} data-action="save-theme">
-              Save theme
+              {t.looks.editor.save}
             </Button>
           </span>
         </div>
@@ -179,14 +195,14 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
       )}
 
       <Tabs<TabID>
-        label="Theme"
+        label={t.looks.editor.tabsLabel}
         value={tab}
         onChange={setTab}
         panelId={panelId}
-        tabs={tabs.map((each) => ({ ...each, attrs: { "data-theme-tab": each.label } }))}
+        tabs={tabs().map((each) => ({ ...each, attrs: { "data-theme-tab": TAB_HOOKS[each.value] } }))}
       />
 
-      <TabPanel id={panelId} label={tabs.find((each) => each.value === tab)?.label}>
+      <TabPanel id={panelId} label={t.looks.editor.tabs[tab]}>
         {tab === "colours" && <ColoursTab spec={spec} patch={patch} />}
         {tab === "type" && <TypeTab spec={spec} patch={patch} assets={assets} />}
         {tab === "shape" && <ShapeTab spec={spec} patch={patch} />}
@@ -210,11 +226,11 @@ function StartFrom({ chosen, onChoose }: { chosen: string; onChoose: (example: T
   if (examples.length === 0) return null;
   return (
     <Card className="p-4" data-theme-start>
-      <SectionTitle className="mb-3">Start from</SectionTitle>
-      <div role="radiogroup" aria-label="Start from" className="grid gap-3 sm:grid-cols-3">
+      <SectionTitle className="mb-3">{t.looks.editor.startFrom}</SectionTitle>
+      <div role="radiogroup" aria-label={t.looks.editor.startFrom} className="grid gap-3 sm:grid-cols-3">
         <OptionCard
-          title="Blank"
-          description="Every colour is the stylesheet's until you change it."
+          title={t.looks.editor.blank}
+          description={t.looks.editor.blankDetail}
           checked={chosen === "blank"}
           onSelect={() => onChoose(null)}
           data-theme-example="blank"
@@ -250,23 +266,26 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <Segmented<Mode>
-          label="Palette"
+          label={t.looks.editor.palette}
           value={mode}
           onChange={setMode}
           options={[
-            { value: "light", label: "Light", attrs: { "data-theme-mode": "light" } },
-            { value: "dark", label: "Dark", attrs: { "data-theme-mode": "dark" } },
+            { value: "light", label: t.looks.editor.light, attrs: { "data-theme-mode": "light" } },
+            { value: "dark", label: t.looks.editor.dark, attrs: { "data-theme-mode": "dark" } },
           ]}
         />
         <span className="text-sm text-ink-muted">
           {overridden === 0
-            ? "Nothing changed yet: every colour is the stylesheet's."
-            : `${overridden} of ${TOKEN_GROUPS.reduce((n, g) => n + g.tokens.length, 0)} colours changed.`}
+            ? t.looks.editor.nothingChanged
+            : t.looks.editor.changed(
+                overridden,
+                TOKEN_GROUPS.reduce((n, g) => n + g.tokens.length, 0),
+              )}
         </span>
       </div>
       {TOKEN_GROUPS.map((group) => (
         <Card key={group.title} className="p-4">
-          <SectionTitle className="mb-3">{group.title}</SectionTitle>
+          <SectionTitle className="mb-3">{t.looks.editor.groups[group.title] ?? group.title}</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-2">
             {group.tokens.map((token) => {
               const value = set[token.name] ?? "";
@@ -274,7 +293,7 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
                 <ColorField
                   key={token.name}
                   id={`field-token-${token.name}`}
-                  label={token.label}
+                  label={tokenLabel(token)}
                   value={value}
                   placeholder={stockValue(token.name) || "#000000"}
                   onChange={(next) =>
@@ -289,7 +308,7 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
                   {value && (
                     <IconButton
                       icon={<Icon.X />}
-                      label={`Reset ${token.label}`}
+                      label={t.looks.editor.resetToken(tokenLabel(token))}
                       size="sm"
                       onClick={() =>
                         patch((draft) => {
@@ -324,7 +343,7 @@ function AssetSelect({
 }) {
   return (
     <SelectInput aria-label={label} controlSize="sm" value={value ?? ""} onChange={(e) => onChange(e.target.value || undefined)} className="w-56" {...attrs}>
-      <option value="">{assets.length === 0 ? "No files yet: add one under Files" : "Choose a file..."}</option>
+      <option value="">{assets.length === 0 ? t.looks.editor.noFilesYet : t.looks.editor.chooseFile}</option>
       {assets.map((a) => (
         <option key={a.id} value={a.id}>
           {a.name}
@@ -342,10 +361,10 @@ function TypeTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asset
         const font = spec.fonts[role];
         return (
           <div key={role} className="space-y-2" data-theme-font={role}>
-            <SectionTitle>{role === "sans" ? "Text face" : "Code face"}</SectionTitle>
+            <SectionTitle>{role === "sans" ? t.looks.editor.textFace : t.looks.editor.codeFace}</SectionTitle>
             <div className="flex flex-wrap items-end gap-3">
               <Field
-                label={role === "sans" ? "Text family" : "Code family"}
+                label={role === "sans" ? t.looks.editor.textFamily : t.looks.editor.codeFamily}
                 value={font?.family ?? ""}
                 placeholder={role === "sans" ? "Inter" : "JetBrains Mono"}
                 onChange={(e) =>
@@ -356,12 +375,12 @@ function TypeTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asset
                   })
                 }
                 className="w-64"
-                hint="A family the reader has installed, or the name to give an uploaded file."
+                hint={t.looks.editor.familyHint}
               />
               <span className="space-y-1 pb-5">
-                <span className="block text-sm font-medium text-ink-muted">File</span>
+                <span className="block text-sm font-medium text-ink-muted">{t.looks.editor.file}</span>
                 <AssetSelect
-                  label={`${role} font file`}
+                  label={role === "sans" ? t.looks.editor.textFontFile : t.looks.editor.codeFontFile}
                   assets={fonts}
                   value={font?.assetId}
                   onChange={(id) =>
@@ -383,7 +402,7 @@ function TypeTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asset
                     })
                   }
                 >
-                  Reset
+                  {t.looks.editor.reset}
                 </Button>
               )}
             </div>
@@ -428,10 +447,10 @@ function ShapeTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <SectionTitle className="mb-3">Corners</SectionTitle>
+        <SectionTitle className="mb-3">{t.looks.editor.corners}</SectionTitle>
         <div className="flex flex-wrap gap-4">
           <NumberField
-            label="Control radius"
+            label={t.looks.editor.controlRadius}
             value={spec.shape.radiusControl}
             max={THEME_MAX_RADIUS}
             placeholder="6"
@@ -443,7 +462,7 @@ function ShapeTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
             }
           />
           <NumberField
-            label="Overlay radius"
+            label={t.looks.editor.overlayRadius}
             value={spec.shape.radiusOverlay}
             max={THEME_MAX_RADIUS}
             placeholder="8"
@@ -457,12 +476,12 @@ function ShapeTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
         </div>
       </Card>
       <Card className="p-4">
-        <SectionTitle className="mb-3">Shadows</SectionTitle>
+        <SectionTitle className="mb-3">{t.looks.editor.shadows}</SectionTitle>
         <div className="space-y-3">
           {SHADOW_KEYS.map((key) => (
             <Field
               key={key}
-              label={key === "1" ? "Raised" : key === "2" ? "Overlays" : "Elevated glass"}
+              label={key === "1" ? t.looks.editor.raised : key === "2" ? t.looks.editor.overlays : t.looks.editor.glass}
               value={spec.shadows[key] ?? ""}
               placeholder="0 1px 2px rgb(0 0 0 / 0.1)"
               onChange={(e) =>
@@ -485,17 +504,17 @@ function CursorsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; as
   const images = assets.filter(isImage);
   return (
     <Card className="p-4">
-      <p className="mb-4 text-sm text-ink-muted">{`A cursor is a picture of up to ${THEME_CURSOR_PX} by ${THEME_CURSOR_PX} pixels, PNG or SVG, with the point it clicks from. The browser keeps its own when a picture cannot be read.`}</p>
+      <p className="mb-4 text-sm text-ink-muted">{t.looks.editor.cursorsIntro(THEME_CURSOR_PX)}</p>
       <div className="space-y-3">
         {CURSOR_KINDS.map((each) => {
           const cursor = spec.cursors[each.kind];
           return (
             <div key={each.kind} className="flex flex-wrap items-end gap-3" data-theme-cursor={each.kind}>
-              <span className="w-28 pb-2 text-sm text-ink">{each.label}</span>
+              <span className="w-28 pb-2 text-sm text-ink">{cursorLabel(each)}</span>
               <span className="space-y-1">
-                <span className="block text-sm font-medium text-ink-muted">Picture</span>
+                <span className="block text-sm font-medium text-ink-muted">{t.looks.editor.picture}</span>
                 <AssetSelect
-                  label={`${each.label} cursor picture`}
+                  label={t.looks.editor.cursorPicture(cursorLabel(each))}
                   assets={images}
                   value={cursor?.assetId}
                   onChange={(id) =>
@@ -509,7 +528,7 @@ function CursorsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; as
               {cursor && (
                 <>
                   <NumberField
-                    label="Point x"
+                    label={t.looks.editor.pointX}
                     value={cursor.hotspotX}
                     max={THEME_MAX_HOTSPOT}
                     placeholder="0"
@@ -520,7 +539,7 @@ function CursorsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; as
                     }
                   />
                   <NumberField
-                    label="Point y"
+                    label={t.looks.editor.pointY}
                     value={cursor.hotspotY}
                     max={THEME_MAX_HOTSPOT}
                     placeholder="0"
@@ -547,11 +566,8 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
   return (
     <Card className="p-4">
       <div className="mb-4 flex flex-wrap items-end gap-3">
-        <Field label="Find an icon" value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
-        <p className="pb-2 text-sm text-ink-muted">
-          A picture is drawn in the text's colour through a mask, so an SVG's own colours do not matter. Path data is drawn on the kit's 16 pixel grid, one path
-          per line.
-        </p>
+        <Field label={t.looks.editor.findIcon} value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
+        <p className="pb-2 text-sm text-ink-muted">{t.looks.editor.iconsIntro}</p>
       </div>
       <div className="divide-y divide-border">
         {shown.map(({ name, Glyph }) => {
@@ -563,9 +579,9 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
                 {name}
               </span>
               <span className="space-y-1">
-                <span className="block text-sm font-medium text-ink-muted">Picture</span>
+                <span className="block text-sm font-medium text-ink-muted">{t.looks.editor.picture}</span>
                 <AssetSelect
-                  label={`${name} icon picture`}
+                  label={t.looks.editor.iconPicture(name)}
                   assets={images}
                   value={icon?.assetId}
                   onChange={(id) =>
@@ -577,7 +593,7 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
                 />
               </span>
               <Field
-                label={`${name} path data`}
+                label={t.looks.editor.pathData(name)}
                 id={`field-icon-${name}`}
                 rows={2}
                 value={icon?.paths?.join("\n") ?? ""}
@@ -606,7 +622,7 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
                     })
                   }
                 >
-                  Reset
+                  {t.looks.editor.reset}
                 </Button>
               )}
             </div>
@@ -622,14 +638,12 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
   const backdrop = spec.backdrop ?? null;
   return (
     <Card className="p-4">
-      <p className="mb-4 text-sm text-ink-muted">
-        A picture behind the content, where the soft gradient is. The two gradient colours under Colours are what shows when there is none.
-      </p>
+      <p className="mb-4 text-sm text-ink-muted">{t.looks.editor.backdropIntro}</p>
       <div className="flex flex-wrap items-end gap-4">
         <span className="space-y-1">
-          <span className="block text-sm font-medium text-ink-muted">Picture</span>
+          <span className="block text-sm font-medium text-ink-muted">{t.looks.editor.picture}</span>
           <AssetSelect
-            label="Backdrop picture"
+            label={t.looks.editor.backdropPicture}
             assets={images}
             value={backdrop?.assetId}
             onChange={(id) =>
@@ -642,7 +656,7 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
         {backdrop && (
           <span className="pb-0.5">
             <Segmented<"cover" | "tile">
-              label="Fit"
+              label={t.looks.editor.fit}
               size="sm"
               value={backdrop.fit}
               onChange={(fit) =>
@@ -651,19 +665,16 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
                 })
               }
               options={[
-                { value: "cover", label: "Cover" },
-                { value: "tile", label: "Tile" },
+                { value: "cover", label: t.looks.editor.cover },
+                { value: "tile", label: t.looks.editor.tile },
               ]}
             />
           </span>
         )}
       </div>
-      <p className="mb-2 mt-6 text-sm text-ink-muted">
-        A moving picture the page draws live, never the same twice: a network behind the content, or a burst of colour wherever the page is clicked. Both stand
-        still for anyone who asked their system for less motion.
-      </p>
+      <p className="mb-2 mt-6 text-sm text-ink-muted">{t.looks.editor.movingIntro}</p>
       <Segmented<"none" | "constellation" | "confetti">
-        label="Moving picture"
+        label={t.looks.editor.moving}
         size="sm"
         value={spec.effect === "constellation" || spec.effect === "confetti" ? spec.effect : "none"}
         onChange={(effect) =>
@@ -673,9 +684,9 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
           })
         }
         options={[
-          { value: "none", label: "None", attrs: { "data-theme-effect": "none" } },
-          { value: "constellation", label: "Constellation", attrs: { "data-theme-effect": "constellation" } },
-          { value: "confetti", label: "Confetti", attrs: { "data-theme-effect": "confetti" } },
+          { value: "none", label: t.looks.editor.none, attrs: { "data-theme-effect": "none" } },
+          { value: "constellation", label: t.looks.editor.constellation, attrs: { "data-theme-effect": "constellation" } },
+          { value: "confetti", label: t.looks.editor.confetti, attrs: { "data-theme-effect": "confetti" } },
         ]}
       />
     </Card>
@@ -692,7 +703,7 @@ function FilesTab({ theme, spec }: { theme?: Theme; spec: ThemeSpec }) {
   if (!theme) {
     return (
       <Card className="p-4">
-        <p className="text-sm text-ink-muted">Save the theme first; then pictures and fonts can be added to it here.</p>
+        <p className="text-sm text-ink-muted">{t.looks.editor.saveFirst}</p>
       </Card>
     );
   }
@@ -710,7 +721,7 @@ function FilesTab({ theme, spec }: { theme?: Theme; spec: ThemeSpec }) {
       return;
     }
     setTooBig(false);
-    uploadAsset.mutate({ id: theme!.id, file }, { onSuccess: (made) => toast.success(`Added ${made.asset.name}`) });
+    uploadAsset.mutate({ id: theme!.id, file }, { onSuccess: (made) => toast.success(t.looks.editor.added(made.asset.name)) });
   }
   return (
     <Card className="space-y-3 p-4">
@@ -723,26 +734,24 @@ function FilesTab({ theme, spec }: { theme?: Theme; spec: ThemeSpec }) {
           onClick={() => fileInput.current?.click()}
           data-action="add-theme-file"
         >
-          Add a file
+          {t.looks.editor.addFile}
         </Button>
         <input
           ref={fileInput}
           type="file"
           accept={UPLOAD_ACCEPT}
           className="hidden"
-          aria-label="Choose a file for the theme"
+          aria-label={t.looks.editor.chooseThemeFile}
           data-theme-file-input
           onChange={(e) => onFile(e.target.files?.[0])}
         />
-        <p className="text-sm text-ink-subtle">
-          PNG, JPEG, WebP, GIF or SVG pictures and WOFF or WOFF2 fonts, up to 12 MB each. An SVG with script or links elsewhere is refused.
-        </p>
+        <p className="text-sm text-ink-subtle">{t.looks.editor.filesHint}</p>
       </div>
-      {tooBig && <ErrorBanner>That file is over 12 MB. Make it smaller and try again.</ErrorBanner>}
+      {tooBig && <ErrorBanner>{t.looks.editor.tooBig}</ErrorBanner>}
       {uploadAsset.error && <ErrorBanner>{(uploadAsset.error as Error).message}</ErrorBanner>}
       {deleteAsset.error && <ErrorBanner>{(deleteAsset.error as Error).message}</ErrorBanner>}
       {theme.assets.length === 0 ? (
-        <p className="text-sm text-ink-muted">No files yet.</p>
+        <p className="text-sm text-ink-muted">{t.looks.editor.noFiles}</p>
       ) : (
         <ul className="divide-y divide-border">
           {theme.assets.map((a) => (
@@ -750,15 +759,15 @@ function FilesTab({ theme, spec }: { theme?: Theme; spec: ThemeSpec }) {
               <span className="min-w-0 flex-1 truncate text-ink">{a.name}</span>
               <Tag>{a.contentType}</Tag>
               <span className="text-ink-subtle tabular-nums">{Math.max(1, Math.round(a.size / KILOBYTE))} KB</span>
-              {used.has(a.id) && <Tag>In use</Tag>}
+              {used.has(a.id) && <Tag>{t.looks.editor.inUse}</Tag>}
               <IconButton
                 icon={<Icon.Trash />}
-                label={`Remove ${a.name}`}
+                label={t.looks.editor.removeFile(a.name)}
                 size="sm"
                 disabled={used.has(a.id) || deleteAsset.isPending}
                 onClick={async () => {
-                  if (await confirm({ noun: t.kit.confirm.things.file, verb: t.kit.confirm.verbs.remove, body: `${a.name} goes from the theme's files.` })) {
-                    deleteAsset.mutate({ id: theme.id, assetId: a.id }, { onSuccess: () => toast.success(`Removed ${a.name}`) });
+                  if (await confirm({ noun: t.kit.confirm.things.file, verb: t.kit.confirm.verbs.remove, body: t.looks.editor.removeBody(a.name) })) {
+                    deleteAsset.mutate({ id: theme.id, assetId: a.id }, { onSuccess: () => toast.success(t.looks.editor.removed(a.name)) });
                   }
                 }}
                 data-action="remove-theme-file"
@@ -776,7 +785,7 @@ function AdvancedTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
   return (
     <Card className="p-4">
       <Field
-        label="Extra CSS"
+        label={t.looks.editor.extraCss}
         rows={THEME_CSS_ROWS}
         value={spec.css}
         onChange={(e) =>
@@ -785,7 +794,7 @@ function AdvancedTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
           })
         }
         className="font-mono"
-        hint={`Anything the parts above do not reach. It may load only the theme's own files and inline images, never @import or another site. ${Math.round(size / KILOBYTE)} of ${THEME_CSS_MAX_BYTES / KILOBYTE} KB.`}
+        hint={t.looks.editor.cssHint(Math.round(size / KILOBYTE), THEME_CSS_MAX_BYTES / KILOBYTE)}
         data-theme-css=""
       />
     </Card>

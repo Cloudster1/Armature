@@ -3,8 +3,7 @@ import type { Action, Condition, Rule, RuleDescriptor, RuleInput, Trigger, Webho
 import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Labelled, Select } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { LabelInput } from "@/features/labels/LabelInput";
-
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+import { t } from "@/i18n";
 
 function blankInput(): RuleInput {
   return { name: "", trigger: { kind: "issue.created" }, conditions: [], actions: [{ kind: "add_label" }], allowOwnEvents: false };
@@ -71,27 +70,33 @@ export function RuleEditor({
     <Dialog
       open={open}
       onClose={onClose}
-      title={rule ? "Edit the rule" : "New rule"}
+      title={rule ? t.projectSetup.editor.editTitle : t.projectSetup.editor.newTitle}
       size="lg"
       attrs={{ "data-rule-editor": "" }}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button type="submit" form="rule-form" loading={saving} disabled={!draft.name.trim() || draft.actions.length === 0} data-action="save-rule">
-            {rule ? "Save rule" : "Create rule"}
+            {rule ? t.projectSetup.editor.save : t.projectSetup.editor.create}
           </Button>
         </>
       }
     >
       <form id="rule-form" onSubmit={onSubmit} className="space-y-5" noValidate>
-        <Field label="Rule name" required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Label moved work" />
+        <Field
+          label={t.projectSetup.editor.name}
+          required
+          value={draft.name}
+          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          placeholder={t.projectSetup.editor.namePlaceholder}
+        />
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-medium text-ink">When</legend>
+          <legend className="text-sm font-medium text-ink">{t.projectSetup.editor.when}</legend>
           <Select
-            label="Trigger"
+            label={t.projectSetup.editor.trigger}
             id="field-trigger"
             value={draft.trigger.kind}
             onChange={(e) => setDraft({ ...draft, trigger: { kind: e.target.value } })}
@@ -105,16 +110,16 @@ export function RuleEditor({
           </Select>
           {draft.trigger.kind === "issue.updated" && (
             <Field
-              label="Field to watch"
+              label={t.projectSetup.editor.fieldToWatch}
               value={draft.trigger.field ?? ""}
               onChange={(e) => setTrigger({ field: e.target.value })}
-              hint="Leave empty to run on any change."
+              hint={t.projectSetup.editor.fieldToWatchHint}
             />
           )}
           {draft.trigger.kind === "scheduled" && (
             <>
               <Field
-                label="Query"
+                label={t.projectSetup.editor.query}
                 required
                 value={draft.trigger.query ?? ""}
                 onChange={(e) => setTrigger({ query: e.target.value })}
@@ -122,7 +127,7 @@ export function RuleEditor({
               />
               <div className="grid grid-cols-3 gap-3">
                 <Select
-                  label="Rhythm"
+                  label={t.projectSetup.editor.rhythm}
                   id="field-rhythm"
                   value={draft.trigger.schedule?.unit ?? "hours"}
                   onChange={(e) =>
@@ -136,13 +141,13 @@ export function RuleEditor({
                     })
                   }
                 >
-                  <option value="hours">Every N hours</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
+                  <option value="hours">{t.projectSetup.editor.everyHours}</option>
+                  <option value="daily">{t.projectSetup.editor.daily}</option>
+                  <option value="weekly">{t.projectSetup.editor.weekly}</option>
                 </Select>
                 {(draft.trigger.schedule?.unit ?? "hours") === "hours" ? (
                   <Field
-                    label="Hours"
+                    label={t.projectSetup.editor.hours}
                     type="number"
                     min={1}
                     value={String(draft.trigger.schedule?.every ?? 1)}
@@ -150,7 +155,7 @@ export function RuleEditor({
                   />
                 ) : (
                   <Field
-                    label="At"
+                    label={t.projectSetup.editor.at}
                     type="time"
                     value={draft.trigger.schedule?.at ?? "09:00"}
                     onChange={(e) => setTrigger({ schedule: { ...(draft.trigger.schedule ?? { unit: "daily" }), at: e.target.value } })}
@@ -158,12 +163,12 @@ export function RuleEditor({
                 )}
                 {draft.trigger.schedule?.unit === "weekly" && (
                   <Select
-                    label="On"
+                    label={t.projectSetup.editor.on}
                     id="field-weekday"
                     value={String(draft.trigger.schedule?.weekday ?? 1)}
                     onChange={(e) => setTrigger({ schedule: { ...(draft.trigger.schedule ?? { unit: "weekly" }), weekday: Number(e.target.value) } })}
                   >
-                    {WEEKDAYS.map((day, i) => (
+                    {t.projectSetup.editor.weekdays.map((day, i) => (
                       <option key={day} value={i}>
                         {day}
                       </option>
@@ -175,20 +180,22 @@ export function RuleEditor({
           )}
           {draft.trigger.kind === "incoming" && rule?.trigger.token && (
             <p className="text-sm text-ink-muted" data-incoming-address>
-              Post JSON to <span className="font-mono text-ink">/api/v1/automation/hooks/{rule.trigger.token}</span>; an issueKey in the body names the issue.
+              {t.projectSetup.editor.postTo}
+              <span className="font-mono text-ink">/api/v1/automation/hooks/{rule.trigger.token}</span>
+              {t.projectSetup.editor.postToAfter}
             </p>
           )}
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-medium text-ink">If</legend>
+          <legend className="text-sm font-medium text-ink">{t.projectSetup.editor.if}</legend>
           {draft.conditions.map((c, i) => {
             const d = conditions.find((x) => x.type === c.kind);
             return (
               <div key={i} className="flex items-start gap-2 rounded-control border border-border p-3" data-rule-condition={c.kind}>
                 <div className="flex-1 space-y-2">
                   <Select
-                    label="Condition"
+                    label={t.projectSetup.editor.condition}
                     id={`field-condition-${i}`}
                     value={c.kind}
                     onChange={(e) => setCondition(i, { kind: e.target.value, query: undefined, field: undefined, value: undefined, roles: undefined })}
@@ -202,7 +209,7 @@ export function RuleEditor({
                   </Select>
                   {c.kind === "nql" && (
                     <Field
-                      label="Query"
+                      label={t.projectSetup.editor.query}
                       id={`field-condition-query-${i}`}
                       required
                       value={c.query ?? ""}
@@ -212,7 +219,7 @@ export function RuleEditor({
                   {c.kind === "field_equals" && (
                     <div className="grid grid-cols-2 gap-3">
                       <Field
-                        label="Field"
+                        label={t.projectSetup.editor.field}
                         id={`field-condition-field-${i}`}
                         required
                         value={c.field ?? ""}
@@ -220,7 +227,7 @@ export function RuleEditor({
                         placeholder="priority"
                       />
                       <Field
-                        label="Value"
+                        label={t.projectSetup.editor.value}
                         id={`field-condition-value-${i}`}
                         required
                         value={c.value ?? ""}
@@ -246,7 +253,7 @@ export function RuleEditor({
                 </div>
                 <IconButton
                   icon={<Icon.X />}
-                  label="Remove condition"
+                  label={t.projectSetup.editor.removeCondition}
                   size="sm"
                   onClick={() => setDraft({ ...draft, conditions: draft.conditions.filter((_, j) => j !== i) })}
                 />
@@ -260,19 +267,19 @@ export function RuleEditor({
             onClick={() => setDraft({ ...draft, conditions: [...draft.conditions, { kind: "nql" }] })}
             data-action="add-condition"
           >
-            Add a condition
+            {t.projectSetup.editor.addCondition}
           </Button>
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-medium text-ink">Then</legend>
+          <legend className="text-sm font-medium text-ink">{t.projectSetup.editor.then}</legend>
           {draft.actions.map((a, i) => {
             const d = actions.find((x) => x.type === a.kind);
             return (
               <div key={i} className="flex items-start gap-2 rounded-control border border-border p-3" data-rule-action={a.kind}>
                 <div className="flex-1 space-y-2">
                   <Select
-                    label="Action"
+                    label={t.projectSetup.editor.action}
                     id={`field-action-${i}`}
                     value={a.kind}
                     onChange={(e) =>
@@ -297,7 +304,7 @@ export function RuleEditor({
                   {a.kind === "set_field" && (
                     <div className="grid grid-cols-2 gap-3">
                       <Field
-                        label="Field"
+                        label={t.projectSetup.editor.field}
                         id={`field-action-field-${i}`}
                         required
                         value={a.field ?? ""}
@@ -305,7 +312,7 @@ export function RuleEditor({
                         placeholder="priority"
                       />
                       <Field
-                        label="Value"
+                        label={t.projectSetup.editor.value}
                         id={`field-action-value-${i}`}
                         required
                         value={a.value ?? ""}
@@ -316,7 +323,7 @@ export function RuleEditor({
                   )}
                   {(a.kind === "transition" || a.kind === "assign") && (
                     <Field
-                      label={a.kind === "transition" ? "Transition" : "Who"}
+                      label={a.kind === "transition" ? t.projectSetup.editor.transition : t.projectSetup.editor.who}
                       id={`field-action-value-${i}`}
                       required
                       value={a.value ?? ""}
@@ -324,7 +331,7 @@ export function RuleEditor({
                     />
                   )}
                   {a.kind === "add_label" && (
-                    <Labelled id={`field-action-value-${i}`} label="Label">
+                    <Labelled id={`field-action-value-${i}`} label={t.projectSetup.editor.label}>
                       <LabelInput
                         id={`field-action-value-${i}`}
                         mode="one"
@@ -335,7 +342,7 @@ export function RuleEditor({
                   )}
                   {(a.kind === "add_comment" || a.kind === "create_subissue" || a.kind === "create_issue") && (
                     <Field
-                      label={a.kind === "add_comment" ? "Comment" : "Summary"}
+                      label={a.kind === "add_comment" ? t.projectSetup.editor.comment : t.projectSetup.editor.summary}
                       id={`field-action-text-${i}`}
                       required
                       rows={2}
@@ -345,12 +352,12 @@ export function RuleEditor({
                   )}
                   {a.kind === "send_webhook" && (
                     <Select
-                      label="Endpoint"
+                      label={t.projectSetup.editor.endpoint}
                       id={`field-action-endpoint-${i}`}
                       value={a.endpointId ?? ""}
                       onChange={(e) => setAction(i, { endpointId: e.target.value || undefined })}
                     >
-                      <option value="">Choose a webhook</option>
+                      <option value="">{t.projectSetup.editor.chooseWebhook}</option>
                       {webhooks.map((w) => (
                         <option key={w.id} value={w.id}>
                           {w.name}
@@ -362,15 +369,15 @@ export function RuleEditor({
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <Field
-                          label="To"
+                          label={t.projectSetup.editor.to}
                           id={`field-action-to-${i}`}
                           required
                           value={a.to ?? ""}
                           onChange={(e) => setAction(i, { to: e.target.value })}
-                          placeholder="assignee, reporter, watchers or an address"
+                          placeholder={t.projectSetup.editor.toPlaceholder}
                         />
                         <Field
-                          label="Subject"
+                          label={t.projectSetup.editor.subject}
                           id={`field-action-subject-${i}`}
                           required
                           value={a.subject ?? ""}
@@ -378,7 +385,7 @@ export function RuleEditor({
                         />
                       </div>
                       <Field
-                        label="Body"
+                        label={t.projectSetup.editor.body}
                         id={`field-action-text-${i}`}
                         rows={2}
                         value={a.text ?? ""}
@@ -389,7 +396,7 @@ export function RuleEditor({
                 </div>
                 <IconButton
                   icon={<Icon.X />}
-                  label="Remove action"
+                  label={t.projectSetup.editor.removeAction}
                   size="sm"
                   disabled={draft.actions.length === 1}
                   onClick={() => setDraft({ ...draft, actions: draft.actions.filter((_, j) => j !== i) })}
@@ -404,13 +411,13 @@ export function RuleEditor({
             onClick={() => setDraft({ ...draft, actions: [...draft.actions, { kind: "add_label" }] })}
             data-action="add-action"
           >
-            Add an action
+            {t.projectSetup.editor.addAction}
           </Button>
         </fieldset>
 
         <div className="flex flex-wrap items-end gap-5">
           <Field
-            label="Runs an hour, at most"
+            label={t.projectSetup.editor.cap}
             type="number"
             min={1}
             value={String(draft.hourlyCap ?? 100)}
@@ -418,7 +425,7 @@ export function RuleEditor({
             className="w-24"
           />
           <Checkbox
-            label="Run on the automation's own changes too"
+            label={t.projectSetup.editor.ownChanges}
             checked={draft.allowOwnEvents}
             onChange={(e) => setDraft({ ...draft, allowOwnEvents: e.target.checked })}
             className="text-ink-muted"

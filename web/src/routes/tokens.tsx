@@ -62,19 +62,19 @@ function TokensPage() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Access tokens"
+        title={t.access.tokens.title}
       />
 
       {freshSecret && (
         <Card className="mb-6 border-accent/40 bg-accent-subtle p-4">
-          <p className="text-sm font-medium text-ink">Copy this token now</p>
-          <p className="mt-1 text-sm text-ink-muted">It will not be shown again. Store it somewhere safe.</p>
+          <p className="text-sm font-medium text-ink">{t.access.tokens.copyNow}</p>
+          <p className="mt-1 text-sm text-ink-muted">{t.access.tokens.copyNowDetail}</p>
           <code className="mt-3 block overflow-x-auto rounded border border-border bg-surface px-3 py-2 font-mono text-xs text-ink">{freshSecret}</code>
           <Button variant="ghost" size="sm" className="mt-2" onClick={() => setFreshSecret(null)}>
-            Done
+            {t.access.done}
           </Button>
         </Card>
       )}
@@ -83,38 +83,34 @@ function TokensPage() {
         <form onSubmit={onSubmit} className="flex flex-col gap-3" data-guide="token-form">
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <Field label="New token name" placeholder="Deploy pipeline" value={name} onChange={(e) => setName(e.target.value)} />
+              <Field label={t.access.tokens.newName} placeholder={t.access.tokens.newNamePlaceholder} value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-              Create
+              {t.access.tokens.create}
             </Button>
           </div>
           <Checkbox
             id="field-can-only-read"
             label={
               <span>
-                Can only read
-                <span className="ml-2 text-xs text-ink-subtle">It reads everything you can and changes nothing.</span>
+                {t.access.tokens.readOnly}
+                <span className="ml-2 text-xs text-ink-subtle">{t.access.tokens.readOnlyDetail}</span>
               </span>
             }
             checked={readOnly}
             onChange={(e) => setReadOnly(e.target.checked)}
           />
-          <Select label="Expires" value={days} onChange={(e) => setDays(Number(e.target.value))} className="max-w-xs">
+          <Select label={t.access.tokens.expires} value={days} onChange={(e) => setDays(Number(e.target.value))} className="max-w-xs">
             {TOKEN_DAY_CHOICES.map((choice) => (
               <option key={choice} value={choice}>
-                In {choice} days
+                {t.access.tokens.inDays(choice)}
               </option>
             ))}
-            <option value={0}>Never</option>
+            <option value={0}>{t.access.tokens.never}</option>
           </Select>
           <div data-token-projects>
-            <p className="text-sm font-medium text-ink">Projects</p>
-            <p className="mb-2 text-xs text-ink-subtle">
-              {projects.length === 0
-                ? "Every project you can reach. Pick some to confine this token to them."
-                : "This token reaches only what is picked here, and never more than you can. Press one to take it off."}
-            </p>
+            <p className="text-sm font-medium text-ink">{t.access.tokens.projects}</p>
+            <p className="mb-2 text-xs text-ink-subtle">{projects.length === 0 ? t.access.tokens.everyProjectHint : t.access.tokens.pickedHint}</p>
             {projects.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {projects.map((key) => (
@@ -125,9 +121,9 @@ function TokensPage() {
               </div>
             )}
             <ProjectPicker
-              label="Add a project"
+              label={t.access.tokens.addProject}
               value=""
-              none="Choose a project to add"
+              none={t.access.tokens.chooseProject}
               exclude={projects}
               className="max-w-xs"
               onChange={(key) => key && setProjects((chosen) => (chosen.includes(key) ? chosen : [...chosen, key]))}
@@ -142,9 +138,9 @@ function TokensPage() {
       </Card>
 
       {isLoading ? (
-        <p className="text-sm text-ink-muted">Loading tokens...</p>
+        <p className="text-sm text-ink-muted">{t.access.tokens.loading}</p>
       ) : tokens.length === 0 ? (
-        <EmptyState title="No tokens yet" description="Create one above to call the API from a script or a CI job." />
+        <EmptyState title={t.access.tokens.empty} description={t.access.tokens.emptyDetail} />
       ) : (
         <Card>
           <ul className="divide-y divide-border">
@@ -158,7 +154,7 @@ function TokensPage() {
                     (await confirm({
                       noun: t.kit.confirm.things.app,
                       verb: t.kit.confirm.verbs.disconnect,
-                      body: `${token.app?.name} can no longer act as you; it asks again if you connect it later.`,
+                      body: t.access.tokens.disconnectBody(token.app?.name ?? ""),
                     })) && revoke.mutate(token.id)
                   }
                 />
@@ -173,14 +169,16 @@ function TokensPage() {
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
                       {token.name}
-                      {token.scopes.includes(READ_ONLY_SCOPE) && <Tag>Read only</Tag>}
+                      {token.scopes.includes(READ_ONLY_SCOPE) && <Tag>{t.access.tokens.readOnlyTag}</Tag>}
                     </p>
                     <p className="text-xs text-ink-subtle">
-                      Created {format.date(token.createdAt)}
-                      {token.lastUsedAt ? ` · last used ${format.date(token.lastUsedAt)}` : " · never used"}
-                      {token.expiresAt ? ` · expires ${format.date(token.expiresAt)}` : " · never expires"}
+                      {t.access.tokens.created(format.date(token.createdAt))}
+                      {token.lastUsedAt ? t.access.tokens.lastUsed(format.date(token.lastUsedAt)) : t.access.tokens.neverUsed}
+                      {token.expiresAt ? t.access.tokens.expiresOn(format.date(token.expiresAt)) : t.access.tokens.neverExpires}
                     </p>
-                    <p className="text-xs text-ink-subtle">{token.projects.length > 0 ? `Only ${token.projects.join(", ")}` : "Every project you can reach"}</p>
+                    <p className="text-xs text-ink-subtle">
+                      {token.projects.length > 0 ? t.access.tokens.only(token.projects.join(", ")) : t.access.tokens.everyProject}
+                    </p>
                   </div>
                   <Button
                     variant="ghost"
@@ -189,12 +187,12 @@ function TokensPage() {
                       (await confirm({
                         noun: t.kit.confirm.things.token,
                         verb: t.kit.confirm.verbs.revoke,
-                        body: `${token.name} stops working at once; anything using it is refused.`,
+                        body: t.access.tokens.revokeBody(token.name),
                       })) && revoke.mutate(token.id)
                     }
                     loading={revoke.isPending && revoke.variables === token.id}
                   >
-                    Revoke
+                    {t.access.grants.revoke}
                   </Button>
                 </li>
               ),
@@ -215,17 +213,17 @@ function ConnectedAppRow({ token, disconnecting, onDisconnect }: { token: ApiTok
       <div className="min-w-0">
         <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
           {token.app?.name}
-          <Tag>Connected app</Tag>
+          <Tag>{t.access.tokens.connectedApp}</Tag>
         </p>
         <p className="text-xs text-ink-subtle">{words.join(" · ")}</p>
         <p className="text-xs text-ink-subtle">
-          Connected {format.date(token.createdAt)}
-          {token.lastUsedAt ? ` · last used ${format.date(token.lastUsedAt)}` : " · never used"}
-          {token.expiresAt && ` · ends ${format.date(token.expiresAt)} unless it is used`}
+          {t.access.tokens.connected(format.date(token.createdAt))}
+          {token.lastUsedAt ? t.access.tokens.lastUsed(format.date(token.lastUsedAt)) : t.access.tokens.neverUsed}
+          {token.expiresAt && t.access.tokens.endsUnlessUsed(format.date(token.expiresAt))}
         </p>
       </div>
       <Button variant="ghost" size="sm" onClick={onDisconnect} loading={disconnecting} data-action="disconnect-app">
-        Disconnect
+        {t.access.tokens.disconnect}
       </Button>
     </li>
   );

@@ -2,6 +2,7 @@ import { Card, SelectInput, Table, Td, Th } from "@/components/ui";
 import { useIssueTypes, useStatuses } from "@/api/issues";
 import type { ImportWord } from "@/api/filters";
 import { TARGET_LABELS } from "./targets";
+import { t } from "@/i18n";
 
 /** The priorities this tracker has; a file's own are mapped onto them. */
 const PRIORITIES = ["lowest", "low", "medium", "high", "highest"];
@@ -32,15 +33,15 @@ export function WordsCard({
 
   return (
     <Card className="mb-4 p-5" data-import-words>
-      <h2 className="mb-1 text-sm font-medium text-ink">What its words mean here</h2>
-      <p className="mb-3 text-sm text-ink-muted">A word this tracker does not know refuses its rows until you say what it is.</p>
+      <h2 className="mb-1 text-sm font-medium text-ink">{t.projectSetup.import.words}</h2>
+      <p className="mb-3 text-sm text-ink-muted">{t.projectSetup.import.wordsDetail}</p>
       <Table dense>
         <thead>
           <tr>
-            <Th>Column</Th>
-            <Th>In the file</Th>
-            <Th>On how many rows</Th>
-            <Th>Means</Th>
+            <Th>{t.projectSetup.import.column}</Th>
+            <Th>{t.projectSetup.import.inFile}</Th>
+            <Th>{t.projectSetup.import.rowCount}</Th>
+            <Th>{t.projectSetup.import.means}</Th>
           </tr>
         </thead>
         <tbody>
@@ -51,7 +52,7 @@ export function WordsCard({
               <Td className="text-sm text-ink-muted">{word.count}</Td>
               <Td>
                 <label htmlFor={`word-${word.target}-${word.value}`} className="sr-only">
-                  What {word.value} means here
+                  {t.projectSetup.import.whatMeans(word.value)}
                 </label>
                 <SelectInput
                   id={`word-${word.target}-${word.value}`}
@@ -60,7 +61,7 @@ export function WordsCard({
                   onChange={(e) => pick(word.target, word.value, e.target.value)}
                   data-import-word-means={word.value}
                 >
-                  <option value="">Leave it out</option>
+                  <option value="">{t.projectSetup.import.leaveOut}</option>
                   {optionsFor(word.target).map((name) => (
                     <option key={name} value={name}>
                       {name}

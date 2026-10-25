@@ -1,23 +1,202 @@
 import type { Feature, Project } from "@/api/projects";
+import { t } from "@/i18n";
 
 /** Every feature in the order pages are listed, with the word a sentence uses. */
-export const FEATURES: Array<{ key: Feature; label: string; word: string; deskOnly?: boolean }> = [
-  { key: "board", label: "Board", word: "the board" },
-  { key: "sprints", label: "Sprints", word: "sprints" },
-  { key: "plan", label: "Plan", word: "the plan" },
-  { key: "calendar", label: "Calendar", word: "the calendar" },
-  { key: "resources", label: "Resources", word: "resource planning" },
-  { key: "milestones", label: "Milestones", word: "milestones" },
-  { key: "releases", label: "Releases", word: "releases" },
-  { key: "components", label: "Components", word: "components" },
-  { key: "hierarchy", label: "Hierarchy", word: "the hierarchy" },
-  { key: "dashboard", label: "Dashboard", word: "dashboards" },
-  { key: "queues", label: "Queues", word: "queues", deskOnly: true },
-  { key: "desk", label: "Service desk", word: "the service desk", deskOnly: true },
-  { key: "teams", label: "Teams", word: "teams" },
-  { key: "repositories", label: "Repositories", word: "repositories" },
-  { key: "automation", label: "Automation", word: "automation" },
-  { key: "import", label: "Import", word: "imports" },
+export const FEATURES: Array<{ key: Feature; label: string; word: string; listed: string; deskOnly?: boolean }> = [
+  {
+    key: "board",
+    get label() {
+      return t.projectSetup.features.board.label;
+    },
+    get word() {
+      return t.projectSetup.features.board.word;
+    },
+    get listed() {
+      return t.projectSetup.features.board.listed;
+    },
+  },
+  {
+    key: "sprints",
+    get label() {
+      return t.projectSetup.features.sprints.label;
+    },
+    get word() {
+      return t.projectSetup.features.sprints.word;
+    },
+    get listed() {
+      return t.projectSetup.features.sprints.listed;
+    },
+  },
+  {
+    key: "plan",
+    get label() {
+      return t.projectSetup.features.plan.label;
+    },
+    get word() {
+      return t.projectSetup.features.plan.word;
+    },
+    get listed() {
+      return t.projectSetup.features.plan.listed;
+    },
+  },
+  {
+    key: "calendar",
+    get label() {
+      return t.projectSetup.features.calendar.label;
+    },
+    get word() {
+      return t.projectSetup.features.calendar.word;
+    },
+    get listed() {
+      return t.projectSetup.features.calendar.listed;
+    },
+  },
+  {
+    key: "resources",
+    get label() {
+      return t.projectSetup.features.resources.label;
+    },
+    get word() {
+      return t.projectSetup.features.resources.word;
+    },
+    get listed() {
+      return t.projectSetup.features.resources.listed;
+    },
+  },
+  {
+    key: "milestones",
+    get label() {
+      return t.projectSetup.features.milestones.label;
+    },
+    get word() {
+      return t.projectSetup.features.milestones.word;
+    },
+    get listed() {
+      return t.projectSetup.features.milestones.listed;
+    },
+  },
+  {
+    key: "releases",
+    get label() {
+      return t.projectSetup.features.releases.label;
+    },
+    get word() {
+      return t.projectSetup.features.releases.word;
+    },
+    get listed() {
+      return t.projectSetup.features.releases.listed;
+    },
+  },
+  {
+    key: "components",
+    get label() {
+      return t.projectSetup.features.components.label;
+    },
+    get word() {
+      return t.projectSetup.features.components.word;
+    },
+    get listed() {
+      return t.projectSetup.features.components.listed;
+    },
+  },
+  {
+    key: "hierarchy",
+    get label() {
+      return t.projectSetup.features.hierarchy.label;
+    },
+    get word() {
+      return t.projectSetup.features.hierarchy.word;
+    },
+    get listed() {
+      return t.projectSetup.features.hierarchy.listed;
+    },
+  },
+  {
+    key: "dashboard",
+    get label() {
+      return t.projectSetup.features.dashboard.label;
+    },
+    get word() {
+      return t.projectSetup.features.dashboard.word;
+    },
+    get listed() {
+      return t.projectSetup.features.dashboard.listed;
+    },
+  },
+  {
+    key: "queues",
+    get label() {
+      return t.projectSetup.features.queues.label;
+    },
+    get word() {
+      return t.projectSetup.features.queues.word;
+    },
+    get listed() {
+      return t.projectSetup.features.queues.listed;
+    },
+    deskOnly: true,
+  },
+  {
+    key: "desk",
+    get label() {
+      return t.projectSetup.features.desk.label;
+    },
+    get word() {
+      return t.projectSetup.features.desk.word;
+    },
+    get listed() {
+      return t.projectSetup.features.desk.listed;
+    },
+    deskOnly: true,
+  },
+  {
+    key: "teams",
+    get label() {
+      return t.projectSetup.features.teams.label;
+    },
+    get word() {
+      return t.projectSetup.features.teams.word;
+    },
+    get listed() {
+      return t.projectSetup.features.teams.listed;
+    },
+  },
+  {
+    key: "repositories",
+    get label() {
+      return t.projectSetup.features.repositories.label;
+    },
+    get word() {
+      return t.projectSetup.features.repositories.word;
+    },
+    get listed() {
+      return t.projectSetup.features.repositories.listed;
+    },
+  },
+  {
+    key: "automation",
+    get label() {
+      return t.projectSetup.features.automation.label;
+    },
+    get word() {
+      return t.projectSetup.features.automation.word;
+    },
+    get listed() {
+      return t.projectSetup.features.automation.listed;
+    },
+  },
+  {
+    key: "import",
+    get label() {
+      return t.projectSetup.features.import.label;
+    },
+    get word() {
+      return t.projectSetup.features.import.word;
+    },
+    get listed() {
+      return t.projectSetup.features.import.listed;
+    },
+  },
 ];
 
 export function featureWord(feature: Feature): string {
@@ -60,5 +239,5 @@ export function hasFeature(project: Project | undefined, feature: Feature | unde
 
 /** The words for what a feature list leaves out, against everything a non-desk project could have. */
 export function leftOut(features: Feature[]): string[] {
-  return FEATURES.filter((f) => !f.deskOnly && !features.includes(f.key)).map((f) => f.label.toLowerCase());
+  return FEATURES.filter((f) => !f.deskOnly && !features.includes(f.key)).map((f) => f.listed);
 }

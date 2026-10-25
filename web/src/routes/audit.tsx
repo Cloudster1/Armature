@@ -7,6 +7,7 @@ import { Icon } from "@/components/icons";
 import { useFormat } from "@/lib/format";
 import { deviceName } from "@/lib/device";
 import { AUDIT_PAGE_SIZE } from "@/config";
+import { t } from "@/i18n";
 
 /** Who did what, newest first, for the administrators. */
 export const auditRoute = createRoute({
@@ -41,40 +42,54 @@ function AuditPage() {
   return (
     <Page width="content">
       <PageHeader
-        title="Audit log"
-        meta="Who did what in Armature: roles, groups, projects, workflows, webhooks, rules, invitations, tokens and sign-ins. Kept for a year."
+        title={t.access.audit.title}
+        meta={t.access.audit.meta}
         actions={
           <ButtonLink href={auditExportHref(filter)} download variant="secondary" size="sm" icon={<Icon.Download />} data-action="export-audit">
-            Export CSV
+            {t.access.audit.export}
           </ButtonLink>
         }
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-3" data-audit-filters>
-        <Select label="Action" id="field-audit-action" value={filter.action ?? ""} onChange={(e) => narrow({ action: e.target.value || undefined })}>
-          <option value="">Every action</option>
+        <Select
+          label={t.access.audit.action}
+          id="field-audit-action"
+          value={filter.action ?? ""}
+          onChange={(e) => narrow({ action: e.target.value || undefined })}
+        >
+          <option value="">{t.access.audit.everyAction}</option>
           {actions.map((a) => (
             <option key={a} value={a}>
               {actionName(a)}
             </option>
           ))}
         </Select>
-        <Field label="From" id="field-audit-from" type="date" value={filter.from ?? ""} onChange={(e) => narrow({ from: e.target.value || undefined })} />
-        <Field label="To" id="field-audit-to" type="date" value={filter.to ?? ""} onChange={(e) => narrow({ to: e.target.value || undefined })} />
+        <Field
+          label={t.access.audit.from}
+          id="field-audit-from"
+          type="date"
+          value={filter.from ?? ""}
+          onChange={(e) => narrow({ from: e.target.value || undefined })}
+        />
+        <Field
+          label={t.access.audit.to}
+          id="field-audit-to"
+          type="date"
+          value={filter.to ?? ""}
+          onChange={(e) => narrow({ to: e.target.value || undefined })}
+        />
       </div>
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {isLoading ? null : entries.length === 0 ? (
-        <EmptyState
-          title="Nothing recorded"
-          description={cursors.length ? "That was the last page." : "Nothing matches; widen the dates or choose every action."}
-        />
+        <EmptyState title={t.access.audit.empty} description={cursors.length ? t.access.audit.lastPage : t.access.audit.noMatch} />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th className="w-44">When</Th>
-              <Th>What</Th>
-              <Th className="w-40">Who</Th>
-              <Th>Details</Th>
+              <Th className="w-44">{t.access.audit.when}</Th>
+              <Th>{t.access.audit.what}</Th>
+              <Th className="w-40">{t.access.grants.who}</Th>
+              <Th>{t.access.audit.details}</Th>
             </tr>
           </thead>
           <tbody>
@@ -87,7 +102,7 @@ function AuditPage() {
                   <Tag>{actionName(entry.action)}</Tag>
                 </Td>
                 <Td className="text-sm text-ink" data-audit-actor>
-                  {entry.actorName || <span className="text-ink-subtle">system</span>}
+                  {entry.actorName || <span className="text-ink-subtle">{t.access.audit.system}</span>}
                 </Td>
                 <Td className="text-xs text-ink-muted">{describe(entry)}</Td>
               </tr>
@@ -98,12 +113,12 @@ function AuditPage() {
       <div className="mt-3 flex justify-end gap-2">
         {cursors.length > 0 && (
           <Button variant="ghost" size="sm" onClick={() => setCursors(cursors.slice(0, -1))}>
-            Newer
+            {t.access.audit.newer}
           </Button>
         )}
         {entries.length === AUDIT_PAGE_SIZE && (
           <Button variant="ghost" size="sm" onClick={() => setCursors([...cursors, entries[entries.length - 1]!.createdAt])} data-action="audit-older">
-            Older
+            {t.access.audit.older}
           </Button>
         )}
       </div>
@@ -118,11 +133,11 @@ function describe(entry: AuditEntry): string {
     if (key === "actorId" || /Id$/.test(key) || value === null || value === undefined || value === "") continue;
     // A signed out session names its device the way the profile listed it.
     if (key === "userAgent") {
-      parts.push(`device: ${deviceName(String(value))}`);
+      parts.push(t.access.audit.device(deviceName(String(value))));
       continue;
     }
     parts.push(`${key}: ${Array.isArray(value) ? value.join(", ") : String(value)}`);
   }
-  if (entry.ip) parts.push(`from ${entry.ip}`);
+  if (entry.ip) parts.push(t.access.audit.fromIp(entry.ip));
   return parts.join(" · ");
 }

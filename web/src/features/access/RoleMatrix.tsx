@@ -33,24 +33,20 @@ export function RoleMatrix() {
   }
 
   async function drop(role: RoleDescription) {
-    const grants = role.inUse === 0 ? "Nobody holds it." : role.inUse === 1 ? "The one grant of it goes with it." : `Its ${role.inUse} grants go with it.`;
-    if (await confirm({ noun: t.kit.confirm.things.role, verb: t.kit.confirm.verbs.delete, body: `${role.name} goes for good. ${grants}` })) {
-      remove.mutate(role.role, { onSuccess: () => toast.success(`Deleted ${role.name}`) });
+    if (await confirm({ noun: t.kit.confirm.things.role, verb: t.kit.confirm.verbs.delete, body: t.access.matrix.deleteBody(role.name, role.inUse) })) {
+      remove.mutate(role.role, { onSuccess: () => toast.success(t.access.matrix.deleted(role.name)) });
     }
   }
 
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.access.loading}</p>;
 
   return (
     <div className="space-y-4" data-role-matrix>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-muted">
-          A tick is saved at once, and everybody holding the role has it from their next request. The built-in roles stay; the global administrator always
-          administers Armature.
-        </p>
+        <p className="text-sm text-ink-muted">{t.access.matrix.explain}</p>
         {administers && (
           <Button icon={<Icon.Plus />} onClick={() => setAdding(true)} data-action="new-role">
-            New role
+            {t.access.matrix.newRole}
           </Button>
         )}
       </div>
@@ -58,7 +54,7 @@ export function RoleMatrix() {
       <Table>
         <thead>
           <tr>
-            <Th>Permission</Th>
+            <Th>{t.access.matrix.permission}</Th>
             {roles.map((role) => (
               <Th key={role.role} className="text-center align-top" data-role-column={role.role}>
                 <span className="inline-flex flex-col items-center gap-1 normal-case tracking-normal">
@@ -66,15 +62,15 @@ export function RoleMatrix() {
                     {role.name}
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    {role.builtin && <Tag className="whitespace-nowrap">Built in</Tag>}
+                    {role.builtin && <Tag className="whitespace-nowrap">{t.access.matrix.builtIn}</Tag>}
                     {administers && (
                       <Menu
-                        label={`Actions for ${role.name}`}
+                        label={t.access.matrix.actionsFor(role.name)}
                         align="end"
                         trigger={(props) => (
                           <IconButton
                             icon={<Icon.More />}
-                            label={`Actions for ${role.name}`}
+                            label={t.access.matrix.actionsFor(role.name)}
                             size="xs"
                             onClick={props.toggle}
                             aria-haspopup={props["aria-haspopup"]}
@@ -83,9 +79,9 @@ export function RoleMatrix() {
                           />
                         )}
                         items={[
-                          { label: "Rename or describe", icon: <Icon.Edit />, onSelect: () => setRenaming(role), attrs: { "data-action": "rename-role" } },
+                          { label: t.access.matrix.rename, icon: <Icon.Edit />, onSelect: () => setRenaming(role), attrs: { "data-action": "rename-role" } },
                           {
-                            label: "Delete",
+                            label: t.access.delete,
                             icon: <Icon.Trash />,
                             danger: true,
                             disabled: role.builtin,
@@ -115,7 +111,9 @@ export function RoleMatrix() {
                 return (
                   <Td key={role.role} className="text-center">
                     <Checkbox
-                      label={<span className="sr-only">{`${role.name} may ${permission.words.charAt(0).toLowerCase()}${permission.words.slice(1)}`}</span>}
+                      label={
+                        <span className="sr-only">{t.access.matrix.may(role.name, permission.words.charAt(0).toLowerCase() + permission.words.slice(1))}</span>
+                      }
                       checked={held}
                       disabled={!administers || fixed || update.isPending}
                       onChange={(event) => toggle(role, permission.permission, event.target.checked)}
@@ -147,29 +145,29 @@ function NewRoleDialog({ onClose }: { onClose: () => void }) {
       { name: name.trim(), description: description.trim(), orgWideOnly, permissions: ["read"] },
       {
         onSuccess: (made) => {
-          toast.success(`Added ${made.role.name}; tick what it grants`);
+          toast.success(t.access.matrix.added(made.role.name));
           onClose();
         },
       },
     );
   }
   return (
-    <Dialog open onClose={onClose} title="New role" attrs={{ "data-new-role": "" }}>
+    <Dialog open onClose={onClose} title={t.access.matrix.newRole} attrs={{ "data-new-role": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
-        <Field label="Role name" id="field-role-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
-        <Field label="What it is for" id="field-role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <Field label={t.access.matrix.name} id="field-role-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label={t.access.matrix.purpose} id="field-role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
         <label className="flex items-center gap-2 text-sm text-ink-muted">
-          <Switch checked={orgWideOnly} onChange={setOrgWideOnly} label="Only over all projects at once" data-role-org-wide={orgWideOnly ? "true" : "false"} />
-          Only over all projects at once, never one project
+          <Switch checked={orgWideOnly} onChange={setOrgWideOnly} label={t.access.matrix.allAtOnce} data-role-org-wide={orgWideOnly ? "true" : "false"} />
+          {t.access.matrix.allAtOnceDetail}
         </label>
-        <p className="text-xs text-ink-subtle">It starts with seeing projects; tick the rest in the matrix.</p>
+        <p className="text-xs text-ink-subtle">{t.access.matrix.startsWith}</p>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-            Add role
+            {t.access.matrix.addRole}
           </Button>
         </div>
       </form>
@@ -189,24 +187,24 @@ function RenameRoleDialog({ role, onClose }: { role: RoleDescription; onClose: (
       { role: role.role, name: name.trim(), description: description.trim() },
       {
         onSuccess: () => {
-          toast.success(`Saved ${name.trim()}`);
+          toast.success(t.access.matrix.saved(name.trim()));
           onClose();
         },
       },
     );
   }
   return (
-    <Dialog open onClose={onClose} title={`Rename ${role.name}`} attrs={{ "data-rename-role": role.role }}>
+    <Dialog open onClose={onClose} title={t.access.matrix.renameTitle(role.name)} attrs={{ "data-rename-role": role.role }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
-        <Field label="Role name" id="field-role-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
-        <Field label="What it is for" id="field-role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <Field label={t.access.matrix.name} id="field-role-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label={t.access.matrix.purpose} id="field-role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
         {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
-            Save
+            {t.access.save}
           </Button>
         </div>
       </form>

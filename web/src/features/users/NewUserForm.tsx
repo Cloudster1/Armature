@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useCreateUser } from "@/api/users";
 import { Button, Card, ErrorBanner, Field, Select, useToast } from "@/components/ui";
+import { t } from "@/i18n";
 
 const EMPTY = { email: "", name: "", role: "member" as "admin" | "member", password: "" };
 
@@ -18,7 +19,7 @@ export function NewUserForm() {
       { email: draft.email.trim(), name: draft.name.trim(), role: draft.role, password: draft.password },
       {
         onSuccess: (made) => {
-          toast.success(`Created ${made.user.name}`);
+          toast.success(t.access.newUser.created(made.user.name));
           setDraft(EMPTY);
         },
       },
@@ -30,24 +31,31 @@ export function NewUserForm() {
       <form onSubmit={onSubmit} className="space-y-3" noValidate data-new-user>
         {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Email" type="email" autoComplete="off" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} required />
-          <Field label="Name" autoComplete="off" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
-          <Select label="Role" value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as "admin" | "member" })}>
-            <option value="member">Member</option>
-            <option value="admin">Administrator</option>
+          <Field
+            label={t.access.newUser.email}
+            type="email"
+            autoComplete="off"
+            value={draft.email}
+            onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+            required
+          />
+          <Field label={t.access.newUser.name} autoComplete="off" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
+          <Select label={t.access.grants.role} value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as "admin" | "member" })}>
+            <option value="member">{t.access.invite.member}</option>
+            <option value="admin">{t.access.invite.admin}</option>
           </Select>
           <Field
-            label="Password"
+            label={t.access.newUser.password}
             type="password"
             autoComplete="new-password"
-            hint="At least 12 characters. Tell the person, and ask them to change it from their profile."
+            hint={t.access.newUser.passwordHint}
             value={draft.password}
             onChange={(e) => setDraft({ ...draft, password: e.target.value })}
             required
           />
         </div>
         <Button type="submit" loading={create.isPending} disabled={!ready}>
-          Create user
+          {t.access.newUser.create}
         </Button>
       </form>
     </Card>

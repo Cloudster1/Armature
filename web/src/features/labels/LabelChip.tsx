@@ -1,6 +1,7 @@
 import type { LabelColor, LabelRef } from "@/api/issues";
 import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { t } from "@/i18n";
 
 /** The palette, as classes; the server names the colour, the client draws it. */
 export const LABEL_CLASSES: Record<LabelColor, string> = {
@@ -26,7 +27,7 @@ export function LabelChip({ label, onRemove, className }: { label: Pick<LabelRef
       {onRemove && (
         <IconButton
           icon={<Icon.X className="size-3" />}
-          label={`Remove label ${label.name}`}
+          label={t.looks.labels.removeLabel(label.name)}
           size="xs"
           onClick={onRemove}
           className="-mr-1 size-4 text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100"

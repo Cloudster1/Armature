@@ -5,6 +5,7 @@ import { WORKFLOW_EDGE_BEND, WORKFLOW_HANDLE_SIZE, WORKFLOW_NODE_HEIGHT, WORKFLO
 import type { EdgeShape } from "@/lib/graph";
 import { ANYWHERE, anywhereRect, bendClearOf, bends, edgeShape, rectOf, type Design } from "./graph";
 import type { Selection } from "./WorkflowCanvas";
+import { t } from "@/i18n";
 
 // What React Flow is handed: our model translated into its nodes and edges,
 // with the geometry still ours so the picture and what is saved agree.
@@ -84,7 +85,7 @@ export function toFlow(design: Design, statuses: Map<string, Status>, selection:
       handles: handlesOf(true),
       selected,
       ariaRole: readOnly ? undefined : "button",
-      ariaLabel: `${status.name}${initial ? ", where new issues open" : ""}`,
+      ariaLabel: `${status.name}${initial ? t.workflows.canvas.initial : ""}`,
       domAttributes: dom({
         "data-workflow-node": status.name,
         "data-x": node.x,
@@ -108,7 +109,7 @@ export function toFlow(design: Design, statuses: Map<string, Status>, selection:
       focusable: false,
       connectable: !readOnly,
       handles: handlesOf(false),
-      ariaLabel: "Any status",
+      ariaLabel: t.workflows.canvas.anyStatus,
       domAttributes: dom({ "data-workflow-anywhere": "" }),
       data: { readOnly },
     });
@@ -137,7 +138,7 @@ export function toFlow(design: Design, statuses: Map<string, Status>, selection:
       focusable: !readOnly,
       selected,
       ariaRole: readOnly ? undefined : "button",
-      ariaLabel: `Transition ${edge.name || "(unnamed)"}`,
+      ariaLabel: t.workflows.canvas.transition(edge.name || t.workflows.canvas.unnamedTransition),
       domAttributes: svgDom({ "data-workflow-edge": edge.name, "aria-pressed": readOnly ? undefined : selected }),
       data: { name: edge.name, shape: edgeShape(from, to, bend), readOnly },
     });

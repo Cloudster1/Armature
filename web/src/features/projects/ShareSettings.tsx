@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAllocations, useSetAllocation, type Allocation } from "@/api/resources";
 import { Button, Card, ErrorBanner, Input, SectionTitle, useToast } from "@/components/ui";
 import { SHARE_FULL_PERCENT } from "@/config";
+import { t } from "@/i18n";
 
 // How much of each person's week the project has. A share is a statement the
 // Resources page counts hours at; going past a whole week warns and is kept.
@@ -11,13 +12,11 @@ export function ShareSettings({ projectKey }: { projectKey: string }) {
 
   return (
     <section className="mt-8" data-share-settings>
-      <SectionTitle className="mb-2">Share of the week</SectionTitle>
+      <SectionTitle className="mb-2">{t.projectSetup.share.title}</SectionTitle>
       <Card className="space-y-3 p-5">
-        <p className="text-sm text-ink-muted">
-          How much of each person's week this project has. The Resources page counts their hours at it; anybody left at 100% gives the project their whole week.
-        </p>
+        <p className="text-sm text-ink-muted">{t.projectSetup.share.detail}</p>
         {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
-        {data && people.length === 0 && <p className="text-sm text-ink-subtle">Nobody is on the project's teams or assigned its open work yet.</p>}
+        {data && people.length === 0 && <p className="text-sm text-ink-subtle">{t.projectSetup.share.nobody}</p>}
         {people.length > 0 && (
           <ul className="divide-y divide-border">
             {people.map((person) => (
@@ -39,7 +38,7 @@ function ShareRow({ projectKey, person }: { projectKey: string; person: Allocati
   const total = (valid ? percent : person.percent) + person.elsewherePercent;
 
   function save() {
-    set.mutate({ userId: person.userId, percent }, { onSuccess: () => toast.success(`${person.name} gives the project ${percent}% of their week`) });
+    set.mutate({ userId: person.userId, percent }, { onSuccess: () => toast.success(t.projectSetup.share.saved(person.name, percent)) });
   }
 
   return (
@@ -53,7 +52,7 @@ function ShareRow({ projectKey, person }: { projectKey: string; person: Allocati
           step={1}
           controlSize="sm"
           className="w-20 text-right"
-          aria-label={`${person.name}'s share of the week`}
+          aria-label={t.projectSetup.share.input(person.name)}
           invalid={!valid}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -64,17 +63,17 @@ function ShareRow({ projectKey, person }: { projectKey: string; person: Allocati
       <Button
         size="sm"
         variant="secondary"
-        aria-label={`Save ${person.name}'s share`}
+        aria-label={t.projectSetup.share.saveLabel(person.name)}
         disabled={!valid || percent === person.percent}
         loading={set.isPending}
         onClick={save}
         data-action="save-share"
       >
-        Save
+        {t.projectSetup.share.save}
       </Button>
       {total > SHARE_FULL_PERCENT && (
         <p className="w-full text-xs text-warning" data-share-warning={person.name}>
-          {person.name} gives {total}% of their week across projects.
+          {t.projectSetup.share.over(person.name, total)}
         </p>
       )}
       {set.error && (

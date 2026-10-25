@@ -4,6 +4,7 @@ import { useProject } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
 import { FieldList } from "@/features/fields/FieldList";
+import { t } from "@/i18n";
 
 export const fieldsRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -24,8 +25,8 @@ function FieldsPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Fields"
-        meta="What this project records about an issue beyond the standard fields."
+        title={t.looks.fields.title}
+        meta={t.looks.fields.projectMeta}
       />
       <FieldList projectKey={projectKey} canConfigure={canAdminister(access, projectKey)} canPromote={Boolean(access?.canAdministerOrg)} />
     </Page>

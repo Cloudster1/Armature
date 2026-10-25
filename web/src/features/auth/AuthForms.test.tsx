@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { LoginForm, PASSWORD_MISMATCH, SignupForm, safeNext } from "./AuthForms";
+import { LoginForm, passwordMismatch, SignupForm, safeNext } from "./AuthForms";
 import { ApiError } from "@/api/client";
 
 // The router is only used for the post-login redirect, which is not what these
@@ -271,10 +271,10 @@ describe("SignupForm", () => {
     await userEvent.type(screen.getByLabelText("Password"), "compiler pioneer 1952");
     await userEvent.type(screen.getByLabelText("Repeat password"), "compiler pioneer 1953");
     // Not said while the second copy is still being typed.
-    expect(screen.queryByText(PASSWORD_MISMATCH)).toBeNull();
+    expect(screen.queryByText(passwordMismatch())).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Create your account" }));
 
-    expect(screen.getByText(PASSWORD_MISMATCH)).toBeTruthy();
+    expect(screen.getByText(passwordMismatch())).toBeTruthy();
     expect(mutate).not.toHaveBeenCalled();
 
     await userEvent.clear(screen.getByLabelText("Repeat password"));
