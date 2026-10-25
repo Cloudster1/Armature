@@ -120,3 +120,16 @@ func TestAVersionNotOfferedBuildsNothing(t *testing.T) {
 		}
 	}
 }
+
+// An endpoint takes what the desk publishes when a reply cannot reopen a request,
+// and not a topic nothing publishes.
+func TestAnEndpointTakesTheTopicsThatArePublished(t *testing.T) {
+	in := Input{Name: "Desk", URL: "https://example.com/hook", Topics: []string{events.TopicRequestStaysDone}}
+	if err := validate(in); err != nil {
+		t.Errorf("request.stays_done was refused: %v", err)
+	}
+	in.Topics = []string{"ci.deployment.succeeded"}
+	if err := validate(in); err == nil {
+		t.Error("ci.deployment.succeeded, which nothing publishes, was taken")
+	}
+}
