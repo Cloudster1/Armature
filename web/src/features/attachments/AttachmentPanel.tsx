@@ -114,8 +114,8 @@ export function AttachmentPanel({
                   aria-label={t.issuePanels.attachments.removeFile(a.fileName)}
                   onClick={async () =>
                     (await confirm({
-                      noun: "attachment",
-                      verb: "Remove",
+                      noun: t.kit.confirm.things.attachment,
+                      verb: t.kit.confirm.verbs.remove,
                       body: source === "portal" ? t.issuePanels.attachments.goneFromRequest(a.fileName) : t.issuePanels.attachments.goneFromIssue(a.fileName),
                     })) && remove.mutate(a.id)
                   }

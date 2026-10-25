@@ -282,7 +282,9 @@ function ProjectDetail() {
         }
         end={
           <>
-            <span className="text-sm text-ink-subtle tabular-nums">{issueData ? shownOf(issueData.total, issueData.offset, issues.length, "issue") : ""}</span>
+            <span className="text-sm text-ink-subtle tabular-nums">
+              {issueData ? shownOf(issueData.total, issueData.offset, issues.length, t.kit.counted.issue) : ""}
+            </span>
             {mode === "query" && (
               <Link to="/search" search={{ q: asQuery }} className="text-sm text-accent hover:underline">
                 {t.issueList.page.openInSearch}

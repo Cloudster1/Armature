@@ -21,6 +21,7 @@ import { StatusBadge, TypeBadge } from "@/features/issues/badges";
 import { describe, teamHours } from "@/features/plan/SprintBands";
 import { useTeams } from "@/api/teams";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 /**
  * Sprint planning: the backlog on one side, the sprints on the other, and the
@@ -154,7 +155,8 @@ function SprintCard({ sprint, plan, others }: { sprint: Sprint; plan?: SprintPla
                     variant="ghost"
                     loading={remove.isPending}
                     onClick={async () =>
-                      (await confirm({ noun: "sprint", body: `${sprint.name} goes; its issues return to the backlog.` })) && remove.mutate(sprint.id)
+                      (await confirm({ noun: t.kit.confirm.things.sprint, body: `${sprint.name} goes; its issues return to the backlog.` })) &&
+                      remove.mutate(sprint.id)
                     }
                   >
                     Delete

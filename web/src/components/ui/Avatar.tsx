@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cx } from "./cx";
+import { t } from "@/i18n";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg";
 
@@ -17,7 +18,7 @@ export function Avatar({ name, src, size = "md", className }: { name?: string; s
   if (!name) {
     return (
       <span
-        title="Unassigned"
+        title={t.kit.unassigned}
         className={cx(
           "inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-border-strong text-ink-subtle",
           sizes[size],
@@ -25,7 +26,7 @@ export function Avatar({ name, src, size = "md", className }: { name?: string; s
         )}
       >
         <span aria-hidden="true">?</span>
-        <span className="sr-only">Unassigned</span>
+        <span className="sr-only">{t.kit.unassigned}</span>
       </span>
     );
   }

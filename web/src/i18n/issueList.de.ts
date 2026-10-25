@@ -53,7 +53,7 @@ export const issueListDe: typeof issueListEn = {
   },
   typePicker: {
     moves: (from: string, to: string) => `Sein Workflow kennt ${from} nicht, daher wechselt er zu ${to}.`,
-    change: "Ändern",
+    change: "ändern",
     changeNoun: (key: string, type: string) => `${key} in ${type}`,
     changed: (type: string) => `Geändert in ${type}`,
     menu: "Den Vorgangstyp ändern",

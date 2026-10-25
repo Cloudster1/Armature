@@ -5,6 +5,7 @@ import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { ProjectPicker } from "@/features/projects/ProjectPicker";
 import { PersonPicker } from "@/features/people/PersonPicker";
+import { t } from "@/i18n";
 
 /**
  * Who holds what.
@@ -67,7 +68,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
             </option>
           ))}
         </SelectInput>
-        {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, assignments.length, "grant")}</span>}
+        {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, assignments.length, t.kit.counted.grant)}</span>}
       </div>
 
       {isLoading && <p className="text-sm text-ink-muted">Loading...</p>}
@@ -98,8 +99,8 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
                 assignment={assignment}
                 onRevoke={async () =>
                   (await confirm({
-                    noun: "role",
-                    verb: "Revoke",
+                    noun: t.kit.confirm.things.role,
+                    verb: t.kit.confirm.verbs.revoke,
                     body: `${roleName(assignment.role)} is taken away at once; what it allowed is refused from the next request.`,
                   })) && revoke.mutate(assignment.id)
                 }

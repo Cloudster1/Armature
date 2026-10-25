@@ -295,8 +295,8 @@ function YourData({ name }: { name: string }) {
             onClick={async () => {
               if (
                 await confirm({
-                  noun: "account",
-                  verb: "Delete",
+                  noun: t.kit.confirm.things.account,
+                  verb: t.kit.confirm.verbs.delete,
                   body: `${name}'s name, address, sessions and tokens go for good. What you wrote stays, by "Former user".`,
                 })
               ) {

@@ -21,6 +21,7 @@ import { MAX_PAGE_SIZE } from "@/config";
 import { useFormat } from "@/lib/format";
 import { MilestoneDashboardDialog } from "./MilestoneDashboardDialog";
 import { ProgressBar } from "./ProgressBar";
+import { t } from "@/i18n";
 
 /**
  * A project's milestones: what it is heading for, when, and how far along each
@@ -200,8 +201,10 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
             variant="ghost"
             loading={remove.isPending}
             onClick={async () =>
-              (await confirm({ noun: "milestone", body: `${milestone.name} goes; the issues counting towards it stay and count towards nothing.` })) &&
-              remove.mutate(milestone.id)
+              (await confirm({
+                noun: t.kit.confirm.things.milestone,
+                body: `${milestone.name} goes; the issues counting towards it stay and count towards nothing.`,
+              })) && remove.mutate(milestone.id)
             }
           >
             Delete

@@ -30,6 +30,7 @@ import { TemplateChooser } from "@/features/projects/TemplateChooser";
 import { RelativeTime } from "@/features/issues/badges";
 import { HealthTag } from "@/features/projects/StatusStrip";
 import { PROJECT_PAGE_SIZE, PROJECT_SEARCH_DELAY_MS } from "@/config";
+import { t } from "@/i18n";
 
 interface ProjectsSearch {
   q?: string;
@@ -92,7 +93,7 @@ function ProjectsPage() {
     <Page width="content">
       <PageHeader
         title="Projects"
-        meta={data ? countOf(data.total, "project") : undefined}
+        meta={data ? countOf(data.total, t.kit.counted.project) : undefined}
         actions={
           <>
             <ProjectSearch value={q} onChange={(text) => show({ q: text, archived })} />

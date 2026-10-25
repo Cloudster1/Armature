@@ -14,6 +14,7 @@ import {
 import { Button, Card, EmptyState, ErrorBanner, Field, Select, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { parseOptions } from "./values";
+import { t } from "@/i18n";
 
 /**
  * The fields a project records beyond the standard ones, the organization's
@@ -81,8 +82,8 @@ export function FieldList({ projectKey, canConfigure, canPromote = false }: { pr
                 canConfigure={canConfigure && (field.org ? !projectKey : true)}
                 onDelete={async () =>
                   (await confirm({
-                    noun: "field",
-                    verb: "Remove",
+                    noun: t.kit.confirm.things.field,
+                    verb: t.kit.confirm.verbs.remove,
                     body: `${field.name} goes from every issue ${field.org ? "in every project" : "in the project"}, with the answers it held.`,
                   })) && remove.mutate(field.id)
                 }
@@ -90,8 +91,8 @@ export function FieldList({ projectKey, canConfigure, canPromote = false }: { pr
                   canPromote && !field.org
                     ? async () =>
                         (await confirm({
-                          noun: "field",
-                          verb: "Promote",
+                          noun: t.kit.confirm.things.field,
+                          verb: t.kit.confirm.verbs.promote,
                           body: `${field.name} becomes every project's; a field by the same name elsewhere is folded into it and keeps its answers.`,
                         })) && promote.mutate(field.id, { onSuccess: () => toast.info(`${field.name} is now on every project`) })
                     : undefined

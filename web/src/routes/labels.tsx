@@ -25,6 +25,7 @@ import { Icon } from "@/components/icons";
 import { LABEL_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { LabelChip } from "@/features/labels/LabelChip";
+import { t } from "@/i18n";
 
 interface LabelsSearch {
   q?: string;
@@ -90,7 +91,7 @@ function LabelsPage() {
           className="w-56"
           data-label-search=""
         />
-        {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, labels.length, "label")}</span>}
+        {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, labels.length, t.kit.counted.label)}</span>}
       </div>
       {isLoading ? null : labels.length === 0 && q ? (
         <EmptyState icon={<Icon.Search />} title="No label matches that" description="Try part of the word, or clear the search." />
@@ -112,7 +113,11 @@ function LabelsPage() {
                 label={label}
                 canAdminister={canAdminister}
                 onDelete={async () =>
-                  (await confirm({ noun: "label", verb: "Remove", body: `${label.name} comes off every issue carrying it.` })) && remove.mutate(label.id)
+                  (await confirm({
+                    noun: t.kit.confirm.things.label,
+                    verb: t.kit.confirm.verbs.remove,
+                    body: `${label.name} comes off every issue carrying it.`,
+                  })) && remove.mutate(label.id)
                 }
               />
             ))}

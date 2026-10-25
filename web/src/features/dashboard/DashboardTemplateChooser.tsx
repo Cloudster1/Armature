@@ -2,6 +2,7 @@ import { useDashboardTemplates, useDeleteTemplate, type DashboardTemplate } from
 import { Button, OptionCard } from "@/components/ui";
 import { TEMPLATE_SHAPE_MAX_KINDS } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { t } from "@/i18n";
 
 /** The key of starting from nothing, first in the chooser. */
 export const BLANK_TEMPLATE = "blank";
@@ -64,7 +65,12 @@ export function DashboardTemplateChooser({
                 className="self-end"
                 data-action="remove-template"
                 onClick={async () => {
-                  if (await confirm({ noun: "template", body: `${template.name} goes from this list. Dashboards made from it stay as they are.` })) {
+                  if (
+                    await confirm({
+                      noun: t.kit.confirm.things.template,
+                      body: `${template.name} goes from this list. Dashboards made from it stay as they are.`,
+                    })
+                  ) {
                     remove.mutate(template.id!, { onSuccess: () => value === template.key && onChange(BLANK_TEMPLATE) });
                   }
                 }}

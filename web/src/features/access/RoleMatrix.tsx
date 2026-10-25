@@ -3,6 +3,7 @@ import { useAccess, useCreateRole, useDeleteRole, usePermissions, useRoles, useU
 import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Menu, Switch, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { t } from "@/i18n";
 
 /**
  * What each role grants, as a grid: permissions down, roles across, a box
@@ -33,7 +34,7 @@ export function RoleMatrix() {
 
   async function drop(role: RoleDescription) {
     const grants = role.inUse === 0 ? "Nobody holds it." : role.inUse === 1 ? "The one grant of it goes with it." : `Its ${role.inUse} grants go with it.`;
-    if (await confirm({ noun: "role", verb: "Delete", body: `${role.name} goes for good. ${grants}` })) {
+    if (await confirm({ noun: t.kit.confirm.things.role, verb: t.kit.confirm.verbs.delete, body: `${role.name} goes for good. ${grants}` })) {
       remove.mutate(role.role, { onSuccess: () => toast.success(`Deleted ${role.name}`) });
     }
   }

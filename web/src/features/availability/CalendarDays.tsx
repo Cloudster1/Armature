@@ -6,6 +6,7 @@ import { HOLIDAY_FILE_ACCEPT, HOLIDAY_NAME_MAX_LENGTH } from "@/config";
 import { useFormat } from "@/lib/format";
 import { formatDay } from "@/lib/week";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { t } from "@/i18n";
 
 // A changed row counts once and a removed day once, so a table edited back to
 // what is saved asks nothing.
@@ -43,9 +44,9 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
     if (!file || !calendar) return;
     const unsaved = draft ? unsavedDays(draft, calendar.days ?? []) : 0;
     if (unsaved > 0) {
-      const noun = `${unsaved} unsaved ${unsaved === 1 ? "day" : "days"}`;
+      const noun = t.kit.confirm.things.unsavedDays(unsaved);
       const body = `What you changed in the table and did not save is lost, and the days in ${file.name} are added to ${calendar.name}. To keep your changes, cancel and press "Save days" first.`;
-      if (!(await confirm({ noun, verb: "Import and discard", body }))) return;
+      if (!(await confirm({ noun, verb: t.kit.confirm.verbs.importAndDiscard, body }))) return;
     }
     importDays.mutate(
       { id: calendar.id, file },

@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { cleanDomain } from "./DeskExtras";
 import { parseDomains } from "./company";
+import { t } from "@/i18n";
 
 // A desk's companies: customers who read the requests a colleague shared with
 // them. Agents read the list; the desk's administrators keep it.
@@ -125,8 +126,8 @@ function CompanyCard({ company, editable }: { company: Company; editable: boolea
               size="sm"
               onClick={async () =>
                 (await confirm({
-                  noun: "company",
-                  verb: "Remove",
+                  noun: t.kit.confirm.things.company,
+                  verb: t.kit.confirm.verbs.remove,
                   body: `${company.name} goes; its customers keep their own requests, and what they shared is shared no more.`,
                 })) && remove.mutate(company.id, { onSuccess: () => toast.success(`${company.name} removed`) })
               }

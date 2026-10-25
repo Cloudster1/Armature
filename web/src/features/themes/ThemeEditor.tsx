@@ -45,6 +45,7 @@ import { compileTheme, emptySpec } from "@/lib/theme-css";
 import { CURSOR_KINDS, SHADOW_KEYS, TOKEN_GROUPS } from "@/lib/theme-tokens";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { setThemePreview } from "./ThemeLoader";
+import { t } from "@/i18n";
 
 type TabID = "colours" | "type" | "shape" | "cursors" | "icons" | "backdrop" | "files" | "advanced";
 type Mode = "light" | "dark";
@@ -756,7 +757,7 @@ function FilesTab({ theme, spec }: { theme?: Theme; spec: ThemeSpec }) {
                 size="sm"
                 disabled={used.has(a.id) || deleteAsset.isPending}
                 onClick={async () => {
-                  if (await confirm({ noun: "file", verb: "Remove", body: `${a.name} goes from the theme's files.` })) {
+                  if (await confirm({ noun: t.kit.confirm.things.file, verb: t.kit.confirm.verbs.remove, body: `${a.name} goes from the theme's files.` })) {
                     deleteAsset.mutate({ id: theme.id, assetId: a.id }, { onSuccess: () => toast.success(`Removed ${a.name}`) });
                   }
                 }}

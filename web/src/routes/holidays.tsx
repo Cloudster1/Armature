@@ -8,6 +8,7 @@ import { Icon } from "@/components/icons";
 import { HOLIDAY_NAME_MAX_LENGTH } from "@/config";
 import { CalendarDays } from "@/features/availability/CalendarDays";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { t } from "@/i18n";
 
 export const holidaysRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -39,7 +40,7 @@ function HolidaysPage() {
         ? ""
         : ` The ${inWords(calendar.desks)} ${one ? "desk takes its" : "desks take their"} days off from it; choose another one on ${one ? "its service desk page" : "their service desk pages"} first.`;
     const body = `${calendar.name} and its ${calendar.dayCount} days go. The ${calendar.peopleCount} people given it keep the default instead.${kept}`;
-    if (await confirm({ noun: "calendar", verb: "Delete", body })) {
+    if (await confirm({ noun: t.kit.confirm.things.calendar, verb: t.kit.confirm.verbs.delete, body })) {
       remove.mutate(calendar.id, {
         onSuccess: () => {
           setChosen(null);

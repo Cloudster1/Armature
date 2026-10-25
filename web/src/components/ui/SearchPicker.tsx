@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Input, SelectInput } from "./controls";
 import { cx } from "./cx";
 import type { ControlSize } from "./Button";
+import { t } from "@/i18n";
 
 export interface PickerOption {
   value: string;
@@ -51,7 +52,7 @@ export function SearchPicker({
       <Input
         type="search"
         controlSize={controlSize}
-        aria-label={`Find: ${label}`}
+        aria-label={t.kit.find(label)}
         placeholder={placeholder}
         value={words}
         disabled={disabled}

@@ -30,7 +30,7 @@ export { Menu, type MenuItem } from "./Menu";
 export { Dialog, ConfirmDialog, Drawer, DockedPanel, isInteractiveTarget, modalBackdropStyle, modalPanelStyle } from "./Dialog";
 export { isEditing } from "./overlay";
 export { ToastProvider, ToastShelf, useToast, type ToastKind, type ToastOptions } from "./Toast";
-export { Pager, clampOffset, countOf, isPageOffset, shownOf } from "./Pager";
+export { Pager, clampOffset, countOf, isPageOffset, shownOf, type Counted } from "./Pager";
 export { ListSearch } from "./ListSearch";
 export { SearchPicker, type PickerOption } from "./SearchPicker";
 export { Tabs, TabPanel, type Tab } from "./Tabs";

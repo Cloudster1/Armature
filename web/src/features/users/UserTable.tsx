@@ -25,6 +25,7 @@ import { WorkingWeekDialog } from "@/features/availability/WorkingWeek";
 import { useRemoveMembersSecondFactor } from "@/api/secondFactor";
 import { PeopleSearch } from "@/features/people/PeopleSearch";
 import { PEOPLE_PAGE_SIZE } from "@/config";
+import { t } from "@/i18n";
 
 const signsInWords: Record<ManagedUser["signsInWith"], string> = { password: "Password", provider: "Identity provider", none: "Nothing yet" };
 const roleWords: Record<ManagedUser["role"], string> = { owner: "Owner", admin: "Administrator", member: "Member", customer: "Customer" };
@@ -63,7 +64,7 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
       <PeopleSearch label="Find users" value={q} onChange={(text) => show({ q: text })} />
       {data && (
         <span className="text-sm text-ink-muted" data-users-total={data.total}>
-          {countOf(data.total, "account")}
+          {countOf(data.total, t.kit.counted.account)}
         </span>
       )}
     </div>
@@ -87,8 +88,8 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
   async function switchOff(user: ManagedUser) {
     if (
       await confirm({
-        noun: "account",
-        verb: "Deactivate",
+        noun: t.kit.confirm.things.account,
+        verb: t.kit.confirm.verbs.deactivate,
         body: `${user.name} can no longer sign in, and every session and token of theirs ends. What they wrote stays.`,
       })
     ) {
@@ -100,8 +101,8 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
   async function turnOffSecondFactor(user: ManagedUser) {
     if (
       await confirm({
-        noun: "two-step sign-in",
-        verb: "Turn off",
+        noun: t.kit.confirm.things.twoStepSignIn,
+        verb: t.kit.confirm.verbs.turnOff,
         body: `${user.name} signs in with the password alone until they set it up again. Do this only when you are sure it is them asking.`,
       })
     ) {

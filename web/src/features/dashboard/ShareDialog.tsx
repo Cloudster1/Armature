@@ -4,6 +4,7 @@ import { Button, Dialog, ErrorBanner, Field, IconButton, Input, Table, Td, Th, u
 import { Icon } from "@/components/icons";
 import { endOfDayIn, useFormat } from "@/lib/format";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { t } from "@/i18n";
 
 /**
  * The links that open this dashboard without a sign-in. A new link's address
@@ -122,8 +123,8 @@ export function ShareDialog({
                       data-action="revoke-share"
                       onClick={async () =>
                         (await confirm({
-                          noun: "link",
-                          verb: "Revoke",
+                          noun: t.kit.confirm.things.link,
+                          verb: t.kit.confirm.verbs.revoke,
                           body: `${share.name} stops opening the dashboard. Anybody holding it sees that it is no longer valid.`,
                         })) && revoke.mutate({ dashboardId, shareId: share.id })
                       }

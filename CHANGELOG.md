@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the kit's own words speak German too (#371): the confirm dialog
+  asks with the thing first ("Kommentar löschen?"), every confirmation's
+  noun and verb come from `web/src/i18n`, counts take the plural the
+  language gives instead of an English s, and the pager, toasts, dialogs,
+  pickers and error banners follow the language.
 - Added: the issue list, the create dialog, an issue's page and its panels
   (activity, history, links, watchers, pages, files, time and hierarchy)
   speak German as well as English, from `web/src/i18n` (#371). Durations keep

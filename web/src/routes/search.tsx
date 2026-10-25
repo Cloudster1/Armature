@@ -11,6 +11,7 @@ import { SavedFilterBar } from "@/features/filters/SavedFilterBar";
 import { BulkBar } from "@/features/filters/BulkBar";
 import { Button, EmptyState, Page, PageHeader, Pager, Skeleton, clampOffset, isPageOffset, shownOf } from "@/components/ui";
 import { SEARCH_PAGE_SIZE } from "@/config";
+import { t } from "@/i18n";
 
 /** The query is in the address, so a search somebody sends is the search they ran; f names the saved filter it came from. */
 export const searchRoute = createRoute({
@@ -83,7 +84,7 @@ function SearchPage() {
       )}
 
       <p className="mb-2 text-sm text-ink-subtle tabular-nums" data-testid="search-count">
-        {data ? shownOf(data.total, data.offset, issues.length, "issue") : ""}
+        {data ? shownOf(data.total, data.offset, issues.length, t.kit.counted.issue) : ""}
       </p>
 
       {isLoading ? (

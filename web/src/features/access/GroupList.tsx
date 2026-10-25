@@ -3,6 +3,7 @@ import { useAddToGroup, useCreateGroup, useDeleteGroup, useGroup, useGroups, use
 import { Button, Card, EmptyState, ErrorBanner, Field } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { PersonPicker } from "@/features/people/PersonPicker";
+import { t } from "@/i18n";
 
 /**
  * Groups, and who is in them.
@@ -73,7 +74,8 @@ function GroupCard({ group }: { group: Group }) {
           className="shrink-0"
           loading={deleteGroup.isPending}
           onClick={async () =>
-            (await confirm({ noun: "group", body: `${group.name} goes, and its members lose the roles it granted.` })) && deleteGroup.mutate(group.id)
+            (await confirm({ noun: t.kit.confirm.things.group, body: `${group.name} goes, and its members lose the roles it granted.` })) &&
+            deleteGroup.mutate(group.id)
           }
         >
           Delete
@@ -90,8 +92,11 @@ function GroupCard({ group }: { group: Group }) {
                 variant="ghost"
                 className="ml-auto h-6 px-1.5 text-2xs"
                 onClick={async () =>
-                  (await confirm({ noun: "member", verb: "Remove", body: `${member.name} leaves ${group.name} and loses the roles it grants.` })) &&
-                  remove.mutate({ id: group.id, userId: member.userId })
+                  (await confirm({
+                    noun: t.kit.confirm.things.member,
+                    verb: t.kit.confirm.verbs.remove,
+                    body: `${member.name} leaves ${group.name} and loses the roles it grants.`,
+                  })) && remove.mutate({ id: group.id, userId: member.userId })
                 }
               >
                 Remove

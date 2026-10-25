@@ -1,5 +1,6 @@
 import type { Messages } from "./en";
 import { issueListDe } from "./issueList.de";
+import { kitDe } from "./kit.de";
 import { issuePanelsDe } from "./issuePanels.de";
 import { issueViewDe } from "./issueView.de";
 import { planDe } from "./plan.de";
@@ -14,6 +15,7 @@ export const de: Messages = {
     save: "Speichern",
     retry: "Erneut versuchen",
   },
+  kit: kitDe,
   shell: shellDe,
   settings: settingsDe,
   plan: planDe,

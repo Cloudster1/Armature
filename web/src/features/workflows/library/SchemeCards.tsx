@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { SchemeEditor } from "@/features/workflows/SchemeEditor";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { LIBRARY_PAGE_SIZE } from "@/config";
+import { t } from "@/i18n";
 
 interface SchemeCardsProps {
   q: string;
@@ -37,7 +38,7 @@ export function SchemeCards({ q, offset, onShow, canConfigure }: SchemeCardsProp
             className="w-56"
             data-library-search=""
           />
-          {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, schemes.length, "scheme")}</span>}
+          {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, schemes.length, t.kit.counted.scheme)}</span>}
         </div>
         {canConfigure && !editing.open && (
           <Button size="sm" variant="secondary" onClick={() => setEditing({ open: true })}>
@@ -90,7 +91,8 @@ function SchemeCard({ scheme, canConfigure, onEdit }: { scheme: Scheme; canConfi
                 data-action="delete"
                 aria-busy={remove.isPending}
                 onClick={async () =>
-                  (await confirm({ noun: "scheme", body: `${scheme.name} goes; projects using it fall back to the default.` })) && remove.mutate(scheme.id)
+                  (await confirm({ noun: t.kit.confirm.things.scheme, body: `${scheme.name} goes; projects using it fall back to the default.` })) &&
+                  remove.mutate(scheme.id)
                 }
               />
             )}

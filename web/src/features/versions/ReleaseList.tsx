@@ -5,6 +5,7 @@ import { Button, Card, Drawer, EmptyState, ErrorBanner, Field, IconButton, Menu,
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 type View = "unreleased" | "released" | "archived";
 
@@ -139,8 +140,11 @@ export function ReleaseList({ projectKey, canPlan }: { projectKey: string; canPl
                               icon: <Icon.Trash />,
                               danger: true,
                               onSelect: async () =>
-                                (await confirm({ noun: "version", verb: "Delete", body: `${v.name} goes; the issues that named it simply stop naming it.` })) &&
-                                remove.mutate(v.id),
+                                (await confirm({
+                                  noun: t.kit.confirm.things.version,
+                                  verb: t.kit.confirm.verbs.delete,
+                                  body: `${v.name} goes; the issues that named it simply stop naming it.`,
+                                })) && remove.mutate(v.id),
                               attrs: { "data-action": "version-delete" },
                             },
                           ]
