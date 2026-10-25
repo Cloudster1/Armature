@@ -7,6 +7,11 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: Armature uses the names Stator and Exciter use (#309), in English
+  and German. The palette is Quick search, a project's settings page is
+  Project settings, its group Project admin, the Access tab Sign-in is Single
+  sign-on, and API tokens are access tokens wherever they were still called
+  that. Inbox, Access tokens and the profile's Language were renamed earlier.
 - Added: Armature speaks English and German from one catalogue, as Stator
   and Exciter do (#354). The profile's Language changes the interface as
   well as how dates and numbers are written: a German locale shows it in

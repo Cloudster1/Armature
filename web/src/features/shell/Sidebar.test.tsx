@@ -260,6 +260,19 @@ describe("the shell's accessibility", () => {
   });
 });
 
+// The suite's shared names (#309), as Stator and Exciter word them.
+describe("the shared names", () => {
+  it("calls the project's own pages Project admin, its settings Project settings, and the bell Notifications", () => {
+    state.params = { projectKey: "ALP" };
+    render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
+    const admin = screen.getByRole("button", { name: "Project admin" });
+    const group = document.getElementById(admin.getAttribute("aria-controls")!)!;
+    expect(Array.from(group.querySelectorAll("a")).map((a) => a.textContent)).toContain("Project settings");
+    expect(screen.getByRole("link", { name: /^Notifications/ })).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/Inbox|Project Admin|API token/);
+  });
+});
+
 describe("the shell in German", () => {
   it("names its places, groups and controls in German, and in English again once switched back", async () => {
     applyLanguage("de");

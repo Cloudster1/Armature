@@ -258,7 +258,7 @@ serialScenario("an administrator requires two-step sign-in and a member is held 
   const elsewhere = await context.browser().createBrowserContext();
   try {
     await goto(page, "/settings/access");
-    await page.click('[data-access-tab="Sign-in"]');
+    await page.click('[data-access-tab="Single sign-on"]');
     await selectByLabel(page, "#field-require-two-step-sign-in", "For everyone");
     await page.click('[data-action="save-second-factor-rule"]');
     await page.waitForFunction(() => document.body.innerText.includes("requirement saved"), { timeout: WAIT });
@@ -295,7 +295,7 @@ scenario("signing in is not offered to someone already signed in", async ({ page
   await waitForApp(page);
 });
 
-scenario("an API token can be created and revoked", async ({ page }) => {
+scenario("an access token can be created and revoked", async ({ page }) => {
   await signUp(page);
 
   await openAccountMenu(page);

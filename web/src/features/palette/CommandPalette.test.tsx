@@ -63,3 +63,11 @@ describe("the palette's pages", () => {
     expect(navigate).toHaveBeenCalledWith({ to: "/search", search: { q: "watcher = currentUser()" }, hash: undefined });
   });
 });
+
+// The suite's shared names (#309): the palette is Quick search, as in Stator and Exciter.
+describe("the palette's name", () => {
+  it("is Quick search", () => {
+    render(<CommandPalette open onClose={() => {}} onNewIssue={() => {}} onToggleSidebar={() => {}} />);
+    expect(screen.getByRole("dialog", { name: "Quick search" })).toBeInTheDocument();
+  });
+});

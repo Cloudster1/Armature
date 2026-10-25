@@ -198,7 +198,7 @@ serialScenario("single sign-on is configured once, and people sign in at one add
   const putBack = await keepProvider();
   try {
     await goto(page, "/settings/access");
-    await page.click('[data-access-tab="Sign-in"]');
+    await page.click('[data-access-tab="Single sign-on"]');
     await page.waitForSelector("#field-issuer", { timeout: WAIT });
 
     await fill(page, "Issuer", "https://id.example.test");
@@ -218,7 +218,7 @@ serialScenario("single sign-on is configured once, and people sign in at one add
 
     // The secret is never sent back, only the fact that one is stored.
     await goto(page, "/settings/access");
-    await page.click('[data-access-tab="Sign-in"]');
+    await page.click('[data-access-tab="Single sign-on"]');
     await page.waitForSelector("#field-client-secret", { timeout: WAIT });
 
     const shown = await page.$eval("#field-client-secret", (el) => ({
@@ -253,7 +253,7 @@ scenario("every tab of the access page fits a phone", async ({ page }) => {
 
   await page.setViewport({ width: 400, height: 860 });
   await goto(page, "/settings/access");
-  for (const tab of ["Roles", "Members", "Groups", "Sign-in"]) {
+  for (const tab of ["Roles", "Members", "Groups", "Single sign-on"]) {
     await page.waitForSelector(`[data-access-tab="${tab}"]`, { timeout: WAIT });
     await page.click(`[data-access-tab="${tab}"]`);
     await page.waitForFunction((t) => document.querySelector(`[data-access-tab="${t}"]`)?.getAttribute("aria-selected") === "true", { timeout: WAIT }, tab);
