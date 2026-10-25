@@ -3,6 +3,7 @@ import { useMemberSearch, type Member } from "@/api/people";
 import { Input, Labelled, SelectInput, cx, fieldId, type ControlSize } from "@/components/ui";
 import { PERSON_SEARCH_DELAY_MS } from "@/config";
 import { useDebounced } from "@/lib/debounce";
+import { t } from "@/i18n";
 
 /** An option already chosen: what it stands for and how it reads. */
 export interface Chosen {
@@ -82,7 +83,7 @@ export function PersonPicker({
   const chosen = [picked, selected].find((each) => each && value && each.id === value);
   const kept = chosen && !options.some((option) => option.id === value) ? [{ ...chosen, member: undefined }] : [];
   const nothing = Boolean(settled) && found !== undefined && people.length === 0;
-  const shownHint = nothing ? "Nobody here matches that. Try part of their name or their address." : hint;
+  const shownHint = nothing ? t.looks.people.nobody : hint;
 
   function choose(next: string) {
     const option = options.find((each) => each.id === next);
@@ -100,8 +101,8 @@ export function PersonPicker({
       <Input
         type="search"
         controlSize={controlSize}
-        aria-label={`Find a person for ${name}`}
-        placeholder="Find by name or address"
+        aria-label={t.looks.people.findFor(name)}
+        placeholder={t.looks.people.findPlaceholder}
         value={words}
         disabled={disabled}
         onChange={(event) => setWords(event.target.value)}

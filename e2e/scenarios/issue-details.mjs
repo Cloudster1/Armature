@@ -29,6 +29,7 @@ import {
   pickPerson,
   selectByLabel,
   settled,
+  signOut,
   signUp,
   startSprint,
   textOf,
@@ -600,4 +601,22 @@ scenario("a person whose profile says German works on the board, in search and a
   await goto(page, `/projects/${key}/milestones`);
   await page.waitForFunction(() => document.body.innerText.includes("Noch keine Meilensteine"), { timeout: WAIT });
   expect.notContains(await bodyText(page), "No milestones yet", "the English empty state");
+});
+
+// Settings and the sign-in page speak the person's language too (#371). A tab's
+// hook stays English, so a scenario finds it whatever the reader sees.
+scenario("a person whose profile says German sets things up and signs in again in German", async ({ page }) => {
+  await signUp(page);
+  await speakThroughAPI(page, "de-DE");
+
+  await goto(page, "/settings/access");
+  await page.waitForFunction(() => document.documentElement.lang === "de", { timeout: WAIT });
+  await page.waitForSelector('[data-access-tab="Single sign-on"]', { timeout: WAIT });
+  expect.equal(await textOf(page, '[data-access-tab="Single sign-on"]'), "Zentrale Anmeldung", "the sign-on tab's words");
+  expect.equal(await textOf(page, '[data-access-tab="Roles"]'), "Rollen", "the roles tab's words");
+
+  // The sign-in page has nobody yet; it paints in the language this browser remembers.
+  await signOut(page);
+  await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Anmelden"), { timeout: WAIT });
+  expect.containsInsensitive(await bodyText(page), "Passwort vergessen?", "the way back in");
 });

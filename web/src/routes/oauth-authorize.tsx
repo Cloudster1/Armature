@@ -7,6 +7,7 @@ import { ApiError, request } from "@/api/client";
 import { useConsent, useDecideConsent, type Consent } from "@/api/oauth";
 import { Button, ErrorBanner } from "@/components/ui";
 import { leave } from "@/lib/leave";
+import { t } from "@/i18n";
 
 /**
  * Where a connected app sends a person to ask for their token. The page shows
@@ -46,17 +47,17 @@ function ConsentPage() {
   if (error) {
     const held = error instanceof ApiError && error.code === "second_factor_required";
     return (
-      <AuthLayout title={held ? "Set up two-step sign-in first" : "This app cannot be connected"} footer={<BackHome />}>
+      <AuthLayout title={held ? t.doors.consent.secondFactorFirst : t.doors.consent.cannotConnect} footer={<BackHome />}>
         <p className="text-sm text-ink-muted" data-consent-refused>
-          {held ? "Your account needs two-step sign-in before it connects anything. Set it up, then open the app's link again." : error.message}
+          {held ? t.doors.consent.secondFactorBody : error.message}
         </p>
       </AuthLayout>
     );
   }
   if (isLoading || to || !data?.consent) {
     return (
-      <AuthLayout title="Connecting" footer={<BackHome />}>
-        <p className="text-sm text-ink-muted">One moment...</p>
+      <AuthLayout title={t.doors.consent.connecting} footer={<BackHome />}>
+        <p className="text-sm text-ink-muted">{t.doors.consent.oneMoment}</p>
       </AuthLayout>
     );
   }
@@ -69,17 +70,20 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
   const answer = (decision: "allow" | "deny") => decide.mutate({ query, decision }, { onSuccess: (r) => leave(r.redirectTo) });
 
   return (
-    <AuthLayout title={`Connect ${client.name}`} subtitle={client.clientUri} footer={<BackHome />}>
+    <AuthLayout title={t.doors.consent.connect(client.name)} subtitle={client.clientUri} footer={<BackHome />}>
       <div className="space-y-4 text-sm text-ink" data-consent={client.name} data-consent-pending={consent.pending ? "true" : "false"}>
         {consent.pending && (
           <p data-consent-approve>
-            <span className="font-semibold">{client.name}</span> at {consent.redirectHost} asks to be connected to Armature. Allowing it lets it ask anybody
-            here to connect their account, with at most these rights.
+            <span className="font-semibold">{client.name}</span>
+            {t.doors.consent.asks(consent.redirectHost)}
           </p>
         )}
         <div>
           <p>
-            <span className="font-semibold">{client.name}</span> wants to act as <span className="font-semibold">{consent.person}</span> in Armature:
+            <span className="font-semibold">{client.name}</span>
+            {t.doors.consent.wantsToActAs}
+            <span className="font-semibold">{consent.person}</span>
+            {t.doors.consent.inArmature}
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-ink-muted">
             {consent.scopes.map((s) => (
@@ -89,7 +93,7 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
             ))}
           </ul>
         </div>
-        <p className="text-ink-muted">Afterwards you go back to {consent.redirectHost}. Disconnect it any time under Access tokens, in your account menu.</p>
+        <p className="text-ink-muted">{t.doors.consent.afterwards(consent.redirectHost)}</p>
         {consent.refusal && (
           <p className="rounded-control border border-border bg-surface-raised px-3 py-2 text-ink-muted" data-consent-refusal>
             {consent.refusal}
@@ -99,7 +103,7 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
         <div className="flex gap-2">
           {consent.mayAllow && (
             <Button loading={decide.isPending && decide.variables?.decision === "allow"} onClick={() => answer("allow")} data-action="consent-allow">
-              Allow
+              {t.doors.consent.allow}
             </Button>
           )}
           {consent.mayCancel && (
@@ -109,7 +113,7 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
               onClick={() => answer("deny")}
               data-action="consent-cancel"
             >
-              Cancel
+              {t.kit.cancel}
             </Button>
           )}
         </div>
@@ -121,7 +125,7 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
 function BackHome() {
   return (
     <Link to="/" className="font-medium text-accent hover:underline">
-      Go to Armature
+      {t.doors.consent.goToArmature}
     </Link>
   );
 }

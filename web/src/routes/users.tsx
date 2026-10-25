@@ -6,6 +6,7 @@ import { EmptyState, Page, PageHeader, isPageOffset } from "@/components/ui";
 import { JoinRequests } from "@/features/users/JoinRequests";
 import { NewUserForm } from "@/features/users/NewUserForm";
 import { UserTable, type UsersShown } from "@/features/users/UserTable";
+import { t } from "@/i18n";
 
 /** The search and the page are in the address, so a link reopens the same list. */
 export const usersRoute = createRoute({
@@ -35,14 +36,14 @@ function UsersPage() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Users"
-        meta="Accounts that sign in here with a password. Somebody with an account elsewhere is invited instead, under Access."
+        title={t.access.users.title}
+        meta={t.access.users.meta}
       />
       {!access ? null : !canAdminister ? (
-        <EmptyState title="Administrators only" description="Only a global administrator makes and manages accounts." />
+        <EmptyState title={t.access.users.adminsOnly} description={t.access.users.adminsOnlyDetail} />
       ) : (
         <div className="space-y-4">
           <JoinRequests />

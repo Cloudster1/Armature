@@ -4,6 +4,7 @@ import { rootRoute } from "./root";
 import { AuthLayout } from "./auth";
 import { useUnwatch } from "@/api/watchers";
 import { Button, ErrorBanner } from "@/components/ui";
+import { t } from "@/i18n";
 
 /**
  * The way out that a mail carries. It needs no session, because being added
@@ -25,20 +26,20 @@ function UnwatchPage() {
 
   return (
     <AuthLayout
-      title="Stop following"
+      title={t.doors.unwatch.title}
       footer={
         <Link to="/login" className="font-medium text-accent hover:underline">
-          Sign in
+          {t.doors.common.signIn}
         </Link>
       }
     >
       {done ? (
         <p className="text-sm text-ink" data-unwatched>
-          You will hear no more about this request.
+          {t.doors.unwatch.done}
         </p>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-ink-muted">Somebody added you to follow a request. Press the button and the mails stop.</p>
+          <p className="text-sm text-ink-muted">{t.doors.unwatch.explain}</p>
           {unwatch.error && <ErrorBanner>{(unwatch.error as Error).message}</ErrorBanner>}
           <Button
             className="w-full"
@@ -46,7 +47,7 @@ function UnwatchPage() {
             disabled={!token}
             onClick={() => token && unwatch.mutate(token, { onSuccess: () => setDone(true) })}
           >
-            Stop following
+            {t.doors.unwatch.submit}
           </Button>
         </div>
       )}

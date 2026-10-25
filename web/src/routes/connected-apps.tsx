@@ -52,14 +52,14 @@ function ConnectedAppsPage() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Connected apps"
-        meta="Partner tools that ask people for a token, which they allow or cancel themselves"
+        title={t.access.apps.title}
+        meta={t.access.apps.meta}
         actions={
           <Button icon={<Icon.Plus />} onClick={() => setAdding(true)} data-action="new-connected-app">
-            Add an app
+            {t.access.apps.add}
           </Button>
         }
       />
@@ -67,16 +67,16 @@ function ConnectedAppsPage() {
       {fresh && (
         <Card className="mb-4 p-4" data-connected-app-secret>
           <p className="text-sm text-ink">
-            The client id and secret for <span className="font-medium">{fresh.app.name}</span>. Copy the secret into the app now; it is not shown again.
+            {t.access.apps.secretFor} <span className="font-medium">{fresh.app.name}</span>. {t.access.apps.secretNow}
           </p>
           <dl className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-sm">
-            <dt className="text-ink-muted">Client id</dt>
+            <dt className="text-ink-muted">{t.access.apps.clientId}</dt>
             <dd>
               <code className="rounded-control bg-surface-raised px-2 py-1 font-mono text-ink" data-client-id>
                 {fresh.app.id}
               </code>
             </dd>
-            <dt className="text-ink-muted">Secret</dt>
+            <dt className="text-ink-muted">{t.access.apps.secret}</dt>
             <dd>
               <code className="rounded-control bg-surface-raised px-2 py-1 font-mono text-ink" data-client-secret>
                 {fresh.secret}
@@ -84,7 +84,7 @@ function ConnectedAppsPage() {
             </dd>
           </dl>
           <Button variant="ghost" size="sm" className="mt-2" onClick={() => setFresh(null)}>
-            Done
+            {t.access.done}
           </Button>
         </Card>
       )}
@@ -92,7 +92,7 @@ function ConnectedAppsPage() {
       {adding && (
         <Card className="mb-4 p-5">
           <AppForm
-            submit="Add app"
+            submit={t.access.apps.addApp}
             pending={create.isPending}
             error={create.error}
             withConfidential
@@ -110,18 +110,14 @@ function ConnectedAppsPage() {
       )}
 
       {isLoading ? null : apps.length === 0 ? (
-        <EmptyState
-          icon={<Icon.Key />}
-          title="No connected apps yet"
-          description="Add a partner tool here, or let it register itself and allow it on the page it sends you to. People then connect it in one click."
-        />
+        <EmptyState icon={<Icon.Key />} title={t.access.apps.empty} description={t.access.apps.emptyDetail} />
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th>App</Th>
-              <Th>May ask for</Th>
-              <Th>Connected</Th>
+              <Th>{t.access.apps.app}</Th>
+              <Th>{t.access.apps.mayAsk}</Th>
+              <Th>{t.access.apps.connected}</Th>
               <Th className="w-12" />
             </tr>
           </thead>
@@ -131,26 +127,26 @@ function ConnectedAppsPage() {
                 <Td>
                   <span className="flex items-center gap-2 font-medium text-ink">
                     {app.name}
-                    {app.status === "pending" && <Tag>Waiting to be allowed</Tag>}
+                    {app.status === "pending" && <Tag>{t.access.apps.waiting}</Tag>}
                   </span>
                   <span className="block truncate text-xs text-ink-muted">{app.clientUri || app.redirectUris[0]}</span>
                   {app.webhook && (
                     <span className="block truncate text-xs text-ink-muted" data-connected-app-webhook>
-                      Its webhook: {app.webhook.url}, {app.webhook.topics.join(", ")}
-                      {app.webhook.enabled ? "" : " (off)"}
+                      {t.access.apps.webhook(app.webhook.url, app.webhook.topics.join(", "))}
+                      {app.webhook.enabled ? "" : t.access.apps.webhookOff}
                     </span>
                   )}
                 </Td>
                 <Td className="text-sm text-ink-muted">{app.scopes.join(", ")}</Td>
-                <Td className="text-sm text-ink-muted">{app.grants === 1 ? "1 person" : `${app.grants} people`}</Td>
+                <Td className="text-sm text-ink-muted">{t.access.groups.people(app.grants)}</Td>
                 <Td>
                   <Menu
-                    label={`Actions for ${app.name}`}
+                    label={t.access.matrix.actionsFor(app.name)}
                     align="end"
                     trigger={(props) => (
                       <IconButton
                         icon={<Icon.More />}
-                        label={`Actions for ${app.name}`}
+                        label={t.access.matrix.actionsFor(app.name)}
                         size="sm"
                         onClick={props.toggle}
                         aria-haspopup={props["aria-haspopup"]}
@@ -160,13 +156,20 @@ function ConnectedAppsPage() {
                     )}
                     items={[
                       ...(app.status === "pending"
-                        ? [{ label: "Allow", icon: <Icon.Check />, onSelect: () => approve.mutate(app.id), attrs: { "data-action": "connected-app-allow" } }]
+                        ? [
+                            {
+                              label: t.access.apps.allow,
+                              icon: <Icon.Check />,
+                              onSelect: () => approve.mutate(app.id),
+                              attrs: { "data-action": "connected-app-allow" },
+                            },
+                          ]
                         : []),
-                      { label: "Edit", icon: <Icon.Edit />, onSelect: () => setEditing(app), attrs: { "data-action": "connected-app-edit" } },
+                      { label: t.access.apps.edit, icon: <Icon.Edit />, onSelect: () => setEditing(app), attrs: { "data-action": "connected-app-edit" } },
                       ...(app.confidential
                         ? [
                             {
-                              label: "Rotate the secret",
+                              label: t.access.apps.rotate,
                               icon: <Icon.Key />,
                               onSelect: () => rotate.mutate(app.id, { onSuccess: showSecret }),
                               attrs: { "data-action": "connected-app-rotate" },
@@ -174,14 +177,14 @@ function ConnectedAppsPage() {
                           ]
                         : []),
                       {
-                        label: "Remove",
+                        label: t.access.remove,
                         icon: <Icon.Trash />,
                         danger: true,
                         onSelect: async () =>
                           (await confirm({
                             noun: t.kit.confirm.things.app,
                             verb: t.kit.confirm.verbs.remove,
-                            body: `Everybody who connected ${app.name} is disconnected at once.`,
+                            body: t.access.apps.removeBody(app.name),
                           })) && remove.mutate(app.id),
                         attrs: { "data-action": "connected-app-delete" },
                       },
@@ -201,10 +204,10 @@ function ConnectedAppsPage() {
 function EditApp({ app, onClose }: { app: ConnectedApp; onClose: () => void }) {
   const update = useUpdateConnectedApp();
   return (
-    <Drawer open onClose={onClose} title={`Edit ${app.name}`} attrs={{ "data-connected-app-edit": app.name }}>
+    <Drawer open onClose={onClose} title={t.access.apps.editTitle(app.name)} attrs={{ "data-connected-app-edit": app.name }}>
       <AppForm
         app={app}
-        submit="Save"
+        submit={t.access.save}
         pending={update.isPending}
         error={update.error}
         onCancel={onClose}
@@ -249,26 +252,26 @@ function AppForm({ app, submit, pending, error, withConfidential, onSubmit, onCa
   return (
     <form onSubmit={send} className="space-y-4" noValidate data-connected-app-form>
       {error && Object.keys(fields).length === 0 && <ErrorBanner>{error.message}</ErrorBanner>}
-      <Field label="App name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Stator" error={fields.name} />
+      <Field label={t.access.apps.name} required value={name} onChange={(e) => setName(e.target.value)} placeholder="Stator" error={fields.name} />
       <Field
-        label="App address"
+        label={t.access.apps.address}
         value={clientUri}
         onChange={(e) => setClientUri(e.target.value)}
         placeholder="https://stator.example.com"
-        hint="Shown under its name when somebody is asked."
+        hint={t.access.apps.addressHint}
         error={fields.clientUri}
       />
       <Field
-        label="Return addresses"
+        label={t.access.apps.returns}
         rows={3}
         value={redirects}
         onChange={(e) => setRedirects(e.target.value)}
         placeholder="https://stator.example.com/oauth/callback"
-        hint="One a line, exactly as the app sends them: https, or plain http to this machine."
+        hint={t.access.apps.returnsHint}
         error={fields.redirectUris}
       />
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-ink-muted">It may ask for</legend>
+        <legend className="text-sm font-medium text-ink-muted">{t.access.apps.itMayAsk}</legend>
         {fields.scopes && <p className="text-sm text-danger">{fields.scopes}</p>}
         {CONNECTED_APP_SCOPES.map((s) => (
           <Checkbox
@@ -289,8 +292,8 @@ function AppForm({ app, submit, pending, error, withConfidential, onSubmit, onCa
         <Checkbox
           label={
             <span>
-              It keeps a secret
-              <span className="ml-2 text-xs text-ink-subtle">A server can. An app on somebody's own machine cannot, and proves itself without one.</span>
+              {t.access.apps.keepsSecret}
+              <span className="ml-2 text-xs text-ink-subtle">{t.access.apps.keepsSecretDetail}</span>
             </span>
           }
           checked={confidential}
@@ -299,18 +302,18 @@ function AppForm({ app, submit, pending, error, withConfidential, onSubmit, onCa
         />
       )}
       <Field
-        label="Keycloak client"
+        label={t.access.apps.keycloak}
         value={keycloak}
         onChange={(e) => setKeycloak(e.target.value)}
         placeholder="stator"
-        hint="With a shared realm, people signed in to the app through it are connected without a click. Leave it empty to ask everybody."
+        hint={t.access.apps.keycloakHint}
       />
       <div className="flex gap-2">
         <Button type="submit" loading={pending} disabled={!name.trim() || lines(redirects).length === 0} data-action="save-connected-app">
           {submit}
         </Button>
         <Button variant="ghost" onClick={onCancel}>
-          Cancel
+          {t.kit.cancel}
         </Button>
       </div>
     </form>

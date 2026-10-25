@@ -58,6 +58,8 @@ export interface DraftRule {
 }
 
 import { bends as bendsBy, edgeShape, type Connection, type Point, type Rect } from "@/lib/graph";
+// Named apart: a curve below calls its parameter t.
+import { t as words } from "@/i18n";
 
 export { clipToRect, edgeShape } from "@/lib/graph";
 export type { EdgeShape, Point, Rect } from "@/lib/graph";
@@ -275,17 +277,17 @@ export function canvasSize(design: Design): { width: number; height: number } {
  */
 export function problems(design: Design, statuses: Map<string, Status>): string[] {
   const out: string[] = [];
-  if (design.name.trim() === "") out.push("The workflow needs a name.");
-  if (design.nodes.length === 0) out.push("Put at least one status on the canvas.");
-  else if (!design.initialId) out.push("Choose the status new issues open in.");
-  if (design.edges.some((edge) => edge.name.trim() === "")) out.push("Every transition needs a name.");
+  if (design.name.trim() === "") out.push(words.workflows.problems.noName);
+  if (design.nodes.length === 0) out.push(words.workflows.problems.noStatus);
+  else if (!design.initialId) out.push(words.workflows.problems.noInitial);
+  if (design.edges.some((edge) => edge.name.trim() === "")) out.push(words.workflows.problems.unnamedTransition);
 
   const seen = new Set<string>();
   for (const edge of design.edges) {
     const key = `${edge.from}|${edge.name.trim().toLowerCase()}`;
     if (edge.name.trim() && seen.has(key)) {
-      const from = edge.from === ANYWHERE ? "any status" : (statuses.get(edge.from)?.name ?? "the same status");
-      out.push(`Two transitions called ${edge.name.trim()} leave ${from}.`);
+      const from = edge.from === ANYWHERE ? words.workflows.problems.anyStatus : (statuses.get(edge.from)?.name ?? words.workflows.problems.sameStatus);
+      out.push(words.workflows.problems.twice(edge.name.trim(), from));
     }
     seen.add(key);
   }

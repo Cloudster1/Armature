@@ -5,6 +5,7 @@ import { Button, ErrorBanner, Field } from "@/components/ui";
 import { Inspector } from "./Inspector";
 import { WorkflowCanvas, type Selection } from "./WorkflowCanvas";
 import { connect, emptyDesign, fromWorkflow, moveNode, problems, toInput, type Design } from "./graph";
+import { t } from "@/i18n";
 
 /**
  * Draws a workflow as the graph it is. A status is a shared noun; a workflow
@@ -61,25 +62,25 @@ export function WorkflowDesigner({ workflowId, onDone, onCancel }: { workflowId?
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-64 flex-1">
           <Field
-            label="Name"
+            label={t.workflows.designer.name}
             value={design.name}
-            placeholder="Bug triage"
+            placeholder={t.workflows.designer.namePlaceholder}
             onChange={(event) => setDesign((current) => ({ ...current, name: event.target.value }))}
           />
         </div>
         <div className="flex gap-2">
           <Button loading={pending} disabled={loading} onClick={submit}>
-            {workflowId ? "Save workflow" : "Create workflow"}
+            {workflowId ? t.workflows.designer.save : t.workflows.designer.create}
           </Button>
           <Button variant="ghost" onClick={onCancel}>
-            Cancel
+            {t.kit.cancel}
           </Button>
         </div>
       </div>
 
       {hints.length > 0 && (
         <p className="text-sm text-ink-muted" data-design-hints>
-          Before this can be saved: {hints.join(" ")}
+          {t.workflows.designer.beforeSave} {hints.join(" ")}
         </p>
       )}
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
@@ -87,7 +88,7 @@ export function WorkflowDesigner({ workflowId, onDone, onCancel }: { workflowId?
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1 overflow-auto rounded-lg border border-border" style={{ maxHeight: "70vh" }}>
           {loading ? (
-            <p className="p-4 text-sm text-ink-muted">Loading...</p>
+            <p className="p-4 text-sm text-ink-muted">{t.workflows.designer.loading}</p>
           ) : (
             <WorkflowCanvas
               design={design}

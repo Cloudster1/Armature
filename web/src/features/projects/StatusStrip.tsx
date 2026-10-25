@@ -3,12 +3,31 @@ import { usePostStatusUpdate, useStatusUpdates, type Health, type StatusUpdate }
 import { Button, Dialog, ErrorBanner, Field, Segmented, Tag, Textarea } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { useFormat } from "@/lib/format";
+import { t } from "@/i18n";
 
 /** The three words, in the order a form offers them, with their colours. */
 export const HEALTH: Array<{ value: Health; label: string; tone: string }> = [
-  { value: "on_track", label: "On track", tone: "bg-success-subtle text-success" },
-  { value: "at_risk", label: "At risk", tone: "bg-warning-subtle text-warning" },
-  { value: "off_track", label: "Off track", tone: "bg-danger-subtle text-danger" },
+  {
+    value: "on_track",
+    get label() {
+      return t.projectSetup.status.onTrack;
+    },
+    tone: "bg-success-subtle text-success",
+  },
+  {
+    value: "at_risk",
+    get label() {
+      return t.projectSetup.status.atRisk;
+    },
+    tone: "bg-warning-subtle text-warning",
+  },
+  {
+    value: "off_track",
+    get label() {
+      return t.projectSetup.status.offTrack;
+    },
+    tone: "bg-danger-subtle text-danger",
+  },
 ];
 
 export function healthLabel(value: Health): string {
@@ -47,18 +66,18 @@ export function StatusStrip({ projectKey, latest, canPost }: { projectKey: strin
           <span className="text-ink-subtle">
             {latest.authorName ? `${latest.authorName}, ` : ""}
             {format.relative(latest.createdAt)}
-            {latest.targetOn ? `, aiming for ${format.date(latest.targetOn)}` : ""}
+            {latest.targetOn ? t.projectSetup.status.aiming(format.date(latest.targetOn)) : ""}
           </span>
           <Button size="sm" variant="link" onClick={() => setHistory(true)} data-action="status-history">
-            History
+            {t.projectSetup.status.history}
           </Button>
         </>
       ) : (
-        <span className="text-ink-muted">Nobody has said how this project is doing yet.</span>
+        <span className="text-ink-muted">{t.projectSetup.status.nobodySaid}</span>
       )}
       {canPost && (
         <Button size="sm" variant="secondary" className="ml-auto" onClick={() => setPosting(true)} data-action="post-status" data-guide="post-status">
-          Post an update
+          {t.projectSetup.status.post}
         </Button>
       )}
       <PostDialog projectKey={projectKey} open={posting} onClose={() => setPosting(false)} initial={latest?.status ?? "on_track"} />
@@ -87,42 +106,42 @@ function PostDialog({ projectKey, open, onClose, initial }: { projectKey: string
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title="How is the project doing?" attrs={{ "data-status-dialog": "" }}>
+    <Dialog open={open} onClose={onClose} title={t.projectSetup.status.dialog} attrs={{ "data-status-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {post.error && <ErrorBanner>{(post.error as Error).message}</ErrorBanner>}
         <Segmented
-          label="Status"
+          label={t.projectSetup.status.status}
           value={status}
           onChange={setStatus}
           options={HEALTH.map((h) => ({ value: h.value, label: h.label, attrs: { "data-status-option": h.value } }))}
         />
         <div>
           <label htmlFor="field-status-note" className="mb-1 block text-sm font-medium text-ink">
-            What is happening
+            {t.projectSetup.status.happening}
           </label>
           <Textarea
             id="field-status-note"
             rows={3}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="The vendor is late; we ship the first half on time."
+            placeholder={t.projectSetup.status.notePlaceholder}
           />
         </div>
         <Field
-          label="Aiming for"
+          label={t.projectSetup.status.aimingFor}
           id="field-target-on"
           type="date"
           value={targetOn}
           onChange={(e) => setTargetOn(e.target.value)}
-          hint="The date the project is working towards, when there is one."
+          hint={t.projectSetup.status.aimingHint}
           className="max-w-xs"
         />
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
+            {t.kit.cancel}
           </Button>
           <Button type="submit" loading={post.isPending} data-action="post-status-go">
-            Post
+            {t.projectSetup.status.postButton}
           </Button>
         </div>
       </form>
@@ -135,7 +154,7 @@ function HistoryDialog({ projectKey, open, onClose }: { projectKey: string; open
   const format = useFormat();
   const updates = data?.updates ?? [];
   return (
-    <Dialog open={open} onClose={onClose} title="Status history" attrs={{ "data-status-history": "" }}>
+    <Dialog open={open} onClose={onClose} title={t.projectSetup.status.historyTitle} attrs={{ "data-status-history": "" }}>
       <ol className="space-y-3">
         {updates.map((u) => (
           <li key={u.id} className="text-sm" data-status-update={u.status}>
@@ -143,13 +162,13 @@ function HistoryDialog({ projectKey, open, onClose }: { projectKey: string; open
               <HealthTag status={u.status} />
               <span className="text-ink-subtle">
                 {u.authorName}, {format.dateTime(u.createdAt)}
-                {u.targetOn ? `, aiming for ${format.date(u.targetOn)}` : ""}
+                {u.targetOn ? t.projectSetup.status.aiming(format.date(u.targetOn)) : ""}
               </span>
             </div>
             {u.note && <p className="mt-1 text-ink">{u.note}</p>}
           </li>
         ))}
-        {updates.length === 0 && <li className="text-sm text-ink-muted">Nothing posted yet.</li>}
+        {updates.length === 0 && <li className="text-sm text-ink-muted">{t.projectSetup.status.nothingPosted}</li>}
       </ol>
     </Dialog>
   );

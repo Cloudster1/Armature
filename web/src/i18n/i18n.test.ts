@@ -50,6 +50,11 @@ const SAME_IN_BOTH = new Set([
   "Import",
   "Name",
   "Backlog",
+  "Repository",
+  "Administrator",
+  "App",
+  "Demo",
+  "Code",
   "Person",
   "Version",
   "Scrum",
@@ -63,6 +68,7 @@ const SAME_IN_BOTH = new Set([
   // A pattern with only its arguments in it, such as "month year".
   "X Y",
   "X / Y",
+  "X · Y",
 ]);
 
 describe("the German catalogue", () => {

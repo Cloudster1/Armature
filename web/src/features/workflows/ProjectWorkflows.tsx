@@ -6,6 +6,7 @@ import { Button, Card, ErrorBanner, Skeleton, cx, isInteractiveTarget } from "@/
 import { ScopeBadge, originExplanation } from "./ScopeBadge";
 import { SchemePicker, WorkflowPicker } from "./WorkflowPicker";
 import { WorkflowGraph } from "./WorkflowGraph";
+import { t } from "@/i18n";
 
 /** The columns of the assignment table: the three it always has, and the one a decider gets. */
 const COLUMNS = 3;
@@ -42,23 +43,19 @@ export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
         canConfigure={canConfigure}
       />
 
-      {shown && <WorkflowGraph workflowId={shown.workflowId} caption={`${shown.issueTypeName} issues follow this workflow here.`} />}
+      {shown && <WorkflowGraph workflowId={shown.workflowId} caption={t.workflows.project.caption(shown.issueTypeName)} />}
 
       <Card elevated className="overflow-hidden">
-        {canMap && (
-          <p className="border-b border-border px-4 py-2.5 text-sm text-ink-muted">
-            Pick a workflow per issue type. Anything left on Follow the default uses the default scheme, which all projects share.
-          </p>
-        )}
+        {canMap && <p className="border-b border-border px-4 py-2.5 text-sm text-ink-muted">{t.workflows.project.pickHint}</p>}
         <table data-testid="workflow-assignments" className="w-full text-sm">
           <thead className="border-b border-border bg-surface-raised text-left text-xs text-ink-muted">
             <tr>
-              <th className="px-4 py-2 font-medium">Issue type</th>
-              <th className="px-4 py-2 font-medium">Workflow</th>
-              <th className="px-4 py-2 font-medium">Decided by</th>
+              <th className="px-4 py-2 font-medium">{t.workflows.project.issueType}</th>
+              <th className="px-4 py-2 font-medium">{t.workflows.project.workflow}</th>
+              <th className="px-4 py-2 font-medium">{t.workflows.project.decidedBy}</th>
               {canMap && (
                 <th className="px-4 py-2 font-medium" data-guide="workflow-decide">
-                  Decide
+                  {t.workflows.project.decide}
                 </th>
               )}
             </tr>
@@ -141,10 +138,10 @@ function AssignmentRow({
       {canDecide && (
         <td className="px-4 py-1.5" data-assignment-control>
           <WorkflowPicker
-            aria-label={`Workflow for ${assignment.issueTypeName}`}
+            aria-label={t.workflows.project.workflowFor(assignment.issueTypeName)}
             value={decided}
             chosenName={decided ? assignment.workflowName : undefined}
-            leading={canFollow && <option value="">Follow the default</option>}
+            leading={canFollow && <option value="">{t.workflows.project.followDefault}</option>}
             disabled={deciding}
             onChange={(workflowId) => onDecide(workflowId || null)}
           />
@@ -179,53 +176,51 @@ function SchemeChoice({
     <Card elevated className="p-4">
       {own ? (
         <>
-          <p className="text-sm font-medium text-ink">This project uses its own scheme, {own.name}.</p>
-          <p className="mt-1 text-sm text-ink-muted">Issue types it does not name still follow {defaultSchemeName || "the default scheme"}.</p>
+          <p className="text-sm font-medium text-ink">{t.workflows.project.ownScheme(own.name)}</p>
+          <p className="mt-1 text-sm text-ink-muted">{t.workflows.project.stillFollow(defaultSchemeName || t.workflows.project.theDefaultScheme)}</p>
         </>
       ) : (
         <>
-          <p className="text-sm font-medium text-ink">This project follows the default.</p>
-          <p className="mt-1 text-sm text-ink-muted">
-            Every issue type uses {defaultSchemeName || "the default scheme"}. Give the project a scheme of its own to disagree about some of them.
-          </p>
+          <p className="text-sm font-medium text-ink">{t.workflows.project.followsDefault}</p>
+          <p className="mt-1 text-sm text-ink-muted">{t.workflows.project.everyTypeUses(defaultSchemeName || t.workflows.project.theDefaultScheme)}</p>
         </>
       )}
 
       {canConfigure && schemeCount && others <= 0 && !own && (
         <p className="mt-2 text-sm text-ink-subtle">
-          There is no other scheme to give it yet. Build one under{" "}
+          {t.workflows.project.noOtherBefore}{" "}
           <Link to="/settings/workflows" search={{ workflow: undefined }} className="underline underline-offset-2 hover:text-ink">
-            Workflows
+            {t.workflows.project.noOtherLink}
           </Link>
-          , naming only the issue types this project should handle differently.
+          {t.workflows.project.noOtherAfter}
         </p>
       )}
 
       {canConfigure && (others > 0 || own) && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-ink-muted">Or use an existing scheme:</span>
+          <span className="text-sm text-ink-muted">{t.workflows.project.orExisting}</span>
           <label htmlFor="project-scheme" className="sr-only">
-            Workflow scheme
+            {t.workflows.project.scheme}
           </label>
           <SchemePicker
             id="project-scheme"
-            aria-label="Workflow scheme"
+            aria-label={t.workflows.project.scheme}
             value={picked.id}
             chosenName={picked.name}
             exclude={own ? [own.id] : []}
-            leading={<option value="">Choose a scheme...</option>}
+            leading={<option value="">{t.workflows.project.chooseScheme}</option>}
             onChange={(id, name) => setPicked({ id, name })}
           />
           <Button size="sm" disabled={!picked.id} loading={setScheme.isPending} onClick={() => setScheme.mutate({ projectKey, schemeId: picked.id })}>
-            Use this scheme
+            {t.workflows.project.useScheme}
           </Button>
           {own && (
             <Button size="sm" variant="ghost" onClick={() => setScheme.mutate({ projectKey, schemeId: null })}>
-              Follow the default
+              {t.workflows.project.followDefault}
             </Button>
           )}
           <Link to="/settings/workflows" search={{ workflow: undefined }} className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline">
-            Manage schemes
+            {t.workflows.project.manage}
           </Link>
         </div>
       )}

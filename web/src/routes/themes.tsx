@@ -58,41 +58,41 @@ function ThemesPage() {
   const orgDefault = (data?.themes ?? []).find((t) => t.default);
   const meta =
     seen && source === "everyone"
-      ? `You are using ${seen.name}, everyone's default.`
+      ? words.looks.themes.usingDefault(seen.name)
       : seen
-        ? `You are using ${seen.name}.`
+        ? words.looks.themes.using(seen.name)
         : orgDefault
-          ? `You are using the built-in theme, over everyone's default ${orgDefault.name}.`
-          : "You are using the built-in theme.";
+          ? words.looks.themes.builtInOver(orgDefault.name)
+          : words.looks.themes.builtIn;
 
   return (
     <Page width="narrow">
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {words.settings.crumb}
           </Link>
         }
-        title="Themes"
+        title={words.looks.themes.title}
         meta={meta}
         actions={
           <>
             {seen && source === "everyone" && (
               <Button
                 variant="secondary"
-                onClick={() => choose.mutate({ builtIn: true }, { onSuccess: () => toast.success("Back to the built-in theme") })}
+                onClick={() => choose.mutate({ builtIn: true }, { onSuccess: () => toast.success(words.looks.themes.backToBuiltIn) })}
                 data-action="built-in-theme"
               >
-                Use the built-in theme
+                {words.looks.themes.useBuiltIn}
               </Button>
             )}
             {!seen && orgDefault && (
               <Button
                 variant="secondary"
-                onClick={() => choose.mutate(null, { onSuccess: () => toast.success(`Now using ${orgDefault.name}`) })}
+                onClick={() => choose.mutate(null, { onSuccess: () => toast.success(words.looks.themes.nowUsing(orgDefault.name)) })}
                 data-action="org-default-theme"
               >
-                Use everyone's default
+                {words.looks.themes.useDefault}
               </Button>
             )}
             <Button
@@ -102,35 +102,35 @@ function ThemesPage() {
               onClick={() => fileInput.current?.click()}
               data-action="import-theme"
             >
-              Import theme
+              {words.looks.themes.importTheme}
             </Button>
             <input
               ref={fileInput}
               type="file"
               accept="application/json,.json"
               className="sr-only"
-              aria-label="Theme file"
+              aria-label={words.looks.themes.themeFile}
               data-theme-file
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
-                if (file) importTheme.mutate(file, { onSuccess: (made) => toast.success(`Imported ${made.theme.name}`) });
+                if (file) importTheme.mutate(file, { onSuccess: (made) => toast.success(words.looks.themes.imported(made.theme.name)) });
               }}
             />
             <Button icon={<Icon.Plus />} onClick={() => navigate({ to: "/settings/themes/new" })} data-action="new-theme">
-              New theme
+              {words.looks.themes.newTheme}
             </Button>
           </>
         }
       />
       <div className="mb-4">
         <Segmented<View>
-          label="Show"
+          label={words.looks.themes.show}
           value={view}
           onChange={setView}
           options={[
-            { value: "mine", label: "Mine", attrs: { "data-themes-view": "mine" } },
-            { value: "shared", label: "Shared with me", attrs: { "data-themes-view": "shared" } },
+            { value: "mine", label: words.looks.themes.mine, attrs: { "data-themes-view": "mine" } },
+            { value: "shared", label: words.looks.themes.sharedWithMe, attrs: { "data-themes-view": "shared" } },
           ]}
         />
       </div>
@@ -142,12 +142,12 @@ function ThemesPage() {
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}
       {isLoading ? null : themes.length === 0 ? (
         <EmptyState
-          title={view === "mine" ? "No themes of your own yet" : "Nothing shared with you"}
-          description="A theme changes the colours, the type, the cursors, the icons and anything else about how this looks, for you, or for everyone once shared."
+          title={view === "mine" ? words.looks.themes.noneOfYourOwn : words.looks.themes.noneShared}
+          description={words.looks.themes.emptyDetail}
           action={
             view === "mine" ? (
               <Button variant="secondary" onClick={() => navigate({ to: "/settings/themes/new" })}>
-                Make one
+                {words.looks.themes.makeOne}
               </Button>
             ) : undefined
           }
@@ -156,9 +156,9 @@ function ThemesPage() {
         <Table>
           <thead>
             <tr>
-              <Th>Theme</Th>
-              <Th>Owner</Th>
-              <Th>In use</Th>
+              <Th>{words.looks.themes.columnTheme}</Th>
+              <Th>{words.looks.themes.columnOwner}</Th>
+              <Th>{words.looks.themes.columnInUse}</Th>
               <Th className="w-10" />
             </tr>
           </thead>
@@ -175,20 +175,20 @@ function ThemesPage() {
                     ) : (
                       <span className="font-medium text-ink">{t.name}</span>
                     )}
-                    {t.shared && <Tag className="ml-2">Shared</Tag>}
-                    {t.default && <Tag className="ml-2">Everyone's default</Tag>}
-                    {seen?.id === t.id && <Tag className="ml-2 text-accent">In use</Tag>}
+                    {t.shared && <Tag className="ml-2">{words.looks.themes.shared}</Tag>}
+                    {t.default && <Tag className="ml-2">{words.looks.themes.everyonesDefault}</Tag>}
+                    {seen?.id === t.id && <Tag className="ml-2 text-accent">{words.looks.themes.inUse}</Tag>}
                   </Td>
-                  <Td className="text-ink-muted">{t.ownerId === me ? "you" : t.ownerName}</Td>
-                  <Td className="text-ink-muted tabular-nums">{t.inUse === 1 ? "1 person" : `${t.inUse} people`}</Td>
+                  <Td className="text-ink-muted">{t.ownerId === me ? words.looks.themes.you : t.ownerName}</Td>
+                  <Td className="text-ink-muted tabular-nums">{words.looks.themes.people(t.inUse)}</Td>
                   <Td className="text-right">
                     <Menu
-                      label={`Actions for ${t.name}`}
+                      label={words.looks.themes.actionsFor(t.name)}
                       align="end"
                       trigger={(props) => (
                         <IconButton
                           icon={<Icon.More />}
-                          label={`Actions for ${t.name}`}
+                          label={words.looks.themes.actionsFor(t.name)}
                           size="sm"
                           onClick={props.toggle}
                           aria-haspopup={props["aria-haspopup"]}
@@ -199,47 +199,46 @@ function ThemesPage() {
                       items={[
                         t.active
                           ? {
-                              label: "Stop using",
+                              label: words.looks.themes.stopUsing,
                               icon: <Icon.X />,
                               onSelect: () =>
                                 choose.mutate(null, {
-                                  onSuccess: () => toast.success(orgDefault ? "Back to everyone's default" : "Back to the built-in theme"),
+                                  onSuccess: () => toast.success(orgDefault ? words.looks.themes.backToDefault : words.looks.themes.backToBuiltIn),
                                 }),
                               attrs: { "data-action": "stop-theme" },
                             }
                           : {
-                              label: "Use this theme",
+                              label: words.looks.themes.useThis,
                               icon: <Icon.Check />,
-                              onSelect: () => choose.mutate(t.id, { onSuccess: () => toast.success(`Now using ${t.name}`) }),
+                              onSelect: () => choose.mutate(t.id, { onSuccess: () => toast.success(words.looks.themes.nowUsing(t.name)) }),
                               attrs: { "data-action": "use-theme" },
                             },
                         ...(administers && t.shared
                           ? [
                               t.default
                                 ? {
-                                    label: "No longer everyone's default",
+                                    label: words.looks.themes.noLongerDefault,
                                     icon: <Icon.X />,
-                                    onSelect: () => setDefault.mutate(null, { onSuccess: () => toast.success("Everyone sees the built-in theme again") }),
+                                    onSelect: () => setDefault.mutate(null, { onSuccess: () => toast.success(words.looks.themes.builtInAgain) }),
                                     attrs: { "data-action": "undefault-theme" },
                                   }
                                 : {
-                                    label: "Make it everyone's default",
+                                    label: words.looks.themes.makeDefault,
                                     icon: <Icon.Users />,
-                                    onSelect: () =>
-                                      setDefault.mutate(t.id, { onSuccess: () => toast.success(`${t.name} is what everybody sees until they choose`) }),
+                                    onSelect: () => setDefault.mutate(t.id, { onSuccess: () => toast.success(words.looks.themes.nowDefault(t.name)) }),
                                     attrs: { "data-action": "default-theme" },
                                   },
                             ]
                           : []),
                         {
-                          label: "Edit",
+                          label: words.looks.themes.edit,
                           icon: <Icon.Edit />,
                           disabled: !editable,
                           onSelect: () => navigate({ to: "/settings/themes/$themeId", params: { themeId: t.id } }),
                           attrs: { "data-action": "edit-theme" },
                         },
                         {
-                          label: "Export as a file",
+                          label: words.looks.themes.exportFile,
                           icon: <Icon.Download />,
                           onSelect: () => {
                             window.location.href = themeExportHref(t.id);
@@ -247,36 +246,36 @@ function ThemesPage() {
                           attrs: { "data-action": "export-theme" },
                         },
                         {
-                          label: t.shared ? "Stop sharing" : "Share with everyone",
+                          label: t.shared ? words.looks.themes.stopSharing : words.looks.themes.share,
                           icon: <Icon.Share />,
                           disabled: !editable,
                           onSelect: () =>
                             update.mutate(
                               { id: t.id, shared: !t.shared },
-                              { onSuccess: () => toast.success(t.shared ? `${t.name} is yours alone again` : `${t.name} is shared with everyone`) },
+                              { onSuccess: () => toast.success(t.shared ? words.looks.themes.aloneAgain(t.name) : words.looks.themes.sharedNow(t.name)) },
                             ),
                           attrs: { "data-action": "share-theme" },
                         },
                         {
-                          label: "Delete",
+                          label: words.looks.themes.delete,
                           icon: <Icon.Trash />,
                           danger: true,
                           disabled: !editable,
                           onSelect: async () => {
                             const using =
                               t.inUse === 0
-                                ? "Nobody is using it."
+                                ? words.looks.themes.nobodyUsing
                                 : t.inUse === 1
-                                  ? "The one person using it goes back to the built-in theme."
-                                  : `The ${t.inUse} people using it go back to the built-in theme.`;
+                                  ? words.looks.themes.oneUsing
+                                  : words.looks.themes.manyUsing(t.inUse);
                             if (
                               await confirm({
                                 noun: words.kit.confirm.things.theme,
                                 verb: words.kit.confirm.verbs.delete,
-                                body: `${t.name} and its files go for good. ${using}`,
+                                body: words.looks.themes.deleteBody(t.name, using),
                               })
                             ) {
-                              remove.mutate(t.id, { onSuccess: () => toast.success(`Deleted ${t.name}`) });
+                              remove.mutate(t.id, { onSuccess: () => toast.success(words.looks.themes.deleted(t.name)) });
                             }
                           },
                           attrs: { "data-action": "delete-theme" },

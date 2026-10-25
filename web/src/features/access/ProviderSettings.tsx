@@ -3,6 +3,7 @@ import { useProvider, useSaveProvider } from "@/api/access";
 import { SSO_START } from "@/api/auth";
 import { BASE } from "@/api/client";
 import { Button, Card, Checkbox, ErrorBanner, Field } from "@/components/ui";
+import { t } from "@/i18n";
 
 /**
  * The identity provider people sign in through.
@@ -23,7 +24,7 @@ export function ProviderSettings() {
   const [claim, setClaim] = useState<string | null>(null);
   const [admit, setAdmit] = useState<boolean | null>(null);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">Loading...</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">{t.access.loading}</p>;
 
   const values = {
     issuer: issuer ?? provider?.issuer ?? "",
@@ -36,34 +37,31 @@ export function ProviderSettings() {
     <Card className="space-y-4 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <Field
-          label="Issuer"
+          label={t.access.provider.issuer}
           value={values.issuer}
           placeholder="https://id.example.com"
-          hint="Where its discovery document lives."
+          hint={t.access.provider.issuerHint}
           onChange={(event) => setIssuer(event.target.value)}
         />
-        <Field label="Client ID" value={values.clientId} onChange={(event) => setClientId(event.target.value)} />
+        <Field label={t.access.provider.clientId} value={values.clientId} onChange={(event) => setClientId(event.target.value)} />
         <Field
-          label="Client secret"
+          label={t.access.provider.secret}
           type="password"
           value={secret}
-          placeholder={provider?.hasSecret ? "Stored. Leave blank to keep it." : ""}
+          placeholder={provider?.hasSecret ? t.access.provider.secretStored : ""}
           onChange={(event) => setSecret(event.target.value)}
         />
-        <Field label="Groups claim" value={values.groupsClaim} hint="The claim listing somebody's groups." onChange={(event) => setClaim(event.target.value)} />
+        <Field
+          label={t.access.provider.groupsClaim}
+          value={values.groupsClaim}
+          hint={t.access.provider.groupsClaimHint}
+          onChange={(event) => setClaim(event.target.value)}
+        />
       </div>
 
       <div className="space-y-1">
-        <Checkbox
-          label="Let people in by their groups"
-          checked={values.admitByGroup}
-          onChange={(event) => setAdmit(event.target.checked)}
-          data-admit-by-group
-        />
-        <p className="pl-6 text-xs text-ink-muted">
-          Somebody signing in here, or through Stator or Exciter, whose group from the provider holds a role is let in as a member with that group's roles.
-          Anybody else still asks to join.
-        </p>
+        <Checkbox label={t.access.provider.admit} checked={values.admitByGroup} onChange={(event) => setAdmit(event.target.checked)} data-admit-by-group />
+        <p className="pl-6 text-xs text-ink-muted">{t.access.provider.admitDetail}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -82,7 +80,7 @@ export function ProviderSettings() {
             })
           }
         >
-          {provider ? "Save" : "Set up single sign-on"}
+          {provider ? t.access.save : t.access.provider.setUp}
         </Button>
 
         {provider?.enabled && (
@@ -102,13 +100,13 @@ export function ProviderSettings() {
               })
             }
           >
-            Turn it off
+            {t.access.provider.turnOff}
           </Button>
         )}
 
         {provider && (
           <span className="text-xs text-ink-muted">
-            {provider.enabled ? "People can sign in at" : "Turned off. The address would be"}{" "}
+            {provider.enabled ? t.access.provider.signInAt : t.access.provider.offAddress}{" "}
             <code className="rounded bg-surface-raised px-1" data-sso-start>
               {BASE}
               {SSO_START}

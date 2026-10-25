@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui";
 import { PERSON_SEARCH_DELAY_MS } from "@/config";
+import { t } from "@/i18n";
 
 /** The search box over a list of people; it writes the address once typing pauses, not per letter. */
-export function PeopleSearch({ value, onChange, label = "Find people" }: { value: string; onChange: (text: string) => void; label?: string }) {
+export function PeopleSearch({ value, onChange, label = t.looks.people.find }: { value: string; onChange: (text: string) => void; label?: string }) {
   const [text, setText] = useState(value);
   const timer = useRef<number | undefined>(undefined);
   const latest = useRef(onChange);
@@ -30,7 +31,7 @@ export function PeopleSearch({ value, onChange, label = "Find people" }: { value
       type="search"
       controlSize="sm"
       aria-label={label}
-      placeholder="Find by name or address"
+      placeholder={t.looks.people.findPlaceholder}
       value={text}
       onChange={(event) => type(event.target.value)}
       className="w-64"

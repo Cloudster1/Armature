@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useIssueFields, useSetFieldValue, type FieldValue } from "@/api/fields";
 import { Checkbox, ErrorBanner, Input, SelectInput, cx } from "@/components/ui";
 import { badInputMessage, inputFromValue, inputTypeFor, valueFromInput } from "./values";
+import { t } from "@/i18n";
 
 /**
  * A project's custom fields on one issue, each drawn as the control its kind
@@ -67,7 +68,7 @@ function FieldRow({ issueKey, value, editable }: { issueKey: string; value: Fiel
             }}
             className="w-full min-w-0"
           >
-            <option value="">None</option>
+            <option value="">{t.looks.fields.none}</option>
             {field.options.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -77,7 +78,7 @@ function FieldRow({ issueKey, value, editable }: { issueKey: string; value: Fiel
               // A choice the project no longer offers is still what somebody
               // said; it stays visible and cannot be chosen again.
               <option value={text} disabled>
-                {text} (no longer offered)
+                {t.looks.fields.noLongerOffered(text)}
               </option>
             )}
           </SelectInput>
@@ -132,7 +133,7 @@ function FieldRow({ issueKey, value, editable }: { issueKey: string; value: Fiel
 
 function ReadOnly({ value }: { value: FieldValue }) {
   const shown = value.display ?? "";
-  if (!shown) return <span className="text-ink-subtle">None</span>;
+  if (!shown) return <span className="text-ink-subtle">{t.looks.fields.none}</span>;
   if (value.field.kind === "url") {
     return (
       <a href={shown} target="_blank" rel="noreferrer" className="max-w-full truncate text-accent hover:underline">

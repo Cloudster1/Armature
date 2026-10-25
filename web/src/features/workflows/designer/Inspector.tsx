@@ -7,6 +7,7 @@ import { NewStatusForm } from "./NewStatusForm";
 import { RuleEditor } from "./RuleEditor";
 import { ANYWHERE, addStatus, connect, removeEdge, removeStatus, setInitial, updateEdge, type Design, type Edge } from "./graph";
 import type { Selection } from "./WorkflowCanvas";
+import { t } from "@/i18n";
 
 /**
  * The panel beside the canvas. It shows whatever is selected and is the
@@ -83,17 +84,17 @@ function DesignPanel({
   return (
     <div className="space-y-4">
       <Field
-        label="Description"
+        label={t.workflows.inspector.description}
         id="field-workflow-description"
         value={design.description}
         rows={2}
-        placeholder="What this workflow is for. Optional."
+        placeholder={t.workflows.inspector.descriptionPlaceholder}
         onChange={(event) => onChange({ ...design, description: event.target.value })}
       />
 
       <div className="space-y-2">
-        <Select label="Add a status" id="field-add-status" value={adding} onChange={(event) => setAdding(event.target.value)}>
-          <option value="">{available.length ? "Choose a status" : "Every status is on the canvas"}</option>
+        <Select label={t.workflows.inspector.addStatus} id="field-add-status" value={adding} onChange={(event) => setAdding(event.target.value)}>
+          <option value="">{available.length ? t.workflows.inspector.chooseStatus : t.workflows.inspector.everyStatusOn}</option>
           {available.map((status) => (
             <option key={status.id} value={status.id}>
               {status.name}
@@ -101,7 +102,7 @@ function DesignPanel({
           ))}
         </Select>
         <Button size="sm" variant="secondary" disabled={!adding} onClick={add}>
-          Add status
+          {t.workflows.inspector.addStatusButton}
         </Button>
       </div>
 
@@ -114,9 +115,9 @@ function DesignPanel({
       />
 
       <div className="space-y-1 text-xs text-ink-subtle">
-        <p>Drag a status to move it. Drag from the ring on its right edge onto another status to add a transition.</p>
-        <p>Transitions drawn from the dashed Any status box are available from everywhere, which is how Close or Reopen is expressed.</p>
-        <p>Click a status or a transition to change it here.</p>
+        <p>{t.workflows.inspector.helpDrag}</p>
+        <p>{t.workflows.inspector.helpAnywhere}</p>
+        <p>{t.workflows.inspector.helpClick}</p>
       </div>
     </div>
   );
@@ -158,16 +159,16 @@ function NodePanel({
       </div>
 
       {isInitial ? (
-        <p className="rounded-md bg-accent-subtle px-2 py-1.5 text-sm text-accent">New issues open here.</p>
+        <p className="rounded-md bg-accent-subtle px-2 py-1.5 text-sm text-accent">{t.workflows.inspector.opensHere}</p>
       ) : (
         <Button size="sm" variant="secondary" onClick={() => onChange(setInitial(design, status.id))}>
-          New issues open here
+          {t.workflows.inspector.makeInitial}
         </Button>
       )}
 
       <div className="space-y-2">
-        <Select label="Add a transition to" id="field-to-status" value={target} onChange={(event) => setTarget(event.target.value)}>
-          <option value="">{others.length ? "Choose a status" : "Add another status first"}</option>
+        <Select label={t.workflows.inspector.addTransitionTo} id="field-to-status" value={target} onChange={(event) => setTarget(event.target.value)}>
+          <option value="">{others.length ? t.workflows.inspector.chooseStatus : t.workflows.inspector.addAnotherFirst}</option>
           {others.map((each) => (
             <option key={each.id} value={each.id}>
               {each.name}
@@ -175,18 +176,18 @@ function NodePanel({
           ))}
         </Select>
         <Button size="sm" variant="secondary" disabled={!target} onClick={addTransition}>
-          Add transition
+          {t.workflows.inspector.addTransition}
         </Button>
       </div>
 
       {leaving.length > 0 && (
         <div>
-          <p className="text-sm font-medium text-ink-muted">Leaving here</p>
+          <p className="text-sm font-medium text-ink-muted">{t.workflows.inspector.leaving}</p>
           <ul className="mt-1 space-y-0.5">
             {leaving.map((edge) => (
               <li key={edge.key}>
                 <Button variant="link" onClick={() => onSelect({ kind: "edge", key: edge.key })} className="text-ink hover:text-accent">
-                  {edge.name || "unnamed"} to {statuses.get(edge.to)?.name ?? "?"}
+                  {t.workflows.inspector.leavingTo(edge.name || t.workflows.inspector.unnamed, statuses.get(edge.to)?.name ?? "?")}
                 </Button>
               </li>
             ))}
@@ -202,7 +203,7 @@ function NodePanel({
           onSelect({ kind: "none" });
         }}
       >
-        Remove from workflow
+        {t.workflows.inspector.removeStatus}
       </Button>
     </div>
   );
@@ -221,32 +222,32 @@ function EdgePanel({
   onChange: (patch: Partial<Edge>) => void;
   onRemove: () => void;
 }) {
-  const from = edge.from === ANYWHERE ? "any status" : (statuses.get(edge.from)?.name ?? "?");
+  const from = edge.from === ANYWHERE ? t.workflows.inspector.anyStatus : (statuses.get(edge.from)?.name ?? "?");
   const to = statuses.get(edge.to)?.name ?? "?";
   return (
     <div className="space-y-4" data-edge-panel>
       <Field
-        label="Transition name"
+        label={t.workflows.inspector.transitionName}
         id="field-transition-name"
         value={edge.name}
-        placeholder="Start progress"
+        placeholder={t.workflows.inspector.transitionPlaceholder}
         onChange={(event) => onChange({ name: event.target.value })}
       />
       <p className="text-sm text-ink-muted">
-        From <span className="text-ink">{from}</span> to <span className="text-ink">{to}</span>.
+        {t.workflows.inspector.from} <span className="text-ink">{from}</span> {t.workflows.inspector.to} <span className="text-ink">{to}</span>.
       </p>
       <Field
-        label="Description"
+        label={t.workflows.inspector.description}
         id="field-transition-description"
         value={edge.description}
-        placeholder="When to take it. Optional."
+        placeholder={t.workflows.inspector.transitionDescriptionPlaceholder}
         onChange={(event) => onChange({ description: event.target.value })}
       />
 
       <RuleEditor rules={edge.rules} catalogue={catalogue} onChange={(rules) => onChange({ rules })} />
 
       <Button size="sm" variant="ghost" onClick={onRemove}>
-        Remove transition
+        {t.workflows.inspector.removeTransition}
       </Button>
     </div>
   );

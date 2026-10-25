@@ -19,6 +19,7 @@ import { LogoHead } from "@/components/Logo";
 import { Icon } from "@/components/icons";
 import { useFormat } from "@/lib/format";
 import { APP_NAME, QR_CODE_PX, QR_DARK, QR_LIGHT, QR_QUIET_MODULES, SECOND_FACTOR_CODE_DIGITS, SECRET_GROUP_LENGTH } from "@/config";
+import { t } from "@/i18n";
 
 /** Draws what an authenticator app scans, dark on light whatever the theme, so every camera reads it. */
 export function QrCode({ value }: { value: string }) {
@@ -35,7 +36,7 @@ export function QrCode({ value }: { value: string }) {
       width={QR_CODE_PX}
       height={QR_CODE_PX}
       role="img"
-      aria-label="QR code for your authenticator app"
+      aria-label={t.doors.secondFactor.qrLabel}
       shapeRendering="crispEdges"
       className="shrink-0 rounded-control"
       data-second-factor-qr
@@ -65,14 +66,10 @@ export function SecondFactorStep({ challenge, onSignedIn, onStartAgain }: { chal
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate data-second-factor-step>
       {finish.error && <ErrorBanner>{(finish.error as Error).message}</ErrorBanner>}
-      <p className="text-sm text-ink-muted">
-        {recovery
-          ? "Type one of the recovery codes you saved when you set up two-step sign-in. Each one works once."
-          : `Open your authenticator app and type the ${SECOND_FACTOR_CODE_DIGITS} digit code it shows for Armature.`}
-      </p>
+      <p className="text-sm text-ink-muted">{recovery ? t.doors.secondFactor.recoveryPrompt : t.doors.secondFactor.appPrompt(SECOND_FACTOR_CODE_DIGITS)}</p>
       <Field
         key={recovery ? "recovery" : "app"}
-        label={recovery ? "Recovery code" : "Code"}
+        label={recovery ? t.doors.secondFactor.recoveryCode : t.doors.secondFactor.code}
         autoComplete="one-time-code"
         inputMode={recovery ? "text" : "numeric"}
         maxLength={recovery ? undefined : SECOND_FACTOR_CODE_DIGITS}
@@ -83,11 +80,11 @@ export function SecondFactorStep({ challenge, onSignedIn, onStartAgain }: { chal
       />
       {expired ? (
         <Button type="button" className="w-full" onClick={onStartAgain} data-action="sign-in-again">
-          Sign in again
+          {t.doors.secondFactor.signInAgain}
         </Button>
       ) : (
         <Button type="submit" loading={finish.isPending} disabled={!code.trim()} className="w-full">
-          Verify
+          {t.doors.secondFactor.verify}
         </Button>
       )}
       <Button
@@ -101,7 +98,7 @@ export function SecondFactorStep({ challenge, onSignedIn, onStartAgain }: { chal
           finish.reset();
         }}
       >
-        {recovery ? "Use the code from your app" : "Use a recovery code"}
+        {recovery ? t.doors.secondFactor.useApp : t.doors.secondFactor.useRecovery}
       </Button>
     </form>
   );
@@ -136,7 +133,7 @@ export function Enrolment({ onDone }: { onDone: () => void }) {
       <div className="space-y-3">
         {start.error && <ErrorBanner>{(start.error as Error).message}</ErrorBanner>}
         <Button icon={<Icon.Shield />} loading={start.isPending} onClick={() => start.mutate()} data-action="start-second-factor">
-          Set up two-step sign-in
+          {t.doors.secondFactor.setUp}
         </Button>
       </div>
     );
@@ -151,29 +148,29 @@ export function Enrolment({ onDone }: { onDone: () => void }) {
   const grouped = enrolment.secret.match(new RegExp(`.{1,${SECRET_GROUP_LENGTH}}`, "g"))?.join(" ") ?? enrolment.secret;
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate data-enrolment>
-      <p className="text-sm text-ink-muted">Scan this with an authenticator app on your phone, such as the one your phone came with, 1Password or Aegis.</p>
+      <p className="text-sm text-ink-muted">{t.doors.secondFactor.scan}</p>
       <div className="flex flex-wrap items-center gap-5">
         <QrCode value={enrolment.uri} />
         <div className="min-w-0 space-y-1">
-          <p className="text-sm text-ink-muted">Or type this key into the app:</p>
+          <p className="text-sm text-ink-muted">{t.doors.secondFactor.typeKey}</p>
           <code className="block break-all font-mono text-sm text-ink" data-second-factor-secret>
             {grouped}
           </code>
-          <p className="text-xs text-ink-subtle">It is shown only now. Once two-step sign-in is on, nobody can read it again, you included.</p>
+          <p className="text-xs text-ink-subtle">{t.doors.secondFactor.shownOnce}</p>
         </div>
       </div>
       <Field
-        label="Code from the app"
+        label={t.doors.secondFactor.codeFromApp}
         autoComplete="one-time-code"
         inputMode="numeric"
         maxLength={SECOND_FACTOR_CODE_DIGITS}
-        hint="The app shows a new one every thirty seconds."
+        hint={t.doors.secondFactor.newEvery}
         value={code}
         onChange={(e) => setCode(e.target.value)}
       />
       {confirm.error && <ErrorBanner>{(confirm.error as Error).message}</ErrorBanner>}
       <Button type="submit" loading={confirm.isPending} disabled={!code.trim()} data-action="confirm-second-factor">
-        Turn on two-step sign-in
+        {t.doors.secondFactor.turnOn}
       </Button>
     </form>
   );
@@ -184,9 +181,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
   const [copied, setCopied] = useState<boolean | null>(null);
   return (
     <div className="space-y-4" data-recovery-codes>
-      <p className="text-sm text-ink-muted">
-        Keep these recovery codes somewhere safe, apart from your phone. Each one signs you in once if the phone is lost. They are not shown again.
-      </p>
+      <p className="text-sm text-ink-muted">{t.doors.secondFactor.keepCodes}</p>
       <ul className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-control border border-border bg-surface-raised p-3 font-mono text-sm text-ink">
         {codes.map((code) => (
           <li key={code} data-recovery-code>
@@ -194,7 +189,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
           </li>
         ))}
       </ul>
-      {copied === false && <ErrorBanner>The clipboard could not be reached. Select the codes and copy them by hand.</ErrorBanner>}
+      {copied === false && <ErrorBanner>{t.doors.secondFactor.clipboardFailed}</ErrorBanner>}
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
@@ -208,10 +203,10 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
             )
           }
         >
-          {copied ? "Copied" : "Copy codes"}
+          {copied ? t.doors.secondFactor.copied : t.doors.secondFactor.copy}
         </Button>
         <Button type="button" onClick={onDone} data-action="saved-recovery-codes">
-          I have saved them
+          {t.doors.secondFactor.saved}
         </Button>
       </div>
     </div>
@@ -225,19 +220,17 @@ export function SecondFactorSettings() {
   if (!status) return null;
   return (
     <section className="mt-8" data-second-factor-settings>
-      <SectionTitle className="mb-2">Two-step sign-in</SectionTitle>
+      <SectionTitle className="mb-2">{t.doors.secondFactor.title}</SectionTitle>
       <Card className="space-y-4 p-5">
         {status.enrolled ? (
           <Enrolled status={status} />
         ) : status.available ? (
           <>
-            <p className="text-sm text-ink-muted">
-              Signing in with your password then asks for a code from an app on your phone, so a password that leaked is not enough on its own.
-            </p>
+            <p className="text-sm text-ink-muted">{t.doors.secondFactor.explain}</p>
             <Enrolment onDone={() => {}} />
           </>
         ) : (
-          <p className="text-sm text-ink-muted">This server cannot keep a second factor yet: whoever runs it has to set ARMATURE_SECRET_KEY first.</p>
+          <p className="text-sm text-ink-muted">{t.doors.secondFactor.unavailable}</p>
         )}
       </Card>
     </section>
@@ -257,15 +250,14 @@ function Enrolled({ status }: { status: SecondFactorStatus }) {
   return (
     <div className="space-y-4" data-second-factor-on>
       <p className="text-sm text-ink">
-        On{status.enrolledAt ? ` since ${format.date(status.enrolledAt)}` : ""}.{" "}
-        <span className="text-ink-muted">
-          {status.recoveryCodesLeft === 1 ? "1 recovery code is left." : `${status.recoveryCodesLeft} recovery codes are left.`}
-        </span>
+        {t.doors.secondFactor.on}
+        {status.enrolledAt ? t.doors.secondFactor.since(format.date(status.enrolledAt)) : ""}.{" "}
+        <span className="text-ink-muted">{t.doors.secondFactor.codesLeft(status.recoveryCodesLeft)}</span>
       </p>
       <Field
-        label="Code from your app or a recovery code"
+        label={t.doors.secondFactor.codeOrRecovery}
         autoComplete="one-time-code"
-        hint="New recovery codes replace the old ones. Turning two-step sign-in off ends every other session of yours."
+        hint={t.doors.secondFactor.renewHint}
         value={code}
         onChange={(e) => setCode(e.target.value)}
       />
@@ -286,7 +278,7 @@ function Enrolled({ status }: { status: SecondFactorStatus }) {
             });
           }}
         >
-          New recovery codes
+          {t.doors.secondFactor.newCodes}
         </Button>
         <Button
           variant="danger"
@@ -298,7 +290,7 @@ function Enrolled({ status }: { status: SecondFactorStatus }) {
             remove.mutate(code.trim(), { onSuccess: () => setCode("") });
           }}
         >
-          Turn off
+          {t.doors.secondFactor.turnOff}
         </Button>
       </div>
     </div>
@@ -318,11 +310,8 @@ export function EnrolmentRequired() {
     <div className="flex min-h-full items-center justify-center bg-backdrop px-4 py-12" data-enrolment-required>
       <div className="w-full max-w-lg">
         <LogoHead />
-        <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">Set up two-step sign-in</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {data?.principal?.installation?.name ?? APP_NAME} asks everybody in your role to sign in with a code from an app on their phone as well as a password.
-          Set it up to carry on.
-        </p>
+        <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">{t.doors.secondFactor.setUp}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.doors.secondFactor.requiredBody(data?.principal?.installation?.name ?? APP_NAME)}</p>
         <Card className="mt-6 space-y-4 p-5">
           <Enrolment onDone={() => {}} />
         </Card>
@@ -333,7 +322,7 @@ export function EnrolmentRequired() {
             data-action="sign-out"
             onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}
           >
-            Sign out
+            {t.doors.common.signOut}
           </Button>
         </div>
       </div>

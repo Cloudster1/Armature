@@ -8,9 +8,12 @@ import { NewPasswordFields, fieldErrors, formError, passwordsMatch } from "@/fea
 import { Button, ErrorBanner, Field } from "@/components/ui";
 import { takeLinkSecret } from "@/lib/linkSecret";
 import { PASSWORD_RESET_TOKEN_KEY } from "@/config";
+import { t } from "@/i18n";
 
 /** The one answer to asking for a link, so the page cannot tell who has an account. */
-export const RESET_LINK_SENT = "If an account uses that address, a link to set a new password is on its way. It works for one hour.";
+export function resetLinkSent(): string {
+  return t.doors.reset.linkSent;
+}
 
 export const forgotPasswordRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -33,14 +36,14 @@ export function readResetToken(): string | undefined {
 function SignInLink() {
   return (
     <Link to="/login" className="font-medium text-accent hover:underline">
-      Back to sign in
+      {t.doors.common.backToSignIn}
     </Link>
   );
 }
 
 function ForgotPasswordPage() {
   return (
-    <AuthLayout title="Forgot your password?" subtitle="We mail you a link to set a new one." footer={<SignInLink />}>
+    <AuthLayout title={t.doors.reset.forgotTitle} subtitle={t.doors.reset.forgotSubtitle} footer={<SignInLink />}>
       <ForgotPasswordForm />
     </AuthLayout>
   );
@@ -59,7 +62,7 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <p className="text-sm text-ink-muted" data-reset-sent>
-        {RESET_LINK_SENT}
+        {resetLinkSent()}
       </p>
     );
   }
@@ -68,7 +71,7 @@ export function ForgotPasswordForm() {
     <form onSubmit={onSubmit} className="space-y-4" noValidate data-forgot-password>
       {formError(ask.error) && <ErrorBanner>{formError(ask.error)}</ErrorBanner>}
       <Field
-        label="Email"
+        label={t.doors.common.email}
         type="email"
         autoComplete="username"
         required
@@ -77,7 +80,7 @@ export function ForgotPasswordForm() {
         error={fieldErrors(ask.error).email}
       />
       <Button type="submit" loading={ask.isPending} className="w-full">
-        Send me a link
+        {t.doors.reset.sendLink}
       </Button>
     </form>
   );
@@ -89,8 +92,8 @@ function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthLayout title="This link is incomplete" footer={<SignInLink />}>
-        <p className="text-sm text-ink-muted">Open the link exactly as it was mailed to you, including everything after the #.</p>
+      <AuthLayout title={t.doors.common.linkIncomplete} footer={<SignInLink />}>
+        <p className="text-sm text-ink-muted">{t.doors.reset.incomplete}</p>
       </AuthLayout>
     );
   }
@@ -101,7 +104,7 @@ function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout title="Set a new password" subtitle="Every session and access token of yours ends, and you sign in with the new one." footer={<SignInLink />}>
+    <AuthLayout title={t.doors.reset.title} subtitle={t.doors.reset.subtitle} footer={<SignInLink />}>
       <ResetPasswordForm token={token} onDone={done} />
     </AuthLayout>
   );
@@ -125,7 +128,7 @@ export function ResetPasswordForm({ token, onDone }: { token: string; onDone: ()
       <div className="space-y-4" data-reset-invalid>
         <p className="text-sm text-ink-muted">{reset.error.message}</p>
         <Link to="/forgot-password" className="block text-sm font-medium text-accent hover:underline">
-          Ask for a new link
+          {t.doors.reset.askAgain}
         </Link>
       </div>
     );
@@ -143,7 +146,7 @@ export function ResetPasswordForm({ token, onDone }: { token: string; onDone: ()
         error={fieldErrors(reset.error).password}
       />
       <Button type="submit" loading={reset.isPending} className="w-full">
-        Set new password
+        {t.doors.reset.submit}
       </Button>
     </form>
   );

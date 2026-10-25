@@ -1,3 +1,8 @@
+import { workflowsEn } from "./workflows.en";
+import { accessEn } from "./access.en";
+import { looksEn } from "./looks.en";
+import { projectSetupEn } from "./projectSetup.en";
+import { doorsEn } from "./doors.en";
 import { boardEn } from "./board.en";
 import { dashboardEn } from "./dashboard.en";
 import { scheduleEn } from "./schedule.en";
@@ -29,6 +34,11 @@ export const en = {
   dashboard: dashboardEn,
   schedule: scheduleEn,
   search: searchEn,
+  workflows: workflowsEn,
+  access: accessEn,
+  looks: looksEn,
+  projectSetup: projectSetupEn,
+  doors: doorsEn,
 };
 
 export type Messages = typeof en;

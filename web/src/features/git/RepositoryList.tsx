@@ -13,6 +13,8 @@ import {
 } from "@/api/git";
 import { useProjectWorkflows, useWorkflow } from "@/api/workflows";
 import { Button, Card, EmptyState, ErrorBanner, Field, Select, Tag, cx } from "@/components/ui";
+// Named apart: the transitions here are each called t.
+import { t as words } from "@/i18n";
 
 /**
  * The repositories connected to a project.
@@ -45,15 +47,12 @@ export function RepositoryList({ projectKey }: { projectKey: string }) {
         />
       ) : (
         <div className="flex justify-end">
-          <Button onClick={() => setConnecting(true)}>Connect repository</Button>
+          <Button onClick={() => setConnecting(true)}>{words.projectSetup.repositories.connect}</Button>
         </div>
       )}
 
       {isLoading ? null : repositories.length === 0 && !connecting ? (
-        <EmptyState
-          title="No repositories connected"
-          description="Connect one and commits, branches, pull requests and CI runs that name an issue by key appear on that issue. A commit message can move the issue too: CP-4 #start-progress."
-        />
+        <EmptyState title={words.projectSetup.repositories.empty} description={words.projectSetup.repositories.emptyDetail} />
       ) : (
         repositories.map((repository) => <RepositoryCard key={repository.id} repository={repository} projectKey={projectKey} onRotated={setHanded} />)
       )}
@@ -105,54 +104,54 @@ function ConnectForm({ projectKey, onConnected, onCancel }: { projectKey: string
         {connect.error && <ErrorBanner>{(connect.error as Error).message}</ErrorBanner>}
 
         <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-          <Select id="repo-host" label="Host" value={host} onChange={(e) => setHost(e.target.value as HostKind)}>
+          <Select id="repo-host" label={words.projectSetup.repositories.host} value={host} onChange={(e) => setHost(e.target.value as HostKind)}>
             <option value="github">GitHub</option>
             <option value="gitlab">GitLab</option>
             <option value="gitea">Gitea</option>
           </Select>
           <Field
-            label="Repository"
+            label={words.projectSetup.repositories.repository}
             required
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="acme/portal"
-            hint="As the host names it: owner/name."
+            hint={words.projectSetup.repositories.repositoryHint}
           />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
-            label="Default branch"
+            label={words.projectSetup.repositories.defaultBranch}
             value={defaultBranch}
             onChange={(e) => setDefaultBranch(e.target.value)}
-            hint="Branches made from an issue start here."
+            hint={words.projectSetup.repositories.defaultBranchHint}
           />
           <Field
-            label="API address"
+            label={words.projectSetup.repositories.api}
             value={apiBaseUrl}
             onChange={(e) => setApiBaseUrl(e.target.value)}
             placeholder={apiPlaceholder[host]}
-            hint={host === "gitea" ? "Your Gitea's address, with /api/v1." : "Leave empty for the public host."}
+            hint={host === "gitea" ? words.projectSetup.repositories.apiHintGitea : words.projectSetup.repositories.apiHint}
           />
         </div>
 
         <Field
-          label="Access token"
+          label={words.projectSetup.repositories.token}
           type="password"
           value={accessToken}
           onChange={(e) => setAccessToken(e.target.value)}
-          hint="Optional. With one, the tracker can make branches and comment on pull requests. Without, it only listens."
+          hint={words.projectSetup.repositories.tokenHint}
         />
 
         <Field
           id="repo-transition"
-          label="When a pull request is merged, take"
+          label={words.projectSetup.repositories.onMerge}
           list="merge-transitions"
           value={transitionOnMerge}
           onChange={(e) => setTransitionOnMerge(e.target.value)}
-          placeholder="Leave the issue where it is"
-          hint="The name of a transition, as the workflow calls it."
+          placeholder={words.projectSetup.repositories.onMergePlaceholder}
+          hint={words.projectSetup.repositories.onMergeHint}
         />
         <datalist id="merge-transitions">
           {transitions.map((t) => (
@@ -162,10 +161,10 @@ function ConnectForm({ projectKey, onConnected, onCancel }: { projectKey: string
 
         <div className="flex gap-2">
           <Button type="submit" loading={connect.isPending} disabled={!name.includes("/")}>
-            Connect
+            {words.projectSetup.repositories.connectButton}
           </Button>
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
+            {words.kit.cancel}
           </Button>
         </div>
       </form>
@@ -181,35 +180,35 @@ function WebhookHandout({ connected, onDone }: { connected: Connected; onDone: (
   const { repository, webhookUrl } = connected;
   return (
     <Card className="border-accent/40 bg-accent-subtle/40 p-5" data-testid="webhook-handout">
-      <h2 className="text-sm font-semibold text-ink">Now tell {repository.name} where to send its webhooks</h2>
-      <p className="mt-1 text-sm text-ink-muted">Copy this secret now. It is not shown again; it can only be replaced.</p>
+      <h2 className="text-sm font-semibold text-ink">{words.projectSetup.repositories.handoutTitle(repository.name)}</h2>
+      <p className="mt-1 text-sm text-ink-muted">{words.projectSetup.repositories.handoutDetail}</p>
       <dl className="mt-3 space-y-2 text-sm">
         <div>
-          <dt className="text-ink-muted">Payload URL</dt>
+          <dt className="text-ink-muted">{words.projectSetup.repositories.payload}</dt>
           <dd className="font-mono break-all text-ink" data-testid="webhook-url">
             {webhookUrl}
           </dd>
         </div>
         <div>
-          <dt className="text-ink-muted">Secret</dt>
+          <dt className="text-ink-muted">{words.projectSetup.repositories.secret}</dt>
           <dd className="font-mono break-all text-ink" data-testid="webhook-secret">
             {repository.webhookSecret}
           </dd>
         </div>
         <div>
-          <dt className="text-ink-muted">Events</dt>
+          <dt className="text-ink-muted">{words.projectSetup.repositories.events}</dt>
           <dd className="text-ink">
             {repository.host === "gitlab"
-              ? "Push, merge request and pipeline events, content type JSON."
+              ? words.projectSetup.repositories.gitlabEvents
               : repository.host === "gitea"
-                ? "Push, create, delete and pull request events, content type JSON."
-                : "Pushes, pull requests, check runs and workflow runs, content type application/json."}
+                ? words.projectSetup.repositories.giteaEvents
+                : words.projectSetup.repositories.githubEvents}
           </dd>
         </div>
       </dl>
       <div className="mt-4">
         <Button variant="secondary" size="sm" onClick={onDone}>
-          I have copied it
+          {words.projectSetup.repositories.copied}
         </Button>
       </div>
     </Card>
@@ -234,20 +233,26 @@ function RepositoryCard({ repository, projectKey, onRotated }: { repository: Rep
               {repository.name}
             </a>
             <Tag>{hostLabel(repository.host)}</Tag>
-            <Tag className={cx(repository.hasToken ? "text-success" : "text-ink-subtle")}>{repository.hasToken ? "read and write" : "read only"}</Tag>
+            <Tag className={cx(repository.hasToken ? "text-success" : "text-ink-subtle")}>
+              {repository.hasToken ? words.projectSetup.repositories.readWrite : words.projectSetup.repositories.readOnly}
+            </Tag>
           </h2>
           <p className="mt-0.5 text-sm text-ink-muted">
-            {repository.commitCount} commit{repository.commitCount === 1 ? "" : "s"} · {repository.openPullRequestCount} open {pullWord(repository.host)}
-            {repository.openPullRequestCount === 1 ? "" : "s"} · branches from {repository.defaultBranch}
-            {repository.transitionOnMerge ? ` · merging takes ${repository.transitionOnMerge}` : ""}
+            {words.projectSetup.repositories.summary(
+              repository.commitCount,
+              repository.openPullRequestCount,
+              pullWord(repository.host),
+              repository.defaultBranch,
+            )}
+            {repository.transitionOnMerge ? words.projectSetup.repositories.merging(repository.transitionOnMerge) : ""}
           </p>
         </div>
         <div className="flex shrink-0 gap-1">
           <Button size="sm" variant="secondary" loading={rotate.isPending} onClick={() => rotate.mutate(repository.id, { onSuccess: onRotated })}>
-            Rotate secret
+            {words.projectSetup.repositories.rotate}
           </Button>
           <Button size="sm" variant="ghost" loading={disconnect.isPending} onClick={() => disconnect.mutate(repository.id)}>
-            Disconnect
+            {words.projectSetup.repositories.disconnect}
           </Button>
         </div>
       </div>
@@ -261,18 +266,18 @@ function RepositoryCard({ repository, projectKey, onRotated }: { repository: Rep
       >
         <Field
           id={`token-${repository.id}`}
-          label={repository.hasToken ? "Replace the access token" : "Add an access token"}
+          label={repository.hasToken ? words.projectSetup.repositories.replaceToken : words.projectSetup.repositories.addToken}
           type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
           className="w-72"
         />
         <Button type="submit" size="sm" variant="secondary" loading={update.isPending} disabled={!token.trim()}>
-          Save token
+          {words.projectSetup.repositories.saveToken}
         </Button>
         {repository.hasToken && (
           <Button type="button" size="sm" variant="ghost" onClick={() => update.mutate({ id: repository.id, accessToken: "" })}>
-            Remove token
+            {words.projectSetup.repositories.removeToken}
           </Button>
         )}
       </form>

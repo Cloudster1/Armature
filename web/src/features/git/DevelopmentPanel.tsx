@@ -14,6 +14,7 @@ import {
 import { Button, ErrorBanner, Field, SectionTitle, Select, Tag, cx } from "@/components/ui";
 import { GIT_SHORT_SHA_LENGTH } from "@/config";
 import { RelativeTime } from "@/features/issues/badges";
+import { t } from "@/i18n";
 
 /**
  * What the repositories know about this issue: branches, pull requests with
@@ -35,10 +36,10 @@ export function DevelopmentPanel({ issueKey, projectKey }: { issueKey: string; p
   return (
     <section data-testid="development">
       <div className="mb-2 flex items-center justify-between">
-        <SectionTitle>Development</SectionTitle>
+        <SectionTitle>{t.projectSetup.development.title}</SectionTitle>
         {!branching && (
           <Button size="sm" variant="secondary" onClick={() => setBranching(true)}>
-            Create branch
+            {t.projectSetup.development.createBranch}
           </Button>
         )}
       </div>
@@ -48,9 +49,7 @@ export function DevelopmentPanel({ issueKey, projectKey }: { issueKey: string; p
       )}
 
       {empty ? (
-        <p className="text-sm text-ink-subtle">
-          Nothing yet. A commit, branch or {pullWord(repositories[0]!.host)} that names {issueKey} appears here.
-        </p>
+        <p className="text-sm text-ink-subtle">{t.projectSetup.development.nothingYet(pullWord(repositories[0]!.host), issueKey)}</p>
       ) : (
         <div className="divide-y divide-border rounded-md border border-border bg-surface">
           {pullRequests.map((pr) => (
@@ -101,15 +100,11 @@ function PullStateTag({ state }: { state: "open" | "merged" | "closed" }) {
     merged: "text-epic border-epic/40",
     closed: "text-ink-subtle",
   }[state];
-  return <Tag className={cx("bg-transparent", look)}>{state}</Tag>;
+  return <Tag className={cx("bg-transparent", look)}>{t.projectSetup.development.pullStates[state]}</Tag>;
 }
 
-const ciWords: Record<CIStatus, string> = {
-  pending: "running",
-  success: "passed",
-  failure: "failed",
-  cancelled: "cancelled",
-};
+// Read while drawing, so the words follow the language.
+const ciWords = (status: CIStatus): string => t.projectSetup.development.ci[status];
 
 const ciLook: Record<CIStatus, string> = {
   pending: "bg-status-todo",
@@ -126,11 +121,11 @@ export function CIBadge({ run }: { run: CIRun }) {
       target="_blank"
       rel="noreferrer"
       className="inline-flex shrink-0 items-center gap-1.5 text-xs text-ink-muted hover:text-ink"
-      title={`${run.name}: ${ciWords[run.status]}`}
+      title={`${run.name}: ${ciWords(run.status)}`}
       data-ci={run.status}
     >
       <span aria-hidden="true" className={cx("size-2 rounded-full", ciLook[run.status])} />
-      {run.name} {ciWords[run.status]}
+      {run.name} {ciWords(run.status)}
     </a>
   );
 }
@@ -149,11 +144,11 @@ function WithChecks({ ci, children }: { ci?: CIChecks; children: (badge: ReactNo
       onClick={() => setOpen(!open)}
       aria-expanded={open}
       className="shrink-0"
-      title={open ? "Hide the checks" : "Show the checks"}
+      title={open ? t.projectSetup.development.hideChecks : t.projectSetup.development.showChecks}
       data-ci={ci.status}
       icon={<span aria-hidden="true" className={cx("size-2 rounded-full", ciLook[ci.status])} />}
     >
-      CI {ciWords[ci.status]}
+      {t.projectSetup.development.ciPrefix} {ciWords(ci.status)}
     </Button>
   );
   return (
@@ -174,8 +169,8 @@ function WithChecks({ ci, children }: { ci?: CIChecks; children: (badge: ReactNo
 
 /** What the tag on a branch says: a deleted branch is only kept when it was merged. */
 function branchLabel(branch: Branch): string {
-  if (branch.deletedAt) return "merged, deleted";
-  return branch.mergedAt ? "merged" : "branch";
+  if (branch.deletedAt) return t.projectSetup.development.mergedDeleted;
+  return branch.mergedAt ? t.projectSetup.development.merged : t.projectSetup.development.branch;
 }
 
 /**
@@ -202,15 +197,15 @@ function BranchRow({ branch }: { branch: Branch }) {
         </a>
       )}
       {branch.headSha && (
-        <span className="shrink-0 font-mono text-ink-muted" title="The commit the branch points at" data-branch-head={branch.headSha}>
+        <span className="shrink-0 font-mono text-ink-muted" title={t.projectSetup.development.head} data-branch-head={branch.headSha}>
           {branch.headSha.slice(0, GIT_SHORT_SHA_LENGTH)}
         </span>
       )}
       <span className="shrink-0 text-ink-subtle">
-        {branch.commitCount} commit{branch.commitCount === 1 ? "" : "s"}
+        {t.projectSetup.development.commits(branch.commitCount)}
         {branch.pushedAt && (
           <>
-            {" · pushed "}
+            {t.projectSetup.development.pushed}
             <RelativeTime iso={branch.pushedAt} />
           </>
         )}
@@ -283,38 +278,45 @@ function CreateBranch({
           className="flex flex-wrap items-center gap-2 rounded-md border border-accent/40 bg-accent-subtle/40 px-3 py-2 text-sm"
           data-testid="branch-made"
         >
-          <span className="text-ink-muted">Made on {branch.repository}. To work on it:</span>
+          <span className="text-ink-muted">{t.projectSetup.development.made(branch.repository)}</span>
           <code className="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-ink" data-testid="checkout-command">
             {checkoutCommand(branch.name)}
           </code>
         </div>
       ))}
 
-      <Select id="branch-repository" label="Repository" value={repositoryId} onChange={(e) => choose(e.target.value)}>
+      <Select id="branch-repository" label={t.projectSetup.development.repository} value={repositoryId} onChange={(e) => choose(e.target.value)}>
         {repositories.map((r) => (
           <option key={r.id} value={r.id} disabled={!r.hasToken}>
             {r.name}
-            {!r.hasToken ? " (read only: no access token)" : branchIn(r) ? ` (has ${branchIn(r)!.name})` : ""}
+            {!r.hasToken ? t.projectSetup.development.readOnly : branchIn(r) ? t.projectSetup.development.has(branchIn(r)!.name) : ""}
           </option>
         ))}
       </Select>
       {!repository.hasToken && (
         <p className="text-sm text-ink-subtle" data-testid="no-token">
-          The tracker can only listen to {repository.name}. Add an access token on the repositories page and it can make branches there.
+          {t.projectSetup.development.listensOnly(repository.name)}
         </p>
       )}
 
       <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
-        <Field id="branch-name" label="Branch name" value={name} onChange={(e) => setName(e.target.value)} className="font-mono" autoFocus />
-        <Field id="branch-from" label="Start from" value={from} onChange={(e) => setFrom(e.target.value)} className="font-mono" />
+        <Field
+          id="branch-name"
+          label={t.projectSetup.development.branchName}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="font-mono"
+          autoFocus
+        />
+        <Field id="branch-from" label={t.projectSetup.development.startFrom} value={from} onChange={(e) => setFrom(e.target.value)} className="font-mono" />
       </div>
       {create.error && <ErrorBanner>{(create.error as Error).message}</ErrorBanner>}
       <div className="flex gap-2">
         <Button type="submit" size="sm" loading={create.isPending} disabled={!name.trim() || !repository.hasToken}>
-          Create
+          {t.projectSetup.development.create}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-          {made.length > 0 ? "Done" : "Cancel"}
+          {made.length > 0 ? t.projectSetup.development.done : t.kit.cancel}
         </Button>
       </div>
     </form>

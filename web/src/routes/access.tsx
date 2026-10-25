@@ -8,16 +8,25 @@ import { SecondFactorRequirement } from "@/features/access/SecondFactorRequireme
 import { RoleMatrix } from "@/features/access/RoleMatrix";
 import { RoleTable } from "@/features/access/RoleTable";
 import { Page, PageHeader, SectionTitle, TabPanel, Tabs, isPageOffset } from "@/components/ui";
+import { t } from "@/i18n";
 
-const tabs = [
-  { id: "roles", label: "Roles" },
-  { id: "matrix", label: "Matrix" },
-  { id: "members", label: "Members" },
-  { id: "groups", label: "Groups" },
-  { id: "sign-in", label: "Single sign-on" },
-] as const;
+const tabs = [{ id: "roles" }, { id: "matrix" }, { id: "members" }, { id: "groups" }, { id: "sign-in" }] as const;
 
 type Tab = (typeof tabs)[number]["id"];
+
+// The tests find a tab by these words, whatever language the page speaks.
+const tabHooks: Record<Tab, string> = { roles: "Roles", matrix: "Matrix", members: "Members", groups: "Groups", "sign-in": "Single sign-on" };
+
+const tabLabel = (tab: Tab): string =>
+  tab === "roles"
+    ? t.access.tabs.roles
+    : tab === "matrix"
+      ? t.access.tabs.matrix
+      : tab === "members"
+        ? t.access.tabs.members
+        : tab === "groups"
+          ? t.access.tabs.groups
+          : t.access.tabs.signIn;
 
 interface AccessSearch extends MembersShown {
   tab?: Tab;
@@ -52,22 +61,22 @@ function AccessPage() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Access"
+        title={t.access.title}
       />
 
       <Tabs
-        label="Access"
+        label={t.access.title}
         value={tab}
         onChange={setTab}
         panelId={panelId}
         className="mb-4"
-        tabs={tabs.map((each) => ({ value: each.id, label: each.label, attrs: { "data-access-tab": each.label } }))}
+        tabs={tabs.map((each) => ({ value: each.id, label: tabLabel(each.id), attrs: { "data-access-tab": tabHooks[each.id] } }))}
       />
 
-      <TabPanel id={panelId} label={tabs.find((each) => each.id === tab)?.label}>
+      <TabPanel id={panelId} label={tabLabel(tab)}>
         {tab === "roles" && <RoleTable />}
         {tab === "matrix" && <RoleMatrix />}
         {tab === "members" && <MemberList q={q} offset={offset} show={showMembers} />}
@@ -76,7 +85,7 @@ function AccessPage() {
           <div className="space-y-4">
             <SecondFactorRequirement />
             <section>
-              <SectionTitle className="mb-2">Single sign-on</SectionTitle>
+              <SectionTitle className="mb-2">{t.access.tabs.signIn}</SectionTitle>
               <ProviderSettings />
             </section>
           </div>

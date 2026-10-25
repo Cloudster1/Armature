@@ -51,13 +51,13 @@ function ProjectSettingsPage() {
   if (!canAdminister(access, projectKey)) {
     return (
       <Page width="narrow">
-        <EmptyState title="Only the project's administrators change its settings" description="Ask one of them, or ask for the role." />
+        <EmptyState title={t.projectSetup.settings.notAdmin} description={t.projectSetup.settings.notAdminDetail} />
       </Page>
     );
   }
 
   const archived = Boolean(project.archivedAt);
-  const restoreProject = () => restore.mutate(projectKey, { onSuccess: () => toast.success(`Restored ${project.name}`) });
+  const restoreProject = () => restore.mutate(projectKey, { onSuccess: () => toast.success(t.projectSetup.settings.restored(project.name)) });
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -70,7 +70,7 @@ function ProjectSettingsPage() {
         docsUrl: docsUrl.trim(),
         docsLabel: docsUrl.trim() ? docsLabel.trim() : "",
       },
-      { onSuccess: () => toast.success("Project settings saved") },
+      { onSuccess: () => toast.success(t.projectSetup.settings.saved) },
     );
   }
 
@@ -94,9 +94,9 @@ function ProjectSettingsPage() {
           className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink"
           data-archived-notice=""
         >
-          <span>{project.name} is archived. Restore it to change its settings.</span>
+          <span>{t.projectSetup.settings.archived(project.name)}</span>
           <Button size="sm" variant="secondary" loading={restore.isPending} onClick={restoreProject} data-action="restore-project">
-            Restore project
+            {t.projectSetup.settings.restore}
           </Button>
         </div>
       )}
@@ -111,56 +111,54 @@ function ProjectSettingsPage() {
         <Card className="p-5">
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
             {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
-            <Field label="Project name" required value={name} onChange={(e) => setField("name", e.target.value)} />
+            <Field label={t.projectSetup.settings.name} required value={name} onChange={(e) => setField("name", e.target.value)} />
             <Field
-              label="Description"
+              label={t.projectSetup.settings.description}
               rows={3}
               value={description}
               onChange={(e) => setField("description", e.target.value)}
-              placeholder="What the project is for, in a sentence."
+              placeholder={t.projectSetup.settings.descriptionPlaceholder}
             />
             <PersonPicker
-              label="Lead"
+              label={t.projectSetup.settings.lead}
               value={leadId}
               onChange={(id) => setField("leadId", id)}
-              none="Nobody in particular"
+              none={t.projectSetup.settings.nobody}
               staff
               selected={project.leadId ? { id: project.leadId, name: project.leadName ?? "" } : null}
-              hint="A person to ask; nothing is refused on it."
+              hint={t.projectSetup.settings.leadHint}
             />
             <Field
-              label="Documentation"
+              label={t.projectSetup.settings.docs}
               type="url"
               value={docsUrl}
               onChange={(e) => setField("docsUrl", e.target.value)}
               placeholder="https://wiki.example.com/spaces/team"
-              hint="Where the project's docs live. The sidebar links to it; leave it empty for none."
+              hint={t.projectSetup.settings.docsHint}
               error={fieldErrors.docsUrl}
             />
             <Field
-              label="Link name"
+              label={t.projectSetup.settings.linkName}
               value={docsLabel}
               onChange={(e) => setField("docsLabel", e.target.value)}
-              placeholder="Docs"
+              placeholder={t.projectSetup.settings.linkNamePlaceholder}
               maxLength={DOCS_LABEL_MAX_LENGTH}
               disabled={!docsUrl.trim()}
               error={fieldErrors.docsLabel}
             />
             <div className="flex items-center gap-3">
               <Button type="submit" loading={update.isPending} disabled={!name.trim()}>
-                Save changes
+                {t.projectSetup.settings.save}
               </Button>
-              <span className="text-sm text-ink-subtle">The key {projectKey} does not change; every issue carries it.</span>
+              <span className="text-sm text-ink-subtle">{t.projectSetup.settings.keyStays(projectKey)}</span>
             </div>
           </form>
         </Card>
 
         <section className="mt-8">
-          <SectionTitle className="mb-2">Features</SectionTitle>
+          <SectionTitle className="mb-2">{t.projectSetup.settings.features}</SectionTitle>
           <Card className="p-5">
-            <p className="mb-3 text-sm text-ink-muted">
-              The pages this project has. Its template chose them; turning one off hides the page and refuses new entries, and deletes nothing.
-            </p>
+            <p className="mb-3 text-sm text-ink-muted">{t.projectSetup.settings.featuresDetail}</p>
             <ul className="grid gap-2 sm:grid-cols-2">
               {FEATURES.filter((f) => !f.deskOnly || project.kind === "service").map((f) => {
                 const on = project.features.includes(f.key);
@@ -174,7 +172,10 @@ function ProjectSettingsPage() {
                       disabled={toggleFeatures.isPending}
                       onChange={(next) => {
                         const features = next ? [...project.features, f.key] : project.features.filter((each) => each !== f.key);
-                        toggleFeatures.mutate({ key: projectKey, features }, { onSuccess: () => toast.success(`${f.label} turned ${next ? "on" : "off"}`) });
+                        toggleFeatures.mutate(
+                          { key: projectKey, features },
+                          { onSuccess: () => toast.success(next ? t.projectSetup.settings.turnedOn(f.label) : t.projectSetup.settings.turnedOff(f.label)) },
+                        );
                       }}
                     />
                   </li>
@@ -196,22 +197,23 @@ function ProjectSettingsPage() {
 
       {!archived && (
         <section className="mt-8">
-          <SectionTitle className="mb-2">Archive</SectionTitle>
+          <SectionTitle className="mb-2">{t.projectSetup.settings.archive}</SectionTitle>
           <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-            <p className="text-sm text-ink-muted">
-              Archiving takes the project and its issues out of every list. Nothing is deleted, and it can be shown again with the archived ones and restored.
-            </p>
+            <p className="text-sm text-ink-muted">{t.projectSetup.settings.archiveDetail}</p>
             <Button
               variant="danger"
               loading={archive.isPending}
               data-action="archive-project"
               onClick={() =>
                 archive.mutate(projectKey, {
-                  onSuccess: () => toast.success(`Archived ${project.name}`, { action: { label: "Undo", onClick: restoreProject } }),
+                  onSuccess: () =>
+                    toast.success(t.projectSetup.settings.archivedToast(project.name), {
+                      action: { label: t.projectSetup.settings.undo, onClick: restoreProject },
+                    }),
                 })
               }
             >
-              Archive project
+              {t.projectSetup.settings.archiveProject}
             </Button>
           </Card>
           {archive.error && (

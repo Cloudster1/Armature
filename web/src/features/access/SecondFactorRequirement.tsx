@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { useRequireSecondFactor, useSecondFactorRule, type SecondFactorRule } from "@/api/secondFactor";
 import { Button, Card, ErrorBanner, SectionTitle, Select, useToast } from "@/components/ui";
+import { t } from "@/i18n";
 
-const ruleWords: Record<SecondFactorRule, string> = { off: "Off", admins: "For administrators", everyone: "For everyone" };
+const RULES: SecondFactorRule[] = ["off", "admins", "everyone"];
+
+const ruleWord = (rule: SecondFactorRule): string =>
+  rule === "off" ? t.access.secondFactor.off : rule === "admins" ? t.access.secondFactor.admins : t.access.secondFactor.everyone;
 
 /**
  * Who must have two-step sign-in. Somebody without it is held to setting it up;
@@ -17,19 +21,16 @@ export function SecondFactorRequirement() {
 
   return (
     <section data-second-factor-requirement>
-      <SectionTitle className="mb-2">Two-step sign-in</SectionTitle>
+      <SectionTitle className="mb-2">{t.access.secondFactor.title}</SectionTitle>
       <Card className="space-y-4 p-4">
-        <p className="text-sm text-ink-muted">
-          Who must sign in with a code from an app on their phone as well as a password. Somebody without one is held to setting it up the next time they open
-          Armature. Signing in through the identity provider below relies on the provider's own second step.
-        </p>
+        <p className="text-sm text-ink-muted">{t.access.secondFactor.explain}</p>
         {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
         {current && (
           <>
-            <Select label="Require two-step sign-in" value={draft ?? current} onChange={(e) => setDraft(e.target.value as SecondFactorRule)}>
-              {(Object.keys(ruleWords) as SecondFactorRule[]).map((rule) => (
+            <Select label={t.access.secondFactor.require} value={draft ?? current} onChange={(e) => setDraft(e.target.value as SecondFactorRule)}>
+              {RULES.map((rule) => (
                 <option key={rule} value={rule}>
-                  {ruleWords[rule]}
+                  {ruleWord(rule)}
                 </option>
               ))}
             </Select>
@@ -43,12 +44,12 @@ export function SecondFactorRequirement() {
                   save.mutate(draft, {
                     onSuccess: () => {
                       setDraft(null);
-                      toast.success("Two-step sign-in requirement saved");
+                      toast.success(t.access.secondFactor.saved);
                     },
                   });
               }}
             >
-              Save
+              {t.access.save}
             </Button>
           </>
         )}

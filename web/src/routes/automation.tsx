@@ -6,6 +6,7 @@ import { canAdminister, useAccess } from "@/api/access";
 import { useMe } from "@/api/auth";
 import { Page, PageHeader } from "@/components/ui";
 import { RulesPanel } from "@/features/automation/RulesPanel";
+import { t } from "@/i18n";
 
 /** A project's rules: what it does by itself. */
 export const automationRoute = createRoute({
@@ -33,8 +34,8 @@ function ProjectAutomationPage() {
             {data?.project?.name ?? projectKey}
           </Link>
         }
-        title="Automation"
-        meta="Rules that run when something happens here"
+        title={t.projectSetup.automation.title}
+        meta={t.projectSetup.automation.projectMeta}
       />
       <RulesPanel projectKey={projectKey} canEdit={Boolean(canAdminister(access, projectKey))} />
     </Page>
@@ -49,11 +50,11 @@ function OrgAutomationPage() {
       <PageHeader
         crumb={
           <Link to="/settings" className="hover:text-ink">
-            Settings
+            {t.settings.crumb}
           </Link>
         }
-        title="Automation"
-        meta={data?.principal?.installation?.name ? `Rules across every project of ${data.principal.installation.name}` : undefined}
+        title={t.projectSetup.automation.title}
+        meta={data?.principal?.installation?.name ? t.projectSetup.automation.orgMeta(data.principal.installation.name) : undefined}
       />
       <RulesPanel canEdit={Boolean(access?.canAdministerOrg)} />
     </Page>

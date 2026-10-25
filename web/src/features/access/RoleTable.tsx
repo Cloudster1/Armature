@@ -42,8 +42,8 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <ListSearch
-          aria-label="Find grants"
-          placeholder="Find by person, group or project"
+          aria-label={t.access.grants.find}
+          placeholder={t.access.grants.findPlaceholder}
           value={q}
           onChange={(text) => {
             setQ(text);
@@ -53,7 +53,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
           data-assignment-search=""
         />
         <SelectInput
-          aria-label="Only this role"
+          aria-label={t.access.grants.onlyRole}
           controlSize="sm"
           value={role}
           onChange={(event) => {
@@ -61,7 +61,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
             setOffset(0);
           }}
         >
-          <option value="">Every role</option>
+          <option value="">{t.access.grants.everyRole}</option>
           {(roleData?.roles ?? []).map((each) => (
             <option key={each.role} value={each.role}>
               {each.name}
@@ -71,24 +71,21 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
         {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, assignments.length, t.kit.counted.grant)}</span>}
       </div>
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading...</p>}
+      {isLoading && <p className="text-sm text-ink-muted">{t.access.loading}</p>}
 
       {!isLoading && assignments.length === 0 && narrowed ? (
-        <EmptyState title="No grant matches that" description="Try part of a name or a project key, another role, or clear the search." />
+        <EmptyState title={t.access.grants.noMatch} description={t.access.grants.noMatchDetail} />
       ) : !isLoading && assignments.length === 0 ? (
-        <EmptyState
-          title="Nobody has been given anything yet"
-          description="Roles can be given to a person or to a group, over this project or over all projects."
-        />
+        <EmptyState title={t.access.grants.empty} description={t.access.grants.emptyDetail} />
       ) : (
         <Table data-testid="role-assignments">
           <thead>
             <tr>
-              <Th>Who</Th>
-              <Th>Role</Th>
-              <Th>Where</Th>
+              <Th>{t.access.grants.who}</Th>
+              <Th>{t.access.grants.role}</Th>
+              <Th>{t.access.grants.where}</Th>
               <Th>
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">{t.access.actions}</span>
               </Th>
             </tr>
           </thead>
@@ -101,7 +98,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
                   (await confirm({
                     noun: t.kit.confirm.things.role,
                     verb: t.kit.confirm.verbs.revoke,
-                    body: `${roleName(assignment.role)} is taken away at once; what it allowed is refused from the next request.`,
+                    body: t.access.grants.revokeBody(roleName(assignment.role)),
                   })) && revoke.mutate(assignment.id)
                 }
               />
@@ -109,7 +106,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
           </tbody>
         </Table>
       )}
-      {data && <Pager label="Grant pages" total={data.total} offset={data.offset} pageSize={ROLE_ASSIGNMENT_PAGE_SIZE} onChange={setOffset} />}
+      {data && <Pager label={t.access.grants.pages} total={data.total} offset={data.offset} pageSize={ROLE_ASSIGNMENT_PAGE_SIZE} onChange={setOffset} />}
     </div>
   );
 }
@@ -121,13 +118,13 @@ function AssignmentRow({ assignment, onRevoke }: { assignment: Assignment; onRev
     <tr data-assignment={assignment.id}>
       <Td className="w-full min-w-48">
         <span className="text-ink">{assignment.groupName || assignment.userName}</span>
-        {toGroup && <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs text-ink-muted">group</span>}
+        {toGroup && <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs text-ink-muted">{t.access.grants.group}</span>}
       </Td>
       <Td className="whitespace-nowrap text-ink">{roleName(assignment.role)}</Td>
-      <Td className="whitespace-nowrap text-ink-muted">{assignment.projectKey || "Every project"}</Td>
+      <Td className="whitespace-nowrap text-ink-muted">{assignment.projectKey || t.access.grants.everyProject}</Td>
       <Td className="text-right">
         <Button size="sm" variant="ghost" onClick={onRevoke}>
-          Revoke
+          {t.access.grants.revoke}
         </Button>
       </Td>
     </tr>
@@ -167,17 +164,17 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
         {/* A portal customer holds no seat, so there is nothing to give them. */}
         <PersonPicker
-          label="Who"
-          aria-label="Who to grant to"
-          none="Choose a person or a group"
+          label={t.access.grants.who}
+          aria-label={t.access.grants.whoLabel}
+          none={t.access.grants.choose}
           staff
-          group="People"
+          group={t.access.grants.people}
           optionValue={(person) => `user:${person.id}`}
           value={subject}
           onChange={setSubject}
         >
           {groups.length > 0 && (
-            <optgroup label="Groups">
+            <optgroup label={t.access.grants.groups}>
               {groups.map((group) => (
                 <option key={group.id} value={`group:${group.id}`}>
                   {group.name}
@@ -187,7 +184,7 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
           )}
         </PersonPicker>
 
-        <Select label="Role" aria-label="Role" value={role} onChange={(event) => setRole(event.target.value as Role)}>
+        <Select label={t.access.grants.role} aria-label={t.access.grants.role} value={role} onChange={(event) => setRole(event.target.value as Role)}>
           {roles.map((each) => (
             <option key={each.role} value={each.role}>
               {each.name}
@@ -197,9 +194,9 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
 
         <div className={cx(scopeIsFixed && "opacity-55")}>
           <ProjectPicker
-            label="Where"
-            aria-label="Where the role applies"
-            none="Every project"
+            label={t.access.grants.where}
+            aria-label={t.access.grants.whereLabel}
+            none={t.access.grants.everyProject}
             value={scopeIsFixed ? "" : scope}
             disabled={scopeIsFixed || Boolean(projectKey)}
             onChange={setScope}
@@ -207,15 +204,11 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
         </div>
 
         <Button disabled={!subject} loading={grant.isPending} onClick={submit}>
-          Grant
+          {t.access.grants.grant}
         </Button>
       </div>
 
-      {chosen && (
-        <p className="text-xs text-ink-subtle">
-          {chosen.name} can {chosen.permissions.map(permissionWords).join(", ")}.
-        </p>
-      )}
+      {chosen && <p className="text-xs text-ink-subtle">{t.access.grants.can(chosen.name, chosen.permissions.map(permissionWords).join(", "))}</p>}
       {grant.error && <ErrorBanner>{(grant.error as Error).message}</ErrorBanner>}
     </Card>
   );

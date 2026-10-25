@@ -6,6 +6,7 @@ import type { ControlSize } from "@/components/ui/Button";
 import { LABEL_SEARCH_DELAY_MS } from "@/config";
 import { useDebounced } from "@/lib/debounce";
 import { LABEL_CLASSES, LabelChip } from "./LabelChip";
+import { t } from "@/i18n";
 
 /** One row under the box: a label the server has, or the typed word to create. */
 interface Row {
@@ -27,7 +28,7 @@ export function LabelInput({
   known = [],
   id,
   "aria-label": ariaLabel,
-  placeholder = "Type a label",
+  placeholder = t.looks.labels.typeLabel,
   controlSize = "md",
   align = "start",
   commitOnBlur = create,
@@ -174,7 +175,7 @@ export function LabelInput({
         <div
           id={listId}
           role="listbox"
-          aria-label="Labels"
+          aria-label={t.looks.labels.suggestions}
           data-label-suggestions
           className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 text-left shadow-2"
         >
@@ -203,7 +204,7 @@ export function LabelInput({
                 </>
               ) : (
                 <span className="truncate">
-                  Create <span className="font-medium text-ink">{row.name}</span>
+                  {t.looks.labels.create} <span className="font-medium text-ink">{row.name}</span>
                 </span>
               )}
             </div>

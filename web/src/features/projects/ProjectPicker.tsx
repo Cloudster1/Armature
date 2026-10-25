@@ -3,6 +3,7 @@ import { useProject, useProjectSearch } from "@/api/projects";
 import { Input, Labelled, SelectInput, fieldId } from "@/components/ui";
 import { PROJECT_SEARCH_DELAY_MS } from "@/config";
 import { useDebounced } from "@/lib/debounce";
+import { t } from "@/i18n";
 
 interface ProjectPickerProps {
   label: string;
@@ -35,13 +36,13 @@ export function ProjectPicker({ label, value, onChange, none, exclude = [], disa
   const nothing = Boolean(settled) && data !== undefined && found.length === 0;
 
   return (
-    <Labelled id={selectId} label={label} hint={nothing ? "No project matches that. Try part of its key or its name." : hint} className={className}>
+    <Labelled id={selectId} label={label} hint={nothing ? t.projectSetup.picker.nothing : hint} className={className}>
       <div className="space-y-1.5" data-project-picker={selectId}>
         <Input
           type="search"
           controlSize="sm"
-          aria-label={`Find a project for ${ariaLabel ?? label}`}
-          placeholder="Find by key or name"
+          aria-label={t.projectSetup.picker.find(ariaLabel ?? label)}
+          placeholder={t.projectSetup.picker.placeholder}
           value={words}
           disabled={disabled}
           onChange={(event) => setWords(event.target.value)}
@@ -58,7 +59,7 @@ export function ProjectPicker({ label, value, onChange, none, exclude = [], disa
           onChange={(event) => onChange(event.target.value)}
           className="w-full"
         >
-          <option value="">{none ?? "Choose a project"}</option>
+          <option value="">{none ?? t.projectSetup.picker.choose}</option>
           {options.map((project) => (
             <option key={project.key} value={project.key}>
               {project.name} ({project.key})
