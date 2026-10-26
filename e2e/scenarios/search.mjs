@@ -8,6 +8,7 @@ import {
   expect,
   goto,
   pickSuggestion,
+  settled,
   issueRows,
   planFigure,
   planRows,
@@ -106,6 +107,9 @@ async function showsRange(page, range, rows) {
 }
 
 async function nextPage(page) {
+  // The bulk bar above the pager grows as its choices load, moving the button;
+  // a click aimed before that lands on the bar.
+  await settled(page);
   await page.click(`${PAGER} button[aria-label="Next page"]`);
 }
 
