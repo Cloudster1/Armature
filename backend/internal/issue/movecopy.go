@@ -141,11 +141,27 @@ type MoveInput struct {
 	// StatusID is the status in the target project's workflow; nil keeps the
 	// current one when that workflow has it, and is refused otherwise.
 	StatusID *uuid.UUID
+	// Statuses maps a status the issue or one under it is in to the one it takes
+	// there; a status left out is kept. A bulk move sends one map for them all.
+	Statuses map[uuid.UUID]uuid.UUID
+}
+
+// KeyChange is one issue a move gave a new key.
+type KeyChange struct {
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 // ErrMoveNeedsStatus is returned when the target workflow does not have the
 // issue's status and none was chosen.
 var ErrMoveNeedsStatus = errors.New("the target workflow does not have this status; choose one")
+
+// ErrSubtaskMovesWithParent and ErrStaysWithParent refuse moving what its
+// parent carries; a bulk move that also moves the parent counts them as moved.
+var (
+	ErrSubtaskMovesWithParent = errors.New("a subtask moves with its parent; move the parent")
+	ErrStaysWithParent        = errors.New("an issue under a parent stays with it; take it out of the hierarchy first")
+)
 
 // Move puts an issue in another project. It keeps its id, its history, its
 // comments and its files; it gets the project's next key and remembers the
@@ -155,99 +171,121 @@ var ErrMoveNeedsStatus = errors.New("the target workflow does not have this stat
 func (s *Service) Move(ctx context.Context, key string, in MoveInput, actor Actor) (*Issue, db.LSN, error) {
 	var moved *Issue
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		projectKey, num, err := ParseKey(key)
-		if err != nil {
-			return err
-		}
-		before, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
-		if err != nil {
-			return err
-		}
-		if before.Type.IsSubtask {
-			return errors.New("a subtask moves with its parent; move the parent")
-		}
-		if before.ParentID != nil {
-			return errors.New("an issue under a parent stays with it; take it out of the hierarchy first")
-		}
-		var (
-			targetID  uuid.UUID
-			targetKey string
-			archived  bool
-		)
-		err = tx.QueryRow(ctx, `SELECT id, key, archived_at IS NOT NULL FROM project WHERE key = $1`, project.NormalizeKey(in.ProjectKey)).Scan(&targetID, &targetKey, &archived)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return project.ErrNotFound
-		}
-		if err != nil {
-			return err
-		}
-		if archived {
-			return project.ErrArchived
-		}
-		if targetID == before.ProjectID {
-			return errors.New("the issue is already in that project")
-		}
-
-		// The status it lands in: its own when the target workflow has it,
-		// else the one chosen, which has to be in that workflow.
-		wf, err := s.workflows.ForIssueType(ctx, tx, targetID, before.Type.ID)
-		if err != nil {
-			return err
-		}
-		statusID := before.Status.ID
-		if in.StatusID != nil {
-			statusID = *in.StatusID
-		}
-		has := false
-		var statusName string
-		for _, step := range wf.Steps {
-			if step.Status.ID == statusID {
-				has, statusName = true, step.Status.Name
-			}
-		}
-		if !has {
-			return ErrMoveNeedsStatus
-		}
-
-		// Everything under it comes along, so all of it is judged before any
-		// row is written: a refusal leaves both projects as they were.
-		target := moveTarget{id: targetID, key: targetKey}
-		subtree, err := subtreeOf(ctx, tx, before.ID)
-		if err != nil {
-			return err
-		}
-		if err := s.checkDescendants(ctx, tx, before, subtree, target); err != nil {
-			return err
-		}
-		changes, err := s.moveRow(ctx, tx, before, target, statusID, statusName, actor)
-		if err != nil {
-			return err
-		}
-		for i := range subtree {
-			d := &subtree[i]
-			if _, err := s.moveRow(ctx, tx, d, target, d.Status.ID, d.Status.Name, actor); err != nil {
-				return err
-			}
-		}
-		if err := s.insertComment(ctx, tx, before.ID, nil, TextDocument(fmt.Sprintf("Moved from %s.", before.Key)), false); err != nil {
-			return err
-		}
-		moved, err = scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
-		if err != nil {
-			return err
-		}
-		// A desk's clocks belong to the project too, so they follow here.
-		if err := s.tellUpdated(ctx, tx, before, moved, actor); err != nil {
-			return err
-		}
-		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
-			"issueId": moved.ID, "key": moved.Key, "changes": changes, "actorId": actor.UserID, "movedFrom": before.Key,
-		})
+		var err error
+		moved, _, err = s.MoveIn(ctx, tx, key, in, actor)
+		return err
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	return moved, lsn, nil
+}
+
+// MoveIn is Move inside the caller's transaction. It hands back every key it
+// changed, the issue's first, so a bulk move knows what came along.
+func (s *Service) MoveIn(ctx context.Context, tx db.DBTX, key string, in MoveInput, actor Actor) (*Issue, []KeyChange, error) {
+	projectKey, num, err := ParseKey(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	before, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
+	if err != nil {
+		return nil, nil, err
+	}
+	if before.Type.IsSubtask {
+		return nil, nil, ErrSubtaskMovesWithParent
+	}
+	if before.ParentID != nil {
+		return nil, nil, ErrStaysWithParent
+	}
+	var (
+		targetID  uuid.UUID
+		targetKey string
+		archived  bool
+	)
+	err = tx.QueryRow(ctx, `SELECT id, key, archived_at IS NOT NULL FROM project WHERE key = $1`, project.NormalizeKey(in.ProjectKey)).Scan(&targetID, &targetKey, &archived)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil, project.ErrNotFound
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	if archived {
+		return nil, nil, project.ErrArchived
+	}
+	if targetID == before.ProjectID {
+		return nil, nil, errors.New("the issue is already in that project")
+	}
+
+	// The status it lands in: its own when the target workflow has it,
+	// else the one chosen, which has to be in that workflow.
+	wf, err := s.workflows.ForIssueType(ctx, tx, targetID, before.Type.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	statusID := before.Status.ID
+	if to, mapped := in.Statuses[statusID]; mapped {
+		statusID = to
+	}
+	if in.StatusID != nil {
+		statusID = *in.StatusID
+	}
+	has := false
+	var statusName string
+	for _, step := range wf.Steps {
+		if step.Status.ID == statusID {
+			has, statusName = true, step.Status.Name
+		}
+	}
+	if !has && in.Statuses != nil {
+		return nil, nil, fmt.Errorf("%s has no %s status for %s; map %s to one of its statuses", targetKey, before.Status.Name, article(before.Type.Name), before.Status.Name)
+	}
+	if !has {
+		return nil, nil, ErrMoveNeedsStatus
+	}
+
+	// Everything under it comes along, so all of it is judged before any
+	// row is written: a refusal leaves both projects as they were.
+	target := moveTarget{id: targetID, key: targetKey}
+	subtree, err := subtreeOf(ctx, tx, before.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	landing, err := s.checkDescendants(ctx, tx, before, subtree, target, in.Statuses)
+	if err != nil {
+		return nil, nil, err
+	}
+	changes, newKey, err := s.moveRow(ctx, tx, before, target, statusID, statusName, actor)
+	if err != nil {
+		return nil, nil, err
+	}
+	keys := []KeyChange{{From: before.Key, To: newKey}}
+	for i := range subtree {
+		d := &subtree[i]
+		status := landing[d.ID]
+		_, carried, err := s.moveRow(ctx, tx, d, target, status.ID, status.Name, actor)
+		if err != nil {
+			return nil, nil, err
+		}
+		keys = append(keys, KeyChange{From: d.Key, To: carried})
+	}
+	if err := s.insertComment(ctx, tx, before.ID, nil, TextDocument(fmt.Sprintf("Moved from %s.", before.Key)), false); err != nil {
+		return nil, nil, err
+	}
+	moved, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, before.ID))
+	if err != nil {
+		return nil, nil, err
+	}
+	// A desk's clocks belong to the project too, so they follow here.
+	if err := s.tellUpdated(ctx, tx, before, moved, actor); err != nil {
+		return nil, nil, err
+	}
+	if err := events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
+		"issueId": moved.ID, "key": moved.Key, "changes": changes, "actorId": actor.UserID, "movedFrom": before.Key,
+	}); err != nil {
+		return nil, nil, err
+	}
+	return moved, keys, nil
 }
 
 // keepOldKey adds the key an issue is leaving to those it had. A key another

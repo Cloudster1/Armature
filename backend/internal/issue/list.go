@@ -341,33 +341,54 @@ func (f Filter) build() (string, []any) {
 // links and subtasks all cascade, which is why this takes administering the
 // project rather than being something anybody can do by accident.
 func (s *Service) Delete(ctx context.Context, key string, actor Actor) (db.LSN, error) {
-	projectKey, num, err := ParseKey(key)
-	if err != nil {
+	if _, _, err := ParseKey(key); err != nil {
 		return 0, err
 	}
-	if !actor.Perms.Can(perm.ProjectAdminister, projectKey) {
-		return 0, ErrDeleteTakesAdministering
-	}
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		doomed, err := scanIssue(tx.QueryRow(ctx,
-			selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
-		if err != nil {
-			return err
-		}
-		// Observers go first: the attachments an issue carries can only be
-		// read while their rows are still there.
-		for _, o := range s.observers {
-			if err := o.IssueDeleted(ctx, tx, doomed, actor); err != nil {
-				return err
-			}
-		}
-		if _, err := tx.Exec(ctx, `DELETE FROM issue WHERE id = $1`, doomed.ID); err != nil {
-			return err
-		}
-		return events.Emit(ctx, tx, events.TopicIssueDeleted, map[string]any{
-			"issueId": doomed.ID,
-			"key":     doomed.Key,
-			"actorId": actor.UserID,
-		})
+		_, err := s.DeleteIn(ctx, tx, key, actor)
+		return err
 	})
+}
+
+// DeleteIn is Delete inside the caller's transaction. It hands back every key
+// that went, the issue's first, so a bulk delete knows what the cascade took.
+func (s *Service) DeleteIn(ctx context.Context, tx db.DBTX, key string, actor Actor) ([]string, error) {
+	projectKey, num, err := ParseKey(key)
+	if err != nil {
+		return nil, err
+	}
+	if !actor.Perms.Can(perm.ProjectAdminister, projectKey) {
+		return nil, ErrDeleteTakesAdministering
+	}
+	doomed, err := scanIssue(tx.QueryRow(ctx,
+		selectIssue+` WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num))
+	if err != nil {
+		return nil, err
+	}
+	under, err := subtreeOf(ctx, tx, doomed.ID)
+	if err != nil {
+		return nil, err
+	}
+	gone := []string{doomed.Key}
+	for _, d := range under {
+		gone = append(gone, d.Key)
+	}
+	// Observers go first: the attachments an issue carries can only be
+	// read while their rows are still there.
+	for _, o := range s.observers {
+		if err := o.IssueDeleted(ctx, tx, doomed, actor); err != nil {
+			return nil, err
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM issue WHERE id = $1`, doomed.ID); err != nil {
+		return nil, err
+	}
+	if err := events.Emit(ctx, tx, events.TopicIssueDeleted, map[string]any{
+		"issueId": doomed.ID,
+		"key":     doomed.Key,
+		"actorId": actor.UserID,
+	}); err != nil {
+		return nil, err
+	}
+	return gone, nil
 }

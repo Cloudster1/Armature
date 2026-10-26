@@ -127,7 +127,7 @@ func (s *Service) one(ctx context.Context, key string, in Input, actor issue.Act
 			}
 		}
 		if len(in.AddLabels) > 0 {
-			id, _, more, err := s.labels.AddIssueLabelsIn(ctx, tx, key, in.AddLabels)
+			id, _, more, err := s.labels.ChangeIssueLabelsIn(ctx, tx, key, in.AddLabels, nil)
 			if err != nil {
 				return err
 			}
