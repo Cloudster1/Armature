@@ -6,6 +6,7 @@ import { CalendarDays } from "./CalendarDays";
 
 const setDays = vi.fn();
 const importDays = vi.fn();
+const propose = vi.fn();
 const calendar = {
   id: "c1",
   name: "Germany",
@@ -23,6 +24,7 @@ vi.mock("@/api/availability", () => ({
   useHolidayCalendar: () => ({ data: { calendar }, error: null }),
   useSetHolidays: () => ({ mutate: setDays, isPending: false, error: null }),
   useImportHolidays: () => ({ mutate: importDays, isPending: false, error: null }),
+  useProposeNextYear: () => ({ mutate: propose, isPending: false, error: null }),
 }));
 vi.mock("@/lib/format", () => ({ useFormat: () => ({ locale: "en-GB" }) }));
 vi.mock("@/components/ui", async () => {
@@ -67,6 +69,68 @@ describe("a calendar's days off", () => {
     const file = new File(["BEGIN:VCALENDAR"], "holidays.ics", { type: "text/calendar" });
     fireEvent.change(container.querySelector("[data-holiday-file]")!, { target: { files: [file] } });
     expect(importDays).toHaveBeenCalledWith({ id: "c1", file }, expect.anything());
+  });
+
+  describe("copied into next year", () => {
+    const proposal = {
+      from: 2026,
+      to: 2027,
+      days: [
+        { day: "2027-12-24", name: "Heiligabend", halfDay: true },
+        { day: "2027-12-25", name: "Erster Weihnachtstag", halfDay: false },
+      ],
+      skipped: [],
+    };
+    const answer = (with_: typeof proposal) => {
+      const [, options] = propose.mock.calls.at(-1)!;
+      act(() => options.onSuccess({ proposal: with_ }));
+    };
+    const shownDays = () => [...document.querySelectorAll("[data-holiday-day]")].map((row) => row.getAttribute("data-holiday-day"));
+
+    it("offers the latest year to an administrator only", () => {
+      renderDays(true);
+      expect(screen.getByRole("button", { name: "Copy 2026 to 2027" })).toBeInTheDocument();
+    });
+
+    it("is not offered to somebody who cannot change the days", () => {
+      renderDays(false);
+      expect(screen.queryByRole("button", { name: "Copy 2026 to 2027" })).toBeNull();
+    });
+
+    it("lands in the table unsaved, for the administrator to correct and save", async () => {
+      renderDays(true);
+      await userEvent.click(screen.getByRole("button", { name: "Copy 2026 to 2027" }));
+      expect(propose).toHaveBeenCalledWith("c1", expect.anything());
+      answer(proposal);
+
+      expect(shownDays()).toEqual(["2026-12-24", "2026-12-25", "2027-12-24", "2027-12-25"]);
+      expect(screen.getByText(/Copied 2 days from 2026 to 2027/)).toBeInTheDocument();
+      expect(setDays).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole("button", { name: "Save days" }));
+      expect(setDays).toHaveBeenCalledWith({ id: "c1", days: [...calendar.days, ...proposal.days] }, expect.anything());
+    });
+
+    it("keeps a typed day and never takes its date", async () => {
+      renderDays(true);
+      await userEvent.click(screen.getByRole("button", { name: "Add a day" }));
+      const dates = screen.getAllByLabelText<HTMLInputElement>("Day");
+      fireEvent.change(dates.at(-1)!, { target: { value: "2027-12-24" } });
+      await userEvent.type(screen.getAllByLabelText("Name").at(-1)!, "Betriebsruhe");
+      await userEvent.click(screen.getByRole("button", { name: "Copy 2026 to 2027" }));
+      answer(proposal);
+
+      const names = screen.getAllByLabelText<HTMLInputElement>("Name").map((input) => input.value);
+      expect(names).toEqual(["Heiligabend", "Erster Weihnachtstag", "Betriebsruhe", "Erster Weihnachtstag"]);
+      expect(screen.getByText(/Copied 1 day from 2026 to 2027/)).toBeInTheDocument();
+    });
+
+    it("says when there was nothing left to copy, and names a skipped 29 February", async () => {
+      renderDays(true);
+      await userEvent.click(screen.getByRole("button", { name: "Copy 2026 to 2027" }));
+      answer({ ...proposal, days: [], skipped: [{ day: "2026-02-29", name: "Leap", halfDay: false }] as never });
+      expect(screen.getByText("2027 already holds every day there was to copy. 29 February was not copied: 2027 has no such day.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Save days" })).toBeNull();
+    });
   });
 
   describe("while the table holds unsaved edits", () => {

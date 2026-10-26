@@ -52,6 +52,30 @@ serialScenario("an administrator imports an .ics and sees its days on the defaul
   }
 });
 
+// The copy lands in the table unsaved; only Save writes it, and a reload shows it kept.
+serialScenario("an administrator copies the latest year of holidays into the next and saves it", async ({ page }) => {
+  await signUp(page);
+  const putBack = await keepHolidays();
+  try {
+    await importHolidays(page);
+    await page.waitForSelector('[data-action="copy-next-year"]', { timeout: WAIT });
+    expect.equal(await textOf(page, '[data-action="copy-next-year"]'), "Copy 2027 to 2028", "the latest year held is the one copied");
+    await press(page, '[data-action="copy-next-year"]');
+    await page.waitForSelector('[data-holiday-day="2028-01-01"]', { timeout: WAIT });
+    expect.equal(await page.$('[data-holiday-day="2027-12-24"]'), null, "only the latest year is carried");
+    await page.waitForSelector('[data-holiday-copied="1"]', { timeout: WAIT });
+
+    await press(page, '[data-action="save-holidays"]');
+    await page.waitForFunction(() => !document.querySelector('[data-action="save-holidays"]'), { timeout: WAIT });
+    await reload(page);
+    await page.waitForSelector('[data-holiday-day="2028-01-01"]', { timeout: WAIT });
+    const name = await page.$eval('[data-holiday-day="2028-01-01"] input[aria-label="Name"]', (el) => el.value);
+    expect.equal(name, "New Year's Day", "the copied day keeps its name");
+  } finally {
+    await putBack();
+  }
+});
+
 scenario("an administrator sets somebody's working week and they read it on their profile", async ({ page }) => {
   await signUp(page);
   const who = unique("parttime");

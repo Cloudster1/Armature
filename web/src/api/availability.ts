@@ -102,6 +102,22 @@ export function useImportHolidays() {
   });
 }
 
+/** A calendar's latest year on the same dates a year on, for the table to show before anything is saved. */
+export interface NextYearProposal {
+  from: number;
+  to: number;
+  days: Holiday[];
+  /** Days with no date next year: 29 February. */
+  skipped: Holiday[];
+}
+
+/** Asks for next year's days without saving them; nothing to invalidate. */
+export function useProposeNextYear() {
+  return useMutation({
+    mutationFn: (id: string) => request<{ proposal: NextYearProposal }>(`/holiday-calendars/${id}/next-year`),
+  });
+}
+
 export function useWorkingWeek(userId: string | undefined) {
   return useQuery({
     queryKey: [...workingWeekQueryKey, userId],

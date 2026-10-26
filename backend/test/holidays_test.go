@@ -194,6 +194,69 @@ func TestHolidayCalendarsAreTheAdministratorsToKeep(t *testing.T) {
 	})
 }
 
+// Next year is proposed, never written: the calendar is the same until the
+// administrator saves the corrected list, and only they are offered it.
+func TestNextYearsHolidaysAreProposedForTheAdministratorToSave(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.client(t)
+	owner.signIn(t, h.person(t, "nextyear", auth.RoleOwner))
+	member, _ := api.localMember(t, h, owner, "member")
+
+	id := obj(t, want(t, owner.post("/api/v1/holiday-calendars", map[string]any{"name": h.name(t, "Carried")}), http.StatusCreated, "make a calendar"), "calendar")["id"].(string)
+	path := "/api/v1/holiday-calendars/" + id + "/next-year"
+	empty := want(t, owner.get(path), http.StatusUnprocessableEntity, "an empty calendar")
+	if message, _ := empty.Error()["message"].(string); !strings.Contains(message, "no days to copy") || !strings.HasSuffix(message, ".") {
+		t.Errorf("an empty calendar refused with %q", message)
+	}
+
+	held := []map[string]any{
+		{"day": "2027-12-24", "name": "Heiligabend", "halfDay": true},
+		{"day": "2027-12-25", "name": "Weihnachten"},
+		{"day": "2028-02-29", "name": "Schalttag"},
+		{"day": "2028-12-25", "name": "Already chosen"},
+		{"day": "2028-12-26", "name": "Zweiter Weihnachtstag"},
+	}
+	want(t, owner.put("/api/v1/holiday-calendars/"+id+"/days", map[string]any{"days": held}), http.StatusOK, "set the days")
+
+	proposal := obj(t, want(t, owner.get(path), http.StatusOK, "propose next year"), "proposal")
+	if proposal["from"] != float64(2028) || proposal["to"] != float64(2029) {
+		t.Fatalf("proposal = %v, want the latest year, 2028, carried to 2029", proposal)
+	}
+	days := proposal["days"].([]any)
+	if len(days) != 2 || days[0].(map[string]any)["day"] != "2029-12-25" || days[0].(map[string]any)["name"] != "Already chosen" ||
+		days[1].(map[string]any)["day"] != "2029-12-26" {
+		t.Errorf("days = %v, want 2028's two December days a year on", days)
+	}
+	if skipped := proposal["skipped"].([]any); len(skipped) != 1 || skipped[0].(map[string]any)["day"] != "2028-02-29" {
+		t.Errorf("skipped = %v, want 29 February", skipped)
+	}
+	if read := obj(t, owner.get("/api/v1/holiday-calendars/"+id), "calendar"); read["dayCount"] != float64(len(held)) {
+		t.Errorf("a proposal changed the calendar: %v", read)
+	}
+
+	saved := obj(t, want(t, owner.put("/api/v1/holiday-calendars/"+id+"/days", map[string]any{"days": append(anyList(held), days...)}), http.StatusOK, "save the proposal"), "calendar")
+	if saved["dayCount"] != float64(len(held)+len(days)) {
+		t.Errorf("saved = %v, want next year's days added", saved)
+	}
+	if again := obj(t, want(t, owner.get(path), http.StatusOK, "propose again"), "proposal"); again["from"] != float64(2029) {
+		t.Errorf("after saving, the proposal starts from %v, want 2029", again["from"])
+	}
+
+	want(t, member.get(path), http.StatusForbidden, "a member asks for next year")
+	want(t, owner.get("/api/v1/holiday-calendars/"+uuid.NewString()+"/next-year"), http.StatusNotFound, "a calendar that is not there")
+}
+
+// anyList widens rows written as maps so they can join rows read back.
+func anyList(rows []map[string]any) []any {
+	out := make([]any, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row)
+	}
+	return out
+}
+
 func TestAWorkingWeekIsAPersonsOwnToReadAndAnAdministratorsToSet(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)

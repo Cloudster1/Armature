@@ -265,6 +265,11 @@ export const scheduleEn = {
     daysOffIn: (calendar: string) => `Days off in ${calendar}`,
     importIcs: "Import .ics",
     addDay: "Add a day",
+    copyYear: (from: number, to: number) => `Copy ${from} to ${to}`,
+    copied: (count: number, from: number, to: number) =>
+      `Copied ${count} ${count === 1 ? "day" : "days"} from ${from} to ${to}. Move Easter and the other movable feasts to their new dates, then save.`,
+    nothingToCopy: (to: number) => `${to} already holds every day there was to copy.`,
+    skippedLeapDay: (to: number) => `29 February was not copied: ${to} has no such day.`,
     chooseFile: "Choose an .ics file",
     empty: "No days off yet",
     emptyAdmin: "Add the days by hand, or import the .ics file a calendar application exports. Recurring events need to be exported as separate days.",
