@@ -72,7 +72,9 @@ function AddAndRemove({
   const remove = value?.remove ?? [];
   // A member is added or removed, never both: picking it on one side takes it off the other.
   const set = (nextAdd: string[], nextRemove: string[]) =>
-    onChange(nextAdd.length + nextRemove.length === 0 ? undefined : { add: nextAdd.length ? nextAdd : undefined, remove: nextRemove.length ? nextRemove : undefined });
+    onChange(
+      nextAdd.length + nextRemove.length === 0 ? undefined : { add: nextAdd.length ? nextAdd : undefined, remove: nextRemove.length ? nextRemove : undefined },
+    );
   const chosen = (ids: string[]) => options.filter((o) => ids.includes(o.id));
   return (
     <>
@@ -84,7 +86,12 @@ function AddAndRemove({
           options={options}
           editable
           emptyWord={t.search.bulk.noneChosen}
-          onChange={(ids) => set(ids, remove.filter((r) => !ids.includes(r)))}
+          onChange={(ids) =>
+            set(
+              ids,
+              remove.filter((r) => !ids.includes(r)),
+            )
+          }
         />
       </Labelled>
       <Labelled id={`${id}-remove`} label={removeLabel}>
@@ -95,7 +102,12 @@ function AddAndRemove({
           options={options}
           editable
           emptyWord={t.search.bulk.noneChosen}
-          onChange={(ids) => set(add.filter((a) => !ids.includes(a)), ids)}
+          onChange={(ids) =>
+            set(
+              add.filter((a) => !ids.includes(a)),
+              ids,
+            )
+          }
         />
       </Labelled>
     </>
@@ -225,7 +237,9 @@ export function BulkProjectChanges({ projectKey, change, onChange }: { projectKe
         value={change.components}
         onChange={(next) => onChange({ ...change, components: next })}
       />
-      {(fields?.fields ?? []).length > 0 && <FieldChange fields={fields?.fields ?? []} value={change.fields} onChange={(next) => onChange({ ...change, fields: next })} />}
+      {(fields?.fields ?? []).length > 0 && (
+        <FieldChange fields={fields?.fields ?? []} value={change.fields} onChange={(next) => onChange({ ...change, fields: next })} />
+      )}
     </>
   );
 }
