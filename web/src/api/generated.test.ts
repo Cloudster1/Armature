@@ -13,6 +13,7 @@ import type { ConnectedApp, ConsentAnswer } from "./oauth";
 import type { Webhook } from "./automation";
 import type { Absence, Holiday, HolidayCalendar, WorkingWeek } from "./availability";
 import type { Company, Desk } from "./desk";
+import type { BulkChange, BulkResult } from "./filters";
 
 // The hand written types are what the components render; the generated ones
 // are what the server promises. Each hand written type has to be satisfied by
@@ -45,6 +46,11 @@ describe("the hand written types agree with the document", () => {
     expectTypeOf<Schemas["Holiday"]>().toMatchTypeOf<Holiday>();
     expectTypeOf<Schemas["WorkingWeek"]>().toMatchTypeOf<WorkingWeek>();
     expectTypeOf<Schemas["Absence"]>().toMatchTypeOf<Absence>();
+  });
+
+  it("for bulk edits", () => {
+    expectTypeOf<BulkChange>().toMatchTypeOf<Schemas["BulkInput"]>();
+    expectTypeOf<Schemas["BulkResult"]>().toMatchTypeOf<BulkResult>();
   });
 
   it("for a desk's companies", () => {

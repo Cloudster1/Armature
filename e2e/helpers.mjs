@@ -2401,6 +2401,11 @@ export async function saveSearch(page, name, { shared = false } = {}) {
   await page.waitForSelector(`[data-filter="${name}"]`, { timeout: WAIT });
 }
 
+/** Puts exactly these labels on each issue, through the API as the signed-in person. */
+export async function labelIssues(page, keys, labels) {
+  for (const key of keys) await callAPI(page, "PUT", `/issues/${key}/labels`, { labels });
+}
+
 /** Ticks every row on an issue list and waits for the bulk bar. */
 export async function selectAllIssues(page) {
   await page.waitForSelector("[data-select-all]", { timeout: WAIT });
@@ -2409,12 +2414,15 @@ export async function selectAllIssues(page) {
 }
 
 /** Applies a bulk change from the bar and returns the refusals listed in the result. */
-export async function applyBulk(page, { transition, priority } = {}) {
-  if (transition) {
-    await page.click("#field-bulk-transition", { clickCount: 3 });
-    await page.type("#field-bulk-transition", transition);
-  }
+export async function applyBulk(page, { transition, priority, removeLabel } = {}) {
+  // The transitions offered are the ones every ticked row shares, fetched once the rows are ticked.
+  if (transition) await selectByLabel(page, "#field-bulk-transition", transition);
   if (priority) await selectByLabel(page, "#field-bulk-priority", priority);
+  if (removeLabel) {
+    await page.type("#field-bulk-remove-labels", removeLabel);
+    await page.waitForSelector(`[data-label-option="${removeLabel}"]`, { timeout: WAIT });
+    await page.click(`[data-label-option="${removeLabel}"]`);
+  }
   await page.click('[data-action="bulk-apply"]');
   await page.waitForSelector("[data-bulk-result]", { timeout: WAIT });
   const refused = await page.$$eval("[data-bulk-refusal]", (els) => els.map((el) => ({ key: el.dataset.bulkRefusal, text: el.innerText })));

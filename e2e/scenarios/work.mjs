@@ -23,6 +23,7 @@ import {
   inboxRows,
   incomingAddress,
   inviteMember,
+  labelIssues,
   mailFor,
   mentionInComment,
   moveIssue,
@@ -252,7 +253,9 @@ scenario("a search is saved, starred and offered on the search page", async ({ p
   expect.contains(csv, "Something open", "and holds the issue");
 });
 
-scenario("three tickets are edited at once and the one that cannot move says why", async ({ page }) => {
+// The bar offers only the transitions every ticked row shares, so one already
+// under way keeps Start progress off the list until it is unticked.
+scenario("three tickets are edited at once and only a transition they all share is offered", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Batches", { visit: false });
   const a = await createIssue(page, key, "Batch one", { visit: false });
@@ -264,16 +267,51 @@ scenario("three tickets are edited at once and the one that cannot move says why
 
   await goto(page, `/search?q=${encodeURIComponent(`project = ${key}`)}`);
   await selectAllIssues(page);
-  const { refused, title } = await applyBulk(page, { transition: "Start progress", priority: "high" });
-  expect.contains(title, "2 changed, 1 not", "two took the change");
-  expect.equal(refused.length, 1, "one was refused");
-  expect.equal(refused[0].key, c, "the one already in progress");
-  expect.contains(refused[0].text, "not offered", "and the reason says the transition was not offered");
+  // The shared names arrive after the tick: the list either offers some or says none are shared.
+  await page.waitForFunction(
+    () => {
+      const select = document.querySelector("#field-bulk-transition");
+      return select && (select.disabled || select.options.length > 1);
+    },
+    { timeout: WAIT },
+  );
+  const offered = await page.$$eval("#field-bulk-transition option", (options) => options.map((o) => o.textContent.trim()));
+  expect.equal(offered.includes("Start progress"), false, "the issue in progress does not share Start progress");
+  const { refused, title } = await applyBulk(page, { priority: "high" });
+  expect.contains(title, "3 changed", "all three took the priority");
+  expect.equal(refused.length, 0, "and none was refused");
+  await clickButton(page, "Done");
+
+  await page.click(`[data-select-issue="${a}"]`);
+  await page.click(`[data-select-issue="${b}"]`);
+  await page.waitForSelector('[data-bulk-bar="2"]', { timeout: WAIT });
+  const moved = await applyBulk(page, { transition: "Start progress" });
+  expect.contains(moved.title, "2 changed", "the two still to do started");
   await clickButton(page, "Done");
   await goto(page, `/issues/${a}`);
   await page.waitForFunction(() => document.body.innerText.includes("In Progress"), { timeout: WAIT });
   await goto(page, `/issues/${b}`);
   await page.waitForFunction(() => document.body.innerText.includes("In Progress"), { timeout: WAIT });
+});
+
+scenario("a retired label is stripped from every issue a search finds, and the rest stay", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Retiring", { visit: false });
+  const retired = uniqueName("retired", "-");
+  const kept = uniqueName("kept", "-");
+  const a = await createIssue(page, key, "Labelled one", { visit: false });
+  const b = await createIssue(page, key, "Labelled two", { visit: false });
+  await labelIssues(page, [a, b], [retired, kept]);
+
+  await goto(page, `/search?q=${encodeURIComponent(`project = ${key}`)}`);
+  await page.waitForSelector(`[data-label="${retired}"]`, { timeout: WAIT });
+  await selectAllIssues(page);
+  const { refused, title } = await applyBulk(page, { removeLabel: retired });
+  expect.contains(title, "2 changed", "both lost the label");
+  expect.equal(refused.length, 0, "and none was refused");
+  await clickButton(page, "Done");
+  await page.waitForFunction((name) => !document.querySelector(`[data-label="${name}"]`), { timeout: WAIT }, retired);
+  expect.equal((await page.$$(`[data-label="${kept}"]`)).length, 2, "the other label stays on both");
 });
 
 scenario("one issue is exported from its page, ticked rows from search, and a project's list from the list", async ({ page }) => {

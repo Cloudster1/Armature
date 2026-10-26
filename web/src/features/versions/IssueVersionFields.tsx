@@ -7,7 +7,7 @@ import { t } from "@/i18n";
 
 // A set of names picked from a list: the tags show what is chosen, a popover
 // with checkboxes changes it, and the whole set is sent at once.
-function NamePicker({
+export function NamePicker({
   id,
   label,
   chosen,
