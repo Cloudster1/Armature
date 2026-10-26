@@ -10,59 +10,28 @@ import (
 	"github.com/armature/armature/backend/internal/workflow"
 )
 
-// Follower keeps boards in step with the workflows their projects follow: when
-// a workflow gains a status, every board of a project that now reaches that
-// status grows a lane for it, so no card can land where no lane is. It runs in
-// the workflow's own transaction and costs a read per project and a write per
-// board, which an administrator saving a workflow can afford.
+// Follower grows a lane on every board of a project following a workflow that
+// gains a status, inside the save, so no card can land where no lane is.
 type Follower struct{}
 
 // WorkflowSaved appends a lane for each added status to each board that lacks
-// one, in every project whose statuses now include it.
+// one, in every project that follows the workflow; only those can reach it.
 func (Follower) WorkflowSaved(ctx context.Context, tx db.DBTX, workflowID uuid.UUID, added []workflow.Status) error {
-	rows, err := tx.Query(ctx, `SELECT id FROM project WHERE archived_at IS NULL ORDER BY key`)
+	if len(added) == 0 {
+		return nil
+	}
+	projects, err := workflow.NewStore().ProjectsFollowing(ctx, tx, workflowID)
 	if err != nil {
-		return fmt.Errorf("read projects: %w", err)
-	}
-	var projects []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return err
-		}
-		projects = append(projects, id)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return err
 	}
-
-	store := workflow.NewStore()
 	for _, projectID := range projects {
-		reachable, err := store.ProjectStatuses(ctx, tx, projectID)
-		if err != nil {
-			return err
-		}
 		for _, status := range added {
-			if !contains(reachable, status.ID) {
-				continue
-			}
 			if err := appendLaneToBoards(ctx, tx, projectID, status); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
-}
-
-func contains(statuses []workflow.Status, id uuid.UUID) bool {
-	for _, s := range statuses {
-		if s.ID == id {
-			return true
-		}
-	}
-	return false
 }
 
 // appendLaneToBoards gives each of the project's boards without a lane for the

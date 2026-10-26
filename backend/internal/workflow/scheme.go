@@ -270,6 +270,43 @@ func (s *Store) ForProject(ctx context.Context, tx db.DBTX, projectID uuid.UUID,
 	return out, nil
 }
 
+// ProjectsFollowing returns the active projects that resolve some issue type
+// to this workflow, the way ProjectStatuses resolves them, in one query.
+func (s *Store) ProjectsFollowing(ctx context.Context, tx db.DBTX, workflowID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT p.id
+		FROM project p
+		WHERE p.archived_at IS NULL
+		  AND EXISTS (
+		    SELECT 1
+		    FROM issue_type t
+		    CROSS JOIN LATERAL (
+		        SELECT i.workflow_id
+		        FROM workflow_scheme sc
+		        JOIN workflow_scheme_item i ON i.scheme_id = sc.id
+		        WHERE (sc.id = p.workflow_scheme_id OR sc.is_default)
+		          AND (i.issue_type_id = t.id OR i.issue_type_id IS NULL)
+		        ORDER BY (sc.id IS DISTINCT FROM p.workflow_scheme_id), (i.issue_type_id IS NULL)
+		        LIMIT 1
+		    ) r
+		    WHERE r.workflow_id = $1
+		  )
+		ORDER BY p.key`, workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("find the projects following the workflow: %w", err)
+	}
+	defer rows.Close()
+	var out []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 // ProjectStatuses returns every status a project's issues can be in, across all
 // the workflows it resolves to, in workflow order. It is what a new board's
 // swimlanes are built from.
