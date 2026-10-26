@@ -1673,8 +1673,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Change many issues at once; one refused leaves the rest done. */
+        /** Change, move or delete many issues at once; each is checked and saved on its own, and one refused leaves the rest done. */
         post: operations["bulkEdit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/issues/bulk/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The transitions every selected issue offers, by name. */
+        get: operations["bulkTransitions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5164,10 +5181,18 @@ export interface components {
             addLabels?: string[];
             /** Format: uuid */
             assignee?: string | null;
+            components?: components["schemas"]["SetEdit"];
+            delete?: boolean;
+            fields?: {
+                [key: string]: unknown;
+            };
+            fixVersions?: components["schemas"]["SetEdit"];
             /** Format: uuid */
             milestoneId?: string | null;
+            moveTo?: components["schemas"]["MoveTo"];
             /** @enum {string} */
             priority?: "lowest" | "low" | "medium" | "high" | "highest";
+            removeLabels?: string[];
             /** Format: uuid */
             sprintId?: string | null;
             /** Format: uuid */
@@ -5180,6 +5205,7 @@ export interface components {
         };
         BulkResult: {
             applied: string[];
+            moved: components["schemas"]["KeyChange"][];
             refused: components["schemas"]["Refusal"][];
         };
         BurndownDay: {
@@ -6232,6 +6258,10 @@ export interface components {
             /** Format: uuid */
             userId: string;
         };
+        KeyChange: {
+            from: string;
+            to: string;
+        };
         KeyCheckResponse: {
             available?: boolean;
             key?: string;
@@ -6444,6 +6474,12 @@ export interface components {
             issue: components["schemas"]["Issue"] | null;
             rank: string;
             transition?: string;
+        };
+        MoveTo: {
+            projectKey: string;
+            statuses?: {
+                [key: string]: string;
+            };
         };
         Node: {
             children: components["schemas"]["Node"][];
@@ -7428,6 +7464,10 @@ export interface components {
         SetAssignmentRequest: {
             /** Format: uuid */
             workflowId: string | null;
+        };
+        SetEdit: {
+            add?: string[];
+            remove?: string[];
         };
         SetIssueComponentsRequest: {
             components: string[];
@@ -12792,6 +12832,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkResult"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    bulkTransitions: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated issue keys, at most 200. */
+                keys?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        names: string[];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

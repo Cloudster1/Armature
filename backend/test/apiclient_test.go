@@ -112,7 +112,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Filters:      filter.NewService(h.cluster),
 		Audit:        audit.NewService(h.cluster),
 		Calendar:     calendar.NewService(h.cluster),
-		Bulk:         bulk.NewService(h.cluster, issues, labels),
+		Bulk:         bulk.NewService(h.cluster, issues, labels, field.NewService(h.cluster)),
 		CSV: csvio.NewService(h.cluster, issues, labels, field.NewService(h.cluster), accounts).
 			WithPlanning(sprints, version.NewService(h.cluster), component.NewService(h.cluster), team.NewService(h.cluster)),
 		Attachments:  attachments,
