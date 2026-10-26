@@ -366,6 +366,8 @@ scenario("a ticket moves to another project and keeps its history", async ({ pag
   const path = await moveIssue(page, issueKey, to);
   const newKey = path.split("/").pop();
   expect.equal(newKey.startsWith(`${to}-`), true, `the issue has the other project's key: ${newKey}`);
+  // The history is read apart from the comments, and can land after them.
+  await page.waitForFunction(() => document.body.innerText.includes("moved this from To Do to In Progress"), { timeout: WAIT });
   const text = await bodyText(page);
   expect.contains(text, `Moved from ${issueKey}`, "the comment says where it came from");
   expect.contains(text, "moved this from To Do to In Progress", "and the history from before the move is still there");
