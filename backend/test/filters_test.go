@@ -130,7 +130,7 @@ func TestBulkEditAndCSV(t *testing.T) {
 	h := newHarness(t)
 	ws := h.newProject(t, "bulks")
 	labels := label.NewService(h.cluster)
-	edits := bulk.NewService(h.cluster, ws.issues, labels)
+	edits := bulk.NewService(h.cluster, ws.issues, labels, field.NewService(h.cluster))
 
 	a := ws.newIssue(t, "First")
 	b := ws.newIssue(t, "Second")

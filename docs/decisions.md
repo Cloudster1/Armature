@@ -961,6 +961,16 @@ An import lands on the server, not in the table being edited, so while that
 table holds unsaved days the import asks before it discards them rather than
 merging the file into a draft the server has not seen.
 
+Next year's days are copied, not repeated. "Copy 2026 to 2027" takes the latest
+year a calendar holds and proposes its days on the same dates a year on, into
+the table and unsaved, so the administrator moves Easter and its kin by hand or
+by import and then saves. A holiday stays one dated row: every reader of the
+days, the plans, the calendars and a desk's clocks, keeps reading dates, and no
+rule marked "every year" quietly puts a moving feast on the wrong day. The latest
+year rather than the current one, so the copy reads the same in December and in
+January. A date the next year already holds keeps what it has, typed or saved,
+and 29 February is skipped rather than guessed onto a neighbour.
+
 This is not the service desk's business calendar, which says when a desk is
 open for its clocks and answers a different question. A desk's calendar can
 name a holiday calendar, though, so a desk keeps one list with everybody else
@@ -1477,6 +1487,18 @@ mailed around still finds it. What the move leaves behind is only what belongs t
 the old project: answers to organization fields go along, since those fields
 apply in every project, and each answer to one of the old project's own fields
 is named in the history as it is dropped, so nothing disappears unsaid.
+
+Bulk edit does what one edit at a time does, issue by issue (#91). Each issue is
+checked against what the caller holds in its own project, the permission its
+single-issue route asks for, and refused by name; nothing is refused for the
+whole request but the project a move lands in. An issue the caller cannot read
+is "not found", as a missing one is. Labels, fix versions and components are
+added and taken away rather than replaced: replacing eighty issues' sets loses
+what each had, and an archived version an issue still names would refuse the
+save. A move or a delete goes alone, since a move clears what belongs to the old
+project and a delete leaves nothing to change, and an issue a move or a delete
+already carried with its parent counts as done rather than as missing. The
+transition is picked from the names every selected issue offers, not typed.
 
 ### A dashboard is an arrangement, and every number is computed on read
 

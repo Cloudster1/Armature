@@ -1,6 +1,7 @@
+import { useId, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { ResourceIssue } from "@/api/resources";
-import { Card, SectionTitle } from "@/components/ui";
+import { Button, Card, SectionTitle } from "@/components/ui";
 import { RESOURCE_LIST_LIMIT } from "@/config";
 import { hours } from "./cells";
 import { t } from "@/i18n";
@@ -28,7 +29,10 @@ export function UnplacedWork({ unscheduled, unestimated }: { unscheduled: Resour
 }
 
 function IssueList({ id, title, hint, empty, issues }: { id: string; title: string; hint: string; empty: string; issues: ResourceIssue[] }) {
-  const shown = issues.slice(0, RESOURCE_LIST_LIMIT);
+  const [expanded, setExpanded] = useState(false);
+  const listId = useId();
+  const folds = issues.length > RESOURCE_LIST_LIMIT;
+  const shown = expanded ? issues : issues.slice(0, RESOURCE_LIST_LIMIT);
   return (
     <section data-resource-list={id}>
       <SectionTitle className="mb-2">
@@ -37,7 +41,7 @@ function IssueList({ id, title, hint, empty, issues }: { id: string; title: stri
       <Card className="p-3">
         <p className="mb-2 text-xs text-ink-muted">{issues.length === 0 ? empty : hint}</p>
         {shown.length > 0 && (
-          <ul className="space-y-1 text-sm">
+          <ul id={listId} className="space-y-1 text-sm">
             {shown.map((issue) => (
               <li key={issue.key} className="flex items-baseline justify-between gap-3" data-resource-issue={issue.key}>
                 <Link to="/issues/$issueKey" params={{ issueKey: issue.key }} className="min-w-0 truncate text-ink hover:text-accent">
@@ -50,7 +54,19 @@ function IssueList({ id, title, hint, empty, issues }: { id: string; title: stri
             ))}
           </ul>
         )}
-        {issues.length > shown.length && <p className="mt-2 text-xs text-ink-subtle">{t.schedule.resources.andMore(issues.length - shown.length)}</p>}
+        {folds && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2"
+            data-action="show-all-unplaced"
+            aria-expanded={expanded}
+            aria-controls={listId}
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? t.schedule.resources.showFewer : t.schedule.resources.showAll(issues.length)}
+          </Button>
+        )}
       </Card>
     </section>
   );

@@ -279,16 +279,16 @@ func (s *Service) SetIssueLabels(ctx context.Context, key string, names []string
 // SetIssueLabelsIn is SetIssueLabels inside the caller's transaction, leaving
 // the change, the words that came and went, for the caller to announce.
 func (s *Service) SetIssueLabelsIn(ctx context.Context, tx db.DBTX, key string, names []string) (uuid.UUID, []issue.LabelRef, []issue.Change, error) {
-	return s.labelIssue(ctx, tx, key, names, false)
+	return s.labelIssue(ctx, tx, key, names, nil, false)
 }
 
-// AddIssueLabelsIn puts these labels on an issue beside the ones it carries,
-// reading those inside the caller's transaction so nothing in between is lost.
-func (s *Service) AddIssueLabelsIn(ctx context.Context, tx db.DBTX, key string, names []string) (uuid.UUID, []issue.LabelRef, []issue.Change, error) {
-	return s.labelIssue(ctx, tx, key, names, true)
+// ChangeIssueLabelsIn puts some labels on an issue and takes others off,
+// keeping the rest, read inside the caller's transaction so nothing in between is lost.
+func (s *Service) ChangeIssueLabelsIn(ctx context.Context, tx db.DBTX, key string, add, remove []string) (uuid.UUID, []issue.LabelRef, []issue.Change, error) {
+	return s.labelIssue(ctx, tx, key, add, remove, true)
 }
 
-func (s *Service) labelIssue(ctx context.Context, tx db.DBTX, key string, names []string, keep bool) (uuid.UUID, []issue.LabelRef, []issue.Change, error) {
+func (s *Service) labelIssue(ctx context.Context, tx db.DBTX, key string, names, remove []string, keep bool) (uuid.UUID, []issue.LabelRef, []issue.Change, error) {
 	projectKey, num, err := issue.ParseKey(key)
 	if err != nil {
 		return uuid.Nil, nil, nil, err
@@ -323,6 +323,10 @@ func (s *Service) labelIssue(ctx context.Context, tx db.DBTX, key string, names 
 		if keep {
 			wanted[strings.ToLower(l.Name)] = l.Name
 		}
+	}
+	// Taken off after the merge, so a word being removed is never coined.
+	for _, raw := range remove {
+		delete(wanted, strings.ToLower(strings.TrimSpace(raw)))
 	}
 
 	for lower, name := range wanted {

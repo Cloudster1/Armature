@@ -404,75 +404,81 @@ func (s *Service) Set(ctx context.Context, issueKey string, fieldID uuid.UUID, r
 	}
 	var out *Value
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var (
-			issueID   uuid.UUID
-			projectID uuid.UUID
-		)
-		err := tx.QueryRow(ctx, `
-			SELECT i.id, i.project_id FROM issue i JOIN project p ON p.id = i.project_id
-			WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num).Scan(&issueID, &projectID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return issue.ErrNotFound
-		}
+		issueID, value, changes, err := s.SetIn(ctx, tx, issueKey, fieldID, raw)
 		if err != nil {
 			return err
 		}
-		f, err := scanField(tx.QueryRow(ctx, selectField+` WHERE f.id = $1`, fieldID))
-		if err != nil {
-			return err
-		}
-		if f.ProjectID != nil && *f.ProjectID != projectID {
-			return ErrOtherProject
-		}
-
-		var before []byte
-		err = tx.QueryRow(ctx, `SELECT value FROM issue_field_value WHERE issue_id = $1 AND field_id = $2`,
-			issueID, fieldID).Scan(&before)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
-
-		value, shown, err := normalize(*f, raw)
-		if err != nil {
-			return err
-		}
-		if value == nil {
-			if _, err := tx.Exec(ctx, `DELETE FROM issue_field_value WHERE issue_id = $1 AND field_id = $2`, issueID, fieldID); err != nil {
-				return err
-			}
-		} else {
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO issue_field_value (issue_id, field_id, value)
-				VALUES ($1, $2, $3)
-				ON CONFLICT (issue_id, field_id) DO UPDATE SET value = EXCLUDED.value`,
-				issueID, fieldID, []byte(value)); err != nil {
-				return fmt.Errorf("set field: %w", err)
-			}
-		}
-
-		out = &Value{Field: *f, Value: value, Display: shown}
-		from := ""
-		if before != nil {
-			from = display(*f, before)
-		}
-		if from == shown {
-			return nil
-		}
-		change := issue.Change{Field: f.Name, From: from, To: shown}
-		if err := issue.RecordChanges(ctx, tx, issueID, actor.UserID, []issue.Change{change}); err != nil {
-			return err
-		}
-		return events.Emit(ctx, tx, events.TopicIssueUpdated, map[string]any{
-			"issueId": issueID,
-			"key":     issue.FormatKey(projectKey, num),
-			"changes": []issue.Change{change},
-			"actorId": actor.UserID,
-		})
+		out = value
+		return issue.AnnounceUpdate(ctx, tx, issueID, issue.FormatKey(projectKey, num), actor, changes)
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	return out, lsn, nil
+}
+
+// SetIn is Set inside the caller's transaction, leaving the change for the
+// caller to record and announce with the rest of a bulk edit.
+func (s *Service) SetIn(ctx context.Context, tx db.DBTX, issueKey string, fieldID uuid.UUID, raw json.RawMessage) (uuid.UUID, *Value, []issue.Change, error) {
+	projectKey, num, err := issue.ParseKey(issueKey)
+	if err != nil {
+		return uuid.Nil, nil, nil, err
+	}
+	var (
+		issueID   uuid.UUID
+		projectID uuid.UUID
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT i.id, i.project_id FROM issue i JOIN project p ON p.id = i.project_id
+		WHERE p.key = $1 AND i.key_num = $2 FOR UPDATE OF i`, projectKey, num).Scan(&issueID, &projectID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, nil, nil, issue.ErrNotFound
+	}
+	if err != nil {
+		return uuid.Nil, nil, nil, err
+	}
+	f, err := scanField(tx.QueryRow(ctx, selectField+` WHERE f.id = $1`, fieldID))
+	if err != nil {
+		return uuid.Nil, nil, nil, err
+	}
+	if f.ProjectID != nil && *f.ProjectID != projectID {
+		return uuid.Nil, nil, nil, ErrOtherProject
+	}
+
+	var before []byte
+	err = tx.QueryRow(ctx, `SELECT value FROM issue_field_value WHERE issue_id = $1 AND field_id = $2`,
+		issueID, fieldID).Scan(&before)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, nil, nil, err
+	}
+
+	value, shown, err := normalize(*f, raw)
+	if err != nil {
+		return uuid.Nil, nil, nil, err
+	}
+	if value == nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM issue_field_value WHERE issue_id = $1 AND field_id = $2`, issueID, fieldID); err != nil {
+			return uuid.Nil, nil, nil, err
+		}
+	} else {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO issue_field_value (issue_id, field_id, value)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (issue_id, field_id) DO UPDATE SET value = EXCLUDED.value`,
+			issueID, fieldID, []byte(value)); err != nil {
+			return uuid.Nil, nil, nil, fmt.Errorf("set field: %w", err)
+		}
+	}
+
+	out := &Value{Field: *f, Value: value, Display: shown}
+	from := ""
+	if before != nil {
+		from = display(*f, before)
+	}
+	if from == shown {
+		return issueID, out, nil, nil
+	}
+	return issueID, out, []issue.Change{{Field: f.Name, From: from, To: shown}}, nil
 }
 
 // projectID resolves a key to a live project's id.

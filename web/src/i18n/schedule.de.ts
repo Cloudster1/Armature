@@ -88,7 +88,8 @@ export const scheduleDe: typeof scheduleEn = {
     unestimated: "Ohne Schätzung",
     unestimatedEmpty: "Jeder offene Vorgang hat Stunden.",
     unestimatedHint: "Hat weder verbleibende Zeit noch eine Schätzung.",
-    andMore: (count: number) => `und ${count} weitere`,
+    showAll: (count: number) => `Alle ${count} anzeigen`,
+    showFewer: "Weniger anzeigen",
     nobody: "Niemand, gegen den geplant werden kann",
     nobodyDetail: "Nehmen Sie Personen in ein Team auf oder weisen Sie ihnen Arbeit in diesen Wochen zu; ihre Arbeitswochen sind die Stunden hier.",
     noTeams: "Keine Teams, gegen die geplant werden kann",
@@ -269,6 +270,11 @@ export const scheduleDe: typeof scheduleEn = {
     daysOffIn: (calendar: string) => `Freie Tage in ${calendar}`,
     importIcs: ".ics importieren",
     addDay: "Einen Tag hinzufügen",
+    copyYear: (from: number, to: number) => `${from} nach ${to} kopieren`,
+    copied: (count: number, from: number, to: number) =>
+      `${count} ${count === 1 ? "Tag" : "Tage"} von ${from} nach ${to} kopiert. Verschieben Sie Ostern und die anderen beweglichen Feiertage auf ihre neuen Daten und speichern Sie dann.`,
+    nothingToCopy: (to: number) => `${to} hat schon jeden Tag, der zu kopieren war.`,
+    skippedLeapDay: (to: number) => `Der 29. Februar wurde nicht kopiert: ${to} hat keinen.`,
     chooseFile: "Eine .ics-Datei wählen",
     empty: "Noch keine freien Tage",
     emptyAdmin:

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { asReader } from "@/test/reader";
 import type { ReactNode } from "react";
 import type { ResourcePlan } from "@/api/resources";
+import { RESOURCE_LIST_LIMIT } from "@/config";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, params, ...rest }: { children: ReactNode; to: string; params?: Record<string, string> } & Record<string, unknown>) => (
@@ -83,5 +84,25 @@ describe("the resource grid", () => {
     render(<UnplacedWork unscheduled={plan.unscheduled} unestimated={plan.unestimated} />);
     expect(document.querySelector('[data-resource-list="unscheduled"] [data-resource-issue="FLOW-4"]')?.textContent).toContain("3 h");
     expect(document.querySelector('[data-resource-list="unestimated"] [data-resource-issue="FLOW-3"]')?.textContent).not.toContain(" h");
+  });
+
+  it("opens the whole list in place, not only the first ones", async () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({ key: `FLOW-${i + 1}`, summary: `Work ${i + 1}`, hours: 2 }));
+    render(<UnplacedWork unscheduled={many} unestimated={many.slice(0, RESOURCE_LIST_LIMIT)} />);
+    const rows = (list: string) => document.querySelectorAll(`[data-resource-list="${list}"] [data-resource-issue]`).length;
+    const toggle = () => document.querySelector<HTMLButtonElement>('[data-resource-list="unscheduled"] [data-action="show-all-unplaced"]')!;
+
+    expect(rows("unscheduled")).toBe(RESOURCE_LIST_LIMIT);
+    expect(toggle().textContent).toBe("Show all 30");
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    await userEvent.click(toggle());
+    expect(rows("unscheduled")).toBe(30);
+    expect(toggle().textContent).toBe("Show fewer");
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    await userEvent.click(toggle());
+    expect(rows("unscheduled")).toBe(RESOURCE_LIST_LIMIT);
+
+    expect(rows("unestimated")).toBe(RESOURCE_LIST_LIMIT);
+    expect(document.querySelector('[data-resource-list="unestimated"] [data-action="show-all-unplaced"]')).toBeNull();
   });
 });

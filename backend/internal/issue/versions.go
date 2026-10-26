@@ -122,6 +122,90 @@ func (s *Service) SetComponents(ctx context.Context, key string, ids []uuid.UUID
 	return updated, lsn, err
 }
 
+// ChangeFixVersionsIn adds and takes away fix versions inside the caller's
+// transaction, writing only the difference so an archived one already named stays.
+func (s *Service) ChangeFixVersionsIn(ctx context.Context, tx db.DBTX, key string, add, remove []uuid.UUID) (*Issue, []Change, error) {
+	id, before, err := s.lockForSets(ctx, tx, key)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, v := range dedupe(remove) {
+		if _, err := tx.Exec(ctx, `DELETE FROM issue_version WHERE issue_id = $1 AND version_id = $2 AND role = 'fix'`, id, v); err != nil {
+			return nil, nil, err
+		}
+	}
+	had := map[uuid.UUID]bool{}
+	for _, v := range before.FixVersions {
+		had[v.ID] = true
+	}
+	for _, v := range dedupe(add) {
+		if had[v] {
+			continue
+		}
+		var name string
+		if err := tx.QueryRow(ctx, `SELECT name FROM version WHERE id = $1 AND project_id = $2`, v, before.ProjectID).Scan(&name); err != nil {
+			return nil, nil, ErrVersionNotFound
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO issue_version (issue_id, version_id, role) VALUES ($1, $2, 'fix')`, id, v); err != nil {
+			if isCheckViolation(err) {
+				return nil, nil, fmt.Errorf("%s is archived and cannot be named", name)
+			}
+			return nil, nil, err
+		}
+	}
+	updated, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, id))
+	if err != nil {
+		return nil, nil, err
+	}
+	if from, to := versionNames(before.FixVersions), versionNames(updated.FixVersions); from != to {
+		return updated, []Change{{Field: "fixVersion", From: from, To: to}}, nil
+	}
+	return updated, nil, nil
+}
+
+// ChangeComponentsIn adds and takes away components inside the caller's transaction.
+func (s *Service) ChangeComponentsIn(ctx context.Context, tx db.DBTX, key string, add, remove []uuid.UUID) (*Issue, []Change, error) {
+	id, before, err := s.lockForSets(ctx, tx, key)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, c := range dedupe(remove) {
+		if _, err := tx.Exec(ctx, `DELETE FROM issue_component WHERE issue_id = $1 AND component_id = $2`, id, c); err != nil {
+			return nil, nil, err
+		}
+	}
+	had := map[uuid.UUID]bool{}
+	for _, c := range before.Components {
+		had[c.ID] = true
+	}
+	var fresh []uuid.UUID
+	for _, c := range add {
+		if !had[c] {
+			fresh = append(fresh, c)
+		}
+	}
+	if err := s.putComponents(ctx, tx, id, fresh); err != nil {
+		return nil, nil, err
+	}
+	updated, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1`, id))
+	if err != nil {
+		return nil, nil, err
+	}
+	if from, to := componentNames(before.Components), componentNames(updated.Components); from != to {
+		return updated, []Change{{Field: "component", From: from, To: to}}, nil
+	}
+	return updated, nil, nil
+}
+
+func (s *Service) lockForSets(ctx context.Context, tx db.DBTX, key string) (uuid.UUID, *Issue, error) {
+	id, _, err := s.idAndKey(ctx, tx, key)
+	if err != nil {
+		return uuid.Nil, nil, err
+	}
+	before, err := scanIssue(tx.QueryRow(ctx, selectIssue+` WHERE i.id = $1 FOR UPDATE OF i`, id))
+	return id, before, err
+}
+
 // putComponents inserts the component rows; the trigger refuses another
 // project's, which is answered as not found.
 func (s *Service) putComponents(ctx context.Context, tx db.DBTX, issueID uuid.UUID, ids []uuid.UUID) error {

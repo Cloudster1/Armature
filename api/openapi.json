@@ -5954,6 +5954,56 @@
         }
       }
     },
+    "/holiday-calendars/{calendarID}/next-year": {
+      "get": {
+        "operationId": "proposeNextYear",
+        "summary": "The calendar's latest year carried to the same dates in the next, unsaved, for an administrator to correct and save.",
+        "tags": [
+          "availability"
+        ],
+        "parameters": [
+          {
+            "name": "calendarID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "proposal": {
+                      "$ref": "#/components/schemas/NextYearProposal"
+                    }
+                  },
+                  "required": [
+                    "proposal"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/installation": {
       "get": {
         "operationId": "installation",
@@ -6719,7 +6769,7 @@
     "/issues/bulk": {
       "post": {
         "operationId": "bulkEdit",
-        "summary": "Change many issues at once; one refused leaves the rest done.",
+        "summary": "Change, move or delete many issues at once; each is checked and saved on its own, and one refused leaves the rest done.",
         "tags": [
           "issues"
         ],
@@ -6740,6 +6790,58 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BulkResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/bulk/transitions": {
+      "get": {
+        "operationId": "bulkTransitions",
+        "summary": "The transitions every selected issue offers, by name.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "keys",
+            "in": "query",
+            "description": "Comma-separated issue keys, at most 200.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "names": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "names"
+                  ]
                 }
               }
             }
@@ -21482,12 +21584,30 @@
             ],
             "format": "uuid"
           },
+          "components": {
+            "$ref": "#/components/schemas/SetEdit"
+          },
+          "delete": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "description": "A JSON value."
+            }
+          },
+          "fixVersions": {
+            "$ref": "#/components/schemas/SetEdit"
+          },
           "milestoneId": {
             "type": [
               "string",
               "null"
             ],
             "format": "uuid"
+          },
+          "moveTo": {
+            "$ref": "#/components/schemas/MoveTo"
           },
           "priority": {
             "type": "string",
@@ -21498,6 +21618,12 @@
               "high",
               "highest"
             ]
+          },
+          "removeLabels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "sprintId": {
             "type": [
@@ -21545,6 +21671,12 @@
               "type": "string"
             }
           },
+          "moved": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeyChange"
+            }
+          },
           "refused": {
             "type": "array",
             "items": {
@@ -21554,7 +21686,8 @@
         },
         "required": [
           "applied",
-          "refused"
+          "refused",
+          "moved"
         ]
       },
       "BurndownDay": {
@@ -25246,6 +25379,21 @@
           "requestedAt"
         ]
       },
+      "KeyChange": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ]
+      },
       "KeyCheckResponse": {
         "type": "object",
         "properties": {
@@ -25994,6 +26142,53 @@
         "required": [
           "issue",
           "rank"
+        ]
+      },
+      "MoveTo": {
+        "type": "object",
+        "properties": {
+          "projectKey": {
+            "type": "string"
+          },
+          "statuses": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "projectKey"
+        ]
+      },
+      "NextYearProposal": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            }
+          },
+          "from": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            }
+          },
+          "to": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "days",
+          "skipped"
         ]
       },
       "Node": {
@@ -29594,6 +29789,25 @@
         "required": [
           "workflowId"
         ]
+      },
+      "SetEdit": {
+        "type": "object",
+        "properties": {
+          "add": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "remove": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
       },
       "SetIssueComponentsRequest": {
         "type": "object",

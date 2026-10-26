@@ -230,34 +230,18 @@ func (s *Server) handleBulkEdit(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	// Every key has to be in a project the caller may make this change in: the
-	// same permissions the one issue routes ask for, not IssueWrite for all.
-	needed := []perm.Permission{perm.IssueWrite}
-	if req.Change.SprintID != nil {
-		needed = append(needed, perm.SprintManage)
-	}
-	if req.Change.TeamID != nil {
-		needed = append(needed, perm.TeamManage)
-	}
-	if strings.TrimSpace(req.Change.Transition) != "" {
-		needed = append(needed, perm.IssueTransition)
-	}
-	perms := PermsFrom(r.Context())
 	for _, key := range req.Keys {
-		projectKey, _, err := issue.ParseKey(key)
-		if err != nil {
+		if _, _, err := issue.ParseKey(key); err != nil {
 			respondError(w, r, ErrBadRequest(capitalize(err.Error())+"."))
 			return
 		}
-		for _, required := range needed {
-			if perms.Can(required, project.NormalizeKey(projectKey)) {
-				continue
-			}
-			if required == perm.IssueWrite {
-				respondError(w, r, ErrForbidden("You cannot change issues in "+projectKey+"."))
-			} else {
-				respondError(w, r, forbidden(required))
-			}
+	}
+	// Each issue is checked against the caller's permissions on its own and
+	// refused by name; only the project a move lands in is the request's.
+	if to := req.Change.MoveTo; to != nil && strings.TrimSpace(to.ProjectKey) != "" {
+		target := project.NormalizeKey(to.ProjectKey)
+		if !PermsFrom(r.Context()).Can(perm.IssueWrite, target) {
+			respondError(w, r, ErrForbidden("You cannot file issues in "+target+"."))
 			return
 		}
 	}
@@ -268,6 +252,29 @@ func (s *Server) handleBulkEdit(w http.ResponseWriter, r *http.Request) {
 	}
 	NoteWrite(r.Context(), lsn)
 	respondJSON(w, r, http.StatusOK, result)
+}
+
+// handleBulkTransitions names the transitions every selected issue offers, so
+// the bulk bar picks one rather than having it typed.
+func (s *Server) handleBulkTransitions(w http.ResponseWriter, r *http.Request) {
+	var keys []string
+	for _, key := range strings.Split(r.URL.Query().Get("keys"), ",") {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		if _, _, err := issue.ParseKey(key); err != nil {
+			respondError(w, r, ErrBadRequest(capitalize(err.Error())+"."))
+			return
+		}
+		keys = append(keys, key)
+	}
+	names, err := s.Bulk.Transitions(r.Context(), keys, actorFrom(r))
+	if err != nil {
+		respondError(w, r, ErrBadRequest(capitalize(err.Error())+"."))
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"names": names})
 }
 
 // Import: a file in, mapped, tried dry first.
