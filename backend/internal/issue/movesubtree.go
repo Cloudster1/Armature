@@ -33,61 +33,72 @@ func subtreeOf(ctx context.Context, tx db.DBTX, rootID uuid.UUID) ([]Issue, erro
 
 // checkDescendants refuses a move when any issue under the one being moved has
 // no workflow in the target, or a status its workflow there does not have.
-func (s *Service) checkDescendants(ctx context.Context, tx db.DBTX, root *Issue, subtree []Issue, target moveTarget) error {
+func (s *Service) checkDescendants(ctx context.Context, tx db.DBTX, root *Issue, subtree []Issue, target moveTarget, statuses map[uuid.UUID]uuid.UUID) (map[uuid.UUID]workflow.Status, error) {
 	flows := map[uuid.UUID]*workflow.Workflow{}
+	landing := map[uuid.UUID]workflow.Status{}
 	for _, d := range subtree {
 		wf, ok := flows[d.Type.ID]
 		if !ok {
 			var err error
 			wf, err = s.workflows.ForIssueType(ctx, tx, target.id, d.Type.ID)
 			if errors.Is(err, workflow.ErrNotFound) {
-				return fmt.Errorf("%s cannot move with %s: %s has no workflow for %s. Map one in its workflow scheme, then move %s again.",
+				return nil, fmt.Errorf("%s cannot move with %s: %s has no workflow for %s. Map one in its workflow scheme, then move %s again.",
 					d.Key, root.Key, target.key, article(d.Type.Name), root.Key)
 			}
 			if err != nil {
-				return err
+				return nil, err
 			}
 			flows[d.Type.ID] = wf
 		}
-		has := false
-		for _, step := range wf.Steps {
-			has = has || step.Status.ID == d.Status.ID
+		want := d.Status.ID
+		if to, mapped := statuses[want]; mapped {
+			want = to
 		}
-		if !has {
-			return fmt.Errorf("%s cannot move with %s: %s has no %s status for %s. Move %s to a status it has there, then move %s again.",
+		found := false
+		for _, step := range wf.Steps {
+			if step.Status.ID == want {
+				landing[d.ID], found = step.Status, true
+			}
+		}
+		if !found && statuses != nil {
+			return nil, fmt.Errorf("%s cannot move with %s: %s has no %s status for %s; map %s to one of its statuses",
+				d.Key, root.Key, target.key, d.Status.Name, article(d.Type.Name), d.Status.Name)
+		}
+		if !found {
+			return nil, fmt.Errorf("%s cannot move with %s: %s has no %s status for %s. Move %s to a status it has there, then move %s again.",
 				d.Key, root.Key, target.key, d.Status.Name, article(d.Type.Name), d.Key, root.Key)
 		}
 	}
-	return nil
+	return landing, nil
 }
 
 // moveRow puts one issue in the target under its next key and writes the
 // history entry; what belonged to the old project is cleared and named.
-func (s *Service) moveRow(ctx context.Context, tx db.DBTX, before *Issue, target moveTarget, statusID uuid.UUID, statusName string, actor Actor) ([]Change, error) {
+func (s *Service) moveRow(ctx context.Context, tx db.DBTX, before *Issue, target moveTarget, statusID uuid.UUID, statusName string, actor Actor) ([]Change, string, error) {
 	var keyNum int64
 	if err := tx.QueryRow(ctx, `UPDATE project SET issue_seq = issue_seq + 1 WHERE id = $1 RETURNING issue_seq`, target.id).Scan(&keyNum); err != nil {
-		return nil, fmt.Errorf("allocate issue key: %w", err)
+		return nil, "", fmt.Errorf("allocate issue key: %w", err)
 	}
 
 	// The rows that tie the issue to its old project go first, so the
 	// same-project guards on the issue row do not fire on the update.
 	for _, table := range []string{"issue_version", "issue_component"} {
 		if _, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE issue_id = $1`, before.ID); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	droppedValues, err := dropProjectFieldValues(ctx, tx, before.ID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE issue SET project_id = $2, key_num = $3, status_id = $4, sprint_id = NULL, team_id = NULL, milestone_id = NULL,
 		       company_id = NULL, shared_with_company = false
 		WHERE id = $1`, before.ID, target.id, keyNum, statusID); err != nil {
-		return nil, fmt.Errorf("move %s: %w", before.Key, err)
+		return nil, "", fmt.Errorf("move %s: %w", before.Key, err)
 	}
 	if err := keepOldKey(ctx, tx, before.ID, before.Key); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	changes := []Change{{Field: "project", From: before.ProjectKey, To: target.key}, {Field: "key", From: before.Key, To: FormatKey(target.key, keyNum)}}
@@ -113,7 +124,7 @@ func (s *Service) moveRow(ctx context.Context, tx db.DBTX, before *Issue, target
 	}
 	changes = append(changes, droppedValues...)
 	if err := s.recordHistory(ctx, tx, before.ID, actor.UserID, changes); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return changes, nil
+	return changes, FormatKey(target.key, keyNum), nil
 }

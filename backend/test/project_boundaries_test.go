@@ -135,9 +135,11 @@ func TestAProjectIsAWallInsideTheInstallation(t *testing.T) {
 
 	t.Run("a body cannot name what a path may not", func(t *testing.T) {
 		want(t, member.post("/api/v1/issues", map[string]any{"projectKey": farrKey, "summary": "sneak"}), http.StatusNotFound, "filing into the far project")
+		// A bulk edit refuses the far issue by name, in the words a missing one gets.
 		bulk := member.post("/api/v1/issues/bulk", map[string]any{"keys": []string{it.issueKey}, "change": map[string]any{"priority": "high"}})
-		if bulk.Status != http.StatusForbidden {
-			t.Errorf("bulk editing the far project: got %d, want 403: %s", bulk.Status, bulk.Raw)
+		if refused, _ := bulk.Body["refused"].([]any); bulk.Status != http.StatusOK || len(refused) != 1 ||
+			refused[0].(map[string]any)["reason"] != "That issue was not found." {
+			t.Errorf("bulk editing the far project: got %d, want the issue refused as not found: %s", bulk.Status, bulk.Raw)
 		}
 		moved := member.post("/api/v1/projects/"+keyNear+"/board/move", map[string]any{"issueKey": it.issueKey, "swimlaneId": nearSwimlane(t, member, keyNear)})
 		if moved.Status != http.StatusNotFound {

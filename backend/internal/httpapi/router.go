@@ -338,6 +338,7 @@ func (s *Server) searchRoutes(r chi.Router) {
 	r.Get("/issues/export", s.handleExportIssues)
 	r.Get("/issues/suggest", s.handleSuggest)
 	r.Post("/issues/bulk", s.handleBulkEdit)
+	r.Get("/issues/bulk/transitions", s.handleBulkTransitions)
 	// An import writes dates, reporters and statuses of its own, which is the
 	// project's record rather than one more issue in it.
 	r.With(requireProjectPerm(perm.ProjectAdminister), s.requireFeature(project.FeatureImport)).Post("/projects/{projectKey}/import/preview", s.handleImportPreview)

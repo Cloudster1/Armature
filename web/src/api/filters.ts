@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request, upload } from "./client";
-import type { Issue, IssuePage } from "./issues";
+import type { Issue, IssuePage, Priority } from "./issues";
+import { BULK_MAX_SELECTION } from "@/config";
 
 export interface FilterSubscription {
   schedule: "daily" | "weekly";
@@ -78,19 +79,35 @@ export function useSubscribeFilter() {
 
 // Bulk: many issues, one request; the answer names what was refused and why.
 
+/** Members of a set to add and to take away; the rest of each issue's set stays. */
+export interface BulkSetEdit {
+  add?: string[];
+  remove?: string[];
+}
+
 export interface BulkChange {
-  priority?: string;
+  priority?: Priority;
   assignee?: string | null;
   sprintId?: string | null;
   milestoneId?: string | null;
   teamId?: string | null;
   addLabels?: string[];
+  removeLabels?: string[];
+  fixVersions?: BulkSetEdit;
+  components?: BulkSetEdit;
+  /** Answers by field id; null clears one. */
+  fields?: Record<string, unknown>;
   transition?: string;
+  /** A move and a delete each go alone. */
+  moveTo?: { projectKey: string; statuses?: Record<string, string> };
+  delete?: boolean;
 }
 
 export interface BulkResult {
   applied: string[];
   refused: Array<{ key: string; reason: string }>;
+  /** Every key a move changed, those carried under a moved issue included. */
+  moved: Array<{ from: string; to: string }>;
 }
 
 export function useBulkEdit() {
@@ -98,6 +115,15 @@ export function useBulkEdit() {
   return useMutation({
     mutationFn: (input: { keys: string[]; change: BulkChange }) => request<BulkResult>("/issues/bulk", { method: "POST", body: input }),
     onSuccess: () => queryClient.invalidateQueries(),
+  });
+}
+
+/** The transitions every selected issue offers, so one name can be picked for all. */
+export function useBulkTransitions(keys: string[]) {
+  return useQuery({
+    queryKey: ["bulk-transitions", [...keys].sort()],
+    queryFn: () => request<{ names: string[] }>(`/issues/bulk/transitions?keys=${encodeURIComponent(keys.join(","))}`),
+    enabled: keys.length > 0 && keys.length <= BULK_MAX_SELECTION,
   });
 }
 

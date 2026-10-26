@@ -12,6 +12,7 @@ import (
 
 	"github.com/armature/armature/backend/internal/bulk"
 	"github.com/armature/armature/backend/internal/events"
+	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/issue"
 	"github.com/armature/armature/backend/internal/label"
 )
@@ -22,7 +23,7 @@ func TestBulkEditRefusalLeavesTheIssueAsItWas(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	ws := h.newProject(t, "allornot")
-	edits := bulk.NewService(h.cluster, ws.issues, label.NewService(h.cluster))
+	edits := bulk.NewService(h.cluster, ws.issues, label.NewService(h.cluster), field.NewService(h.cluster))
 
 	fresh := ws.newIssue(t, "Still to do, so Approve is not offered")
 	ready := ws.newIssue(t, "In review, so Approve is offered")

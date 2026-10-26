@@ -91,7 +91,7 @@ function SearchPage() {
           would move the next row out from under the pointer. */}
       {selected.size > 0 && (
         <div className="sticky bottom-0 z-10 mt-3 bg-canvas/95 py-2 backdrop-blur">
-          <BulkBar keys={[...selected]} onClear={() => setSelected(new Set())} />
+          <BulkBar keys={[...selected]} issues={issues} onClear={() => setSelected(new Set())} />
         </div>
       )}
       {data && <Pager label={t.search.page.pages} total={data.total} offset={data.offset} pageSize={SEARCH_PAGE_SIZE} onChange={turn} />}

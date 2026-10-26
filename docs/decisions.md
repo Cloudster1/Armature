@@ -1488,6 +1488,18 @@ the old project: answers to organization fields go along, since those fields
 apply in every project, and each answer to one of the old project's own fields
 is named in the history as it is dropped, so nothing disappears unsaid.
 
+Bulk edit does what one edit at a time does, issue by issue (#91). Each issue is
+checked against what the caller holds in its own project, the permission its
+single-issue route asks for, and refused by name; nothing is refused for the
+whole request but the project a move lands in. An issue the caller cannot read
+is "not found", as a missing one is. Labels, fix versions and components are
+added and taken away rather than replaced: replacing eighty issues' sets loses
+what each had, and an archived version an issue still names would refuse the
+save. A move or a delete goes alone, since a move clears what belongs to the old
+project and a delete leaves nothing to change, and an issue a move or a delete
+already carried with its parent counts as done rather than as missing. The
+transition is picked from the names every selected issue offers, not typed.
+
 ### A dashboard is an arrangement, and every number is computed on read
 
 A widget is a kind, a title, a width, a position and its parameters; its report

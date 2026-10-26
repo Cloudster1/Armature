@@ -23,7 +23,11 @@ vi.mock("@/api/filters", async () => ({
   exportHref: (await vi.importActual<typeof import("@/api/filters")>("@/api/filters")).exportHref,
   useSavedFilters: () => ({ data: { filters: [] } }),
   useBulkEdit: () => ({ mutate: vi.fn(), isPending: false, error: null }),
+  useBulkTransitions: () => ({ data: { names: [] } }),
 }));
+// The bar's project changes and its delete ask the server and the shell; the page is under test here.
+vi.mock("@/features/filters/BulkProjectChanges", () => ({ BulkProjectChanges: () => null }));
+vi.mock("@/features/shell/ConfirmProvider", () => ({ useConfirm: () => vi.fn() }));
 vi.mock("@/features/filters/SavedFilterBar", () => ({ SavedFilterBar: () => null }));
 vi.mock("@/api/labels", () => ({ useLabelSearch: () => ({ data: undefined }) }));
 vi.mock("@/features/search/QueryInput", () => ({
