@@ -17,6 +17,7 @@ const SCENARIO_FILES = [
   "desk-companies",
   "dashboards",
   "issue-details",
+  "language",
   "organization",
   "installation",
   "board",
