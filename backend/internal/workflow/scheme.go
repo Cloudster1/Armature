@@ -271,26 +271,34 @@ func (s *Store) ForProject(ctx context.Context, tx db.DBTX, projectID uuid.UUID,
 }
 
 // ProjectsFollowing returns the active projects that resolve some issue type
-// to this workflow, the way ProjectStatuses resolves them, in one query.
+// to this workflow. It resolves each scheme once, not each of thousands of projects.
 func (s *Store) ProjectsFollowing(ctx context.Context, tx db.DBTX, workflowID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := tx.Query(ctx, `
+		WITH chosen AS (
+		    SELECT DISTINCT workflow_scheme_id AS scheme_id FROM project WHERE archived_at IS NULL
+		), following AS (
+		    SELECT c.scheme_id
+		    FROM chosen c
+		    WHERE EXISTS (
+		        SELECT 1
+		        FROM issue_type t
+		        CROSS JOIN LATERAL (
+		            SELECT i.workflow_id
+		            FROM workflow_scheme sc
+		            JOIN workflow_scheme_item i ON i.scheme_id = sc.id
+		            WHERE (sc.id = c.scheme_id OR sc.is_default)
+		              AND (i.issue_type_id = t.id OR i.issue_type_id IS NULL)
+		            ORDER BY (sc.id IS DISTINCT FROM c.scheme_id), (i.issue_type_id IS NULL)
+		            LIMIT 1
+		        ) r
+		        WHERE r.workflow_id = $1
+		    )
+		)
 		SELECT p.id
 		FROM project p
 		WHERE p.archived_at IS NULL
-		  AND EXISTS (
-		    SELECT 1
-		    FROM issue_type t
-		    CROSS JOIN LATERAL (
-		        SELECT i.workflow_id
-		        FROM workflow_scheme sc
-		        JOIN workflow_scheme_item i ON i.scheme_id = sc.id
-		        WHERE (sc.id = p.workflow_scheme_id OR sc.is_default)
-		          AND (i.issue_type_id = t.id OR i.issue_type_id IS NULL)
-		        ORDER BY (sc.id IS DISTINCT FROM p.workflow_scheme_id), (i.issue_type_id IS NULL)
-		        LIMIT 1
-		    ) r
-		    WHERE r.workflow_id = $1
-		  )
+		  AND (p.workflow_scheme_id IN (SELECT scheme_id FROM following)
+		       OR (p.workflow_scheme_id IS NULL AND EXISTS (SELECT 1 FROM following WHERE scheme_id IS NULL)))
 		ORDER BY p.key`, workflowID)
 	if err != nil {
 		return nil, fmt.Errorf("find the projects following the workflow: %w", err)
