@@ -2,7 +2,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { BASE, request } from "./client";
-import { DASHBOARD_REFETCH_MS } from "@/config";
+import { DASHBOARD_REFETCH_MS, WIDGET_CHANGES_SCOPE } from "@/config";
 import type { FilterSpec } from "@/features/dashboard/filter";
 import type { Progress } from "./milestones";
 import type { ProjectKind } from "./projects";
@@ -426,10 +426,14 @@ export function useReport<T>(projectKey: string, kind: ReportKind, config: Widge
   });
 }
 
-function useReportMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>) {
+function useReportMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>, scope?: { id: string }) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: run, onSuccess: () => queryClient.invalidateQueries({ queryKey: reportsQueryKey }) });
+  return useMutation({ mutationFn: run, scope, onSuccess: () => queryClient.invalidateQueries({ queryKey: reportsQueryKey }) });
 }
+
+// Each change to a dashboard's widgets waits for the one before, so the last
+// click is the one the server keeps: a widget's save replaces its whole config.
+const widgetChanges = { id: WIDGET_CHANGES_SCOPE };
 
 /** What a dashboard may start from: a built-in (a word) or one of the organization's own (an id). */
 export interface DashboardTemplate {
@@ -471,24 +475,30 @@ export function useDeleteDashboard() {
 }
 
 export function useAddWidget() {
-  return useReportMutation(({ dashboardId, ...input }: { dashboardId: string; kind: ReportKind; title?: string; width?: 1 | 2; config?: WidgetConfig }) =>
-    request<{ widget: Widget }>(`/dashboards/${dashboardId}/widgets`, { method: "POST", body: input }),
+  return useReportMutation(
+    ({ dashboardId, ...input }: { dashboardId: string; kind: ReportKind; title?: string; width?: 1 | 2; config?: WidgetConfig }) =>
+      request<{ widget: Widget }>(`/dashboards/${dashboardId}/widgets`, { method: "POST", body: input }),
+    widgetChanges,
   );
 }
 
 export function useUpdateWidget() {
-  return useReportMutation(({ id, ...input }: { id: string; title?: string; width?: 1 | 2; config?: WidgetConfig }) =>
-    request<{ widget: Widget }>(`/widgets/${id}`, { method: "PATCH", body: input }),
+  return useReportMutation(
+    ({ id, ...input }: { id: string; title?: string; width?: 1 | 2; config?: WidgetConfig }) =>
+      request<{ widget: Widget }>(`/widgets/${id}`, { method: "PATCH", body: input }),
+    widgetChanges,
   );
 }
 
 export function useRemoveWidget() {
-  return useReportMutation((id: string) => request<void>(`/widgets/${id}`, { method: "DELETE" }));
+  return useReportMutation((id: string) => request<void>(`/widgets/${id}`, { method: "DELETE" }), widgetChanges);
 }
 
 export function useReorderWidgets() {
-  return useReportMutation(({ dashboardId, order }: { dashboardId: string; order: string[] }) =>
-    request<void>(`/dashboards/${dashboardId}/widgets`, { method: "PUT", body: { order } }),
+  return useReportMutation(
+    ({ dashboardId, order }: { dashboardId: string; order: string[] }) =>
+      request<void>(`/dashboards/${dashboardId}/widgets`, { method: "PUT", body: { order } }),
+    widgetChanges,
   );
 }
 
