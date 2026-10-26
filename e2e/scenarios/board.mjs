@@ -387,9 +387,15 @@ scenario("the swimlane editor offers only the states of the project's workflows"
 
   await goto(page, `/projects/${key}/board`);
   await clickButton(page, "Configure swimlanes");
-  await page.waitForFunction(() => document.querySelector('[data-swimlane-editor] fieldset input[type="checkbox"]'), {
-    timeout: WAIT,
-  });
+  // The project's states come in their own answer, after the lanes; the first
+  // lane offers them all once there is one per lane it was built with.
+  await page.waitForFunction(
+    () => {
+      const editors = document.querySelectorAll("[data-swimlane-editor]");
+      return editors.length > 0 && editors[0].querySelectorAll("fieldset label").length >= editors.length;
+    },
+    { timeout: WAIT },
+  );
 
   const lanes = await page.$$eval("[data-swimlane-editor]", (els) => els.map((el) => el.getAttribute("data-swimlane-editor")).join(", "));
   const offered = await page.$eval("[data-swimlane-editor]", (el) => [...el.querySelectorAll("fieldset label")].map((l) => l.textContent.trim()).join(", "));
