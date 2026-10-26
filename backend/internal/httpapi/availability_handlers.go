@@ -166,6 +166,22 @@ func (s *Server) handleImportHolidays(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleProposeNextYear answers what copying the calendar's latest year
+// would add, without saving: the administrator corrects it in the table first.
+func (s *Server) handleProposeNextYear(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "calendarID", "calendar")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	proposal, err := s.Availability.ProposeNextYear(r.Context(), id)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"proposal": proposal})
+}
+
 // handleGetWorkingWeek answers a person about themselves, and an administrator
 // about anybody: hours worked are a person's own business.
 func (s *Server) handleGetWorkingWeek(w http.ResponseWriter, r *http.Request) {

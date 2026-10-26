@@ -1506,6 +1506,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/holiday-calendars/{calendarID}/next-year": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The calendar's latest year carried to the same dates in the next, unsaved, for an administrator to correct and save. */
+        get: operations["proposeNextYear"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/installation": {
         parameters: {
             query?: never;
@@ -6480,6 +6497,12 @@ export interface components {
             statuses?: {
                 [key: string]: string;
             };
+        };
+        NextYearProposal: {
+            days: components["schemas"]["Holiday"][];
+            from: number;
+            skipped: components["schemas"]["Holiday"][];
+            to: number;
         };
         Node: {
             children: components["schemas"]["Node"][];
@@ -12319,6 +12342,39 @@ export interface operations {
                     "application/json": {
                         calendar: components["schemas"]["HolidayCalendar"];
                         imported: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    proposeNextYear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        proposal: components["schemas"]["NextYearProposal"];
                     };
                 };
             };
