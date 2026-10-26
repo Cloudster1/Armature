@@ -35,9 +35,13 @@ function authorize(app, scope, extra = {}) {
   return { path: `/oauth/authorize?${query}`, verifier };
 }
 
-/** Waits for the browser to be sent back to the partner and reads what it carries. */
+/**
+ * Waits for the browser to be sent back to the partner and reads what it carries.
+ * The partner's page is loaded in full first, since a load started over one still
+ * under way is one Chromium sometimes never reports finished.
+ */
 async function answered(page) {
-  await page.waitForFunction(() => location.pathname === "/partner-callback", { timeout: WAIT });
+  await page.waitForFunction(() => location.pathname === "/partner-callback" && document.readyState === "complete", { timeout: WAIT });
   const back = new URL(page.url());
   expect.equal(back.searchParams.get("state"), "partner-state", "the partner's state comes back");
   return back.searchParams;
