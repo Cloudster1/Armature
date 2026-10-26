@@ -1,6 +1,7 @@
 // A test runner of its own because Playwright's image is gigabytes and nothing
 // is installed on the host; the alpine-chrome image is small and already here.
 import { writeFileSync } from "node:fs";
+import { parseShard, shardOf } from "./shard.mjs";
 
 const scenarios = [];
 let registering = null;
@@ -155,11 +156,22 @@ export async function run({ launch, open, prepare, artifacts, workers = DEFAULT_
   // E2E_ONLY narrows the run to the scenarios whose names contain it, or to one
   // file's scenarios, so one failing case or one area can be re-run on its own.
   const only = process.env.E2E_ONLY ?? "";
-  const chosen = only ? scenarios.filter((s) => chosenBy(only, s)) : scenarios;
-  if (only && chosen.length === 0) {
+  const narrowed = only ? scenarios.filter((s) => chosenBy(only, s)) : scenarios;
+  if (only && narrowed.length === 0) {
     process.stdout.write(`  no scenario matches ${JSON.stringify(only)}\n`);
     return false;
   }
+  // E2E_SHARD=i/n runs one n-th of them, so CI can split the suite across jobs.
+  let shard;
+  try {
+    shard = parseShard(process.env.E2E_SHARD);
+  } catch (error) {
+    process.stdout.write(`  ${error.message}\n`);
+    return false;
+  }
+  const chosen = shardOf(narrowed, shard);
+  const part = shard ? `${shard.index}/${shard.count}` : null;
+  if (part) process.stdout.write(`  shard ${part}: ${chosen.length} of ${narrowed.length} scenarios\n\n`);
 
   const seed = shuffleSeed();
   const pooled = chosen.filter((s) => !s.serial);
@@ -245,10 +257,10 @@ export async function run({ launch, open, prepare, artifacts, workers = DEFAULT_
   const seconds = Math.round((Date.now() - started) / 1000);
   const pool = results.filter((r) => !r.serial).length;
   process.stdout.write(
-    `\n  ${results.length - failed.length}/${results.length} scenarios passed in ${seconds}s: ` +
+    `\n  ${results.length - failed.length}/${results.length} scenarios${part ? ` of shard ${part}` : ""} passed in ${seconds}s: ` +
       `${pool} in parallel on ${parallel} browser${parallel === 1 ? "" : "s"}, then ${results.length - pool} serial on one\n`,
   );
-  if (artifacts) writeTimings(`${artifacts}/${TIMINGS_FILE}`, results, { seconds, workers: parallel, only, seed });
+  if (artifacts) writeTimings(`${artifacts}/${TIMINGS_FILE}`, results, { seconds, workers: parallel, only, seed, shard: part, of: narrowed.length });
   return failed.length === 0;
 }
 
@@ -270,7 +282,7 @@ function report(results) {
 }
 
 // One scenario per line and sorted by name, so two runs' files compare line by line.
-function writeTimings(path, results, { seconds, workers, only, seed }) {
+function writeTimings(path, results, { seconds, workers, only, seed, shard, of }) {
   const lines = [...results]
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
     .map(({ name, file, ok, ms, loads, serial }) => `    ${JSON.stringify({ name, file, ok, ms, loads, serial })}`);
@@ -280,6 +292,8 @@ function writeTimings(path, results, { seconds, workers, only, seed }) {
     `"only": ${JSON.stringify(only)}`,
     `"shuffle": ${JSON.stringify(seed)}`,
     `"loads": ${totalLoads(results)}`,
+    `"shard": ${JSON.stringify(shard)}`,
+    `"of": ${of}`,
   ];
   const body = `{\n${head.map((h) => `  ${h},\n`).join("")}  "scenarios": [\n${lines.join(",\n")}\n  ]\n}\n`;
   try {
