@@ -234,6 +234,9 @@ export const CHART_DEFAULT_SINCE_DAYS = 90;
 /** A dashboard is left open, so its numbers follow the work at this interval. */
 export const DASHBOARD_REFETCH_MS = 60_000;
 
+/** The mutation scope every change to a dashboard's widgets queues in. */
+export const WIDGET_CHANGES_SCOPE = "dashboard-widgets";
+
 /** How many of a template's widgets its card names before it trails off. */
 export const TEMPLATE_SHAPE_MAX_KINDS = 4;
 
