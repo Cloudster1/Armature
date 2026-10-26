@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useHolidayCalendar, useImportHolidays, useSetHolidays, type Holiday } from "@/api/availability";
+import { useHolidayCalendar, useImportHolidays, useProposeNextYear, useSetHolidays, type Holiday, type NextYearProposal } from "@/api/availability";
 import { Button, Card, Checkbox, EmptyState, ErrorBanner, IconButton, Input, SectionTitle, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { HOLIDAY_FILE_ACCEPT, HOLIDAY_NAME_MAX_LENGTH } from "@/config";
@@ -17,6 +17,12 @@ function unsavedDays(draft: Holiday[], saved: Holiday[]): number {
   return changed + removed;
 }
 
+/** The last year the days reach into, which is the one a copy carries on. */
+export function latestYear(days: Holiday[]): number | null {
+  const years = days.map((day) => Number.parseInt(day.day.slice(0, 4), 10)).filter((year) => !Number.isNaN(year));
+  return years.length > 0 ? Math.max(...years) : null;
+}
+
 /**
  * One calendar's days off. An administrator edits them in place and saves the
  * whole list at once, or adds a file's worth from an .ics export.
@@ -25,6 +31,8 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
   const { data, error } = useHolidayCalendar(id);
   const setDays = useSetHolidays();
   const importDays = useImportHolidays();
+  const proposeNextYear = useProposeNextYear();
+  const [copied, setCopied] = useState<NextYearProposal | null>(null);
   const toast = useToast();
   const confirm = useConfirm();
   const format = useFormat();
@@ -34,6 +42,25 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
   if (!calendar) return null;
   const days = draft ?? calendar.days ?? [];
+  const from = latestYear(calendar.days ?? []);
+
+  // The copied days join whatever the table holds, typed or saved, and never
+  // take a date it already has; nothing is written until Save.
+  function copyNextYear() {
+    if (!calendar) return;
+    proposeNextYear.mutate(calendar.id, {
+      onSuccess: ({ proposal }) => {
+        const held = new Set(days.map((day) => day.day));
+        const added = proposal.days.filter((day) => !held.has(day.day));
+        setCopied({ ...proposal, days: added });
+        if (added.length > 0) setDraft([...days, ...added].sort((a, b) => a.day.localeCompare(b.day)));
+      },
+    });
+  }
+  const discard = () => {
+    setDraft(null);
+    setCopied(null);
+  };
 
   const change = (index: number, patch: Partial<Holiday>) => setDraft(days.map((day, i) => (i === index ? { ...day, ...patch } : day)));
 
@@ -52,7 +79,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       { id: calendar.id, file },
       {
         onSuccess: ({ imported }) => {
-          setDraft(null);
+          discard();
           toast.success(t.schedule.holidays.imported(imported, calendar.name));
         },
       },
@@ -65,7 +92,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       { id: calendar.id, days: draft },
       {
         onSuccess: () => {
-          setDraft(null);
+          discard();
           toast.success(t.schedule.holidays.savedDays(calendar.name));
         },
       },
@@ -97,6 +124,18 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
             >
               {t.schedule.holidays.addDay}
             </Button>
+            {from !== null && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<Icon.Copy />}
+                loading={proposeNextYear.isPending}
+                onClick={copyNextYear}
+                data-action="copy-next-year"
+              >
+                {t.schedule.holidays.copyYear(from, from + 1)}
+              </Button>
+            )}
             <input
               ref={fileInput}
               type="file"
@@ -111,6 +150,13 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       </div>
       {importDays.error && <ErrorBanner>{(importDays.error as Error).message}</ErrorBanner>}
       {setDays.error && <ErrorBanner>{(setDays.error as Error).message}</ErrorBanner>}
+      {proposeNextYear.error && <ErrorBanner>{(proposeNextYear.error as Error).message}</ErrorBanner>}
+      {copied && (
+        <p className="mb-2 text-sm text-ink-muted" data-holiday-copied={copied.days.length}>
+          {copied.days.length > 0 ? t.schedule.holidays.copied(copied.days.length, copied.from, copied.to) : t.schedule.holidays.nothingToCopy(copied.to)}
+          {copied.skipped.length > 0 && ` ${t.schedule.holidays.skippedLeapDay(copied.to)}`}
+        </p>
+      )}
       {days.length === 0 ? (
         <EmptyState title={t.schedule.holidays.empty} description={canAdminister ? t.schedule.holidays.emptyAdmin : t.schedule.holidays.emptyOthers} />
       ) : (
@@ -176,7 +222,7 @@ export function CalendarDays({ id, canAdminister }: { id: string; canAdminister:
       )}
       {canAdminister && draft && (
         <div className="mt-3 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setDraft(null)}>
+          <Button variant="ghost" onClick={discard}>
             {t.schedule.holidays.discard}
           </Button>
           <Button loading={setDays.isPending} onClick={save} data-action="save-holidays">

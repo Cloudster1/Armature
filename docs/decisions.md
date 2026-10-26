@@ -961,6 +961,16 @@ An import lands on the server, not in the table being edited, so while that
 table holds unsaved days the import asks before it discards them rather than
 merging the file into a draft the server has not seen.
 
+Next year's days are copied, not repeated. "Copy 2026 to 2027" takes the latest
+year a calendar holds and proposes its days on the same dates a year on, into
+the table and unsaved, so the administrator moves Easter and its kin by hand or
+by import and then saves. A holiday stays one dated row: every reader of the
+days, the plans, the calendars and a desk's clocks, keeps reading dates, and no
+rule marked "every year" quietly puts a moving feast on the wrong day. The latest
+year rather than the current one, so the copy reads the same in December and in
+January. A date the next year already holds keeps what it has, typed or saved,
+and 29 February is skipped rather than guessed onto a neighbour.
+
 This is not the service desk's business calendar, which says when a desk is
 open for its clocks and answers a different question. A desk's calendar can
 name a holiday calendar, though, so a desk keeps one list with everybody else

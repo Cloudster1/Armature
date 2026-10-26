@@ -11,7 +11,7 @@ import type { Build, Meta } from "./meta";
 import type { ActiveSession, ApiToken } from "./auth";
 import type { ConnectedApp, ConsentAnswer } from "./oauth";
 import type { Webhook } from "./automation";
-import type { Absence, Holiday, HolidayCalendar, WorkingWeek } from "./availability";
+import type { Absence, Holiday, HolidayCalendar, NextYearProposal, WorkingWeek } from "./availability";
 import type { Company, Desk } from "./desk";
 
 // The hand written types are what the components render; the generated ones
@@ -43,6 +43,7 @@ describe("the hand written types agree with the document", () => {
   it("for holiday calendars, working weeks and absences", () => {
     expectTypeOf<Schemas["HolidayCalendar"]>().toMatchTypeOf<HolidayCalendar>();
     expectTypeOf<Schemas["Holiday"]>().toMatchTypeOf<Holiday>();
+    expectTypeOf<Schemas["NextYearProposal"]>().toMatchTypeOf<NextYearProposal>();
     expectTypeOf<Schemas["WorkingWeek"]>().toMatchTypeOf<WorkingWeek>();
     expectTypeOf<Schemas["Absence"]>().toMatchTypeOf<Absence>();
   });

@@ -112,6 +112,7 @@ func (s *Server) organizationRoutes(r chi.Router) {
 		r.Delete("/holiday-calendars/{calendarID}", s.handleDeleteHolidayCalendar)
 		r.Put("/holiday-calendars/{calendarID}/days", s.handleSetHolidays)
 		r.Post("/holiday-calendars/{calendarID}/import", s.handleImportHolidays)
+		r.Get("/holiday-calendars/{calendarID}/next-year", s.handleProposeNextYear)
 		r.Put("/users/{userID}/schedule", s.handleSetWorkingWeek)
 	})
 	// Who is away, for every agent to plan around. Whether a caller may
