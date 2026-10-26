@@ -94,6 +94,9 @@ func TestAPartnerManagesItsOwnWebhook(t *testing.T) {
 	})
 
 	t.Run("the administrator sees it and may only switch it or remove it", func(t *testing.T) {
+		// The partner changed it under its own session, which holds nobody else's
+		// reads; switching it off sends back what the administrator read.
+		h.waitForPrimary(t)
 		var listed map[string]any
 		for _, each := range list(t, want(t, ada.get("/api/v1/webhooks"), http.StatusOK, "the list"), "webhooks") {
 			if each.(map[string]any)["id"] == id {
@@ -119,6 +122,7 @@ func TestAPartnerManagesItsOwnWebhook(t *testing.T) {
 	t.Run("it is named after its app, through a rename", func(t *testing.T) {
 		renamed := h.name(t, "Stator Two")
 		want(t, ada.patch("/api/v1/oauth/clients/"+stator.id, map[string]any{"name": renamed}), http.StatusOK, "renaming the app")
+		h.waitForPrimary(t)
 		if read := obj(t, want(t, app.get("/api/v1/webhooks/partner"), http.StatusOK, "reading it"), "webhook"); read["name"] != renamed+" (connected app)" {
 			t.Errorf("after the rename the webhook is called %v", read["name"])
 		}
