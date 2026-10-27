@@ -321,6 +321,11 @@ services:
       # Every browser in a test run reaches the api from one address, so the
       # brakes on codes and guesses forget it after a minute, not ten.
       ARMATURE_DOOR_WINDOW: 1m
+      # Every sign-up and sign-in of a test run hashes a password, so this stack
+      # hashes as cheaply as the integration suite does. Helm and the built-in
+      # defaults keep the OWASP parameters for anything that ships.
+      ARMATURE_ARGON_MEMORY_KIB: 8192
+      ARMATURE_ARGON_ITERATIONS: 1
       # The first account sets the installation up; development keeps the
       # sign-up page open after it, so later people join as members.
       ARMATURE_SIGNUP: open

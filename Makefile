@@ -117,8 +117,13 @@ build: | $(GO_CACHES) ## Compile all backend binaries
 	$(DOCKER_GO) go build ./...
 
 .PHONY: test
-test: test-scripts | $(GO_CACHES) ## Run backend unit tests and the script tests
+test: test-scripts test-e2e-runner | $(GO_CACHES) ## Run backend unit tests and the script tests
 	$(DOCKER_GO) go test ./...
+
+# How the browser suite splits its scenarios across jobs, tested without a browser.
+.PHONY: test-e2e-runner
+test-e2e-runner: ## Test how the browser suite splits its scenarios
+	docker run --rm -t -u $(UID):$(GID) -v $(ROOT)/e2e:/e2e:ro -w /e2e $(NODE_IMAGE) node --test /e2e/shard.test.mjs
 
 .PHONY: test-scripts
 test-scripts: ## Test the scripts in deploy/ and the push hook, and lint the GitHub workflows
@@ -173,7 +178,8 @@ test-integration: | $(GO_CACHES) ## Run the integration suite against the runnin
 # WORKERS=<n> sets how many browsers run scenarios side by side; ONLY=<words>
 # narrows the run to the scenarios whose names contain them, or to one file's
 # (ONLY=board). SHUFFLE=1 runs the parallel pool in a random order and prints
-# the seed, which SHUFFLE=<seed> repeats. E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD
+# the seed, which SHUFFLE=<seed> repeats. SHARD=<i>/<n> runs one n-th of the
+# suite, as each of CI's browser jobs does. E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD
 # name the administrator the run acts as, the seed's Ada unless said otherwise;
 # on an installation nobody has set up, the run signs them up through the
 # sign-up page first. Each run writes .cache/e2e/timings.json and lists its slowest.
@@ -212,10 +218,18 @@ test-e2e: ## Run the browser end-to-end suite against the running stack
 		-e E2E_ONLY='$(ONLY)' \
 		-e E2E_WORKERS='$(WORKERS)' \
 		-e E2E_SHUFFLE='$(SHUFFLE)' \
+		-e E2E_SHARD='$(SHARD)' \
 		-e E2E_ADMIN_EMAIL='$(E2E_ADMIN_EMAIL)' \
 		-e E2E_ADMIN_PASSWORD='$(E2E_ADMIN_PASSWORD)' \
 		-w /usr/src/app \
 		--entrypoint node $(E2E_IMAGE) /usr/src/app/e2e/suite.mjs
+
+# A split run's jobs each leave their timings; this adds them up for CI's
+# summary and fails when a shard is missing or a scenario ran twice or not at all.
+E2E_SHARDS_DIR ?= .cache/e2e-shards
+.PHONY: e2e-report
+e2e-report: ## Add up a split browser run's timings: make e2e-report E2E_SHARDS_DIR=<dir>
+	@docker run --rm -u $(UID):$(GID) -v $(ROOT)/e2e:/e2e:ro -v $(abspath $(E2E_SHARDS_DIR)):/shards -w /e2e $(NODE_IMAGE) node /e2e/report.mjs /shards
 
 .PHONY: test-all
 test-all: test test-integration test-e2e lint | $(NPM_CACHE_VOL) ## Everything: unit, lint, integration and browser

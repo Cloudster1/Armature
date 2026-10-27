@@ -321,7 +321,11 @@ narrows the run to the scenarios whose names contain them, or to one file's, as
 `ONLY=board` runs every scenario in `e2e/scenarios/board.mjs`; `WORKERS=1` is
 the reference when the order of things matters. `SHUFFLE=1` runs the parallel
 pool in a random order, to show that no scenario leans on another, and prints a
-seed that `SHUFFLE=<seed>` repeats. A page load is waited for by the page's own
+seed that `SHUFFLE=<seed>` repeats. `SHARD=<i>/<n>` runs one n-th of the
+suite, dealt by file and name so every job splits it the same way. CI runs the
+suite as four such jobs, each on its own stack with its own serial lane, and
+its e2e report job adds their timings up and fails when a scenario ran twice
+or not at all. A page load is waited for by the page's own
 word, `data-settled` on the body, which the app writes from its in-flight
 queries and the router's state.
 

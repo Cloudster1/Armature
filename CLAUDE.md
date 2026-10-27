@@ -38,7 +38,8 @@ Commits describe a change to the product, not to a file.
 `make test-e2e`. A feature is finished when all four pass, not when the code is
 written. `make lint` runs ESLint as CI does. `ONLY=<substring>` filters the browser suite while iterating and
 `WORKERS=<n>` sets how many browsers run it (four unless said otherwise), and
-`SHUFFLE=1` runs it in a random order. It
+`SHUFFLE=1` runs it in a random order, and `SHARD=<i>/<n>` runs one n-th of it,
+as each of CI's four browser jobs does. It
 runs against the production build, so a CSP or nginx problem fails it;
 `E2E_WEB=dev` points it at the Vite dev server instead.
 
