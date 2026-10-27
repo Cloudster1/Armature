@@ -197,6 +197,7 @@ export const doorsDe: typeof doorsEn = {
       watching: "Beobachtete Vorgänge ändern sich",
       sla_breached: "Eine Anfrage verfehlt ihr Ziel",
       absence: "Jemand anderes ändert meine Abwesenheiten",
+      access_requested: "Jemand bittet, ein Projekt zu sehen, das ich verwalte",
     },
   },
 };

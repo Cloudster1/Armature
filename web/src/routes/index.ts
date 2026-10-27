@@ -21,6 +21,7 @@ import { filtersRoute } from "./filters";
 import { savedFilterRoute } from "./saved-filter";
 import { importRoute } from "./import";
 import { webhooksRoute } from "./webhooks";
+import { accessRequestRoute } from "./access-request";
 import { connectedAppsRoute } from "./connected-apps";
 import { oauthAuthorizeRoute } from "./oauth-authorize";
 import { auditRoute } from "./audit";
@@ -105,6 +106,7 @@ const routeTree = rootRoute.addChildren([
     portalRequestRoute,
     portalArticleRoute,
     issueDetailRoute,
+    accessRequestRoute,
     settingsRoute,
     profileRoute,
     inboxRoute,

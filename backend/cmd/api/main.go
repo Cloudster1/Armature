@@ -16,6 +16,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/armature/armature/backend/internal/access"
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -223,6 +224,7 @@ func run() error {
 		Desk:         deskService,
 		Reports:      report.NewService(cluster, plans).WithSprints(sprints),
 		Issues:       issues,
+		Access:       access.NewService(cluster, issues, perm.NewStore(cluster)),
 		Boards:       board.NewService(cluster, issues),
 		Plans:        plans,
 		Sprints:      sprints,

@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "git-proxy@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
+  "capabilities": ["calendar@1", "git-proxy@1", "issue-embed@1", "issue.access-requests@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
 }
 ```
 
@@ -30,6 +30,32 @@ with a session or a token.
 - `GET /issues/{issueKey}`
 - `GET /issues`
 - `GET /issues/suggest`
+
+An issue the caller may not see answers 404 `not_found`, the same as one that
+does not exist. A project whose administrators turned on "Show that issues
+exist to people who may not see them" answers 403 `not_permitted` instead, for
+an issue that exists, with the project's name in `project`:
+
+```json
+{ "code": "not_permitted", "message": "You may not see issues of Payments. Ask its administrators for access.", "project": "Payments" }
+```
+
+### `issue.access-requests@1`
+
+A reader asks for access to an issue with their own token, and is answered
+`202 {"received": true}` alike whether the issue exists, whether they may
+already see it and whether its project is hidden from them, so the answer
+reveals nothing. When the issue exists and is hidden from them, everyone who
+may administer its project is told in Armature and by mail, with the note, and
+grants the reader role on the project in one click. Asking again for the same
+project within a day tells nobody again. A partner links "Ask for access" to
+it beside "You may not see PROJ-12, or it does not exist".
+
+- `POST /issues/{issueKey}/access-requests` with `{ "message": "..." }`, the
+  message optional and up to 1000 characters. A key that is not an issue key
+  is 422; more than 20 asks in ten minutes are 429.
+- A connected app asks with `comment.write`, the scope that speaks to people,
+  as watching an issue does.
 
 ### `remote-links@1`
 

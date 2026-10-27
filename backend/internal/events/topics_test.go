@@ -23,6 +23,7 @@ var notListed = map[string]string{
 	events.TopicAbsenceRecorded: "whose days away are private, so only an endpoint taking everything gets them",
 	events.TopicAbsenceChanged:  "whose days away are private, so only an endpoint taking everything gets them",
 	events.TopicAbsenceRemoved:  "whose days away are private, so only an endpoint taking everything gets them",
+	events.TopicAccessRequested: "which names a person and a project kept from them, so it stays inside for the project's administrators",
 }
 
 // A topic offered for subscription is one something publishes, and a topic the code

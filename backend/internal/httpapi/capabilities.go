@@ -49,6 +49,13 @@ var integrationCapabilities = []capability{
 		topics: []string{events.TopicRemoteLinkAdded, events.TopicRemoteLinkRemoved},
 	},
 	{
+		name:    "issue.access-requests@1",
+		promise: "A reader asks for access to an issue with their own token and is answered 202 alike whether it exists or not; the project's administrators are told.",
+		operations: []string{
+			"POST /issues/{issueKey}/access-requests",
+		},
+	},
+	{
 		name:    "webhooks@1",
 		promise: "Endpoints subscribed to topics, their deliveries, a redelivery, a test delivery and a new secret, each delivery a signed envelope.",
 		operations: []string{

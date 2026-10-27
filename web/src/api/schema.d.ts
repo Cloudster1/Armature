@@ -74,6 +74,40 @@ export interface paths {
         patch: operations["updateAbsence"];
         trace?: never;
     };
+    "/access-requests/{requestID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One request for access, to somebody who may administer its project. */
+        get: operations["getAccessRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/access-requests/{requestID}/grant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give whoever asked the reader role on the project; takes administering it. */
+        post: operations["grantAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/access/me": {
         parameters: {
             query?: never;
@@ -1766,6 +1800,23 @@ export interface paths {
         head?: never;
         /** Edit an issue's fields; the status moves through transitions instead. */
         patch: operations["updateIssue"];
+        trace?: never;
+    };
+    "/issues/{issueKey}/access-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask the project's administrators for access to an issue; the answer is the same whether or not the issue exists or may be seen. */
+        post: operations["askForAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/issues/{issueKey}/attachments": {
@@ -4882,6 +4933,7 @@ export interface components {
             };
             message: string;
             position?: number;
+            project?: string;
             requestId?: string;
         };
         APIToken: {
@@ -4920,6 +4972,26 @@ export interface components {
             name?: string;
             password?: string;
             token: string;
+        };
+        AccessReceipt: {
+            received: boolean;
+        };
+        AccessRequest: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            grantedAt?: string;
+            grantedBy?: components["schemas"]["Person"];
+            /** Format: uuid */
+            id: string;
+            issueKey: string;
+            message: string;
+            projectKey: string;
+            projectName: string;
+            requester: components["schemas"]["Person"];
+        };
+        AccessRequestBody: {
+            message?: string;
         };
         Action: {
             /** Format: uuid */
@@ -5525,18 +5597,23 @@ export interface components {
         Component: {
             /** Format: date-time */
             createdAt: string;
-            defaultAssignee?: components["schemas"]["Person"];
+            defaultAssignee?: components["schemas"]["ComponentPerson"];
             description?: string;
             /** Format: uuid */
             id: string;
             issues: number;
-            lead?: components["schemas"]["Person"];
+            lead?: components["schemas"]["ComponentPerson"];
             name: string;
             /** Format: uuid */
             projectId: string;
             projectKey: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        ComponentPerson: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         ComponentRef: {
             /** Format: uuid */
@@ -6677,6 +6754,7 @@ export interface components {
             words: string;
         };
         Person: {
+            email: string;
             /** Format: uuid */
             id: string;
             name: string;
@@ -6908,6 +6986,7 @@ export interface components {
             portalVerifies: boolean;
             /** @enum {string} */
             resourceGrouping: "team" | "person";
+            revealsIssues: boolean;
             status?: components["schemas"]["StatusUpdate"];
             template?: string;
             trustedDomains: string[];
@@ -8044,6 +8123,7 @@ export interface components {
             portalVerifies?: boolean;
             /** @enum {string} */
             resourceGrouping?: "team" | "person";
+            revealsIssues?: boolean;
             trustedDomains?: string[];
         };
         UpdateRequestTypeRequest: {
@@ -8486,6 +8566,72 @@ export interface operations {
                 content: {
                     "application/json": {
                         absence: components["schemas"]["Absence"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accessRequest: components["schemas"]["AccessRequest"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    grantAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accessRequest: components["schemas"]["AccessRequest"];
                     };
                 };
             };
@@ -13095,6 +13241,41 @@ export interface operations {
                     "application/json": {
                         issue: components["schemas"]["Issue"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    askForAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issueKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccessRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReceipt"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

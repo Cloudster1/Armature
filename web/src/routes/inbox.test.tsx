@@ -58,6 +58,6 @@ describe("the inbox", () => {
   // The server's notify.Kinds, which its fan-out test holds against what is told:
   // a switch for a kind nothing sends would do nothing.
   it("offers a switch for exactly the kinds the server tells", () => {
-    expect(NOTIFICATION_KINDS.map((k) => k.kind)).toEqual(["assigned", "mentioned", "commented", "transitioned", "watching", "sla_breached", "absence"]);
+    expect(NOTIFICATION_KINDS.map((k) => k.kind)).toEqual(["assigned", "mentioned", "commented", "transitioned", "watching", "sla_breached", "absence", "access_requested"]);
   });
 });

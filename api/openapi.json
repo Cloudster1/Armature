@@ -412,6 +412,106 @@
         }
       }
     },
+    "/access-requests/{requestID}": {
+      "get": {
+        "operationId": "getAccessRequest",
+        "summary": "One request for access, to somebody who may administer its project.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "requestID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessRequest": {
+                      "$ref": "#/components/schemas/AccessRequest"
+                    }
+                  },
+                  "required": [
+                    "accessRequest"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/access-requests/{requestID}/grant": {
+      "post": {
+        "operationId": "grantAccessRequest",
+        "summary": "Give whoever asked the reader role on the project; takes administering it.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "requestID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessRequest": {
+                      "$ref": "#/components/schemas/AccessRequest"
+                    }
+                  },
+                  "required": [
+                    "accessRequest"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/access/me": {
       "get": {
         "operationId": "myAccess",
@@ -7106,6 +7206,58 @@
                   "required": [
                     "issue"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{issueKey}/access-requests": {
+      "post": {
+        "operationId": "askForAccess",
+        "summary": "Ask the project's administrators for access to an issue; the answer is the same whether or not the issue exists or may be seen.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "issueKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessReceipt"
                 }
               }
             }
@@ -20493,6 +20645,9 @@
           "position": {
             "type": "integer"
           },
+          "project": {
+            "type": "string"
+          },
           "requestId": {
             "type": "string"
           }
@@ -20618,6 +20773,69 @@
         "required": [
           "token"
         ]
+      },
+      "AccessReceipt": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "received"
+        ]
+      },
+      "AccessRequest": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "requester": {
+            "$ref": "#/components/schemas/Person"
+          }
+        },
+        "required": [
+          "id",
+          "projectKey",
+          "projectName",
+          "issueKey",
+          "message",
+          "requester",
+          "createdAt"
+        ]
+      },
+      "AccessRequestBody": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
       },
       "Action": {
         "type": "object",
@@ -22783,7 +23001,7 @@
             "format": "date-time"
           },
           "defaultAssignee": {
-            "$ref": "#/components/schemas/Person"
+            "$ref": "#/components/schemas/ComponentPerson"
           },
           "description": {
             "type": "string"
@@ -22796,7 +23014,7 @@
             "type": "integer"
           },
           "lead": {
-            "$ref": "#/components/schemas/Person"
+            "$ref": "#/components/schemas/ComponentPerson"
           },
           "name": {
             "type": "string"
@@ -22821,6 +23039,22 @@
           "issues",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "ComponentPerson": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "ComponentRef": {
@@ -26780,6 +27014,9 @@
       "Person": {
         "type": "object",
         "properties": {
+          "email": {
+            "type": "string"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -26790,7 +27027,8 @@
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "email"
         ]
       },
       "PersonFound": {
@@ -27608,6 +27846,9 @@
               "person"
             ]
           },
+          "revealsIssues": {
+            "type": "boolean"
+          },
           "status": {
             "$ref": "#/components/schemas/StatusUpdate"
           },
@@ -27638,6 +27879,7 @@
           "issueCount",
           "openIssueCount",
           "portalVerifies",
+          "revealsIssues",
           "trustedDomains",
           "features",
           "planningMethod",
@@ -31771,6 +32013,9 @@
               "team",
               "person"
             ]
+          },
+          "revealsIssues": {
+            "type": "boolean"
           },
           "trustedDomains": {
             "type": "array",

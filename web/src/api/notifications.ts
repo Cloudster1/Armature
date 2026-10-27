@@ -31,6 +31,7 @@ export const NOTIFICATION_KINDS: Array<{ kind: string; label: string }> = [
   { kind: "watching", label: "Issues I watch change" },
   { kind: "sla_breached", label: "A request misses its goal" },
   { kind: "absence", label: "Somebody else changes my absences" },
+  { kind: "access_requested", label: "Somebody asks to see a project I administer" },
 ];
 
 const inboxKey = ["notifications"];

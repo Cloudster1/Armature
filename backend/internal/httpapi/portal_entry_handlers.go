@@ -99,7 +99,7 @@ func SetDoorWindow(d time.Duration) {
 	if d <= 0 {
 		return
 	}
-	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries, resetRequests, resetAddresses, secondFactorTries, tokenMisses, registrations} {
+	for _, t := range []*throttle{codeRequests, openEntries, codeRedemptions, credentialTries, resetRequests, resetAddresses, secondFactorTries, tokenMisses, registrations, accessRequests} {
 		t.mu.Lock()
 		t.window = d
 		t.mu.Unlock()
@@ -118,6 +118,7 @@ func ResetThrottles() {
 	secondFactorTries.reset()
 	tokenMisses.reset()
 	registrations.reset()
+	accessRequests.reset()
 }
 
 // allow records one request from a key and says whether it was inside the limit.

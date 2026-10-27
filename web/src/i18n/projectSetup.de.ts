@@ -54,6 +54,12 @@ export const projectSetupDe: typeof projectSetupEn = {
       "Die Seiten, die dieses Projekt hat. Seine Vorlage hat sie gewählt; eine abzuschalten blendet die Seite aus und verweigert neue Einträge, löscht aber nichts.",
     turnedOn: (feature: string) => `${feature} eingeschaltet`,
     turnedOff: (feature: string) => `${feature} ausgeschaltet`,
+    visibility: "Sichtbarkeit",
+    revealsIssues: "Zeigen, dass Vorgänge existieren, auch wer sie nicht sehen darf",
+    revealsIssuesDetail:
+      "Wer dieses Projekt nicht sehen darf, erfährt, dass ein Vorgang darin existiert, mit dem Namen des Projekts, statt nicht gefunden, und kann um Zugang bitten. Lassen Sie es aus für ein Projekt, dessen Existenz selbst vertraulich ist.",
+    revealsOn: "Vorgänge dieses Projekts erscheinen nun als eingeschränkt für alle, die sie nicht sehen dürfen.",
+    revealsOff: "Vorgänge dieses Projekts sind nun nicht zu finden für alle, die sie nicht sehen dürfen.",
     archive: "Archivieren",
     archiveDetail:
       "Archivieren nimmt das Projekt und seine Vorgänge aus allen Listen. Nichts wird gelöscht, und es lässt sich mit den archivierten wieder anzeigen und wiederherstellen.",

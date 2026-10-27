@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/access"
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -204,9 +205,11 @@ func NoteWrite(ctx context.Context, lsn db.LSN) {
 
 // Server holds everything the handlers need.
 type Server struct {
-	Auth       *auth.Service
-	Projects   *project.Service
-	Issues     *issue.Service
+	Auth     *auth.Service
+	Projects *project.Service
+	Issues   *issue.Service
+	// Access keeps asks for access to issues somebody may not see.
+	Access     *access.Service
 	Boards     *board.Service
 	Plans      *plan.Service
 	Sprints    *sprint.Service
