@@ -300,7 +300,11 @@ func TestTheDocumentDescribesAWebhookDelivery(t *testing.T) {
 // Version 2's data is the version 1 payload, described by topic beside the
 // document; a topic a subscription can name has its section there.
 func TestEveryTopicHasItsPayloadDescribed(t *testing.T) {
-	doc, err := os.ReadFile("../../../docs/webhooks.md")
+	path := os.Getenv("ARMATURE_WEBHOOKS_DOC")
+	if path == "" {
+		t.Skip("ARMATURE_WEBHOOKS_DOC is not set; run the suite with `make test`")
+	}
+	doc, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
