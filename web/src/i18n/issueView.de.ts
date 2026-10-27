@@ -2,6 +2,26 @@ import type { issueViewEn } from "./issueView.en";
 
 /** Die Texte der Seite eines Vorgangs, mit Kopf, Feldern, Beschreibung und Anordnung. */
 export const issueViewDe: typeof issueViewEn = {
+  unavailable: {
+    notFound: (key: string) => `${key} wurde nicht gefunden`,
+    notFoundDetail:
+      "Vielleicht gibt es ihn nicht, oder Sie dürfen sein Projekt nicht sehen. Bitten Sie um Zugang; wenn es ihn gibt, erfahren die Verwalter davon.",
+    restricted: (key: string) => `${key} ist eingeschränkt`,
+    restrictedDetail: (project: string) => `Sie dürfen Vorgänge von ${project} nicht sehen. Bitten Sie die Verwalter um Zugang.`,
+    message: "Eine Notiz für die Verwalter",
+    messagePlaceholder: "Wofür Sie ihn brauchen, freiwillig",
+    ask: "Um Zugang bitten",
+    asked: "Ihre Bitte ist unterwegs, wenn es den Vorgang gibt. Sie sehen ihn, sobald jemand Zugang gewährt.",
+  },
+  accessRequest: {
+    title: "Bitte um Zugang",
+    asks: (name: string, key: string) => `${name} bittet um Zugang zu ${key}`,
+    noMessage: "Ohne Nachricht.",
+    grant: (name: string, project: string) => `${name} Lesezugriff auf ${project} geben`,
+    granted: (name: string, project: string) => `${name} darf ${project} nun sehen.`,
+    grantedBy: (name: string, when: string) => `Gewährt von ${name}, ${when}.`,
+    missing: "Diese Bitte wurde nicht gefunden, oder Sie verwalten ihr Projekt nicht.",
+  },
   header: {
     openPage: "Seite öffnen",
     summary: "Zusammenfassung",

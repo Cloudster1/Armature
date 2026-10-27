@@ -53,6 +53,9 @@ type Project struct {
 	// PortalVerifies says whether the desk's door asks for a code by mail
 	// before letting somebody in. Always true for anything but a desk.
 	PortalVerifies bool `json:"portalVerifies"`
+	// RevealsIssues says that somebody who may not see the project is told an
+	// issue of it exists, as restricted, rather than not found (#279).
+	RevealsIssues bool `json:"revealsIssues"`
 	// TrustedDomains are the address domains the desk takes requests from,
 	// at the door and by mail. Empty means everyone; only a desk has any.
 	TrustedDomains []string `json:"trustedDomains"`

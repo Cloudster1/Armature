@@ -506,3 +506,6 @@ export const SUITE_DEMO_POLL_MS = 2_000;
 
 /** Where this browser remembers the interface's language, so a reload paints in it before the server answers. */
 export const LANGUAGE_STORAGE_KEY = "armature.language";
+
+/** How long a note asking for access may be; the server keeps it to the same. */
+export const ACCESS_REQUEST_MESSAGE_MAX = 1000;

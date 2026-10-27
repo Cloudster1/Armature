@@ -274,7 +274,7 @@ func (s *Service) Enqueue(ctx context.Context, endpointID uuid.UUID, e events.Ev
 // topic gets the event queued. The automation's own topics stay inside: an
 // endpoint that took them and posted to an incoming hook would feed itself.
 func (s *Service) Handle(ctx context.Context, e events.Event) error {
-	if e.Topic == "" || strings.HasPrefix(e.Topic, "automation.") {
+	if e.Topic == "" || strings.HasPrefix(e.Topic, "automation.") || e.Topic == events.TopicAccessRequested {
 		return nil
 	}
 	ctx = db.PinPrimary(ctx)

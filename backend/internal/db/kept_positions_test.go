@@ -18,6 +18,8 @@ const servicesRoot = ".."
 // discardsAllowed names every write whose position is thrown away on purpose,
 // keyed by file and function, with why no read of its caller depends on it.
 var discardsAllowed = map[string]string{
+	// The asker may never read what an ask writes, and must not learn it happened.
+	"access/access.go (*Service).Ask": "an ask for access; the asker cannot read it, and its answer may not differ",
 	// Nobody waits to read these: they run from a timer, the outbox or a mailbox.
 	"audit/audit.go (*Consumer).Handle":             "an event consumer; no request waits on it",
 	"automation/runner.go (*Service).run":           "a rule run from an event; no request waits on it",

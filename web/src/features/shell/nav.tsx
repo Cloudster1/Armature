@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useInbox, useMarkRead, useUnreadCount, type Notification } from "@/api/notifications";
+import { accessRequestOf } from "@/lib/notice";
 import { Button, IconButton, Popover, Tooltip, cx } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { BELL_PANEL_SIZE } from "@/config";
@@ -220,6 +221,14 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
                 </span>
               </>
             );
+            const request = accessRequestOf(n);
+            // An ask for access opens the request, where it is granted.
+            if (request)
+              return (
+                <Link key={n.id} to="/access-requests/$requestId" params={{ requestId: request }} {...row}>
+                  {content}
+                </Link>
+              );
             // A notice about your absences opens your profile, where they are listed.
             return n.kind === "absence" || !n.issueKey ? (
               <Link key={n.id} to="/settings/profile" {...row}>

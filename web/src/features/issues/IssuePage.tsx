@@ -9,6 +9,7 @@ import { IssueHeader } from "./IssueHeader";
 import { Rail } from "./IssueRail";
 import { IssueMain } from "./IssueMain";
 import { IssueAside } from "./IssueAside";
+import { IssueUnavailable, isUnavailable } from "./IssueUnavailable";
 
 // The issue in two columns, with a rail to jump between its sections. The
 // same component is the page and the drawer.
@@ -23,6 +24,7 @@ export function IssuePage({ issueKey, inDrawer = false }: { issueKey: string; in
   const rootRef = useRef<HTMLDivElement>(null);
 
   if (isLoading) return <Skeleton lines={6} />;
+  if (isUnavailable(error)) return <IssueUnavailable issueKey={issueKey} error={error} />;
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
   const issue = data?.issue;
   if (!issue) return null;

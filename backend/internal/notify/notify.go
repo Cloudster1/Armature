@@ -25,10 +25,12 @@ const (
 	KindWatching     = "watching"
 	KindSLABreached  = "sla_breached"
 	KindAbsence      = "absence"
+	// Somebody asked to see a project the person administers.
+	KindAccessRequested = "access_requested"
 )
 
 // Kinds lists every reason, in the order a preferences page shows them.
-var Kinds = []string{KindAssigned, KindMentioned, KindCommented, KindTransitioned, KindWatching, KindSLABreached, KindAbsence}
+var Kinds = []string{KindAssigned, KindMentioned, KindCommented, KindTransitioned, KindWatching, KindSLABreached, KindAbsence, KindAccessRequested}
 
 // Digest schedules: mail at once, or bundled into one mail an hour or a day.
 const (

@@ -2837,3 +2837,36 @@ And the documents are prose, so a stale metric name or bucket default in the
 README is invisible to every test. The gate for the whole job was therefore
 `git grep -i nojira` returning nothing, which is also what caught the Redis
 stream key, spelled with a colon where everything else used an underscore.
+
+### Asking for access says nothing, and saying an issue exists is a project's choice
+
+Stator and Exciter show Armature issues with each reader's own token, and a
+reader who may not see one gets the 404 a missing issue gets, because
+existence is privileged. Telling them more would take that away, so asking
+for access is built to learn nothing (#279): the ask is answered `202
+{"received": true}` alike for a hidden issue, a missing one, one the caller
+already sees and a project that does not exist, and the work that differs, a
+row and an event, happens only on the hidden branch inside the same request.
+The route sits outside the project's wall on purpose, after the check that
+keeps customers to the portal; a malformed key or message is refused, since
+that is the caller's own text. Asks are braked per account, and one person's
+second ask for a project within a day is folded into the first, so the
+administrators hear once.
+
+The request goes to the people who administer that project through a role of
+its own; only when it has none, to those who administer all projects, and
+only when there are none of those, to the owners, so an ask never goes
+unheard and a large installation's global administrators are not told of
+every project's asks. Granting gives the reader role on the project, nothing
+more, and only someone who may administer the project may read or grant the
+request; to anyone else it does not exist. The event never reaches a webhook,
+since it names a person and a project kept from them.
+
+A project may instead say that its issues exist: off by default, turned on by
+its administrators on its settings page, which says what it reveals. Then a
+caller who may not see it is answered 403 `not_permitted` with the project's
+name for an issue that exists, and still 404 for one that does not.
+
+**Reconsider if** a project needs to grant something other than reading from
+a request: the role would then be the administrator's to pick.
+

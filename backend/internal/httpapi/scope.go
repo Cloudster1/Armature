@@ -90,9 +90,9 @@ func (s *Server) projectScope(next http.Handler) http.Handler {
 			}
 		}
 		if raw := chi.URLParam(r, "issueKey"); raw != "" {
-			if key, _, err := issue.ParseKey(raw); err == nil {
+			if key, num, err := issue.ParseKey(raw); err == nil {
 				if !perms.Can(perm.Read, key) {
-					respondError(w, r, ErrNotFound("That issue was not found."))
+					respondError(w, r, s.hiddenIssue(r.Context(), key, num))
 					return
 				}
 				named = key
@@ -124,6 +124,24 @@ func (s *Server) projectScope(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// hiddenIssue is the answer for an issue the caller may not see: not found,
+// unless it exists and its project chose to say so.
+func (s *Server) hiddenIssue(ctx context.Context, projectKey string, num int64) error {
+	var name string
+	err := s.DB.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		return tx.QueryRow(ctx, `
+			SELECT p.name FROM project p JOIN issue i ON i.project_id = p.id
+			WHERE p.key = $1 AND i.key_num = $2 AND p.reveals_issues`, projectKey, num).Scan(&name)
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound("That issue was not found.")
+	}
+	if err != nil {
+		return err
+	}
+	return ErrNotPermitted(name)
 }
 
 // projectOf finds the project an object belongs to. An unknown id is not an
