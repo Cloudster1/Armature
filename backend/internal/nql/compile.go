@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 )
@@ -208,7 +209,7 @@ func (c *compiler) empty(e Empty) (string, error) {
 	case fkWatcher:
 		clause = "NOT EXISTS (SELECT 1 FROM issue_watcher w WHERE w.issue_id = i.id)"
 	case fkDescription:
-		clause = "(i.description IS NULL OR jsonb_to_tsvector('simple', i.description, '[\"string\"]') = ''::tsvector)"
+		clause = "(i.description IS NULL OR " + descriptionWords + " = ''::tsvector)"
 	case fkCustom:
 		clause = "NOT EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower(" + c.bind(def.name) + "))"
 	default:
@@ -356,7 +357,20 @@ func (c *compiler) match(def fieldDef, f Field, values []Value) (string, error) 
 	}
 }
 
-// contains is ~: the words appear somewhere in the text.
+// descriptionWords is what people wrote in a description: its text nodes, not
+// the node names or link addresses around them. 00960 indexes this expression.
+const descriptionWords = `jsonb_to_tsvector('simple', jsonb_path_query_array(i.description, 'strict $.**.text'), '["string"]')`
+
+// startsOfWords matches each word Postgres reads out of the bound text by its
+// start; quoting every lexeme keeps & | ! : * ( ) from ever being operators.
+func startsOfWords(param string) string {
+	return `(SELECT string_agg('''' || replace(replace(w, '\', '\\'), '''', '''''') || ''':*', ' & ')` +
+		` FROM unnest(tsvector_to_array(to_tsvector('simple', ` + param + `))) AS w)::tsquery`
+}
+
+func isWordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+
+// contains is ~: the words, or the start of each, appear somewhere in the text.
 func (c *compiler) contains(def fieldDef, f Field, v Value) (string, error) {
 	text, err := plainText(def, v)
 	if def.kind == fkCustom && (v.Kind == VDate || v.Kind == VDuration) {
@@ -372,7 +386,10 @@ func (c *compiler) contains(def fieldDef, f Field, v Value) (string, error) {
 	}
 	summary := func() string { return "(i.summary ILIKE '%' || " + c.bind(escapeLike(text)) + " || '%')" }
 	description := func() string {
-		return "(jsonb_to_tsvector('simple', i.description, '[\"string\"]') @@ plainto_tsquery('simple', " + c.bind(text) + "))"
+		if !strings.ContainsFunc(text, isWordRune) {
+			return "FALSE"
+		}
+		return "(" + descriptionWords + " @@ " + startsOfWords(c.bind(text)) + ")"
 	}
 	switch def.kind {
 	case fkSummary:

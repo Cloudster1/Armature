@@ -129,7 +129,7 @@ func TestCompileBindsEveryValue(t *testing.T) {
 		{`priority IN (high, highest)`, `(i.priority = ANY($3::issue_priority[]))`, []any{[]string{"high", "highest"}}},
 		{`estimate > 3`, `(i.estimate > $3)`, []any{3.0}},
 		{`estimate IN (1, 2.5)`, `(i.estimate = ANY($3::numeric[]))`, []any{[]float64{1, 2.5}}},
-		{`text ~ login`, `((i.summary ILIKE '%' || $3 || '%') OR (jsonb_to_tsvector('simple', i.description, '["string"]') @@ plainto_tsquery('simple', $4)))`, []any{"login", "login"}},
+		{`text ~ login`, "((i.summary ILIKE '%' || $3 || '%') OR (" + descriptionWords + " @@ " + startsOfWords("$4") + "))", []any{"login", "login"}},
 		{`summary !~ "reset email"`, `NOT COALESCE((i.summary ILIKE '%' || $3 || '%'), false)`, []any{"reset email"}},
 		{`summary = "Fix it"`, `(lower(i.summary) = ANY($3))`, []any{[]string{"fix it"}}},
 		{`sprint in (openSprints(), "Sprint 2")`,
@@ -172,7 +172,7 @@ func TestCompileBindsEveryValue(t *testing.T) {
 			`EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($4) AND CASE WHEN f.kind = 'date' THEN (v.value #>> '{}')::date END < $3::date)`,
 			[]any{"2026-09-01", "Ship by"}},
 		{`"Customer" IS EMPTY`, `NOT EXISTS (SELECT 1 FROM issue_field_value v JOIN custom_field f ON f.id = v.field_id WHERE v.issue_id = i.id AND lower(f.name) = lower($3))`, []any{"Customer"}},
-		{`description IS EMPTY`, `(i.description IS NULL OR jsonb_to_tsvector('simple', i.description, '["string"]') = ''::tsvector)`, nil},
+		{`description IS EMPTY`, "(i.description IS NULL OR " + descriptionWords + " = ''::tsvector)", nil},
 		{`NOT (assignee IS EMPTY OR statusCategory = done)`, `NOT COALESCE(((i.assignee_id IS NULL) OR (s.category = ANY($3::status_category[]))), false)`, []any{[]string{"done"}}},
 		{`ORDER BY priority DESC, key`, ``, nil},
 	}
@@ -340,6 +340,21 @@ func TestTextSearchTakesWildcardsLiterally(t *testing.T) {
 			if got, want := sprint(args[i]), sprint(c.args[i]); got != want {
 				t.Errorf("%q: arg %d got %s want %s", c.in, i, got, want)
 			}
+		}
+	}
+}
+
+// Text with no letter or digit holds no word to start, so the description part
+// matches nothing rather than asking Postgres for a query with no lexemes.
+func TestADescriptionNeedsAWordToLookFor(t *testing.T) {
+	cases := []struct{ in, sql string }{
+		{`description ~ "***"`, `FALSE`},
+		{`text ~ "&|"`, `((i.summary ILIKE '%' || $3 || '%') OR FALSE)`},
+		{`description ~ "a&b|c!(d):*"`, "(" + descriptionWords + " @@ " + startsOfWords("$3") + ")"},
+	}
+	for _, c := range cases {
+		if sql, _ := compile(t, c.in).SQL(3); sql != c.sql {
+			t.Errorf("%q\n got %s\nwant %s", c.in, sql, c.sql)
 		}
 	}
 }
