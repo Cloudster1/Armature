@@ -274,6 +274,32 @@ spec:
     app.kubernetes.io/instance: armature
     app.kubernetes.io/component: web
 ---
+# Source: armature/templates/worker-service.yaml
+# The worker serves nothing but its metrics; this Service is how the
+# ServiceMonitor finds each worker pod. Headless, as nothing calls it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: armature-worker
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+    app.kubernetes.io/component: worker
+spec:
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/component: worker
+---
 # Source: armature/templates/api-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -739,6 +765,31 @@ spec:
                 name: armature-web
                 port:
                   name: http
+---
+# Source: armature/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: armature
+  labels:
+    helm.sh/chart: armature-0.1.0
+    app.kubernetes.io/name: armature
+    app.kubernetes.io/instance: armature
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: armature
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: armature
+      app.kubernetes.io/instance: armature
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: In
+        values: [api, worker]
+  endpoints:
+    - port: metrics
+      interval: 30s
 ---
 # Source: armature/templates/job-secrets.yaml
 apiVersion: v1
