@@ -28,6 +28,13 @@ const items: Notification[] = [
     createdAt: "2026-10-10T08:00:00Z",
   },
   { id: "n2", kind: "assigned", issueKey: "CP-1", title: "Ada assigned CP-1 to you", link: "http://app.test/issues/CP-1", createdAt: "2026-10-10T07:00:00Z" },
+  {
+    id: "n3",
+    kind: "access_requested",
+    title: "Bo asks for access to PAY-4",
+    link: "http://app.test/access-requests/0199e1c2-7d4a-7c11-9b1e-3f0a2b4c5d6e",
+    createdAt: "2026-10-10T06:00:00Z",
+  },
 ];
 vi.mock("@/api/notifications", async () => {
   const actual = await vi.importActual<typeof import("@/api/notifications")>("@/api/notifications");
@@ -49,6 +56,12 @@ describe("the inbox", () => {
     expect(absence.getAttribute("href")).toBe("/settings/profile");
     const issue = screen.getByText("Ada assigned CP-1 to you").closest("a") as HTMLAnchorElement;
     expect(issue.getAttribute("href")).toBe("/issues/CP-1");
+  });
+
+  it("opens an ask for access on the request, where it is granted", () => {
+    render(<InboxPage />);
+    const ask = screen.getByText("Bo asks for access to PAY-4").closest("a") as HTMLAnchorElement;
+    expect(ask.getAttribute("href")).toBe("/access-requests/0199e1c2-7d4a-7c11-9b1e-3f0a2b4c5d6e");
   });
 
   it("offers absence notices among the kinds a person can turn off", () => {
