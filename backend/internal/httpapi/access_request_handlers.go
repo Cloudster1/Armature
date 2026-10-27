@@ -35,10 +35,13 @@ func (s *Server) handleAskForAccess(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrValidation(map[string]string{"issueKey": "Give an issue key such as PROJ-12."}))
 		return
 	}
+	// The note is optional, so an ask may come with no body at all.
 	var req accessRequestBody
-	if err := decodeJSON(w, r, &req); err != nil {
-		respondError(w, r, err)
-		return
+	if r.ContentLength != 0 {
+		if err := decodeJSON(w, r, &req); err != nil {
+			respondError(w, r, err)
+			return
+		}
 	}
 	message, err := access.CheckMessage(req.Message)
 	if err != nil {

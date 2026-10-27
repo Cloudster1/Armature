@@ -42,7 +42,7 @@ scenario("somebody who may not see an issue asks for access, and its administrat
   await goto(page, `/issues/${issueKey}`);
   await page.waitForSelector('[data-issue-unavailable="not-found"]', { timeout: WAIT });
   expect.equal((await textOf(page, "body")).includes("the work somebody asks to see"), false, "the summary is nowhere");
-  await page.type('[data-issue-unavailable] textarea', "I review this work.");
+  await page.type("[data-issue-unavailable] textarea", "I review this work.");
   await page.click('[data-action="ask-for-access"]');
   await page.waitForSelector("[data-access-asked]", { timeout: WAIT });
 

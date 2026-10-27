@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -53,12 +54,15 @@ func (c accessCrew) ask(key, message string) response {
 // body and the headers, leaving out what differs on every request.
 func answer(r response) string {
 	var b strings.Builder
-	b.WriteString(http.StatusText(r.Status) + "\n" + r.Raw + "\n")
+	b.WriteString(http.StatusText(r.Status) + "\n" + requestIDs.ReplaceAllString(r.Raw, "") + "\n")
 	for _, name := range []string{"Content-Type", "Content-Length", "Cache-Control"} {
 		b.WriteString(name + ": " + r.Header.Get(name) + "\n")
 	}
 	return b.String()
 }
+
+// requestIDs differ on every answer, so a comparison leaves them out.
+var requestIDs = regexp.MustCompile(`"requestId":"[^"]*"`)
 
 // fanOutAccess hands the asker's access events to the inbox's fan-out, as the
 // worker would, each twice to show a repeat tells nobody twice.
