@@ -565,7 +565,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** What a rule may watch, test and do, and the topics a webhook may subscribe to. */
+        /** What a rule may watch, test and do, the topics a webhook may subscribe to, and the envelope versions it may be sent in. */
         get: operations["automationCatalog"];
         put?: never;
         post?: never;
@@ -5927,6 +5927,37 @@ export interface components {
             /** @description The envelope version, 1 here; it is the version header's value too. */
             version: number;
         };
+        /** @description What an endpoint registered for envelope version 2 is posted: a CloudEvents 1.0 event in structured mode. */
+        EnvelopeV2: {
+            /** @description The version 1 payload, unchanged: the event's own fields, by topic, as docs/webhooks.md lists them. */
+            data: Record<string, never>;
+            /**
+             * @description What data is.
+             * @enum {string}
+             */
+            datacontenttype: "application/json";
+            /** @description The version of data's own shape, 1 here; a payload that breaks raises it apart from the envelope. */
+            dataversion: number;
+            /**
+             * Format: uuid
+             * @description The event's id, the same on every attempt and redelivery.
+             */
+            id: string;
+            /** @description The installation's address, ARMATURE_APP_URL. */
+            source: string;
+            /**
+             * @description The CloudEvents version.
+             * @enum {string}
+             */
+            specversion: "1.0";
+            /**
+             * Format: date-time
+             * @description When the event happened, in UTC.
+             */
+            time: string;
+            /** @description dev.armature. followed by the version 1 topic, as in X-Armature-Event, such as dev.armature.issue.transitioned. */
+            type: string;
+        };
         EpicProgress: {
             category: string;
             done: number;
@@ -9704,6 +9735,7 @@ export interface operations {
                     "application/json": {
                         catalog: components["schemas"]["Descriptor"][];
                         topics: string[];
+                        versions: number[];
                     };
                 };
             };
@@ -21735,7 +21767,7 @@ export interface operations {
                 "X-Armature-Event": string;
                 /** @description This attempt's id; a retry or a redelivery has its own. */
                 "X-Armature-Delivery": string;
-                /** @description The envelope version of the body, as in its version field. */
+                /** @description The envelope version of the body: 1, as in its version field, or 2, a CloudEvent. */
                 "X-Armature-Webhook-Version": string;
                 /** @description sha256= and the hex HMAC-SHA256 of the body, keyed with the endpoint's secret. */
                 "X-Armature-Signature-256": string;
@@ -21749,6 +21781,7 @@ export interface operations {
         };
         requestBody: {
             content: {
+                "application/cloudevents+json": components["schemas"]["EnvelopeV2"];
                 "application/json": components["schemas"]["EnvelopeV1"];
             };
         };

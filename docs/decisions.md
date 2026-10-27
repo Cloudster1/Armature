@@ -177,7 +177,9 @@ the installation's stable id, the id of the `org` row, which the last step
 keeps, so that receivers do not break on this upgrade. It is deprecated, and
 goes with envelope version 2, as [A webhook's envelope has a
 version](#a-webhooks-envelope-has-a-version-and-an-endpoint-keeps-its-own) says. The `member.joined` event's own
-payload and an invitation in the API keep their `orgId` the same way. The previous release's consumers skip
+payload keeps its `orgId` until payload version 2, since envelope version 2
+carries the version 1 payload unchanged (#286), and an invitation in the API
+keeps its `orgId` too. The previous release's consumers skip
 an event without an `org_id`, so an upgrade drains the outbox and the stream
 first, and workers of the two releases never run side by side.
 
@@ -253,9 +255,9 @@ installation, its id and name, and still carries `org`, marked deprecated, as
 the webhook envelope, the `member.joined` event and an invitation still carry
 `orgId`. The next release removes `org` and an invitation's `orgId`, with the
 redirects from the old sign-in, desk and settings addresses. Removing a field
-a webhook receiver reads is a break, so the envelope's and the event's `orgId`
-go with envelope version 2, and an endpoint registered for version 1 keeps
-them for at least one Dynamo release (#242). `orgWideOnly`, the `org.administer`
+a webhook receiver reads is a break, so the envelope's `orgId` goes with
+envelope version 2 and the event's with payload version 2, and an endpoint
+registered for version 1 keeps them for at least one Dynamo release (#242). `orgWideOnly`, the `org.administer`
 permission and the `condition.org_role` rule type are part of what clients
 and stored workflows say, and keep their names.
 
@@ -2611,7 +2613,7 @@ records its own version beside its body, since the body is frozen when it is
 queued: a retry or a redelivery sends the header that matches what it carries,
 not what the endpoint moved to since. Version 1 is the envelope as it was, with
 the number added, so no receiver had to change on this upgrade, and `orgId`
-is what version 2 will leave out.
+is what version 2 leaves out.
 
 The contract is the document's `webhooks` section, built from the envelope's
 Go type like every other schema, and `docs/webhooks.md` says what each topic's
@@ -2622,6 +2624,31 @@ hook, is the sender's format.
 
 **Reconsider if** receivers want to choose their payload's shape per topic:
 that is a version per topic, which this single number cannot say.
+
+### Envelope version 2 is a CloudEvent, and its data is the version 1 payload
+
+Stator, Exciter and Rotor read the suite's events, and a relay in Dynamo or a
+standard broker should too without code for each tool, so version 2 is
+CloudEvents 1.0 in structured mode (#286), in the shape Exciter wrote down for
+all three: `type` is `dev.armature.` and the version 1 topic, `source` the
+installation's address, `time` when the event happened, and `data` the version
+1 payload, unchanged, with `dataversion` 1. The envelope and the payload
+version apart: a receiver moves to CloudEvents without its payload code
+changing, and a payload that breaks later raises `dataversion` alone. So the
+`member.joined` payload keeps its deprecated `orgId` until payload version 2,
+and only the envelope's goes.
+
+Structured mode rather than binary keeps the body a receiver verifies the
+whole event, attributes included, under the signature version 1 already has;
+CloudEvents leaves authentication to the transport. The body is built and
+frozen when a delivery is queued, as in version 1, so `id` and `time` are the
+same on every attempt. The event types are the topics, listed with their
+payloads in `docs/webhooks.md`, which a unit test holds to `events.Topics`;
+the payloads are maps at their 83 call sites, so a typed schema per topic would
+be a rewrite of every one.
+
+**Reconsider if** a receiver needs a payload's shape machine-readable: a
+struct per topic, reflected into the document as the envelopes are.
 
 ### A rule runs as an account of its own, once per event
 

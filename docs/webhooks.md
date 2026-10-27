@@ -43,15 +43,49 @@ Every delivery is one envelope, the same for every topic:
 | `occurredAt` | date-time | When the delivery was queued, in UTC. |
 | `payload` | object | The event's own fields, by topic. |
 
+### Version 2, a CloudEvent
+
+An endpoint registered for version 2 is posted a
+[CloudEvents 1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md)
+event in structured mode, so a receiver or a broker that knows CloudEvents
+reads it without code for Armature. Stator and Exciter send the same shape.
+
+```json
+{
+  "specversion": "1.0",
+  "id": "0199e1c2-7d4a-7c11-9b1e-3f0a2b4c5d6e",
+  "source": "https://armature.example.com",
+  "type": "dev.armature.issue.created",
+  "time": "2026-10-14T09:29:58Z",
+  "datacontenttype": "application/json",
+  "dataversion": 1,
+  "data": { "issueId": "...", "key": "CP-12", "summary": "Fix the login", "actorId": "..." }
+}
+```
+
+| Field | Type | What it is |
+| --- | --- | --- |
+| `specversion` | string | `1.0`. |
+| `id` | uuid | The event's id, as in version 1: the same on every attempt and redelivery. |
+| `source` | string | The installation's address, `ARMATURE_APP_URL`. |
+| `type` | string | `dev.armature.` followed by the version 1 topic, unchanged. |
+| `time` | date-time | When the event happened, in UTC; for a `ping`, when it was queued. |
+| `datacontenttype` | string | `application/json`. |
+| `dataversion` | integer | The version of the payload's own shape, `1`. A payload that breaks raises it, apart from the envelope. |
+| `data` | object | The version 1 payload, unchanged. |
+
+`version`, `topic`, `occurredAt`, `payload` and `orgId` are not in a version 2
+body. The topic is `type` after `dev.armature.`, and the payload is `data`.
+
 ## Headers and signatures
 
 | Header | What it carries |
 | --- | --- |
-| `Content-Type` | `application/json` |
+| `Content-Type` | `application/json` for version 1, `application/cloudevents+json; charset=utf-8` for version 2 |
 | `User-Agent` | `Armature-Webhook` |
 | `X-Armature-Event` | The topic, as in the body. |
 | `X-Armature-Delivery` | This attempt's id. A retry and a redelivery each have their own. |
-| `X-Armature-Webhook-Version` | The envelope version of the body, as in its `version` field. |
+| `X-Armature-Webhook-Version` | The envelope version of the body: `1`, as in its `version` field, or `2`. |
 | `X-Armature-Signature-256` | `sha256=` and the hex HMAC-SHA256 of the raw body, keyed with the endpoint's secret: the shape GitHub uses. |
 | `X-Armature-Timestamp` | When this attempt was sent, in Unix seconds. |
 | `X-Armature-Signature-Timestamped-256` | `sha256=` and the hex HMAC-SHA256 of the timestamp, a dot and the raw body. |
@@ -72,8 +106,9 @@ posts a `ping` now.
 The envelope carries a version so its format can change without breaking a
 receiver silently.
 
-- `version` is an integer, in the body and in the `X-Armature-Webhook-Version`
-  header, so a receiver can decide before it parses the body.
+- The version is an integer in the `X-Armature-Webhook-Version` header, so a
+  receiver can decide before it parses the body. Version 1 repeats it as
+  `version` in the body; version 2 is told by its `specversion`.
 - It rises only for a change that breaks a receiver: a field of the envelope
   or of a payload removed, renamed or changing its meaning. Adding a field or a
   topic does not raise it.
@@ -96,8 +131,10 @@ failure and keeps the status in the endpoint's log.
 | Version | Since | What changed |
 | --- | --- | --- |
 | 1 | the release that numbered it (#242) | The envelope as it was, with `version` added. `orgId` is deprecated. |
+| 2 | #286 | A CloudEvents 1.0 event in structured mode. The payload is unchanged as `data`, at `dataversion` 1; `orgId` is gone from the envelope. |
 
-Version 2 will leave out `orgId`. Nothing else is planned for it.
+Version 1 stays the default for a new endpoint and keeps being sent for at
+least one Dynamo release after version 2.
 
 ## Topics
 
@@ -125,7 +162,8 @@ Somebody became a member.
 
 - `userId` (uuid): who joined.
 - `role` (string): `owner`, `admin`, `member` or `customer`.
-- `orgId` (uuid): deprecated, the installation's id; it goes in a later release.
+- `orgId` (uuid): deprecated, the installation's id; it goes with payload
+  version 2, a `dataversion` of 2.
 
 ### issue.created
 

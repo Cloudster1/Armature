@@ -5,7 +5,9 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,14 +17,16 @@ import (
 	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/httpapi"
 	"github.com/armature/armature/backend/internal/openapi"
+	"github.com/armature/armature/backend/internal/webhook"
 )
 
 // envelopeVersionHeader is spelled out rather than taken from the package, so
 // renaming the constant cannot quietly change what receivers read.
 const envelopeVersionHeader = "X-Armature-Webhook-Version"
 
-// envelopeSchema is the body the document says a webhook delivery carries.
-func envelopeSchema(t *testing.T) (*openapi.Document, *openapi.Schema) {
+// envelopeSchema is the body the document says a webhook delivery carries in
+// the media type, one per envelope version.
+func envelopeSchema(t *testing.T, mediaType string) (*openapi.Document, *openapi.Schema) {
 	t.Helper()
 	doc := httpapi.Spec()
 	encoded, err := doc.MarshalIndent()
@@ -41,9 +45,9 @@ func envelopeSchema(t *testing.T) (*openapi.Document, *openapi.Schema) {
 	if err := json.Unmarshal(encoded, &described); err != nil {
 		t.Fatal(err)
 	}
-	schema := described.Webhooks["event"]["post"].RequestBody.Content["application/json"].Schema
+	schema := described.Webhooks["event"]["post"].RequestBody.Content[mediaType].Schema
 	if schema == nil {
-		t.Fatal("the document describes no webhook delivery")
+		t.Fatalf("the document describes no webhook delivery as %s", mediaType)
 	}
 	return doc, schema
 }
@@ -52,18 +56,38 @@ func envelopeSchema(t *testing.T) (*openapi.Document, *openapi.Schema) {
 // the version it should be in, header and body alike.
 func sentInVersion(t *testing.T, got received, version int) {
 	t.Helper()
-	doc, schema := envelopeSchema(t)
+	if got.Version != strconv.Itoa(version) {
+		t.Errorf("the delivery has the version header %q, want %d: %s", got.Version, version, got.Body)
+	}
+	mediaType, contentType := "application/json", "application/json"
+	if version == 2 {
+		mediaType, contentType = "application/cloudevents+json", "application/cloudevents+json; charset=utf-8"
+	}
+	if got.ContentType != contentType {
+		t.Errorf("version %d is posted as %q, want %q", version, got.ContentType, contentType)
+	}
+	doc, schema := envelopeSchema(t, mediaType)
 	if err := doc.ValidateJSON(schema, []byte(got.Body)); err != nil {
 		t.Errorf("the delivery does not fit the document: %v: %s", err, got.Body)
 	}
-	var body struct {
-		Version int `json:"version"`
-	}
+	var body map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(got.Body), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.Version != version || got.Version != strconv.Itoa(version) {
-		t.Errorf("the delivery is in version %d with the header %q, want %d in both: %s", body.Version, got.Version, version, got.Body)
+	switch version {
+	case 1:
+		if string(body["version"]) != "1" {
+			t.Errorf("a version 1 body says version %s: %s", body["version"], got.Body)
+		}
+	case 2:
+		if string(body["specversion"]) != `"1.0"` {
+			t.Errorf("a version 2 body is not CloudEvents 1.0: %s", got.Body)
+		}
+		for _, field := range []string{"version", "topic", "occurredAt", "payload", "orgId"} {
+			if _, there := body[field]; there {
+				t.Errorf("a version 2 body carries version 1's %s: %s", field, got.Body)
+			}
+		}
 	}
 }
 
@@ -106,16 +130,69 @@ func TestAWebhookKeepsTheEnvelopeVersionItWasRegisteredFor(t *testing.T) {
 
 	// A later release may have put it on a version this one only stores; an
 	// edit that names none, as turning it off does, keeps that.
-	moveEndpointVersion(t, h, uuid.MustParse(hookID), 2)
+	moveEndpointVersion(t, h, uuid.MustParse(hookID), 3)
 	edited := want(t, c.patch("/api/v1/webhooks/"+hookID, map[string]any{"name": name, "url": address, "topics": []string{}, "enabled": false}), http.StatusOK, "turning it off")
-	if got := obj(t, edited, "webhook")["version"]; got != float64(2) {
-		t.Errorf("an edit without a version left the webhook on %v, want the 2 it had", got)
+	if got := obj(t, edited, "webhook")["version"]; got != float64(3) {
+		t.Errorf("an edit without a version left the webhook on %v, want the 3 it had", got)
 	}
 	want(t, c.patch("/api/v1/webhooks/"+hookID, map[string]any{"name": name, "url": address, "topics": []string{}, "version": 0}), http.StatusUnprocessableEntity, "version 0")
-	moved := want(t, c.patch("/api/v1/webhooks/"+hookID, map[string]any{"name": name, "url": address, "topics": []string{}, "version": 1}), http.StatusOK, "moving it to version 1")
-	if got := obj(t, moved, "webhook")["version"]; got != float64(1) {
-		t.Errorf("an edit asking for version 1 left the webhook on %v", got)
+	moved := want(t, c.patch("/api/v1/webhooks/"+hookID, map[string]any{"name": name, "url": address, "topics": []string{}, "version": 2}), http.StatusOK, "moving it to version 2")
+	if got := obj(t, moved, "webhook")["version"]; got != float64(2) {
+		t.Errorf("an edit asking for version 2 left the webhook on %v", got)
 	}
+	catalog := want(t, c.get("/api/v1/automation/catalog"), http.StatusOK, "the catalog")
+	if got := catalog.Body["versions"]; fmt.Sprint(got) != "[1 2]" {
+		t.Errorf("the catalog offers the versions %v, want [1 2]", got)
+	}
+}
+
+// A webhook on version 2 is posted a CloudEvent, signed as version 1 is, and a
+// redelivery carries the same event (#286).
+func TestAWebhookOnVersionTwoIsPostedACloudEvent(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	c := api.client(t)
+	c.signIn(t, h.person(t, "cloudevents", auth.RoleOwner))
+	sink := &receiver{status: http.StatusOK}
+	server := httptest.NewServer(sink)
+	t.Cleanup(server.Close)
+
+	made := want(t, c.post("/api/v1/webhooks", map[string]any{"name": h.name(t, "Broker"), "url": server.URL + "/in", "topics": []string{}, "version": 2}), http.StatusCreated, "a webhook on version 2")
+	hookID := idOf(t, made, "webhook")
+	t.Cleanup(func() { c.delete("/api/v1/webhooks/" + hookID) })
+	secret, _ := obj(t, made, "webhook")["secret"].(string)
+	pinged := want(t, c.post("/api/v1/webhooks/"+hookID+"/test", nil), http.StatusOK, "a test delivery")
+	if len(sink.got) != 1 {
+		t.Fatalf("the receiver was posted %d times, want once", len(sink.got))
+	}
+	got := sink.got[0]
+	sentInVersion(t, got, 2)
+	if !webhook.Verify([]byte(got.Body), secret, got.Signature) {
+		t.Error("the version 2 body does not verify with the endpoint's secret")
+	}
+	var event struct {
+		ID     string          `json:"id"`
+		Source string          `json:"source"`
+		Type   string          `json:"type"`
+		Data   json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(got.Body), &event); err != nil {
+		t.Fatal(err)
+	}
+	if event.Source != "http://app.test" || event.Type != "dev.armature.ping" || !strings.Contains(string(event.Data), "Armature can reach this address.") {
+		t.Errorf("the event = %s, want the installation as source, dev.armature.ping as type and the ping's payload as data", got.Body)
+	}
+
+	deliveryID, _ := obj(t, pinged, "delivery")["id"].(string)
+	want(t, c.post("/api/v1/webhooks/"+hookID+"/deliveries/"+deliveryID+"/redeliver", nil), http.StatusOK, "a redelivery")
+	if len(sink.got) != 2 {
+		t.Fatalf("the receiver was posted %d times, want twice", len(sink.got))
+	}
+	if again := sink.got[1]; again.Body != got.Body {
+		t.Errorf("the redelivery is %s, want the same event %s", again.Body, got.Body)
+	}
+	sentInVersion(t, sink.got[1], 2)
 }
 
 // The database refuses a version below one as the service does, for an

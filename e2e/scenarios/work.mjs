@@ -115,7 +115,7 @@ scenario("a rule labels a ticket when it is moved, and the run log says so", asy
 });
 
 // Serial: a webhook hears every project, and the list of them is everybody's.
-serialScenario("a webhook endpoint gets a signed test delivery, and it starts a rule", async ({ page }) => {
+serialScenario("a webhook endpoint on version 2 gets a signed test delivery, and it starts a rule", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Hooked", { visit: false });
   // The receiver is Armature itself: an incoming rule that files an issue.
@@ -127,8 +127,11 @@ serialScenario("a webhook endpoint gets a signed test delivery, and it starts a 
   // would be feeding itself.
   const hook = uniqueName("Pager");
   try {
-    const secret = await createWebhook(page, hook, `http://api:8080${address}`, { topics: ["sla.breached"] });
+    // On envelope version 2, a CloudEvent, which the incoming hook takes like any JSON.
+    const secret = await createWebhook(page, hook, `http://api:8080${address}`, { topics: ["sla.breached"], version: 2 });
     expect.equal(secret.startsWith("armature_whs_"), true, "the secret is shown once");
+    await page.waitForSelector(`[data-webhook="${hook}"] [data-webhook-version="2"]`, { timeout: WAIT });
+    expect.contains(await textOf(page, `[data-webhook="${hook}"] [data-webhook-version]`), "CloudEvents", "the list says which envelope it gets");
     await webhookMenu(page, hook, "webhook-test");
     await page.waitForFunction(() => document.body.innerText.includes("Delivered, 202"), { timeout: WAIT });
     await webhookMenu(page, hook, "webhook-deliveries");

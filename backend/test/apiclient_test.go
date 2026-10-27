@@ -92,7 +92,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	mailer := &fakeMailer{}
 	labels := label.NewService(h.cluster)
 	testLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	webhooks := webhook.NewService(h.cluster, testLog)
+	webhooks := webhook.NewService(h.cluster, testLog).WithSource("http://app.test")
 
 	accounts := h.authService()
 	themes := theme.NewService(h.cluster, h.attachmentStore(t))

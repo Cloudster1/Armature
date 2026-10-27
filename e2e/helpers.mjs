@@ -2317,7 +2317,7 @@ export async function incomingAddress(page, name) {
 }
 
 /** Adds a webhook on the settings page and returns the secret shown once. */
-export async function createWebhook(page, name, url, { topics = ["*"] } = {}) {
+export async function createWebhook(page, name, url, { topics = ["*"], version } = {}) {
   await goto(page, "/settings/webhooks");
   await page.waitForSelector('[data-action="new-webhook"]', { timeout: WAIT });
   await page.click('[data-action="new-webhook"]');
@@ -2326,6 +2326,11 @@ export async function createWebhook(page, name, url, { topics = ["*"] } = {}) {
   // Everything is ticked to start with; the topics asked for replace it.
   await page.click('[data-topic="*"]');
   for (const topic of topics) await page.click(`[data-topic="${topic}"]`);
+  if (version) {
+    // The versions come with the catalog, which may land after the form opens.
+    await page.waitForSelector(`[data-webhook-version-pick] option[value="${version}"]`, { timeout: WAIT });
+    await page.select("[data-webhook-version-pick]", String(version));
+  }
   await page.click('[data-action="save-webhook"]');
   await page.waitForSelector("[data-secret-value]", { timeout: WAIT });
   return textOf(page, "[data-secret-value]");

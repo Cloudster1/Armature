@@ -419,7 +419,8 @@ own endpoint only, so another endpoint is never reachable and needs no id.
 - **Topics are named.** `*` is refused ("Name the topics Stator takes; a
   connected app cannot take every event."), and so is any `automation.` topic;
   the rest are what `GET /automation/catalog` lists. `version` is optional and
-  defaults to the current envelope.
+  defaults to the current envelope, 1; `2` is the CloudEvents envelope of
+  `webhooks@2`, and the catalog's `versions` lists what may be named.
 - **Its name** is the app's and " (connected app)", following a rename of the
   app. One that clashes with a webhook an administrator named so is 409
   `conflict`: "A webhook called Stator (connected app) is already here. Rename
