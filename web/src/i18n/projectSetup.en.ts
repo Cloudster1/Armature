@@ -50,6 +50,12 @@ export const projectSetupEn = {
     featuresDetail: "The pages this project has. Its template chose them; turning one off hides the page and refuses new entries, and deletes nothing.",
     turnedOn: (feature: string) => `${feature} turned on`,
     turnedOff: (feature: string) => `${feature} turned off`,
+    visibility: "Visibility",
+    revealsIssues: "Show that issues exist to people who may not see them",
+    revealsIssuesDetail:
+      "Somebody who may not see this project is told that an issue of it exists, with the project's name, instead of not found, and can ask for access. Leave it off for a project whose existence is itself private.",
+    revealsOn: "Issues of this project now show as restricted to people who may not see them.",
+    revealsOff: "Issues of this project are now not found for people who may not see them.",
     archive: "Archive",
     archiveDetail:
       "Archiving takes the project and its issues out of every list. Nothing is deleted, and it can be shown again with the archived ones and restored.",

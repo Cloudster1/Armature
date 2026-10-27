@@ -3,6 +3,7 @@ package httpapi
 import (
 	"strconv"
 
+	"github.com/armature/armature/backend/internal/access"
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -348,6 +349,10 @@ var operations = []operation{
 	{method: "POST", path: "/issues", handler: "handleCreateIssue", tag: "issues", summary: "File an issue, naming the project in the body.", request: createIssueRequest{}, responses: created(env{"issue": issue.Issue{}})},
 	{method: "GET", path: "/issues/{issueKey}", handler: "handleGetIssue", tool: "get_issue", toolHelp: "One issue by its key, such as CP-12.", tag: "issues", summary: "One issue.", responses: ok(env{"issue": issue.Issue{}})},
 	{method: "PATCH", path: "/issues/{issueKey}", handler: "handleUpdateIssue", tool: "update_issue", toolHelp: "Edit an issue's fields; its status moves through transition_issue instead.", tag: "issues", summary: "Edit an issue's fields; the status moves through transitions instead.", request: updateIssueRequest{}, responses: ok(env{"issue": issue.Issue{}})},
+	{method: "POST", path: "/issues/{issueKey}/access-requests", handler: "handleAskForAccess", tag: "issues", summary: "Ask the project's administrators for access to an issue; the answer is the same whether or not the issue exists or may be seen.",
+		request: accessRequestBody{}, responses: map[int]any{202: accessReceipt{}}},
+	{method: "GET", path: "/access-requests/{requestID}", handler: "handleGetAccessRequest", tag: "issues", summary: "One request for access, to somebody who may administer its project.", responses: ok(env{"accessRequest": access.Request{}})},
+	{method: "POST", path: "/access-requests/{requestID}/grant", handler: "handleGrantAccessRequest", tag: "issues", summary: "Give whoever asked the reader role on the project; takes administering it.", responses: ok(env{"accessRequest": access.Request{}})},
 	{method: "DELETE", path: "/issues/{issueKey}", handler: "handleDeleteIssue", tag: "issues", summary: "Delete an issue; takes administering its project.", responses: none()},
 	{method: "GET", path: "/issues/{issueKey}/children", handler: "handleIssueChildren", tag: "hierarchy", summary: "The issues directly underneath.", responses: ok(env{"children": []issue.Issue{}})},
 	{method: "GET", path: "/issues/{issueKey}/hierarchy", handler: "handleIssueHierarchy", tag: "hierarchy", summary: "The issue in context: above it, under it, and its roll-up.", responses: ok(issue.Hierarchy{})},

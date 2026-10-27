@@ -137,6 +137,15 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/auth/me", s.handleEraseMe)
 			s.secondFactorRoutes(r)
 
+			// Asking for access stays outside the project's wall, since whether
+			// the issue exists is what the answer may not say (#279).
+			r.Group(func(r chi.Router) {
+				r.Use(requireAgent)
+				r.Post("/issues/{issueKey}/access-requests", s.handleAskForAccess)
+				r.Get("/access-requests/{requestID}", s.handleGetAccessRequest)
+				r.Post("/access-requests/{requestID}/grant", s.handleGrantAccessRequest)
+			})
+
 			// Below here, the work itself.
 			r.Group(func(r chi.Router) {
 				// Customers get the portal and nothing else; the check lets

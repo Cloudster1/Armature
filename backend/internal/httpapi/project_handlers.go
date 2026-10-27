@@ -102,6 +102,9 @@ type updateProjectRequest struct {
 	LeadID leadPatch `json:"leadId,omitempty"`
 	// PortalVerifies is whether the desk's door asks for a code by mail.
 	PortalVerifies *bool `json:"portalVerifies,omitempty"`
+	// RevealsIssues is whether somebody who may not see the project is told
+	// that an issue of it exists, with 403 not_permitted, instead of 404.
+	RevealsIssues *bool `json:"revealsIssues,omitempty"`
 	// TrustedDomains replaces the desk's list of address domains; empty means everyone.
 	TrustedDomains *[]string `json:"trustedDomains,omitempty"`
 	// MailRequestTypeID is what a new mail to the desk becomes; null stops
@@ -146,7 +149,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	in := project.UpdateInput{Name: req.Name, Description: req.Description, PortalVerifies: req.PortalVerifies, TrustedDomains: req.TrustedDomains, Features: req.Features, DocsURL: req.DocsURL, DocsLabel: req.DocsLabel}
+	in := project.UpdateInput{Name: req.Name, Description: req.Description, PortalVerifies: req.PortalVerifies, RevealsIssues: req.RevealsIssues, TrustedDomains: req.TrustedDomains, Features: req.Features, DocsURL: req.DocsURL, DocsLabel: req.DocsLabel}
 	if req.Kind != nil {
 		kind := project.Kind(*req.Kind)
 		in.Kind = &kind

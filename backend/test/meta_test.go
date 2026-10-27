@@ -29,7 +29,7 @@ func TestMetaReportsTheRunningBuild(t *testing.T) {
 	if meta.Body["apiVersion"] != httpapi.Spec().Info.Version {
 		t.Errorf("apiVersion = %v, the document says %s", meta.Body["apiVersion"], httpapi.Spec().Info.Version)
 	}
-	wantCaps := []any{"auth.silent-sign-in@1", "calendar@1", "git-proxy@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1", "webhooks@2"}
+	wantCaps := []any{"auth.silent-sign-in@1", "calendar@1", "git-proxy@1", "issue-embed@1", "issue.access-requests@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1", "webhooks@2"}
 	if caps, ok := meta.Body["capabilities"].([]any); !ok || !slices.Equal(caps, wantCaps) {
 		t.Errorf("capabilities = %v, want %v", meta.Body["capabilities"], wantCaps)
 	}

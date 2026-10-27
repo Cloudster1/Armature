@@ -1,5 +1,24 @@
 /** The strings of an issue's own page, with its header, fields, description and layout. */
 export const issueViewEn = {
+  unavailable: {
+    notFound: (key: string) => `${key} was not found`,
+    notFoundDetail: "It may not exist, or you may not see its project. Ask for access, and its administrators are told if it exists.",
+    restricted: (key: string) => `${key} is restricted`,
+    restrictedDetail: (project: string) => `You may not see issues of ${project}. Ask its administrators for access.`,
+    message: "A note for the administrators",
+    messagePlaceholder: "Why you need it, optional",
+    ask: "Ask for access",
+    asked: "Your request was sent, if the issue exists. You will see it once somebody grants it.",
+  },
+  accessRequest: {
+    title: "Request for access",
+    asks: (name: string, key: string) => `${name} asks for access to ${key}`,
+    noMessage: "They left no message.",
+    grant: (name: string, project: string) => `Give ${name} read access to ${project}`,
+    granted: (name: string, project: string) => `${name} may now see ${project}.`,
+    grantedBy: (name: string, when: string) => `Granted by ${name}, ${when}.`,
+    missing: "That request was not found, or you do not administer its project.",
+  },
   header: {
     openPage: "Open the page",
     summary: "Summary",

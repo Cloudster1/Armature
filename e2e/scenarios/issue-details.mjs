@@ -580,5 +580,5 @@ scenario("an issue made by mistake is deleted from its page and is gone", async 
   // The page it stood on is left for the project, and the issue is not found any more.
   await page.waitForFunction((k) => location.pathname.startsWith(`/projects/${k}`), { timeout: WAIT }, key);
   await goto(page, `/issues/${issueKey}`);
-  await page.waitForFunction(() => document.body.innerText.includes("That issue was not found."), { timeout: WAIT });
+  await page.waitForSelector('[data-issue-unavailable="not-found"]', { timeout: WAIT });
 });

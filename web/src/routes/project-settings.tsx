@@ -28,6 +28,7 @@ function ProjectSettingsPage() {
   const { data: access } = useAccess();
   const update = useUpdateProject();
   const toggleFeatures = useUpdateProject();
+  const reveal = useUpdateProject();
   const archive = useArchiveProject();
   const restore = useRestoreProject();
   const toast = useToast();
@@ -186,6 +187,35 @@ function ProjectSettingsPage() {
             {toggleFeatures.error && (
               <div className="mt-3">
                 <ErrorBanner>{(toggleFeatures.error as Error).message}</ErrorBanner>
+              </div>
+            )}
+          </Card>
+        </section>
+
+        <section className="mt-8">
+          <SectionTitle className="mb-2">{t.projectSetup.settings.visibility}</SectionTitle>
+          <Card className="p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-ink">{t.projectSetup.settings.revealsIssues}</p>
+                <p className="mt-1 text-sm text-ink-muted">{t.projectSetup.settings.revealsIssuesDetail}</p>
+              </div>
+              <Switch
+                checked={project.revealsIssues}
+                label={t.projectSetup.settings.revealsIssues}
+                data-setting="reveals-issues"
+                disabled={reveal.isPending}
+                onChange={(next) =>
+                  reveal.mutate(
+                    { key: projectKey, revealsIssues: next },
+                    { onSuccess: () => toast.success(next ? t.projectSetup.settings.revealsOn : t.projectSetup.settings.revealsOff) },
+                  )
+                }
+              />
+            </div>
+            {reveal.error && (
+              <div className="mt-3">
+                <ErrorBanner>{(reveal.error as Error).message}</ErrorBanner>
               </div>
             )}
           </Card>

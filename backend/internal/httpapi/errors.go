@@ -55,6 +55,9 @@ type APIError struct {
 	Fields map[string]string `json:"fields,omitempty"`
 	// Position is the 1-based character a query went wrong at, for bad_query.
 	Position *int `json:"position,omitempty"`
+	// Project names the project of an issue the caller may not see, for
+	// not_permitted, which a project answers only when it said so.
+	Project string `json:"project,omitempty"`
 	// RequestID lets a user quote something we can find in the logs.
 	RequestID string `json:"requestId,omitempty"`
 
@@ -122,6 +125,13 @@ func ErrNotFound(what string) *APIError {
 		what = "That was not found."
 	}
 	return &APIError{Status: http.StatusNotFound, Code: "not_found", Message: what}
+}
+
+// ErrNotPermitted is an issue that exists in a project the caller may not see,
+// told only for a project whose administrators chose to say so (#279).
+func ErrNotPermitted(projectName string) *APIError {
+	return &APIError{Status: http.StatusForbidden, Code: "not_permitted", Project: projectName,
+		Message: "You may not see issues of " + projectName + ". Ask its administrators for access."}
 }
 
 func ErrConflict(message string) *APIError {

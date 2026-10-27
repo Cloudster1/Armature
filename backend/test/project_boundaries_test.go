@@ -178,9 +178,12 @@ func TestAProjectIsAWallInsideTheInstallation(t *testing.T) {
 			"attachmentID": it.attachment, "ruleID": it.rule, "worklogID": it.worklog,
 			"commentID": it.comment, "linkID": it.link, "companyID": company,
 		}
+		// Asking for access answers alike whatever the key names, which
+		// access_request_test.go holds it to; a wall would answer for the key.
+		alike := map[string]bool{"POST /issues/{issueKey}/access-requests": true}
 		swept := 0
 		for _, route := range httpapi.Catalog() {
-			if !strings.Contains(route.Path, "{") {
+			if !strings.Contains(route.Path, "{") || alike[route.Method+" "+route.Path] {
 				continue
 			}
 			if route.Public || route.Binary || route.Redirect || strings.HasPrefix(route.Path, "/portal/") {

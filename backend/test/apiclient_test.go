@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/armature/armature/backend/internal/access"
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/attachment"
 	"github.com/armature/armature/backend/internal/audit"
@@ -123,6 +124,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Reports:      report.NewService(h.cluster, plans).WithSprints(sprints),
 		AppBaseURL:   "http://app.test",
 		Issues:       issues,
+		Access:       access.NewService(h.cluster, issues, perm.NewStore(h.cluster)),
 		Boards:       board.NewService(h.cluster, issues),
 		Plans:        plans,
 		Sprints:      sprints,

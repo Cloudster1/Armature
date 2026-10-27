@@ -18,11 +18,13 @@ import (
 // takes. Every other write is refused to an app before any handler, so a route
 // added later is closed to apps until it is named here.
 var appWrites = map[string]string{
-	"POST /projects/{projectKey}/issues":                    oauth.ScopeIssueWrite,
-	"POST /issues":                                          oauth.ScopeIssueWrite,
-	"PATCH /issues/{issueKey}":                              oauth.ScopeIssueWrite,
-	"DELETE /issues/{issueKey}":                             oauth.ScopeIssueWrite,
-	"POST /issues/{issueKey}/clone":                         oauth.ScopeIssueWrite,
+	"POST /projects/{projectKey}/issues": oauth.ScopeIssueWrite,
+	"POST /issues":                       oauth.ScopeIssueWrite,
+	"PATCH /issues/{issueKey}":           oauth.ScopeIssueWrite,
+	"DELETE /issues/{issueKey}":          oauth.ScopeIssueWrite,
+	"POST /issues/{issueKey}/clone":      oauth.ScopeIssueWrite,
+	// Asking speaks to people, as watching does, and changes no issue.
+	"POST /issues/{issueKey}/access-requests":               oauth.ScopeCommentWrite,
 	"POST /issues/{issueKey}/move":                          oauth.ScopeIssueWrite,
 	"POST /issues/bulk":                                     oauth.ScopeIssueWrite,
 	"PUT /issues/{issueKey}/parent":                         oauth.ScopeIssueWrite,

@@ -53,6 +53,9 @@ const (
 	TopicAbsenceRecorded = "absence.recorded"
 	TopicAbsenceChanged  = "absence.changed"
 	TopicAbsenceRemoved  = "absence.removed"
+	// Somebody asked for access to an issue they may not see. Never sent to a
+	// webhook: it names a person and a project kept from them.
+	TopicAccessRequested = "access.requested"
 )
 
 // Topics lists every topic, in the order a subscription picker shows them. topics_test.go
