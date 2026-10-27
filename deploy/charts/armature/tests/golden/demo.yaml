@@ -655,7 +655,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 445b898274dd9a7d10e03b83b63199a10da984e6d71b856d36aa8aed45282f4c
+        checksum/env: 493c0a95fc7f1173f14ddf89406c9f4976f97ab179555412abdbaf4215ad4f8d
     spec:
       serviceAccountName: armature
       securityContext:
@@ -862,7 +862,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 445b898274dd9a7d10e03b83b63199a10da984e6d71b856d36aa8aed45282f4c
+        checksum/env: 493c0a95fc7f1173f14ddf89406c9f4976f97ab179555412abdbaf4215ad4f8d
     spec:
       serviceAccountName: armature
       securityContext:
