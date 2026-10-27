@@ -118,7 +118,8 @@ func ResetThrottles() {
 	secondFactorTries.reset()
 	tokenMisses.reset()
 	registrations.reset()
-	accessRequests.reset()
+	// accessRequests counts by account, and each test has its own, so it is
+	// left alone: a reset from a parallel test would let a brake test through.
 }
 
 // allow records one request from a key and says whether it was inside the limit.
