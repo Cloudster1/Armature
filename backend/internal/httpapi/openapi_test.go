@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/armature/armature/backend/internal/events"
 	"github.com/armature/armature/backend/internal/webhook"
 )
 
@@ -271,6 +272,18 @@ func TestTheDocumentDescribesAWebhookDelivery(t *testing.T) {
 	if got := body.Properties["payload"].Type; got != "object" {
 		t.Errorf("the payload is %v, want an object", got)
 	}
+	cloud, err := doc.Resolve(delivery.RequestBody.Content["application/cloudevents+json"].Schema)
+	if err != nil {
+		t.Fatalf("version 2: %v", err)
+	}
+	for _, field := range []string{"specversion", "id", "source", "type", "time", "datacontenttype", "dataversion", "data"} {
+		if !slices.Contains(cloud.Required, field) {
+			t.Errorf("version 2 does not promise %s", field)
+		}
+	}
+	if len(cloud.Properties) != 8 {
+		t.Errorf("version 2 has %d fields; none of version 1's own belongs in it", len(cloud.Properties))
+	}
 	headers := map[string]bool{}
 	for _, p := range delivery.Parameters {
 		if p.In == "header" && p.Required {
@@ -280,6 +293,32 @@ func TestTheDocumentDescribesAWebhookDelivery(t *testing.T) {
 	for _, name := range []string{webhook.HeaderEvent, webhook.HeaderDelivery, webhook.HeaderVersion, webhook.HeaderSignature, webhook.HeaderTimestamp, webhook.HeaderTimestampedSignature} {
 		if !headers[name] {
 			t.Errorf("the delivery does not list the header %s", name)
+		}
+	}
+}
+
+// Version 2's data is the version 1 payload, described by topic beside the
+// document; a topic a subscription can name has its section there.
+func TestEveryTopicHasItsPayloadDescribed(t *testing.T) {
+	path := os.Getenv("ARMATURE_WEBHOOKS_DOC")
+	if path == "" {
+		t.Skip("ARMATURE_WEBHOOKS_DOC is not set; run the suite with `make test`")
+	}
+	doc, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	described := map[string]bool{}
+	for _, line := range strings.Split(string(doc), "\n") {
+		if heading, ok := strings.CutPrefix(line, "### "); ok {
+			for _, topic := range strings.Split(heading, ", ") {
+				described[topic] = true
+			}
+		}
+	}
+	for _, topic := range append([]string{webhook.TopicPing}, events.Topics...) {
+		if !described[topic] {
+			t.Errorf("docs/webhooks.md has no section for %s", topic)
 		}
 	}
 }

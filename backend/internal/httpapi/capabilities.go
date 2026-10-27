@@ -63,6 +63,15 @@ var integrationCapabilities = []capability{
 		},
 	},
 	{
+		name:    "webhooks@2",
+		promise: "An endpoint registered for envelope version 2 is posted each event as a CloudEvents 1.0 event in structured mode, the version 1 payload as its data, signed as version 1 is.",
+		operations: []string{
+			"POST /webhooks",
+			"PATCH /webhooks/{endpointID}",
+			"POST /webhooks/{endpointID}/test",
+		},
+	},
+	{
 		// The tools are discovered from their list, so only the endpoint is promised, as Exciter's mcp@1 does.
 		name:    "mcp@1",
 		promise: "A partner works with issues over MCP 2025-06-18 as the person whose token it holds, with the tools its list names.",

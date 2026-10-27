@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "git-proxy@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
+  "capabilities": ["calendar@1", "git-proxy@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1", "webhooks@2"]
 }
 ```
 
@@ -74,6 +74,25 @@ endpoint's secret as `sha256=` and the hex HMAC-SHA256 of the body in
 - `POST /webhooks/{endpointID}/deliveries/{deliveryID}/redeliver`
 - `POST /webhooks/{endpointID}/test`
 - `POST /webhooks/{endpointID}/rotate-secret`
+
+### `webhooks@2`
+
+An endpoint registered for envelope version 2 is posted each event as a
+CloudEvents 1.0 event in structured mode, the version 1 payload as its data,
+signed as version 1 is.
+
+`POST /webhooks` and `PATCH /webhooks/{endpointID}` take `"version": 2`, as
+does a connected app's own endpoint. The body is
+`application/cloudevents+json; charset=utf-8`, with `specversion` `1.0`,
+`source` the installation's address, `type` `dev.armature.` and the topic,
+`dataversion` `1`, and `data` the version 1 payload;
+[`docs/webhooks.md`](webhooks.md#version-2-a-cloudevent) has every field. The
+headers and signatures are those of version 1, and `X-Armature-Webhook-Version`
+says `2`.
+
+- `POST /webhooks`
+- `PATCH /webhooks/{endpointID}`
+- `POST /webhooks/{endpointID}/test`
 
 ### `mcp@1`
 

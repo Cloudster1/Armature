@@ -24,6 +24,7 @@ import {
   IconButton,
   Menu,
   Page,
+  Select,
   PageHeader,
   Table,
   Tag,
@@ -58,17 +59,19 @@ function WebhooksPage() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [topics, setTopics] = useState<string[]>(["*"]);
+  const [version, setVersion] = useState(1);
   // The secret is shown once, right after it is made or rotated, and never again.
   const [fresh, setFresh] = useState<{ name: string; secret: string } | null>(null);
   const [logOf, setLogOf] = useState<Webhook | null>(null);
 
   const hooks = data?.webhooks ?? [];
   const allTopics = catalog?.topics ?? ["*"];
+  const versions = catalog?.versions ?? [1];
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     create.mutate(
-      { name: name.trim(), url: url.trim(), topics },
+      { name: name.trim(), url: url.trim(), topics, version },
       {
         onSuccess: (r) => {
           setFresh({ name: r.webhook.name, secret: r.webhook.secret ?? "" });
@@ -76,6 +79,7 @@ function WebhooksPage() {
           setName("");
           setUrl("");
           setTopics(["*"]);
+          setVersion(1);
         },
       },
     );
@@ -151,6 +155,19 @@ function WebhooksPage() {
                 ))}
               </div>
             </fieldset>
+            <Select
+              label={words.access.webhooks.version}
+              value={String(version)}
+              onChange={(e) => setVersion(Number(e.target.value))}
+              hint={words.access.webhooks.versionHint}
+              data-webhook-version-pick
+            >
+              {versions.map((v) => (
+                <option key={v} value={v}>
+                  {words.access.webhooks.versionName(v)}
+                </option>
+              ))}
+            </Select>
             <div className="flex gap-2">
               <Button type="submit" loading={create.isPending} disabled={!name.trim() || !url.trim()} data-action="save-webhook">
                 {words.access.webhooks.addWebhook}
@@ -172,6 +189,7 @@ function WebhooksPage() {
               <Th>{words.access.newUser.name}</Th>
               <Th>{words.access.webhooks.address}</Th>
               <Th>{words.access.webhooks.topics}</Th>
+              <Th>{words.access.webhooks.version}</Th>
               <Th>{words.access.users.state}</Th>
               <Th className="w-12" />
             </tr>
@@ -187,6 +205,9 @@ function WebhooksPage() {
                 </Td>
                 <Td className="max-w-xs truncate font-mono text-xs text-ink-muted">{h.url}</Td>
                 <Td className="text-sm text-ink-muted">{h.topics.includes("*") ? words.access.webhooks.everythingLower : h.topics.join(", ")}</Td>
+                <Td className="text-sm text-ink-muted" data-webhook-version={h.version}>
+                  {words.access.webhooks.versionName(h.version)}
+                </Td>
                 <Td>
                   <Tag>{h.enabled ? words.access.webhooks.on : words.access.users.off}</Tag>
                 </Td>
