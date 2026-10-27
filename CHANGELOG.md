@@ -34,6 +34,9 @@ and its tag message, so a change is written here in the branch that makes it.
   (activity, history, links, watchers, pages, files, time and hierarchy)
   speak German as well as English, from `web/src/i18n` (#371). Durations keep
   the d, h and m a person types in both languages.
+- Fixed: with `telemetry.serviceMonitor.enabled`, the chart's ServiceMonitor
+  scrapes the worker's metrics as well as the api's (#451). The worker has a
+  headless Service of its own, `<release>-worker`, for the scraper.
 - Fixed: no main page scrolls sideways on a phone (#275). Tabs scroll in
   their own row, a toolbar's buttons and an issue's transitions wrap, a
   summary in the issue, queue and portal tables keeps room to be read and

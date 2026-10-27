@@ -12,6 +12,10 @@ spec:
   selector:
     matchLabels:
       {{- include "armature.selectorLabels" . | nindent 6 }}
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: In
+        values: [api, worker]
   endpoints:
     - port: metrics
       interval: {{ .Values.telemetry.serviceMonitor.interval }}
