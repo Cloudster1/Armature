@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "git-proxy@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1", "webhooks@2"]
+  "capabilities": ["auth.silent-sign-in@1", "calendar@1", "git-proxy@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1", "webhooks@2"]
 }
 ```
 
@@ -21,6 +21,32 @@ The list is sorted. Paths below are under `/api/v1`, spelled as in
 an API token unless the document marks it public.
 
 ## The capabilities
+
+### `auth.silent-sign-in@1`
+
+A visit without a session first asks the installation's identity provider
+quietly, so somebody signed in to another tool of the suite is let straight
+in, and signing out ends the provider's session too.
+
+- `GET /auth/oidc/start?prompt=none&next=/issues/CP-12` sends the browser to
+  the provider with `prompt=none`, PKCE and a nonce. With a session there, the
+  callback signs the person in as a clicked sign-in does, with the same group
+  mapping and membership checks, and lands on `next`.
+- Without one (`login_required`, `interaction_required`, `consent_required`
+  or any other refusal) the callback lands on `/login?next=...` and marks the
+  browser, for its session, so the next page goes straight to the sign-in
+  page. Silent sign-in is off without a provider, with
+  `ARMATURE_OIDC_SILENT_SIGN_IN=false` (`auth.silentSignIn` in the chart), and
+  after signing out. `GET /auth/signup` says `silentSignIn: true` when a visit
+  should try it.
+- `POST /auth/logout` for a session from the provider answers `200
+  {"endSession": "..."}`, the provider's end session address with
+  `id_token_hint`, `client_id` and `post_logout_redirect_uri`; the browser
+  goes there. Otherwise it answers 204 as before.
+
+- `GET /auth/oidc/start`
+- `GET /auth/oidc/callback`
+- `POST /auth/logout`
 
 ### `issue-embed@1`
 

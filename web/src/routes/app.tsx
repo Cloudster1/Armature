@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { rootRoute } from "./root";
 import { meQueryKey, useMe } from "@/api/auth";
 import { request, ApiError } from "@/api/client";
+import { trySilentSignIn } from "@/lib/silentSignIn";
 import { Button, EmptyState, IconButton, Spotlight, ToastProvider, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
@@ -37,8 +38,14 @@ export const appRoute = createRoute({
       });
     } catch (error) {
       if (error instanceof ApiError && error.isUnauthenticated) {
-        // Remember where they were headed so the sign-in can return them there.
-        throw redirect({ to: "/login", search: { next: location.pathname } });
+        // Remember where they were headed, query and all, so the sign-in can
+        // return them there; the provider may let them in without a click.
+        const next = location.href;
+        if (await trySilentSignIn(next)) {
+          // The browser is on its way out; drawing the sign-in page first would only flash.
+          await new Promise(() => {});
+        }
+        throw redirect({ to: "/login", search: { next } });
       }
       throw error;
     }

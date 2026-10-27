@@ -2837,3 +2837,35 @@ And the documents are prose, so a stale metric name or bucket default in the
 README is invisible to every test. The gate for the whole job was therefore
 `git grep -i nojira` returning nothing, which is also what caught the Redis
 stream key, spelled with a colon where everything else used an underscore.
+
+### A visit without a session asks the provider quietly first
+
+The suite's tools share one Keycloak realm, and somebody signed in to one of
+them who opens Armature had to click "Sign in" to be sent there and straight
+back (#325). So a visit that finds no session first sends the browser to the
+provider with `prompt=none`, and the provider either signs the person in, as a
+click would, or says `login_required` without showing anything. The browser
+goes there itself, top level: the API's CSP and `X-Frame-Options: DENY` rule
+out a hidden frame, and a third-party cookie would not reach Keycloak in one
+anyway.
+
+The SPA decides: its guard asks `GET /auth/signup` whether to try, and the
+server says yes only with a provider enabled, the setting on and no mark in
+this browser. Every failure of a silent attempt, a refusal, an unreachable
+provider or a sign-in that is refused here, lands on the sign-in page with
+where the person was going, and marks the browser with a cookie that lasts as
+long as the browser does, so the next page does not go round again. Signing
+out sets the same mark, and for a session from the provider sends the browser
+to its end session endpoint with the id token, which the session keeps for
+that, so nobody is signed straight back in. The sign-in page never tries by
+itself, so nothing loops.
+
+A silent sign-in by somebody who is no member files a join request, as a
+clicked one does: they signed in to the suite, and an administrator who admits
+by hand should see them. The same work added PKCE, and a cookie that holds the
+attempt's state, so a callback in a browser that did not start the attempt is
+refused instead of signing that browser in as somebody else.
+
+**Reconsider if** visitors without a suite account become most of the traffic:
+each pays one round trip to the provider per browser session.
+

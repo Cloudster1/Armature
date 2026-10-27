@@ -33,6 +33,13 @@ scenario("an anonymous visitor is sent to sign in, not shown the app", async ({ 
 
   await goto(page, "/settings/tokens");
   await waitForPath(page, "/login");
+
+  // A deep link keeps its query on the way, whether or not the installation's
+  // provider was asked quietly first, so the sign-in comes back to it (#325).
+  await goto(page, "/search?q=status%20%3D%20Done");
+  await waitForPath(page, "/login");
+  const next = await page.evaluate(() => new URLSearchParams(location.search).get("next") ?? "");
+  expect.contains(next, "/search?q=status", "the sign-in page knows the page and its query");
 });
 
 scenario("an unknown path shows the not-found page rather than a blank screen", async ({ page }) => {

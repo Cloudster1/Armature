@@ -82,13 +82,34 @@ type signupRequest struct {
 
 // handleSignupOpen lets the sign-in page offer sign-up only where it would
 // work, and say whether it sets the installation up.
+// signInOffer is what the sign-in and sign-up pages need before anybody types.
+type signInOffer struct {
+	// Open says a sign-up would be let through right now.
+	Open bool `json:"open"`
+	// First says the next account sets the installation up and administers it.
+	First bool `json:"first"`
+	// SilentSignIn says a visit without a session should first ask the
+	// provider quietly: one is set up, and this browser has not tried yet.
+	SilentSignIn bool `json:"silentSignIn"`
+}
+
 func (s *Server) handleSignupOpen(w http.ResponseWriter, r *http.Request) {
 	state, err := s.Auth.SignupOffer(r.Context())
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, state)
+	respondJSON(w, r, http.StatusOK, signInOffer{Open: state.Open, First: state.First, SilentSignIn: s.mayTryQuietly(r)})
+}
+
+// mayTryQuietly says whether a silent sign-in is worth the round trip for
+// this browser now.
+func (s *Server) mayTryQuietly(r *http.Request) bool {
+	if !s.SilentSignIn || s.OIDC == nil || triedQuietly(r, s.quietCookie()) {
+		return false
+	}
+	provider, err := s.OIDC.ProviderFor(r.Context())
+	return err == nil && provider.Enabled
 }
 
 func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
@@ -154,15 +175,38 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"principal": creds.Principal})
 }
 
+// logoutAnswer sends the browser on to the provider to end its session too.
+type logoutAnswer struct {
+	// EndSession is the provider's end session address, for a session that
+	// came from it; the browser goes there and comes back to sign in.
+	EndSession string `json:"endSession"`
+}
+
+// handleLogout ends the session and keeps the browser from being signed
+// straight back in quietly; one from the provider ends the provider's too.
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
+	endSession := ""
 	if p != nil && p.SessionID != nil {
+		if s.OIDC != nil {
+			found, err := s.OIDC.SignOutURL(r.Context(), *p.SessionID, s.AppBaseURL+"/login")
+			if err != nil {
+				// The provider being away is no reason to keep somebody signed in here.
+				s.Log.Warn("the provider's end session address is not known", "error", err)
+			}
+			endSession = found
+		}
 		if err := s.Auth.Logout(r.Context(), *p.SessionID); err != nil {
 			respondError(w, r, err)
 			return
 		}
 	}
 	s.clearSessionCookie(w)
+	s.setQuiet(w)
+	if endSession != "" {
+		respondJSON(w, r, http.StatusOK, logoutAnswer{EndSession: endSession})
+		return
+	}
 	respondNoContent(w)
 }
 

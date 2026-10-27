@@ -140,6 +140,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Secure:       false,
 		CookieName:   testCookieName,
 		SessionTTL:   time.Hour,
+		SilentSignIn: true,
 	}
 
 	ts := httptest.NewServer(srv.Routes([]string{"http://localhost:5173"}))

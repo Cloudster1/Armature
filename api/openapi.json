@@ -1130,11 +1130,21 @@
     "/auth/logout": {
       "post": {
         "operationId": "logout",
-        "summary": "End the session.",
+        "summary": "End the session; one from the identity provider answers where to end the provider's session too.",
         "tags": [
           "auth"
         ],
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutAnswer"
+                }
+              }
+            }
+          },
           "204": {
             "description": "No Content"
           },
@@ -1685,7 +1695,7 @@
     "/auth/oidc/start": {
       "get": {
         "operationId": "oIDCStart",
-        "summary": "Begin signing in through the installation's identity provider.",
+        "summary": "Begin signing in through the installation's identity provider; with prompt=none, quietly, landing on the sign-in page when the provider has no session.",
         "tags": [
           "auth"
         ],
@@ -1694,6 +1704,14 @@
             "name": "next",
             "in": "query",
             "description": "Where to land afterwards.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prompt",
+            "in": "query",
+            "description": "none asks the provider not to show anything: a silent sign-in.",
             "schema": {
               "type": "string"
             }
@@ -1957,7 +1975,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SignupState"
+                  "$ref": "#/components/schemas/SignInOffer"
                 }
               }
             }
@@ -25791,6 +25809,17 @@
           "password"
         ]
       },
+      "LogoutAnswer": {
+        "type": "object",
+        "properties": {
+          "endSession": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endSession"
+        ]
+      },
       "ManagedUser": {
         "type": "object",
         "properties": {
@@ -30121,6 +30150,25 @@
           "generatedAt"
         ]
       },
+      "SignInOffer": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "boolean"
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "silentSignIn": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "open",
+          "first",
+          "silentSignIn"
+        ]
+      },
       "SignupRequest": {
         "type": "object",
         "properties": {
@@ -30138,21 +30186,6 @@
           "email",
           "password",
           "name"
-        ]
-      },
-      "SignupState": {
-        "type": "object",
-        "properties": {
-          "first": {
-            "type": "boolean"
-          },
-          "open": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "open",
-          "first"
         ]
       },
       "Span": {

@@ -244,7 +244,7 @@ func webhookDelivery(b *openapi.Builder) *openapi.Operation {
 			header(webhook.HeaderTimestampedSignature, "sha256= and the hex HMAC-SHA256 of the timestamp, a dot and the body."),
 		},
 		RequestBody: &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
-			"application/json": {Schema: b.SchemaOf(webhook.EnvelopeV1{})},
+			"application/json":             {Schema: b.SchemaOf(webhook.EnvelopeV1{})},
 			"application/cloudevents+json": {Schema: b.SchemaOf(webhook.EnvelopeV2{})},
 		}},
 		Responses: map[string]*openapi.Response{
