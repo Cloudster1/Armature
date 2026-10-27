@@ -95,7 +95,7 @@ export interface RuleRun {
 export function useAutomationCatalog() {
   return useQuery({
     queryKey: ["automation", "catalog"],
-    queryFn: () => request<{ catalog: RuleDescriptor[]; topics: string[] }>("/automation/catalog"),
+    queryFn: () => request<{ catalog: RuleDescriptor[]; topics: string[]; versions: number[] }>("/automation/catalog"),
     staleTime: META_STALE_MS,
   });
 }

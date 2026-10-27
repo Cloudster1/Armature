@@ -11,10 +11,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -147,6 +145,8 @@ type Service struct {
 	now    func() time.Time
 	// concurrency is how many deliveries one pass posts at once.
 	concurrency int
+	// source is the installation's address, what an envelope says it came from.
+	source string
 	// allow is what the guard lets through, judged again when an address is set.
 	allow netguard.Allow
 }
@@ -155,8 +155,17 @@ func NewService(cluster *db.Cluster, log *slog.Logger) *Service {
 	allow := netguard.FromEnv()
 	return &Service{
 		db: cluster, client: netguard.Client(sendTimeout, allow), log: log, now: time.Now,
-		concurrency: config.DefaultWebhookConcurrency, allow: allow,
+		concurrency: config.DefaultWebhookConcurrency, allow: allow, source: DefaultSource,
 	}
+}
+
+// WithSource sets the address an envelope names as where its event happened:
+// the installation's own, ARMATURE_APP_URL.
+func (s *Service) WithSource(appURL string) *Service {
+	if appURL != "" {
+		s.source = appURL
+	}
+	return s
 }
 
 // WithAllow sets what an address set on an endpoint is judged against, which
@@ -227,70 +236,6 @@ func (s *Service) Deliveries(ctx context.Context, endpointID uuid.UUID, limit in
 	return out, err
 }
 
-// CurrentVersion is the envelope a new endpoint is registered for. It rises
-// only for a change that breaks a receiver, as docs/webhooks.md says.
-const CurrentVersion = 1
-
-// ErrUnknownVersion is an envelope version this release does not send.
-var ErrUnknownVersion = errors.New("there is no such webhook envelope version")
-
-// EnvelopeV1 is what an endpoint on version 1 receives. Its orgId goes with
-// version 2, so an endpoint on 1 keeps it (#218).
-type EnvelopeV1 struct {
-	Version    int             `json:"version"`
-	ID         uuid.UUID       `json:"id"`
-	Topic      string          `json:"topic"`
-	OrgID      uuid.UUID       `json:"orgId" deprecated:"The installation's stable id, the same in every delivery. Envelope version 2 leaves it out; read nothing from it."`
-	OccurredAt time.Time       `json:"occurredAt"`
-	Payload    json.RawMessage `json:"payload"`
-}
-
-// envelopes builds each version's body. A later version is a row beside 1,
-// and an endpoint on 1 keeps getting 1.
-var envelopes = map[int]func(installationID uuid.UUID, e events.Event, at time.Time) any{
-	1: func(installationID uuid.UUID, e events.Event, at time.Time) any {
-		return EnvelopeV1{Version: 1, ID: e.ID, Topic: e.Topic, OrgID: installationID, OccurredAt: at, Payload: e.Payload}
-	},
-}
-
-// Versions lists the envelope versions this release sends, lowest first.
-func Versions() []int {
-	out := make([]int, 0, len(envelopes))
-	for v := range envelopes {
-		out = append(out, v)
-	}
-	slices.Sort(out)
-	return out
-}
-
-// envelopeFor is the body an endpoint on the version is posted for the event.
-func envelopeFor(version int, installationID uuid.UUID, e events.Event, at time.Time) ([]byte, error) {
-	build, ok := envelopes[version]
-	if !ok {
-		return nil, fmt.Errorf("%w: %d", ErrUnknownVersion, version)
-	}
-	e.Payload = withoutSecrets(e.Payload)
-	return json.Marshal(build(installationID, e, at.UTC()))
-}
-
-// withoutSecrets drops what an event carries for a mail rather than for a
-// reader: an unwatch link's token is one, and an endpoint has no use for it.
-func withoutSecrets(payload json.RawMessage) json.RawMessage {
-	var body map[string]json.RawMessage
-	if err := json.Unmarshal(payload, &body); err != nil {
-		return payload
-	}
-	if _, carried := body["token"]; !carried {
-		return payload
-	}
-	delete(body, "token")
-	cleaned, err := json.Marshal(body)
-	if err != nil {
-		return payload
-	}
-	return cleaned
-}
-
 // Enqueue records an event for one endpoint, due now. The sender picks it up;
 // a second call for the same event and endpoint is a no-op.
 func (s *Service) Enqueue(ctx context.Context, endpointID uuid.UUID, e events.Event) (db.LSN, error) {
@@ -313,7 +258,7 @@ func (s *Service) Enqueue(ctx context.Context, endpointID uuid.UUID, e events.Ev
 		if err != nil {
 			return err
 		}
-		body, err := envelopeFor(version, installationID, e, s.now())
+		body, err := envelopeFor(version, origin{installation: installationID, source: s.source}, e, s.now())
 		if err != nil {
 			return err
 		}

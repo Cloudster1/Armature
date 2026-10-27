@@ -196,7 +196,7 @@ func run() error {
 	httpapi.SetDoorWindow(cfg.Auth.DoorWindow)
 	themes := theme.NewService(cluster, store)
 	labels := label.NewService(cluster)
-	webhooks := webhook.NewService(cluster, log)
+	webhooks := webhook.NewService(cluster, log).WithSource(cfg.Mail.AppBaseURL)
 	identityProvider := oidc.NewService(cluster, cfg.Auth.OIDCRedirectURL).WithHTTPClient(oidc.Backchannel(oidc.ParseRewrites(os.Getenv("ARMATURE_OIDC_BACKCHANNEL"))))
 	server := &httpapi.Server{
 		Auth:         accounts,

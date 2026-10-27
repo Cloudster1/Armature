@@ -2127,7 +2127,7 @@
     "/automation/catalog": {
       "get": {
         "operationId": "automationCatalog",
-        "summary": "What a rule may watch, test and do, and the topics a webhook may subscribe to.",
+        "summary": "What a rule may watch, test and do, the topics a webhook may subscribe to, and the envelope versions it may be sent in.",
         "tags": [
           "automation"
         ],
@@ -2150,11 +2150,18 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      }
                     }
                   },
                   "required": [
                     "catalog",
-                    "topics"
+                    "topics",
+                    "versions"
                   ]
                 }
               }
@@ -20570,7 +20577,7 @@
             "name": "X-Armature-Webhook-Version",
             "in": "header",
             "required": true,
-            "description": "The envelope version of the body, as in its version field.",
+            "description": "The envelope version of the body: 1, as in its version field, or 2, a CloudEvent.",
             "schema": {
               "type": "string"
             }
@@ -20606,6 +20613,11 @@
         "requestBody": {
           "required": true,
           "content": {
+            "application/cloudevents+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvelopeV2"
+              }
+            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EnvelopeV1"
@@ -24380,6 +24392,62 @@
           "orgId",
           "occurredAt",
           "payload"
+        ]
+      },
+      "EnvelopeV2": {
+        "type": "object",
+        "description": "What an endpoint registered for envelope version 2 is posted: a CloudEvents 1.0 event in structured mode.",
+        "properties": {
+          "data": {
+            "type": "object",
+            "description": "The version 1 payload, unchanged: the event's own fields, by topic, as docs/webhooks.md lists them."
+          },
+          "datacontenttype": {
+            "type": "string",
+            "description": "What data is.",
+            "enum": [
+              "application/json"
+            ]
+          },
+          "dataversion": {
+            "type": "integer",
+            "description": "The version of data's own shape, 1 here; a payload that breaks raises it apart from the envelope."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The event's id, the same on every attempt and redelivery."
+          },
+          "source": {
+            "type": "string",
+            "description": "The installation's address, ARMATURE_APP_URL."
+          },
+          "specversion": {
+            "type": "string",
+            "description": "The CloudEvents version.",
+            "enum": [
+              "1.0"
+            ]
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the event happened, in UTC."
+          },
+          "type": {
+            "type": "string",
+            "description": "dev.armature. followed by the version 1 topic, as in X-Armature-Event, such as dev.armature.issue.transitioned."
+          }
+        },
+        "required": [
+          "specversion",
+          "id",
+          "source",
+          "type",
+          "time",
+          "datacontenttype",
+          "dataversion",
+          "data"
         ]
       },
       "EpicProgress": {

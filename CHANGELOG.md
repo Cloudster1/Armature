@@ -19,6 +19,19 @@ and its tag message, so a change is written here in the branch that makes it.
   may not see them" (#279). It is off unless its administrators turn it on;
   when on, such a person is answered 403 `not_permitted` with the project's
   name instead of 404, and sees the issue as restricted.
+- Changed: `text ~` and `description ~` match the start of each word in a
+  description, as a search typed while thinking does: `text ~ meta` finds
+  "metadata" (#293). The summary still matches any part of a word. Only the
+  words people wrote count, no longer the names of the document's paragraphs
+  or its link addresses, so an emptied description is also `IS EMPTY`.
+- Added: webhook envelope version 2, a CloudEvents 1.0 event in structured
+  mode (#286). An endpoint registered with `"version": 2`, or with the
+  version picked on the Webhooks page, is posted
+  `application/cloudevents+json` with `type` `dev.armature.<topic>`,
+  `source` the installation's address and the version 1 payload as `data`,
+  at `dataversion` 1, signed as before. Version 1 stays the default, and
+  `/api/v1/meta` lists `webhooks@2`. The `member.joined` payload's `orgId`
+  now goes with payload version 2 rather than envelope version 2.
 - Added: the service desk, its queues, the customer portal, the rating page,
   the guide and the rich editor speak German as well as English, which
   finishes moving the interface into `web/src/i18n` (#371). The guide

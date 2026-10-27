@@ -275,7 +275,7 @@ func (s *Service) post(ctx context.Context, url, secret, topic string, version i
 	if err != nil {
 		return 0, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", ContentType(version))
 	req.Header.Set("User-Agent", "Armature-Webhook")
 	req.Header.Set(HeaderEvent, topic)
 	req.Header.Set(HeaderDelivery, deliveryID.String())

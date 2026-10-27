@@ -188,7 +188,7 @@ var operations = []operation{
 
 	// Metadata behind the pickers.
 	// Rules and the webhooks they, and the stream, post to.
-	{method: "GET", path: "/automation/catalog", handler: "handleAutomationCatalog", tag: "automation", summary: "What a rule may watch, test and do, and the topics a webhook may subscribe to.", responses: ok(env{"catalog": []automation.Descriptor{}, "topics": []string{}})},
+	{method: "GET", path: "/automation/catalog", handler: "handleAutomationCatalog", tag: "automation", summary: "What a rule may watch, test and do, the topics a webhook may subscribe to, and the envelope versions it may be sent in.", responses: ok(env{"catalog": []automation.Descriptor{}, "topics": []string{}, "versions": []int{}})},
 	{method: "GET", path: "/projects/{projectKey}/automation/rules", handler: "handleListProjectRules", tool: "list_automation_rules", toolHelp: "A project's automation rules with their triggers, conditions and actions.", tag: "automation", summary: "A project's rules.", responses: ok(env{"rules": []automation.Rule{}})},
 	{method: "POST", path: "/projects/{projectKey}/automation/rules", handler: "handleCreateProjectRule", tag: "automation", summary: "Make a rule for a project.", request: automation.Input{}, responses: created(env{"rule": automation.Rule{}})},
 	{method: "GET", path: "/automation/rules", handler: "handleListOrgRules", tag: "automation", summary: "The rules that watch every project.", responses: ok(env{"rules": []automation.Rule{}})},
