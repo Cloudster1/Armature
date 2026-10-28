@@ -7,6 +7,8 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-28
+
 - Added: the service desk, its queues, the customer portal, the rating page,
   the guide and the rich editor speak German as well as English, which
   finishes moving the interface into `web/src/i18n` (#371). The guide
