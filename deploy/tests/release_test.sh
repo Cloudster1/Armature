@@ -45,6 +45,20 @@ fail() {
 	printf 'FAIL %s\n' "$*"
 }
 
+# seed_version TAG: the seed's copies of the versioned files say TAG's version.
+seed_version() {
+	to=${1#v}
+	from=$(cat "$dir/seed/VERSION")
+	echo "$to" >"$dir/seed/VERSION"
+	for f in web/package.json:1 web/package-lock.json:2; do
+		awk -v from="\"version\": \"$from\"" -v to="\"version\": \"$to\"" -v left="${f##*:}" \
+			'left > 0 && index($0, from) { sub(from, to); left-- } { print }' \
+			"$dir/seed/${f%:*}" >"$dir/seed/${f%:*}.new" && mv "$dir/seed/${f%:*}.new" "$dir/seed/${f%:*}"
+	done
+	sed -i -e "s/^version: .*/version: $to/" -e "s/^appVersion: .*/appVersion: \"$to\"/" \
+		"$dir/seed/deploy/charts/armature/Chart.yaml"
+}
+
 # fixture [TAG]: a clone of a fresh bare remote holding the files a release
 # writes, with TAG on its first commit, and the working directory in it.
 fixture() {
@@ -57,6 +71,9 @@ fixture() {
 	cp "$root/VERSION" "$dir/seed/VERSION"
 	cp "$root/web/package.json" "$root/web/package-lock.json" "$dir/seed/web/"
 	cp "$root/deploy/charts/armature/Chart.yaml" "$dir/seed/deploy/charts/armature/"
+	# On a release branch the copies carry the very version a case releases,
+	# which would leave the release nothing to write, so they get the tag's.
+	seed_version "${1:-v0.0.1}"
 	echo 'kind: List' >"$dir/seed/deploy/charts/armature/tests/golden/default.yaml"
 	printf '# Changelog\n\n## Unreleased\n\n- Added: a first page (#1).\n\n## 0.0.1 - 2026-01-01\n\n- Added: the start.\n' \
 		>"$dir/seed/CHANGELOG.md"
