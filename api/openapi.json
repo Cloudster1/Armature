@@ -3606,7 +3606,7 @@
                     "templates": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Template"
+                        "$ref": "#/components/schemas/ReportTemplate"
                       }
                     }
                   },
@@ -3979,7 +3979,7 @@
                   "type": "object",
                   "properties": {
                     "template": {
-                      "$ref": "#/components/schemas/Template"
+                      "$ref": "#/components/schemas/ReportTemplate"
                     }
                   },
                   "required": [
@@ -29614,6 +29614,51 @@
           "narrows"
         ]
       },
+      "ReportTemplate": {
+        "type": "object",
+        "properties": {
+          "builtIn": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "projectKinds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "software",
+                "service",
+                "business"
+              ]
+            }
+          },
+          "widgets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateWidget"
+            }
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "widgets",
+          "builtIn"
+        ]
+      },
       "Repository": {
         "type": "object",
         "properties": {
@@ -32259,51 +32304,6 @@
         "required": [
           "name",
           "description"
-        ]
-      },
-      "Template": {
-        "type": "object",
-        "properties": {
-          "builtIn": {
-            "type": "boolean"
-          },
-          "description": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "key": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "projectKinds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "software",
-                "service",
-                "business"
-              ]
-            }
-          },
-          "widgets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TemplateWidget"
-            }
-          }
-        },
-        "required": [
-          "key",
-          "name",
-          "description",
-          "widgets",
-          "builtIn"
         ]
       },
       "TemplateIssueType": {

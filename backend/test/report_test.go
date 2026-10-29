@@ -819,7 +819,7 @@ func TestADashboardIsMadeFromATemplate(t *testing.T) {
 		}
 	})
 
-	var saved *report.Template
+	var saved *report.ReportTemplate
 	t.Run("saving keeps the arrangement and drops what belongs to this project", func(t *testing.T) {
 		boards, err := r.Dashboards(ws.ctx, ws.project.Key)
 		if err != nil {

@@ -24,9 +24,9 @@ type TemplateWidget struct {
 	Config Params `json:"config"`
 }
 
-// Template is an arrangement a dashboard can start from. Built-ins are code
+// ReportTemplate is an arrangement a dashboard can start from. Built-ins are code
 // keyed by a word and saved ones are rows keyed by id, in one shape.
-type Template struct {
+type ReportTemplate struct {
 	ID          *uuid.UUID       `json:"id,omitempty"`
 	Key         string           `json:"key"`
 	Name        string           `json:"name"`
@@ -58,7 +58,7 @@ func plain(kinds ...Kind) []TemplateWidget {
 
 // builtIn is every template that ships with the product, in the order the
 // chooser offers them.
-var builtIn = []Template{
+var builtIn = []ReportTemplate{
 	{Key: "overview-software", Name: "Overview", Description: "Status, the running sprint and its burndown, workload, throughput, epics and velocity.",
 		Kinds: []project.Kind{project.KindSoftware}, BuiltIn: true,
 		Widgets: plain(StatusBreakdown, Sprint, Burndown, Workload, Throughput, Epics, Velocity)},
@@ -85,8 +85,8 @@ var builtIn = []Template{
 }
 
 // BuiltIn returns the built-in templates that suit a project of a kind.
-func BuiltIn(kind project.Kind) []Template {
-	out := []Template{}
+func BuiltIn(kind project.Kind) []ReportTemplate {
+	out := []ReportTemplate{}
 	for _, t := range builtIn {
 		if t.suits(kind) {
 			out = append(out, t)
@@ -95,15 +95,15 @@ func BuiltIn(kind project.Kind) []Template {
 	return out
 }
 
-func (t Template) suits(kind project.Kind) bool { return suitsKind(t.Kinds, kind) }
+func (t ReportTemplate) suits(kind project.Kind) bool { return suitsKind(t.Kinds, kind) }
 
-func findBuiltIn(key string) (Template, bool) {
+func findBuiltIn(key string) (ReportTemplate, bool) {
 	for _, t := range builtIn {
 		if t.Key == key {
 			return t, true
 		}
 	}
-	return Template{}, false
+	return ReportTemplate{}, false
 }
 
 // substitution is what a template is told about the dashboard it lands on: a
@@ -135,7 +135,7 @@ func templateWidgets(raw []byte) ([]TemplateWidget, error) {
 
 // applyTemplate lays a template's widgets on a dashboard, leaving out kinds a
 // project of this kind cannot show rather than refusing the whole template.
-func applyTemplate(ctx context.Context, tx db.DBTX, dashboardID uuid.UUID, t Template, kind project.Kind, sub substitution) error {
+func applyTemplate(ctx context.Context, tx db.DBTX, dashboardID uuid.UUID, t ReportTemplate, kind project.Kind, sub substitution) error {
 	position := 0
 	for _, w := range t.Widgets {
 		info, ok := infoFor(w.Kind)
@@ -176,7 +176,7 @@ func applyTemplate(ctx context.Context, tx db.DBTX, dashboardID uuid.UUID, t Tem
 
 // Templates lists what a project of a kind may start from: the built-ins that
 // suit it, then the organization's own, by name.
-func (s *Service) Templates(ctx context.Context, kind project.Kind) ([]Template, error) {
+func (s *Service) Templates(ctx context.Context, kind project.Kind) ([]ReportTemplate, error) {
 	out := BuiltIn(kind)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `SELECT id, name, description, widgets FROM dashboard_template ORDER BY lower(name)`)
@@ -185,7 +185,7 @@ func (s *Service) Templates(ctx context.Context, kind project.Kind) ([]Template,
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var t Template
+			var t ReportTemplate
 			var id uuid.UUID
 			var raw []byte
 			if err := rows.Scan(&id, &t.Name, &t.Description, &raw); err != nil {
@@ -204,25 +204,25 @@ func (s *Service) Templates(ctx context.Context, kind project.Kind) ([]Template,
 
 // resolveTemplate finds a template by its key, a built-in word or a saved
 // template's id.
-func resolveTemplate(ctx context.Context, tx db.DBTX, key string) (Template, error) {
+func resolveTemplate(ctx context.Context, tx db.DBTX, key string) (ReportTemplate, error) {
 	if t, ok := findBuiltIn(key); ok {
 		return t, nil
 	}
 	id, err := uuid.Parse(key)
 	if err != nil {
-		return Template{}, ErrNoTemplate
+		return ReportTemplate{}, ErrNoTemplate
 	}
-	var t Template
+	var t ReportTemplate
 	var raw []byte
 	err = tx.QueryRow(ctx, `SELECT id, name, description, widgets FROM dashboard_template WHERE id = $1`, id).Scan(&id, &t.Name, &t.Description, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Template{}, ErrNoTemplate
+		return ReportTemplate{}, ErrNoTemplate
 	}
 	if err != nil {
-		return Template{}, err
+		return ReportTemplate{}, err
 	}
 	if t.Widgets, err = templateWidgets(raw); err != nil {
-		return Template{}, fmt.Errorf("read template %s: %w", id, err)
+		return ReportTemplate{}, fmt.Errorf("read template %s: %w", id, err)
 	}
 	t.ID, t.Key = &id, id.String()
 	return t, nil
@@ -230,12 +230,12 @@ func resolveTemplate(ctx context.Context, tx db.DBTX, key string) (Template, err
 
 // SaveTemplate keeps a dashboard's arrangement for the organization: the ids
 // that belong to one project are dropped, the names in the filter travel.
-func (s *Service) SaveTemplate(ctx context.Context, dashboardID uuid.UUID, name, description string, actor uuid.UUID) (*Template, db.LSN, error) {
+func (s *Service) SaveTemplate(ctx context.Context, dashboardID uuid.UUID, name, description string, actor uuid.UUID) (*ReportTemplate, db.LSN, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, 0, ErrTemplateName
 	}
-	out := &Template{Name: name, Description: strings.TrimSpace(description), Widgets: []TemplateWidget{}}
+	out := &ReportTemplate{Name: name, Description: strings.TrimSpace(description), Widgets: []TemplateWidget{}}
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if err := dashboardExists(ctx, tx, dashboardID); err != nil {
 			return err
