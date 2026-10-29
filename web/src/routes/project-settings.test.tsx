@@ -105,14 +105,14 @@ describe("the tabs of a project's settings", () => {
   it("lists General and the tabs of the features the project uses, and the ones every project has", () => {
     shown = { ...live, features: ["automation", "import"] } as Project;
     render(<Layout />);
-    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Issue types", "Automation", "Import"]);
+    expect(tabs()).toEqual(["General", "Issue types", "Fields", "Issue view", "Workflow", "Automation", "Import"]);
     expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("lists every tab for a project that uses every feature", () => {
     shown = { ...live, features: ["components", "repositories", "automation", "import"] } as Project;
     render(<Layout />);
-    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Issue types", "Components", "Repositories", "Automation", "Import"]);
+    expect(tabs()).toEqual(["General", "Issue types", "Fields", "Issue view", "Workflow", "Components", "Repositories", "Automation", "Import"]);
   });
 
   it("marks the tab the address names, and opens another on a click", async () => {
@@ -129,12 +129,32 @@ describe("the tabs of a project's settings", () => {
     expect(document.querySelector("[data-child]")).not.toBeNull();
   });
 
-  it("tells the member who does not administer the project to ask, and mounts no tab", () => {
+  // Every member sees how the project is set up; what only administrators use is not listed.
+  it("opens to a member who does not administer the project, read only, without the administrators' tabs", () => {
     administers = false;
+    shown = { ...live, features: ["components", "repositories", "automation", "import"] } as Project;
     render(<Layout />);
-    expect(screen.getByText("Only the project's administrators change its settings")).toBeInTheDocument();
-    expect(screen.queryAllByRole("tab")).toHaveLength(0);
+    expect(tabs()).toEqual(["General", "Issue types", "Fields", "Issue view", "Workflow", "Components", "Repositories"]);
+    expect(screen.getByRole("status")).toHaveTextContent("Only the project's administrators change its settings. Ask one of them, or ask for the role.");
+    expect(document.querySelector("[data-child]")).not.toBeNull();
+  });
+
+  it("tells a member who opens an administrators' tab by its address whom to ask, and mounts nothing", () => {
+    administers = false;
+    shown = { ...live, features: ["automation"] } as Project;
+    pathname = "/projects/CP/settings/automation";
+    render(<Layout />);
+    expect(document.querySelector("[data-settings-refused='automation']")).not.toBeNull();
     expect(document.querySelector("[data-child]")).toBeNull();
+  });
+
+  it("shows a member the general settings with every form closed and no way to archive", () => {
+    administers = false;
+    renderPage();
+    expect(screen.getByLabelText(/Project name/)).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Board" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Planning control" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Archive project" })).toBeNull();
   });
 
   it("answers a tab whose feature is off with the switch's notice and mounts nothing", () => {

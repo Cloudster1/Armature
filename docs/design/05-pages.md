@@ -601,11 +601,13 @@ and an Aiming for date. History is a Dialog listing every post, newest first.
 The projects table gains a Status column with the same Tag, "Not said" until
 a first post.
 
-## Project settings (narrow)
+## Project settings (content)
 
 ```
-Projects / Alpha
+Projects / Alpha / Settings
 Settings  [ALP]
+[General] Issue types  Fields  Issue view  Workflow  Components  Repositories  Automation  Import
+(Only the project's administrators change its settings. Ask one of them, ...)   for a member
 | Project name | Description | Lead |                    [Save changes]
 FEATURES
 | Board       [on] | Sprints    [on] |
@@ -613,6 +615,20 @@ FEATURES
 | Queues      [on] | Service desk [on]|  desk pages only on a desk
 ARCHIVE                                              [Archive project]
 ```
+
+One route per tab (`/projects/<key>/settings/<tab>`, General at `/settings`),
+`[data-settings-tab=<slug>]`, in the suite's sections: General; Work items
+(Issue types, Fields, Issue view); Workflow (Workflow); Integrations
+(Components, Repositories, Automation); Import and export (Import). A tab whose
+feature is off is not listed. Archiving sits at the foot of General; Armature
+has no deleting of a project.
+
+Every member of the project opens the settings and sees them read only: a
+status above the tabs (`[data-settings-read-only]`) says whom to ask, the forms
+are closed and archiving is not offered. Automation and Import are only the
+administrators', so they are not listed for anybody else, and their address
+answers `[data-settings-refused=<slug>]` with the same sentence. The old
+addresses, such as `/projects/<key>/fields`, land on their tab.
 
 Each Switch is `[data-feature=<feature>]`; flipping one saves the whole list
 and toasts "Sprints turned on". A page the project lacks answers its address

@@ -74,7 +74,7 @@ one named helper so each scenario moves by a line.
   data-shared-updated, data-sprint-capacity, data-sprint-outcome, data-sprint-showing,
   data-swimlane, data-swimlane-editor, data-team, data-team-capacity,
   data-token, data-token-scope, data-trusted-domain, data-trusted-domains,
-  data-feature, data-feature-off, data-member, data-access-tab,
+  data-feature, data-feature-off, data-member, data-access-tab, data-settings-tab, data-settings-read-only, data-settings-refused,
   data-query-suggestions, data-suggestion, data-suggestion-text,
   data-editor, data-editor-mode, data-editor-action, data-mention, data-doc,
   data-rail, data-sidebar, data-sidebar-group, data-open, data-shell-header, data-card-actions,
@@ -385,7 +385,10 @@ one named helper so each scenario moves by a line.
   portal both live in the `[data-action="customer-menu"]` Menu.
 - `turnFeature(page, projectKey, feature, on)` flips `[data-feature=<feature>]`
   on the project's settings page and waits for its `aria-checked`; a page the
-  project lacks shows `[data-feature-off=<feature>]`.
+  project lacks shows `[data-feature-off=<feature>]`. The settings' tabs are
+  `[data-settings-tab=<slug>]` in the suite's order; a member who does not
+  administer the project sees `[data-settings-read-only]` and no Automation or
+  Import tab, whose address shows `[data-settings-refused=<slug>]`.
 - `openFilters(page)` opens the issues toolbar's Filters popover.
 - `openPlanFilters(page)` opens the plan toolbar's Filters popover.
 

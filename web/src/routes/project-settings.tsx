@@ -8,7 +8,7 @@ import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, Section
 import { DOCS_LABEL_MAX_LENGTH } from "@/config";
 import { useDraft } from "@/lib/draft";
 import { FEATURES, featureWord, hasFeature } from "@/features/projects/features";
-import { projectSettingsPage, projectSetupPages, setupAddress } from "@/features/projects/settingsTabs";
+import { projectSettingsPage, projectSetupPages, settingsPagesFor, setupAddress } from "@/features/projects/settingsTabs";
 import { ShareSettings } from "@/features/projects/ShareSettings";
 import { PlanningSettings } from "@/features/projects/PlanningSettings";
 import { PersonPicker } from "@/features/people/PersonPicker";
@@ -16,8 +16,9 @@ import { t } from "@/i18n";
 
 /**
  * A project's settings: its general form and, as tabs, everything it is set up
- * with. The check that only its administrators come in is made here, once, so
- * no tab mounts and fetches for anybody else.
+ * with. Every member opens them to see how the project is set up; each tab
+ * offers changes to its administrators only, and a tab only they use is
+ * neither listed nor mounted for anybody else.
  */
 export const projectSettingsRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -40,20 +41,15 @@ function ProjectSettingsLayout() {
   const panelId = useId();
   const project = data?.project;
   if (!project || !access) return null;
-  if (!canAdminister(access, projectKey)) {
-    return (
-      <Page width="narrow">
-        <EmptyState title={t.projectSetup.settings.notAdmin} description={t.projectSetup.settings.notAdminDetail} />
-      </Page>
-    );
-  }
-  const shown = projectSetupPages.filter((page) => hasFeature(project, page.feature));
+  const administers = canAdminister(access, projectKey);
+  const shown = settingsPagesFor(project, administers);
   const base = `/projects/${projectKey}`;
   // The longest address that opens the path wins, so /settings is General only when nothing deeper matches.
   const current = [...projectSetupPages]
     .reverse()
     .find((page) => pathname === `${base}${setupAddress(page.path)}` || pathname.startsWith(`${base}${setupAddress(page.path)}/`));
   const off = current && !hasFeature(project, current.feature) ? current : undefined;
+  const refused = current?.adminOnly && !administers;
   return (
     <Page width="content">
       <PageHeader
@@ -82,8 +78,17 @@ function ProjectSettingsLayout() {
           />
         }
       />
+      {!administers && (
+        <p role="status" className="mb-4 rounded-control border border-border bg-surface-raised px-3 py-2 text-sm text-ink-muted" data-settings-read-only>
+          {t.projectSetup.settings.readOnly}
+        </p>
+      )}
       <TabPanel id={panelId} label={current?.tab}>
-        {off ? (
+        {refused ? (
+          <div data-settings-refused={current.path.slice(1)}>
+            <EmptyState title={t.projectSetup.settings.notAdmin} description={t.projectSetup.settings.notAdminDetail} />
+          </div>
+        ) : off ? (
           <div data-feature-off={off.feature}>
             <EmptyState
               title={t.projectSetup.project.featureOff(project.name, featureWord(off.feature!))}
@@ -114,6 +119,7 @@ function GeneralTab() {
   const archive = useArchiveProject();
   const restore = useRestoreProject();
   const toast = useToast();
+  const { data: access } = useAccess();
   const project = data?.project;
   const saved = useMemo(
     () =>
@@ -132,6 +138,7 @@ function GeneralTab() {
 
   if (!project) return null;
   const archived = Boolean(project.archivedAt);
+  const readOnly = !canAdminister(access, projectKey);
   const restoreProject = () => restore.mutate(projectKey, { onSuccess: () => toast.success(t.projectSetup.settings.restored(project.name)) });
 
   function onSubmit(event: FormEvent) {
@@ -151,7 +158,7 @@ function GeneralTab() {
 
   return (
     <div className="max-w-4xl" data-settings-general>
-      {archived && (
+      {archived && !readOnly && (
         <div
           className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink"
           data-archived-notice=""
@@ -169,7 +176,7 @@ function GeneralTab() {
       )}
 
       {/* Every save on an archived project is refused, so its forms are closed until it is restored. */}
-      <fieldset disabled={archived} className="min-w-0">
+      <fieldset disabled={archived || readOnly} className="min-w-0">
         <Card className="p-5">
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
             <Field label={t.projectSetup.settings.name} required value={name} onChange={(e) => setField("name", e.target.value)} />
@@ -287,7 +294,7 @@ function GeneralTab() {
         {project.features.includes("resources") && <ShareSettings projectKey={project.key} />}
       </fieldset>
 
-      {!archived && (
+      {!archived && !readOnly && (
         <section className="mt-8">
           <SectionTitle className="mb-2">{t.projectSetup.settings.archive}</SectionTitle>
           <Card className="flex flex-wrap items-center justify-between gap-3 p-5">

@@ -30,6 +30,7 @@ export const projectSetupEn = {
   settings: {
     notAdmin: "Only the project's administrators change its settings",
     notAdminDetail: "Ask one of them, or ask for the role.",
+    readOnly: "Only the project's administrators change its settings. Ask one of them, or ask for the role.",
     general: "General",
     tabsLabel: "Project settings",
     archived: (name: string) => `${name} is archived. Restore it to change its settings.`,

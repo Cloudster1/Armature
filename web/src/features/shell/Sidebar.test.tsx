@@ -292,11 +292,12 @@ describe("a project's setup", () => {
     for (const word of setupWords) expect(screen.queryByRole("link", { name: word })).toBeNull();
   });
 
-  it("shows nobody else the Settings entry", () => {
+  // Every member may see how the project is set up, read only.
+  it("shows the Settings entry to a member who does not administer the project too", () => {
     state.params = { projectKey: "ALP" };
     state.projectAdmin = false;
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
-    expect(screen.queryByRole("link", { name: "Project settings" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Project settings" })).toHaveAttribute("href", "/projects/$projectKey/settings");
   });
 });
 

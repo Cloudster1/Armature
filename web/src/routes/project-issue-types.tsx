@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createRoute } from "@tanstack/react-router";
 import { projectSettingsRoute } from "./project-settings";
+import { canAdminister, useAccess } from "@/api/access";
 import { LEVEL_STANDARD, useIssueTypes } from "@/api/issues";
 import { useProjectIssueTypes, useSetProjectIssueTypes, type ProjectIssueType } from "@/api/issueTypes";
 import { Button, Card, Checkbox, ErrorBanner, Tag, useToast } from "@/components/ui";
@@ -32,8 +33,10 @@ function ProjectIssueTypesTab() {
   const { data: library } = useIssueTypes();
   const save = useSetProjectIssueTypes(projectKey);
   const toast = useToast();
+  const { data: access } = useAccess();
+  const readOnly = !canAdminister(access, projectKey);
   const [edited, setEdited] = useState<string[] | null>(null);
-  if (!kept || !library) return null;
+  if (!kept || !library || !access) return null;
 
   const rows = new Map<string, Row>();
   for (const type of library.issueTypes) rows.set(type.id, { ...type, issues: 0 });
@@ -59,7 +62,7 @@ function ProjectIssueTypesTab() {
   }
 
   return (
-    <div className="max-w-3xl" data-project-issue-types>
+    <fieldset disabled={readOnly} className="max-w-3xl min-w-0" data-project-issue-types>
       <p className="mb-4 text-sm text-ink-muted">{t.looks.issueTypes.project.meta}</p>
       <Card>
         <ul aria-label={t.looks.issueTypes.project.checklist} className="divide-y divide-border">
@@ -128,12 +131,14 @@ function ProjectIssueTypesTab() {
           <ErrorBanner>{(save.error as Error).message}</ErrorBanner>
         </div>
       )}
-      <div className="mt-4 flex items-center gap-3">
-        <Button loading={save.isPending} disabled={!changed || standard.length === 0} onClick={onSave} data-action="save-project-types">
-          {t.looks.issueTypes.project.save}
-        </Button>
-        {standard.length === 0 && <span className="text-sm text-ink-muted">{t.looks.issueTypes.project.none}</span>}
-      </div>
-    </div>
+      {!readOnly && (
+        <div className="mt-4 flex items-center gap-3">
+          <Button loading={save.isPending} disabled={!changed || standard.length === 0} onClick={onSave} data-action="save-project-types">
+            {t.looks.issueTypes.project.save}
+          </Button>
+          {standard.length === 0 && <span className="text-sm text-ink-muted">{t.looks.issueTypes.project.none}</span>}
+        </div>
+      )}
+    </fieldset>
   );
 }

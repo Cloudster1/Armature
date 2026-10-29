@@ -29,6 +29,7 @@ import {
   signUp,
   switchOff,
   textOf,
+  turnFeature,
   unique,
   WAIT,
   editorText,
@@ -425,23 +426,33 @@ async function openAndListTabs(page, key) {
   return page.$$eval("[data-settings-tab]", (tabs) => tabs.map((tab) => tab.getAttribute("data-settings-tab")));
 }
 
-scenario("a reader of a project sees no Settings entry, and its address tells them to ask", async ({ page }) => {
+scenario("a reader of a project opens its settings read only, without the administrators' tabs", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "Read only setup", { visit: false });
   const who = await inviteMember(page, "settingsreader");
   await acceptInvite(page, who, { visit: false });
   await signIn(page, owner.email);
   await waitForApp(page);
+  await turnFeature(page, key, "automation", true);
   await revokeAll(page, who.name);
   await grantRole(page, { who: who.name, role: "Reader", projectKey: key });
 
   await signIn(page, who.email);
   await waitForApp(page);
   await goto(page, `/projects/${key}`);
-  await page.waitForSelector("[data-sidebar] a[href$='/board'], [data-sidebar] a[href='/projects/" + key + "']", { timeout: WAIT });
-  expect.equal(await page.$(`[data-sidebar] a[href="/projects/${key}/settings"]`), null, "a reader is offered no Settings");
+  const tabs = await openAndListTabs(page, key);
+  expect.equal(tabs.slice(0, 5).join(" "), "general issue-types fields issue-view workflows", "the tabs are not in the suite's order");
+  expect.truthy(!tabs.includes("automation"), `a reader is offered the administrators' tabs: ${tabs.join(", ")}`);
+  await page.waitForSelector("[data-settings-read-only]", { timeout: WAIT });
+  expect.contains(await textOf(page, "[data-settings-read-only]"), "Ask one of them, or ask for the role", "the page does not say whom to ask");
+  expect.truthy(await page.$eval("#field-project-name", (input) => input.matches(":disabled")), "a reader can change the project's name");
+  expect.equal(await page.$('[data-action="archive-project"]'), null, "a reader is offered to archive the project");
+
   await goto(page, `/projects/${key}/fields`);
   await waitForPath(page, `/projects/${key}/settings/fields`);
-  await page.waitForFunction(() => document.body.innerText.includes("Only the project's administrators change its settings"), { timeout: WAIT });
-  expect.equal(await page.$("[data-settings-tab]"), null, "and no tab opens for them");
+  await page.waitForSelector('[data-settings-tab="fields"][aria-selected="true"]', { timeout: WAIT });
+
+  await goto(page, `/projects/${key}/settings/automation`);
+  await page.waitForSelector("[data-settings-refused='automation']", { timeout: WAIT });
+  expect.contains(await bodyText(page), "Only the project's administrators change its settings", "the administrators' tab does not say whom to ask");
 });

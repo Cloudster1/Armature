@@ -7,6 +7,13 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: every member of a project may open its settings and see how it
+  is set up (#471). What they may not change is read only, with a line that
+  says whom to ask, and Automation and Import, which only its administrators
+  use, are not shown to them. The sidebar's Settings entry is there for
+  every member. The tabs follow the suite's order: General, Issue types,
+  Fields, Issue view, Workflow, Components, Repositories, Automation, Import.
+
 - Added: a built-in group Everyone holds every member of the installation,
   not portal customers (#470). People join it when they are let in and
   leave it when they go, so a role granted to it reaches all members, as

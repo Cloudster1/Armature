@@ -1,7 +1,7 @@
 import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
-import { canAdminister, useAccess } from "@/api/access";
+import { useAccess } from "@/api/access";
 import { MY_DATA_HREF, useEraseMe, useLogout, useMe } from "@/api/auth";
 import { useProject, useProjectSearch, type Feature, type Project } from "@/api/projects";
 import { hasFeature } from "@/features/projects/features";
@@ -395,7 +395,6 @@ function DrawerEntry({ item }: { item: MenuItem }) {
 
 function ProjectPages({ projectKey }: { projectKey: string }) {
   const { data } = useProject(projectKey);
-  const { data: access } = useAccess();
   const pages = (list: PageLink[]) => pagesFor(data?.project, list);
   return (
     <>
@@ -409,11 +408,9 @@ function ProjectPages({ projectKey }: { projectKey: string }) {
           {data.project.docsLabel || t.shell.projectPages.docs}
         </NavLinkOut>
       )}
-      {canAdminister(access, projectKey) && (
-        <NavItem to={`/projects/$projectKey${projectSettingsPage.path}`} params={{ projectKey }} icon={projectSettingsPage.icon} rail={false}>
-          {projectSettingsPage.label}
-        </NavItem>
-      )}
+      <NavItem to={`/projects/$projectKey${projectSettingsPage.path}`} params={{ projectKey }} icon={projectSettingsPage.icon} rail={false}>
+        {projectSettingsPage.label}
+      </NavItem>
     </>
   );
 }

@@ -23,7 +23,7 @@ gradient.
 |   |  o Issues   o Board    |     elevated glass cards with icon actions [✎][⧉][🗑] |
 |   |  o Sprints  o Plan     |                                                      |
 |   |  o Milestones ...      |                                                      |
-|   |  PROJECT ADMIN      >  |                                                      |
+|   |  o Settings            |                                                      |
 |   |                        |                                                      |
 |   | SETTINGS            v  |                                                      |
 |   |  o Access  o Workflows |                                                      |
@@ -63,9 +63,12 @@ folds are kept in `localStorage armature.sidebar-groups`):
 - **Project** (open): a switcher at the top, a menu with a filter field
   listing every project; switching keeps the page kind (Board stays Board)
   and drops the ids of the old project (a sprint's board becomes Sprints).
-  Below it the project's Work pages that its features include, then
-  **Project Admin** (folded by default): Teams, Workflow, Fields,
-  Components, Repositories, Automation, Import, Settings. With no project in
+  Below it the project's Work pages that its features include, then one
+  **Settings** entry for every member of the project, which opens the
+  project's settings: one tab per page, in the suite's sections (General;
+  Issue types, Fields, Issue view; Workflow; Components, Repositories,
+  Automation; Import), read only for somebody who does not administer the
+  project. Teams stay a Work page. With no project in
   the route the group shows the last visited project (`localStorage
   armature.project`) or a "Choose a project" button.
 - **Settings** (open): Installation, Access, Users, Holidays, Workflows,
@@ -90,8 +93,10 @@ strip through `ShellHeaderContext` and in place where there is no strip
 - A nested `projectRoute` at `/projects/$projectKey` loads the project once,
   owns the crumb and the not-found state, and renders its children: index
   (Issues), board, sprints, plan, calendar, milestones, releases, dashboard,
-  hierarchy, teams, workflows, fields, components, repositories, automation,
-  import, queues, service-desk, settings.
+  hierarchy, teams, queues, service-desk and settings. The settings route
+  holds the tabs: `/settings` (General), `/settings/issue-types`, `fields`,
+  `issue-view`, `workflows`, `components`, `repositories`, `automation` and
+  `import`; each page's old address under the project redirects to its tab.
 - `/admin/workflows` is **Workflows**, the installation's library of
   workflows and schemes. `/projects/$key/workflows` is **Workflow scheme**;
   its sidebar label is **Workflow**.
