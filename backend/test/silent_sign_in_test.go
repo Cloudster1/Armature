@@ -178,7 +178,7 @@ func TestASilentSignInWithoutASessionTriesOnce(t *testing.T) {
 	}
 	state, _ = stateFrom(t, clicked.Header.Get("Location"))
 	refused := visit(t, c, b, "/api/v1/auth/oidc/callback?"+url.Values{"state": {state}, "error": {"access_denied"}}.Encode())
-	if got := refused.Header.Get("Location"); got != "http://app.test/login?sso=access_denied" {
+	if got := refused.Header.Get("Location"); got != "http://app.test/login?sso=denied" {
 		t.Errorf("a clicked attempt the provider refused lands on %q", got)
 	}
 }

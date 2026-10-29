@@ -238,6 +238,12 @@ scenario("the sign-in page offers single sign-on without asking for an organizat
   const href = await page.$eval('[data-action="single-sign-on"]', (a) => a.getAttribute("href"));
   expect.equal(href, "/api/v1/auth/oidc/start?next=%2Fprojects", "single sign-on starts at the installation's one address");
   expect.equal(await page.$("#field-organization"), null, "nobody is asked for an organization");
+  const ssoFirst = await page.evaluate(() => {
+    const sso = document.querySelector('[data-action="single-sign-on"]');
+    const password = document.querySelector('[data-action="password-sign-in"]');
+    return Boolean(sso && password && sso.compareDocumentPosition(password) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  expect.truthy(ssoFirst, "the password comes before single sign-on");
 });
 
 // Reported as the page looking broken: on a narrow screen a table widened the

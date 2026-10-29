@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/armature/armature/backend/internal/auth"
 	"github.com/armature/armature/backend/internal/oidc"
 )
 
@@ -75,7 +76,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 			s.landQuietly(w, r, login.Redirect, "")
 			return
 		}
-		s.landAfterSignIn(w, r, "", refused)
+		s.landAfterSignIn(w, r, "", "denied")
 		return
 	}
 	if err != nil {
@@ -145,6 +146,10 @@ func signInFailure(err error) string {
 		return "expired"
 	case errors.Is(err, oidc.ErrNotConfigured):
 		return "not_configured"
+	case errors.Is(err, oidc.ErrUnreachable):
+		return "unreachable"
+	case errors.Is(err, auth.ErrUserInactive):
+		return "inactive"
 	default:
 		return "failed"
 	}

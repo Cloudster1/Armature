@@ -68,7 +68,7 @@ one named helper so each scenario moves by a line.
   data-query-caret, data-query-error, data-queue-row, data-queue-team,
   data-repository, data-request-category, data-request-team,
   data-request-type, data-request-type-team, data-request-watcher, data-rule,
-  data-rail, data-selected, data-series, data-sla, data-sla-state, data-sprint, data-sprint-board,
+  data-rail, data-selected, data-series, data-sla, data-sla-state, data-sprint, data-sprint-board, data-sso-waiting,
   data-save-template, data-share, data-share-dialog, data-share-gone,
   data-share-made, data-share-url, data-shared-dashboard, data-shared-query,
   data-shared-updated, data-sprint-capacity, data-sprint-outcome, data-sprint-showing,
@@ -327,6 +327,12 @@ one named helper so each scenario moves by a line.
   fills the open door's form, presses Continue and returns the `[role=alert]`
   text the refusal shows. An open door answers an address with a password or
   a place on a team the way a careful desk does, asking for a code.
+- The sign-in page: `[data-action="single-sign-on"]` is the link that starts
+  single sign-on, in the first card; the password form below it submits with
+  `[data-action="password-sign-in"]`, its only `button[type=submit]`, so
+  `submit(page)` and `signInThroughForm` press it. `?sso=not_a_member` shows
+  `[data-sso-waiting]` with `role="status"`; every other reason an
+  `ErrorBanner` (`role="alert"`).
 - `createLocalUser(page, { email, name, role, password })` fills the users
   page's form, presses "Create user" and waits for `[data-user=<email>]`;
   `role` is the option's text, Member or Administrator. A row's

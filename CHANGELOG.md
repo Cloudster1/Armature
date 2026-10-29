@@ -7,6 +7,14 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the sign-in page is the suite's, as Stator's and Exciter's (#469):
+  "Sign in with SSO" comes first, in a card of its own, and the password
+  form for people given a password here sits in a second card below it, with
+  the link for a forgotten password. Somebody the identity provider knows but
+  nobody let in yet is told "Your request is waiting" instead of an error,
+  and a sign-in the provider refused, an account that is switched off and a
+  provider that cannot be reached each have a sentence that says what to do.
+
 - Added: a visit without a session first signs in silently when the
   installation's identity provider still has one (#325), so somebody signed
   in to Stator or Exciter through the suite's Keycloak lands on the page

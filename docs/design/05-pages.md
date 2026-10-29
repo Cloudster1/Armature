@@ -7,8 +7,37 @@ the routes are what the router says. Widths: `narrow` for forms and settings,
 Pages with no wireframe here, because the redesign left them as they were:
 `/hierarchy`, `/teams`, `/sprints`, `/sprints/$sprintId/board`, `/queues`,
 `/repositories`, a project's `/fields`, `/admin/labels`, `/admin/access`,
-`/unwatch`, `/login` and `/signup`, and the workflow designer's own routes
+`/unwatch` and `/signup`, and the workflow designer's own routes
 under `/admin/workflows`.
+
+## Sign in (no shell)
+
+The suite's one sign-in page, as Stator's and Exciter's: the identity provider
+first, a password second.
+
+```
+[logo]  Armature
+Sign in
+Sign in through your identity provider.
++--------------------------------------+
+| (Your request is waiting ...)        |  status, for sso=not_a_member
+| [!] That sign-in took too long ...   |  ErrorBanner, for any other sso=
+| [        Sign in with SSO         ]  |  primary, data-action="single-sign-on"
++--------------------------------------+
++--------------------------------------+
+| Sign in with a password              |
+| For people given a password here ... |
+| Email     [                       ]  |
+| Password  [                       ]  |
+| [      Sign in with password      ]  |  secondary, data-action="password-sign-in"
+| Forgot your password?                |
++--------------------------------------+
+No account yet? Create one              only where sign-up is open
+```
+
+A saved new password (`?reset=done`) is said above the cards
+(`[data-password-changed]`). A wait is `[data-sso-waiting]`, `role="status"`,
+never `role="alert"`.
 
 ## Home (content)
 

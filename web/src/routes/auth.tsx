@@ -1,6 +1,6 @@
 import { Link, createRoute, redirect } from "@tanstack/react-router";
 import { rootRoute } from "./root";
-import { LoginForm, SignupForm } from "@/features/auth/AuthForms";
+import { LoginForm, SignupForm, SingleSignOn, safeNext } from "@/features/auth/AuthForms";
 import { Card } from "@/components/ui";
 import { LogoHead } from "@/components/Logo";
 import { meQueryKey, useSignupOpen, type SignupState } from "@/api/auth";
@@ -56,26 +56,56 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
 export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  validateSearch: (search: Record<string, unknown>): { next?: string; reset?: "done" } => ({
+  validateSearch: (search: Record<string, unknown>): { next?: string; reset?: "done"; sso?: string } => ({
     ...(typeof search.next === "string" ? { next: search.next } : {}),
     // Set by the page a password link opens, once the new password is saved.
     ...(search.reset === "done" ? { reset: "done" as const } : {}),
+    // Put on the address by the API when a sign-in through the provider did not end in a session.
+    ...(typeof search.sso === "string" ? { sso: search.sso } : {}),
   }),
   beforeLoad: redirectIfSignedIn,
   component: LoginPage,
 });
 
 function LoginPage() {
-  const { next, reset } = loginRoute.useSearch();
+  const { next, reset, sso } = loginRoute.useSearch();
+  return <SignInPage next={next} reset={reset === "done"} sso={sso} />;
+}
+
+/** The way in: the identity provider first, then a password for somebody given one here. */
+export function SignInPage({ next, reset, sso }: { next?: string; reset?: boolean; sso?: string }) {
+  useEffect(() => applyCustomTheme(null), []);
+  const target = safeNext(next);
   return (
-    <AuthLayout title={t.doors.login.title} footer={<SignupOffer />}>
-      {reset === "done" && (
-        <p role="status" className="mb-4 rounded-control border border-success/30 bg-success-subtle px-3 py-2 text-sm text-success" data-password-changed>
-          {t.doors.login.passwordChanged}
+    <main className="flex min-h-full items-center justify-center bg-backdrop px-4 py-12" data-door data-login>
+      <div className="w-full max-w-sm">
+        <div className="mb-6">
+          <LogoHead />
+          <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">{t.doors.login.title}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t.doors.login.subtitle}</p>
+        </div>
+        {reset && (
+          <p role="status" className="mb-5 rounded-control border border-success/30 bg-success-subtle px-3 py-2 text-sm text-success" data-password-changed>
+            {t.doors.login.passwordChanged}
+          </p>
+        )}
+        <Card className="p-5">
+          <SingleSignOn next={target} reason={sso} />
+        </Card>
+        <Card className="mt-5 space-y-4 p-5">
+          <div>
+            <h2 id="password-sign-in" className="text-sm font-semibold text-ink">
+              {t.doors.login.passwordTitle}
+            </h2>
+            <p className="mt-1 text-sm text-ink-muted">{t.doors.login.passwordHint}</p>
+          </div>
+          <LoginForm next={target} />
+        </Card>
+        <p className="mt-5 text-sm text-ink-muted">
+          <SignupOffer />
         </p>
-      )}
-      <LoginForm next={next} />
-    </AuthLayout>
+      </div>
+    </main>
   );
 }
 

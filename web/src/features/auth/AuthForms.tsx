@@ -5,6 +5,7 @@ import { SSO_START, useLogin, useSignup } from "@/api/auth";
 import { isChallenge } from "@/api/secondFactor";
 import { Button, ButtonLink, ErrorBanner, Field } from "@/components/ui";
 import { SecondFactorStep } from "./SecondFactor";
+import { SSO_WAITING } from "@/config";
 import { t } from "@/i18n";
 
 /** Pulls per-field messages out of the API's validation envelope. */
@@ -79,14 +80,12 @@ export function LoginForm({ next }: { next?: string } = {}) {
         onChange={(e) => setPassword(e.target.value)}
         error={fieldErrors(login.error).password}
       />
+      <Button type="submit" variant="secondary" loading={login.isPending} className="w-full" data-action="password-sign-in">
+        {t.doors.login.submit}
+      </Button>
       <Link to="/forgot-password" className="block text-sm font-medium text-accent hover:underline">
         {t.doors.login.forgot}
       </Link>
-      <Button type="submit" loading={login.isPending} className="w-full">
-        {t.doors.login.submit}
-      </Button>
-
-      <SingleSignOn next={target} />
     </form>
   );
 }
@@ -95,38 +94,41 @@ export function LoginForm({ next }: { next?: string } = {}) {
  * Signing in through the installation's identity provider. A plain link rather
  * than a fetch: the browser has to follow the provider's redirects itself.
  */
-function SingleSignOn({ next }: { next?: string }) {
-  const failure = ssoFailure();
+export function SingleSignOn({ next, reason }: { next?: string; reason?: string | null }) {
+  // Not a failure: the provider let them through and an administrator has yet to let them in, told as news.
+  const waiting = reason === SSO_WAITING;
+  const failure = waiting ? null : ssoFailure(reason);
   const href = `${BASE}${SSO_START}${next ? `?${new URLSearchParams({ next })}` : ""}`;
   return (
-    <div className="space-y-2 border-t border-border pt-4">
+    <div className="space-y-4">
+      {waiting && (
+        <div role="status" className="rounded-control border border-border bg-surface-raised px-3 py-2" data-sso-waiting>
+          <h2 className="text-sm font-semibold text-ink">{t.doors.login.waitingTitle}</h2>
+          <p className="mt-1 text-sm text-ink-muted">{t.doors.login.waitingBody}</p>
+        </div>
+      )}
       {failure && <ErrorBanner>{failure}</ErrorBanner>}
-      <ButtonLink href={href} className="w-full" data-action="single-sign-on">
+      <ButtonLink variant="primary" href={href} className="w-full" data-action="single-sign-on">
         {t.doors.login.sso}
       </ButtonLink>
     </div>
   );
 }
 
-/** Turns the reason carried back on the URL into something worth reading. */
-function ssoFailure(): string | null {
-  const reason = new URLSearchParams(window.location.search).get("sso");
-  switch (reason) {
-    case null:
-      return null;
-    case "not_a_member":
-      return t.doors.login.ssoFailures.notAMember;
-    case "not_configured":
-      return t.doors.login.ssoFailures.notConfigured;
-    case "expired":
-      return t.doors.login.ssoFailures.expired;
-    case "no_email":
-      return t.doors.login.ssoFailures.noEmail;
-    case "unverified_email":
-      return t.doors.login.ssoFailures.unverifiedEmail;
-    default:
-      return t.doors.login.ssoFailures.other;
-  }
+/** The reason the API put on the address after a failed sign-in, as a sentence. */
+export function ssoFailure(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  const failures = t.doors.login.ssoFailures;
+  const known: Record<string, string | undefined> = {
+    expired: failures.expired,
+    not_configured: failures.notConfigured,
+    no_email: failures.noEmail,
+    unverified_email: failures.unverifiedEmail,
+    inactive: failures.inactive,
+    denied: failures.denied,
+    unreachable: failures.unreachable,
+  };
+  return known[reason] ?? failures.other;
 }
 
 /** Said when the two copies of a new password differ, in the language shown. */

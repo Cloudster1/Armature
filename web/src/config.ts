@@ -479,6 +479,9 @@ export const SHARE_FULL_PERCENT = 100;
 
 /** The product's name, written beside its logo. */
 export const APP_NAME = "Armature";
+
+/** The reason the API gives when the provider knew the person but nobody here has let them in. */
+export const SSO_WAITING = "not_a_member";
 /** The logo's edge on a door page, and the mark's beside a line of text, in pixels; the same as Stator's and Exciter's. */
 export const LOGO_WIDTH_PX = 112;
 export const MARK_WIDTH_PX = 24;
