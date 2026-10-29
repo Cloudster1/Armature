@@ -14103,6 +14103,128 @@
         }
       }
     },
+    "/projects/{projectKey}/issue-types": {
+      "get": {
+        "operationId": "listProjectIssueTypes",
+        "summary": "The issue types this project allows, in its order, with how many of its issues have each; retired ones only when asked for.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          },
+          {
+            "name": "retired",
+            "in": "query",
+            "description": "true lists the retired types the project keeps too.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issueTypes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectIssueType"
+                      }
+                    }
+                  },
+                  "required": [
+                    "issueTypes"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setProjectIssueTypes",
+        "summary": "Choose the issue types this project allows, in order; a type its issues or request types use stays, and so does a standard one.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "projectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectIssueTypesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issueTypes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectIssueType"
+                      }
+                    }
+                  },
+                  "required": [
+                    "issueTypes"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{projectKey}/issues": {
       "get": {
         "operationId": "listProjectIssues",
@@ -28290,6 +28412,86 @@
           "resourceGrouping",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "ProjectIssueType": {
+        "type": "object",
+        "properties": {
+          "builtin": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string",
+            "enum": [
+              "task",
+              "bug",
+              "story",
+              "epic",
+              "subtask",
+              "initiative",
+              "change",
+              "improvement",
+              "incident",
+              "question",
+              "research",
+              "release"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isSubtask": {
+            "type": "boolean"
+          },
+          "issues": {
+            "type": "integer"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "retired": {
+            "type": "boolean"
+          },
+          "retiredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "icon",
+          "level",
+          "isSubtask",
+          "position",
+          "builtin",
+          "retired",
+          "issues"
+        ]
+      },
+      "ProjectIssueTypesRequest": {
+        "type": "object",
+        "properties": {
+          "typeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "typeIds"
         ]
       },
       "ProjectWorkflows": {

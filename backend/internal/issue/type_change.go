@@ -2,11 +2,9 @@ package issue
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/workflow"
@@ -19,17 +17,14 @@ const TypeChangeTransition = "Type change"
 // applyType changes an issue's type, which moves it in the hierarchy and can
 // also change which workflow it follows. moved reports a status change.
 func (s *Service) applyType(ctx context.Context, tx db.DBTX, before *Issue, typeID uuid.UUID) (changes []Change, moved bool, err error) {
-	var (
-		name  string
-		level int
-	)
-	err = tx.QueryRow(ctx, `SELECT name, hierarchy_level FROM issue_type WHERE id = $1`, typeID).Scan(&name, &level)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, false, errors.New("that issue type does not exist")
+	if typeID == uuid.Nil {
+		return nil, false, ErrNoSuchType
 	}
+	t, err := ProjectType(ctx, tx, before.ProjectID, before.ProjectKey, typeID, "")
 	if err != nil {
 		return nil, false, err
 	}
+	name, level := t.Name, t.Level
 	if err := s.checkTypeFitsTheTree(ctx, tx, before, name, level); err != nil {
 		return nil, false, err
 	}

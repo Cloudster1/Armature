@@ -217,6 +217,21 @@ func (s *Service) MoveIn(ctx context.Context, tx db.DBTX, key string, in MoveInp
 		return nil, nil, errors.New("the issue is already in that project")
 	}
 
+	// Everything under it comes along, so all of it is judged before any
+	// row is written: a refusal leaves both projects as they were.
+	target := moveTarget{id: targetID, key: targetKey}
+	subtree, err := subtreeOf(ctx, tx, before.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	moving := []*Issue{before}
+	for i := range subtree {
+		moving = append(moving, &subtree[i])
+	}
+	if err := checkTypesUsedIn(ctx, tx, target, moving); err != nil {
+		return nil, nil, err
+	}
+
 	// The status it lands in: its own when the target workflow has it,
 	// else the one chosen, which has to be in that workflow.
 	wf, err := s.workflows.ForIssueType(ctx, tx, targetID, before.Type.ID)
@@ -244,13 +259,6 @@ func (s *Service) MoveIn(ctx context.Context, tx db.DBTX, key string, in MoveInp
 		return nil, nil, ErrMoveNeedsStatus
 	}
 
-	// Everything under it comes along, so all of it is judged before any
-	// row is written: a refusal leaves both projects as they were.
-	target := moveTarget{id: targetID, key: targetKey}
-	subtree, err := subtreeOf(ctx, tx, before.ID)
-	if err != nil {
-		return nil, nil, err
-	}
 	landing, err := s.checkDescendants(ctx, tx, before, subtree, target, in.Statuses)
 	if err != nil {
 		return nil, nil, err

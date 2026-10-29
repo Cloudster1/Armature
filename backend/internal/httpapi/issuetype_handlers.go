@@ -127,3 +127,34 @@ func (s *Server) handleDeleteIssueType(w http.ResponseWriter, r *http.Request) {
 	NoteWrite(r.Context(), lsn)
 	respondNoContent(w)
 }
+
+// A project's own types: the ones its pickers offer and its issues may have.
+
+func (s *Server) handleListProjectIssueTypes(w http.ResponseWriter, r *http.Request) {
+	types, err := s.IssueTypes.ProjectTypes(r.Context(), r.PathValue("projectKey"), r.URL.Query().Get("retired") == "true")
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"issueTypes": types})
+}
+
+type projectIssueTypesRequest struct {
+	// TypeIDs are the types the project allows, in the order its pickers list them.
+	TypeIDs []uuid.UUID `json:"typeIds"`
+}
+
+func (s *Server) handleSetProjectIssueTypes(w http.ResponseWriter, r *http.Request) {
+	var req projectIssueTypesRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	types, lsn, err := s.IssueTypes.SetProjectTypes(r.Context(), r.PathValue("projectKey"), req.TypeIDs)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	NoteWrite(r.Context(), lsn)
+	respondJSON(w, r, http.StatusOK, map[string]any{"issueTypes": types})
+}

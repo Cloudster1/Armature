@@ -443,6 +443,10 @@ func asValidationError(err error) error {
 	if errors.As(err, &apiErr) {
 		return err
 	}
+	// The database's rules on a project's types are worded like the service's.
+	if e := projectTypeError(err); e != nil {
+		return e
+	}
 	// A database or a timeout failing is not the caller's input, and its words
 	// are ours rather than something written for them to read.
 	var pgErr *pgconn.PgError

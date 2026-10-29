@@ -106,8 +106,12 @@ const WaitingOnCustomer = "Waiting for customer"
 // caller's transaction. The template calls it; so can an administrator who
 // turns an existing project into a desk.
 func (s *Service) Setup(ctx context.Context, tx db.DBTX, projectID uuid.UUID) error {
+	// Only the types the project offers, so a desk made of a narrowed project
+	// files its requests as something it uses.
 	types := map[string]uuid.UUID{}
-	rows, err := tx.Query(ctx, `SELECT id, name FROM issue_type`)
+	rows, err := tx.Query(ctx, `
+		SELECT t.id, t.name FROM project_issue_type pit JOIN issue_type t ON t.id = pit.issue_type_id
+		WHERE pit.project_id = $1 AND t.retired_at IS NULL`, projectID)
 	if err != nil {
 		return err
 	}
@@ -127,10 +131,11 @@ func (s *Service) Setup(ctx context.Context, tx db.DBTX, projectID uuid.UUID) er
 	for i, rt := range defaultRequestTypes {
 		typeID, ok := types[rt.issueType]
 		if !ok {
-			typeID, ok = types["Task"]
-			if !ok {
-				return errors.New("there is no Task issue type for requests to become")
+			standard, err := issue.ProjectType(ctx, tx, projectID, "", uuid.Nil, "")
+			if err != nil {
+				return err
 			}
+			typeID = standard.ID
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO request_type (project_id, name, description, issue_type_id, priority, position)
@@ -252,12 +257,12 @@ func (s *Service) CreateRequestType(ctx context.Context, projectKey string, in R
 		if err != nil {
 			return err
 		}
-		typeID := in.IssueTypeID
-		if typeID == uuid.Nil {
-			if err := tx.QueryRow(ctx, `SELECT id FROM issue_type WHERE hierarchy_level = 0 ORDER BY position LIMIT 1`).Scan(&typeID); err != nil {
-				return err
-			}
+		// No type given: the project's first standard one.
+		issueType, err := issue.ProjectType(ctx, tx, projectID, project.NormalizeKey(projectKey), in.IssueTypeID, "pick another type")
+		if err != nil {
+			return err
 		}
+		typeID := issueType.ID
 		if err := teamOfProject(ctx, tx, projectID, in.TeamID); err != nil {
 			return err
 		}
@@ -271,8 +276,8 @@ func (s *Service) CreateRequestType(ctx context.Context, projectKey string, in R
 		if isUniqueViolation(err) {
 			return ErrNameTaken
 		}
-		if isForeignKeyViolation(err) {
-			return errors.New("that issue type does not exist")
+		if _, rule := issue.IsTypeRule(err); !rule && isForeignKeyViolation(err) {
+			return issue.ErrNoSuchType
 		}
 		if err != nil {
 			return fmt.Errorf("create request type: %w", err)
@@ -327,7 +332,13 @@ func (s *Service) UpdateRequestType(ctx context.Context, id uuid.UUID, in Reques
 		if in.DetailsTemplate != nil {
 			next.DetailsTemplate = tidyTemplate(*in.DetailsTemplate)
 		}
-		if in.IssueTypeID != nil {
+		if in.IssueTypeID != nil && *in.IssueTypeID != before.IssueTypeID {
+			if *in.IssueTypeID == uuid.Nil {
+				return issue.ErrNoSuchType
+			}
+			if _, err := issue.ProjectType(ctx, tx, before.ProjectID, before.ProjectKey, *in.IssueTypeID, "pick another type"); err != nil {
+				return err
+			}
 			next.IssueTypeID = *in.IssueTypeID
 		}
 		if in.Priority != nil {
@@ -348,8 +359,8 @@ func (s *Service) UpdateRequestType(ctx context.Context, id uuid.UUID, in Reques
 		if isUniqueViolation(err) {
 			return ErrNameTaken
 		}
-		if isForeignKeyViolation(err) {
-			return errors.New("that issue type does not exist")
+		if _, rule := issue.IsTypeRule(err); !rule && isForeignKeyViolation(err) {
+			return issue.ErrNoSuchType
 		}
 		if err != nil {
 			return fmt.Errorf("update request type: %w", err)

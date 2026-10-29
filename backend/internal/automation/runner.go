@@ -442,7 +442,7 @@ func (s *Service) act(ctx context.Context, r Rule, a Action, key string, p paylo
 		}
 		res.Note = fmt.Sprintf("commented on %s", key)
 	case ActionCreateSubissue:
-		typeID, err := s.subtaskType(ctx)
+		typeID, err := s.subtaskType(ctx, current.ProjectKey)
 		if err != nil {
 			return fail("%v", err)
 		}
@@ -539,13 +539,19 @@ func (s *Service) fill(ctx context.Context, text string, i *issue.Issue, p paylo
 	return out
 }
 
-func (s *Service) subtaskType(ctx context.Context) (uuid.UUID, error) {
+// subtaskType is the first subtask type the project offers.
+func (s *Service) subtaskType(ctx context.Context, projectKey string) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT id FROM issue_type WHERE is_subtask ORDER BY position LIMIT 1`).Scan(&id)
+		return tx.QueryRow(ctx, `
+			SELECT t.id FROM project p
+			JOIN project_issue_type pit ON pit.project_id = p.id
+			JOIN issue_type t ON t.id = pit.issue_type_id
+			WHERE p.key = $1 AND t.is_subtask AND t.retired_at IS NULL
+			ORDER BY pit.position, t.position, t.name LIMIT 1`, projectKey).Scan(&id)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, errors.New("there is no subtask type")
+		return uuid.Nil, fmt.Errorf("%s uses no subtask type; ask its administrator to allow one", projectKey)
 	}
 	return id, err
 }

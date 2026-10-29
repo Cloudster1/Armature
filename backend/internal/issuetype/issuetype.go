@@ -240,8 +240,8 @@ func (s *Service) Create(ctx context.Context, in Input, actor Actor) (*IssueType
 	var made *IssueType
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id uuid.UUID
-		// Last in the list, so the first type at a level, which an issue made
-		// without a type becomes, stays the one it was.
+		// Last in the library's list. It reaches no project until somebody
+		// allows it there, so nothing new is offered it by surprise.
 		err := tx.QueryRow(ctx, `
 			INSERT INTO issue_type (name, description, icon, hierarchy_level, position)
 			VALUES ($1, $2, $3, $4, (SELECT COALESCE(max(position), 0) + 1 FROM issue_type))
@@ -299,6 +299,9 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 			return &BuiltinError{Name: before.Name, What: "rename"}
 		}
 		if after.Level != before.Level {
+			if err := onlyStandardIn(ctx, tx, before); err != nil {
+				return err
+			}
 			var used bool
 			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM issue WHERE issue_type_id = $1)`, id).Scan(&used); err != nil {
 				return err
@@ -347,6 +350,11 @@ func (s *Service) setRetired(ctx context.Context, id uuid.UUID, retire bool, act
 		if retire && before.Builtin {
 			return &BuiltinError{Name: before.Name, What: "retire"}
 		}
+		if retire {
+			if err := onlyStandardIn(ctx, tx, before); err != nil {
+				return err
+			}
+		}
 		// Asking twice is answered with how it already is, and recorded once.
 		if before.Retired == retire {
 			out = before
@@ -392,6 +400,9 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor Actor) (db.LSN
 			return &InUseError{Name: gone.Name, By: "issues"}
 		case requests:
 			return &InUseError{Name: gone.Name, By: "request types"}
+		}
+		if err := onlyStandardIn(ctx, tx, gone); err != nil {
+			return err
 		}
 		// The foreign keys are the backstop for an issue filed in between.
 		if _, err := tx.Exec(ctx, `DELETE FROM issue_type WHERE id = $1`, id); isCode(err, "23503") {

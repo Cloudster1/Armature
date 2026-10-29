@@ -17,8 +17,14 @@ import (
 
 // lookups are the names a row may use, read once per import.
 type lookups struct {
-	types    map[string]uuid.UUID
-	levels   map[string]int
+	types  map[string]uuid.UUID
+	levels map[string]int
+	// project is the key imported into, and offered names the types it offers
+	// by lower-case name, so a row of another type is refused before it is written.
+	project  string
+	offered  map[string]bool
+	retired  map[string]bool
+	names    map[string]string
 	statuses map[string]uuid.UUID
 	people   map[string]uuid.UUID
 	emails   map[uuid.UUID]string
@@ -28,11 +34,12 @@ type lookups struct {
 func (s *Service) lookups(ctx context.Context, projectKey string) (*lookups, error) {
 	l := &lookups{
 		types: map[string]uuid.UUID{}, levels: map[string]int{}, statuses: map[string]uuid.UUID{},
+		project: strings.ToUpper(strings.TrimSpace(projectKey)), offered: map[string]bool{}, retired: map[string]bool{}, names: map[string]string{},
 		people: map[string]uuid.UUID{}, emails: map[uuid.UUID]string{},
 		fields: map[string]field.Field{},
 	}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if err := l.readTypes(ctx, tx); err != nil {
+		if err := l.readTypes(ctx, tx, projectKey); err != nil {
 			return err
 		}
 		if err := readNames(ctx, tx, `SELECT id, name FROM issue_status`, l.statuses); err != nil {
@@ -78,24 +85,33 @@ func (s *Service) lookups(ctx context.Context, projectKey string) (*lookups, err
 }
 
 // readTypes keeps the level beside the name, which is what puts the epics of
-// a file before the stories under them.
-func (l *lookups) readTypes(ctx context.Context, tx db.DBTX) error {
-	rows, err := tx.Query(ctx, `SELECT id, name, hierarchy_level FROM issue_type`)
+// a file before the stories under them, and whether the project offers it.
+func (l *lookups) readTypes(ctx context.Context, tx db.DBTX, projectKey string) error {
+	rows, err := tx.Query(ctx, `
+		SELECT t.id, t.name, t.hierarchy_level, t.retired_at IS NOT NULL,
+		       EXISTS (SELECT 1 FROM project_issue_type pit JOIN project p ON p.id = pit.project_id
+		               WHERE p.key = upper(btrim($1)) AND pit.issue_type_id = t.id)
+		FROM issue_type t`, projectKey)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var (
-			id    uuid.UUID
-			name  string
-			level int
+			id      uuid.UUID
+			name    string
+			level   int
+			retired bool
+			offered bool
 		)
-		if err := rows.Scan(&id, &name, &level); err != nil {
+		if err := rows.Scan(&id, &name, &level, &retired, &offered); err != nil {
 			return err
 		}
 		l.types[strings.ToLower(name)] = id
 		l.levels[strings.ToLower(name)] = level
+		l.offered[strings.ToLower(name)] = offered
+		l.retired[strings.ToLower(name)] = retired
+		l.names[strings.ToLower(name)] = name
 	}
 	return rows.Err()
 }
@@ -211,6 +227,12 @@ func (s *Service) rowNames(in *issue.ImportInput, row Row, req ImportRequest, lo
 			id, ok := look.types[strings.ToLower(name)]
 			if !ok {
 				return fmt.Errorf("%q is not an issue type here; say what it means", word)
+			}
+			if !look.offered[strings.ToLower(name)] {
+				return &issue.TypeNotAllowedError{Project: look.project, Type: look.names[strings.ToLower(name)], Then: "say which of its types the row means"}
+			}
+			if look.retired[strings.ToLower(name)] {
+				return &issue.TypeRetiredError{Type: look.names[strings.ToLower(name)]}
 			}
 			in.TypeID = id
 		}

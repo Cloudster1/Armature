@@ -104,6 +104,7 @@ func TestAdministratorsKeepALibraryOfIssueTypes(t *testing.T) {
 	// An issue of the type: it may no longer change level or be deleted, only retired.
 	key := h.projectKey(t, "ITL")
 	want(t, owner.post("/api/v1/projects", map[string]any{"name": "Typed", "key": key}), http.StatusCreated, "project")
+	allowType(t, owner, key, changeID)
 	want(t, owner.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "Move the server", "typeId": changeID}), http.StatusCreated, "an issue of the type")
 
 	moved := owner.patch("/api/v1/issue-types/"+changeID, map[string]any{"level": 1})

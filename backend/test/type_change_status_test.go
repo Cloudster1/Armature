@@ -44,16 +44,20 @@ func (w *statusWatcher) IssueDeleted(context.Context, db.DBTX, *issue.Issue, iss
 }
 
 // coinType adds an issue type at the ordinary working level, named uniquely
-// after name; types have no admin service to coin one with.
+// after name, and allows it in the workspace's project.
 func (h *harness) coinType(t *testing.T, ws *workspace, name string) (uuid.UUID, string) {
 	t.Helper()
 	name = h.name(t, name)
 	var id uuid.UUID
 	_, err := h.cluster.Write(ws.ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `
+		if err := tx.QueryRow(ctx, `
 			INSERT INTO issue_type (name, description, icon, hierarchy_level, position)
 			VALUES ($1, 'Coined by a test.', 'bug', $2, 99) RETURNING id`,
-			name, bootstrap.LevelStandard).Scan(&id)
+			name, bootstrap.LevelStandard).Scan(&id); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `INSERT INTO project_issue_type (project_id, issue_type_id, position) VALUES ($1, $2, 99)`, ws.project.ID, id)
+		return err
 	})
 	if err != nil {
 		t.Fatalf("coin issue type %q: %v", name, err)
