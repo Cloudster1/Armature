@@ -68,7 +68,7 @@ scenario("a project overrides one issue type and inherits the rest", async ({ pa
     workflow: triage,
   });
 
-  await goto(page, `/projects/${key}/workflows`);
+  await goto(page, `/projects/${key}/settings/workflows`);
   await pickBySearch(page, "#project-scheme", triageScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
@@ -105,7 +105,7 @@ scenario("the project's workflow page draws the workflow each issue type follows
   });
   await createScheme(page, { name: drawnScheme, issueType: "Bug", workflow: triage });
 
-  await goto(page, `/projects/${key}/workflows`);
+  await goto(page, `/projects/${key}/settings/workflows`);
   await pickBySearch(page, "#project-scheme", drawnScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForSelector('[data-testid="workflow-assignments"] [data-assignment="Bug"]', { timeout: WAIT });
@@ -171,7 +171,7 @@ scenario("a project can hand the decision back to the default", async ({ page })
   await createWorkflow(page, { name: lean, statuses: ["To Do", "Done"], opensIn: "Done" });
   await createScheme(page, { name: leanScheme, issueType: "Bug", workflow: lean });
 
-  await goto(page, `/projects/${key}/workflows`);
+  await goto(page, `/projects/${key}/settings/workflows`);
   await pickBySearch(page, "#project-scheme", leanScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
@@ -259,7 +259,7 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   // And the rule drawn there is the rule that holds: a bug on this workflow
   // is not started until somebody says why.
   await createScheme(page, { name: drawnScheme, issueType: "Bug", workflow: drawn });
-  await goto(page, `/projects/${key}/workflows`);
+  await goto(page, `/projects/${key}/settings/workflows`);
   await pickBySearch(page, "#project-scheme", drawnScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
@@ -306,7 +306,7 @@ scenario("a scheme a project uses is not offered for deletion and says which pro
   await createWorkflow(page, { name: lean, statuses: ["To Do", "Done"], opensIn: "To Do" });
   await createScheme(page, { name: leanScheme, issueType: "Bug", workflow: lean });
 
-  await goto(page, `/projects/${key}/workflows`);
+  await goto(page, `/projects/${key}/settings/workflows`);
   await pickBySearch(page, "#project-scheme", leanScheme);
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
@@ -318,7 +318,7 @@ scenario("a scheme a project uses is not offered for deletion and says which pro
   expect.truthy(!(await page.$(`${card} [data-action="delete"]`)), "and offers no delete the server would refuse");
 
   // Once the project hands the decision back, the scheme can go.
-  await goto(page, `/projects/${key}/workflows`);
+  await goto(page, `/projects/${key}/settings/workflows`);
   await clickButton(page, "Follow the default");
   await page.waitForFunction(() => document.body.innerText.includes("This project follows the default"), { timeout: WAIT });
   await deleteScheme(page, leanScheme);

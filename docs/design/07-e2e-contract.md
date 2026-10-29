@@ -272,7 +272,7 @@ one named helper so each scenario moves by a line.
 - Business hours live in `[data-business-hours]`: `[data-weekday-open=<mon..sun>]`
   boxes, `#field-calendar-timezone`, `#field-calendar-holidays` and
   `[data-action="save-hours"]`; each goal's box is `[data-policy-calendar=<metric>]`.
-- `auditRowsFor(page, action)` opens Settings, Audit log, picks
+- `auditRowsFor(page, action)` opens Admin, Audit log, picks
   `#field-audit-action` (also `#field-audit-from`, `#field-audit-to`) and reads
   `[data-audit-row=<action>]` rows; `[data-action="export-audit"]` is the CSV,
   `[data-action="audit-older"]` the next page.

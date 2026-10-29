@@ -102,7 +102,7 @@ scenario("the Task tracking template gives a project a simple workflow of its ow
   expect.contains(board, "Kanban", "the board is a kanban board");
 
   // The workflow is the project's own, and the settings page says where from.
-  await goto(page, `/projects/${key}/workflows`);
+  await goto(page, `/projects/${key}/settings/workflows`);
   await page.waitForFunction(() => document.body.innerText.includes("Simple task workflow"), { timeout: WAIT });
   expect.contains(await bodyText(page), "Task tracking workflows", "the scheme the template brought");
 

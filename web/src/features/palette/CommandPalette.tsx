@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { useAccess } from "@/api/access";
+import { canAdminister, useAccess } from "@/api/access";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import { useIssues } from "@/api/issues";
@@ -13,6 +13,7 @@ import { Input, cx, modalBackdropStyle, modalPanelStyle } from "@/components/ui"
 import { PALETTE_RESULTS } from "@/config";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { pagesFor, projectSetupPages, projectWorkPages } from "@/features/shell/Sidebar";
+import { setupAddress } from "@/features/projects/settingsTabs";
 import { adminEntry, adminFor, personalPlaces, placeKey, workPlaces, type Place as ShellPlace } from "@/features/shell/places";
 import { t } from "@/i18n";
 
@@ -166,14 +167,19 @@ export function CommandPalette({
         out.push({ id: `project:${p.key}`, group: "Projects", label: p.name, detail: p.key, icon: "Board", run: () => go(`/projects/${p.key}`) });
     }
     if (projectKey) {
-      for (const page of pagesFor(currentProject?.project, [...projectWorkPages, ...projectSetupPages])) {
+      // The setup pages are tabs of the project's settings, which only its administrators open.
+      const listed = [
+        ...pagesFor(currentProject?.project, projectWorkPages).map((page) => ({ page, address: page.path })),
+        ...(canAdminister(access, projectKey) ? pagesFor(currentProject?.project, projectSetupPages) : []).map((page) => ({ page, address: setupAddress(page.path) })),
+      ];
+      for (const { page, address } of listed) {
         if (matches(page.label))
           out.push({
             id: `page:${page.path}`,
             group: "Pages",
             label: t.shell.palette.projectPage(projectKey, page.label),
             icon: page.icon,
-            run: () => go(`/projects/${projectKey}${page.path}`),
+            run: () => go(`/projects/${projectKey}${address}`),
           });
       }
     }

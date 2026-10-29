@@ -1,9 +1,8 @@
 import { useRef, useState } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
-import { projectRoute } from "./project";
-import { useProject } from "@/api/projects";
+import { createRoute } from "@tanstack/react-router";
+import { projectSettingsRoute } from "./project-settings";
 import { useImportIssues, useImportPreview, type ImportPeople, type ImportPreview, type ImportReport } from "@/api/filters";
-import { Button, Card, ErrorBanner, Page, PageHeader } from "@/components/ui";
+import { Button, Card, ErrorBanner } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { MappingCard } from "@/features/import/MappingCard";
 import { PeopleCard } from "@/features/import/PeopleCard";
@@ -14,14 +13,13 @@ export { TARGET_LABELS } from "@/features/import/targets";
 
 /** A CSV file becomes issues: choose it, map it, say what its words mean, try it dry. */
 export const importRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: () => projectSettingsRoute,
   path: "/import",
   component: ImportPage,
 });
 
 function ImportPage() {
   const { projectKey } = importRoute.useParams();
-  const { data } = useProject(projectKey);
   const preview = useImportPreview(projectKey);
   const run = useImportIssues(projectKey);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -65,16 +63,8 @@ function ImportPage() {
   const ready = (mapping.summary?.length ?? 0) > 0;
   const made = report ? report.imported.length + report.updated.length : 0;
   return (
-    <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {data?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.projectSetup.import.title}
-        meta={t.projectSetup.import.meta}
-      />
+    <>
+      <p className="mb-4 text-sm text-ink-muted">{t.projectSetup.import.meta}</p>
 
       <Card className="mb-4 p-5" data-guide="import">
         <div className="flex flex-wrap items-center gap-3">
@@ -173,6 +163,6 @@ function ImportPage() {
           )}
         </Card>
       )}
-    </Page>
+    </>
   );
 }

@@ -1064,7 +1064,7 @@ export async function waitForButtonToGo(page, label) {
 
 /** Reads the project's workflow table as rows of issue type, workflow and scope. */
 export async function assignmentRows(page, projectKey) {
-  await goto(page, `/projects/${projectKey}/workflows`);
+  await openSetupTab(page, projectKey, "workflows");
   await page.waitForSelector('[data-testid="workflow-assignments"] [data-assignment]', {
     timeout: WAIT,
   });
@@ -1250,6 +1250,20 @@ export async function capacityOf(page, projectKey, sprintName) {
   await goto(page, `/projects/${projectKey}/plan?view=sprints`);
   await page.waitForSelector(`[data-sprint-capacity="${sprintName}"]`, { timeout: WAIT });
   return page.$eval(`[data-sprint-capacity="${sprintName}"]`, (el) => el.innerText.replace(/\s+/g, " ").trim());
+}
+
+/**
+ * Opens one of a project's setup pages the way a person does: Project settings
+ * in the sidebar, then its tab. The tab is the slug it had as an address, such as "teams".
+ */
+export async function openSetupTab(page, projectKey, tab) {
+  await goto(page, `/projects/${projectKey}`);
+  await page.waitForSelector(`[data-sidebar] a[href="/projects/${projectKey}/settings"]`, { timeout: WAIT });
+  await page.click(`[data-sidebar] a[href="/projects/${projectKey}/settings"]`);
+  await page.waitForSelector(`[data-settings-tab="${tab}"]`, { timeout: WAIT });
+  await page.click(`[data-settings-tab="${tab}"]`);
+  await waitForPath(page, `/projects/${projectKey}/settings/${tab}`);
+  await settled(page);
 }
 
 /** Forms a team in a project and returns its name. */
@@ -1963,7 +1977,7 @@ export async function openPlanFilters(page) {
  * default" hands the type back.
  */
 export async function assignWorkflow(page, projectKey, typeName, workflowName) {
-  await goto(page, `/projects/${projectKey}/workflows`);
+  await openSetupTab(page, projectKey, "workflows");
   const control = `select[aria-label="Workflow for ${typeName}"]`;
   await page.waitForSelector(control, { timeout: WAIT });
   if (workflowName === "Follow the default") await selectByLabel(page, control, workflowName);
@@ -1989,7 +2003,7 @@ export async function assignWorkflow(page, projectKey, typeName, workflowName) {
  * goes to, in the words a person reads. follow hands the type back.
  */
 export async function arrangeIssue(page, projectKey, typeName, { moves = [], follow = false } = {}) {
-  await goto(page, `/projects/${projectKey}/issue-view`);
+  await openSetupTab(page, projectKey, "issue-view");
   await selectByLabel(page, "#arrange-type", typeName);
   for (const { place, area } of moves) {
     await selectByLabel(page, `[data-arrange-where="${place}"]`, area);
@@ -2276,7 +2290,7 @@ export async function unreadCount(page) {
  * first action row's field.
  */
 export async function createRule(page, projectKey, { name, trigger, action, value, text }) {
-  await goto(page, `/projects/${projectKey}/automation`);
+  await goto(page, `/projects/${projectKey}/settings/automation`);
   await page.waitForSelector('[data-action="new-rule"]', { timeout: WAIT });
   await page.click('[data-action="new-rule"]');
   await page.waitForSelector("[data-rule-editor]", { timeout: WAIT });
@@ -2372,7 +2386,7 @@ export async function versionMenu(page, name, action) {
 
 /** Adds a component on the Components page, with who new work goes to. */
 export async function createComponent(page, projectKey, name, { assignee } = {}) {
-  await goto(page, `/projects/${projectKey}/components`);
+  await openSetupTab(page, projectKey, "components");
   await page.waitForSelector("#field-component-name", { timeout: WAIT });
   await page.type("#field-component-name", name);
   if (assignee) await pickPerson(page, "#field-component-assignee", assignee);
@@ -2468,7 +2482,7 @@ async function location_of(page) {
 
 /** Imports a CSV written to the runner's disk through the project's Import page. */
 export async function importCSV(page, projectKey, csvPath, { dry = false } = {}) {
-  await goto(page, `/projects/${projectKey}/import`);
+  await goto(page, `/projects/${projectKey}/settings/import`);
   await page.waitForSelector("[data-import-input]", { timeout: WAIT });
   const input = await page.$("[data-import-input]");
   await input.uploadFile(csvPath);

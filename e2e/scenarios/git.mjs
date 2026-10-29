@@ -28,7 +28,7 @@ scenario("a commit that names an issue appears on it and moves it", async ({ pag
   const issueKey = await createIssue(page, key, "wire the webhook", { type: "Task", visit: false });
 
   // Connecting hands out the address and the secret exactly once.
-  await goto(page, `/projects/${key}/repositories`);
+  await goto(page, `/projects/${key}/settings/repositories`);
   await clickButton(page, "Connect repository");
   await fill(page, "Repository", "acme/portal");
   await clickButton(page, "Connect");
@@ -81,7 +81,7 @@ scenario("a commit that names an issue appears on it and moves it", async ({ pag
   expect.contains(detail, "In Progress", "the issue moved");
   expect.contains(detail, "moved this from To Do to In Progress", "and the changelog says so");
 
-  await goto(page, `/projects/${key}/repositories`);
+  await goto(page, `/projects/${key}/settings/repositories`);
   await page.waitForSelector('[data-repository="acme/portal"]', { timeout: WAIT });
   expect.contains(await bodyText(page), "1 commit", "the repository counts what it has sent");
 
@@ -106,7 +106,7 @@ scenario("a branch made from a ticket is a real branch, and what happens to it c
     // The connection: a repository on the stack's own git host, with a token
     // so the tracker can write to it. And a second one, because the work on
     // one ticket often lands in more than one repository.
-    await goto(page, `/projects/${key}/repositories`);
+    await goto(page, `/projects/${key}/settings/repositories`);
     await clickButton(page, "Connect repository");
     await selectByLabel(page, "#repo-host", "Gitea");
     await fill(page, "Repository", repo.fullName);

@@ -1,32 +1,20 @@
-import { Link, createRoute } from "@tanstack/react-router";
-import { projectRoute } from "./project";
-import { Page, PageHeader } from "@/components/ui";
-import { useProject } from "@/api/projects";
+import { createRoute } from "@tanstack/react-router";
+import { projectSettingsRoute } from "./project-settings";
 import { ProjectWorkflows } from "@/features/workflows/ProjectWorkflows";
-import { t } from "@/i18n";
 
 export const projectWorkflowsRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: () => projectSettingsRoute,
   path: "/workflows",
   component: ProjectWorkflowsPage,
 });
 
 function ProjectWorkflowsPage() {
   const { projectKey } = projectWorkflowsRoute.useParams();
-  const { data } = useProject(projectKey);
 
   return (
-    <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {data?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.workflows.project.title}
-      />
+    <>
 
       <ProjectWorkflows projectKey={projectKey} />
-    </Page>
+    </>
   );
 }

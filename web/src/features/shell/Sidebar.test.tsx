@@ -15,6 +15,8 @@ const state = {
   /** What an older server listed beside the principal; nothing reads it now. */
   organizations: [] as Array<{ orgId: string; orgSlug: string; orgName: string; role: string }>,
   admin: true,
+  /** Whether the person administers the project on screen. */
+  projectAdmin: true,
 };
 const pushed = vi.fn();
 const navigate = vi.fn();
@@ -39,7 +41,10 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: () => state.params,
   useRouter: () => ({ history: { push: pushed } }),
 }));
-vi.mock("@/api/access", () => ({ useAccess: () => ({ data: { canAdministerOrg: state.admin } }) }));
+vi.mock("@/api/access", () => ({
+  useAccess: () => ({ data: { canAdministerOrg: state.admin } }),
+  canAdminister: () => state.projectAdmin,
+}));
 vi.mock("@/api/auth", () => ({
   useMe: () => ({
     data: {
@@ -80,6 +85,7 @@ const { axeViolations } = await import("@/test/axe");
 const { applyLanguage } = await import("@/i18n");
 
 beforeEach(() => {
+  state.projectAdmin = true;
   localStorage.clear();
   state.build = { version: "0.1.0", commit: "0123456789abcdef", builtAt: "2026-09-28T10:00:00Z" };
   state.mode = "open";
@@ -264,14 +270,33 @@ describe("the shell's accessibility", () => {
 
 // The suite's shared names (#309), as Stator and Exciter word them.
 describe("the shared names", () => {
-  it("calls the project's own pages Project admin, its settings Project settings, and the bell Notifications", () => {
+  it("calls the project's settings Project settings, and the bell Notifications", () => {
     state.params = { projectKey: "ALP" };
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
-    const admin = screen.getByRole("button", { name: "Project admin" });
-    const group = document.getElementById(admin.getAttribute("aria-controls")!)!;
-    expect(Array.from(group.querySelectorAll("a")).map((a) => a.textContent)).toContain("Project settings");
+    expect(screen.getByRole("link", { name: "Project settings" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Notifications/ })).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/Inbox|Project Admin|API token/);
+  });
+});
+
+describe("a project's setup", () => {
+  const setupWords = ["Workflow", "Fields", "Issue view", "Components", "Repositories", "Automation", "Import"];
+
+  it("has no group of its own and one Settings entry for the project's administrators", () => {
+    state.params = { projectKey: "ALP" };
+    render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
+    expect(screen.queryByRole("button", { name: "Project admin" })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Project settings" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Project settings" })).toHaveAttribute("href", "/projects/$projectKey/settings");
+    // The tabs are inside the settings, not listed beside them.
+    for (const word of setupWords) expect(screen.queryByRole("link", { name: word })).toBeNull();
+  });
+
+  it("shows nobody else the Settings entry", () => {
+    state.params = { projectKey: "ALP" };
+    state.projectAdmin = false;
+    render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
+    expect(screen.queryByRole("link", { name: "Project settings" })).toBeNull();
   });
 });
 

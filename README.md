@@ -44,7 +44,7 @@ workflow waiting for you.
 
 An installation set up without the seed can be shown with something in it too:
 an administrator adds a made-up plant, two projects with their issues, teams,
-boards and sprints, with "Add the demo project" under Settings, Installation.
+boards and sprints, with "Add the demo project" under Admin, Installation.
 
 The seed also adds the suite demo, and an administrator can add it from the
 same page: the GitHub issues of Armature, Exciter and Stator, pull requests
@@ -120,7 +120,7 @@ sign-in. The first account to sign up sets the installation up and administers
 it; after that people come in by invitation, by single sign-on, by an
 administrator making their account, or, with `ARMATURE_SIGNUP=open`, by
 signing up as members. Somebody single sign-on vouches for but nobody let in
-asks to join, unless Settings, Access, Sign-in lets people in by their groups:
+asks to join, unless Admin, Access, Sign-in lets people in by their groups:
 then a provider group that holds a role lets them in as a member, at sign-in
 here or when Stator or Exciter connects them. An administrator makes local accounts with a password,
 resets them and switches them off, which is also how somebody is let go, and
@@ -467,7 +467,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_REDIS_URL` | `redis://localhost:6379/0` | the event stream |
 | `ARMATURE_NAME` | `Armature` | what the installation is called when its first account sets it up; administrators rename it afterwards |
 | `ARMATURE_SIGNUP` | `first` | who may sign up: `first` (the first account, which sets the installation up and administers it), `open` (later people too, as members) or `closed` (nobody) |
-| `ARMATURE_OAUTH_REGISTRATION` | `approve` | who may register a connected app: `approve` (anybody, pending until an administrator allows it) or `closed` (administrators alone, under Settings, Connected apps); see [docs/oauth.md](docs/oauth.md) |
+| `ARMATURE_OAUTH_REGISTRATION` | `approve` | who may register a connected app: `approve` (anybody, pending until an administrator allows it) or `closed` (administrators alone, under Admin, Connected apps); see [docs/oauth.md](docs/oauth.md) |
 | `ARMATURE_SESSION_TTL` | `720h` | how long a session lives |
 | `ARMATURE_SESSION_COOKIE` | `armature_session` | the cookie's name |
 | `ARMATURE_SECURE_COOKIES` | `false` | required true outside development |

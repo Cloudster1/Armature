@@ -18,7 +18,6 @@ export const shellDe: typeof shellEn = {
   groups: {
     work: "Arbeit & Planung",
     project: "Projekt",
-    projectAdmin: "Projektverwaltung",
     you: "Sie",
   },
   places: {

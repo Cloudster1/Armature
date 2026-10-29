@@ -13,9 +13,16 @@ const archived = { ...live, archivedAt: "2026-10-01T08:00:00Z" } as Project;
 let shown: Project = live;
 let saving: { mutate: () => void; isPending: boolean; error: Error | null } = idle;
 
+const navigate = vi.fn();
+let pathname = "/projects/CP/settings";
+let administers = true;
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+  Outlet: () => <p data-child>a tab</p>,
   createRoute: (options: object) => ({ ...options, useParams: () => ({ projectKey: "CP" }) }),
+  useLocation: ({ select }: { select: (location: { pathname: string }) => string }) => select({ pathname }),
+  useNavigate: () => navigate,
 }));
 vi.mock("./project", () => ({ projectRoute: {} }));
 vi.mock("@/api/projects", () => ({
@@ -25,13 +32,14 @@ vi.mock("@/api/projects", () => ({
   useRestoreProject: () => ({ mutate: restore, isPending: false, error: null }),
 }));
 vi.mock("@/api/people", () => ({ useMemberSearch: () => ({ data: { members: [], total: 0, limit: 20, offset: 0 } }) }));
-vi.mock("@/api/access", () => ({ useAccess: () => ({ data: undefined }), canAdminister: () => true }));
+vi.mock("@/api/access", () => ({ useAccess: () => ({ data: {} }), canAdminister: () => administers }));
 // A stand-in for the sections with forms of their own, to see they are closed too.
 vi.mock("@/features/projects/PlanningSettings", () => ({ PlanningSettings: () => <button type="button">Planning control</button> }));
 vi.mock("@/features/projects/ShareSettings", () => ({ ShareSettings: () => null }));
 
-const { projectSettingsRoute } = await import("./project-settings");
-const SettingsPage = (projectSettingsRoute as unknown as { component: () => ReactNode }).component;
+const { projectSettingsRoute, projectSettingsIndexRoute } = await import("./project-settings");
+const SettingsPage = (projectSettingsIndexRoute as unknown as { component: () => ReactNode }).component;
+const Layout = (projectSettingsRoute as unknown as { component: () => ReactNode }).component;
 
 function renderPage() {
   render(
@@ -42,6 +50,9 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  pathname = "/projects/CP/settings";
+  administers = true;
+  navigate.mockReset();
   shown = live;
   saving = idle;
   archive.mockReset().mockImplementation((_key: string, options?: { onSuccess?: () => void }) => options?.onSuccess?.());
@@ -85,5 +96,51 @@ describe("the settings of a project", () => {
     expect(said).toHaveTextContent(refused);
     expect(said.nextElementSibling?.contains(save)).toBe(true);
     expect(screen.getByLabelText("Link name").compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("the tabs of a project's settings", () => {
+  const tabs = () => screen.getAllByRole("tab").map((tab) => tab.textContent);
+
+  it("lists General and the tabs of the features the project uses, and the ones every project has", () => {
+    shown = { ...live, features: ["automation", "import"] } as Project;
+    render(<Layout />);
+    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Automation", "Import"]);
+    expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("lists every tab for a project that uses every feature", () => {
+    shown = { ...live, features: ["components", "repositories", "automation", "import"] } as Project;
+    render(<Layout />);
+    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Components", "Repositories", "Automation", "Import"]);
+  });
+
+  it("marks the tab the address names, and opens another on a click", async () => {
+    shown = { ...live, features: ["import"] } as Project;
+    pathname = "/projects/CP/settings/fields";
+    render(<Layout />);
+    expect(screen.getByRole("tab", { name: "Fields" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(screen.getByRole("tab", { name: "Import" }));
+    expect(navigate).toHaveBeenCalledWith({ to: "/projects/CP/settings/import" });
+  });
+
+  it("shows the tab the address names", () => {
+    render(<Layout />);
+    expect(document.querySelector("[data-child]")).not.toBeNull();
+  });
+
+  it("tells the member who does not administer the project to ask, and mounts no tab", () => {
+    administers = false;
+    render(<Layout />);
+    expect(screen.getByText("Only the project's administrators change its settings")).toBeInTheDocument();
+    expect(screen.queryAllByRole("tab")).toHaveLength(0);
+    expect(document.querySelector("[data-child]")).toBeNull();
+  });
+
+  it("answers a tab whose feature is off with the switch's notice and mounts nothing", () => {
+    pathname = "/projects/CP/settings/import";
+    render(<Layout />);
+    expect(document.querySelector("[data-feature-off='import']")).not.toBeNull();
+    expect(document.querySelector("[data-child]")).toBeNull();
   });
 });
