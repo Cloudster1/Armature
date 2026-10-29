@@ -100,7 +100,7 @@ strip through `ShellHeaderContext` and in place where there is no strip
   the notification settings below it; `/me` redirects.
 - `/admin` is the Admin page, for administrators only (#462). Its index
   groups the installation's pages as cards under People and access (Installation,
-  Access, Users), Work (Holidays, Workflows, Issue types, Labels, Automation,
+  Access, Users), Work (Holidays, Workflows, Issue types, Project templates, Labels, Automation,
   Fields, Issue view), Integrations (Connected apps, Webhooks) and Records (Audit log); a list
   of the same on the left, or a menu on a phone, moves between them. The work
   sidebar stays, with one Admin entry. A member who opens it is told only

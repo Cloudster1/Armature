@@ -206,7 +206,7 @@ func (s *Service) CreateDashboardFrom(ctx context.Context, projectKey string, in
 		if in.Template == "" && in.MilestoneID == nil {
 			return nil
 		}
-		template := Template{}
+		template := ReportTemplate{}
 		if in.Template != "" {
 			template, err = resolveTemplate(ctx, tx, in.Template)
 			if err != nil {

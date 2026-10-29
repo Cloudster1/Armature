@@ -11,6 +11,7 @@ const SECTIONS = [
   ["Holidays", "/admin/holidays"],
   ["Workflows", "/admin/workflows"],
   ["Issue types", "/admin/issue-types"],
+  ["Project templates", "/admin/project-templates"],
   ["Labels", "/admin/labels"],
   ["Automation", "/admin/automation"],
   ["Fields", "/admin/fields"],

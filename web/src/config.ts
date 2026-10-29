@@ -514,4 +514,9 @@ export const ACCESS_REQUEST_MESSAGE_MAX = 1000;
 export const ISSUE_TYPE_NAME_MAX_LENGTH = 60;
 export const ISSUE_TYPE_DESCRIPTION_MAX_LENGTH = 300;
 /** The levels a type may sit at, highest first, as the database's range allows. */
+export const TEMPLATE_NAME_MAX_LENGTH = 100;
+export const TEMPLATE_DESCRIPTION_MAX_LENGTH = 300;
+/** How many workflow schemes the template editor offers; the server's page ceiling. */
+export const TEMPLATE_SCHEME_CHOICES = 200;
+
 export const ISSUE_TYPE_LEVELS = [3, 2, 1, 0, -1] as const;

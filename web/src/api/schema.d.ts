@@ -7410,6 +7410,16 @@ export interface components {
             title: string;
             width: number;
         };
+        ReportTemplate: {
+            builtIn: boolean;
+            description: string;
+            /** Format: uuid */
+            id?: string;
+            key: string;
+            name: string;
+            projectKinds?: ("software" | "service" | "business")[];
+            widgets: components["schemas"]["TemplateWidget"][];
+        };
         Repository: {
             apiBaseUrl: string;
             commitCount: number;
@@ -8145,16 +8155,6 @@ export interface components {
             description: string | null;
             name: string;
             weeklyCapacity?: number | null;
-        };
-        Template: {
-            builtIn: boolean;
-            description: string;
-            /** Format: uuid */
-            id?: string;
-            key: string;
-            name: string;
-            projectKinds?: ("software" | "service" | "business")[];
-            widgets: components["schemas"]["TemplateWidget"][];
         };
         TemplateIssueType: {
             icon: string;
@@ -11064,7 +11064,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        templates: components["schemas"]["Template"][];
+                        templates: components["schemas"]["ReportTemplate"][];
                     };
                 };
             };
@@ -11318,7 +11318,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        template: components["schemas"]["Template"];
+                        template: components["schemas"]["ReportTemplate"];
                     };
                 };
             };

@@ -50,6 +50,8 @@ export const shellDe: typeof shellEn = {
     labelsDetail: "Wörter, die alle Projekte teilen.",
     issueTypes: "Vorgangstypen",
     issueTypesDetail: "Die Arten von Vorgängen, die alle Projekte anlegen, eingebaute und eigene.",
+    projectTemplates: "Projektvorlagen",
+    projectTemplatesDetail: "Die Arten, ein neues Projekt anzulegen, eingebaute und eigene.",
     automation: "Automatisierung",
     automationDetail: "Regeln, die alle Projekte beobachten: wenn etwas geschieht, prüfen und handeln.",
     fields: "Felder",

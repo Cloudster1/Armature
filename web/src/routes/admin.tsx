@@ -37,6 +37,7 @@ export const MOVED_SECTIONS: Record<string, string> = {
   holidays: "holidays",
   workflows: "workflows",
   "issue-types": "issue-types",
+  "project-templates": "project-templates",
   labels: "labels",
   automation: "automation",
   fields: "fields",

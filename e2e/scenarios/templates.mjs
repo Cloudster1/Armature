@@ -1,8 +1,11 @@
 // Projects made from templates, and the pages a template leaves out.
 
-import { scenario } from "../runner.mjs";
+import { scenario, serialScenario } from "../runner.mjs";
 import {
   bodyText,
+  callAPI,
+  clickButton,
+  confirm,
   cardsOnBoard,
   commitIssue,
   createBoard,
@@ -15,11 +18,14 @@ import {
   goto,
   openProjectRow,
   planSprint,
+  press,
+  replaceValue,
   signUp,
   startSprint,
   textOf,
   turnFeature,
   unique,
+  uniqueName,
   WAIT,
 } from "../helpers.mjs";
 
@@ -108,4 +114,73 @@ scenario("the Task tracking template gives a project a simple workflow of its ow
 
   await openProjectRow(page, key);
   expect.contains(await textOf(page, `[data-project="${key}"]`), "Task tracking", "the project list says how it was set up");
+});
+
+const card = (name) => `[data-template-card="${name}"]`;
+
+/** Archives the templates an unfinished run left, so the shared installation offers none of them. */
+async function archiveTemplates(page, names) {
+  const { templates } = await callAPI(page, "GET", "/project-templates?archived=true");
+  for (const template of templates.filter((each) => !each.builtin && !each.archived && names.includes(each.name))) {
+    await callAPI(page, "POST", `/project-templates/${template.key}/archive`);
+  }
+}
+
+// Serial: editing and archiving a template changes what everybody's New project form offers.
+serialScenario("a duplicate of Scrum, narrowed to two types, makes projects that offer only those until it is archived", async ({ page }) => {
+  await signUp(page, unique("templater"), { visit: false });
+  const name = uniqueName("Narrow Scrum");
+  try {
+    await goto(page, "/admin/project-templates");
+    await press(page, `${card("Scrum")} [data-action="duplicate-template"]`);
+    // The copy opens in the editor, to be named and narrowed.
+    await page.waitForSelector("[data-template-editor]", { timeout: WAIT });
+    await replaceValue(page, "#template-name", name);
+    const ticked = await page.$$eval("[data-template-type][data-ticked]", (rows) => rows.map((row) => row.dataset.templateType));
+    for (const each of ticked.filter((type) => type !== "Task" && type !== "Bug")) {
+      await press(page, `[data-template-type="${each}"] input[type="checkbox"]`);
+    }
+    await clickButton(page, "Save template");
+    await page.waitForSelector(`${card(name)} [data-action="edit-template"]`, { timeout: WAIT });
+    expect.equal(await page.$(`${card(name)} [data-builtin-template]`), null, "the copy is the administrators' own");
+
+    const { templates } = await callAPI(page, "GET", "/project-templates");
+    const id = templates.find((each) => each.name === name).key;
+    expect.equal(
+      templates
+        .find((each) => each.key === id)
+        .issueTypes.map((type) => type.name)
+        .sort()
+        .join(","),
+      "Bug,Task",
+      "the template keeps the two types left ticked",
+    );
+
+    await goto(page, "/projects");
+    await clickButton(page, "New project");
+    await page.waitForSelector(`[data-template-group="made"] [data-template="${id}"]`, { timeout: WAIT });
+    const summary = await textOf(page, `[data-template="${id}"]`);
+    expect.contains(summary, "Bug", "the card names the types");
+    expect.contains(summary, "Task", "the card names both of them");
+    await page.keyboard.press("Escape");
+
+    const key = await createProjectThroughForm(page, "Narrow made", id);
+    await clickButton(page, "New issue");
+    await page.waitForSelector("#issue-type", { timeout: WAIT });
+    const offered = await page.$$eval("#issue-type option", (options) => options.map((option) => option.textContent.trim()));
+    expect.equal(offered.sort().join(","), "Bug,Task", `${key} offers exactly the template's types`);
+    await page.keyboard.press("Escape");
+
+    await goto(page, "/admin/project-templates");
+    await press(page, `${card(name)} [data-action="archive-template"]`);
+    await confirm(page);
+    await page.waitForFunction((selector) => !document.querySelector(selector), { timeout: WAIT }, card(name));
+
+    await goto(page, "/projects");
+    await clickButton(page, "New project");
+    await page.waitForSelector('[data-template="scrum"]', { timeout: WAIT });
+    expect.equal(await page.$(`[data-template="${id}"]`), null, "an archived template leaves the chooser");
+  } finally {
+    await archiveTemplates(page, [name, "Scrum copy"]);
+  }
 });

@@ -48,6 +48,8 @@ export const shellEn = {
     labelsDetail: "Words shared by every project.",
     issueTypes: "Issue types",
     issueTypesDetail: "The kinds of issue every project files, built in and your own.",
+    projectTemplates: "Project templates",
+    projectTemplatesDetail: "The ways a new project can be set up, built in and your own.",
     automation: "Automation",
     automationDetail: "Rules that watch every project: when something happens, check it, do things.",
     fields: "Fields",
