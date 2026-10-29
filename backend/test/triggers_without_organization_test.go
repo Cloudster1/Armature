@@ -78,6 +78,7 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 	made("team sprint", `INSERT INTO sprint (project_id, name, team_id) VALUES ($1, 'Crew sprint', $2) RETURNING id`, ids["alpha"], ids["alpha team"])
 	made("severity", `INSERT INTO custom_field (name, kind) VALUES ('Severity', 'text') RETURNING id`)
 	made("group", `INSERT INTO user_group (name) VALUES ('Support') RETURNING id`)
+	made("everyone", `SELECT id FROM user_group WHERE builtin = 'everyone'`)
 	made("dashboard", `INSERT INTO dashboard (project_id, name) VALUES ($1, 'Wall') RETURNING id`, ids["alpha"])
 	made("calendar", `SELECT id FROM holiday_calendar WHERE is_default`)
 	made("link type", `SELECT id FROM issue_link_type WHERE name = $1`, bootstrap.LinkRelates)
@@ -139,6 +140,15 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 		{"a stranger joins no group", `INSERT INTO group_member (group_id, user_id) VALUES (:group, :stranger)`, "can join a group"},
 		{"a customer shares no filter", `INSERT INTO saved_filter (owner_id, name, query, shared) VALUES (:customer, 'Mine', 'status = open', true)`, "cannot share a saved filter"},
 		{"a customer shares no theme", `INSERT INTO theme (owner_id, name, shared) VALUES (:customer, 'Dusk', true)`, "cannot share a theme"},
+		{"a customer is not one of everyone", `INSERT INTO group_member (group_id, user_id) VALUES (:everyone, :customer)`, "never a portal customer"},
+		{"a member stays one of everyone", `DELETE FROM group_member WHERE group_id = :everyone AND user_id = :member`, "nobody is taken out of it by hand"},
+		{"everyone is not deleted", `DELETE FROM user_group WHERE id = :everyone`, "cannot be deleted"},
+		{"everyone is not renamed", `UPDATE user_group SET name = 'All of us' WHERE id = :everyone`, "cannot be changed"},
+		{"everyone is not handed to the provider", `UPDATE user_group SET source = 'oidc', external_ref = 'all' WHERE id = :everyone`, "cannot be changed"},
+		{"no other group becomes everyone", `UPDATE user_group SET builtin = 'everyone' WHERE id = :group`, "cannot be changed"},
+		{"everyone does not administer", `INSERT INTO role_assignment (role, group_id) VALUES ('global_administrator', :everyone)`, "cannot administer the installation"},
+		{"a role everyone holds does not come to administer", `INSERT INTO role (key, name, permissions) VALUES ('helper', 'Helper', ARRAY['read']); INSERT INTO role_assignment (role, group_id) VALUES ('helper', :everyone); UPDATE role SET permissions = ARRAY['read', 'org.administer'] WHERE key = 'helper'`, "cannot administer the installation"},
+		{"everyone is granted a role over a project", `INSERT INTO role_assignment (role, project_id, group_id) VALUES ('user', :alpha, :everyone)`, ""},
 		{"a stranger is granted no role", `INSERT INTO role_assignment (role, user_id) VALUES ('user', :stranger)`, "granted to a member here"},
 		{"global administration is not granted over one project", `INSERT INTO role_assignment (role, project_id, user_id) VALUES ('global_administrator', :alpha, :member)`, "cannot be granted over one project"},
 		{"a built-in role stays", `DELETE FROM role WHERE key = 'reader'`, "a built-in role cannot be deleted"},
@@ -174,6 +184,33 @@ func TestTriggersKeepTheirRulesWithoutTheOrganization(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("everyone holds the members and follows their standing", func(t *testing.T) {
+		err := try(t, `
+			DO $$ BEGIN
+			    IF NOT EXISTS (SELECT 1 FROM group_member WHERE group_id = :everyone AND user_id = :admin)
+			       OR NOT EXISTS (SELECT 1 FROM group_member WHERE group_id = :everyone AND user_id = :member) THEN
+			        RAISE EXCEPTION 'a member is not one of everyone';
+			    END IF;
+			    IF EXISTS (SELECT 1 FROM group_member WHERE group_id = :everyone AND user_id IN (:customer, :stranger)) THEN
+			        RAISE EXCEPTION 'a customer or a stranger is one of everyone';
+			    END IF;
+			END $$;
+			UPDATE app_user SET standing = 'customer' WHERE id = :member;
+			UPDATE app_user SET standing = 'member' WHERE id = :stranger;
+			DO $$ BEGIN
+			    IF EXISTS (SELECT 1 FROM group_member WHERE group_id = :everyone AND user_id = :member) THEN
+			        RAISE EXCEPTION 'a member who became a customer is still one of everyone';
+			    END IF;
+			    IF NOT EXISTS (SELECT 1 FROM group_member WHERE group_id = :everyone AND user_id = :stranger) THEN
+			        RAISE EXCEPTION 'somebody let in is not one of everyone';
+			    END IF;
+			END $$;
+			DELETE FROM app_user WHERE id = :stranger`)
+		if err != nil {
+			t.Error(err)
+		}
+	})
 
 	t.Run("a branch made the default lets go of its issue", func(t *testing.T) {
 		err := try(t, `

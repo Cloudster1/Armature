@@ -28,6 +28,8 @@ type Assignment struct {
 	UserName  string     `json:"userName,omitempty"`
 	GroupID   *uuid.UUID `json:"groupId,omitempty"`
 	GroupName string     `json:"groupName,omitempty"`
+	// GroupBuiltin is the group's mark when the installation keeps it, "everyone".
+	GroupBuiltin string `json:"groupBuiltin,omitempty"`
 }
 
 // ToGroup reports whether the role was granted to a group rather than a person.
@@ -41,7 +43,7 @@ LEFT JOIN user_group g ON g.id = a.group_id`
 
 const selectAssignment = `
 SELECT a.id, a.role, a.project_id, COALESCE(p.key, ''),
-       a.user_id, COALESCE(u.name, ''), a.group_id, COALESCE(g.name, '')` + assignmentFrom
+       a.user_id, COALESCE(u.name, ''), a.group_id, COALESCE(g.name, ''), COALESCE(g.builtin, '')` + assignmentFrom
 
 // order reads the way somebody looks for a grant: the installation-wide ones
 // first, then by project, and the most powerful role at the top of each.
@@ -53,7 +55,7 @@ ORDER BY (a.project_id IS NOT NULL), p.key,
 func scanAssignment(row pgx.Row) (*Assignment, error) {
 	var a Assignment
 	err := row.Scan(&a.ID, &a.Role, &a.ProjectID, &a.ProjectKey,
-		&a.UserID, &a.UserName, &a.GroupID, &a.GroupName)
+		&a.UserID, &a.UserName, &a.GroupID, &a.GroupName, &a.GroupBuiltin)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -211,6 +213,19 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 		if wholeOrg && in.ProjectKey != "" {
 			return fmt.Errorf("%w: %s answers for all projects at once", ErrScope, in.Role)
 		}
+		if in.GroupID != nil {
+			var everyoneAdministers bool
+			err := tx.QueryRow(ctx, `
+				SELECT EXISTS (SELECT 1 FROM user_group WHERE id = $1 AND builtin = $3)
+				   AND COALESCE((SELECT $4 = ANY(permissions) FROM role WHERE key = $2), false)`,
+				*in.GroupID, string(in.Role), Everyone, string(OrgAdminister)).Scan(&everyoneAdministers)
+			if err != nil {
+				return err
+			}
+			if everyoneAdministers {
+				return ErrEveryoneAdministers
+			}
+		}
 		var projectID *uuid.UUID
 		if in.ProjectKey != "" {
 			var found uuid.UUID
@@ -233,6 +248,9 @@ func (s *Store) Grant(ctx context.Context, in GrantInput, actor uuid.UUID) (*Ass
 			RETURNING id`,
 			string(in.Role), projectID, in.UserID, in.GroupID, actor,
 		).Scan(&id)
+		if isEveryoneAdministers(err) {
+			return ErrEveryoneAdministers
+		}
 		if isCheckViolation(err) {
 			return ErrNotAMember
 		}

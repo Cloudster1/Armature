@@ -403,7 +403,8 @@ func (s *Service) Erase(ctx context.Context, userID uuid.UUID, actor uuid.UUID) 
 			`DELETE FROM saved_filter WHERE owner_id = $1`,
 			`DELETE FROM issue_watcher WHERE user_id = $1`,
 			`DELETE FROM role_assignment WHERE user_id = $1`,
-			`DELETE FROM group_member WHERE user_id = $1`,
+			// Everyone lets go of them with their standing, below.
+			`DELETE FROM group_member m WHERE user_id = $1 AND NOT EXISTS (SELECT 1 FROM user_group g WHERE g.id = m.group_id AND g.builtin IS NOT NULL)`,
 			`DELETE FROM team_member WHERE user_id = $1`,
 			`DELETE FROM member_schedule WHERE user_id = $1`,
 			`DELETE FROM absence WHERE user_id = $1`,

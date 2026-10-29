@@ -21858,6 +21858,9 @@
       "Assignment": {
         "type": "object",
         "properties": {
+          "groupBuiltin": {
+            "type": "string"
+          },
           "groupId": {
             "type": "string",
             "format": "uuid"
@@ -25504,6 +25507,9 @@
       "Group": {
         "type": "object",
         "properties": {
+          "builtin": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },

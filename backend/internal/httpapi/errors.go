@@ -308,6 +308,10 @@ func toAPIError(err error) *APIError {
 		return ErrBadRequest(withoutSentinel(err, perm.ErrScope))
 	case errors.Is(err, perm.ErrManagedElsewhere):
 		return ErrConflict(withoutSentinel(err, perm.ErrManagedElsewhere))
+	case errors.Is(err, perm.ErrBuiltinGroup):
+		return ErrConflict("Everyone holds every member here, so it is not deleted and nobody is added to it or taken out by hand. Make a group of your own for a smaller set of people.")
+	case errors.Is(err, perm.ErrEveryoneAdministers):
+		return ErrConflict("Everyone cannot administer the installation, or every member would. Grant administration to a person or to a group of administrators.")
 	case errors.Is(err, team.ErrNotFound):
 		return ErrNotFound("That team was not found.")
 	case errors.Is(err, team.ErrNegativeCapacity):
