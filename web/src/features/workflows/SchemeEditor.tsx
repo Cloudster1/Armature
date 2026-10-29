@@ -26,7 +26,7 @@ const UNCHOSEN: DraftItem = { issueTypeId: FALLBACK, workflowId: "", workflowNam
  * out falls through to the organization.
  */
 export function SchemeEditor({ scheme, onDone }: { scheme?: Scheme; onDone: () => void }) {
-  const { data: typeData } = useIssueTypes();
+  const { data: typeData } = useIssueTypes({ retired: true });
   const issueTypes = typeData?.issueTypes ?? [];
 
   const [name, setName] = useState(scheme?.name ?? "");

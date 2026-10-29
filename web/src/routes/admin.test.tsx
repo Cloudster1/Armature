@@ -85,7 +85,7 @@ describe("the Admin index", () => {
     ]);
     expect(sections).toEqual([
       ["people", ["Installation", "Access", "Users"]],
-      ["work", ["Holidays", "Workflows", "Labels", "Automation", "Fields", "Issue view"]],
+      ["work", ["Holidays", "Workflows", "Issue types", "Labels", "Automation", "Fields", "Issue view"]],
       ["integrations", ["Connected apps", "Webhooks"]],
       ["records", ["Audit log"]],
     ]);

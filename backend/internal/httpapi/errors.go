@@ -23,6 +23,7 @@ import (
 	"github.com/armature/armature/backend/internal/git"
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/issuetype"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/nql"
@@ -406,6 +407,15 @@ func moreAPIError(err error) *APIError {
 		return ErrBadRequest("That field belongs to another project.")
 	case errors.Is(err, field.ErrKindMismatch):
 		return ErrConflict(capitalize(field.ErrKindMismatch.Error()) + ".")
+	case errors.Is(err, issuetype.ErrNotFound):
+		return ErrNotFound(capitalize(issuetype.ErrNotFound.Error()) + ". Pick it from the list again.")
+	case errors.Is(err, issuetype.ErrNameTaken):
+		return ErrConflict(capitalize(issuetype.ErrNameTaken.Error()) + ". Pick another name.")
+	case errors.Is(err, issuetype.ErrBadName), errors.Is(err, issuetype.ErrBadDescription),
+		errors.Is(err, issuetype.ErrBadIcon), errors.Is(err, issuetype.ErrBadLevel):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: capitalize(err.Error()) + "."}
+	case issueTypeRefusal(err):
+		return ErrConflict(err.Error() + ".")
 	case errors.Is(err, label.ErrNotFound):
 		return ErrNotFound("That label was not found.")
 	case errors.Is(err, label.ErrNameTaken):
@@ -560,6 +570,13 @@ func withoutSentinel(err, sentinel error) string {
 		return sentinel.Error()
 	}
 	return strings.ToUpper(message[:1]) + message[1:]
+}
+
+// issueTypeRefusal is a built-in type or one in use refusing a change, already worded for the reader.
+func issueTypeRefusal(err error) bool {
+	var builtin *issuetype.BuiltinError
+	var inUse *issuetype.InUseError
+	return errors.As(err, &builtin) || errors.As(err, &inUse)
 }
 
 // respondError writes err as JSON and logs the underlying cause when there is

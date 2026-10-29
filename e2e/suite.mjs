@@ -26,6 +26,7 @@ const SCENARIO_FILES = [
   "hierarchy",
   "plan",
   "workflows",
+  "issue-types",
   "plan-calendar",
   "search",
   "plan-links",

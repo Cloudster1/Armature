@@ -1687,10 +1687,63 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The issue types and where each sits in the hierarchy. */
+        /** The issue types, where each sits in the hierarchy, and whether it is built in; retired ones only when asked for. */
         get: operations["listIssueTypes"];
         put?: never;
+        /** Add an issue type of the installation's own, at any level. */
+        post: operations["createIssueType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/issue-types/{typeID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
         post?: never;
+        /** Remove a type of the installation's own that nothing uses. */
+        delete: operations["deleteIssueType"];
+        options?: never;
+        head?: never;
+        /** Change a type; a built-in one keeps its name and level, and one issues use keeps its level. */
+        patch: operations["updateIssueType"];
+        trace?: never;
+    };
+    "/issue-types/{typeID}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Offer a retired type again. */
+        post: operations["reinstateIssueType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/issue-types/{typeID}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop offering a type for anything new; its issues keep it. */
+        post: operations["retireIssueType"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6352,15 +6405,27 @@ export interface components {
             todo: number;
             total: number;
         };
-        IssueTypeView: {
+        IssueType: {
+            builtin: boolean;
             description?: string;
-            icon: string;
+            /** @enum {string} */
+            icon: "task" | "bug" | "story" | "epic" | "subtask" | "initiative" | "change" | "improvement" | "incident" | "question" | "research" | "release";
             /** Format: uuid */
             id: string;
             isSubtask: boolean;
             level: number;
             name: string;
             position: number;
+            retired: boolean;
+            /** Format: date-time */
+            retiredAt?: string;
+        };
+        IssueTypeRequest: {
+            description?: string;
+            /** @enum {string} */
+            icon?: "task" | "bug" | "story" | "epic" | "subtask" | "initiative" | "change" | "improvement" | "incident" | "question" | "research" | "release";
+            level?: number;
+            name?: string;
         };
         Item: {
             children: components["schemas"]["Item"][];
@@ -12938,7 +13003,10 @@ export interface operations {
     };
     listIssueTypes: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description true lists the retired types too. */
+                retired?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12952,7 +13020,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        issueTypes: components["schemas"]["IssueTypeView"][];
+                        issueTypes: components["schemas"]["IssueType"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createIssueType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issueType: components["schemas"]["IssueType"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteIssueType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                typeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateIssueType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                typeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issueType: components["schemas"]["IssueType"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reinstateIssueType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                typeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issueType: components["schemas"]["IssueType"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    retireIssueType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                typeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issueType: components["schemas"]["IssueType"];
                     };
                 };
             };

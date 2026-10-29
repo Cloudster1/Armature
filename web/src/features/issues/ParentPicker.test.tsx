@@ -12,7 +12,7 @@ vi.mock("@tanstack/react-router", () => ({
 const { ParentPicker } = await import("./hierarchy");
 
 function type(id: string, name: string, level: number): IssueType {
-  return { id, name, icon: id, level, isSubtask: level < 0, position: level };
+  return { id, name, icon: "task", level, isSubtask: level < 0, position: level, builtin: true, retired: false };
 }
 
 const types = [type("epic", "Epic", 1), type("story", "Story", 0), type("subtask", "Subtask", -1)];

@@ -520,6 +520,19 @@ export async function createProjectThroughForm(page, name, template) {
   return key;
 }
 
+/** The names of the issue types offered for new work, or of every one with retired. */
+export async function issueTypeNames(page, { retired = false } = {}) {
+  const { issueTypes } = await callAPI(page, "GET", retired ? "/issue-types?retired=true" : "/issue-types");
+  return issueTypes.map((type) => type.name);
+}
+
+/** Deletes the issue type of this name if it is still there, for a scenario to put back what it made. */
+export async function removeIssueType(page, name) {
+  const { issueTypes } = await callAPI(page, "GET", "/issue-types?retired=true");
+  const found = issueTypes.find((type) => type.name === name);
+  if (found) await callAPI(page, "DELETE", `/issue-types/${found.id}`);
+}
+
 /** The id of the issue type with this name, as the creation form would offer it. */
 async function issueTypeId(page, name) {
   const { issueTypes } = await callAPI(page, "GET", "/issue-types");

@@ -28,7 +28,7 @@ export const adminIndexRoute = createRoute({
   component: AdminIndex,
 });
 
-/** The /settings sections that moved to /admin, with the one whose name changed on the way. */
+/** The /settings sections that moved to /admin, with the one whose name changed on the way; a page born under /admin is reached the same way. */
 export const MOVED_SECTIONS: Record<string, string> = {
   installation: "installation",
   organization: "installation",
@@ -36,6 +36,7 @@ export const MOVED_SECTIONS: Record<string, string> = {
   users: "users",
   holidays: "holidays",
   workflows: "workflows",
+  "issue-types": "issue-types",
   labels: "labels",
   automation: "automation",
   fields: "fields",

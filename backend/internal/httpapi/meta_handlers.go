@@ -32,45 +32,6 @@ func (s *Server) handleListStatuses(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"statuses": statuses})
 }
 
-// issueTypeView is an issue type as the client sees it.
-type issueTypeView struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description,omitempty"`
-	Icon        string    `json:"icon"`
-	Level       int       `json:"level"`
-	IsSubtask   bool      `json:"isSubtask"`
-	Position    int       `json:"position"`
-}
-
-func (s *Server) handleListIssueTypes(w http.ResponseWriter, r *http.Request) {
-	types := []issueTypeView{}
-	err := s.DB.Read(r.Context(), func(ctx context.Context, tx db.DBTX) error {
-		// Highest level first, so a picker reads down the hierarchy the way the
-		// tree is drawn rather than in whatever order the types were created.
-		rows, err := tx.Query(ctx, `
-			SELECT id, name, description, icon, hierarchy_level, is_subtask, position
-			FROM issue_type ORDER BY hierarchy_level DESC, position, name`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var t issueTypeView
-			if err := rows.Scan(&t.ID, &t.Name, &t.Description, &t.Icon, &t.Level, &t.IsSubtask, &t.Position); err != nil {
-				return err
-			}
-			types = append(types, t)
-		}
-		return rows.Err()
-	})
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"issueTypes": types})
-}
-
 // maxLibraryOffset bounds how far into the workflows or schemes a page may start.
 const maxLibraryOffset = 1 << 20
 

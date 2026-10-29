@@ -35,6 +35,7 @@ import (
 	"github.com/armature/armature/backend/internal/httpapi"
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/issuetype"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/notify"
@@ -107,6 +108,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Fields:       field.NewService(h.cluster),
 		Arrange:      arrange.NewService(h.cluster),
 		Labels:       labels,
+		IssueTypes:   issuetype.NewService(h.cluster),
 		Notify:       notify.NewService(h.cluster),
 		Automation:   automation.NewService(h.cluster, issues, labels, testLog).WithMailer(mailer).WithWebhooks(webhooks),
 		Webhooks:     webhooks,

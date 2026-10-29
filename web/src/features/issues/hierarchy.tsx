@@ -198,7 +198,7 @@ function AddChildForm({
 export function ParentPicker({ issue }: { issue: Issue }) {
   const setParent = useSetParent();
   const [words, setWords] = useState("");
-  const { data: typeData } = useIssueTypes();
+  const { data: typeData } = useIssueTypes({ retired: true });
   // The server is asked for the level above by type, so a parent older than
   // any one page is still found by typing its name.
   const levelAbove = (typeData?.issueTypes ?? []).filter((type) => type.level === issue.type.level + 1).map((type) => type.id);

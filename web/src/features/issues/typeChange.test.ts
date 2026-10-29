@@ -17,7 +17,7 @@ function workflow(statuses: Status[], initial: Status): Workflow {
 }
 
 function type(id: string, level: number, isSubtask = false): IssueType {
-  return { id, name: id, icon: id, level, isSubtask, position: 0 };
+  return { id, name: id, icon: "task", level, isSubtask, position: 0, builtin: true, retired: false };
 }
 
 describe("where a type change leaves the status", () => {

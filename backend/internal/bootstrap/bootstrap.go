@@ -119,8 +119,8 @@ func Installation(ctx context.Context, tx db.DBTX) (*Result, error) {
 	for i, t := range issueTypes {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO issue_type (name, description, icon, hierarchy_level, position)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			INSERT INTO issue_type (name, description, icon, hierarchy_level, position, builtin)
+			VALUES ($1, $2, $3, $4, $5, true) RETURNING id`,
 			t.name, t.desc, t.icon, t.level, i,
 		).Scan(&id)
 		if err != nil {

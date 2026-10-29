@@ -121,7 +121,16 @@ func (s *Server) organizationRoutes(r chi.Router) {
 	r.Post("/absences", s.handleRecordAbsence)
 	r.Patch("/absences/{absenceID}", s.handleUpdateAbsence)
 	r.Delete("/absences/{absenceID}", s.handleRemoveAbsence)
+	// The library of issue types is everyone's to read and its administrators' to keep.
 	r.Get("/issue-types", s.handleListIssueTypes)
+	r.Group(func(r chi.Router) {
+		r.Use(requirePerm(perm.OrgAdminister))
+		r.Post("/issue-types", s.handleCreateIssueType)
+		r.Patch("/issue-types/{typeID}", s.handleUpdateIssueType)
+		r.Delete("/issue-types/{typeID}", s.handleDeleteIssueType)
+		r.Post("/issue-types/{typeID}/retire", s.handleRetireIssueType)
+		r.Post("/issue-types/{typeID}/reinstate", s.handleReinstateIssueType)
+	})
 	r.Get("/statuses", s.handleListStatuses)
 	r.Get("/link-types", s.handleListLinkTypes)
 	r.Get("/workflows", s.handleListWorkflows)

@@ -197,6 +197,17 @@ export const adminPlaces: AdminPlace[] = [
     },
   },
   {
+    to: "/admin/issue-types",
+    section: "work",
+    get label() {
+      return t.shell.places.issueTypes;
+    },
+    icon: "Issue",
+    get detail() {
+      return t.shell.places.issueTypesDetail;
+    },
+  },
+  {
     to: "/admin/labels",
     section: "work",
     get label() {

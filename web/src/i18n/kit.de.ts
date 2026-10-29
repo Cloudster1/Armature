@@ -84,6 +84,7 @@ export const kitDe: typeof kitEn = {
       group: "Gruppe",
       invitation: "Einladung",
       issue: (key: string) => `Vorgang ${key}`,
+      issueType: "Vorgangstyp",
       label: "Schlagwort",
       link: "Link",
       member: "Mitglied",

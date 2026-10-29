@@ -1,4 +1,4 @@
-import type { Priority, StatusCategory } from "@/api/issues";
+import type { IssueTypeIcon, Priority, StatusCategory } from "@/api/issues";
 import { cx } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { useFormat } from "@/lib/format";
@@ -68,28 +68,49 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
   );
 }
 
-const typeStyles: Record<string, string> = {
+const typeStyles: Record<IssueTypeIcon, string> = {
   bug: "bg-danger/10 text-danger",
   story: "bg-success/10 text-success",
   epic: "bg-epic/10 text-epic",
   initiative: "bg-warning/10 text-warning",
   subtask: "bg-surface-raised text-ink-muted",
   task: "bg-surface-raised text-ink-muted",
+  change: "bg-accent-subtle text-accent",
+  improvement: "bg-success/10 text-success",
+  incident: "bg-danger/10 text-danger",
+  question: "bg-surface-raised text-ink-muted",
+  research: "bg-surface-raised text-ink-muted",
+  release: "bg-epic/10 text-epic",
 };
 
-const typeIcons: Record<string, IconName> = {
+// Keyed by the server's list of icons, so an icon it accepts that has no glyph here fails the build.
+const typeIcons: Record<IssueTypeIcon, IconName> = {
   bug: "Bug",
   story: "Story",
   epic: "Epic",
   initiative: "Initiative",
   subtask: "Subtask",
   task: "Task",
+  change: "Change",
+  improvement: "Improvement",
+  incident: "Warning",
+  question: "Help",
+  research: "Search",
+  release: "Ship",
 };
 
+/** Every icon a type may take, in the order a picker offers them. */
+export const TYPE_ICONS = Object.keys(typeIcons) as IssueTypeIcon[];
+
+function isTypeIcon(icon: string): icon is IssueTypeIcon {
+  return Object.hasOwn(typeIcons, icon);
+}
+
 export function TypeBadge({ icon, name }: { icon: string; name: string }) {
-  const Glyph = Icon[typeIcons[icon] ?? "Task"];
+  const known = isTypeIcon(icon) ? icon : "task";
+  const Glyph = Icon[typeIcons[known]];
   return (
-    <span title={name} className={cx("inline-flex size-4 shrink-0 items-center justify-center rounded-glyph", typeStyles[icon] ?? typeStyles.task)}>
+    <span title={name} className={cx("inline-flex size-4 shrink-0 items-center justify-center rounded-glyph", typeStyles[known])}>
       <Glyph className="size-3" />
       <span className="sr-only">{name}</span>
     </span>
