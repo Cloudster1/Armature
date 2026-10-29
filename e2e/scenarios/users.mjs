@@ -76,7 +76,7 @@ scenario("somebody the provider knows is told who can let them in", async ({ pag
   expect.contains(told, "Users page", "the refusal says where");
 
   await signUp(page, unique("user"), { visit: false });
-  await goto(page, "/settings/users");
+  await goto(page, "/admin/users");
   await page.waitForSelector("[data-new-user]", { timeout: WAIT });
   const waiting = await page.$("[data-join-requests]");
   expect.truthy(waiting === null, "an empty waiting list is drawn");
@@ -88,7 +88,7 @@ scenario("the users page finds somebody by part of their name, a page at a time"
   await signUp(page, unique("user"), { visit: false });
   const who = await makeAccount(unique("findable"));
 
-  await goto(page, "/settings/users");
+  await goto(page, "/admin/users");
   await page.waitForSelector("[data-user]", { timeout: WAIT });
   expect.truthy(await page.$('nav[aria-label="User pages"]'), "a list longer than a page comes with a pager");
   const shown = await page.$$eval("[data-user]", (rows) => rows.length);

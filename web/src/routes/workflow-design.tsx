@@ -1,5 +1,5 @@
 import { createRoute, useNavigate } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import type { Workflow } from "@/api/workflows";
 import { WorkflowDesigner } from "@/features/workflows/designer/WorkflowDesigner";
 import { PageHeader } from "@/components/ui";
@@ -7,14 +7,14 @@ import { t } from "@/i18n";
 
 /** A page of its own: the canvas wants the width the settings list does not. */
 export const workflowNewRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/workflows/new",
+  getParentRoute: () => adminRoute,
+  path: "/workflows/new",
   component: () => <DesignerPage />,
 });
 
 export const workflowDesignRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/workflows/$workflowId/design",
+  getParentRoute: () => adminRoute,
+  path: "/workflows/$workflowId/design",
   component: DesignExistingPage,
 });
 
@@ -25,7 +25,7 @@ function DesignExistingPage() {
 
 function DesignerPage({ workflowId }: { workflowId?: string }) {
   const navigate = useNavigate();
-  const back = (saved?: Workflow) => navigate({ to: "/settings/workflows", search: { workflow: saved?.id, q: saved?.name } });
+  const back = (saved?: Workflow) => navigate({ to: "/admin/workflows", search: { workflow: saved?.id, q: saved?.name } });
 
   return (
     <div>

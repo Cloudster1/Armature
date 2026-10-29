@@ -13,7 +13,7 @@ import { Input, cx, modalBackdropStyle, modalPanelStyle } from "@/components/ui"
 import { PALETTE_RESULTS } from "@/config";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
 import { pagesFor, projectSetupPages, projectWorkPages } from "@/features/shell/Sidebar";
-import { personalPlaces, placeKey, settingsFor, SETTINGS_PATH, workPlaces, type Place as ShellPlace } from "@/features/shell/places";
+import { adminEntry, adminFor, personalPlaces, placeKey, workPlaces, type Place as ShellPlace } from "@/features/shell/places";
 import { t } from "@/i18n";
 
 interface Command {
@@ -187,16 +187,16 @@ export function CommandPalette({
             ...(canAdministerOrg
               ? [
                   {
-                    place: { to: SETTINGS_PATH, label: t.shell.settingsHub.title, icon: "Settings" as IconName },
-                    label: t.shell.settingsHub.title,
-                    words: t.shell.palette.settingsWords,
+                    place: adminEntry,
+                    label: adminEntry.label,
+                    words: t.shell.palette.adminWords,
                   },
                 ]
               : []),
-            ...settingsFor(canAdministerOrg).map((place) => ({
+            ...adminFor(canAdministerOrg).map((place) => ({
               place,
-              label: t.shell.palette.settingsPage(place.label),
-              words: `${t.shell.palette.settingsWords} ${place.label}`,
+              label: t.shell.palette.adminPage(place.label),
+              words: `${t.shell.palette.adminWords} ${place.label}`,
             })),
           ]
         : []),

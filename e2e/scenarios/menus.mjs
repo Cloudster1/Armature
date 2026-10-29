@@ -1,12 +1,12 @@
-// Where the menus put things (#308): the person's own pages under the avatar,
-// the installation's in a settings area of its own, the work in the sidebar,
-// and all of it in a drawer on a phone.
+// Where the menus put things (#308, #462): the person's own pages under the
+// avatar and in a settings area of their own, the installation's on the Admin
+// page, the work in the sidebar, and all of it in a drawer on a phone.
 
 import { scenario } from "../runner.mjs";
 import { expect, goto, openAccountMenu, openDrawer, openPalette, signUp, unique, WAIT, waitForApp, waitForPath, withViewport } from "../helpers.mjs";
 
 const PERSONAL = ["Your profile", "Notification settings", "Watching", "Themes", "Access tokens"];
-const SETTINGS = [
+const ADMIN = [
   "Installation",
   "Access",
   "Users",
@@ -42,59 +42,68 @@ async function paletteOffers(page, words) {
   return offered;
 }
 
-scenario("an administrator's avatar menu holds their pages, Settings and the way out, and Settings opens an area of its own", async ({ page }) => {
-  const who = await signUp(page, unique("menuadmin"));
-  await goto(page, "/projects");
-  await waitForApp(page);
+scenario(
+  "an administrator's avatar menu holds their pages, Admin and the way out, and Admin opens the page of the installation's settings",
+  async ({ page }) => {
+    const who = await signUp(page, unique("menuadmin"));
+    await goto(page, "/projects");
+    await waitForApp(page);
 
-  await openAccountMenu(page);
-  const header = await page.$eval("[data-account-header]", (el) => el.textContent);
-  expect.contains(header, who.name, "the header names the person");
-  expect.contains(header, who.email, "and their address");
-  expect.contains(header, "Admin", "and their seat");
-  const entries = await accountEntries(page);
-  expect.equal(JSON.stringify(entries.slice(0, PERSONAL.length)), JSON.stringify(PERSONAL), "the personal pages come first, in order");
-  expect.equal(JSON.stringify(entries.slice(-2)), JSON.stringify(["Settings", "Sign out"]), "then Settings and Sign out");
+    await openAccountMenu(page);
+    const header = await page.$eval("[data-account-header]", (el) => el.textContent);
+    expect.contains(header, who.name, "the header names the person");
+    expect.contains(header, who.email, "and their address");
+    expect.contains(header, "Admin", "and their seat");
+    const entries = await accountEntries(page);
+    expect.equal(JSON.stringify(entries.slice(0, PERSONAL.length)), JSON.stringify(PERSONAL), "the personal pages come first, in order");
+    expect.equal(JSON.stringify(entries.slice(-2)), JSON.stringify(["Admin", "Sign out"]), "then Admin and Sign out");
 
-  await page.click('[role="menu"] [data-action="settings"]');
-  await waitForPath(page, "/settings");
-  await page.waitForSelector('[data-sidebar-area="settings"]', { timeout: WAIT });
-  expect.equal(await page.$('[data-sidebar-group="work"]'), null, "the work's groups give way to the settings'");
-  expect.equal(JSON.stringify(await groupLinks(page, "you")), JSON.stringify(PERSONAL), "You lists the personal pages");
-  expect.equal(JSON.stringify(await groupLinks(page, "settings")), JSON.stringify(SETTINGS), "Settings lists the installation's pages in order");
+    await page.click('[role="menu"] [data-action="admin"]');
+    await waitForPath(page, "/admin");
+    expect.equal(await page.$('[data-sidebar-area="settings"]'), null, "the work sidebar stays");
+    expect.truthy(await page.$('[data-sidebar-area="work"]'), "on the Admin page");
+    const cards = await page.$$eval("[data-admin-card]", (links) => links.map((a) => a.getAttribute("data-admin-card")));
+    expect.equal(JSON.stringify(cards), JSON.stringify(ADMIN), "the index lists the installation's pages in order");
 
-  const hub = await page.$$eval("[data-settings-link]", (links) => links.map((a) => a.getAttribute("data-settings-link")));
-  for (const label of [...PERSONAL, ...SETTINGS]) expect.truthy(hub.includes(label), `the hub lists ${label}`);
+    await page.click('[data-admin-nav] [data-admin-link="Audit log"]');
+    await waitForPath(page, "/admin/audit");
 
-  await page.click('[data-place="Audit log"]');
-  await waitForPath(page, "/settings/audit");
-  await page.click('[data-action="back-from-settings"]');
-  await waitForPath(page, "/projects");
+    await goto(page, "/settings");
+    await page.waitForSelector('[data-sidebar-area="settings"]', { timeout: WAIT });
+    expect.equal(await page.$('[data-sidebar-group="work"]'), null, "the work's groups give way to the settings'");
+    expect.equal(JSON.stringify(await groupLinks(page, "you")), JSON.stringify(PERSONAL), "You lists the personal pages");
+    expect.equal(await page.$('[data-sidebar-group="settings"]'), null, "and the installation's pages are not among them");
+    const hub = await page.$$eval("[data-settings-link]", (links) => links.map((a) => a.getAttribute("data-settings-link")));
+    expect.equal(JSON.stringify(hub), JSON.stringify(PERSONAL), "the hub lists the personal pages only");
+    await page.click('[data-action="back-from-settings"]');
+    await waitForPath(page, "/admin/audit");
 
-  const offered = await paletteOffers(page, "audit");
-  expect.truthy(
-    offered.some((o) => o.includes("Settings / Audit log")),
-    `the palette reaches the audit log: ${offered.join(", ")}`,
-  );
-});
+    const offered = await paletteOffers(page, "audit");
+    expect.truthy(
+      offered.some((o) => o.includes("Admin / Audit log")),
+      `the palette reaches the audit log: ${offered.join(", ")}`,
+    );
+  },
+);
 
-scenario("a member sees no Settings in the avatar menu, the settings area or the palette", async ({ page }) => {
+scenario("a member sees no Admin in the avatar menu, the sidebar or the palette", async ({ page }) => {
   await signUp(page, unique("menumember"), { role: "member" });
   await openAccountMenu(page);
   const entries = await accountEntries(page);
-  expect.equal(entries.includes("Settings"), false, `no Settings entry: ${entries.join(", ")}`);
+  expect.equal(entries.includes("Admin"), false, `no Admin entry: ${entries.join(", ")}`);
   expect.equal(JSON.stringify(entries.slice(0, PERSONAL.length)), JSON.stringify(PERSONAL), "the personal pages are there");
   await page.keyboard.press("Escape");
 
   await goto(page, "/settings");
   await page.waitForSelector('[data-sidebar-area="settings"]', { timeout: WAIT });
-  expect.equal(await page.$('[data-sidebar-group="settings"]'), null, "the settings area has no Settings group");
-  expect.equal(await page.$('[data-settings-group="Settings"]'), null, "the hub has no Settings card");
+  expect.equal(await page.$('[data-sidebar-group="settings"]'), null, "the settings area has no installation group");
+  expect.equal(await page.$('[data-settings-group="Settings"]'), null, "the hub has no installation card");
+  expect.equal(await page.$('a[href^="/admin"]'), null, "and nothing leads to the Admin page");
   expect.equal(JSON.stringify(await groupLinks(page, "you")), JSON.stringify(PERSONAL), "You is all there is");
 
   for (const words of ["audit", "webhooks", "users"]) {
     const offered = await paletteOffers(page, words);
-    expect.equal(offered.filter((o) => o.startsWith("Settings")).length, 0, `the palette offers no settings page for ${words}: ${offered.join(", ")}`);
+    expect.equal(offered.filter((o) => o.startsWith("Admin")).length, 0, `the palette offers no admin page for ${words}: ${offered.join(", ")}`);
   }
   const offered = await paletteOffers(page, "tokens");
   expect.truthy(offered.includes("Access tokens"), `the palette reaches the member's own pages: ${offered.join(", ")}`);

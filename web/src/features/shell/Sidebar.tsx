@@ -19,7 +19,7 @@ import { LogoMark } from "@/components/Logo";
 import { SidebarGroup } from "./SidebarGroup";
 import { ThemeButton } from "./ThemeButton";
 import { roleWord, useAccountItems } from "./AccountMenu";
-import { inSettingsArea, personalPlaces, settingsFor, workPlaces, type Place } from "./places";
+import { adminEntry, inSettingsArea, personalPlaces, workPlaces, type Place } from "./places";
 import { t } from "@/i18n";
 
 // The sidebar is the map: where you are is highlighted, where you can go is
@@ -318,8 +318,9 @@ function PlaceLink({ place, trailing }: { place: Place; trailing?: ReactNode }) 
   );
 }
 
-/** The work: the tool's places, then the project on screen or the last one visited. */
+/** The work: the tool's places, then the project on screen or the last one visited, then Admin for an administrator. */
 function WorkGroups() {
+  const { data: access } = useAccess();
   const projectKey = useLastProject(useCurrentProjectKey());
   const [groups, toggleGroup] = useSidebarGroups();
   const isOpen = (id: string, defaultOpen: boolean) => groups[id] ?? defaultOpen;
@@ -339,14 +340,18 @@ function WorkGroups() {
           <ProjectPages projectKey={projectKey} adminOpen={isOpen("project-admin", false)} onToggleAdmin={() => toggleGroup("project-admin", false)} />
         )}
       </SidebarGroup>
+
+      {access?.canAdministerOrg && (
+        <div className="mt-3">
+          <PlaceLink place={adminEntry} />
+        </div>
+      )}
     </>
   );
 }
 
-/** The settings area's own groups: the person's pages, then the installation's for administrators. */
+/** The settings area's own group: the person's pages. */
 function SettingsGroups() {
-  const { data: access } = useAccess();
-  const settings = settingsFor(access?.canAdministerOrg ?? false);
   const [groups, toggleGroup] = useSidebarGroups();
   const isOpen = (id: string) => groups[id] ?? true;
   return (
@@ -356,13 +361,6 @@ function SettingsGroups() {
           <PlaceLink key={place.label} place={place} />
         ))}
       </SidebarGroup>
-      {settings.length > 0 && (
-        <SidebarGroup id="settings" title={t.shell.groups.settings} open={isOpen("settings")} onToggle={() => toggleGroup("settings", true)}>
-          {settings.map((place) => (
-            <PlaceLink key={place.to} place={place} />
-          ))}
-        </SidebarGroup>
-      )}
     </>
   );
 }

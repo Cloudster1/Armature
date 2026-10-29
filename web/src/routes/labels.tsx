@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { LABEL_COLORS, useDeleteLabel, useLabels, useUpdateLabel, type Label } from "@/api/labels";
 import type { LabelColor } from "@/api/issues";
@@ -34,8 +34,8 @@ interface LabelsSearch {
 
 /** The search and the page are in the address, so a link reopens the same list. */
 export const labelsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/labels",
+  getParentRoute: () => adminRoute,
+  path: "/labels",
   validateSearch: (search: Record<string, unknown>): LabelsSearch => ({
     // A search of digits alone comes back from the address as a number.
     ...(typeof search.q === "number" ? { q: String(search.q) } : typeof search.q === "string" && search.q !== "" ? { q: search.q } : {}),
@@ -60,8 +60,7 @@ function LabelsPage() {
   const labels = data?.labels ?? [];
 
   const show = useCallback(
-    (next: LabelsSearch, replace = false) =>
-      navigate({ to: "/settings/labels", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
+    (next: LabelsSearch, replace = false) => navigate({ to: "/admin/labels", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
     [navigate],
   );
   // Labels leave the list while it is open; a page past the end steps back.
@@ -73,8 +72,8 @@ function LabelsPage() {
     <Page width="narrow">
       <PageHeader
         crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
+          <Link to="/admin" className="hover:text-ink">
+            {t.shell.admin.crumb}
           </Link>
         }
         title={t.looks.labels.title}

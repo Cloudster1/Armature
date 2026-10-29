@@ -185,7 +185,7 @@ scenario("a project can hand the decision back to the default", async ({ page })
 
 scenario("a workflow that could not work is refused with a reason", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
-  await goto(page, "/settings/workflows");
+  await goto(page, "/admin/workflows");
   await clickButton(page, "New workflow");
   await page.waitForSelector("#field-name", { timeout: WAIT });
   await page.type("#field-name", "Nameless move");
@@ -211,7 +211,7 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   const drawn = uniqueName("Drawn");
   const key = await createProject(page, "Drawn up", { visit: false });
 
-  await goto(page, "/settings/workflows");
+  await goto(page, "/admin/workflows");
   await clickButton(page, "New workflow");
   await page.waitForSelector("#field-name", { timeout: WAIT });
   await page.type("#field-name", drawn);
@@ -242,7 +242,7 @@ scenario("a workflow drawn on the canvas comes back as it was left, rules includ
   await page.waitForSelector('[data-rule="postfunction.add_comment"]', { timeout: WAIT });
 
   await clickButton(page, "Create workflow");
-  await waitForPath(page, "/settings/workflows");
+  await waitForPath(page, "/admin/workflows");
 
   // Reopened, the picture is the one that was saved.
   await openWorkflowDesign(page, drawn);
@@ -311,7 +311,7 @@ scenario("a scheme a project uses is not offered for deletion and says which pro
   await clickButton(page, "Use this scheme");
   await page.waitForFunction(() => document.body.innerText.includes("This project uses its own scheme"), { timeout: WAIT });
 
-  await goto(page, `/settings/workflows/schemes?q=${encodeURIComponent(leanScheme)}`);
+  await goto(page, `/admin/workflows/schemes?q=${encodeURIComponent(leanScheme)}`);
   const card = `[data-scheme-card="${leanScheme}"]`;
   await page.waitForSelector(`${card} [data-scheme-move-first]`, { timeout: WAIT });
   expect.contains(await textOf(page, `${card} [data-scheme-move-first]`), `move ${key} to another scheme first`, "the card names the project to move");

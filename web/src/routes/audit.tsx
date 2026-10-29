@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createRoute } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { auditExportHref, useAuditLog, type AuditEntry, type AuditFilter } from "@/api/audit";
 import { Button, ButtonLink, EmptyState, ErrorBanner, Field, Page, PageHeader, Select, Table, Tag, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -11,8 +11,8 @@ import { t } from "@/i18n";
 
 /** Who did what, newest first, for the administrators. */
 export const auditRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/audit",
+  getParentRoute: () => adminRoute,
+  path: "/audit",
   component: AuditPage,
 });
 

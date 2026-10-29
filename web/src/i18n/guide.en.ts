@@ -35,7 +35,8 @@ export const guideEn = {
       sentence:
         "What you were told: work assigned to you, mentions, moves on issues you watch; the bell in the rail counts what is unread and opens the latest.",
     },
-    "page:settings": { title: "Settings", sentence: "Yours and everyone's: profile, tokens, access, workflows, labels." },
+    "page:settings": { title: "Settings", sentence: "Yours: profile, notification settings, themes and tokens." },
+    "page:admin": { title: "Admin", sentence: "Everyone's: installation, access, users, workflows, labels, fields, webhooks and the audit log." },
     "page:profile": {
       title: "Your profile",
       sentence: "Your name, your picture, your time zone and how dates are written for you; the avatar's menu at the foot of the rail opens it.",
@@ -75,7 +76,7 @@ export const guideEn = {
     },
     "action:design-workflow": {
       title: "Design a workflow",
-      sentence: "The designer draws statuses and transitions on a canvas; the Workflows page in Settings opens it.",
+      sentence: "The designer draws statuses and transitions on a canvas; the Workflows page in Admin opens it.",
     },
     "action:create-token": {
       title: "Create an access token",
@@ -137,11 +138,11 @@ export const guideEn = {
     },
     "action:audit": {
       title: "Who did what in Armature",
-      sentence: "The audit log in Settings lists roles granted, groups changed, projects made or archived, tokens and sign-ins, for a year.",
+      sentence: "The audit log in Admin lists roles granted, groups changed, projects made or archived, tokens and sign-ins, for a year.",
     },
     "action:org-field": {
       title: "A field every project has",
-      sentence: "Fields in Settings are on every project; a project's own field is promoted there from its Fields page and same-named fields fold into one.",
+      sentence: "Fields in Admin are on every project; a project's own field is promoted there from its Fields page and same-named fields fold into one.",
     },
     "action:status-update": {
       title: "Say how the project is doing",

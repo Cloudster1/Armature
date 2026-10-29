@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { useCreateHolidayCalendar, useDeleteHolidayCalendar, useHolidayCalendars, useUpdateHolidayCalendar, type HolidayCalendar } from "@/api/availability";
 import { Button, Card, Dialog, ErrorBanner, Field, IconButton, Menu, Page, PageHeader, Table, Tag, Td, Th, useToast } from "@/components/ui";
@@ -11,8 +11,8 @@ import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { t } from "@/i18n";
 
 export const holidaysRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/holidays",
+  getParentRoute: () => adminRoute,
+  path: "/holidays",
   component: HolidaysPage,
 });
 
@@ -50,8 +50,8 @@ function HolidaysPage() {
     <Page width="narrow">
       <PageHeader
         crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
+          <Link to="/admin" className="hover:text-ink">
+            {t.shell.admin.crumb}
           </Link>
         }
         title={t.schedule.holidays.title}

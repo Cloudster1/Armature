@@ -69,6 +69,8 @@ const SAME_IN_BOTH = new Set([
   // A pattern with only its arguments in it, such as "month year".
   "X Y",
   "X / Y",
+  "Admin",
+  "Admin / X",
   "X · Y",
 ]);
 

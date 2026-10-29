@@ -278,7 +278,7 @@ one named helper so each scenario moves by a line.
   `[data-action="audit-older"]` the next page.
 - Fields carry `[data-field-scope=org|project]`; `[data-action="promote-field"]`
   on a project field asks the confirm dialog and makes it every project's.
-  The list of those is at `/settings/fields` with the same form.
+  The list of those is at `/admin/fields` with the same form.
 - `calendarDaysOf(page, key)` reads which `[data-day=<YYYY-MM-DD>]` cells hold
   `[data-calendar-item=<key>]` (kind in `[data-calendar-kind]`);
   `dragCalendarItem(page, key, fromDay, toDay)` drags the bar by pointer from
@@ -356,7 +356,7 @@ one named helper so each scenario moves by a line.
   `sign-out` is in the sidebar's foot while open and in the rail's avatar
   menu while folded. `[data-workflow-card=<name>] [data-action="edit"]` opens
   the designer (`openWorkflowDesign`); `createScheme` goes to
-  `/settings/workflows/schemes`; `deleteScheme(page, name)` presses
+  `/admin/workflows/schemes`; `deleteScheme(page, name)` presses
   `[data-scheme-card=<name>] [data-action="delete"]` and confirms.
 - `#issue-description` and `#new-comment` name the editable element in
   whichever face the editor shows: the contenteditable div in rich mode, the

@@ -6,7 +6,7 @@ import type { Status } from "@/api/issues";
 import type { Assignment, Origin, Scheme, WorkflowDetail } from "@/api/workflows";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: ReactNode }) => <a href="/settings/workflows">{children}</a>,
+  Link: ({ children }: { children: ReactNode }) => <a href="/admin/workflows">{children}</a>,
 }));
 
 const setProjectScheme = vi.fn();

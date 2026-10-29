@@ -6,9 +6,9 @@ the routes are what the router says. Widths: `narrow` for forms and settings,
 
 Pages with no wireframe here, because the redesign left them as they were:
 `/hierarchy`, `/teams`, `/sprints`, `/sprints/$sprintId/board`, `/queues`,
-`/repositories`, a project's `/fields`, `/settings/labels`, `/settings/access`,
+`/repositories`, a project's `/fields`, `/admin/labels`, `/admin/access`,
 `/unwatch`, `/login` and `/signup`, and the workflow designer's own routes
-under `/settings/workflows`.
+under `/admin/workflows`.
 
 ## Home (content)
 
@@ -91,9 +91,9 @@ Workflows
 +------------------------------------------------------------------+
 ```
 
-`/settings/workflows` is a layout with three tabs (`[data-workflow-tab=
-"Workflows"|"Statuses"|"Schemes"]`) over `/settings/workflows`,
-`/settings/workflows/statuses` and `/settings/workflows/schemes`. Every row
+`/admin/workflows` is a layout with three tabs (`[data-workflow-tab=
+"Workflows"|"Statuses"|"Schemes"]`) over `/admin/workflows`,
+`/admin/workflows/statuses` and `/admin/workflows/schemes`. Every row
 is an elevated Card. A workflow (`[data-workflow-card=<name>]`): name, the
 In the default Tag when the default scheme uses it, "Used by ...", its
 description, Stats for statuses (a share of all of them), transitions and schemes, and icon actions
@@ -501,7 +501,7 @@ three parts, When (`#field-trigger` and the trigger's own fields), If
 `data-rule-action`, at least one), plus the hourly cap and whether the rule
 runs on the automation's own changes. An incoming rule shows its address
 (`data-incoming-address`) once it exists. The same panel serves
-`/settings/automation` for the rules that watch every project.
+`/admin/automation` for the rules that watch every project.
 
 Webhooks: a table of endpoints (`data-webhook=<name>`) with a menu for
 Deliveries (drawer `data-webhook-log`, rows `data-delivery=<topic>` with

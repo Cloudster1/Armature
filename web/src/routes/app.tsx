@@ -187,7 +187,7 @@ function PortalShell() {
   const principal = data?.principal;
   // The agents' pages send a customer to the portal. Anything else, such as
   // the sign-in page a logout is heading for, is left alone.
-  const agentPage = pathname === "/" || ["/projects", "/issues", "/settings"].some((p) => pathname.startsWith(p));
+  const agentPage = pathname === "/" || ["/projects", "/issues", "/settings", "/admin"].some((p) => pathname.startsWith(p));
   if (agentPage) return <Navigate to="/portal" />;
   // Taking a file back asks first, the same dialog the agents get.
   return (

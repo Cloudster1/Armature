@@ -250,9 +250,9 @@ scenario("at a phone's width no main page scrolls sideways, a summary keeps its 
       "/inbox",
       "/settings",
       "/settings/profile",
-      "/settings/access",
+      "/admin/access",
       "/settings/tokens",
-      "/settings/users",
+      "/admin/users",
     ]) {
       await goto(page, path);
       await page.waitForSelector("main#main [data-shell-content] > *", { timeout: WAIT });
@@ -260,7 +260,7 @@ scenario("at a phone's width no main page scrolls sideways, a summary keeps its 
     }
 
     // The access page's five tabs scroll in their own row.
-    await goto(page, "/settings/access");
+    await goto(page, "/admin/access");
     await page.waitForSelector('[role="tablist"]', { timeout: WAIT });
     const tabs = await page.$eval('[role="tablist"]', (list) => ({ scrolls: list.scrollWidth > list.clientWidth, style: getComputedStyle(list).overflowX }));
     expect.equal(tabs.style, "auto", "the tabs scroll in their own row");

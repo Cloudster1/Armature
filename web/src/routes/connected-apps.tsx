@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { ApiError } from "@/api/client";
 import {
   useApproveConnectedApp,
@@ -20,8 +20,8 @@ import { t } from "@/i18n";
 
 /** The partner tools that may ask people for a token, which administrators decide. */
 export const connectedAppsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/connected-apps",
+  getParentRoute: () => adminRoute,
+  path: "/connected-apps",
   component: ConnectedAppsPage,
 });
 
@@ -51,8 +51,8 @@ function ConnectedAppsPage() {
     <Page width="content">
       <PageHeader
         crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
+          <Link to="/admin" className="hover:text-ink">
+            {t.shell.admin.crumb}
           </Link>
         }
         title={t.access.apps.title}

@@ -78,7 +78,7 @@ serialScenario("a status coined in the designer is drawn at once and the board g
     expect.truthy(inReview.includes(issueKey), `the card sits in the new lane: ${inReview.join(", ")}`);
 
     // And every other workflow can be built from it from now on.
-    await goto(page, "/settings/workflows");
+    await goto(page, "/admin/workflows");
     await clickButton(page, "New workflow");
     await page.waitForSelector("#field-add-status", { timeout: WAIT });
     const offered = await page.$$eval("#field-add-status option", (els) => els.map((el) => el.textContent.trim()));

@@ -160,8 +160,14 @@ const pages: GuideEntry[] = [
   }),
   entry({
     id: "page:settings",
-    keywords: ["setting", "preference", "configure", "admin"],
+    keywords: ["setting", "preference", "configure"],
     to: () => ({ to: "/settings" }),
+  }),
+  entry({
+    id: "page:admin",
+    keywords: ["admin", "administration", "administrator", "installation", "everyone", "configure"],
+    needs: "admin",
+    to: () => ({ to: "/admin" }),
   }),
   entry({
     id: "page:profile",
@@ -177,42 +183,42 @@ const pages: GuideEntry[] = [
   entry({
     id: "page:installation",
     keywords: ["installation", "name", "rename", "title", "instance", "site"],
-    to: () => ({ to: "/settings/installation" }),
+    to: () => ({ to: "/admin/installation" }),
   }),
   entry({
     id: "page:access",
     keywords: ["access", "role", "permission", "group", "invite", "invitation", "member", "user", "sso", "oidc", "keycloak", "login", "right", "administrator"],
     needs: "admin",
-    to: () => ({ to: "/settings/access" }),
+    to: () => ({ to: "/admin/access" }),
   }),
   entry({
     id: "page:org-workflows",
     keywords: ["workflow", "scheme", "status", "transition", "design", "designer", "canvas", "all projects"],
     needs: "admin",
-    to: () => ({ to: "/settings/workflows" }),
+    to: () => ({ to: "/admin/workflows" }),
   }),
   entry({
     id: "page:org-automation",
     keywords: ["automation", "rule", "automate", "trigger", "when", "then", "all projects"],
     needs: "admin",
-    to: () => ({ to: "/settings/automation" }),
+    to: () => ({ to: "/admin/automation" }),
   }),
   entry({
     id: "page:webhooks",
     keywords: ["webhook", "hook", "post", "endpoint", "slack", "teams", "chat", "integration", "event", "signature", "secret", "delivery"],
     needs: "admin",
     target: "new-webhook",
-    to: () => ({ to: "/settings/webhooks" }),
+    to: () => ({ to: "/admin/webhooks" }),
   }),
   entry({
     id: "page:holidays",
     keywords: ["holiday", "holidays", "calendar", "day off", "vacation", "public", "bank", "ics", "working week", "hours", "part-time"],
-    to: () => ({ to: "/settings/holidays" }),
+    to: () => ({ to: "/admin/holidays" }),
   }),
   entry({
     id: "page:labels",
     keywords: ["label", "tag", "word"],
-    to: () => ({ to: "/settings/labels" }),
+    to: () => ({ to: "/admin/labels" }),
   }),
 ];
 
@@ -269,7 +275,7 @@ const actions: GuideEntry[] = [
     id: "action:design-workflow",
     keywords: ["design", "draw", "workflow", "status", "transition", "canvas", "new", "create", "edit"],
     needs: "admin",
-    to: () => ({ to: "/settings/workflows/new" }),
+    to: () => ({ to: "/admin/workflows/new" }),
   }),
   entry({
     id: "action:create-token",
@@ -406,13 +412,13 @@ const actions: GuideEntry[] = [
     id: "action:audit",
     keywords: ["audit", "log", "history", "who", "granted", "changed", "security", "compliance", "trail", "record"],
     needs: "admin",
-    to: () => ({ to: "/settings/audit" }),
+    to: () => ({ to: "/admin/audit" }),
   }),
   entry({
     id: "action:org-field",
     keywords: ["org field", "global field", "shared field", "every project", "promote", "all projects"],
     needs: "admin",
-    to: () => ({ to: "/settings/fields" }),
+    to: () => ({ to: "/admin/fields" }),
   }),
   entry({
     id: "action:status-update",
@@ -432,13 +438,13 @@ const actions: GuideEntry[] = [
     keywords: ["demo", "example", "sample", "try", "show", "showcase", "data", "factory", "seed"],
     needs: "admin",
     target: "add-demo-project",
-    to: () => ({ to: "/settings/installation" }),
+    to: () => ({ to: "/admin/installation" }),
   }),
   entry({
     id: "action:invite",
     keywords: ["invite", "invitation", "add", "people", "user", "member", "colleague", "join"],
     needs: "admin",
-    to: () => ({ to: "/settings/access" }),
+    to: () => ({ to: "/admin/access" }),
   }),
   entry({
     id: "action:query-help",

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Link, createRoute, useNavigate } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { EmptyState, Page, PageHeader, isPageOffset } from "@/components/ui";
 import { JoinRequests } from "@/features/users/JoinRequests";
@@ -10,8 +10,8 @@ import { t } from "@/i18n";
 
 /** The search and the page are in the address, so a link reopens the same list. */
 export const usersRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/users",
+  getParentRoute: () => adminRoute,
+  path: "/users",
   validateSearch: (search: Record<string, unknown>): UsersShown => ({
     // A search of digits alone comes back from the address as a number.
     ...(typeof search.q === "number" ? { q: String(search.q) } : typeof search.q === "string" && search.q !== "" ? { q: search.q } : {}),
@@ -27,7 +27,7 @@ function UsersPage() {
   const { q, offset } = usersRoute.useSearch();
   const navigate = useNavigate();
   const show = useCallback(
-    (next: UsersShown, replace = false) => navigate({ to: "/settings/users", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
+    (next: UsersShown, replace = false) => navigate({ to: "/admin/users", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
     [navigate],
   );
 
@@ -35,8 +35,8 @@ function UsersPage() {
     <Page width="narrow">
       <PageHeader
         crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
+          <Link to="/admin" className="hover:text-ink">
+            {t.shell.admin.crumb}
           </Link>
         }
         title={t.access.users.title}

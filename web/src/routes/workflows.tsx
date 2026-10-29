@@ -1,7 +1,7 @@
 import { useCallback, useId } from "react";
 import { useAccess } from "@/api/access";
 import { Link, Outlet, createRoute, useLocation, useNavigate } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { Page, PageHeader, TabPanel, Tabs, isPageOffset } from "@/components/ui";
 import { SchemeCards } from "@/features/workflows/library/SchemeCards";
 import { StatusCards } from "@/features/workflows/library/StatusCards";
@@ -14,8 +14,8 @@ import { t } from "@/i18n";
  * one head. The workflows come first because they are what the page is for.
  */
 export const workflowsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/workflows",
+  getParentRoute: () => adminRoute,
+  path: "/workflows",
   component: WorkflowLibrary,
 });
 
@@ -61,9 +61,9 @@ type TabId = "workflows" | "statuses" | "schemes";
 
 // hook names a tab for the tests in every language; its label is read when the page draws.
 const tabs: Array<{ value: TabId; hook: string; to: string }> = [
-  { value: "workflows", hook: "Workflows", to: "/settings/workflows" },
-  { value: "statuses", hook: "Statuses", to: "/settings/workflows/statuses" },
-  { value: "schemes", hook: "Schemes", to: "/settings/workflows/schemes" },
+  { value: "workflows", hook: "Workflows", to: "/admin/workflows" },
+  { value: "statuses", hook: "Statuses", to: "/admin/workflows/statuses" },
+  { value: "schemes", hook: "Schemes", to: "/admin/workflows/schemes" },
 ];
 
 // What the Access page granted decides, not the seat somebody holds in the
@@ -82,8 +82,8 @@ function WorkflowLibrary() {
     <Page width="content">
       <PageHeader
         crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
+          <Link to="/admin" className="hover:text-ink">
+            {t.shell.admin.crumb}
           </Link>
         }
         title={t.workflows.library.title}
@@ -111,7 +111,7 @@ function WorkflowsTab() {
   const show = useCallback(
     (next: LibrarySearch, replace = false) =>
       navigate({
-        to: "/settings/workflows",
+        to: "/admin/workflows",
         search: { q: next.q || undefined, offset: next.offset || undefined, workflow: replace ? focused : undefined },
         replace,
       }),
@@ -129,7 +129,7 @@ function SchemesTab() {
   const navigate = useNavigate();
   const show = useCallback(
     (next: LibrarySearch, replace = false) =>
-      navigate({ to: "/settings/workflows/schemes", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
+      navigate({ to: "/admin/workflows/schemes", search: { q: next.q || undefined, offset: next.offset || undefined }, replace }),
     [navigate],
   );
   return <SchemeCards q={q} offset={offset} onShow={show} canConfigure={useCanConfigure()} />;

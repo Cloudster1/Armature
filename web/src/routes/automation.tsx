@@ -1,6 +1,6 @@
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { useProject } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
 import { useMe } from "@/api/auth";
@@ -17,8 +17,8 @@ export const automationRoute = createRoute({
 
 /** The organization's rules, which watch every project. */
 export const orgAutomationRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/automation",
+  getParentRoute: () => adminRoute,
+  path: "/automation",
   component: OrgAutomationPage,
 });
 
@@ -49,8 +49,8 @@ function OrgAutomationPage() {
     <Page width="content">
       <PageHeader
         crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
+          <Link to="/admin" className="hover:text-ink">
+            {t.shell.admin.crumb}
           </Link>
         }
         title={t.projectSetup.automation.title}

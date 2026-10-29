@@ -75,6 +75,7 @@ export function ProjectWorkflows({ projectKey }: { projectKey: string }) {
                 shown={assignment.issueTypeId === shown?.issueTypeId}
                 onShow={() => setPicked(assignment.issueTypeId)}
                 canDecide={canMap}
+                canOpenLibrary={canConfigure}
                 onDecide={(workflowId) => assign.mutate({ projectKey, issueTypeId: assignment.issueTypeId, workflowId })}
                 deciding={assign.isPending}
               />
@@ -96,6 +97,7 @@ function AssignmentRow({
   shown,
   onShow,
   canDecide,
+  canOpenLibrary,
   onDecide,
   deciding,
 }: {
@@ -104,6 +106,8 @@ function AssignmentRow({
   onShow: () => void;
   /** Whether the reader may choose the row's workflow rather than only look. */
   canDecide: boolean;
+  /** Whether the reader administers the installation, whose workflow library the name leads to. */
+  canOpenLibrary: boolean;
   onDecide: (workflowId: string | null) => void;
   deciding: boolean;
 }) {
@@ -127,9 +131,13 @@ function AssignmentRow({
     >
       <td className="px-4 py-2.5 font-medium text-ink">{assignment.issueTypeName}</td>
       <td className="px-4 py-2.5">
-        <Link to="/settings/workflows" search={{ workflow: assignment.workflowId, q: assignment.workflowName }} className="text-ink hover:text-accent">
-          {assignment.workflowName}
-        </Link>
+        {canOpenLibrary ? (
+          <Link to="/admin/workflows" search={{ workflow: assignment.workflowId, q: assignment.workflowName }} className="text-ink hover:text-accent">
+            {assignment.workflowName}
+          </Link>
+        ) : (
+          <span className="text-ink">{assignment.workflowName}</span>
+        )}
       </td>
       <td className="px-4 py-2.5">
         <ScopeBadge origin={assignment.origin} />
@@ -189,7 +197,7 @@ function SchemeChoice({
       {canConfigure && schemeCount && others <= 0 && !own && (
         <p className="mt-2 text-sm text-ink-subtle">
           {t.workflows.project.noOtherBefore}{" "}
-          <Link to="/settings/workflows" search={{ workflow: undefined }} className="underline underline-offset-2 hover:text-ink">
+          <Link to="/admin/workflows" search={{ workflow: undefined }} className="underline underline-offset-2 hover:text-ink">
             {t.workflows.project.noOtherLink}
           </Link>
           {t.workflows.project.noOtherAfter}
@@ -219,7 +227,7 @@ function SchemeChoice({
               {t.workflows.project.followDefault}
             </Button>
           )}
-          <Link to="/settings/workflows" search={{ workflow: undefined }} className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline">
+          <Link to="/admin/workflows" search={{ workflow: undefined }} className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline">
             {t.workflows.project.manage}
           </Link>
         </div>

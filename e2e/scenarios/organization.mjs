@@ -50,7 +50,7 @@ scenario("the audit log says who granted a role", async ({ page }) => {
   // The grant reached the log through the worker, naming who granted it; the
   // token was written by the act itself. Everybody's acts share the log, so
   // the rows are found by who did them.
-  await goto(page, "/settings/audit");
+  await goto(page, "/admin/audit");
   await eventually(page, '[data-audit-row="role.granted"]');
   let grants = [];
   for (const until = Date.now() + WAIT; Date.now() < until; ) {
@@ -148,7 +148,7 @@ serialScenario("a field defined for all projects is on every project", async ({ 
   const region = uniqueName("Region");
 
   try {
-    await goto(page, "/settings/fields");
+    await goto(page, "/admin/fields");
     await clickButton(page, "New field");
     await fill(page, "Field name", costCentre);
     await selectByLabel(page, "#field-kind", "Text");

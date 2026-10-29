@@ -45,7 +45,8 @@ import { sprintsRoute } from "./sprints";
 import { milestonesRoute } from "./milestones";
 import { teamsRoute } from "./teams";
 import { accessRoute } from "./access";
-import { installationRoute, organizationSettingsRoute } from "./installation";
+import { installationRoute } from "./installation";
+import { adminIndexRoute, adminRoute, settingsMovedDeepRoute, settingsMovedRoute } from "./admin";
 import { repositoriesRoute } from "./repositories";
 import { fieldsRoute } from "./fields";
 import { issueArrangementRoute } from "./issue-arrangement";
@@ -108,26 +109,30 @@ const routeTree = rootRoute.addChildren([
     issueDetailRoute,
     accessRequestRoute,
     settingsRoute,
+    adminRoute.addChildren([
+      adminIndexRoute,
+      installationRoute,
+      accessRoute,
+      usersRoute,
+      holidaysRoute,
+      workflowsRoute.addChildren([workflowsIndexRoute, workflowStatusesRoute, workflowSchemesRoute]),
+      workflowNewRoute,
+      workflowDesignRoute,
+      labelsRoute,
+      orgAutomationRoute,
+      orgFieldsRoute,
+      orgIssueArrangementRoute,
+      connectedAppsRoute,
+      webhooksRoute,
+      auditRoute,
+    ]),
+    settingsMovedRoute,
+    settingsMovedDeepRoute,
     profileRoute,
     inboxRoute,
     filtersRoute,
     savedFilterRoute,
-    orgAutomationRoute,
-    webhooksRoute,
-    connectedAppsRoute,
-    auditRoute,
-    orgFieldsRoute,
-    orgIssueArrangementRoute,
     tokensRoute,
-    workflowsRoute.addChildren([workflowsIndexRoute, workflowStatusesRoute, workflowSchemesRoute]),
-    workflowNewRoute,
-    workflowDesignRoute,
-    accessRoute,
-    installationRoute,
-    organizationSettingsRoute,
-    labelsRoute,
-    holidaysRoute,
-    usersRoute,
     themesRoute,
     themeNewRoute,
     themeEditRoute,

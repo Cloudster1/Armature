@@ -59,14 +59,14 @@ describe("the labels page", () => {
     page.search = { q: "end" };
     render(<LabelsPage />);
     await userEvent.click(screen.getByRole("button", { name: "Next page" }));
-    expect(navigate).toHaveBeenLastCalledWith({ to: "/settings/labels", search: { q: "end", offset: 50 }, replace: false });
+    expect(navigate).toHaveBeenLastCalledWith({ to: "/admin/labels", search: { q: "end", offset: 50 }, replace: false });
   });
 
   it("writes the search into the address once typing pauses, back at the first page", async () => {
     page.search = { offset: 50 };
     render(<LabelsPage />);
     await userEvent.type(screen.getByLabelText("Find labels"), "urg");
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/settings/labels", search: { q: "urg", offset: undefined }, replace: false }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/admin/labels", search: { q: "urg", offset: undefined }, replace: false }));
     expect(navigate).toHaveBeenCalledTimes(1);
   });
 

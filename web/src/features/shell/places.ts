@@ -3,7 +3,7 @@ import { t } from "@/i18n";
 
 /**
  * A page the shell leads to. The sidebar, the avatar menu, the settings area,
- * its hub and the palette all read these lists, so they cannot disagree.
+ * its hub, the Admin page and the palette all read these lists, so they cannot disagree.
  */
 export interface Place {
   to: string;
@@ -118,10 +118,32 @@ export const personalPlaces: Place[] = [
   },
 ];
 
-/** The installation's settings, for its administrators only, in the order the settings area lists them. */
-export const settingsPlaces: Place[] = [
+/** The Admin page's groups, in the order it lists them. */
+export const ADMIN_SECTIONS = ["people", "work", "integrations", "records"] as const;
+export type AdminSection = (typeof ADMIN_SECTIONS)[number];
+
+/** A place on the Admin page, which files it under one of its sections. */
+export interface AdminPlace extends Place {
+  section: AdminSection;
+}
+
+/** Where the Admin page begins; every page under it is the installation's, for its administrators. */
+export const ADMIN_PATH = "/admin";
+
+/** The one Admin entry the work sidebar and the account menu give an administrator. */
+export const adminEntry: Place = {
+  to: ADMIN_PATH,
+  get label() {
+    return t.shell.admin.title;
+  },
+  icon: "Settings",
+};
+
+/** What the installation's administrators set, by section, in the order the Admin page lists them. */
+export const adminPlaces: AdminPlace[] = [
   {
-    to: "/settings/installation",
+    to: "/admin/installation",
+    section: "people",
     get label() {
       return t.shell.places.installation;
     },
@@ -131,7 +153,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/access",
+    to: "/admin/access",
+    section: "people",
     get label() {
       return t.shell.places.access;
     },
@@ -141,7 +164,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/users",
+    to: "/admin/users",
+    section: "people",
     get label() {
       return t.shell.places.users;
     },
@@ -151,7 +175,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/holidays",
+    to: "/admin/holidays",
+    section: "work",
     get label() {
       return t.shell.places.holidays;
     },
@@ -161,7 +186,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/workflows",
+    to: "/admin/workflows",
+    section: "work",
     get label() {
       return t.shell.places.workflows;
     },
@@ -171,7 +197,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/labels",
+    to: "/admin/labels",
+    section: "work",
     get label() {
       return t.shell.places.labels;
     },
@@ -181,7 +208,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/automation",
+    to: "/admin/automation",
+    section: "work",
     get label() {
       return t.shell.places.automation;
     },
@@ -191,7 +219,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/fields",
+    to: "/admin/fields",
+    section: "work",
     get label() {
       return t.shell.places.fields;
     },
@@ -201,7 +230,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/issue-view",
+    to: "/admin/issue-view",
+    section: "work",
     get label() {
       return t.shell.places.issueView;
     },
@@ -211,7 +241,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/connected-apps",
+    to: "/admin/connected-apps",
+    section: "integrations",
     get label() {
       return t.shell.places.connectedApps;
     },
@@ -221,7 +252,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/webhooks",
+    to: "/admin/webhooks",
+    section: "integrations",
     get label() {
       return t.shell.places.webhooks;
     },
@@ -231,7 +263,8 @@ export const settingsPlaces: Place[] = [
     },
   },
   {
-    to: "/settings/audit",
+    to: "/admin/audit",
+    section: "records",
     get label() {
       return t.shell.places.audit;
     },
@@ -242,12 +275,12 @@ export const settingsPlaces: Place[] = [
   },
 ];
 
-/** The settings a person may open: all of them for an administrator, none for anybody else. */
-export function settingsFor(canAdministerOrg: boolean): Place[] {
-  return canAdministerOrg ? settingsPlaces : [];
+/** The admin places a person may open: all of them for an administrator, none for anybody else. */
+export function adminFor(canAdministerOrg: boolean): AdminPlace[] {
+  return canAdministerOrg ? adminPlaces : [];
 }
 
-/** Whether a path lies in the settings area, which swaps the sidebar for its own. */
+/** Whether a path lies in the settings area (the person's own pages), which swaps the sidebar for its own. */
 export function inSettingsArea(pathname: string): boolean {
   return pathname === SETTINGS_PATH || pathname.startsWith(`${SETTINGS_PATH}/`);
 }

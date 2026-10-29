@@ -48,7 +48,7 @@ export function WorkflowCards({ focused, q, offset, onShow, canConfigure }: Work
           {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, workflows.length, t.kit.counted.workflow)}</span>}
         </div>
         {canConfigure && (
-          <Button size="sm" variant="secondary" onClick={() => navigate({ to: "/settings/workflows/new" })}>
+          <Button size="sm" variant="secondary" onClick={() => navigate({ to: "/admin/workflows/new" })}>
             {t.workflows.library.newWorkflow}
           </Button>
         )}
@@ -118,7 +118,7 @@ function WorkflowCard({
               size="sm"
               variant="ghost"
               data-action="edit"
-              onClick={() => navigate({ to: "/settings/workflows/$workflowId/design", params: { workflowId: workflow.id } })}
+              onClick={() => navigate({ to: "/admin/workflows/$workflowId/design", params: { workflowId: workflow.id } })}
             />
             <IconButton
               icon={<Icon.Copy />}
