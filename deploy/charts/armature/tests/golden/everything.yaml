@@ -5,10 +5,10 @@ kind: ServiceAccount
 metadata:
   name: armature
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
   annotations:
@@ -20,10 +20,10 @@ kind: Secret
 metadata:
   name: armature-secrets
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
   annotations:
@@ -40,10 +40,10 @@ kind: ConfigMap
 metadata:
   name: armature-env
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
   annotations:
@@ -117,10 +117,10 @@ kind: ConfigMap
 metadata:
   name: armature-nginx
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
 data:
@@ -179,10 +179,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: armature-attachments
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: attachments
@@ -204,10 +204,10 @@ kind: Service
 metadata:
   name: armature-api
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: api
@@ -233,10 +233,10 @@ kind: Service
 metadata:
   name: armature-render
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: render
@@ -257,10 +257,10 @@ kind: Service
 metadata:
   name: armature-web
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: web
@@ -283,10 +283,10 @@ kind: Service
 metadata:
   name: armature-worker
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: worker
@@ -307,10 +307,10 @@ kind: Deployment
 metadata:
   name: armature-api
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: api
@@ -331,7 +331,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: bbe8a42db22311a91af04c7bc8bc55149eaa09830ae05c2151d3abb547203d18
+        checksum/env: e7e9a3860f55be2ef430d02f995bc511d07a44795687c48bdbe0849451922bcd
     spec:
       serviceAccountName: armature
       securityContext:
@@ -346,7 +346,7 @@ spec:
       terminationGracePeriodSeconds: 40
       containers:
         - name: api
-          image: ghcr.io/cloudster1/armature-api:0.2.0
+          image: ghcr.io/cloudster1/armature-api:0.3.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -439,10 +439,10 @@ kind: Deployment
 metadata:
   name: armature-render
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: render
@@ -467,7 +467,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: render
-          image: ghcr.io/cloudster1/armature-render:0.2.0
+          image: ghcr.io/cloudster1/armature-render:0.3.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -514,10 +514,10 @@ kind: Deployment
 metadata:
   name: armature-web
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: web
@@ -535,7 +535,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: web
       annotations:
-        checksum/nginx: ec6fb57dc0fb1a843076f69aadafa5d9fe16eb0495db921216ea05e446f1db25
+        checksum/nginx: 82bf8b0e46c4eb2c16d3bd0e53cf3950ea7c881535e3fc631f9d705d1a390664
     spec:
       serviceAccountName: armature
       # The image is stock nginx, whose master would normally start as root.
@@ -550,7 +550,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: web
-          image: ghcr.io/cloudster1/armature-web:0.2.0
+          image: ghcr.io/cloudster1/armature-web:0.3.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -602,10 +602,10 @@ kind: Deployment
 metadata:
   name: armature-worker
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: worker
@@ -627,7 +627,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: bbe8a42db22311a91af04c7bc8bc55149eaa09830ae05c2151d3abb547203d18
+        checksum/env: e7e9a3860f55be2ef430d02f995bc511d07a44795687c48bdbe0849451922bcd
     spec:
       serviceAccountName: armature
       securityContext:
@@ -641,7 +641,7 @@ spec:
       terminationGracePeriodSeconds: 20
       containers:
         - name: worker
-          image: ghcr.io/cloudster1/armature-worker:0.2.0
+          image: ghcr.io/cloudster1/armature-worker:0.3.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -722,10 +722,10 @@ kind: Ingress
 metadata:
   name: armature
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
 spec:
@@ -773,10 +773,10 @@ kind: ServiceMonitor
 metadata:
   name: armature
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
 spec:
@@ -798,10 +798,10 @@ kind: ServiceAccount
 metadata:
   name: armature-secrets-generator
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
   annotations:
@@ -818,10 +818,10 @@ kind: Role
 metadata:
   name: armature-secrets-generator
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
   annotations:
@@ -853,10 +853,10 @@ kind: RoleBinding
 metadata:
   name: armature-secrets-generator
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
   annotations:
@@ -881,10 +881,10 @@ kind: Job
 metadata:
   name: armature-bootstrap
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: bootstrap
@@ -918,7 +918,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: bootstrap
-          image: ghcr.io/cloudster1/armature-seed:0.2.0
+          image: ghcr.io/cloudster1/armature-seed:0.3.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -990,10 +990,10 @@ kind: Job
 metadata:
   name: armature-migrate
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: migrate
@@ -1027,7 +1027,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrate
-          image: ghcr.io/cloudster1/armature-migrate:0.2.0
+          image: ghcr.io/cloudster1/armature-migrate:0.3.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -1083,10 +1083,10 @@ kind: Job
 metadata:
   name: armature-roles
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: roles
@@ -1208,10 +1208,10 @@ kind: Job
 metadata:
   name: armature-secrets-generator
   labels:
-    helm.sh/chart: armature-0.2.0
+    helm.sh/chart: armature-0.3.0
     app.kubernetes.io/name: armature
     app.kubernetes.io/instance: armature
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.3.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: armature
     app.kubernetes.io/component: secrets

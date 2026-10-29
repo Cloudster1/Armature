@@ -7,6 +7,8 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+## 0.3.0 - 2026-10-29
+
 - Changed: the kit follows the suite's (#473). It gains Exciter's `Radio`
   and `WordButton` and Stator's `ref` on `Button` and `Field`. A menu's
   groups are read out as groups, and an item picked from a set is marked
