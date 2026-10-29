@@ -5,7 +5,6 @@ const anzahl = (count: number, one: string, many: string) => `${count} ${count =
 /** Die Texte der Planung: Zeitleiste, Werkzeugleiste, automatische Planung und Graph. */
 export const planDe: typeof planEn = {
   title: "Plan",
-  loading: "Der Plan wird geladen...",
   views: {
     management: "Zeitleiste",
     managementHint: "Jeder Vorgang in seiner Hierarchie, mit den Meilensteinen und den Zahlen.",

@@ -6,7 +6,6 @@ export const doorsEn = {
     yourName: "Your name",
     signIn: "Sign in",
     signOut: "Sign out",
-    loading: "Loading...",
     backToSignIn: "Back to sign in",
     linkIncomplete: "This link is incomplete",
     somethingWrong: "Something went wrong. Please try again.",
@@ -150,7 +149,9 @@ export const doorsEn = {
   },
   notFound: {
     title: "Page not found",
-    body: "The page you asked for does not exist.",
+    emptyTitle: "There is nothing at this address",
+    body: "The page you asked for does not exist. Check the address, or go home and find it from there.",
+    home: "Go home",
   },
   profile: {
     weekTitle: "Working week",

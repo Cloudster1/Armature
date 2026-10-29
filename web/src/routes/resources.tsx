@@ -38,15 +38,7 @@ function ResourcesPage() {
 
   return (
     <Page width="wide">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.schedule.resources.title}
-        meta={t.schedule.resources.meta}
-      />
+      <PageHeader title={t.schedule.resources.title} meta={t.schedule.resources.meta} />
       {project && (
         <ResourceToolbar
           method={project.planningMethod}

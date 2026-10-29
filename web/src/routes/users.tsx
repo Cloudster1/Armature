@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { EmptyState, Page, PageHeader, isPageOffset } from "@/components/ui";
@@ -33,15 +33,7 @@ function UsersPage() {
 
   return (
     <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
-        title={t.access.users.title}
-        meta={t.access.users.meta}
-      />
+      <PageHeader title={t.access.users.title} meta={t.access.users.meta} />
       {!access ? null : !canAdminister ? (
         <EmptyState title={t.access.users.adminsOnly} description={t.access.users.adminsOnlyDetail} />
       ) : (

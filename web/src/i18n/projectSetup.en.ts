@@ -120,7 +120,6 @@ export const projectSetupEn = {
     without: (features: string) => ` · no ${features}`,
     madeHere: "Made here",
     types: (names: string) => ` · ${names}`,
-    loading: "Loading templates...",
     label: "Template",
   },
   automation: {

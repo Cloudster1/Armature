@@ -90,6 +90,7 @@ export const Icon = {
   More: makeIcon("more", ["M3.5 8h.01", "M8 8h.01", "M12.5 8h.01"]),
   Edit: makeIcon("edit", ["m10.5 2.5 3 3-8 8h-3v-3z", "m9 4 3 3"]),
   Trash: makeIcon("trash", ["M2.5 4.5h11", "M5.5 4.5V3h5v1.5", "M4 4.5 4.7 13h6.6l.7-8.5", "M7 7.5v3.5", "M9 7.5v3.5"]),
+  Folder: makeIcon("folder", ["M2 4.5A1.5 1.5 0 0 1 3.5 3h2.6l1.5 1.5h4.9A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"]),
   Archive: makeIcon("archive", ["M2.5 3h11v3h-11z", "M3.5 6v7.5h9V6", "M6.5 9h3"]),
   Link: makeIcon("link", ["M6.5 9.5 9.5 6.5", "M7 4.5l1.3-1.3a2.8 2.8 0 0 1 4 4L11 8.5", "M9 11.5l-1.3 1.3a2.8 2.8 0 0 1-4-4L5 7.5"]),
   Unlink: makeIcon("unlink", ["M7 4.5l1.3-1.3a2.8 2.8 0 0 1 4 4L11 8.5", "M9 11.5l-1.3 1.3a2.8 2.8 0 0 1-4-4L5 7.5", "m3 3 10 10"]),

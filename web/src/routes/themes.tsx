@@ -68,11 +68,6 @@ function ThemesPage() {
   return (
     <Page width="narrow">
       <PageHeader
-        crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {words.settings.crumb}
-          </Link>
-        }
         title={words.looks.themes.title}
         meta={meta}
         actions={

@@ -1,5 +1,5 @@
 import { useDashboardTemplates, useDeleteTemplate, type DashboardTemplate } from "@/api/reports";
-import { Button, OptionCard } from "@/components/ui";
+import { Button, OptionCard, Skeleton } from "@/components/ui";
 import { TEMPLATE_SHAPE_MAX_KINDS } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { t } from "@/i18n";
@@ -34,7 +34,7 @@ export function DashboardTemplateChooser({
   const remove = useDeleteTemplate();
   const confirm = useConfirm();
   const templates = data?.templates ?? [];
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.dashboard.templates.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
 
   return (
     <fieldset className="space-y-1.5">

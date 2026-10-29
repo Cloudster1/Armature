@@ -11,7 +11,23 @@ import {
   type Assignment,
   type Role,
 } from "@/api/access";
-import { Button, Card, clampOffset, cx, EmptyState, ErrorBanner, ListSearch, Pager, Select, SelectInput, shownOf, Table, Td, Th } from "@/components/ui";
+import {
+  Button,
+  Card,
+  clampOffset,
+  cx,
+  EmptyState,
+  ErrorBanner,
+  ListSearch,
+  Pager,
+  Select,
+  SelectInput,
+  shownOf,
+  Skeleton,
+  Table,
+  Td,
+  Th,
+} from "@/components/ui";
 import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { ProjectPicker } from "@/features/projects/ProjectPicker";
@@ -82,7 +98,7 @@ export function RoleTable({ projectKey }: { projectKey?: string }) {
         {data && <span className="text-sm text-ink-muted tabular-nums">{shownOf(data.total, data.offset, assignments.length, t.kit.counted.grant)}</span>}
       </div>
 
-      {isLoading && <p className="text-sm text-ink-muted">{t.access.loading}</p>}
+      {isLoading && <Skeleton lines={4} />}
 
       {!isLoading && assignments.length === 0 && narrowed ? (
         <EmptyState title={t.access.grants.noMatch} description={t.access.grants.noMatchDetail} />

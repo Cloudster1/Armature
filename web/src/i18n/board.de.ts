@@ -51,7 +51,6 @@ export const boardDe: typeof boardEn = {
     endsIn: (days: number) => `endet in ${days} Tagen`,
     endedYesterday: "endete gestern",
     endedAgo: (days: number) => `endete vor ${days} Tagen`,
-    loading: "Das Board wird geladen...",
     noSprint: "Kein Sprint läuft",
     noSprintBody: "Ein Scrum-Board zeigt den laufenden Sprint. Planen Sie einen aus dem Backlog und starten Sie ihn, dann erscheint seine Arbeit hier.",
     goToSprints: "Zu den Sprints",
@@ -85,7 +84,6 @@ export const boardDe: typeof boardEn = {
     filterBy: (name: string) => `Nach ${name} filtern`,
   },
   swimlanes: {
-    loading: "Wird geladen...",
     none: "Keine Zeilen",
     assignee: "Bearbeiter",
     priority: "Priorität",
@@ -123,7 +121,6 @@ export const boardDe: typeof boardEn = {
     none: "Dieses Projekt hat keine Teams",
     team: "Team",
     nobody: "Niemand Bestimmtes",
-    loading: "Wird geladen...",
     emptyTitle: "Noch keine Teams",
     emptyBody: "Ein Projekt ohne Teams hat ein Board und einen Backlog, und mehr brauchen die meisten Projekte nicht.",
     capacity: "Kapazität",
@@ -149,7 +146,6 @@ export const boardDe: typeof boardEn = {
   },
   hierarchy: {
     title: "Hierarchie",
-    loading: "Der Baum wird geladen...",
     empty: "Dieses Projekt hat noch keine Vorgänge.",
     collapse: (key: string) => `${key} einklappen`,
     expand: (key: string) => `${key} ausklappen`,

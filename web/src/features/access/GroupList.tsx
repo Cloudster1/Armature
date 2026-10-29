@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { groupLabel, useAddToGroup, useCreateGroup, useDeleteGroup, useGroup, useGroups, useRemoveFromGroup, type Group } from "@/api/access";
-import { Button, Card, EmptyState, ErrorBanner, Field } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, Skeleton } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { t } from "@/i18n";
@@ -22,7 +22,7 @@ export function GroupList() {
     <div className="space-y-4">
       <NewGroup />
 
-      {isLoading && <p className="text-sm text-ink-muted">{t.access.loading}</p>}
+      {isLoading && <Skeleton lines={4} />}
       {!isLoading && groups.every((group) => group.builtin) && <EmptyState title={t.access.groups.empty} description={t.access.groups.emptyDetail} />}
 
       <div className="space-y-3">

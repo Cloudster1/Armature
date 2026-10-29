@@ -7,6 +7,19 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the shell follows the suite's (#472). A page that is not there,
+  or fails, stays inside the shell with its sidebar, a heading and the way
+  home or Try again. Pages wait with a skeleton instead of the word
+  "Loading". Breadcrumbs come from where a page lies and sit in the sticky
+  strip. Projects are a folder in the rail, the account menu opens to the
+  right of the rail, and signing out lands on the sign-in page even when
+  the request fails. The palette's key reads Cmd K on a Mac and is
+  translated. Counts beside a place use the suite's accent style, capped
+  at 99+. Menus open inside the part of the page their button is in. The
+  phone's strip has the bell.
+- Changed: the inbox is the Notifications page at `/notifications` (#472);
+  `/inbox` and the digest mail's link still land there.
+
 - Changed: every member of a project may open its settings and see how it
   is set up (#471). What they may not change is read only, with a line that
   says whom to ask, and Automation and Import, which only its administrators

@@ -79,6 +79,8 @@ const SAME_IN_BOTH = new Set([
   "Admin",
   "Admin / X",
   "X · Y",
+  // The key a Mac's people press with K.
+  "Cmd K",
 ]);
 
 describe("the German catalogue", () => {

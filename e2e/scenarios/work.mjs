@@ -78,7 +78,7 @@ scenario("a mention in a comment lands in the person's inbox and makes them a wa
   );
   await page.click('[data-notification="mentioned"]');
   await waitForPath(page, `/issues/${issueKey}`);
-  await goto(page, "/inbox");
+  await goto(page, "/notifications");
   await page.waitForSelector('[data-inbox-view="all"]', { timeout: WAIT });
   await page.click('[data-inbox-view="all"]');
   await page.waitForSelector('[data-notification="mentioned"][data-notification-read="true"]', { timeout: WAIT });

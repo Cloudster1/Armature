@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useStatuses, type Status } from "@/api/issues";
 import { useCreateWorkflow, useRuleTypes, useSaveWorkflow, useWorkflow, type Workflow } from "@/api/workflows";
-import { Button, ErrorBanner, Field } from "@/components/ui";
+import { Button, ErrorBanner, Field, Skeleton } from "@/components/ui";
 import { Inspector } from "./Inspector";
 import { WorkflowCanvas, type Selection } from "./WorkflowCanvas";
 import { connect, emptyDesign, fromWorkflow, moveNode, problems, toInput, type Design } from "./graph";
@@ -88,7 +88,7 @@ export function WorkflowDesigner({ workflowId, onDone, onCancel }: { workflowId?
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1 overflow-auto rounded-lg border border-border" style={{ maxHeight: "70vh" }}>
           {loading ? (
-            <p className="p-4 text-sm text-ink-muted">{t.workflows.designer.loading}</p>
+            <Skeleton lines={4} className="p-4" />
           ) : (
             <WorkflowCanvas
               design={design}

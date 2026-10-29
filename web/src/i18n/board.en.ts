@@ -49,7 +49,6 @@ export const boardEn = {
     endsIn: (days: number) => `ends in ${days} days`,
     endedYesterday: "ended yesterday",
     endedAgo: (days: number) => `ended ${days} days ago`,
-    loading: "Loading the board...",
     noSprint: "No sprint is running",
     noSprintBody: "A scrum board shows the sprint that is running. Plan one from the backlog and start it, and its work appears here.",
     goToSprints: "Go to sprints",
@@ -83,7 +82,6 @@ export const boardEn = {
     filterBy: (name: string) => `Filter by ${name.toLowerCase()}`,
   },
   swimlanes: {
-    loading: "Loading...",
     none: "No rows",
     assignee: "Assignee",
     priority: "Priority",
@@ -120,7 +118,6 @@ export const boardEn = {
     none: "This project has no teams",
     team: "Team",
     nobody: "Nobody in particular",
-    loading: "Loading...",
     emptyTitle: "No teams yet",
     emptyBody: "A project without teams has one board and one backlog, which is all most projects need.",
     capacity: "Capacity",
@@ -146,7 +143,6 @@ export const boardEn = {
   },
   hierarchy: {
     title: "Hierarchy",
-    loading: "Loading the tree...",
     empty: "This project has no issues yet.",
     collapse: (key: string) => `Collapse ${key}`,
     expand: (key: string) => `Expand ${key}`,

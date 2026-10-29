@@ -8,7 +8,6 @@ export const doorsDe: typeof doorsEn = {
     yourName: "Ihr Name",
     signIn: "Anmelden",
     signOut: "Abmelden",
-    loading: "Wird geladen...",
     backToSignIn: "Zurück zur Anmeldung",
     linkIncomplete: "Dieser Link ist unvollständig",
     somethingWrong: "Etwas ist schiefgegangen. Bitte versuchen Sie es erneut.",
@@ -157,7 +156,9 @@ export const doorsDe: typeof doorsEn = {
   },
   notFound: {
     title: "Seite nicht gefunden",
-    body: "Die gesuchte Seite gibt es nicht.",
+    emptyTitle: "Unter dieser Adresse ist nichts",
+    body: "Die gesuchte Seite gibt es nicht. Prüfen Sie die Adresse, oder gehen Sie zur Startseite und suchen Sie sie von dort.",
+    home: "Zur Startseite",
   },
   profile: {
     weekTitle: "Arbeitswoche",

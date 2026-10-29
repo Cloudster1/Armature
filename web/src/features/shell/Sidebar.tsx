@@ -13,7 +13,7 @@ import { PROJECT_SEARCH_DELAY_MS, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/co
 import { useDebounced } from "@/lib/debounce";
 import { DRAWER_ID, SIDEBAR_ID, lastOutsideSettings, useLastProject, useNarrow, useSidebarGroups, useSidebarMode } from "./state";
 import { useConfirm } from "./ConfirmProvider";
-import { NavButton, NavItem, NavLinkOut, UnreadBadge } from "./nav";
+import { NavButton, NavItem, NavLinkOut, UnreadCount } from "./nav";
 import { Rail } from "./Rail";
 import { BuildStamp } from "./BuildStamp";
 import { LogoMark } from "@/components/Logo";
@@ -21,6 +21,7 @@ import { SidebarGroup } from "./SidebarGroup";
 import { ThemeButton } from "./ThemeButton";
 import { roleWord, useAccountItems } from "./AccountMenu";
 import { adminEntry, inSettingsArea, personalPlaces, workPlaces, type Place } from "./places";
+import { onApple } from "@/lib/device";
 import { t } from "@/i18n";
 
 export { projectSetupPages } from "@/features/projects/settingsTabs";
@@ -256,7 +257,11 @@ function WorkGroups() {
   const [groups, toggleGroup] = useSidebarGroups();
   const isOpen = (id: string, defaultOpen: boolean) => groups[id] ?? defaultOpen;
   const trailing = (place: Place) =>
-    place.to === "/search" ? <kbd className="font-mono text-2xs text-ink-subtle">Ctrl K</kbd> : place.to === "/inbox" ? <UnreadBadge /> : undefined;
+    place.to === "/search" ? (
+      <kbd className="font-mono text-2xs text-ink-subtle">{onApple() ? t.shell.palette.hintApple : t.shell.palette.hint}</kbd>
+    ) : place.to === "/notifications" ? (
+      <UnreadCount />
+    ) : undefined;
   return (
     <>
       <SidebarGroup id="work" title={t.shell.groups.work} open={isOpen("work", true)} onToggle={() => toggleGroup("work", true)}>
@@ -547,7 +552,7 @@ export function SidebarFoot({ userName, avatar }: { userName: string; avatar?: s
           icon={<Icon.External />}
           label={t.shell.account.signOut}
           size="sm"
-          onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}
+          onClick={() => logout.mutate(undefined, { onSettled: () => navigate({ to: "/login" }) })}
           data-action="sign-out"
           aria-busy={logout.isPending}
         />

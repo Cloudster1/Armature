@@ -49,7 +49,7 @@ scenario("somebody who may not see an issue asks for access, and its administrat
   // The administrator hears through the inbox and grants it from there.
   await signIn(page, owner.email);
   await waitForApp(page);
-  await goto(page, "/inbox");
+  await goto(page, "/notifications");
   const notice = '[data-notification="access_requested"]';
   await eventually(page, notice);
   expect.contains(await textOf(page, notice), `asks for access to ${issueKey}`, "the notice names the issue");

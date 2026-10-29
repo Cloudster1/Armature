@@ -29,3 +29,8 @@ export function deviceName(userAgent: string): string {
   // A script names itself first, as curl/8.5.0 does.
   return browser ?? system ?? (userAgent.trim().split(/[\s/]/)[0] || "An unknown device");
 }
+
+/** Whether the browser runs on an Apple system, whose people press Cmd where others press Ctrl. */
+export function onApple(userAgent: string = typeof navigator === "undefined" ? "" : navigator.userAgent): boolean {
+  return /Mac OS X|Macintosh|iPhone|iPad|iPod/.test(userAgent);
+}

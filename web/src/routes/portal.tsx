@@ -119,14 +119,7 @@ function ArticlePage() {
   const article = data?.article;
   return (
     <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/portal/new" className="hover:text-ink">
-            {t.desk.portal.raise}
-          </Link>
-        }
-        title={article?.title ?? t.desk.portal.article}
-      />
+      <PageHeader title={article?.title ?? t.desk.portal.article} />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {article && (
         <Card className="p-5" data-portal-article={article.title}>
@@ -299,14 +292,7 @@ function RaiseRequest() {
 
   return (
     <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/portal" className="hover:text-ink">
-            {t.desk.portal.yourRequests}
-          </Link>
-        }
-        title={t.desk.portal.raise}
-      />
+      <PageHeader title={t.desk.portal.raise} />
       {data && desks.length === 0 ? (
         <EmptyState title={t.desk.portal.noDesk} description={t.desk.portal.noDeskDetail} />
       ) : (
@@ -462,11 +448,6 @@ function RequestPage() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/portal" className="hover:text-ink">
-            {t.desk.portal.yourRequests}
-          </Link>
-        }
         title={issue.summary}
         meta={
           <span className="flex items-center gap-2">

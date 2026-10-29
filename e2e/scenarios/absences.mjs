@@ -146,7 +146,7 @@ scenario("a person is told in their inbox when a scrum master records an absence
   expect.equal(mail.text.includes(day(TEAM_AWAY_DAY)), false, "the mail does not carry the days");
   await signIn(page, member.email, PASSWORD);
   await waitForApp(page);
-  await goto(page, "/inbox");
+  await goto(page, "/notifications");
   const notice = '[data-notification="absence"]';
   await eventually(page, notice);
   const told = await textOf(page, notice);

@@ -413,6 +413,13 @@ scenario("a project's setup lives in the tabs of its settings, and its old addre
   }
 
   await openSetupTab(page, key, "fields");
+  // The trail is read off the address and drawn in the sticky strip, not named by the page.
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-shell-header] nav[aria-label="Breadcrumb"]')?.innerText.replace(/\s+/g, " ").trim() ===
+      "Projects / Set up in tabs / Project settings",
+    { timeout: WAIT },
+  );
   await goto(page, `/projects/${key}/fields?q=area#top`);
   await waitForPath(page, `/projects/${key}/settings/fields`);
   expect.equal(await page.evaluate(() => `${location.search}${location.hash}`), "?q=area#top", "the old address keeps its search and hash");

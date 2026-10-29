@@ -2,7 +2,6 @@ import type { scheduleEn } from "./schedule.en";
 
 /** Die Texte der Sprints, des Kalenders, der Ressourcen, Meilensteine, Versionen, Feiertage und Abwesenheiten. */
 export const scheduleDe: typeof scheduleEn = {
-  loading: "Wird geladen...",
   sprints: {
     title: "Sprints",
     sprint: "Sprint",

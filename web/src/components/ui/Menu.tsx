@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
-import { focusables, isEditing, useAnchored, useEscape, useOutsidePress } from "./overlay";
+import { focusables, isEditing, useAnchored, useEscape, useOutsidePress, type AnchoredSide } from "./overlay";
 
 export interface MenuItem {
   label: ReactNode;
@@ -20,16 +20,22 @@ export interface MenuItem {
   attrs?: Record<string, string>;
 }
 
+// Where a list is drawn: at the end of the landmark its trigger sits in, so a
+// screen reader finds it in the same region, and a modal dialog keeps it.
+const LANDMARK =
+  'main, header, nav, aside, footer, [role="banner"], [role="main"], [role="navigation"], [role="complementary"], [role="contentinfo"], [role="region"], [role="dialog"]';
+
 // A list of actions behind one button: arrows move, Home and End jump, typing
 // a letter finds, Escape returns focus to the trigger. The list is drawn at
-// the end of the document, fixed beside the trigger, so a table or a panel
-// that scrolls cannot cut it off; it opens upward when the bottom is near.
+// the end of the trigger's landmark, fixed beside the trigger, so a table or
+// a panel that scrolls cannot cut it off; it opens upward when the bottom is near.
 export function Menu({
   trigger,
   items,
   label,
   header,
   align = "start",
+  side = "bottom",
   className,
 }: {
   trigger: (props: { open: boolean; toggle: () => void; "aria-haspopup": "menu"; "aria-expanded": boolean }) => ReactNode;
@@ -38,9 +44,12 @@ export function Menu({
   /** Drawn above the items and outside them, such as a box that narrows them: inside an item's button, Space would pick it. */
   header?: ReactNode;
   align?: "start" | "end";
+  /** Where the list opens: below the trigger, flipping above near the bottom, or to its right, as from the rail. */
+  side?: AnchoredSide;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [host, setHost] = useState<HTMLElement | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // A press elsewhere moved the reader on; only a keyboard close or a pick
@@ -55,7 +64,12 @@ export function Menu({
   const outside = useRef([wrapRef, listRef]);
   useOutsidePress(open, outside.current, closeFromOutside);
 
-  const place = useAnchored(open, wrapRef, listRef, { align });
+  const place = useAnchored(open, wrapRef, listRef, { align, side });
+
+  function toggle() {
+    setHost(wrapRef.current?.closest<HTMLElement>(LANDMARK) ?? document.body);
+    setOpen((o) => !o);
+  }
 
   const wasOpen = useRef(false);
   useEffect(() => {
@@ -77,6 +91,12 @@ export function Menu({
     // In a box the keys are for typing; only the arrows leave it for the items.
     if (isEditing(event.target) && event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     switch (event.key) {
+      // The list sits at the end of its landmark, so a Tab out of it would
+      // land nowhere near the trigger; it closes and focus goes home instead.
+      case "Tab":
+        event.preventDefault();
+        close();
+        break;
       case "ArrowDown":
         event.preventDefault();
         go(index + 1);
@@ -105,8 +125,9 @@ export function Menu({
 
   return (
     <div ref={wrapRef} className={cx("relative inline-flex", className)}>
-      {trigger({ open, toggle: () => setOpen((o) => !o), "aria-haspopup": "menu", "aria-expanded": open })}
+      {trigger({ open, toggle, "aria-haspopup": "menu", "aria-expanded": open })}
       {open &&
+        host &&
         createPortal(
           <div
             ref={listRef}
@@ -165,7 +186,7 @@ export function Menu({
               );
             })}
           </div>,
-          document.body,
+          host,
         )}
     </div>
   );

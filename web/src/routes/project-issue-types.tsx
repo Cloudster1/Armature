@@ -4,7 +4,7 @@ import { projectSettingsRoute } from "./project-settings";
 import { canAdminister, useAccess } from "@/api/access";
 import { LEVEL_STANDARD, useIssueTypes } from "@/api/issues";
 import { useProjectIssueTypes, useSetProjectIssueTypes, type ProjectIssueType } from "@/api/issueTypes";
-import { Button, Card, Checkbox, ErrorBanner, Tag, useToast } from "@/components/ui";
+import { Button, Card, Checkbox, ErrorBanner, Skeleton, Tag, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TypeBadge } from "@/features/issues/badges";
 import { t } from "@/i18n";
@@ -36,7 +36,7 @@ function ProjectIssueTypesTab() {
   const { data: access } = useAccess();
   const readOnly = !canAdminister(access, projectKey);
   const [edited, setEdited] = useState<string[] | null>(null);
-  if (!kept || !library || !access) return null;
+  if (!kept || !library || !access) return <Skeleton rows={6} />;
 
   const rows = new Map<string, Row>();
   for (const type of library.issueTypes) rows.set(type.id, { ...type, issues: 0 });

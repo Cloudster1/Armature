@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAddLink, usePlan, useRemoveLink, type Dependency, type PlanItem } from "@/api/plan";
-import { Card, ErrorBanner, IconButton, cx } from "@/components/ui";
+import { Card, cx, ErrorBanner, IconButton, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TypeBadge } from "@/features/issues/badges";
 import { EDGE_LINGER_MS, GRAPH_MIN_GRID_COLUMNS, GRAPH_NODE_WIDTH, GRAPH_ORIGIN, GRAPH_ROW_GAP } from "@/config";
@@ -96,7 +96,7 @@ export function DependencyGraph({
   const layout = useMemo(() => layoutGraph(nodes, edges, { columns }), [nodes, edges, columns]);
   const dependencyById = useMemo(() => new Map((data?.dependencies ?? []).map((d) => [d.linkId, d])), [data?.dependencies]);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.plan.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
   if (error && !data) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
   if (!data) return null;
 

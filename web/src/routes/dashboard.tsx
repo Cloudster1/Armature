@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { projectRoute } from "./project";
-import { useProject } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
 import { pdfHref, useDashboards } from "@/api/reports";
 import { useSavedFilters } from "@/api/filters";
@@ -30,7 +29,6 @@ export const dashboardRoute = createRoute({
 
 function DashboardPage() {
   const { projectKey } = dashboardRoute.useParams();
-  const { data: projectData } = useProject(projectKey);
   const { data, isLoading } = useDashboards(projectKey);
   const { data: access } = useAccess();
   const [arranging, setArranging] = useState(false);
@@ -61,11 +59,6 @@ function DashboardPage() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {projectData?.project?.name ?? projectKey}
-          </Link>
-        }
         title={dashboard?.name ?? t.dashboard.page.title}
         meta={dashboard ? t.dashboard.page.widgets(dashboard.widgets.length) : undefined}
         actions={

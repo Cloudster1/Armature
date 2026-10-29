@@ -4,7 +4,7 @@ import { projectRoute } from "./project";
 import { useArchiveProject, useProject, useRestoreProject, useUpdateProject } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
 import { ApiError } from "@/api/client";
-import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, SectionTitle, Switch, TabPanel, Tabs, Tag, useToast } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, SectionTitle, Skeleton, Switch, TabPanel, Tabs, Tag, useToast } from "@/components/ui";
 import { DOCS_LABEL_MAX_LENGTH } from "@/config";
 import { useDraft } from "@/lib/draft";
 import { FEATURES, featureWord, hasFeature } from "@/features/projects/features";
@@ -40,7 +40,13 @@ function ProjectSettingsLayout() {
   const navigate = useNavigate();
   const panelId = useId();
   const project = data?.project;
-  if (!project || !access) return null;
+  if (!project || !access) {
+    return (
+      <Page width="content">
+        <Skeleton lines={6} />
+      </Page>
+    );
+  }
   const administers = canAdminister(access, projectKey);
   const shown = settingsPagesFor(project, administers);
   const base = `/projects/${projectKey}`;
@@ -53,11 +59,6 @@ function ProjectSettingsLayout() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {project.name}
-          </Link>
-        }
         title={
           <>
             {t.shell.projectPages.settings}
@@ -136,7 +137,7 @@ function GeneralTab() {
   const { name = "", description = "", leadId = "", docsUrl = "", docsLabel = "" } = draft ?? {};
   const fieldErrors = update.error instanceof ApiError ? update.error.fields : {};
 
-  if (!project) return null;
+  if (!project) return <Skeleton lines={6} />;
   const archived = Boolean(project.archivedAt);
   const readOnly = !canAdminister(access, projectKey);
   const restoreProject = () => restore.mutate(projectKey, { onSuccess: () => toast.success(t.projectSetup.settings.restored(project.name)) });

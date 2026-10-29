@@ -1,7 +1,6 @@
 /** The strings of access, roles, groups, members, users, tokens, connected apps, webhooks, the installation and the audit log. */
 export const accessEn = {
   title: "Access",
-  loading: "Loading...",
   save: "Save",
   tabs: {
     roles: "Roles",
@@ -239,7 +238,6 @@ export const accessEn = {
     pickedHint: "This token reaches only what is picked here, and never more than you can. Press one to take it off.",
     addProject: "Add a project",
     chooseProject: "Choose a project to add",
-    loading: "Loading tokens...",
     empty: "No tokens yet",
     emptyDetail: "Create one above to call the API from a script or a CI job.",
     disconnectBody: (app: string) => `${app} can no longer act as you; it asks again if you connect it later.`,

@@ -3,7 +3,6 @@ import type { accessEn } from "./access.en";
 /** Die Texte des Zugriffs, der Rollen, Gruppen, Mitglieder, Benutzer, Token, verbundenen Apps, Webhooks, der Installation und des Prüfprotokolls. */
 export const accessDe: typeof accessEn = {
   title: "Zugriff",
-  loading: "Wird geladen...",
   save: "Speichern",
   tabs: {
     roles: "Rollen",
@@ -242,7 +241,6 @@ export const accessDe: typeof accessEn = {
     pickedHint: "Dieses Token erreicht nur, was hier gewählt ist, und nie mehr als Sie. Drücken Sie eines, um es zu entfernen.",
     addProject: "Projekt hinzufügen",
     chooseProject: "Ein Projekt zum Hinzufügen wählen",
-    loading: "Token werden geladen...",
     empty: "Noch keine Token",
     emptyDetail: "Legen Sie oben eines an, um die API aus einem Skript oder einem CI-Job aufzurufen.",
     disconnectBody: (app: string) => `${app} kann nicht mehr in Ihrem Namen handeln; es fragt erneut, wenn Sie es später wieder verbinden.`,

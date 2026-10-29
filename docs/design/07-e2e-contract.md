@@ -34,8 +34,8 @@ one named helper so each scenario moves by a line.
   timer would not. A scenario may read the page the moment `goto` returns.
   Data the app fetches outside React Query would not be waited for; there is
   none today.
-- **The shell**: `waitForApp` waits for a `<header>` and
-  `a[href="/settings/tokens"]`. `[data-action="sign-out"]` and
+- **The shell**: `waitForApp` waits for the avatar or the phone's menu
+  button. `[data-action="sign-out"]` and
   `[data-action="theme"|"panel-prev"|"panel-next"|"share"|"copy-share"|"revoke-share"|"export-pdf"|"download-pdf"]` are pressed; the theme button's text is read as
   Auto, Light or Dark.
 - **data attributes**: data-access-tab, data-action, data-group-builtin, data-add-widget,
@@ -77,7 +77,7 @@ one named helper so each scenario moves by a line.
   data-feature, data-feature-off, data-member, data-access-tab, data-settings-tab, data-settings-read-only, data-settings-refused,
   data-query-suggestions, data-suggestion, data-suggestion-text,
   data-editor, data-editor-mode, data-editor-action, data-mention, data-doc,
-  data-rail, data-sidebar, data-sidebar-group, data-open, data-shell-header, data-card-actions,
+  data-rail, data-rail-top, data-sidebar, data-sidebar-group, data-open, data-shell-header, data-card-actions, data-count, data-not-found, data-route-error,
   data-workflow-tab, data-scheme-card, data-status-card,
   data-inbox-view, data-mention-list, data-mention-option, data-notification,
   data-notification-read, data-notification-settings, data-pref-inapp, data-pref-mail,
@@ -177,10 +177,10 @@ one named helper so each scenario moves by a line.
   `role="button"` and no `data-connect-handle`.
 - `mentionInComment(page, issueKey, words, personName)` types an at sign and
   the first letters into `#new-comment`, picks `[data-mention-option=<name>]`
-  from `[data-mention-list]` and posts. `inboxRows(page)` opens `/inbox`
+  from `[data-mention-list]` and posts. `inboxRows(page)` opens `/notifications`
   (`[data-inbox-view=unread|all]` switch) and reads `[data-notification=<kind>]`
   rows with `data-notification-read`. `unreadCount(page)` reads the bell's
-  `[data-unread-count]` (`[data-action="inbox"]` opens the inbox). The
+  `[data-unread-count]` (`[data-action="notifications"]` opens its panel). The
   preferences grid on the profile page is `[data-notification-settings]` with
   `[data-pref-inapp=<kind>]`, `[data-pref-mail=<kind>]`, `#field-digest` and
   `[data-action="save-notifications"]`.
@@ -354,16 +354,24 @@ one named helper so each scenario moves by a line.
   from the browser as it is and returns the refusal's error code, empty when
   it was taken: `sign_in_to_accept` for an address that has an account and
   nobody signed in, `invite_for_someone_else` for another signed-in person.
-- The shell: `waitForApp` waits for a `<header>` (the rail's top) and a
-  rendered `a[href="/settings/tokens"]` (the Settings group, open by
-  default; a scenario that folds the sidebar expands it again before
-  `waitForApp`). `[data-action="sidebar"]` is the toggle, in the rail;
-  `theme`, `guide`, `inbox`, `new-issue` and `profile` live in the rail;
-  `sign-out` is in the sidebar's foot while open and in the rail's avatar
-  menu while folded. `[data-workflow-card=<name>] [data-action="edit"]` opens
-  the designer (`openWorkflowDesign`); `createScheme` goes to
-  `/admin/workflows/schemes`; `deleteScheme(page, name)` presses
-  `[data-scheme-card=<name>] [data-action="delete"]` and confirms.
+- The shell: `waitForApp` waits for the avatar (`[data-shell]
+  [data-action="account"]`) or, on a phone, the strip's
+  `[data-action="open-drawer"]`. The rail's top is a `div` (`[data-rail-top]`)
+  inside its navigation, so the rail draws no `<header>`. `[data-action="sidebar"]`
+  is the toggle, in the rail; `theme`, `guide`, `notifications`, `new-issue` and
+  `account` live in the rail; `sign-out` is in the account menu, which opens to
+  the right of the rail, and in the drawer. A menu is drawn at the end of its
+  trigger's landmark, not of the document. The Notifications page is
+  `/notifications`; `/inbox` redirects there. Breadcrumbs are
+  `nav[aria-label="Breadcrumb"]` inside `[data-shell-header]`. Somebody signed in
+  who opens an unknown path sees `[data-shell] [data-not-found]` with
+  `[data-action="home"]`; a page that throws shows `[data-route-error]`.
+  Counts beside a place are `[data-count=<name>]`, such as
+  `[data-count="notifications"]`; a widget still counting is
+  `[data-widget-loading]` around a skeleton. `[data-workflow-card=<name>]
+  [data-action="edit"]` opens the designer (`openWorkflowDesign`);
+  `createScheme` goes to `/admin/workflows/schemes`; `deleteScheme(page, name)`
+  presses `[data-scheme-card=<name>] [data-action="delete"]` and confirms.
 - `#issue-description` and `#new-comment` name the editable element in
   whichever face the editor shows: the contenteditable div in rich mode, the
   textarea in markdown mode. `editorText(page, selector)` reads either;

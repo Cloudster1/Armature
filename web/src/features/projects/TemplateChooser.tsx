@@ -1,5 +1,5 @@
 import { useProjectTemplates, type ProjectTemplate } from "@/api/projects";
-import { OptionCard } from "@/components/ui";
+import { OptionCard, Skeleton } from "@/components/ui";
 import { leftOut } from "./features";
 import { t } from "@/i18n";
 
@@ -29,7 +29,7 @@ export function TemplateChooser({ value, onChange }: { value: string; onChange: 
   const made = templates.filter((template) => template.builtin === false);
   const builtIn = templates.filter((template) => template.builtin !== false);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.projectSetup.templates.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
   if (templates.length === 0) return null;
 
   // Until the user picks, the server's first template is the one selected.

@@ -97,7 +97,7 @@ export const shellEn = {
   notifications: {
     title: "Notifications",
     unread: (count: number) => `Notifications, ${count} unread`,
-    unreadSuffix: " unread",
+    unreadSaid: (count: number) => `${count} unread`,
     markAllRead: "Mark all as read",
     empty: "Nothing yet. You are told here when an issue of yours moves or somebody mentions you.",
     seeAll: "See all",
@@ -121,10 +121,14 @@ export const shellEn = {
   },
   page: {
     notShown: "This page could not be shown",
+    notShownTitle: "Something went wrong on this page",
+    notShownFallback: "Try again; if it keeps failing, tell an administrator what you were doing.",
     tryAgain: "Try again",
   },
   palette: {
     label: "Quick search",
+    hint: "Ctrl K",
+    hintApple: "Cmd K",
     askLabel: "Ask where something is",
     searchLabel: "Search for an issue, a project, a page or an action",
     askPlaceholder: "Ask where something is...",

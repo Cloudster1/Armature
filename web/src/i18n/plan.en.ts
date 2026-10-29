@@ -3,7 +3,6 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
 /** The planning view's strings: the timeline, its toolbar, the auto plan and the graph. */
 export const planEn = {
   title: "Plan",
-  loading: "Loading the plan...",
   views: {
     management: "Timeline",
     managementHint: "Every issue in its hierarchy, with the milestones and the numbers.",

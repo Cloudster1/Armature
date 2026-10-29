@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useBoards } from "@/api/boards";
-import { useProject } from "@/api/projects";
 import { holds, useAccess } from "@/api/access";
 import { BoardPicker } from "@/features/board/BoardPicker";
 import { NewBoardForm } from "@/features/board/NewBoardForm";
@@ -26,7 +25,6 @@ export const boardRoute = createRoute({
 
 function BoardPage() {
   const { projectKey } = boardRoute.useParams();
-  const { data } = useProject(projectKey);
   const { data: access } = useAccess();
   const [configuring, setConfiguring] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -54,11 +52,6 @@ function BoardPage() {
   return (
     <Page width="wide">
       <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {data?.project?.name ?? projectKey}
-          </Link>
-        }
         title={
           <>
             {shown}

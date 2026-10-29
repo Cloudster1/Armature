@@ -47,6 +47,25 @@ scenario("an unknown path shows the not-found page rather than a blank screen", 
   expect.contains(await bodyText(page), "Page not found", "not-found page");
 });
 
+// Somebody signed in who follows a stale link keeps the sidebar to go elsewhere.
+scenario("an unknown path stays inside the shell for somebody signed in, with the way home", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  await goto(page, "/no-such-page");
+  await page.waitForSelector("[data-shell] [data-not-found]", { timeout: WAIT });
+  expect.truthy((await page.$("[data-sidebar], [data-narrow-strip]")) !== null, "the not-found page lost the sidebar");
+  expect.contains(await textOf(page, "[data-not-found]"), "Page not found", "the page says what happened");
+  await page.click('[data-not-found] [data-action="home"]');
+  await waitForPath(page, "/");
+});
+
+scenario("the inbox's old address lands on the Notifications page", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  await goto(page, "/inbox");
+  await waitForPath(page, "/notifications");
+  await page.waitForSelector("[data-inbox-view]", { timeout: WAIT });
+  expect.contains(await textOf(page, "main h1"), "Notifications", "the page is not named Notifications");
+});
+
 serialScenario("form validation is reported against the field, not swallowed", async ({ page }) => {
   const who = unique("dupe");
   await signUp(page, who);
@@ -192,7 +211,7 @@ scenario("at a phone's width each shell's pages start one rem from the edge, as 
   };
 
   await withViewport(page, 375, async () => {
-    await goto(page, "/inbox");
+    await goto(page, "/notifications");
     await fits("app");
     await signOut(page, { visit: false });
     await enterOpenDesk(page, desk, unique("walkin"));
@@ -247,7 +266,7 @@ scenario("at a phone's width no main page scrolls sideways, a summary keeps its 
       `/projects/${key}/plan`,
       `/projects/${key}/settings`,
       "/search",
-      "/inbox",
+      "/notifications",
       "/settings",
       "/settings/profile",
       "/admin/access",

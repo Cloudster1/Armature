@@ -1,4 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
+import { RouteError } from "@/features/shell/AppShell";
 import type { QueryClient } from "@tanstack/react-query";
 import { rootRoute } from "./root";
 import { loginRoute, signupRoute } from "./auth";
@@ -14,7 +15,7 @@ import { overviewRoute } from "./overview";
 import { tokensRoute } from "./tokens";
 import { settingsRoute } from "./settings";
 import { profileRoute } from "./profile";
-import { inboxRoute } from "./inbox";
+import { inboxMovedRoute, inboxRoute } from "./inbox";
 import { automationRoute, orgAutomationRoute } from "./automation";
 import { componentsRoute, releasesRoute } from "./releases";
 import { filtersRoute } from "./filters";
@@ -140,6 +141,7 @@ const routeTree = rootRoute.addChildren([
     settingsMovedDeepRoute,
     profileRoute,
     inboxRoute,
+    inboxMovedRoute,
     filtersRoute,
     savedFilterRoute,
     tokensRoute,
@@ -154,6 +156,8 @@ export function buildRouter(queryClient: QueryClient) {
     routeTree,
     context: { queryClient },
     defaultPreload: "intent",
+    // A page that throws is answered where it stood, inside the shell, so the sidebar stays.
+    defaultErrorComponent: RouteError,
   });
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useId } from "react";
-import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import { GroupList } from "@/features/access/GroupList";
 import { MemberList, type MembersShown } from "@/features/access/MemberList";
@@ -58,14 +58,7 @@ function AccessPage() {
 
   return (
     <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
-        title={t.access.title}
-      />
+      <PageHeader title={t.access.title} />
 
       <Tabs
         label={t.access.title}

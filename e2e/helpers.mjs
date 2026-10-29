@@ -2282,7 +2282,7 @@ export async function mentionInComment(page, issueKey, words, personName) {
 
 /** The inbox page's rows: kind and whether each is read. */
 export async function inboxRows(page) {
-  await goto(page, "/inbox");
+  await goto(page, "/notifications");
   await page.waitForSelector("[data-inbox-view]", { timeout: WAIT });
   return page.$$eval("[data-notification]", (rows) =>
     rows.map((r) => ({ kind: r.dataset.notification, read: r.dataset.notificationRead === "true", text: r.innerText })),

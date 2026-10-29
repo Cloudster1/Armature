@@ -1,12 +1,11 @@
-import { ErrorBanner } from "@/components/ui";
-import { t } from "@/i18n";
+import { ErrorBanner, Skeleton } from "@/components/ui";
 
-/** Every widget waits with the same line, so a dashboard that is still counting reads as one thing. */
+/** Every widget waits with the same skeleton, so a dashboard that is still counting reads as one thing. */
 export function Loading() {
   return (
-    <p className="text-sm text-ink-subtle" data-widget-loading="">
-      {t.dashboard.grid.counting}
-    </p>
+    <div data-widget-loading="">
+      <Skeleton lines={3} />
+    </div>
   );
 }
 

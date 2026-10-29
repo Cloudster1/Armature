@@ -3,6 +3,8 @@ import { useMe } from "@/api/auth";
 import { useManagedUsers, useSetUserPassword, useUpdateUser, type ManagedUser } from "@/api/users";
 import {
   Button,
+  clampOffset,
+  countOf,
   Dialog,
   EmptyState,
   ErrorBanner,
@@ -11,12 +13,11 @@ import {
   Menu,
   Pager,
   Select,
+  Skeleton,
   Table,
   Tag,
   Td,
   Th,
-  clampOffset,
-  countOf,
   useToast,
 } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -74,7 +75,7 @@ export function UserTable({ q = "", offset = 0, show }: UsersShown & { show: (ne
   );
 
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.access.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
   if (users.length === 0) {
     return (
       <div className="space-y-3">

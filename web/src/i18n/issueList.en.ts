@@ -1,7 +1,6 @@
 /** The strings of the issue list, its table and the create dialog. */
 export const issueListEn = {
   page: {
-    crumb: "Projects",
     meta: (open: number, all: number, lead: string) => `${open} open of ${all}${lead ? ` · led by ${lead}` : ""}`,
     newIssue: "New issue",
     narrow: "Narrow the issues",

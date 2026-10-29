@@ -56,6 +56,13 @@ scenario(
     expect.contains(header, who.name, "the header names the person");
     expect.contains(header, who.email, "and their address");
     expect.contains(header, "Admin", "and their seat");
+    const placed = await page.evaluate(() => {
+      const menu = document.querySelector('[role="menu"][aria-label="Your account"]');
+      const rail = document.querySelector("[data-rail]");
+      return { inRail: Boolean(rail?.contains(menu)), right: menu.getBoundingClientRect().left >= rail.getBoundingClientRect().right };
+    });
+    expect.truthy(placed.inRail, "the account menu is drawn outside the rail's landmark");
+    expect.truthy(placed.right, "the account menu does not open to the right of the rail");
     const entries = await accountEntries(page);
     expect.equal(JSON.stringify(entries.slice(0, PERSONAL.length)), JSON.stringify(PERSONAL), "the personal pages come first, in order");
     expect.equal(JSON.stringify(entries.slice(-2)), JSON.stringify(["Admin", "Sign out"]), "then Admin and Sign out");
@@ -118,7 +125,7 @@ scenario("the bell opens the latest notifications with the way to all of them an
   expect.truthy(await page.$('[data-notifications-panel] [data-action="mark-all-read"]'), "it offers to mark them all read");
   expect.truthy(await page.$('[data-notifications-panel] [data-action="notification-settings"]'), "and their settings");
   await page.click('[data-action="see-all-notifications"]');
-  await waitForPath(page, "/inbox");
+  await waitForPath(page, "/notifications");
   expect.equal(await page.$("[data-notifications-panel]"), null, "following a link closes the panel");
   const sidebar = await page.$eval('[data-sidebar-group="work"]', (el) => el.innerText);
   expect.contains(sidebar, "Notifications", "the sidebar calls it Notifications");
@@ -145,7 +152,7 @@ scenario("at phone width a drawer holds every group and closes on following a li
     expect.equal(overflow, 0, "nothing widens the page");
 
     await page.click('[data-sidebar="drawer"] [data-place="Notifications"]');
-    await waitForPath(page, "/inbox");
+    await waitForPath(page, "/notifications");
     await page.waitForFunction(() => !document.querySelector('[data-sidebar="drawer"]'), { timeout: WAIT });
 
     await openDrawer(page);

@@ -124,7 +124,6 @@ export const projectSetupDe: typeof projectSetupEn = {
     without: (features: string) => ` · ohne ${features}`,
     madeHere: "Hier erstellt",
     types: (names: string) => ` · ${names}`,
-    loading: "Vorlagen werden geladen...",
     label: "Vorlage",
   },
   automation: {

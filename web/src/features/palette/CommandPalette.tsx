@@ -164,7 +164,7 @@ export function CommandPalette({
     // Matched again here, since the last answer stays on screen while the next is asked.
     for (const p of projectData?.projects ?? []) {
       if (matches(`${p.name} ${p.key}`))
-        out.push({ id: `project:${p.key}`, group: "Projects", label: p.name, detail: p.key, icon: "Board", run: () => go(`/projects/${p.key}`) });
+        out.push({ id: `project:${p.key}`, group: "Projects", label: p.name, detail: p.key, icon: "Folder", run: () => go(`/projects/${p.key}`) });
     }
     if (projectKey) {
       // The setup pages are tabs of the project's settings, which every member opens; some only its administrators use.

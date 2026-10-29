@@ -132,8 +132,8 @@ describe("the shell's chrome", () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     const places = Array.from(document.querySelectorAll('[data-sidebar-group="work"] [data-place]')).map((a) => a.getAttribute("data-place"));
     expect(places).toEqual(["Home", "Search", "Notifications", "Saved searches", "Projects"]);
-    expect(document.querySelector('[data-place="Notifications"]')?.getAttribute("href")).toBe("/inbox");
-    expect(document.querySelector('[data-place="Notifications"] [data-unread-badge]')?.textContent).toContain("3");
+    expect(document.querySelector('[data-place="Notifications"]')?.getAttribute("href")).toBe("/notifications");
+    expect(document.querySelector('[data-place="Notifications"] [data-count="notifications"]')?.textContent).toContain("3");
     expect(document.querySelector('[data-sidebar-group="settings"]')).toBeNull();
     expect(document.querySelector('a[href="/settings/tokens"]')).toBeNull();
     expect(document.querySelector('[data-action="sign-out"]')).toBeNull();

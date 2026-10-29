@@ -178,6 +178,9 @@ function naturalHeight(panel: HTMLElement): number {
   return Math.max(panel.offsetHeight, panel.scrollHeight + panel.offsetHeight - panel.clientHeight);
 }
 
+// Hidden at the origin, so the first placing reads where the origin is.
+const unplaced: CSSProperties = { visibility: "hidden", top: 0, left: 0 };
+
 /**
  * Where a panel goes beside the element it belongs to, as fixed viewport
  * coordinates, so it can be drawn at the end of the document where no
@@ -191,17 +194,27 @@ export function useAnchored(
   panelRef: RefObject<HTMLElement | null>,
   { align = "start", side = "bottom" }: { align?: "start" | "end"; side?: AnchoredSide } = {},
 ): CSSProperties {
-  const [style, setStyle] = useState<CSSProperties>({ visibility: "hidden" });
+  const [style, setStyle] = useState<CSSProperties>(unplaced);
   const place = useCallback(() => {
     const anchor = anchorRef.current?.getBoundingClientRect();
     const panel = panelRef.current;
     if (!anchor || !panel) return;
     const size = { width: panel.offsetWidth, height: naturalHeight(panel) };
-    setStyle(anchoredBox(anchor, size, { width: window.innerWidth, height: window.innerHeight }, { align, side }));
+    const view = { width: window.innerWidth, height: window.innerHeight };
+    const box = anchoredBox(anchor, size, view, { align, side });
+    // A fixed panel is placed from its containing block, which a landmark with
+    // a transform or a filter moves off the window's corner; its origin is
+    // where the panel is less where its style puts it.
+    const at = panel.getBoundingClientRect();
+    const computed = getComputedStyle(panel);
+    const originTop = at.top - (parseFloat(computed.top) || 0);
+    const originLeft = at.left - (parseFloat(computed.left) || 0);
+    const left = box.left ?? view.width - (box.right ?? 0) - size.width;
+    setStyle({ top: box.top - originTop, left: left - originLeft, maxHeight: box.maxHeight });
   }, [anchorRef, panelRef, align, side]);
   useLayoutEffect(() => {
     if (!open) {
-      setStyle({ visibility: "hidden" });
+      setStyle(unplaced);
       return;
     }
     place();

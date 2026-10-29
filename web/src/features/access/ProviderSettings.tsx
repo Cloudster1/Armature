@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useProvider, useSaveProvider } from "@/api/access";
 import { SSO_START } from "@/api/auth";
 import { BASE } from "@/api/client";
-import { Button, Card, Checkbox, ErrorBanner, Field } from "@/components/ui";
+import { Button, Card, Checkbox, ErrorBanner, Field, Skeleton } from "@/components/ui";
 import { t } from "@/i18n";
 
 /**
@@ -24,7 +24,7 @@ export function ProviderSettings() {
   const [claim, setClaim] = useState<string | null>(null);
   const [admit, setAdmit] = useState<boolean | null>(null);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.access.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
 
   const values = {
     issuer: issuer ?? provider?.issuer ?? "",

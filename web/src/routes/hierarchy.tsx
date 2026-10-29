@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
-import { useProject } from "@/api/projects";
 import { useProjectHierarchy, type TreeNode } from "@/api/issues";
 import { ProgressBar } from "@/features/issues/hierarchy";
 import { Avatar, PriorityBadge, StatusBadge, TypeBadge } from "@/features/issues/badges";
-import { Card, ErrorBanner, IconButton, Page, PageHeader, cx } from "@/components/ui";
+import { Card, cx, ErrorBanner, IconButton, Page, PageHeader, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { MAX_TREE_DEPTH } from "@/config";
 import { t } from "@/i18n";
@@ -18,26 +17,18 @@ export const hierarchyRoute = createRoute({
 
 function HierarchyPage() {
   const { projectKey } = hierarchyRoute.useParams();
-  const { data: projectData } = useProject(projectKey);
   const { data, isLoading, error } = useProjectHierarchy(projectKey);
 
   const tree = data?.tree ?? [];
 
   return (
     <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {projectData?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.board.hierarchy.title}
-      />
+      <PageHeader title={t.board.hierarchy.title} />
 
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
 
       {isLoading ? (
-        <p className="text-sm text-ink-muted">{t.board.hierarchy.loading}</p>
+        <Skeleton lines={4} />
       ) : tree.length === 0 ? (
         <Card className="p-6 text-center text-sm text-ink-muted">{t.board.hierarchy.empty}</Card>
       ) : (

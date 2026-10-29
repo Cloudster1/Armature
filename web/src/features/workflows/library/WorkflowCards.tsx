@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useStatuses } from "@/api/issues";
 import { useCopyWorkflow, useDeleteWorkflow, useSchemes, useWorkflows, type LibraryParams, type WorkflowSummary } from "@/api/workflows";
-import { Button, Card, EmptyState, ErrorBanner, IconButton, ListSearch, Pager, Stat, Tag, clampOffset, shownOf } from "@/components/ui";
+import { Button, Card, clampOffset, EmptyState, ErrorBanner, IconButton, ListSearch, Pager, shownOf, Skeleton, Stat, Tag } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { LIBRARY_PAGE_SIZE } from "@/config";
@@ -53,7 +53,7 @@ export function WorkflowCards({ focused, q, offset, onShow, canConfigure }: Work
           </Button>
         )}
       </div>
-      {isLoading && <p className="text-sm text-ink-muted">{t.workflows.library.loading}</p>}
+      {isLoading && <Skeleton lines={4} />}
       {data && workflows.length === 0 && q && (
         <EmptyState icon={<Icon.Search />} title={t.workflows.library.noWorkflow} description={t.workflows.library.noMatchDetail} />
       )}

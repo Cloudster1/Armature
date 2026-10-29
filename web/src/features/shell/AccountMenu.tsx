@@ -60,7 +60,7 @@ export function useAccountItems(): MenuItem[] {
       label: t.shell.account.signOut,
       icon: <Icon.External />,
       separated: true,
-      onSelect: () => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) }),
+      onSelect: () => logout.mutate(undefined, { onSettled: () => navigate({ to: "/login" }) }),
       attrs: { "data-action": "sign-out" },
     },
   ];
@@ -89,13 +89,14 @@ function AccountHeader() {
   );
 }
 
-/** The avatar's menu, "Your account", which opens from the avatar whether the sidebar is open or folded. */
+/** The avatar's menu, "Your account", which opens to the right of the rail whether the sidebar is open or folded. */
 export function AccountMenu({ userName, avatar }: { userName: string; avatar?: string }) {
   const items = useAccountItems();
   return (
     <Menu
       label={t.shell.account.yours}
       align="start"
+      side="right"
       header={<AccountHeader />}
       trigger={(props) => (
         <IconButton

@@ -1,6 +1,5 @@
 /** The strings of sprints, the calendar, resources, milestones, releases, holidays and absences. */
 export const scheduleEn = {
-  loading: "Loading...",
   sprints: {
     title: "Sprints",
     sprint: "Sprint",

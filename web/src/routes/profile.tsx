@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, createRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import { createRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { LOCALES, MY_DATA_HREF, useChangeMyPassword, useEraseMe, useMe, useRemoveAvatar, useUpdateProfile, useUploadAvatar } from "@/api/auth";
 import { NOTIFICATION_KINDS, useNotificationPreferences, useSaveNotificationPreferences, type NotificationPreferences } from "@/api/notifications";
@@ -86,15 +86,7 @@ function ProfilePage() {
 
   return (
     <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
-          </Link>
-        }
-        title={t.settings.profile.title}
-        meta={user.email}
-      />
+      <PageHeader title={t.settings.profile.title} meta={user.email} />
 
       <Card className="mb-6 p-5">
         <div className="flex items-center gap-5">
