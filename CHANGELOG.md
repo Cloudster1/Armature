@@ -7,6 +7,15 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a built-in group Everyone holds every member of the installation,
+  not portal customers (#470). People join it when they are let in and
+  leave it when they go, so a role granted to it reaches all members, as
+  Stator's and Exciter's "everyone" does. It comes first on the Groups tab
+  and in "Who to grant to", and it cannot be deleted, renamed or edited by
+  hand. Granting it a role that administers the installation is refused. A
+  group someone already called Everyone is renamed "Everyone (made by
+  hand)" and keeps its members and grants.
+
 - Changed: the sign-in page is the suite's, as Stator's and Exciter's (#469):
   "Sign in with SSO" comes first, in a card of its own, and the password
   form for people given a password here sits in a second card below it, with

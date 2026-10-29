@@ -120,6 +120,50 @@ scenario("roles are granted to people and to groups", async ({ page }) => {
   expect.truthy(who.email.length > 0, "the invitation was issued");
 });
 
+// Everyone is built in: it holds every member, comes first, is not edited, and
+// a role granted to it reaches somebody who holds nothing of their own.
+scenario("a role granted to everyone reaches every member", async ({ page }) => {
+  const owner = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "For everyone", { visit: false });
+  const who = await inviteMember(page, "everyone");
+  await acceptInvite(page, who, { visit: false });
+
+  await signIn(page, owner.email);
+  await waitForApp(page);
+  await goto(page, "/admin/access?tab=groups");
+  await page.waitForSelector("[data-group]", { timeout: WAIT });
+  const first = await page.$eval("[data-group]", (card) => ({
+    builtin: card.getAttribute("data-group-builtin"),
+    text: card.innerText,
+    buttons: card.querySelectorAll("button").length,
+  }));
+  expect.equal(first.builtin, "everyone", "the first group is not Everyone");
+  expect.contains(first.text, "built in", "Everyone does not say it is built in");
+  expect.equal(first.buttons, 0, "Everyone offers something to edit");
+
+  await revokeAll(page, who.name);
+  await grantRole(page, { who: "Everyone", role: "Reader", projectKey: key });
+
+  const refused = await page.evaluate(async () => {
+    const { groups } = await (await fetch("/api/v1/groups", { credentials: "include" })).json();
+    const everyone = groups.find((group) => group.builtin === "everyone");
+    const response = await fetch("/api/v1/role-assignments", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "global_administrator", groupId: everyone.id }),
+    });
+    return { status: response.status, body: await response.text() };
+  });
+  expect.equal(refused.status, 409, "Everyone was made global administrators");
+  expect.contains(refused.body, "cannot administer", "the refusal does not say why");
+
+  await signIn(page, who.email);
+  await waitForApp(page);
+  await goto(page, `/projects/${key}`);
+  expect.contains(await bodyText(page), "For everyone", "a member does not see what Everyone was granted");
+});
+
 // Every scenario's grants share one installation, so the Roles tab shows one
 // page of them, and the one a scenario made is found by typing.
 scenario("the roles tab shows one page of grants and finds one by typing", async ({ page }) => {

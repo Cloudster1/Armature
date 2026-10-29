@@ -58,7 +58,7 @@ export const accessEn = {
   add: "Add",
   optional: "Optional",
   groups: {
-    empty: "No groups yet",
+    empty: "No groups of your own yet",
     emptyDetail: "A group is a name for a set of people, so that a role can be given once instead of to everybody in turn.",
     fromProvider: "from the identity provider",
     people: (count: number) => `${count} ${count === 1 ? "person" : "people"}`,
@@ -75,6 +75,10 @@ export const accessEn = {
     claim: "Provider claim",
     create: "Create group",
     claimHint: "The provider claim is the value your identity provider sends for this group; with it, membership follows sign-ins.",
+    everyone: "Everyone",
+    builtin: "built in",
+    everyoneDetail:
+      "Every member of the installation, not portal customers. People join it when they are let in and leave it when they go, so a role granted to it reaches all members.",
   },
   actions: "Actions",
   grants: {

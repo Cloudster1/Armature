@@ -14,6 +14,7 @@ function grant(id: string, userName: string, projectKey?: string): Assignment {
 }
 
 vi.mock("@/api/access", () => ({
+  groupLabel: (group: { name?: string; builtin?: string }) => (group.builtin === "everyone" ? "Everyone" : (group.name ?? "")),
   permissionWords: (permission: string) => permission,
   useAssignments: (params: (typeof page.asked)[number]) => {
     page.asked.push(params);

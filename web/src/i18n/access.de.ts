@@ -61,7 +61,7 @@ export const accessDe: typeof accessEn = {
   add: "Hinzufügen",
   optional: "Freiwillig",
   groups: {
-    empty: "Noch keine Gruppen",
+    empty: "Noch keine eigenen Gruppen",
     emptyDetail: "Eine Gruppe ist ein Name für mehrere Personen, damit eine Rolle einmal vergeben wird statt jedem einzeln.",
     fromProvider: "vom Identitätsanbieter",
     people: (count: number) => `${count} ${count === 1 ? "Person" : "Personen"}`,
@@ -78,6 +78,10 @@ export const accessDe: typeof accessEn = {
     claim: "Anbieterwert",
     create: "Gruppe anlegen",
     claimHint: "Der Anbieterwert ist der Wert, den Ihr Identitätsanbieter für diese Gruppe sendet; mit ihm folgt die Mitgliedschaft den Anmeldungen.",
+    everyone: "Alle",
+    builtin: "eingebaut",
+    everyoneDetail:
+      "Jedes Mitglied der Installation, keine Portal-Kunden. Wer aufgenommen wird, gehört dazu, und wer geht, nicht mehr; eine Rolle für diese Gruppe erreicht also alle Mitglieder.",
   },
   actions: "Aktionen",
   grants: {

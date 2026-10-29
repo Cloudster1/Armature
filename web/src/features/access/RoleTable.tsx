@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
-import { permissionWords, useAssignments, useGrantRole, useGroups, useRevokeRole, useRoleName, useRoles, type Assignment, type Role } from "@/api/access";
+import {
+  groupLabel,
+  permissionWords,
+  useAssignments,
+  useGrantRole,
+  useGroups,
+  useRevokeRole,
+  useRoleName,
+  useRoles,
+  type Assignment,
+  type Role,
+} from "@/api/access";
 import { Button, Card, clampOffset, cx, EmptyState, ErrorBanner, ListSearch, Pager, Select, SelectInput, shownOf, Table, Td, Th } from "@/components/ui";
 import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -117,7 +128,7 @@ function AssignmentRow({ assignment, onRevoke }: { assignment: Assignment; onRev
   return (
     <tr data-assignment={assignment.id}>
       <Td className="w-full min-w-48">
-        <span className="text-ink">{assignment.groupName || assignment.userName}</span>
+        <span className="text-ink">{toGroup ? groupLabel({ name: assignment.groupName, builtin: assignment.groupBuiltin }) : assignment.userName}</span>
         {toGroup && <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-2xs text-ink-muted">{t.access.grants.group}</span>}
       </Td>
       <Td className="whitespace-nowrap text-ink">{roleName(assignment.role)}</Td>
@@ -137,7 +148,9 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
   const grant = useGrantRole();
 
   const roles = roleData?.roles ?? [];
-  const groups = groupData?.groups ?? [];
+  const allGroups = groupData?.groups ?? [];
+  const everyone = allGroups.find((group) => group.builtin === "everyone");
+  const groups = allGroups.filter((group) => group !== everyone);
 
   const [subject, setSubject] = useState("");
   const [role, setRole] = useState<Role>("user");
@@ -173,6 +186,7 @@ function GrantForm({ projectKey }: { projectKey?: string }) {
           value={subject}
           onChange={setSubject}
         >
+          {everyone && <option value={`group:${everyone.id}`}>{groupLabel(everyone)}</option>}
           {groups.length > 0 && (
             <optgroup label={t.access.grants.groups}>
               {groups.map((group) => (

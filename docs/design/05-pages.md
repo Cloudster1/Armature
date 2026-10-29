@@ -305,9 +305,8 @@ project.
 
 ```
 Settings
-YOU             Profile · API tokens · Themes
-EVERYONE        Installation · Access · Users · Holidays · Workflows · Labels
-                Automation · Webhooks · Fields · Audit log
+YOU             Profile · Notifications · Watching · Themes · API tokens
+                (the installation's pages are under Admin, /admin)
 
 Settings / Profile
 [ (TK) ]  [Upload picture] [Remove]        PNG or JPEG, up to 2 MB.
@@ -371,10 +370,14 @@ administrator sees an empty state. The profile gains a Password card
 and "Change password" (`[data-action="change-password"]`), toasting
 "Password changed".
 
-## Access: the role matrix (content)
+## Access (content)
+
+`/admin/access`, under Admin, with the tabs Roles, Matrix, Members, Groups and
+Single sign-on (`data-access-tab`), the tab in the address as `?tab=`.
 
 ```
-Settings / Access
+Admin
+Access
 [Roles] [Matrix] Members  Groups  Single sign-on             [+ New role]
 PERMISSION                          Global admin  Project admin  ...  Sprint planner ⋯
 See projects and everything   read    [x]           [x]              [x]
@@ -397,6 +400,14 @@ describes it (`rename-role`, `[data-rename-role=<key>]`) or deletes it
 grants go with it). The client decides buttons by permission
 (`access.permissions.org` and `.projects[key]`), never by role name, so a
 renamed or invented role works everywhere at once.
+
+The Groups tab lists the built-in group Everyone first
+(`[data-group-builtin="everyone"]`): every member of the installation, not
+portal customers, by count, with nothing to edit. Its members follow who is a
+member, so it is not deleted, renamed or edited, and nobody is added to it or
+taken out by hand. A grant may name it like any other group, and the Roles
+tab's "Who to grant to" offers it first; a role that administers the
+installation is refused for it, by the service and by the database.
 
 ## Themes (narrow) and the theme editor (content)
 

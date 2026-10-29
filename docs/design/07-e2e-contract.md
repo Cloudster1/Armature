@@ -38,7 +38,7 @@ one named helper so each scenario moves by a line.
   `a[href="/settings/tokens"]`. `[data-action="sign-out"]` and
   `[data-action="theme"|"panel-prev"|"panel-next"|"share"|"copy-share"|"revoke-share"|"export-pdf"|"download-pdf"]` are pressed; the theme button's text is read as
   Auto, Light or Dark.
-- **data attributes**: data-access-tab, data-action, data-add-widget,
+- **data attributes**: data-access-tab, data-action, data-group-builtin, data-add-widget,
   data-assignment, data-assignment-control, data-assignment-shown,
   data-attach-queued, data-attach-queued-file, data-attachment,
   data-attachments-note, data-backlog-of, data-bar, data-board,
