@@ -2,7 +2,7 @@ import { Link, Outlet, createRoute, notFound, redirect, useLocation, useNavigate
 import { appRoute } from "./app";
 import { accessQueryOptions, useAccess } from "@/api/access";
 import { useMe } from "@/api/auth";
-import { Button, Card, EmptyState, Menu, Page, PageHeader, SectionTitle, type MenuItem } from "@/components/ui";
+import { Button, Card, EmptyState, Menu, Page, PageHeader, SectionTitle, type MenuEntry } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { NavItem } from "@/features/shell/nav";
 import { useNarrow } from "@/features/shell/state";
@@ -123,20 +123,20 @@ function AdminMenu() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const current = adminPlaces.find((place) => pathname === place.to || pathname.startsWith(`${place.to}/`));
-  const items: MenuItem[] = [
+  const items: MenuEntry[] = [
     { label: t.shell.admin.allSections, icon: <Icon.Settings />, onSelect: () => navigate({ to: ADMIN_PATH }), attrs: { "data-admin-link": "Admin" } },
-    ...bySection().flatMap(({ section, places }) =>
-      places.map((place, i) => {
+    ...bySection().map(({ section, places }) => ({
+      group: t.shell.admin.sections[section],
+      items: places.map((place) => {
         const Glyph = Icon[place.icon];
         return {
           label: place.label,
           icon: <Glyph />,
-          section: i === 0 ? t.shell.admin.sections[section] : undefined,
           onSelect: () => navigate({ to: place.to as never }),
           attrs: { "data-admin-link": place.label },
         };
       }),
-    ),
+    })),
   ];
   return (
     <div className="mb-2" data-admin-menu>

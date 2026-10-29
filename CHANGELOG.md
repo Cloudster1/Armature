@@ -7,6 +7,15 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the kit follows the suite's (#473). It gains Exciter's `Radio`
+  and `WordButton` and Stator's `ref` on `Button` and `Field`. A menu's
+  groups are read out as groups, and an item picked from a set is marked
+  as checked. The archive, comment, eye, list, menu and palette glyphs are
+  drawn as Stator and Exciter draw them.
+- Fixed: relative times such as "2h ago" are said in German too, as "vor
+  2 Std." (#473). The theme editor names every colour, group and pointer
+  from the catalogues, never in English alone.
+
 - Changed: the shell follows the suite's (#472). A page that is not there,
   or fails, stays inside the shell with its sidebar, a heading and the way
   home or Try again. Pages wait with a skeleton instead of the word

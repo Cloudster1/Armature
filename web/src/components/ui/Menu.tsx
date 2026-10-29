@@ -1,5 +1,6 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { Icon } from "../icons";
 import { cx } from "./cx";
 import { focusables, isEditing, useAnchored, useEscape, useOutsidePress, type AnchoredSide } from "./overlay";
 
@@ -9,15 +10,29 @@ export interface MenuItem {
   onSelect?: () => void;
   /** Makes the item a plain link, so the browser can open it in a new tab too. */
   href?: string;
-  /** Starts a group under this heading, which runs to the next item that starts one. */
-  section?: string;
   /** Sets the item apart from those above it by a line, without a heading. */
   separated?: boolean;
   icon?: ReactNode;
   danger?: boolean;
   disabled?: boolean;
+  /** Makes the item one of a set to pick from, such as a language, marked when it is the one picked. */
+  checked?: boolean;
   /** Forwarded to the item, for the attributes tests read. */
   attrs?: Record<string, string>;
+}
+
+/** Items under a heading, which a screen reader announces as a group. */
+export interface MenuGroup {
+  group: string;
+  items: MenuItem[];
+  attrs?: Record<string, string>;
+}
+
+export type MenuEntry = MenuItem | MenuGroup;
+
+/** Whether an entry is a group of items rather than one item. */
+export function isMenuGroup(entry: MenuEntry): entry is MenuGroup {
+  return "group" in entry;
 }
 
 // Where a list is drawn: at the end of the landmark its trigger sits in, so a
@@ -39,7 +54,7 @@ export function Menu({
   className,
 }: {
   trigger: (props: { open: boolean; toggle: () => void; "aria-haspopup": "menu"; "aria-expanded": boolean }) => ReactNode;
-  items: MenuItem[];
+  items: MenuEntry[];
   label: string;
   /** Drawn above the items and outside them, such as a box that narrows them: inside an item's button, Space would pick it. */
   header?: ReactNode;
@@ -50,6 +65,7 @@ export function Menu({
 }) {
   const [open, setOpen] = useState(false);
   const [host, setHost] = useState<HTMLElement | null>(null);
+  const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // A press elsewhere moved the reader on; only a keyboard close or a pick
@@ -123,6 +139,50 @@ export function Menu({
     }
   }
 
+  function renderItem(item: MenuItem, key: number) {
+    const className = cx(
+      "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm",
+      item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised",
+      "focus:bg-surface-raised focus:outline-none disabled:opacity-50",
+    );
+    const content = (
+      <>
+        {item.checked !== undefined && (
+          <span className="size-4 text-accent [&_svg]:size-4" aria-hidden="true">
+            {item.checked && <Icon.Check />}
+          </span>
+        )}
+        {item.icon && <span className="text-ink-muted [&_svg]:size-4">{item.icon}</span>}
+        {item.label}
+      </>
+    );
+    if (item.href) {
+      return (
+        <a key={key} role="menuitem" href={item.href} tabIndex={-1} {...item.attrs} onClick={() => setOpen(false)} className={className}>
+          {content}
+        </a>
+      );
+    }
+    return (
+      <button
+        key={key}
+        type="button"
+        role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+        aria-checked={item.checked}
+        disabled={item.disabled}
+        tabIndex={-1}
+        {...item.attrs}
+        onClick={() => {
+          setOpen(false);
+          item.onSelect?.();
+        }}
+        className={className}
+      >
+        {content}
+      </button>
+    );
+  }
+
   return (
     <div ref={wrapRef} className={cx("relative inline-flex", className)}>
       {trigger({ open, toggle, "aria-haspopup": "menu", "aria-expanded": open })}
@@ -138,53 +198,21 @@ export function Menu({
             className="fixed z-30 min-w-44 overflow-y-auto overscroll-contain rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
           >
             {header}
-            {items.map((item, i) => {
-              const className = cx(
-                "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm",
-                item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised",
-                "focus:bg-surface-raised focus:outline-none disabled:opacity-50",
-              );
-              const content = (
-                <>
-                  {item.icon && <span className="text-ink-muted [&_svg]:size-4">{item.icon}</span>}
-                  {item.label}
-                </>
-              );
-              return (
+            {items.map((entry, i) =>
+              isMenuGroup(entry) ? (
+                <div key={i} role="group" aria-labelledby={`${listId}-${i}`} className={cx(i > 0 && "mt-1 border-t border-border pt-1")} {...entry.attrs}>
+                  <div id={`${listId}-${i}`} className="px-2 pt-1 pb-0.5 text-2xs font-semibold text-ink-subtle" data-menu-group={entry.group}>
+                    {entry.group}
+                  </div>
+                  {entry.items.map((item, j) => renderItem(item, j))}
+                </div>
+              ) : (
                 <Fragment key={i}>
-                  {item.separated && !item.section && i > 0 && <div role="separator" className="my-1 border-t border-border" />}
-                  {item.section && (
-                    <div
-                      role="presentation"
-                      className={cx("px-2 pt-2 pb-1 text-2xs font-semibold text-ink-subtle", i > 0 && "mt-1 border-t border-border")}
-                      data-menu-section={item.section}
-                    >
-                      {item.section}
-                    </div>
-                  )}
-                  {item.href ? (
-                    <a role="menuitem" href={item.href} tabIndex={-1} {...item.attrs} onClick={() => setOpen(false)} className={className}>
-                      {content}
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={item.disabled}
-                      tabIndex={-1}
-                      {...item.attrs}
-                      onClick={() => {
-                        setOpen(false);
-                        item.onSelect?.();
-                      }}
-                      className={className}
-                    >
-                      {content}
-                    </button>
-                  )}
+                  {entry.separated && i > 0 && <div role="separator" className="my-1 border-t border-border" />}
+                  {renderItem(entry, i)}
                 </Fragment>
-              );
-            })}
+              ),
+            )}
           </div>,
           host,
         )}

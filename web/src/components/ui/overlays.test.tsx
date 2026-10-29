@@ -281,7 +281,7 @@ describe("Menu", () => {
         )}
         items={[
           { label: "Your profile", onSelect: () => {} },
-          { label: "Stator", href: "https://stator.example.test", section: "Switch to" },
+          { group: "Switch to", items: [{ label: "Stator", href: "https://stator.example.test" }] },
         ]}
       />,
     );
@@ -289,10 +289,45 @@ describe("Menu", () => {
     const link = screen.getByRole("menuitem", { name: "Stator" });
     expect(link.tagName).toBe("A");
     expect(link).toHaveAttribute("href", "https://stator.example.test");
-    expect(screen.getByText("Switch to")).toHaveAttribute("data-menu-section", "Switch to");
+    expect(screen.getByRole("group", { name: "Switch to" })).toContainElement(link);
     expect(screen.getAllByRole("menuitem")).toHaveLength(2);
     await userEvent.keyboard("{ArrowDown}");
     expect(document.activeElement).toBe(link);
+  });
+});
+
+describe("Menu groups, marks and landmarks", () => {
+  const trigger = (props: { toggle: () => void }) => (
+    <Button variant="ghost" onClick={props.toggle}>
+      Open
+    </Button>
+  );
+
+  it("marks the item picked among a set and reads it out as checked", async () => {
+    render(
+      <Menu
+        label="Language"
+        trigger={trigger}
+        items={[
+          { label: "English", checked: true, onSelect: () => {} },
+          { label: "Deutsch", checked: false, onSelect: () => {} },
+        ]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(screen.getByRole("menuitemradio", { name: "English" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("menuitemradio", { name: "Deutsch" })).toHaveAttribute("aria-checked", "false");
+  });
+
+  // A screen reader finds the list in the region its button is in, not at the end of the page.
+  it("draws the list inside its trigger's landmark", async () => {
+    render(
+      <nav aria-label="Everywhere">
+        <Menu label="Your account" trigger={trigger} items={[{ label: "Sign out", onSelect: () => {} }]} />
+      </nav>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(screen.getByRole("navigation", { name: "Everywhere" })).toContainElement(screen.getByRole("menu", { name: "Your account" }));
   });
 });
 

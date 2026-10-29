@@ -343,7 +343,7 @@ async function switchTo(page) {
       text: a.textContent,
     })),
   );
-  const heading = await page.$('[data-menu-section="Switch to"]');
+  const heading = await page.$('[data-menu-group="Switch to"]');
   await page.keyboard.press("Escape");
   return { tools, heading: heading !== null };
 }

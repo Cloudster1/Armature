@@ -6,7 +6,7 @@ import { MY_DATA_HREF, useEraseMe, useLogout, useMe } from "@/api/auth";
 import { useProject, useProjectSearch, type Feature, type Project } from "@/api/projects";
 import { hasFeature } from "@/features/projects/features";
 import { projectSettingsPage, type PageLink } from "@/features/projects/settingsTabs";
-import { Avatar, Button, IconButton, Input, Menu, Tooltip, type MenuItem } from "@/components/ui";
+import { Avatar, Button, IconButton, Input, Menu, Tooltip, isMenuGroup, type MenuItem } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
 import { PROJECT_SEARCH_DELAY_MS, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
@@ -366,13 +366,27 @@ function DrawerFoot() {
         <ThemeButton side="top" />
       </div>
       <ul aria-label={t.shell.account.yours}>
-        {items.map((item, i) => (
-          <li key={i}>
-            {item.section && <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-ink-subtle uppercase">{item.section}</p>}
-            {item.separated && !item.section && <div role="separator" className="my-1 border-t border-border" />}
-            <DrawerEntry item={item} />
-          </li>
-        ))}
+        {items.map((entry, i) =>
+          isMenuGroup(entry) ? (
+            <li key={i}>
+              <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-ink-subtle uppercase" id={`drawer-group-${i}`}>
+                {entry.group}
+              </p>
+              <ul aria-labelledby={`drawer-group-${i}`}>
+                {entry.items.map((item, j) => (
+                  <li key={j}>
+                    <DrawerEntry item={item} />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ) : (
+            <li key={i}>
+              {entry.separated && <div role="separator" className="my-1 border-t border-border" />}
+              <DrawerEntry item={entry} />
+            </li>
+          ),
+        )}
       </ul>
       <BuildStamp />
     </div>

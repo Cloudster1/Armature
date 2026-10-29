@@ -53,10 +53,13 @@ wide monitor a settings table fills the column rather than a strip of it.
 a 1.5px stroke, round caps and joins, `currentColor`. An icon is decoration
 beside text (`aria-hidden`) and gets a `label` when it stands alone, which
 makes it `role="img"` with a title. A missing icon is drawn, not imported.
+It is the suite's one set: a glyph of a name is drawn as Stator and Exciter
+draw it, so archive, comment, eye, lines (a bulleted list), menu (three bars)
+and palette match theirs, and projects are a folder.
 
 The set: home, search, plus, issue, board, sprint, plan, milestone, dashboard,
 hierarchy, queue, desk, team, users, user, workflow, field, repository,
-settings, key, tag, chevrons, check, x, more, edit, trash, archive, link,
+settings, key, tag, chevrons, check, x, more, edit, trash, archive, folder, lines, menu, link,
 unlink, attach, clock, calendar, comment, eye, eye-off, sun, moon, monitor,
 palette (Themes, so it never reads as the light mode's sun),
 external, filter, zoom in and out, warning, info, drag, collapse, expand,

@@ -188,7 +188,7 @@ function NarrowStrip({ open, onOpen }: { open: boolean; onOpen: () => void }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-narrow-strip data-print-hide>
       <IconButton
-        icon={<Icon.Lines />}
+        icon={<Icon.Menu />}
         label={t.shell.nav.openNavigation}
         size="sm"
         onClick={onOpen}

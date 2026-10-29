@@ -74,14 +74,14 @@ const glyphs: Array<{ name: string; Glyph: (typeof Icon)[keyof typeof Icon] }> =
   .map((Glyph) => ({ name: (Glyph as unknown as { glyph: string }).glyph, Glyph }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
-/** A colour's name in the reader's language, the stylesheet's own words when the catalogue has none. */
-function tokenLabel(token: { name: string; label: string }): string {
-  return t.looks.editor.tokens[token.name] ?? token.label;
+/** A colour's name in the reader's language; a test holds the catalogues to every token. */
+function tokenLabel(token: { name: string }): string {
+  return t.looks.editor.tokens[token.name] ?? token.name;
 }
 
 /** A cursor's name in the reader's language. */
-function cursorLabel(cursor: { kind: string; label: string }): string {
-  return t.looks.editor.cursors[cursor.kind] ?? cursor.label;
+function cursorLabel(cursor: { kind: string }): string {
+  return t.looks.editor.cursors[cursor.kind] ?? cursor.kind;
 }
 
 function isFont(a: ThemeAsset): boolean {
@@ -284,8 +284,8 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
         </span>
       </div>
       {TOKEN_GROUPS.map((group) => (
-        <Card key={group.title} className="p-4">
-          <SectionTitle className="mb-3">{t.looks.editor.groups[group.title] ?? group.title}</SectionTitle>
+        <Card key={group.id} className="p-4">
+          <SectionTitle className="mb-3">{t.looks.editor.groups[group.id] ?? group.id}</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-2">
             {group.tokens.map((token) => {
               const value = set[token.name] ?? "";

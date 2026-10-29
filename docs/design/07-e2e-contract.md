@@ -53,7 +53,7 @@ one named helper so each scenario moves by a line.
   data-guide, data-guide-callout,
   data-issue, data-issue-drawer, data-issue-link, data-issue-list,
   data-issue-page, data-issue-panel, data-issue-row, data-issue-watcher,
-  data-label,
+  data-label, data-menu-group,
   data-label-row, data-labels, data-load, data-milestone, data-milestone-flag,
   data-milestone-dashboard, data-milestone-progress, data-milestone-single, data-milestone-widget,
   data-milestones-widget, data-node-panel, data-plan-add, data-plan-add-row,

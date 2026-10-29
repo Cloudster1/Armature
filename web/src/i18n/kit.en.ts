@@ -11,6 +11,12 @@ export const kitEn = {
   mentionList: "People to mention",
   spotlight: "Where it is",
   gotIt: "Got it",
+  ago: {
+    now: "just now",
+    minutes: (count: number) => `${count}m ago`,
+    hours: (count: number) => `${count}h ago`,
+    days: (count: number) => `${count}d ago`,
+  },
   editor: {
     description: "Description",
     mode: "Editor mode",

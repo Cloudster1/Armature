@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { atInstantIn } from "@/test/zone";
+import { applyLanguage } from "@/i18n";
 import { endOfDayIn, makeFormat, relativeIn, todayIn } from "./format";
 
 describe("format", () => {
@@ -10,6 +11,19 @@ describe("format", () => {
     expect(relativeIn("2026-09-05T09:00:00Z", "en-GB", "UTC", now)).toBe("3h ago");
     expect(relativeIn("2026-09-02T12:00:00Z", "en-GB", "UTC", now)).toBe("3d ago");
     expect(relativeIn("2026-06-01T12:00:00Z", "en-GB", "UTC", now)).toBe("1 Jun 2026");
+  });
+
+  it("says the relative forms in the language shown", () => {
+    const now = Date.parse("2026-09-05T12:00:00Z");
+    applyLanguage("de");
+    try {
+      expect(relativeIn("2026-09-05T11:59:30Z", "de-DE", "UTC", now)).toBe("gerade eben");
+      expect(relativeIn("2026-09-05T09:00:00Z", "de-DE", "UTC", now)).toBe("vor 3 Std.");
+      expect(relativeIn("2026-09-02T12:00:00Z", "de-DE", "UTC", now)).toBe("vor 3 T.");
+    } finally {
+      applyLanguage("en");
+    }
+    expect(relativeIn("2026-09-05T09:00:00Z", "en-GB", "UTC", now)).toBe("3h ago");
   });
 
   it("writes dates in the reader's zone and language", () => {
