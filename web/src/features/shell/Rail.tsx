@@ -59,7 +59,8 @@ export function Rail({
           </NavButton>
         </div>
       </nav>
-      <div className="flex flex-col items-center gap-1 border-t border-border py-2">
+      {/* As wide as the rail, unlike its centred controls, so the account menu's anchor reaches the rail's edge. */}
+      <div className="flex w-full flex-col items-center gap-1 border-t border-border py-2">
         {onAsk && (
           <Tooltip text={t.shell.nav.whereIsSomething} side="right">
             <IconButton icon={<Icon.Help />} label={t.shell.nav.whereIsSomething} size="sm" onClick={onAsk} data-action="guide" />
