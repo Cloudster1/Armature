@@ -440,8 +440,8 @@ scenario("a reader of a project sees no Settings entry, and its address tells th
   await goto(page, `/projects/${key}`);
   await page.waitForSelector("[data-sidebar] a[href$='/board'], [data-sidebar] a[href='/projects/" + key + "']", { timeout: WAIT });
   expect.equal(await page.$(`[data-sidebar] a[href="/projects/${key}/settings"]`), null, "a reader is offered no Settings");
-  await goto(page, `/projects/${key}/teams`);
-  await waitForPath(page, `/projects/${key}/teams`);
+  await goto(page, `/projects/${key}/fields`);
+  await waitForPath(page, `/projects/${key}/settings/fields`);
   await page.waitForFunction(() => document.body.innerText.includes("Only the project's administrators change its settings"), { timeout: WAIT });
   expect.equal(await page.$("[data-settings-tab]"), null, "and no tab opens for them");
 });
