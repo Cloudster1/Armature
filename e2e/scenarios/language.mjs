@@ -56,7 +56,10 @@ scenario("a person whose profile says German sets things up and signs in again i
 
   // The sign-in page has nobody yet; it paints in the language this browser remembers.
   await signOut(page);
-  await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Anmelden"), { timeout: WAIT });
+  await page.waitForFunction(() => document.querySelector('[data-action="password-sign-in"]')?.textContent.trim() === "Mit Passwort anmelden", {
+    timeout: WAIT,
+  });
+  expect.equal(await textOf(page, '[data-action="single-sign-on"]'), "Mit SSO anmelden", "the single sign-on button's words");
   expect.containsInsensitive(await bodyText(page), "Passwort vergessen?", "the way back in");
 });
 
