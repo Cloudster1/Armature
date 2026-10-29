@@ -13,8 +13,8 @@ const { MOVED_PROJECT_PAGES, movedProjectAddress } = await import("@/features/pr
 type Moved = { path: string; beforeLoad: (args: unknown) => void };
 
 describe("a project's old setup addresses", () => {
-  it("name every setup page but General", () => {
-    expect(MOVED_PROJECT_PAGES).toEqual(["/teams", "/workflows", "/fields", "/issue-view", "/components", "/repositories", "/automation", "/import"]);
+  it("name every setup page but General, and Teams, which stays a work page of the project", () => {
+    expect(MOVED_PROJECT_PAGES).toEqual(["/workflows", "/fields", "/issue-view", "/components", "/repositories", "/automation", "/import"]);
     expect((projectMovedRoutes as unknown as Moved[]).map((route) => route.path)).toEqual(MOVED_PROJECT_PAGES);
   });
 
@@ -32,6 +32,7 @@ describe("a project's old setup addresses", () => {
   it("know nothing of an address that never moved", () => {
     expect(movedProjectAddress("CP", "board")).toBeUndefined();
     expect(movedProjectAddress("CP", "settings")).toBeUndefined();
-    expect(movedProjectAddress("CP", "teams")).toBe("/projects/CP/settings/teams");
+    expect(movedProjectAddress("CP", "teams")).toBeUndefined();
+    expect(movedProjectAddress("CP", "fields")).toBe("/projects/CP/settings/fields");
   });
 });

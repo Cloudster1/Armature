@@ -32,7 +32,7 @@ const SHOTS = [
   // The catalog, not the list: Ada is an agent, so her own list of raised
   // requests is empty and photographs as an empty state.
   ["desk-portal", "/portal/new", "main"],
-  ["teams", "/projects/CP/settings/teams", "main"],
+  ["teams", "/projects/CP/teams", "main"],
   ["git-repositories", "/projects/CP/settings/repositories", "main"],
   ["project-workflows", "/projects/CP/settings/workflows", "main"],
   ["workflow-settings", "/admin/workflows", "main h1"],

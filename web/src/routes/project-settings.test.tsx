@@ -103,25 +103,25 @@ describe("the tabs of a project's settings", () => {
   const tabs = () => screen.getAllByRole("tab").map((tab) => tab.textContent);
 
   it("lists General and the tabs of the features the project uses, and the ones every project has", () => {
-    shown = { ...live, features: ["teams", "import"] } as Project;
+    shown = { ...live, features: ["automation", "import"] } as Project;
     render(<Layout />);
-    expect(tabs()).toEqual(["General", "Teams", "Workflow", "Fields", "Issue view", "Import"]);
+    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Automation", "Import"]);
     expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("lists every tab for a project that uses every feature", () => {
-    shown = { ...live, features: ["teams", "components", "repositories", "automation", "import"] } as Project;
+    shown = { ...live, features: ["components", "repositories", "automation", "import"] } as Project;
     render(<Layout />);
-    expect(tabs()).toEqual(["General", "Teams", "Workflow", "Fields", "Issue view", "Components", "Repositories", "Automation", "Import"]);
+    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Components", "Repositories", "Automation", "Import"]);
   });
 
   it("marks the tab the address names, and opens another on a click", async () => {
-    shown = { ...live, features: ["teams"] } as Project;
+    shown = { ...live, features: ["import"] } as Project;
     pathname = "/projects/CP/settings/fields";
     render(<Layout />);
     expect(screen.getByRole("tab", { name: "Fields" })).toHaveAttribute("aria-selected", "true");
-    await userEvent.click(screen.getByRole("tab", { name: "Teams" }));
-    expect(navigate).toHaveBeenCalledWith({ to: "/projects/CP/settings/teams" });
+    await userEvent.click(screen.getByRole("tab", { name: "Import" }));
+    expect(navigate).toHaveBeenCalledWith({ to: "/projects/CP/settings/import" });
   });
 
   it("shows the tab the address names", () => {
@@ -138,9 +138,9 @@ describe("the tabs of a project's settings", () => {
   });
 
   it("answers a tab whose feature is off with the switch's notice and mounts nothing", () => {
-    pathname = "/projects/CP/settings/teams";
+    pathname = "/projects/CP/settings/import";
     render(<Layout />);
-    expect(document.querySelector("[data-feature-off='teams']")).not.toBeNull();
+    expect(document.querySelector("[data-feature-off='import']")).not.toBeNull();
     expect(document.querySelector("[data-child]")).toBeNull();
   });
 });

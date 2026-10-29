@@ -39,7 +39,7 @@ fields and types; this page says what they mean.
 | Setting | Meaning |
 |---|---|
 | `ARMATURE_APP_URL` | The issuer, and the base of every address in the metadata. |
-| `ARMATURE_OAUTH_REGISTRATION` | `approve` (default): anybody may register an app, pending until an administrator allows it. `closed`: administrators register apps under Settings, Connected apps, and `/oauth/register` answers 403. |
+| `ARMATURE_OAUTH_REGISTRATION` | `approve` (default): anybody may register an app, pending until an administrator allows it. `closed`: administrators register apps under Admin, Connected apps, and `/oauth/register` answers 403. |
 | chart `oauth.registration` | The same, in the chart. |
 
 nginx, the chart's nginx and its Ingress send the two `.well-known` documents
@@ -150,7 +150,7 @@ not use, such as a logo:
 - 400 `invalid_redirect_uri` or `invalid_client_metadata` with a sentence, and
   403 `access_denied` where registration is `closed`: "This Armature registers
   connected apps only by hand. Ask an Armature administrator to add Stator
-  under Settings, Connected apps."
+  under Admin, Connected apps."
 
 ## The consent page
 
@@ -337,7 +337,7 @@ subject_token=<the Keycloak access token>&subject_token_type=urn:ietf:params:oau
 
 In the `dynamo` realm: give the partner's Keycloak client an audience mapper
 that adds Armature's client id to `aud`, and set the app's Keycloak client
-under Settings, Connected apps. Keycloak's own token exchange is not switched
+under Admin, Connected apps. Keycloak's own token exchange is not switched
 on; the exchange happens at Armature.
 
 ## Revocation (RFC 7009)
@@ -424,9 +424,9 @@ own endpoint only, so another endpoint is never reachable and needs no id.
 - **Its name** is the app's and " (connected app)", following a rename of the
   app. One that clashes with a webhook an administrator named so is 409
   `conflict`: "A webhook called Stator (connected app) is already here. Rename
-  it in Settings, Webhooks, and connect again."
+  it in Admin, Webhooks, and connect again."
 - **In the administrator's list** an endpoint carries `partner`
-  (`clientId`, `name`), null for one an administrator made, and Settings,
+  (`clientId`, `name`), null for one an administrator made, and Admin,
   Webhooks marks it with the app's name. An administrator may turn it off and
   on, test it, redeliver, read its log and remove it. Changing its address,
   topics or version, or rotating its secret, from there is 409

@@ -1268,7 +1268,7 @@ export async function openSetupTab(page, projectKey, tab) {
 
 /** Forms a team in a project and returns its name. */
 export async function createTeam(page, projectKey, name) {
-  await openSetupTab(page, projectKey, "teams");
+  await goto(page, `/projects/${projectKey}/teams`);
   await page.waitForSelector("#field-new-team", { timeout: WAIT });
   await page.click("#field-new-team");
   await page.type("#field-new-team", name);
@@ -1282,7 +1282,7 @@ export async function createTeam(page, projectKey, name) {
 
 /** Says how many points a team can take on in a week, from the teams page. */
 export async function setTeamCapacity(page, projectKey, teamName, points) {
-  await openSetupTab(page, projectKey, "teams");
+  await goto(page, `/projects/${projectKey}/teams`);
   const field = `[data-team-capacity="${teamName}"]`;
   await page.waitForSelector(field, { timeout: WAIT });
   await page.click(field, { clickCount: 3 });
@@ -1389,7 +1389,7 @@ export async function setClosedForDays(page, days) {
 
 /** Puts the signed-in person on a team. */
 export async function joinTeam(page, projectKey, teamName, personName) {
-  await openSetupTab(page, projectKey, "teams");
+  await goto(page, `/projects/${projectKey}/teams`);
   const card = `[data-team="${teamName}"]`;
   await pickPerson(page, `${card} select`, personName);
   await page.evaluate((sel) => {

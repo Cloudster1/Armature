@@ -280,7 +280,7 @@ describe("the shared names", () => {
 });
 
 describe("a project's setup", () => {
-  const setupWords = ["Teams", "Workflow", "Fields", "Issue view", "Components", "Repositories", "Automation", "Import"];
+  const setupWords = ["Workflow", "Fields", "Issue view", "Components", "Repositories", "Automation", "Import"];
 
   it("has no group of its own and one Settings entry for the project's administrators", () => {
     state.params = { projectKey: "ALP" };

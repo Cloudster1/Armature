@@ -78,6 +78,14 @@ export const projectWorkPages: PageLink[] = [
     feature: "resources",
   },
   {
+    path: "/teams",
+    get label() {
+      return t.shell.projectPages.teams;
+    },
+    icon: "Team",
+    feature: "teams",
+  },
+  {
     path: "/milestones",
     get label() {
       return t.shell.projectPages.milestones;

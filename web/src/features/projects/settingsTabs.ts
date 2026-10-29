@@ -11,7 +11,7 @@ export interface PageLink {
   feature?: Feature;
 }
 
-/** A project's setup pages: General first, then one tab for each thing the project is set up with. */
+/** A project's setup pages, for its administrators: General first, then one tab for each thing the project is set up with. */
 export const projectSetupPages: Array<PageLink & { tab: string }> = [
   {
     path: "/settings",
@@ -22,17 +22,6 @@ export const projectSetupPages: Array<PageLink & { tab: string }> = [
       return t.projectSetup.settings.general;
     },
     icon: "Settings",
-  },
-  {
-    path: "/teams",
-    get label() {
-      return t.shell.projectPages.teams;
-    },
-    get tab() {
-      return t.shell.projectPages.teams;
-    },
-    icon: "Team",
-    feature: "teams",
   },
   {
     path: "/workflows",

@@ -1,6 +1,6 @@
 # Webhooks
 
-An administrator adds an endpoint under Settings, Webhooks (`/admin/webhooks`),
+An administrator adds an endpoint under Admin, Webhooks (`/admin/webhooks`),
 or with `POST /api/v1/webhooks`: a name, an address, and the topics it takes,
 or `*` for every one. Armature then posts one JSON request to the address for
 each event on those topics, signed with the endpoint's secret, which is shown
