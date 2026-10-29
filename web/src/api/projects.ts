@@ -50,6 +50,8 @@ export interface Project {
   status?: StatusUpdate;
   /** Whether the desk's door asks for a code by mail; always true off a desk. */
   portalVerifies: boolean;
+  /** Whether somebody who may not see the project is told its issues exist. */
+  revealsIssues: boolean;
   /** The address domains the desk takes requests from; empty means everyone. */
   trustedDomains: string[];
   /** What a new mail to the desk's own address becomes; absent when mail raises nothing. */
@@ -215,6 +217,7 @@ export interface UpdateProjectInput {
   /** Null clears the lead; absent leaves it. */
   leadId?: string | null;
   portalVerifies?: boolean;
+  revealsIssues?: boolean;
   trustedDomains?: string[];
   /** Null stops mail raising requests; absent leaves it. */
   mailRequestTypeId?: string | null;

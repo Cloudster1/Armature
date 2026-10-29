@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/armature/armature/backend/internal/access"
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -204,9 +205,11 @@ func NoteWrite(ctx context.Context, lsn db.LSN) {
 
 // Server holds everything the handlers need.
 type Server struct {
-	Auth       *auth.Service
-	Projects   *project.Service
-	Issues     *issue.Service
+	Auth     *auth.Service
+	Projects *project.Service
+	Issues   *issue.Service
+	// Access keeps asks for access to issues somebody may not see.
+	Access     *access.Service
 	Boards     *board.Service
 	Plans      *plan.Service
 	Sprints    *sprint.Service
@@ -279,6 +282,8 @@ type Server struct {
 	// left this application, which the API cannot infer from the request.
 	AppBaseURL string
 	SessionTTL time.Duration
+	// SilentSignIn tries the identity provider quietly before the sign-in page.
+	SilentSignIn bool
 	// CheckOrigin also refuses a cookie-carried write from an origin that is not
 	// this application's; off in development, where the dev server has its own.
 	CheckOrigin bool

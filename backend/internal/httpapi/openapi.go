@@ -217,6 +217,15 @@ func webhookDelivery(b *openapi.Builder) *openapi.Operation {
 	b.FieldOverrides["EnvelopeV1.version"] = &openapi.Schema{Type: "integer", Description: "The envelope version, 1 here; it is the version header's value too."}
 	b.FieldOverrides["EnvelopeV1.payload"] = &openapi.Schema{Type: "object", Description: "The event's own fields, by topic, as docs/webhooks.md lists them."}
 	b.FieldOverrides["EnvelopeV1.occurredAt"] = &openapi.Schema{Type: "string", Format: "date-time", Description: "When the delivery was queued."}
+	b.Descriptions[reflect.TypeOf(webhook.EnvelopeV2{})] = "What an endpoint registered for envelope version 2 is posted: a CloudEvents 1.0 event in structured mode."
+	b.FieldOverrides["EnvelopeV2.specversion"] = &openapi.Schema{Type: "string", Enum: []string{"1.0"}, Description: "The CloudEvents version."}
+	b.FieldOverrides["EnvelopeV2.id"] = &openapi.Schema{Type: "string", Format: "uuid", Description: "The event's id, the same on every attempt and redelivery."}
+	b.FieldOverrides["EnvelopeV2.source"] = &openapi.Schema{Type: "string", Description: "The installation's address, ARMATURE_APP_URL."}
+	b.FieldOverrides["EnvelopeV2.type"] = &openapi.Schema{Type: "string", Description: webhook.TypePrefix + " followed by the version 1 topic, as in " + webhook.HeaderEvent + ", such as " + webhook.TypePrefix + "issue.transitioned."}
+	b.FieldOverrides["EnvelopeV2.time"] = &openapi.Schema{Type: "string", Format: "date-time", Description: "When the event happened, in UTC."}
+	b.FieldOverrides["EnvelopeV2.datacontenttype"] = &openapi.Schema{Type: "string", Enum: []string{"application/json"}, Description: "What data is."}
+	b.FieldOverrides["EnvelopeV2.dataversion"] = &openapi.Schema{Type: "integer", Description: "The version of data's own shape, 1 here; a payload that breaks raises it apart from the envelope."}
+	b.FieldOverrides["EnvelopeV2.data"] = &openapi.Schema{Type: "object", Description: "The version 1 payload, unchanged: the event's own fields, by topic, as docs/webhooks.md lists them."}
 	header := func(name, description string) openapi.Parameter {
 		return openapi.Parameter{Name: name, In: "header", Required: true, Description: description, Schema: &openapi.Schema{Type: "string"}}
 	}
@@ -229,13 +238,14 @@ func webhookDelivery(b *openapi.Builder) *openapi.Operation {
 		Parameters: []openapi.Parameter{
 			header(webhook.HeaderEvent, "The topic, as in the body."),
 			header(webhook.HeaderDelivery, "This attempt's id; a retry or a redelivery has its own."),
-			header(webhook.HeaderVersion, "The envelope version of the body, as in its version field."),
+			header(webhook.HeaderVersion, "The envelope version of the body: 1, as in its version field, or 2, a CloudEvent."),
 			header(webhook.HeaderSignature, "sha256= and the hex HMAC-SHA256 of the body, keyed with the endpoint's secret."),
 			header(webhook.HeaderTimestamp, "When this attempt was sent, in Unix seconds."),
 			header(webhook.HeaderTimestampedSignature, "sha256= and the hex HMAC-SHA256 of the timestamp, a dot and the body."),
 		},
 		RequestBody: &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
-			"application/json": {Schema: b.SchemaOf(webhook.EnvelopeV1{})},
+			"application/json":             {Schema: b.SchemaOf(webhook.EnvelopeV1{})},
+			"application/cloudevents+json": {Schema: b.SchemaOf(webhook.EnvelopeV2{})},
 		}},
 		Responses: map[string]*openapi.Response{
 			"2XX":     {Description: "Taken: the delivery is done."},

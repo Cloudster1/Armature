@@ -412,6 +412,106 @@
         }
       }
     },
+    "/access-requests/{requestID}": {
+      "get": {
+        "operationId": "getAccessRequest",
+        "summary": "One request for access, to somebody who may administer its project.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "requestID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessRequest": {
+                      "$ref": "#/components/schemas/AccessRequest"
+                    }
+                  },
+                  "required": [
+                    "accessRequest"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/access-requests/{requestID}/grant": {
+      "post": {
+        "operationId": "grantAccessRequest",
+        "summary": "Give whoever asked the reader role on the project; takes administering it.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "requestID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessRequest": {
+                      "$ref": "#/components/schemas/AccessRequest"
+                    }
+                  },
+                  "required": [
+                    "accessRequest"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/access/me": {
       "get": {
         "operationId": "myAccess",
@@ -1130,11 +1230,21 @@
     "/auth/logout": {
       "post": {
         "operationId": "logout",
-        "summary": "End the session.",
+        "summary": "End the session; one from the identity provider answers where to end the provider's session too.",
         "tags": [
           "auth"
         ],
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutAnswer"
+                }
+              }
+            }
+          },
           "204": {
             "description": "No Content"
           },
@@ -1685,7 +1795,7 @@
     "/auth/oidc/start": {
       "get": {
         "operationId": "oIDCStart",
-        "summary": "Begin signing in through the installation's identity provider.",
+        "summary": "Begin signing in through the installation's identity provider; with prompt=none, quietly, landing on the sign-in page when the provider has no session.",
         "tags": [
           "auth"
         ],
@@ -1694,6 +1804,14 @@
             "name": "next",
             "in": "query",
             "description": "Where to land afterwards.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prompt",
+            "in": "query",
+            "description": "none asks the provider not to show anything: a silent sign-in.",
             "schema": {
               "type": "string"
             }
@@ -1957,7 +2075,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SignupState"
+                  "$ref": "#/components/schemas/SignInOffer"
                 }
               }
             }
@@ -2027,7 +2145,7 @@
     "/automation/catalog": {
       "get": {
         "operationId": "automationCatalog",
-        "summary": "What a rule may watch, test and do, and the topics a webhook may subscribe to.",
+        "summary": "What a rule may watch, test and do, the topics a webhook may subscribe to, and the envelope versions it may be sent in.",
         "tags": [
           "automation"
         ],
@@ -2050,11 +2168,18 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      }
                     }
                   },
                   "required": [
                     "catalog",
-                    "topics"
+                    "topics",
+                    "versions"
                   ]
                 }
               }
@@ -7106,6 +7231,58 @@
                   "required": [
                     "issue"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{issueKey}/access-requests": {
+      "post": {
+        "operationId": "askForAccess",
+        "summary": "Ask the project's administrators for access to an issue; the answer is the same whether or not the issue exists or may be seen.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "issueKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An issue key such as CP-12, or a project key such as CP."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessReceipt"
                 }
               }
             }
@@ -20418,7 +20595,7 @@
             "name": "X-Armature-Webhook-Version",
             "in": "header",
             "required": true,
-            "description": "The envelope version of the body, as in its version field.",
+            "description": "The envelope version of the body: 1, as in its version field, or 2, a CloudEvent.",
             "schema": {
               "type": "string"
             }
@@ -20454,6 +20631,11 @@
         "requestBody": {
           "required": true,
           "content": {
+            "application/cloudevents+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvelopeV2"
+              }
+            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EnvelopeV1"
@@ -20492,6 +20674,9 @@
           },
           "position": {
             "type": "integer"
+          },
+          "project": {
+            "type": "string"
           },
           "requestId": {
             "type": "string"
@@ -20618,6 +20803,69 @@
         "required": [
           "token"
         ]
+      },
+      "AccessReceipt": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "received"
+        ]
+      },
+      "AccessRequest": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "requester": {
+            "$ref": "#/components/schemas/Person"
+          }
+        },
+        "required": [
+          "id",
+          "projectKey",
+          "projectName",
+          "issueKey",
+          "message",
+          "requester",
+          "createdAt"
+        ]
+      },
+      "AccessRequestBody": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
       },
       "Action": {
         "type": "object",
@@ -22783,7 +23031,7 @@
             "format": "date-time"
           },
           "defaultAssignee": {
-            "$ref": "#/components/schemas/Person"
+            "$ref": "#/components/schemas/ComponentPerson"
           },
           "description": {
             "type": "string"
@@ -22796,7 +23044,7 @@
             "type": "integer"
           },
           "lead": {
-            "$ref": "#/components/schemas/Person"
+            "$ref": "#/components/schemas/ComponentPerson"
           },
           "name": {
             "type": "string"
@@ -22821,6 +23069,22 @@
           "issues",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "ComponentPerson": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "ComponentRef": {
@@ -24146,6 +24410,62 @@
           "orgId",
           "occurredAt",
           "payload"
+        ]
+      },
+      "EnvelopeV2": {
+        "type": "object",
+        "description": "What an endpoint registered for envelope version 2 is posted: a CloudEvents 1.0 event in structured mode.",
+        "properties": {
+          "data": {
+            "type": "object",
+            "description": "The version 1 payload, unchanged: the event's own fields, by topic, as docs/webhooks.md lists them."
+          },
+          "datacontenttype": {
+            "type": "string",
+            "description": "What data is.",
+            "enum": [
+              "application/json"
+            ]
+          },
+          "dataversion": {
+            "type": "integer",
+            "description": "The version of data's own shape, 1 here; a payload that breaks raises it apart from the envelope."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The event's id, the same on every attempt and redelivery."
+          },
+          "source": {
+            "type": "string",
+            "description": "The installation's address, ARMATURE_APP_URL."
+          },
+          "specversion": {
+            "type": "string",
+            "description": "The CloudEvents version.",
+            "enum": [
+              "1.0"
+            ]
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the event happened, in UTC."
+          },
+          "type": {
+            "type": "string",
+            "description": "dev.armature. followed by the version 1 topic, as in X-Armature-Event, such as dev.armature.issue.transitioned."
+          }
+        },
+        "required": [
+          "specversion",
+          "id",
+          "source",
+          "type",
+          "time",
+          "datacontenttype",
+          "dataversion",
+          "data"
         ]
       },
       "EpicProgress": {
@@ -25723,6 +26043,17 @@
           "password"
         ]
       },
+      "LogoutAnswer": {
+        "type": "object",
+        "properties": {
+          "endSession": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endSession"
+        ]
+      },
       "ManagedUser": {
         "type": "object",
         "properties": {
@@ -26780,6 +27111,9 @@
       "Person": {
         "type": "object",
         "properties": {
+          "email": {
+            "type": "string"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -26790,7 +27124,8 @@
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "email"
         ]
       },
       "PersonFound": {
@@ -27608,6 +27943,9 @@
               "person"
             ]
           },
+          "revealsIssues": {
+            "type": "boolean"
+          },
           "status": {
             "$ref": "#/components/schemas/StatusUpdate"
           },
@@ -27638,6 +27976,7 @@
           "issueCount",
           "openIssueCount",
           "portalVerifies",
+          "revealsIssues",
           "trustedDomains",
           "features",
           "planningMethod",
@@ -30053,6 +30392,25 @@
           "generatedAt"
         ]
       },
+      "SignInOffer": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "boolean"
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "silentSignIn": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "open",
+          "first",
+          "silentSignIn"
+        ]
+      },
       "SignupRequest": {
         "type": "object",
         "properties": {
@@ -30070,21 +30428,6 @@
           "email",
           "password",
           "name"
-        ]
-      },
-      "SignupState": {
-        "type": "object",
-        "properties": {
-          "first": {
-            "type": "boolean"
-          },
-          "open": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "open",
-          "first"
         ]
       },
       "Span": {
@@ -31771,6 +32114,9 @@
               "team",
               "person"
             ]
+          },
+          "revealsIssues": {
+            "type": "boolean"
           },
           "trustedDomains": {
             "type": "array",

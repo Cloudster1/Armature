@@ -30,6 +30,7 @@ const SCENARIO_FILES = [
   "plan-links",
   "sprints",
   "access",
+  "access-requests",
   "invitations",
   "users",
   "holidays",

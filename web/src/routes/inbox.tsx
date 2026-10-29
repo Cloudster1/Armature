@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useInbox, useMarkRead, type Notification } from "@/api/notifications";
+import { accessRequestOf } from "@/lib/notice";
 import { Button, Card, EmptyState, Page, PageHeader, Segmented } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useFormat } from "@/lib/format";
@@ -80,6 +81,14 @@ function InboxPage() {
                 <span className="shrink-0 text-xs text-ink-subtle">{format.relative(n.createdAt)}</span>
               </>
             );
+            const request = accessRequestOf(n);
+            // An ask for access opens the request, where it is granted.
+            if (request)
+              return (
+                <Link key={n.id} to="/access-requests/$requestId" params={{ requestId: request }} {...row}>
+                  {content}
+                </Link>
+              );
             // A notice about your absences opens your profile, where they are listed.
             return n.kind === "absence" ? (
               <Link key={n.id} to="/settings/profile" {...row}>

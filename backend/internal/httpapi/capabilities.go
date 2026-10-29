@@ -21,6 +21,15 @@ type capability struct {
 // integrationCapabilities may only use names from Dynamo's shared list.
 var integrationCapabilities = []capability{
 	{
+		name:    "auth.silent-sign-in@1",
+		promise: "A visit without a session first asks the installation's identity provider quietly, so somebody signed in to another tool of the suite is let straight in, and signing out ends the provider's session too.",
+		operations: []string{
+			"GET /auth/oidc/start",
+			"GET /auth/oidc/callback",
+			"POST /auth/logout",
+		},
+	},
+	{
 		name:    "issue-embed@1",
 		promise: "An issue read by its key, and issues found by NQL or by the words typed so far, with a session or a token.",
 		operations: []string{
@@ -49,6 +58,13 @@ var integrationCapabilities = []capability{
 		topics: []string{events.TopicRemoteLinkAdded, events.TopicRemoteLinkRemoved},
 	},
 	{
+		name:    "issue.access-requests@1",
+		promise: "A reader asks for access to an issue with their own token and is answered 202 alike whether it exists or not; the project's administrators are told.",
+		operations: []string{
+			"POST /issues/{issueKey}/access-requests",
+		},
+	},
+	{
 		name:    "webhooks@1",
 		promise: "Endpoints subscribed to topics, their deliveries, a redelivery, a test delivery and a new secret, each delivery a signed envelope.",
 		operations: []string{
@@ -60,6 +76,15 @@ var integrationCapabilities = []capability{
 			"POST /webhooks/{endpointID}/deliveries/{deliveryID}/redeliver",
 			"POST /webhooks/{endpointID}/test",
 			"POST /webhooks/{endpointID}/rotate-secret",
+		},
+	},
+	{
+		name:    "webhooks@2",
+		promise: "An endpoint registered for envelope version 2 is posted each event as a CloudEvents 1.0 event in structured mode, the version 1 payload as its data, signed as version 1 is.",
+		operations: []string{
+			"POST /webhooks",
+			"PATCH /webhooks/{endpointID}",
+			"POST /webhooks/{endpointID}/test",
 		},
 	},
 	{

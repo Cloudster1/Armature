@@ -3,6 +3,7 @@ package httpapi
 import (
 	"strconv"
 
+	"github.com/armature/armature/backend/internal/access"
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -57,7 +58,7 @@ var operations = []operation{
 
 	// Signing up and in.
 	{method: "GET", path: "/auth/signup", handler: "handleSignupOpen", tag: "auth", summary: "Whether signing up would work now, and whether it would set the installation up.", public: true,
-		responses: ok(auth.SignupState{})},
+		responses: ok(signInOffer{})},
 	{method: "POST", path: "/auth/signup", handler: "handleSignup", tag: "auth", summary: "Create an account and sign in: the first one sets the installation up and administers it, a later one joins it as a member where sign-up is open.", public: true,
 		request: signupRequest{}, responses: created(env{"principal": auth.Principal{}})},
 	{method: "POST", path: "/auth/login", handler: "handleLogin", tag: "auth", summary: "Sign in with email and password; an account with a second factor is answered with a challenge to finish with a code instead of a session.", public: true,
@@ -72,8 +73,8 @@ var operations = []operation{
 		request: passwordResetRequest{}, responses: map[int]any{202: env{"expiresInSeconds": 0}}},
 	{method: "POST", path: "/auth/password-reset/confirm", handler: "handleConfirmPasswordReset", tag: "auth", summary: "Set a new password with a mailed link; every session and API token of the account ends.", public: true,
 		request: confirmPasswordResetRequest{}, responses: none()},
-	{method: "GET", path: "/auth/oidc/start", handler: "handleOIDCStart", tag: "auth", summary: "Begin signing in through the installation's identity provider.", public: true, redirect: true,
-		query: []param{{name: "next", description: "Where to land afterwards."}}, responses: map[int]any{}},
+	{method: "GET", path: "/auth/oidc/start", handler: "handleOIDCStart", tag: "auth", summary: "Begin signing in through the installation's identity provider; with prompt=none, quietly, landing on the sign-in page when the provider has no session.", public: true, redirect: true,
+		query: []param{{name: "next", description: "Where to land afterwards."}, {name: "prompt", description: "none asks the provider not to show anything: a silent sign-in."}}, responses: map[int]any{}},
 	{method: "GET", path: "/auth/oidc/{orgSlug}/start", handler: "handleOIDCStartForOrganization", tag: "auth", summary: "Deprecated: sends the browser to /auth/oidc/start, whatever slug it names. Goes in the next release.", public: true, redirect: true,
 		query: []param{{name: "next", description: "Where to land afterwards."}}, responses: map[int]any{}},
 	{method: "GET", path: "/auth/oidc/callback", handler: "handleOIDCCallback", tag: "auth", summary: "Where the identity provider sends the browser back.", public: true, redirect: true,
@@ -92,7 +93,8 @@ var operations = []operation{
 		responses: map[int]any{}},
 	{method: "POST", path: "/unwatch", handler: "handleUnwatch", tag: "portal", summary: "Stop following a request, with the token a mail carried.", public: true,
 		request: unwatchRequest{}, responses: none()},
-	{method: "POST", path: "/auth/logout", handler: "handleLogout", tag: "auth", summary: "End the session.", responses: none()},
+	{method: "POST", path: "/auth/logout", handler: "handleLogout", tag: "auth", summary: "End the session; one from the identity provider answers where to end the provider's session too.",
+		responses: map[int]any{200: logoutAnswer{}, 204: nil}},
 	{method: "PATCH", path: "/auth/me", handler: "handleUpdateProfile", tag: "auth", summary: "Change your name, time zone or language.", request: updateProfileRequest{}, responses: ok(env{"principal": auth.Principal{}})},
 	{method: "PUT", path: "/auth/me/password", handler: "handleChangePassword", tag: "auth", summary: "Change your password; every other session of yours ends. From a browser session only.", request: changePasswordRequest{}, responses: none()},
 	{method: "GET", path: "/auth/sessions", handler: "handleListSessions", tag: "auth", summary: "Where you are signed in, newest first, the session asking marked current. From a browser session only.",
@@ -187,7 +189,7 @@ var operations = []operation{
 
 	// Metadata behind the pickers.
 	// Rules and the webhooks they, and the stream, post to.
-	{method: "GET", path: "/automation/catalog", handler: "handleAutomationCatalog", tag: "automation", summary: "What a rule may watch, test and do, and the topics a webhook may subscribe to.", responses: ok(env{"catalog": []automation.Descriptor{}, "topics": []string{}})},
+	{method: "GET", path: "/automation/catalog", handler: "handleAutomationCatalog", tag: "automation", summary: "What a rule may watch, test and do, the topics a webhook may subscribe to, and the envelope versions it may be sent in.", responses: ok(env{"catalog": []automation.Descriptor{}, "topics": []string{}, "versions": []int{}})},
 	{method: "GET", path: "/projects/{projectKey}/automation/rules", handler: "handleListProjectRules", tool: "list_automation_rules", toolHelp: "A project's automation rules with their triggers, conditions and actions.", tag: "automation", summary: "A project's rules.", responses: ok(env{"rules": []automation.Rule{}})},
 	{method: "POST", path: "/projects/{projectKey}/automation/rules", handler: "handleCreateProjectRule", tag: "automation", summary: "Make a rule for a project.", request: automation.Input{}, responses: created(env{"rule": automation.Rule{}})},
 	{method: "GET", path: "/automation/rules", handler: "handleListOrgRules", tag: "automation", summary: "The rules that watch every project.", responses: ok(env{"rules": []automation.Rule{}})},
@@ -347,6 +349,10 @@ var operations = []operation{
 	{method: "POST", path: "/issues", handler: "handleCreateIssue", tag: "issues", summary: "File an issue, naming the project in the body.", request: createIssueRequest{}, responses: created(env{"issue": issue.Issue{}})},
 	{method: "GET", path: "/issues/{issueKey}", handler: "handleGetIssue", tool: "get_issue", toolHelp: "One issue by its key, such as CP-12.", tag: "issues", summary: "One issue.", responses: ok(env{"issue": issue.Issue{}})},
 	{method: "PATCH", path: "/issues/{issueKey}", handler: "handleUpdateIssue", tool: "update_issue", toolHelp: "Edit an issue's fields; its status moves through transition_issue instead.", tag: "issues", summary: "Edit an issue's fields; the status moves through transitions instead.", request: updateIssueRequest{}, responses: ok(env{"issue": issue.Issue{}})},
+	{method: "POST", path: "/issues/{issueKey}/access-requests", handler: "handleAskForAccess", tag: "issues", summary: "Ask the project's administrators for access to an issue; the answer is the same whether or not the issue exists or may be seen.",
+		request: accessRequestBody{}, responses: map[int]any{202: accessReceipt{}}},
+	{method: "GET", path: "/access-requests/{requestID}", handler: "handleGetAccessRequest", tag: "issues", summary: "One request for access, to somebody who may administer its project.", responses: ok(env{"accessRequest": access.Request{}})},
+	{method: "POST", path: "/access-requests/{requestID}/grant", handler: "handleGrantAccessRequest", tag: "issues", summary: "Give whoever asked the reader role on the project; takes administering it.", responses: ok(env{"accessRequest": access.Request{}})},
 	{method: "DELETE", path: "/issues/{issueKey}", handler: "handleDeleteIssue", tag: "issues", summary: "Delete an issue; takes administering its project.", responses: none()},
 	{method: "GET", path: "/issues/{issueKey}/children", handler: "handleIssueChildren", tag: "hierarchy", summary: "The issues directly underneath.", responses: ok(env{"children": []issue.Issue{}})},
 	{method: "GET", path: "/issues/{issueKey}/hierarchy", handler: "handleIssueHierarchy", tag: "hierarchy", summary: "The issue in context: above it, under it, and its roll-up.", responses: ok(issue.Hierarchy{})},

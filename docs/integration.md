@@ -12,7 +12,7 @@ has an account; the names promise features, not data.
   "product": "armature",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["calendar@1", "git-proxy@1", "issue-embed@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1"]
+  "capabilities": ["auth.silent-sign-in@1", "calendar@1", "git-proxy@1", "issue-embed@1", "issue.access-requests@1", "mcp@1", "oauth.partner-tokens@1", "oauth.token-exchange@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks.partner@1", "webhooks@1", "webhooks@2"]
 }
 ```
 
@@ -22,6 +22,33 @@ an API token unless the document marks it public.
 
 ## The capabilities
 
+### `auth.silent-sign-in@1`
+
+A visit without a session first asks the installation's identity provider
+quietly, so somebody signed in to another tool of the suite is let straight
+in, and signing out ends the provider's session too.
+
+- `GET /auth/oidc/start?prompt=none&next=/issues/CP-12` sends the browser to
+  the provider with `prompt=none`, PKCE and a nonce. With a session there, the
+  callback signs the person in as a clicked sign-in does, with the same group
+  mapping and membership checks, and lands on `next`.
+- Without one (`login_required`, `interaction_required`, `consent_required`
+  or any other refusal) the callback lands on `/login?next=...` and marks the
+  browser, for its session, so the next page goes straight to the sign-in
+  page. Silent sign-in is off without a provider, with
+  `ARMATURE_OIDC_SILENT_SIGN_IN=false` (`auth.silentSignIn` in the chart), and
+  after signing out, and for a visit by any address but `ARMATURE_APP_URL`'s,
+  since the round trip lands there. `GET /auth/signup` says
+  `silentSignIn: true` when a visit should try it.
+- `POST /auth/logout` for a session from the provider answers `200
+  {"endSession": "..."}`, the provider's end session address with
+  `id_token_hint`, `client_id` and `post_logout_redirect_uri`; the browser
+  goes there. Otherwise it answers 204 as before.
+
+- `GET /auth/oidc/start`
+- `GET /auth/oidc/callback`
+- `POST /auth/logout`
+
 ### `issue-embed@1`
 
 An issue read by its key, and issues found by NQL or by the words typed so far,
@@ -30,6 +57,32 @@ with a session or a token.
 - `GET /issues/{issueKey}`
 - `GET /issues`
 - `GET /issues/suggest`
+
+An issue the caller may not see answers 404 `not_found`, the same as one that
+does not exist. A project whose administrators turned on "Show that issues
+exist to people who may not see them" answers 403 `not_permitted` instead, for
+an issue that exists, with the project's name in `project`:
+
+```json
+{ "code": "not_permitted", "message": "You may not see issues of Payments. Ask its administrators for access.", "project": "Payments" }
+```
+
+### `issue.access-requests@1`
+
+A reader asks for access to an issue with their own token, and is answered
+`202 {"received": true}` alike whether the issue exists, whether they may
+already see it and whether its project is hidden from them, so the answer
+reveals nothing. When the issue exists and is hidden from them, everyone who
+may administer its project is told in Armature and by mail, with the note, and
+grants the reader role on the project in one click. Asking again for the same
+project within a day tells nobody again. A partner links "Ask for access" to
+it beside "You may not see PROJ-12, or it does not exist".
+
+- `POST /issues/{issueKey}/access-requests` with `{ "message": "..." }`, the
+  message optional and up to 1000 characters. A key that is not an issue key
+  is 422; more than 20 asks in ten minutes are 429.
+- A connected app asks with `comment.write`, the scope that speaks to people,
+  as watching an issue does.
 
 ### `remote-links@1`
 
@@ -74,6 +127,25 @@ endpoint's secret as `sha256=` and the hex HMAC-SHA256 of the body in
 - `POST /webhooks/{endpointID}/deliveries/{deliveryID}/redeliver`
 - `POST /webhooks/{endpointID}/test`
 - `POST /webhooks/{endpointID}/rotate-secret`
+
+### `webhooks@2`
+
+An endpoint registered for envelope version 2 is posted each event as a
+CloudEvents 1.0 event in structured mode, the version 1 payload as its data,
+signed as version 1 is.
+
+`POST /webhooks` and `PATCH /webhooks/{endpointID}` take `"version": 2`, as
+does a connected app's own endpoint. The body is
+`application/cloudevents+json; charset=utf-8`, with `specversion` `1.0`,
+`source` the installation's address, `type` `dev.armature.` and the topic,
+`dataversion` `1`, and `data` the version 1 payload;
+[`docs/webhooks.md`](webhooks.md#version-2-a-cloudevent) has every field. The
+headers and signatures are those of version 1, and `X-Armature-Webhook-Version`
+says `2`.
+
+- `POST /webhooks`
+- `PATCH /webhooks/{endpointID}`
+- `POST /webhooks/{endpointID}/test`
 
 ### `mcp@1`
 

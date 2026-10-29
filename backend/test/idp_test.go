@@ -35,6 +35,10 @@ type idp struct {
 	signWith *rsa.PrivateKey
 	// alg, when set, overrides the algorithm header.
 	alg string
+	// endSession advertises an end session endpoint, as Keycloak does.
+	endSession bool
+	// verifiers are the PKCE verifiers the token requests carried, in order.
+	verifiers []string
 }
 
 func newIDP(t *testing.T) *idp {
@@ -48,7 +52,7 @@ func newIDP(t *testing.T) *idp {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{
+		discovery := map[string]any{
 			"issuer":                                provider.URL,
 			"authorization_endpoint":                provider.URL + "/authorize",
 			"token_endpoint":                        provider.URL + "/token",
@@ -56,7 +60,11 @@ func newIDP(t *testing.T) *idp {
 			"response_types_supported":              []string{"code"},
 			"subject_types_supported":               []string{"public"},
 			"id_token_signing_alg_values_supported": []string{"RS256"},
-		})
+		}
+		if provider.endSession {
+			discovery["end_session_endpoint"] = provider.URL + "/logout"
+		}
+		writeJSON(w, discovery)
 	})
 
 	mux.HandleFunc("/keys", func(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +72,9 @@ func newIDP(t *testing.T) *idp {
 	})
 
 	mux.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err == nil {
+			provider.verifiers = append(provider.verifiers, r.PostForm.Get("code_verifier"))
+		}
 		signer := provider.key
 		if provider.signWith != nil {
 			signer = provider.signWith

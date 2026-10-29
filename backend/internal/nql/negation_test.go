@@ -8,7 +8,7 @@ import (
 // A missing value matches no positive test, so every negation must count it on
 // the negated side. NOT over a SQL NULL is NULL, which would drop the issue.
 func TestNegationCountsAMissingValueAsNotMatching(t *testing.T) {
-	descriptionTest := `(jsonb_to_tsvector('simple', i.description, '["string"]') @@ plainto_tsquery('simple', $%d))`
+	descriptionTest := "(" + descriptionWords + " @@ " + startsOfWords("$%d") + ")"
 	cases := []struct{ in, sql string }{
 		{`text !~ payment`,
 			`NOT COALESCE(((i.summary ILIKE '%' || $3 || '%') OR ` + fmt.Sprintf(descriptionTest, 4) + `), false)`},
@@ -26,7 +26,7 @@ func TestNegationCountsAMissingValueAsNotMatching(t *testing.T) {
 		{`due != 2026-09-04`, `NOT COALESCE((i.due_date = $3::date), false)`},
 		{`resolved != 2026-09-01`, `NOT COALESCE((i.resolved_at >= $3 AND i.resolved_at < $4), false)`},
 		// IS EMPTY is never NULL itself, so its negation needs no help.
-		{`description IS NOT EMPTY`, `NOT (i.description IS NULL OR jsonb_to_tsvector('simple', i.description, '["string"]') = ''::tsvector)`},
+		{`description IS NOT EMPTY`, "NOT (i.description IS NULL OR " + descriptionWords + " = ''::tsvector)"},
 		{`assignee IS NOT EMPTY`, `NOT (i.assignee_id IS NULL)`},
 	}
 	for _, c := range cases {

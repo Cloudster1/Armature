@@ -289,6 +289,7 @@ ARMATURE_CORS_ORIGINS: {{ join "," . | quote }}
 ARMATURE_OUTBOUND_ALLOW: {{ join "," . | quote }}
 {{- end }}
 ARMATURE_OIDC_REDIRECT_URL: {{ default (printf "%s/api/v1/auth/oidc/callback" (include "armature.appURL" .)) .Values.auth.oidc.redirectURL | quote }}
+ARMATURE_OIDC_SILENT_SIGN_IN: {{ .Values.auth.silentSignIn | quote }}
 {{- with .Values.auth.oidc.backchannel }}
 ARMATURE_OIDC_BACKCHANNEL: {{ . | quote }}
 {{- end }}

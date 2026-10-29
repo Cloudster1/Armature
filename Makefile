@@ -65,9 +65,11 @@ DOCKER_GO = docker run --rm -t \
 	-v $(ROOT)/web/package-lock.json:/release/package-lock.json:ro \
 	-v $(ROOT)/$(CHART)/Chart.yaml:/release/Chart.yaml:ro \
 	-v $(ROOT)/README.md:/docs/README.md:ro \
+	-v $(ROOT)/docs/webhooks.md:/docs/webhooks.md:ro \
 	-v $(ROOT)/deploy/keycloak/realm.json:/keycloak/realm.json:ro \
 	-e ARMATURE_OPENAPI_FILE=/api/openapi.json \
 	-e ARMATURE_README_FILE=/docs/README.md \
+	-e ARMATURE_WEBHOOKS_DOC=/docs/webhooks.md \
 	-e ARMATURE_THEME_FILES=/themes \
 	-e ARMATURE_RELEASE_FILES=/release \
 	-e ARMATURE_REALM_FILE=/keycloak/realm.json \

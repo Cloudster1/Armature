@@ -177,7 +177,9 @@ the installation's stable id, the id of the `org` row, which the last step
 keeps, so that receivers do not break on this upgrade. It is deprecated, and
 goes with envelope version 2, as [A webhook's envelope has a
 version](#a-webhooks-envelope-has-a-version-and-an-endpoint-keeps-its-own) says. The `member.joined` event's own
-payload and an invitation in the API keep their `orgId` the same way. The previous release's consumers skip
+payload keeps its `orgId` until payload version 2, since envelope version 2
+carries the version 1 payload unchanged (#286), and an invitation in the API
+keeps its `orgId` too. The previous release's consumers skip
 an event without an `org_id`, so an upgrade drains the outbox and the stream
 first, and workers of the two releases never run side by side.
 
@@ -253,9 +255,9 @@ installation, its id and name, and still carries `org`, marked deprecated, as
 the webhook envelope, the `member.joined` event and an invitation still carry
 `orgId`. The next release removes `org` and an invitation's `orgId`, with the
 redirects from the old sign-in, desk and settings addresses. Removing a field
-a webhook receiver reads is a break, so the envelope's and the event's `orgId`
-go with envelope version 2, and an endpoint registered for version 1 keeps
-them for at least one Dynamo release (#242). `orgWideOnly`, the `org.administer`
+a webhook receiver reads is a break, so the envelope's `orgId` goes with
+envelope version 2 and the event's with payload version 2, and an endpoint
+registered for version 1 keeps them for at least one Dynamo release (#242). `orgWideOnly`, the `org.administer`
 permission and the `condition.org_role` rule type are part of what clients
 and stored workflows say, and keep their names.
 
@@ -2611,7 +2613,7 @@ records its own version beside its body, since the body is frozen when it is
 queued: a retry or a redelivery sends the header that matches what it carries,
 not what the endpoint moved to since. Version 1 is the envelope as it was, with
 the number added, so no receiver had to change on this upgrade, and `orgId`
-is what version 2 will leave out.
+is what version 2 leaves out.
 
 The contract is the document's `webhooks` section, built from the envelope's
 Go type like every other schema, and `docs/webhooks.md` says what each topic's
@@ -2622,6 +2624,31 @@ hook, is the sender's format.
 
 **Reconsider if** receivers want to choose their payload's shape per topic:
 that is a version per topic, which this single number cannot say.
+
+### Envelope version 2 is a CloudEvent, and its data is the version 1 payload
+
+Stator, Exciter and Rotor read the suite's events, and a relay in Dynamo or a
+standard broker should too without code for each tool, so version 2 is
+CloudEvents 1.0 in structured mode (#286), in the shape Exciter wrote down for
+all three: `type` is `dev.armature.` and the version 1 topic, `source` the
+installation's address, `time` when the event happened, and `data` the version
+1 payload, unchanged, with `dataversion` 1. The envelope and the payload
+version apart: a receiver moves to CloudEvents without its payload code
+changing, and a payload that breaks later raises `dataversion` alone. So the
+`member.joined` payload keeps its deprecated `orgId` until payload version 2,
+and only the envelope's goes.
+
+Structured mode rather than binary keeps the body a receiver verifies the
+whole event, attributes included, under the signature version 1 already has;
+CloudEvents leaves authentication to the transport. The body is built and
+frozen when a delivery is queued, as in version 1, so `id` and `time` are the
+same on every attempt. The event types are the topics, listed with their
+payloads in `docs/webhooks.md`, which a unit test holds to `events.Topics`;
+the payloads are maps at their 83 call sites, so a typed schema per topic would
+be a rewrite of every one.
+
+**Reconsider if** a receiver needs a payload's shape machine-readable: a
+struct per topic, reflected into the document as the envelopes are.
 
 ### A rule runs as an account of its own, once per event
 
@@ -2810,3 +2837,68 @@ And the documents are prose, so a stale metric name or bucket default in the
 README is invisible to every test. The gate for the whole job was therefore
 `git grep -i nojira` returning nothing, which is also what caught the Redis
 stream key, spelled with a colon where everything else used an underscore.
+
+### A visit without a session asks the provider quietly first
+
+The suite's tools share one Keycloak realm, and somebody signed in to one of
+them who opens Armature had to click "Sign in" to be sent there and straight
+back (#325). So a visit that finds no session first sends the browser to the
+provider with `prompt=none`, and the provider either signs the person in, as a
+click would, or says `login_required` without showing anything. The browser
+goes there itself, top level: the API's CSP and `X-Frame-Options: DENY` rule
+out a hidden frame, and a third-party cookie would not reach Keycloak in one
+anyway.
+
+The SPA decides: its guard asks `GET /auth/signup` whether to try, and the
+server says yes only with a provider enabled, the setting on, no mark in this
+browser, and a visit by the app's own address, where the provider's round trip
+comes back; the browser suite visits by another and is never sent round. Every failure of a silent attempt, a refusal, an unreachable
+provider or a sign-in that is refused here, lands on the sign-in page with
+where the person was going, and marks the browser with a cookie that lasts as
+long as the browser does, so the next page does not go round again. Signing
+out sets the same mark, and for a session from the provider sends the browser
+to its end session endpoint with the id token, which the session keeps for
+that, so nobody is signed straight back in. The sign-in page never tries by
+itself, so nothing loops.
+
+A silent sign-in by somebody who is no member files a join request, as a
+clicked one does: they signed in to the suite, and an administrator who admits
+by hand should see them. The same work added PKCE, and a cookie that holds the
+attempt's state, so a callback in a browser that did not start the attempt is
+refused instead of signing that browser in as somebody else.
+
+**Reconsider if** visitors without a suite account become most of the traffic:
+each pays one round trip to the provider per browser session.
+
+### Asking for access says nothing, and saying an issue exists is a project's choice
+
+Stator and Exciter show Armature issues with each reader's own token, and a
+reader who may not see one gets the 404 a missing issue gets, because
+existence is privileged. Telling them more would take that away, so asking
+for access is built to learn nothing (#279): the ask is answered `202
+{"received": true}` alike for a hidden issue, a missing one, one the caller
+already sees and a project that does not exist, and the work that differs, a
+row and an event, happens only on the hidden branch inside the same request.
+The route sits outside the project's wall on purpose, after the check that
+keeps customers to the portal; a malformed key or message is refused, since
+that is the caller's own text. Asks are braked per account, and one person's
+second ask for a project within a day is folded into the first, so the
+administrators hear once.
+
+The request goes to the people who administer that project through a role of
+its own; only when it has none, to those who administer all projects, and
+only when there are none of those, to the owners, so an ask never goes
+unheard and a large installation's global administrators are not told of
+every project's asks. Granting gives the reader role on the project, nothing
+more, and only someone who may administer the project may read or grant the
+request; to anyone else it does not exist. The event never reaches a webhook,
+since it names a person and a project kept from them.
+
+A project may instead say that its issues exist: off by default, turned on by
+its administrators on its settings page, which says what it reveals. Then a
+caller who may not see it is answered 403 `not_permitted` with the project's
+name for an issue that exists, and still 404 for one that does not.
+
+**Reconsider if** a project needs to grant something other than reading from
+a request: the role would then be the administrator's to pick.
+

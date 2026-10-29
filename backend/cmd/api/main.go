@@ -16,6 +16,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/armature/armature/backend/internal/access"
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/assistant"
 	"github.com/armature/armature/backend/internal/attachment"
@@ -195,7 +196,7 @@ func run() error {
 	httpapi.SetDoorWindow(cfg.Auth.DoorWindow)
 	themes := theme.NewService(cluster, store)
 	labels := label.NewService(cluster)
-	webhooks := webhook.NewService(cluster, log)
+	webhooks := webhook.NewService(cluster, log).WithSource(cfg.Mail.AppBaseURL)
 	identityProvider := oidc.NewService(cluster, cfg.Auth.OIDCRedirectURL).WithHTTPClient(oidc.Backchannel(oidc.ParseRewrites(os.Getenv("ARMATURE_OIDC_BACKCHANNEL"))))
 	server := &httpapi.Server{
 		Auth:         accounts,
@@ -223,6 +224,7 @@ func run() error {
 		Desk:         deskService,
 		Reports:      report.NewService(cluster, plans).WithSprints(sprints),
 		Issues:       issues,
+		Access:       access.NewService(cluster, issues, perm.NewStore(cluster)),
 		Boards:       board.NewService(cluster, issues),
 		Plans:        plans,
 		Sprints:      sprints,
@@ -237,17 +239,18 @@ func run() error {
 			WithRegistration(oauth.Registration(cfg.Auth.OAuthRegistration)).
 			WithDevelopment(cfg.Env == "development").
 			WithIdentityProvider(identityProvider),
-		AppBaseURL: cfg.Mail.AppBaseURL,
-		Renderer:   renderer(cfg.Render),
-		Assistant:  asker(cfg.Assistant),
-		Workflow:   &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
-		DB:         cluster,
-		Telemetry:  tel,
-		Fresh:      freshness.NewRedisTracker(rdb, cfg.Auth.ReadYourWritesTTL),
-		Log:        log,
-		Secure:     cfg.Auth.SecureCookies,
-		CookieName: cfg.Auth.SessionCookie,
-		SessionTTL: cfg.Auth.SessionTTL,
+		AppBaseURL:   cfg.Mail.AppBaseURL,
+		Renderer:     renderer(cfg.Render),
+		Assistant:    asker(cfg.Assistant),
+		Workflow:     &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
+		DB:           cluster,
+		Telemetry:    tel,
+		Fresh:        freshness.NewRedisTracker(rdb, cfg.Auth.ReadYourWritesTTL),
+		Log:          log,
+		Secure:       cfg.Auth.SecureCookies,
+		CookieName:   cfg.Auth.SessionCookie,
+		SessionTTL:   cfg.Auth.SessionTTL,
+		SilentSignIn: cfg.Auth.OIDCSilentSignIn,
 	}
 	// In development the dev server proxies from an origin of its own, so the
 	// origin check would refuse every write it forwards.

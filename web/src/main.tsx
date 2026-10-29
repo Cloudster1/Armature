@@ -6,6 +6,7 @@ import { buildRouter } from "./routes";
 import { LocalizedRouter } from "./features/shell/LocalizedRouter";
 import { ToastShelf } from "./components/ui";
 import { createQueryClient } from "./lib/queryClient";
+import { trySilentSignIn } from "./lib/silentSignIn";
 import { applyCustomTheme, applyTheme, readCachedTheme, readTheme } from "./lib/theme";
 import "./styles/index.css";
 
@@ -16,9 +17,13 @@ applyTheme(readTheme());
 const cached = readCachedTheme();
 if (cached) applyCustomTheme(cached.css);
 
-// An ended session goes to sign in, which brings the person back to this page.
+// An ended session goes to sign in, which brings the person back to this page,
+// quietly through the provider when it still knows them.
 const queryClient = createQueryClient(() => {
-  void router.navigate({ to: "/login", search: { next: router.state.location.href } });
+  const next = router.state.location.href;
+  void trySilentSignIn(next).then((leaving) => {
+    if (!leaving) void router.navigate({ to: "/login", search: { next } });
+  });
 });
 
 const router = buildRouter(queryClient);

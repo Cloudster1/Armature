@@ -10,12 +10,10 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	coreoidc "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"golang.org/x/oauth2"
 
 	"github.com/armature/armature/backend/internal/audit"
 	"github.com/armature/armature/backend/internal/db"
@@ -156,134 +154,6 @@ func (s *Service) discover(ctx context.Context, issuer string) (*coreoidc.Provid
 	s.verifiers[issuer] = found
 	s.mu.Unlock()
 	return found, nil
-}
-
-// Start begins a sign-in and returns the URL to send the browser to.
-//
-// The state ties the callback to this attempt and the nonce ties the id token
-// to it. Both are stored rather than signed into a cookie, so that a callback
-// arriving at a different instance is still recognised.
-func (s *Service) Start(ctx context.Context, redirect string) (string, error) {
-	provider, err := s.ProviderFor(ctx)
-	if err != nil {
-		return "", err
-	}
-	if !provider.Enabled {
-		return "", ErrNotConfigured
-	}
-
-	discovered, err := s.discover(ctx, provider.Issuer)
-	if err != nil {
-		return "", err
-	}
-
-	state, err := randomToken()
-	if err != nil {
-		return "", err
-	}
-	nonce, err := randomToken()
-	if err != nil {
-		return "", err
-	}
-
-	if _, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		// Anything left over from an abandoned attempt is dead weight, and the
-		// table is small enough that tidying on write is the whole story.
-		if _, err := tx.Exec(ctx, `DELETE FROM oidc_login WHERE expires_at < now()`); err != nil {
-			return err
-		}
-		_, err := tx.Exec(ctx, `
-			INSERT INTO oidc_login (state, nonce, redirect, expires_at)
-			VALUES ($1, $2, $3, $4)`,
-			state, nonce, redirect, time.Now().Add(howLongALoginMayTake))
-		return err
-	}); err != nil {
-		return "", fmt.Errorf("remember this sign-in: %w", err)
-	}
-
-	config := oauth2.Config{
-		ClientID:     provider.ClientID,
-		ClientSecret: provider.ClientSecret,
-		Endpoint:     discovered.Endpoint(),
-		RedirectURL:  s.redirectURL,
-		Scopes:       provider.ScopeList(),
-	}
-	return config.AuthCodeURL(state, coreoidc.Nonce(nonce)), nil
-}
-
-// Exchange completes a sign-in: it trades the code for tokens, verifies the id
-// token and reads the identity out of it.
-//
-// The returned redirect is where the browser wanted to end up, carried across
-// the round trip so that a link to a specific issue still lands there.
-func (s *Service) Exchange(ctx context.Context, state, code string) (*Identity, string, error) {
-	ctx = s.providerContext(ctx)
-	var (
-		nonce    string
-		redirect string
-	)
-	// The state is consumed as it is read. A code and state pair is good for
-	// exactly one sign-in; replaying it must not produce a second session.
-	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		err := tx.QueryRow(ctx, `
-			DELETE FROM oidc_login WHERE state = $1 AND expires_at > now()
-			RETURNING nonce, redirect`, state,
-		).Scan(&nonce, &redirect)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrUnknownLogin
-		}
-		return err
-	})
-	if err != nil {
-		return nil, "", err
-	}
-
-	provider, err := s.ProviderFor(ctx)
-	if err != nil {
-		return nil, "", err
-	}
-	if !provider.Enabled {
-		return nil, "", ErrNotConfigured
-	}
-
-	discovered, err := s.discover(ctx, provider.Issuer)
-	if err != nil {
-		return nil, "", err
-	}
-
-	config := oauth2.Config{
-		ClientID:     provider.ClientID,
-		ClientSecret: provider.ClientSecret,
-		Endpoint:     discovered.Endpoint(),
-		RedirectURL:  s.redirectURL,
-		Scopes:       provider.ScopeList(),
-	}
-	tokens, err := config.Exchange(ctx, code)
-	if err != nil {
-		return nil, "", fmt.Errorf("exchange the code: %w", err)
-	}
-
-	raw, ok := tokens.Extra("id_token").(string)
-	if !ok || raw == "" {
-		return nil, "", errors.New("the identity provider returned no id token")
-	}
-
-	// Verified against the issuer's published keys, for this client, unexpired.
-	// The library refuses an unsigned token and one signed with a symmetric key
-	// it was not given, which are the two ways this check is usually skipped.
-	verified, err := discovered.Verifier(&coreoidc.Config{ClientID: provider.ClientID}).Verify(ctx, raw)
-	if err != nil {
-		return nil, "", fmt.Errorf("verify the id token: %w", err)
-	}
-	if verified.Nonce != nonce {
-		return nil, "", errors.New("the id token belongs to a different sign-in")
-	}
-
-	identity, err := identityFrom(verified, provider.GroupsClaim)
-	if err != nil {
-		return nil, "", err
-	}
-	return identity, redirect, nil
 }
 
 // identityFrom reads the claims this product cares about out of a token that

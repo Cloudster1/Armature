@@ -19,7 +19,7 @@ import (
 const maxIncomingBytes = 256 << 10
 
 func (s *Server) handleAutomationCatalog(w http.ResponseWriter, r *http.Request) {
-	respondJSON(w, r, http.StatusOK, map[string]any{"catalog": automation.Catalog(), "topics": webhookTopics()})
+	respondJSON(w, r, http.StatusOK, map[string]any{"catalog": automation.Catalog(), "topics": webhookTopics(), "versions": webhook.Versions()})
 }
 
 func (s *Server) handleListProjectRules(w http.ResponseWriter, r *http.Request) {

@@ -18,6 +18,8 @@ const servicesRoot = ".."
 // discardsAllowed names every write whose position is thrown away on purpose,
 // keyed by file and function, with why no read of its caller depends on it.
 var discardsAllowed = map[string]string{
+	// The asker may never read what an ask writes, and must not learn it happened.
+	"access/access.go (*Service).Ask": "an ask for access; the asker cannot read it, and its answer may not differ",
 	// Nobody waits to read these: they run from a timer, the outbox or a mailbox.
 	"audit/audit.go (*Consumer).Handle":             "an event consumer; no request waits on it",
 	"automation/runner.go (*Service).run":           "a rule run from an event; no request waits on it",
@@ -58,8 +60,8 @@ var discardsAllowed = map[string]string{
 	"auth/recovery.go (*Service).ResetPassword":         "the new password is read only at sign-in, on the primary",
 	"auth/profile.go (*Service).UpdateProfile":          "the owner reads it back through Authenticate, on the primary",
 	"auth/profile.go (*Service).SetAvatarURL":           "the owner reads it back through Authenticate, on the primary",
-	"oidc/service.go (*Service).Start":                  "the login is read back by Exchange through WriteAdmin",
-	"oidc/service.go (*Service).Exchange":               "it consumes the login; nothing reads it afterwards",
+	"oidc/flow.go (*Service).Begin":                     "the login is read back by Claim through WriteAdmin",
+	"oidc/flow.go (*Service).Claim":                     "it consumes the login; nothing reads it afterwards",
 	"oidc/signin.go (*Service).signIn":                  "sessions are read through Authenticate, on the primary",
 	"oidc/signin.go (*Service).noteJoinRequest":         "the caller is refused and holds no session to pin",
 	"privacy/service.go (*Service).Erase":               "the person is signed out in the same answer",

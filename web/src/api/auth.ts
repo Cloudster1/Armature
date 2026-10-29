@@ -141,12 +141,14 @@ export function useEraseMe() {
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => request<void>("/auth/logout", { method: "POST" }),
+    mutationFn: () => request<{ endSession?: string } | undefined>("/auth/logout", { method: "POST" }),
     // Clear everything, not just the session: cached issues and boards belong
     // to the person who just signed out, and so does the theme.
-    onSuccess: () => {
+    onSuccess: (answer) => {
       cacheCustomTheme(null);
       queryClient.clear();
+      // A session from the provider ends there too, which comes back to sign in.
+      if (answer?.endSession) window.location.assign(answer.endSession);
     },
   });
 }

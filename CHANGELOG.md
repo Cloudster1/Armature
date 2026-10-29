@@ -7,6 +7,43 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a visit without a session first signs in silently when the
+  installation's identity provider still has one (#325), so somebody signed
+  in to Stator or Exciter through the suite's Keycloak lands on the page
+  they opened, signed in, with no click. Without a provider session they see
+  the sign-in page, and the browser does not try again until it is closed.
+  It is on whenever a provider is set up; `ARMATURE_OIDC_SILENT_SIGN_IN` (or
+  `auth.silentSignIn` in the chart) turns it off. Signing out ends the
+  provider's session too, and `/api/v1/meta` lists `auth.silent-sign-in@1`.
+- Changed: a sign-in through the identity provider uses PKCE, and its
+  callback is refused in a browser that did not start it (#325). A deep link
+  to the sign-in keeps its query string.
+- Added: a person who may not see an issue can ask for access to it (#279),
+  from the issue's "not found" page or, for a partner such as Stator,
+  through `POST /api/v1/issues/{key}/access-requests` with their own token.
+  The answer is the same whether the issue exists or not. When it exists,
+  the project's administrators are told in the inbox and by mail, and grant
+  the reader role from the request's page in one click; asking again within
+  a day tells nobody again. `/api/v1/meta` lists
+  `issue.access-requests@1`.
+- Added: a project's settings can say "Show that issues exist to people who
+  may not see them" (#279). It is off unless its administrators turn it on;
+  when on, such a person is answered 403 `not_permitted` with the project's
+  name instead of 404, and sees the issue as restricted.
+- Changed: `text ~` and `description ~` match the start of each word in a
+  description, as a search typed while thinking does: `text ~ meta` finds
+  "metadata" (#293). The summary still matches any part of a word. Only the
+  words people wrote count, no longer the names of the document's paragraphs
+  or its link addresses, so an emptied description is also `IS EMPTY`.
+- Added: webhook envelope version 2, a CloudEvents 1.0 event in structured
+  mode (#286). An endpoint registered with `"version": 2`, or with the
+  version picked on the Webhooks page, is posted
+  `application/cloudevents+json` with `type` `dev.armature.<topic>`,
+  `source` the installation's address and the version 1 payload as `data`,
+  at `dataversion` 1, signed as before. Version 1 stays the default, and
+  `/api/v1/meta` lists `webhooks@2`. The `member.joined` payload's `orgId`
+  now goes with payload version 2 rather than envelope version 2.
+
 ## 0.2.0 - 2026-10-28
 
 - Added: the service desk, its queues, the customer portal, the rating page,

@@ -144,10 +144,10 @@ func (s *Service) CreateIn(ctx context.Context, tx db.DBTX, in CreateInput, acto
 	err := tx.QueryRow(ctx, `
 		INSERT INTO project (key, name, description, kind, lead_id, workflow_scheme_id, template, features, planning_method)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING id, key, name, description, kind, lead_id, workflow_scheme_id, template, portal_verifies, trusted_domains, features,
+		RETURNING id, key, name, description, kind, lead_id, workflow_scheme_id, template, portal_verifies, reveals_issues, trusted_domains, features,
 		          planning_method, resource_grouping, created_at, updated_at`,
 		in.Key, in.Name, strings.TrimSpace(in.Description), string(in.Kind), in.LeadID, schemeID, in.Template, featureNames(in.Features), string(in.PlanningMethod),
-	).Scan(&p.ID, &p.Key, &p.Name, &p.Description, &p.Kind, &p.LeadID, &p.WorkflowSchemeID, &p.Template, &p.PortalVerifies, &p.TrustedDomains, &features,
+	).Scan(&p.ID, &p.Key, &p.Name, &p.Description, &p.Kind, &p.LeadID, &p.WorkflowSchemeID, &p.Template, &p.PortalVerifies, &p.RevealsIssues, &p.TrustedDomains, &features,
 		&p.PlanningMethod, &p.ResourceGrouping, &p.CreatedAt, &p.UpdatedAt)
 	if isUniqueViolation(err) {
 		return nil, ErrKeyTaken
@@ -191,7 +191,7 @@ SELECT p.id, p.key, p.name, p.description, p.kind, p.lead_id,
        (SELECT count(*) FROM issue i
           JOIN issue_status st ON st.id = i.status_id
          WHERE i.project_id = p.id AND st.category <> 'done'),
-       p.created_at, p.updated_at, p.archived_at, p.portal_verifies, p.trusted_domains, p.features,
+       p.created_at, p.updated_at, p.archived_at, p.portal_verifies, p.reveals_issues, p.trusted_domains, p.features,
        COALESCE(p.docs_url, ''), COALESCE(p.docs_label, ''), p.planning_method, p.resource_grouping, p.mail_request_type_id,
        s.id, s.status, s.note, to_char(s.target_on, 'YYYY-MM-DD'), s.author_id, COALESCE(su.name, ''), s.created_at
 FROM project p
@@ -219,7 +219,7 @@ func scanProject(row pgx.Row) (*Project, error) {
 		&p.ID, &p.Key, &p.Name, &p.Description, &p.Kind, &p.LeadID,
 		&p.LeadName, &p.WorkflowSchemeID, &p.Template,
 		&p.IssueCount, &p.OpenIssueCount,
-		&p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt, &p.PortalVerifies, &p.TrustedDomains, &features,
+		&p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt, &p.PortalVerifies, &p.RevealsIssues, &p.TrustedDomains, &features,
 		&p.DocsURL, &p.DocsLabel, &p.PlanningMethod, &p.ResourceGrouping, &p.MailRequestTypeID,
 		&statusID, &health, &note, &target, &author, &authorName, &postedAt,
 	)
@@ -353,6 +353,7 @@ type UpdateInput struct {
 	LeadID         **uuid.UUID
 	Kind           *Kind
 	PortalVerifies *bool
+	RevealsIssues  *bool
 	TrustedDomains *[]string
 	// MailRequestTypeID names what new mail to a desk becomes; a nil inside
 	// stops mail raising requests.
@@ -432,6 +433,11 @@ func (s *Service) Update(ctx context.Context, key string, in UpdateInput) (*Proj
 				if _, err := tx.Exec(ctx, `DELETE FROM user_session WHERE portal_project_id = $1`, id); err != nil {
 					return err
 				}
+			}
+		}
+		if in.RevealsIssues != nil {
+			if _, err := tx.Exec(ctx, `UPDATE project SET reveals_issues = $2 WHERE id = $1`, id, *in.RevealsIssues); err != nil {
+				return err
 			}
 		}
 		if in.TrustedDomains != nil {

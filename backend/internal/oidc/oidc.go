@@ -62,6 +62,9 @@ type Identity struct {
 	// matched against a group's external reference rather than its name, so
 	// renaming a group here does not break the mapping.
 	Groups []string
+	// IDToken is the token as the provider signed it, kept with the session so
+	// signing out can name it to the provider.
+	IDToken string
 }
 
 var (

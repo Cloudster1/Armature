@@ -103,6 +103,9 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 	if isAbsenceTopic(e.Topic) {
 		return f.handleAbsence(ctx, e, p)
 	}
+	if e.Topic == events.TopicAccessRequested {
+		return f.handleAccess(ctx, e)
+	}
 	if p.key() == "" {
 		return nil
 	}

@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/armature/armature/backend/internal/access"
 	"github.com/armature/armature/backend/internal/arrange"
 	"github.com/armature/armature/backend/internal/attachment"
 	"github.com/armature/armature/backend/internal/audit"
@@ -92,7 +93,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	mailer := &fakeMailer{}
 	labels := label.NewService(h.cluster)
 	testLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	webhooks := webhook.NewService(h.cluster, testLog)
+	webhooks := webhook.NewService(h.cluster, testLog).WithSource("http://app.test")
 
 	accounts := h.authService()
 	themes := theme.NewService(h.cluster, h.attachmentStore(t))
@@ -123,6 +124,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Reports:      report.NewService(h.cluster, plans).WithSprints(sprints),
 		AppBaseURL:   "http://app.test",
 		Issues:       issues,
+		Access:       access.NewService(h.cluster, issues, perm.NewStore(h.cluster)),
 		Boards:       board.NewService(h.cluster, issues),
 		Plans:        plans,
 		Sprints:      sprints,
@@ -140,6 +142,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Secure:       false,
 		CookieName:   testCookieName,
 		SessionTTL:   time.Hour,
+		SilentSignIn: true,
 	}
 
 	ts := httptest.NewServer(srv.Routes([]string{"http://localhost:5173"}))
@@ -160,6 +163,9 @@ type client struct {
 	base string
 	// bearer, when set, is sent instead of relying on the cookie jar.
 	bearer string
+	// host, when set, is the Host every request names, as a browser using
+	// the app's own address does; the jar keeps cookies under it too.
+	host string
 }
 
 func (s *apiServer) client(t *testing.T) *client {
@@ -221,6 +227,9 @@ func (c *client) do(method, path string, body any) response {
 	}
 
 	req, err := http.NewRequestWithContext(context.Background(), method, c.base+path, reader)
+	if err == nil && c.host != "" {
+		req.Host = c.host
+	}
 	if err != nil {
 		c.t.Fatal(err)
 	}

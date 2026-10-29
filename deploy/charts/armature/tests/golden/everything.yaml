@@ -94,6 +94,7 @@ data:
   ARMATURE_RENDER_URL: "http://armature-render:8090"
   ARMATURE_RENDER_TIMEOUT: "20s"
   ARMATURE_OIDC_REDIRECT_URL: "https://armature.example.com/api/v1/auth/oidc/callback"
+  ARMATURE_OIDC_SILENT_SIGN_IN: "true"
   
   
   ARMATURE_RETAIN_SESSIONS: "24h"
@@ -330,7 +331,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 5f6e5039623f7d91ccb45f35588f251f4bd125a32e71d010146b5509e2ff0e03
+        checksum/env: bbe8a42db22311a91af04c7bc8bc55149eaa09830ae05c2151d3abb547203d18
     spec:
       serviceAccountName: armature
       securityContext:
@@ -626,7 +627,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 5f6e5039623f7d91ccb45f35588f251f4bd125a32e71d010146b5509e2ff0e03
+        checksum/env: bbe8a42db22311a91af04c7bc8bc55149eaa09830ae05c2151d3abb547203d18
     spec:
       serviceAccountName: armature
       securityContext:

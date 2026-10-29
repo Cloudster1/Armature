@@ -213,6 +213,7 @@ func TestEveryKindIsOneSomethingIsToldAs(t *testing.T) {
 			told[tl.kind] = true
 		}
 	}
+	told[accessTell(ada, "Bob", "CP-7", "").kind] = true
 
 	for _, kind := range Kinds {
 		if !told[kind] {

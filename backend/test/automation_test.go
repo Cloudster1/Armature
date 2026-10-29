@@ -162,7 +162,7 @@ func TestScheduledAndManualRuns(t *testing.T) {
 }
 
 // received is one request a receiver kept: the body and the headers it is signed in.
-type received struct{ Body, Signature, Event, Timestamp, Timestamped, Version string }
+type received struct{ Body, Signature, Event, Timestamp, Timestamped, Version, ContentType string }
 
 // receiver is an endpoint that keeps what it was sent and answers as told.
 type receiver struct {
@@ -177,7 +177,7 @@ func (r *receiver) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.got = append(r.got, received{
 		Body: string(body), Signature: req.Header.Get(webhook.HeaderSignature), Event: req.Header.Get("X-Armature-Event"),
 		Timestamp: req.Header.Get(webhook.HeaderTimestamp), Timestamped: req.Header.Get(webhook.HeaderTimestampedSignature),
-		Version: req.Header.Get(envelopeVersionHeader),
+		Version: req.Header.Get(envelopeVersionHeader), ContentType: req.Header.Get("Content-Type"),
 	})
 	status := r.status
 	r.mu.Unlock()

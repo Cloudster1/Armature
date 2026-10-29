@@ -162,6 +162,9 @@ type Auth struct {
 	// OIDCRedirectURL is what the identity provider sends people back to; it
 	// must match what is registered there exactly.
 	OIDCRedirectURL string
+	// OIDCSilentSignIn tries the provider quietly before showing the sign-in
+	// page, when one is set up, so somebody signed in elsewhere is let in.
+	OIDCSilentSignIn bool
 	// SecretKey seals authenticator secrets, as 32 bytes of base64; empty
 	// turns two-step sign-in off.
 	SecretKey string
@@ -281,6 +284,7 @@ func Load() (Config, error) {
 			Signup:             env("ARMATURE_SIGNUP", "first"),
 			InstallationName:   env("ARMATURE_NAME", "Armature"),
 			OIDCRedirectURL:    env("ARMATURE_OIDC_REDIRECT_URL", DevOIDCRedirectURL),
+			OIDCSilentSignIn:   envBool("ARMATURE_OIDC_SILENT_SIGN_IN", true),
 			SecretKey:          env("ARMATURE_SECRET_KEY", ""),
 			OAuthRegistration:  env("ARMATURE_OAUTH_REGISTRATION", "approve"),
 		},

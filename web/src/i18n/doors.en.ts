@@ -189,6 +189,7 @@ export const doorsEn = {
       watching: "Issues I watch change",
       sla_breached: "A request misses its goal",
       absence: "Somebody else changes my absences",
+      access_requested: "Somebody asks to see a project I administer",
     } as Record<string, string>,
   },
 };

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,7 +85,7 @@ func TestAuditedAddressKeepsOnlyTheHost(t *testing.T) {
 func TestVersionOneIsTheEnvelopeWithItsNumber(t *testing.T) {
 	installationID, eventID := uuid.New(), uuid.New()
 	at := time.Date(2026, 10, 14, 9, 30, 0, 0, time.UTC)
-	body, err := envelopeFor(1, installationID, events.Event{ID: eventID, Topic: events.TopicWatcherAdded, Payload: json.RawMessage(`{"key":"X-1","token":"unwatch"}`)}, at)
+	body, err := envelopeFor(1, origin{installation: installationID, source: DefaultSource}, events.Event{ID: eventID, Topic: events.TopicWatcherAdded, Payload: json.RawMessage(`{"key":"X-1","token":"unwatch"}`)}, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,9 +114,57 @@ func TestVersionOneIsTheEnvelopeWithItsNumber(t *testing.T) {
 	}
 }
 
+// Version 2 is CloudEvents 1.0 in structured mode, as Exciter reads it: the
+// version 1 payload as data, and none of version 1's own fields.
+func TestVersionTwoIsACloudEvent(t *testing.T) {
+	eventID := uuid.New()
+	happened := time.Date(2026, 10, 14, 9, 29, 58, 0, time.FixedZone("CEST", 2*60*60))
+	queued := time.Date(2026, 10, 14, 9, 30, 0, 0, time.UTC)
+	from := origin{installation: uuid.New(), source: "https://armature.example.com"}
+	event := events.Event{ID: eventID, Topic: events.TopicWatcherAdded, CreatedAt: happened, Payload: json.RawMessage(`{"key":"X-1","token":"unwatch"}`)}
+	body, err := envelopeFor(2, from, event, queued)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]json.RawMessage
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"specversion":     `"1.0"`,
+		"id":              `"` + eventID.String() + `"`,
+		"source":          `"https://armature.example.com"`,
+		"type":            `"dev.armature.watcher.added"`,
+		"time":            `"2026-10-14T07:29:58Z"`,
+		"datacontenttype": `"application/json"`,
+		"dataversion":     `1`,
+		"data":            `{"key":"X-1"}`,
+	}
+	if len(got) != len(want) {
+		t.Errorf("the envelope has %d fields, want %d: %s", len(got), len(want), body)
+	}
+	for field, value := range want {
+		if string(got[field]) != value {
+			t.Errorf("%s = %s, want %s", field, got[field], value)
+		}
+	}
+	if ContentType(2) != "application/cloudevents+json; charset=utf-8" || ContentType(1) != "application/json" {
+		t.Errorf("content types: 1 is %q, 2 is %q", ContentType(1), ContentType(2))
+	}
+
+	// A test delivery has no time of its own, so it carries when it was queued.
+	ping, err := envelopeFor(2, from, events.Event{ID: uuid.New(), Topic: TopicPing, Payload: json.RawMessage(`{}`)}, queued)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(ping), `"time":"2026-10-14T09:30:00Z"`) || !strings.Contains(string(ping), `"type":"dev.armature.ping"`) {
+		t.Errorf("a ping in version 2 is %s", ping)
+	}
+}
+
 func TestAVersionNotOfferedBuildsNothing(t *testing.T) {
-	for _, version := range []int{0, 2, -1} {
-		if _, err := envelopeFor(version, uuid.New(), events.Event{ID: uuid.New(), Topic: TopicPing, Payload: json.RawMessage(`{}`)}, time.Now()); !errors.Is(err, ErrUnknownVersion) {
+	for _, version := range []int{0, 3, -1} {
+		if _, err := envelopeFor(version, origin{installation: uuid.New()}, events.Event{ID: uuid.New(), Topic: TopicPing, Payload: json.RawMessage(`{}`)}, time.Now()); !errors.Is(err, ErrUnknownVersion) {
 			t.Errorf("version %d: err = %v, want ErrUnknownVersion", version, err)
 		}
 	}
