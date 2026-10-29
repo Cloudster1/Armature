@@ -36,7 +36,6 @@ import (
 	"github.com/armature/armature/backend/internal/report"
 	"github.com/armature/armature/backend/internal/sprint"
 	"github.com/armature/armature/backend/internal/team"
-	"github.com/armature/armature/backend/internal/template"
 	"github.com/armature/armature/backend/internal/theme"
 	"github.com/armature/armature/backend/internal/version"
 	"github.com/armature/armature/backend/internal/webhook"
@@ -163,7 +162,7 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "moved_since", Message: err.Error(), Fields: map[string]string{"issueKey": moved.Key}}
 	}
 
-	if e := cmp.Or(connectedAppError(err), lastAdministratorError(err), workflowRuleError(err)); e != nil {
+	if e := cmp.Or(connectedAppError(err), lastAdministratorError(err), workflowRuleError(err), projectTemplateError(err)); e != nil {
 		return e
 	}
 	var demoKey *demo.KeyTakenError
@@ -327,8 +326,6 @@ func toAPIError(err error) *APIError {
 		return ErrConflict(board.ErrNameTaken.Error())
 	case errors.Is(err, board.ErrBadType):
 		return ErrBadRequest("A board is either scrum or kanban.")
-	case errors.Is(err, template.ErrUnknown):
-		return ErrBadRequest("There is no project template by that name.")
 	case errors.Is(err, auth.ErrBadAddress), errors.Is(err, auth.ErrCodeTooSoon), errors.Is(err, auth.ErrCodeInvalid), errors.Is(err, auth.ErrHasAccount), errors.Is(err, auth.ErrDoorAsksForCode),
 		errors.Is(err, auth.ErrNoDesk):
 		return portalEntryError(err)

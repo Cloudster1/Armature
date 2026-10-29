@@ -1077,20 +1077,32 @@ total names no other project, so a walled one is not found through it.
 
 ## Projects, git and the service desk
 
-### Templates are code, not rows
+### A template is applied once, so built-ins stay code and stored ones are rows (#467)
 
-A table of templates invites editing them, and an edited template raises the
+The worry about a table of templates was that an edited template raises the
 question of what happens to projects made from the old version: nothing, in
 which case the edit is misleading, or something, in which case a template is a
-live dependency of every project. In code, what there is to choose between
-changes when the product does, in a commit, and a project only records which one
-it began from.
+live dependency of every project. The answer is nothing, and it is not
+misleading once it is the rule: a template is applied once. The project copies
+its kind, board, planning method, pages, scheme and issue types and never
+refers back, so editing or archiving a template changes no project, and a
+project only records which template it began from.
+
+The built-in templates stay code, because what they offer changes when the
+product does, in a commit. The ones an administrator keeps sit beside them as
+rows, keyed by id, and are archived rather than deleted, since there is nothing
+to gain by deleting what no project depends on. Duplicating a built-in turns
+the workflow it brings into a real scheme, the same one a project made from
+the built-in gets.
 
 A template with a workflow of its own finds it by name or creates it, in the
 same transaction as the project, so the second project shares the first one's
 rather than the organization collecting identical copies. Kanban is the default
 because a scrum board is empty until a sprint has been planned and started,
 which is three pages to visit before a new project shows anything.
+
+**Reconsider if** somebody needs to change many projects at once through the
+template they share; that is a scheme's job, and the template should name one.
 
 ### A template decides what a project is for, and the project may change its mind
 

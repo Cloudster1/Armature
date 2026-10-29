@@ -3055,10 +3055,62 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The templates a project can start from. */
+        /** The templates a project can start from: the built-ins, then the installation's own by name, each with its scheme and issue types. */
         get: operations["listTemplates"];
         put?: never;
+        /** Keep a project template, or with from a copy of a built-in or stored one. */
+        post: operations["createProjectTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/project-templates/{templateID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a stored template; projects made from it keep what they got. */
+        patch: operations["updateProjectTemplate"];
+        trace?: never;
+    };
+    "/project-templates/{templateID}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop offering a stored template; projects made from it keep what they got. */
+        post: operations["archiveProjectTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/project-templates/{templateID}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Offer an archived template again. */
+        post: operations["restoreProjectTemplate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7131,6 +7183,47 @@ export interface components {
         ProjectIssueTypesRequest: {
             typeIds: string[];
         };
+        ProjectTemplate: {
+            archived: boolean;
+            /** Format: date-time */
+            archivedAt?: string;
+            /** @enum {string} */
+            boardType: "scrum" | "kanban";
+            builtin: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            description: string;
+            desk: boolean;
+            features: ("board" | "sprints" | "plan" | "calendar" | "resources" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
+            issueTypes: components["schemas"]["TemplateIssueType"][];
+            key: string;
+            /** @enum {string} */
+            kind: "software" | "service" | "business";
+            name: string;
+            /** @enum {string} */
+            planningMethod: "scrum" | "kanban";
+            scheme: components["schemas"]["TemplateScheme"] | null;
+            /** Format: date-time */
+            updatedAt?: string;
+            workflowName?: string;
+        };
+        ProjectTemplateRequest: {
+            /** @enum {string} */
+            boardType?: "scrum" | "kanban";
+            defaultWorkflowScheme?: boolean;
+            description?: string;
+            desk?: boolean;
+            features?: string[];
+            from?: string;
+            issueTypeIds?: string[];
+            /** @enum {string} */
+            kind?: "software" | "service" | "business";
+            name?: string;
+            /** @enum {string} */
+            planningMethod?: "scrum" | "kanban";
+            /** Format: uuid */
+            workflowSchemeId?: string;
+        };
         ProjectWorkflows: {
             assignments: components["schemas"]["WorkflowAssignment"][];
             defaultSchemeName: string;
@@ -7316,16 +7409,6 @@ export interface components {
             projectKinds?: ("software" | "service" | "business")[];
             title: string;
             width: number;
-        };
-        ReportTemplate: {
-            builtIn: boolean;
-            description: string;
-            /** Format: uuid */
-            id?: string;
-            key: string;
-            name: string;
-            projectKinds?: ("software" | "service" | "business")[];
-            widgets: components["schemas"]["TemplateWidget"][];
         };
         Repository: {
             apiBaseUrl: string;
@@ -8064,18 +8147,27 @@ export interface components {
             weeklyCapacity?: number | null;
         };
         Template: {
-            /** @enum {string} */
-            boardType: "scrum" | "kanban";
+            builtIn: boolean;
             description: string;
-            desk: boolean;
-            features: ("board" | "sprints" | "plan" | "calendar" | "resources" | "milestones" | "releases" | "components" | "hierarchy" | "dashboard" | "queues" | "desk" | "teams" | "repositories" | "automation" | "import")[];
+            /** Format: uuid */
+            id?: string;
             key: string;
-            /** @enum {string} */
-            kind: "software" | "service" | "business";
             name: string;
-            /** @enum {string} */
-            planningMethod: "scrum" | "kanban";
-            workflowName?: string;
+            projectKinds?: ("software" | "service" | "business")[];
+            widgets: components["schemas"]["TemplateWidget"][];
+        };
+        TemplateIssueType: {
+            icon: string;
+            /** Format: uuid */
+            id: string;
+            level: number;
+            name: string;
+            retired: boolean;
+        };
+        TemplateScheme: {
+            /** Format: uuid */
+            id?: string;
+            name: string;
         };
         TemplateWidget: {
             config: components["schemas"]["Params"];
@@ -10972,7 +11064,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        templates: components["schemas"]["ReportTemplate"][];
+                        templates: components["schemas"]["Template"][];
                     };
                 };
             };
@@ -11226,7 +11318,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        template: components["schemas"]["ReportTemplate"];
+                        template: components["schemas"]["Template"];
                     };
                 };
             };
@@ -16679,7 +16771,10 @@ export interface operations {
     };
     listTemplates: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description true lists archived templates too; for administrators. */
+                archived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -16693,7 +16788,145 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        templates: components["schemas"]["Template"][];
+                        templates: components["schemas"]["ProjectTemplate"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createProjectTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: components["schemas"]["ProjectTemplate"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateProjectTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: components["schemas"]["ProjectTemplate"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    archiveProjectTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: components["schemas"]["ProjectTemplate"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    restoreProjectTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: components["schemas"]["ProjectTemplate"];
                     };
                 };
             };

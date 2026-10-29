@@ -99,8 +99,10 @@ func (e *BuiltinError) Error() string {
 // InUseError is a type something still uses, so it cannot be deleted or change level.
 type InUseError struct {
 	Name string
-	// By says what uses it: "issues" or "request types".
+	// By says what uses it: "issues", "request types" or a project template's name.
 	By string
+	// Template is set when By names a project template.
+	Template bool
 	// Level is set when the refusal is of a new level rather than a deletion.
 	Level bool
 }
@@ -108,6 +110,9 @@ type InUseError struct {
 func (e *InUseError) Error() string {
 	if e.Level {
 		return fmt.Sprintf("Issues already use %s, so its level cannot change. Add a new type at the level you want instead", e.Name)
+	}
+	if e.Template {
+		return fmt.Sprintf("The project template %s gives %s to new projects, so it cannot be deleted. Take it out of the template, or retire %s instead", e.By, e.Name, e.Name)
 	}
 	if e.By == "request types" {
 		return fmt.Sprintf("A service desk request type files issues as %s, so it cannot be deleted. Point the request type at another type, or retire %s instead", e.Name, e.Name)
@@ -402,6 +407,16 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor Actor) (db.LSN
 			return &InUseError{Name: gone.Name, By: "request types"}
 		}
 		if err := onlyStandardIn(ctx, tx, gone); err != nil {
+			return err
+		}
+		var template string
+		err = tx.QueryRow(ctx, `
+			SELECT pt.name FROM project_template pt JOIN project_template_issue_type ptt ON ptt.template_id = pt.id
+			WHERE ptt.issue_type_id = $1 ORDER BY lower(pt.name) LIMIT 1`, id).Scan(&template)
+		if err == nil {
+			return &InUseError{Name: gone.Name, By: template, Template: true}
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
 		// The foreign keys are the backstop for an issue filed in between.

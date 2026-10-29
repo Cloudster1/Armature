@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/armature/armature/backend/internal/db"
 	"github.com/armature/armature/backend/internal/project"
@@ -38,42 +39,100 @@ func (s *Service) WithDesk(d DeskSetup) *Service {
 	return s
 }
 
-// Create makes a project the way the template says, in one transaction.
+// Create makes a project the way the template says, in one transaction. The
+// key is a built-in's name or a stored template's id.
 //
 // The template fills in what the input leaves open: a kind that was not
-// stated, the type of the first board, and a workflow scheme when the template
-// brings a workflow and the caller did not name a scheme of their own. A
-// workflow the template brings is found by name or made, so the second project
-// from the same template shares the first one's rather than getting a copy.
+// stated, the type of the first board, a workflow scheme when the template
+// has one and the caller did not name a scheme of their own, and the issue
+// types. A workflow a built-in brings is found by name or made, so the second
+// project from the same template shares the first one's rather than getting a copy.
 func (s *Service) Create(ctx context.Context, key string, in project.CreateInput, actor uuid.UUID) (*project.Project, db.LSN, error) {
-	tpl, ok := Find(key)
-	if !ok {
-		return nil, 0, fmt.Errorf("%w: %q", ErrUnknown, key)
+	storedID, isStored := uuid.Nil, false
+	var tpl Template
+	if id, err := uuid.Parse(key); err == nil {
+		storedID, isStored = id, true
+	} else {
+		var ok bool
+		if tpl, ok = Find(key); !ok {
+			return nil, 0, fmt.Errorf("%w: %q", ErrUnknown, key)
+		}
 	}
-
-	if in.Kind == "" {
-		in.Kind = tpl.Kind
-	}
-	in.BoardType = string(tpl.BoardType)
-	in.PlanningMethod = tpl.PlanningMethod
-	in.Template = tpl.Key
-	in.Features = slices.Clone(tpl.Features)
 
 	var out *project.Project
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if tpl.workflow != nil && in.SchemeID == uuid.Nil {
-			schemeID, err := s.ensureScheme(ctx, tx, tpl.workflow)
+		var (
+			types []uuid.UUID
+			desk  bool
+		)
+		if isStored {
+			st, err := loadStored(ctx, tx, storedID)
 			if err != nil {
 				return err
 			}
-			in.SchemeID = schemeID
+			if st.Archived {
+				return ErrArchived
+			}
+			if in.Kind == "" {
+				in.Kind = st.Kind
+			}
+			in.BoardType = string(st.BoardType)
+			in.PlanningMethod = st.PlanningMethod
+			in.Template = st.ID.String()
+			in.Features = slices.Clone(st.Features)
+			if st.SchemeID != nil && in.SchemeID == uuid.Nil {
+				in.SchemeID = *st.SchemeID
+			}
+			// A type retired since the template was written goes into nothing new.
+			rows, err := tx.Query(ctx, `
+				SELECT ptt.issue_type_id FROM project_template_issue_type ptt JOIN issue_type t ON t.id = ptt.issue_type_id
+				WHERE ptt.template_id = $1 AND t.retired_at IS NULL ORDER BY ptt.position, t.name`, st.ID)
+			if err != nil {
+				return err
+			}
+			if types, err = pgx.CollectRows(rows, pgx.RowTo[uuid.UUID]); err != nil {
+				return err
+			}
+			desk = st.Desk
+		} else {
+			if in.Kind == "" {
+				in.Kind = tpl.Kind
+			}
+			in.BoardType = string(tpl.BoardType)
+			in.PlanningMethod = tpl.PlanningMethod
+			in.Template = tpl.Key
+			in.Features = slices.Clone(tpl.Features)
+			if tpl.workflow != nil && in.SchemeID == uuid.Nil {
+				schemeID, err := s.ensureScheme(ctx, tx, tpl.workflow)
+				if err != nil {
+					return err
+				}
+				in.SchemeID = schemeID
+			}
+			// Every built-in type is what the project gets on insert already.
+			if tpl.IssueTypes != nil {
+				named, err := builtinTypes(ctx, tx, tpl)
+				if err != nil {
+					return err
+				}
+				for _, t := range named {
+					types = append(types, t.ID)
+				}
+			}
+			desk = tpl.Desk
 		}
+
 		var err error
 		out, err = s.projects.CreateIn(ctx, tx, in, actor)
 		if err != nil {
 			return err
 		}
-		if tpl.Desk && s.desk != nil {
+		if types != nil {
+			if err := allowOnly(ctx, tx, out.ID, types); err != nil {
+				return err
+			}
+		}
+		if desk && s.desk != nil {
 			return s.desk.Setup(ctx, tx, out.ID)
 		}
 		return nil
@@ -82,6 +141,18 @@ func (s *Service) Create(ctx context.Context, key string, in project.CreateInput
 		return nil, 0, err
 	}
 	return out, lsn, nil
+}
+
+// allowOnly replaces the types a new project was given on insert with the
+// template's. The rule that a project keeps a standard type is checked at commit.
+func allowOnly(ctx context.Context, tx db.DBTX, projectID uuid.UUID, types []uuid.UUID) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM project_issue_type WHERE project_id = $1`, projectID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO project_issue_type (project_id, issue_type_id, position)
+		SELECT $1, id, position FROM unnest($2::uuid[]) WITH ORDINALITY AS chosen (id, position)`, projectID, types)
+	return err
 }
 
 // ensureScheme resolves a template's workflow against the organization's own
