@@ -135,6 +135,7 @@ scenario("a dashboard's filter tile narrows every widget that counts issues", as
 
   // The tile narrows the widgets that count issues, and says so on the ones it cannot.
   await addWidget(page, "filter");
+  await page.waitForSelector('[data-filter-type="Bug"]', { timeout: WAIT });
   await page.click('[data-filter-type="Bug"]');
   await expectCounted(page, 1);
   expect.contains(page.url(), "types=Bug", "the filter is in the address");
@@ -187,6 +188,7 @@ scenario("a chart widget groups the project's issues by type and draws them", as
   await chartSettings(page, { shape: "Bars" });
   await page.waitForSelector('[data-widget="chart"] [data-chart="bar"]', { timeout: WAIT });
   await addWidget(page, "filter");
+  await page.waitForSelector('[data-filter-type="Bug"]', { timeout: WAIT });
   await page.click('[data-filter-type="Bug"]');
   await page.waitForFunction(
     () =>
@@ -285,6 +287,7 @@ scenario("a milestone gets a dashboard of its own", async ({ page }) => {
 scenario("a dashboard is shared by a link that needs no sign-in, until it is revoked", async ({ page }) => {
   const { who: owner, key } = await dashboardFixture(page, "Lobby");
   await addWidget(page, "filter");
+  await page.waitForSelector('[data-filter-type="Bug"]', { timeout: WAIT });
   await page.click('[data-filter-type="Bug"]');
   await expectCounted(page, 1);
   const url = await shareDashboard(page, "Lobby screen");
