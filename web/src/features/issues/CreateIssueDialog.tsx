@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useArrangements } from "@/api/arrange";
-import { LEVEL_STANDARD, useCreateIssue, useIssueTypes, type Issue } from "@/api/issues";
+import { LEVEL_STANDARD, useCreateIssue, type Issue } from "@/api/issues";
+import { useProjectIssueTypes } from "@/api/issueTypes";
 import { Button, Dialog, ErrorBanner, Field, Select, Skeleton, useToast } from "@/components/ui";
 import { DIALOG_SKELETON_LINES } from "@/config";
 import { namedFields } from "./view/areas";
@@ -17,8 +18,9 @@ export function CreateIssueDialog({ open, onClose, projectKey }: { open: boolean
   const create = useCreateIssue();
   const toast = useToast();
   const navigate = useNavigate();
-  const { data: typeData } = useIssueTypes();
   const [project, setProject] = useState(projectKey ?? "");
+  // The types of the project chosen here, which the picker below can change.
+  const { data: typeData } = useProjectIssueTypes(project);
   const [typeId, setTypeId] = useState("");
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [refused, setRefused] = useState<Leftover[]>([]);

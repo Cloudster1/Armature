@@ -3,8 +3,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("@/api/issues", () => ({
-  useIssueTypes: () => ({ data: { issueTypes: [{ id: "1", name: "Story" }] } }),
   useStatuses: () => ({ data: { statuses: [{ id: "2", name: "To Do" }] } }),
+}));
+// The library may hold more; the file's types are mapped onto what the project allows.
+vi.mock("@/api/issueTypes", () => ({
+  useProjectIssueTypes: () => ({ data: { issueTypes: [{ id: "1", name: "Story" }] } }),
 }));
 vi.mock("@/api/people", () => ({ useMemberSearch: () => ({ data: { members: [], total: 0, limit: 20, offset: 0 } }) }));
 
@@ -49,10 +52,16 @@ describe("mapping a file", () => {
 describe("the words in a file", () => {
   it("asks what a word this tracker does not know means here", async () => {
     const onChange = vi.fn();
-    render(<WordsCard words={[{ target: "status", value: "Requested", count: 5, means: "" }]} values={{}} onChange={onChange} />);
+    render(<WordsCard projectKey="CP" words={[{ target: "status", value: "Requested", count: 5, means: "" }]} values={{}} onChange={onChange} />);
 
     expect(screen.getByText("Requested")).toBeTruthy();
     await userEvent.selectOptions(screen.getByLabelText("What Requested means here"), "To Do");
     expect(onChange).toHaveBeenCalledWith({ status: { Requested: "To Do" } });
+  });
+
+  it("maps a type word onto the project's types only", () => {
+    render(<WordsCard projectKey="CP" words={[{ target: "type", value: "Defect", count: 2, means: "" }]} values={{}} onChange={vi.fn()} />);
+    expect([...screen.getByLabelText("What Defect means here").querySelectorAll("option")].map((o) => o.textContent)).toContain("Story");
+    expect(screen.queryByRole("option", { name: "Bug" })).toBeNull();
   });
 });

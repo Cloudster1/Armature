@@ -105,14 +105,14 @@ describe("the tabs of a project's settings", () => {
   it("lists General and the tabs of the features the project uses, and the ones every project has", () => {
     shown = { ...live, features: ["automation", "import"] } as Project;
     render(<Layout />);
-    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Automation", "Import"]);
+    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Issue types", "Automation", "Import"]);
     expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("lists every tab for a project that uses every feature", () => {
     shown = { ...live, features: ["components", "repositories", "automation", "import"] } as Project;
     render(<Layout />);
-    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Components", "Repositories", "Automation", "Import"]);
+    expect(tabs()).toEqual(["General", "Workflow", "Fields", "Issue view", "Issue types", "Components", "Repositories", "Automation", "Import"]);
   });
 
   it("marks the tab the address names, and opens another on a click", async () => {

@@ -72,7 +72,6 @@ vi.mock("@/api/issues", async () => ({
   useIssues: nothing,
   useStatuses: nothing,
   useWorklogs: nothing,
-  useIssueTypes: nothing,
   useAddComment: writes(sent.comment),
   useTransitionIssue: mutation,
   useUpdateIssue: writes(sent.update),
@@ -82,6 +81,7 @@ vi.mock("@/api/issues", async () => ({
   useDeleteWorklog: mutation,
 }));
 
+vi.mock("@/api/issueTypes", () => ({ useProjectIssueTypes: nothing }));
 vi.mock("@/api/people", () => ({ useMemberSearch: nothing, useFindMentionable: () => async () => [] }));
 
 vi.mock("@/api/access", async () => ({

@@ -17,6 +17,7 @@ export const guideDe: typeof guideEn = {
     "/service-desk": "Wie Anfragen zum Servicedesk kommen: Anfragetypen, das Portal und das Postfach.",
     "/teams": "Die Teams des Projekts, ihre Mitglieder und ihre Kapazität.",
     "/workflows": "Welchem Workflow jeder Vorgangstyp hier folgt, als Graph gezeichnet.",
+    "/issue-types": "Welche Vorgangstypen dieses Projekt erlaubt und in welcher Reihenfolge sie angeboten werden.",
     "/fields": "Die eigenen Felder, die dieses Projekt über die Standardspalten hinaus erfasst.",
     "/repositories": "Die mit dem Projekt verbundenen Git-Repositorys und ihre Webhooks.",
     "/releases": "Was das Projekt ausliefert: jede Version, wie nah sie ist, veröffentlicht oder nicht, und ihre Versionshinweise mit der erledigten Arbeit.",

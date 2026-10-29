@@ -128,6 +128,7 @@ export const KEYWORDS_DE: Record<string, string[]> = {
   "page:/workflows": ["workflow", "status", "übergang", "schema", "typ", "zuordnung"],
   "page:/fields": ["feld", "eigenes", "spalte", "eigenschaft"],
   "page:/issue-view": ["vorgangsansicht", "anordnung", "feld"],
+  "page:/issue-types": ["vorgangstyp", "typ", "erlauben", "reihenfolge", "aufgabe", "fehler"],
   "page:/components": ["komponente", "teil", "modul", "bereich", "leitung", "standardbearbeiter"],
   "page:/repositories": ["repository", "git", "branch", "commit", "webhook"],
   "page:/automation": ["automatisierung", "regel", "automatisch", "auslöser", "aktion", "zeitplan", "lauf", "protokoll"],

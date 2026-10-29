@@ -2,7 +2,8 @@ import { Fragment, useState, type FormEvent } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useProject } from "@/api/projects";
-import { LEVEL_STANDARD, useIssueTypes, type Priority } from "@/api/issues";
+import { LEVEL_STANDARD, type Priority } from "@/api/issues";
+import { useProjectIssueTypes } from "@/api/issueTypes";
 import { useTeams } from "@/api/teams";
 import {
   humanDuration,
@@ -58,9 +59,9 @@ function ServiceDeskPage() {
   );
 }
 
-function RequestTypes({ projectKey }: { projectKey: string }) {
+export function RequestTypes({ projectKey }: { projectKey: string }) {
   const { data } = useRequestTypes(projectKey);
-  const { data: typeData } = useIssueTypes();
+  const { data: typeData } = useProjectIssueTypes(projectKey);
   const { data: teamData } = useTeams(projectKey);
   const create = useCreateRequestType(projectKey);
   const remove = useDeleteRequestType();

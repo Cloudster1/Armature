@@ -1,4 +1,5 @@
-import { type Issue, type IssueType, type Status, useIssueTypes, useUpdateIssue } from "@/api/issues";
+import { type Issue, type IssueType, type Status, useUpdateIssue } from "@/api/issues";
+import { useProjectIssueTypes } from "@/api/issueTypes";
 import { Icon } from "@/components/icons";
 import { Button, Menu, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
@@ -8,7 +9,7 @@ import { t } from "@/i18n";
 
 /** The issue's type in its header, which anybody who may edit can change. */
 export function TypeField({ issue, editable }: { issue: Issue; editable: boolean }) {
-  const { data } = useIssueTypes();
+  const { data } = useProjectIssueTypes(issue.projectKey);
   const choices = editable ? typeChoices(data?.issueTypes ?? [], issue) : [];
   if (choices.length === 0) return <TypeBadge icon={issue.type.icon} name={issue.type.name} />;
   return <TypePicker issue={issue} choices={choices} />;

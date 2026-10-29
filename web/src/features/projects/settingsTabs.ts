@@ -54,6 +54,16 @@ export const projectSetupPages: Array<PageLink & { tab: string }> = [
     icon: "Issue",
   },
   {
+    path: "/issue-types",
+    get label() {
+      return t.shell.projectPages.issueTypes;
+    },
+    get tab() {
+      return t.shell.projectPages.issueTypes;
+    },
+    icon: "Tag",
+  },
+  {
     path: "/components",
     get label() {
       return t.shell.projectPages.components;

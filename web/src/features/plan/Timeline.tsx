@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { LEVEL_STANDARD, useCreateIssue, useIssueTypes, useSetParent } from "@/api/issues";
+import { LEVEL_STANDARD, useCreateIssue, useSetParent } from "@/api/issues";
+import { useProjectIssueTypes } from "@/api/issueTypes";
 import { useAddLink, usePlan, useRemoveLink, useSchedule, type Dependency, type PlanItem, type PlanWarning, type TeamLoad } from "@/api/plan";
 import { Button, Card, ErrorBanner, IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -130,7 +131,7 @@ export function Timeline({
   const linkDragRef = useRef<{ fromKey: string; x0: number; y0: number } | null>(null);
   const [linkDraft, setLinkDraft] = useState<LinkDraft | null>(null);
   const [selectedDependency, setSelectedDependency] = useState<Dependency | null>(null);
-  const { data: typeData } = useIssueTypes();
+  const { data: typeData } = useProjectIssueTypes(projectKey);
   // Only standard-level types can stand on their own; a subtask needs a parent.
   const types = useMemo(() => (typeData?.issueTypes ?? []).filter((type) => type.level >= LEVEL_STANDARD), [typeData]);
 
