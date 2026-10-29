@@ -1,13 +1,14 @@
 import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
-import { useAccess } from "@/api/access";
+import { canAdminister, useAccess } from "@/api/access";
 import { MY_DATA_HREF, useEraseMe, useLogout, useMe } from "@/api/auth";
 import { useProject, useProjectSearch, type Feature, type Project } from "@/api/projects";
 import { hasFeature } from "@/features/projects/features";
+import { projectSettingsPage, type PageLink } from "@/features/projects/settingsTabs";
 import { Avatar, Button, IconButton, Input, Menu, Tooltip, type MenuItem } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
-import { Icon, type IconName } from "@/components/icons";
+import { Icon } from "@/components/icons";
 import { PROJECT_SEARCH_DELAY_MS, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { useDebounced } from "@/lib/debounce";
 import { DRAWER_ID, SIDEBAR_ID, lastOutsideSettings, useLastProject, useNarrow, useSidebarGroups, useSidebarMode } from "./state";
@@ -22,17 +23,10 @@ import { roleWord, useAccountItems } from "./AccountMenu";
 import { adminEntry, inSettingsArea, personalPlaces, workPlaces, type Place } from "./places";
 import { t } from "@/i18n";
 
+export { projectSetupPages } from "@/features/projects/settingsTabs";
+
 // The sidebar is the map: where you are is highlighted, where you can go is
 // listed, and a project's pages are always there once a project is chosen.
-
-interface PageLink {
-  path: string;
-  label: string;
-  icon: IconName;
-  exact?: boolean;
-  /** The feature the page belongs to; absent for a page every project has. */
-  feature?: Feature;
-}
 
 export const projectWorkPages: PageLink[] = [
   {
@@ -130,77 +124,6 @@ export const projectWorkPages: PageLink[] = [
     },
     icon: "Desk",
     feature: "desk",
-  },
-];
-
-export const projectSetupPages: PageLink[] = [
-  {
-    path: "/teams",
-    get label() {
-      return t.shell.projectPages.teams;
-    },
-    icon: "Team",
-    feature: "teams",
-  },
-  {
-    path: "/workflows",
-    get label() {
-      return t.shell.projectPages.workflow;
-    },
-    icon: "Workflow",
-  },
-  {
-    path: "/fields",
-    get label() {
-      return t.shell.projectPages.fields;
-    },
-    icon: "Field",
-  },
-  {
-    path: "/issue-view",
-    get label() {
-      return t.shell.projectPages.issueView;
-    },
-    icon: "Issue",
-  },
-  {
-    path: "/components",
-    get label() {
-      return t.shell.projectPages.components;
-    },
-    icon: "Component",
-    feature: "components",
-  },
-  {
-    path: "/repositories",
-    get label() {
-      return t.shell.projectPages.repositories;
-    },
-    icon: "Repository",
-    feature: "repositories",
-  },
-  {
-    path: "/automation",
-    get label() {
-      return t.shell.projectPages.automation;
-    },
-    icon: "Bolt",
-    feature: "automation",
-  },
-  {
-    path: "/import",
-    get label() {
-      return t.shell.projectPages.import;
-    },
-    icon: "Upload",
-    feature: "import",
-  },
-  {
-    path: "/settings",
-    get label() {
-      return t.shell.projectPages.settings;
-    },
-    icon: "Settings",
   },
 ];
 
@@ -337,7 +260,7 @@ function WorkGroups() {
       <SidebarGroup id="project" title={t.shell.groups.project} open={isOpen("project", true)} onToggle={() => toggleGroup("project", true)}>
         <ProjectSwitcher projectKey={projectKey} />
         {projectKey && (
-          <ProjectPages projectKey={projectKey} adminOpen={isOpen("project-admin", false)} onToggleAdmin={() => toggleGroup("project-admin", false)} />
+          <ProjectPages projectKey={projectKey} />
         )}
       </SidebarGroup>
 
@@ -464,8 +387,9 @@ function DrawerEntry({ item }: { item: MenuItem }) {
   );
 }
 
-function ProjectPages({ projectKey, adminOpen, onToggleAdmin }: { projectKey: string; adminOpen: boolean; onToggleAdmin: () => void }) {
+function ProjectPages({ projectKey }: { projectKey: string }) {
   const { data } = useProject(projectKey);
+  const { data: access } = useAccess();
   const pages = (list: PageLink[]) => pagesFor(data?.project, list);
   return (
     <>
@@ -479,13 +403,11 @@ function ProjectPages({ projectKey, adminOpen, onToggleAdmin }: { projectKey: st
           {data.project.docsLabel || t.shell.projectPages.docs}
         </NavLinkOut>
       )}
-      <SidebarGroup id="project-admin" title={t.shell.groups.projectAdmin} open={adminOpen} onToggle={onToggleAdmin} nested>
-        {pages(projectSetupPages).map((page) => (
-          <NavItem key={page.path} to={`/projects/$projectKey${page.path}`} params={{ projectKey }} icon={page.icon} rail={false}>
-            {page.label}
-          </NavItem>
-        ))}
-      </SidebarGroup>
+      {canAdminister(access, projectKey) && (
+        <NavItem to={`/projects/$projectKey${projectSettingsPage.path}`} params={{ projectKey }} icon={projectSettingsPage.icon} rail={false}>
+          {projectSettingsPage.label}
+        </NavItem>
+      )}
     </>
   );
 }

@@ -33,6 +33,8 @@ export const projectSetupDe: typeof projectSetupEn = {
   settings: {
     notAdmin: "Nur die Administratoren des Projekts ändern seine Einstellungen",
     notAdminDetail: "Fragen Sie einen von ihnen oder bitten Sie um die Rolle.",
+    general: "Allgemein",
+    tabsLabel: "Projekteinstellungen",
     archived: (name: string) => `${name} ist archiviert. Stellen Sie es wieder her, um seine Einstellungen zu ändern.`,
     restore: "Projekt wiederherstellen",
     restored: (name: string) => `${name} wiederhergestellt`,

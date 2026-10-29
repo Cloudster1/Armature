@@ -1,5 +1,6 @@
 import type { Feature } from "@/api/projects";
 import { projectSetupPages, projectWorkPages } from "@/features/shell/Sidebar";
+import { setupAddress } from "@/features/projects/settingsTabs";
 import { t } from "@/i18n";
 
 /** What the guide knows about the reader when it answers. */
@@ -108,7 +109,7 @@ function entry(answer: Omit<GuideEntry, "title" | "sentence">): GuideEntry {
 }
 
 /** One of a project's pages, named as the sidebar names it. */
-function projectPage(page: { path: string; label: string; feature?: Feature }): GuideEntry {
+function projectPage(page: { path: string; label: string; feature?: Feature }, address = page.path): GuideEntry {
   const words = PROJECT_PAGE_WORDS[page.path] ?? { keywords: [] };
   return {
     id: `page:${page.path || "/issues"}`,
@@ -124,7 +125,7 @@ function projectPage(page: { path: string; label: string; feature?: Feature }): 
     needs: "project",
     feature: page.feature,
     target: words.target,
-    to: (ctx) => ({ to: `/projects/$projectKey${page.path}`, params: { projectKey: ctx.projectKey ?? "" } }),
+    to: (ctx) => ({ to: `/projects/$projectKey${address}`, params: { projectKey: ctx.projectKey ?? "" } }),
   };
 }
 
@@ -145,8 +146,8 @@ const pages: GuideEntry[] = [
     target: "query",
     to: () => ({ to: "/search", search: { q: "" } }),
   }),
-  ...projectWorkPages.map(projectPage),
-  ...projectSetupPages.map(projectPage),
+  ...projectWorkPages.map((page) => projectPage(page)),
+  ...projectSetupPages.map((page) => projectPage(page, setupAddress(page.path))),
   entry({
     id: "page:filters",
     keywords: ["saved", "search", "filter", "query", "subscription", "subscribe", "star", "starred", "mail"],
@@ -269,7 +270,7 @@ const actions: GuideEntry[] = [
     keywords: ["workflow", "type", "map", "assign", "decide", "change", "different", "own", "bug", "status"],
     needs: "project",
     target: "workflow-decide",
-    to: (ctx) => ({ to: "/projects/$projectKey/workflows", params: { projectKey: ctx.projectKey ?? "" } }),
+    to: (ctx) => ({ to: "/projects/$projectKey/settings/workflows", params: { projectKey: ctx.projectKey ?? "" } }),
   }),
   entry({
     id: "action:design-workflow",
@@ -313,7 +314,7 @@ const actions: GuideEntry[] = [
     ],
     needs: "project",
     target: "new-rule",
-    to: (ctx) => ({ to: "/projects/$projectKey/automation", params: { projectKey: ctx.projectKey ?? "" } }),
+    to: (ctx) => ({ to: "/projects/$projectKey/settings/automation", params: { projectKey: ctx.projectKey ?? "" } }),
   }),
   entry({
     id: "action:save-search",

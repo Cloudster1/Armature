@@ -31,7 +31,8 @@ import { calendarRoute } from "./calendar";
 import { resourcesRoute } from "./resources";
 import { projectsRoute } from "./projects";
 import { projectDetailRoute } from "./project-detail";
-import { projectSettingsRoute } from "./project-settings";
+import { projectSettingsIndexRoute, projectSettingsRoute } from "./project-settings";
+import { projectMovedRoutes } from "./project-moved";
 import { issueDetailRoute } from "./issue-detail";
 import { boardRoute } from "./board";
 import { sprintBoardRoute } from "./sprint-board";
@@ -86,21 +87,24 @@ const routeTree = rootRoute.addChildren([
       planRoute,
       calendarRoute,
       resourcesRoute,
-      projectWorkflowsRoute,
       sprintsRoute,
       milestonesRoute,
-      teamsRoute,
-      repositoriesRoute,
-      automationRoute,
       releasesRoute,
-      componentsRoute,
-      importRoute,
-      fieldsRoute,
-      issueArrangementRoute,
       queuesRoute,
       dashboardRoute,
       serviceDeskRoute,
-      projectSettingsRoute,
+      projectSettingsRoute.addChildren([
+        projectSettingsIndexRoute,
+        teamsRoute,
+        projectWorkflowsRoute,
+        fieldsRoute,
+        issueArrangementRoute,
+        componentsRoute,
+        repositoriesRoute,
+        automationRoute,
+        importRoute,
+      ]),
+      ...projectMovedRoutes,
     ]),
     portalRoute,
     portalNewRoute,

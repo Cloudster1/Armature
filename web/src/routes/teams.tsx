@@ -1,32 +1,20 @@
-import { Link, createRoute } from "@tanstack/react-router";
-import { projectRoute } from "./project";
-import { Page, PageHeader } from "@/components/ui";
-import { useProject } from "@/api/projects";
+import { createRoute } from "@tanstack/react-router";
+import { projectSettingsRoute } from "./project-settings";
 import { TeamList } from "@/features/teams/TeamList";
-import { t } from "@/i18n";
 
 export const teamsRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: () => projectSettingsRoute,
   path: "/teams",
   component: TeamsPage,
 });
 
 function TeamsPage() {
   const { projectKey } = teamsRoute.useParams();
-  const { data } = useProject(projectKey);
 
   return (
-    <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {data?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.board.teams.title}
-      />
+    <>
 
       <TeamList projectKey={projectKey} />
-    </Page>
+    </>
   );
 }

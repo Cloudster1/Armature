@@ -1,31 +1,107 @@
-import { useMemo, type FormEvent } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { useId, useMemo, type FormEvent } from "react";
+import { Link, Outlet, createRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useArchiveProject, useProject, useRestoreProject, useUpdateProject } from "@/api/projects";
 import { canAdminister, useAccess } from "@/api/access";
 import { ApiError } from "@/api/client";
-import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, SectionTitle, Switch, Tag, useToast } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, SectionTitle, Switch, TabPanel, Tabs, Tag, useToast } from "@/components/ui";
 import { DOCS_LABEL_MAX_LENGTH } from "@/config";
 import { useDraft } from "@/lib/draft";
-import { FEATURES } from "@/features/projects/features";
+import { FEATURES, featureWord, hasFeature } from "@/features/projects/features";
+import { projectSetupPages, setupAddress } from "@/features/projects/settingsTabs";
 import { ShareSettings } from "@/features/projects/ShareSettings";
 import { PlanningSettings } from "@/features/projects/PlanningSettings";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { t } from "@/i18n";
 
+/**
+ * A project's settings: its general form and, as tabs, everything it is set up
+ * with. The check that only its administrators come in is made here, once, so
+ * no tab mounts and fetches for anybody else.
+ */
 export const projectSettingsRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/settings",
-  component: ProjectSettingsPage,
+  component: ProjectSettingsLayout,
 });
 
-// The project's own facts: what it is called, who leads it, and the one way
-// to put it away. Everything else a project is set up with has a page of its
-// own under Setup.
-function ProjectSettingsPage() {
+export const projectSettingsIndexRoute = createRoute({
+  getParentRoute: () => projectSettingsRoute,
+  path: "/",
+  component: GeneralTab,
+});
+
+function ProjectSettingsLayout() {
   const { projectKey } = projectSettingsRoute.useParams();
   const { data } = useProject(projectKey);
   const { data: access } = useAccess();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const navigate = useNavigate();
+  const panelId = useId();
+  const project = data?.project;
+  if (!project || !access) return null;
+  if (!canAdminister(access, projectKey)) {
+    return (
+      <Page width="narrow">
+        <EmptyState title={t.projectSetup.settings.notAdmin} description={t.projectSetup.settings.notAdminDetail} />
+      </Page>
+    );
+  }
+  const shown = projectSetupPages.filter((page) => hasFeature(project, page.feature));
+  const base = `/projects/${projectKey}`;
+  // The longest address that opens the path wins, so /settings is General only when nothing deeper matches.
+  const current = [...projectSetupPages].reverse().find((page) => pathname === `${base}${setupAddress(page.path)}` || pathname.startsWith(`${base}${setupAddress(page.path)}/`));
+  const off = current && !hasFeature(project, current.feature) ? current : undefined;
+  return (
+    <Page width="content">
+      <PageHeader
+        crumb={
+          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
+            {project.name}
+          </Link>
+        }
+        title={
+          <>
+            {t.shell.projectPages.settings}
+            <Tag className="font-mono">{projectKey}</Tag>
+          </>
+        }
+        tabs={
+          <Tabs
+            label={t.projectSetup.settings.tabsLabel}
+            value={current?.path ?? "/settings"}
+            panelId={panelId}
+            onChange={(next) => navigate({ to: `${base}${setupAddress(next)}` as never })}
+            tabs={shown.map((page) => ({ value: page.path, label: page.tab, attrs: { "data-settings-tab": page.path.slice(1) || "general" } }))}
+          />
+        }
+      />
+      <TabPanel id={panelId} label={current?.tab}>
+        {off ? (
+          <div data-feature-off={off.feature}>
+            <EmptyState
+              title={t.projectSetup.project.featureOff(project.name, featureWord(off.feature!))}
+              description={t.projectSetup.project.featureOffDetail}
+              action={
+                <Link to="/projects/$projectKey/settings" params={{ projectKey }} className="text-sm font-medium text-accent hover:underline">
+                  {t.projectSetup.project.turnOn}
+                </Link>
+              }
+            />
+          </div>
+        ) : (
+          <Outlet />
+        )}
+      </TabPanel>
+    </Page>
+  );
+}
+
+// The project's own facts: what it is called, who leads it, and the one way
+// to put it away. The rest of its setup has a tab of its own beside this one.
+function GeneralTab() {
+  const { projectKey } = projectSettingsRoute.useParams();
+  const { data } = useProject(projectKey);
   const update = useUpdateProject();
   const toggleFeatures = useUpdateProject();
   const reveal = useUpdateProject();
@@ -49,14 +125,6 @@ function ProjectSettingsPage() {
   const fieldErrors = update.error instanceof ApiError ? update.error.fields : {};
 
   if (!project) return null;
-  if (!canAdminister(access, projectKey)) {
-    return (
-      <Page width="narrow">
-        <EmptyState title={t.projectSetup.settings.notAdmin} description={t.projectSetup.settings.notAdminDetail} />
-      </Page>
-    );
-  }
-
   const archived = Boolean(project.archivedAt);
   const restoreProject = () => restore.mutate(projectKey, { onSuccess: () => toast.success(t.projectSetup.settings.restored(project.name)) });
 
@@ -76,20 +144,7 @@ function ProjectSettingsPage() {
   }
 
   return (
-    <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {project.name}
-          </Link>
-        }
-        title={
-          <>
-            {t.shell.projectPages.settings}
-            <Tag className="font-mono">{projectKey}</Tag>
-          </>
-        }
-      />
+    <div className="max-w-4xl" data-settings-general>
       {archived && (
         <div
           className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink"
@@ -254,6 +309,6 @@ function ProjectSettingsPage() {
           )}
         </section>
       )}
-    </Page>
+    </div>
   );
 }

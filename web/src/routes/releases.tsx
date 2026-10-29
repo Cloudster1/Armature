@@ -1,5 +1,6 @@
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
+import { projectSettingsRoute } from "./project-settings";
 import { useProject } from "@/api/projects";
 import { canAdminister, holds, useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
@@ -16,7 +17,7 @@ export const releasesRoute = createRoute({
 
 /** The project's parts. */
 export const componentsRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: () => projectSettingsRoute,
   path: "/components",
   component: ComponentsPage,
 });
@@ -45,20 +46,11 @@ function ReleasesPage() {
 
 function ComponentsPage() {
   const { projectKey } = componentsRoute.useParams();
-  const { data } = useProject(projectKey);
   const { data: access } = useAccess();
   return (
-    <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {data?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.schedule.components.title}
-        meta={t.schedule.components.meta}
-      />
+    <>
+      <p className="mb-4 text-sm text-ink-muted">{t.schedule.components.meta}</p>
       <ComponentList projectKey={projectKey} canEdit={Boolean(canAdminister(access, projectKey))} />
-    </Page>
+    </>
   );
 }

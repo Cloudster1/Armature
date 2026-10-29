@@ -16,7 +16,6 @@ export const shellEn = {
   groups: {
     work: "Work & Plan",
     project: "Project",
-    projectAdmin: "Project admin",
     you: "You",
   },
   places: {

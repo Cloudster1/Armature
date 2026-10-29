@@ -79,7 +79,7 @@ function ResourcesPage() {
             title={t.schedule.resources.noTeams}
             description={t.schedule.resources.noTeamsDetail}
             action={
-              <Link to="/projects/$projectKey/teams" params={{ projectKey }} className="text-sm font-medium text-accent hover:underline">
+              <Link to="/projects/$projectKey/settings/teams" params={{ projectKey }} className="text-sm font-medium text-accent hover:underline">
                 {t.schedule.resources.goToTeams}
               </Link>
             }
