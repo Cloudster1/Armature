@@ -491,6 +491,7 @@ A duration is Go syntax (`720h`, `30s`); a list is comma separated.
 | `ARMATURE_OTEL_ENDPOINT` | none | the collector's traces URL |
 | `ARMATURE_OTEL_SAMPLE_RATIO` | `1` | share of new traces kept |
 | `ARMATURE_OIDC_REDIRECT_URL` | `http://localhost:8080/api/v1/auth/oidc/callback` | where the identity provider sends people back to, exactly as registered there; required outside development |
+| `ARMATURE_OIDC_SILENT_SIGN_IN` | `true` | with a provider set up, a visit without a session first asks it quietly (`prompt=none`), so somebody signed in to Stator or Exciter is let straight in; `false` always shows the sign-in page |
 | `ARMATURE_OIDC_BACKCHANNEL` | none | `public=reachable` rewrites for a provider whose addresses differ |
 | `ARMATURE_RETAIN_SESSIONS` | `24h` | past expiry |
 | `ARMATURE_RETAIN_PORTAL_CODES` | `24h` | past expiry |

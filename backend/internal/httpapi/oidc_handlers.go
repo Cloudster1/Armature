@@ -13,18 +13,31 @@ import (
 // callback are outside authentication for the obvious reason; the configuration
 // behind them is administration.
 
-// handleOIDCStart sends the browser to the installation's provider.
+// handleOIDCStart sends the browser to the installation's provider. With
+// prompt=none it asks quietly, and lands on the sign-in page when it cannot.
 func (s *Server) handleOIDCStart(w http.ResponseWriter, r *http.Request) {
+	next := safeRedirect(r.URL.Query().Get("next"))
+	silent := r.URL.Query().Get("prompt") == "none"
+	if silent && !s.maySilence(r) {
+		s.landQuietly(w, r, next, "")
+		return
+	}
 	if s.OIDC == nil {
 		respondError(w, r, toAPIError(oidc.ErrNotConfigured))
 		return
 	}
-
-	target, err := s.OIDC.Start(r.Context(), safeRedirect(r.URL.Query().Get("next")))
+	target, err := s.OIDC.Begin(r.Context(), next, silent)
 	if err != nil {
+		// A provider that cannot be reached is no reason to keep somebody from
+		// the sign-in page; only a click asks to be told why.
+		if silent {
+			s.landQuietly(w, r, next, "")
+			return
+		}
 		respondError(w, r, err)
 		return
 	}
+	s.bindLogin(w, target)
 	http.Redirect(w, r, target, http.StatusFound)
 }
 
@@ -42,39 +55,80 @@ func (s *Server) handleOIDCStartForOrganization(w http.ResponseWriter, r *http.R
 	http.Redirect(w, r, target, http.StatusFound)
 }
 
-// handleOIDCCallback finishes a sign-in and lands the browser back in the app.
-//
-// It answers with a redirect rather than JSON because the caller is the
-// browser following the provider's own redirect, not the client's fetch.
+// handleOIDCCallback finishes a sign-in and lands the browser back in the app,
+// with a redirect, since the caller is the browser following the provider.
 func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	if s.OIDC == nil {
 		respondError(w, r, toAPIError(oidc.ErrNotConfigured))
 		return
 	}
-
 	query := r.URL.Query()
+	state := query.Get("state")
+	bound := boundTo(r, s.loginCookie(), state)
+	s.unbindLogin(w)
+
+	login, err := s.OIDC.Claim(r.Context(), state)
 	if refused := query.Get("error"); refused != "" {
-		// The provider refused. Its own description is the useful part, and it
-		// is shown to the person rather than swallowed.
+		// Quiet means quiet: login_required and its kin send the person to the
+		// sign-in page as if nothing was tried. A clicked attempt says why.
+		if err == nil && login.Silent {
+			s.landQuietly(w, r, login.Redirect, "")
+			return
+		}
 		s.landAfterSignIn(w, r, "", refused)
 		return
 	}
-
-	identity, redirect, err := s.OIDC.Exchange(r.Context(), query.Get("state"), query.Get("code"))
 	if err != nil {
 		s.landAfterSignIn(w, r, "", signInFailure(err))
 		return
 	}
-
-	session, err := s.OIDC.SignIn(r.Context(), identity, s.SessionTTL,
-		r.UserAgent(), clientIP(r))
-	if err != nil {
-		s.landAfterSignIn(w, r, "", signInFailure(err))
+	// A callback in a browser that did not start the attempt is somebody
+	// else's sign-in being slipped into this one.
+	if !bound {
+		s.landAfter(w, r, login, signInFailure(oidc.ErrUnknownLogin))
 		return
 	}
-
+	identity, err := s.OIDC.Complete(r.Context(), login, query.Get("code"))
+	if err != nil {
+		s.landAfter(w, r, login, signInFailure(err))
+		return
+	}
+	session, err := s.OIDC.SignIn(r.Context(), identity, s.SessionTTL, r.UserAgent(), clientIP(r))
+	if err != nil {
+		s.landAfter(w, r, login, signInFailure(err))
+		return
+	}
 	s.setSessionCookie(w, session.Secret, session.ExpiresAt)
-	s.landAfterSignIn(w, r, redirect, "")
+	s.clearQuiet(w)
+	s.landAfterSignIn(w, r, login.Redirect, "")
+}
+
+// landAfter is a failed attempt's landing: a silent one keeps where the person
+// was going and stops trying quietly, a clicked one is as it always was.
+func (s *Server) landAfter(w http.ResponseWriter, r *http.Request, login *oidc.Login, failure string) {
+	if login.Silent {
+		s.landQuietly(w, r, login.Redirect, failure)
+		return
+	}
+	s.landAfterSignIn(w, r, "", failure)
+}
+
+// landQuietly ends a silent attempt on the sign-in page, remembering for the
+// browser's session that it was tried, so the next page does not try again.
+func (s *Server) landQuietly(w http.ResponseWriter, r *http.Request, next, failure string) {
+	s.setQuiet(w)
+	query := url.Values{}
+	if next != "" {
+		query.Set("next", next)
+	}
+	if failure != "" {
+		query.Set("sso", failure)
+	}
+	target := "/login"
+	if len(query) > 0 {
+		target += "?" + query.Encode()
+	}
+	http.Redirect(w, r, s.AppBaseURL+target, http.StatusFound)
 }
 
 // signInFailure turns a refusal into something worth showing somebody, without

@@ -78,6 +78,7 @@ data:
   ARMATURE_UPLOAD_LIMIT: "50MB"
   ARMATURE_WEBHOOK_CONCURRENCY: "8"
   ARMATURE_OIDC_REDIRECT_URL: "https://armature.example.com/api/v1/auth/oidc/callback"
+  ARMATURE_OIDC_SILENT_SIGN_IN: "true"
   
   
   ARMATURE_RETAIN_SESSIONS: "24h"
@@ -239,7 +240,7 @@ spec:
         # Roll the pods when the configuration changes. Without this an edit to
         # a value would update the ConfigMap and leave the running pods on the
         # old one until something else happened to restart them.
-        checksum/env: 29e9accc19c22b879b947e58ae9a1011c2353f0a81b539420259efde7f52c90b
+        checksum/env: 56fd5d4f85dde474fcb7fb312f2ab949594cedb9f77cffa390e55bddc99c4fc5
     spec:
       serviceAccountName: armature
       securityContext:
@@ -433,7 +434,7 @@ spec:
         app.kubernetes.io/instance: armature
         app.kubernetes.io/component: worker
       annotations:
-        checksum/env: 29e9accc19c22b879b947e58ae9a1011c2353f0a81b539420259efde7f52c90b
+        checksum/env: 56fd5d4f85dde474fcb7fb312f2ab949594cedb9f77cffa390e55bddc99c4fc5
     spec:
       serviceAccountName: armature
       securityContext:

@@ -282,6 +282,8 @@ type Server struct {
 	// left this application, which the API cannot infer from the request.
 	AppBaseURL string
 	SessionTTL time.Duration
+	// SilentSignIn tries the identity provider quietly before the sign-in page.
+	SilentSignIn bool
 	// CheckOrigin also refuses a cookie-carried write from an origin that is not
 	// this application's; off in development, where the dev server has its own.
 	CheckOrigin bool

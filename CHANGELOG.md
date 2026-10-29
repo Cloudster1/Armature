@@ -7,6 +7,17 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: a visit without a session first signs in silently when the
+  installation's identity provider still has one (#325), so somebody signed
+  in to Stator or Exciter through the suite's Keycloak lands on the page
+  they opened, signed in, with no click. Without a provider session they see
+  the sign-in page, and the browser does not try again until it is closed.
+  It is on whenever a provider is set up; `ARMATURE_OIDC_SILENT_SIGN_IN` (or
+  `auth.silentSignIn` in the chart) turns it off. Signing out ends the
+  provider's session too, and `/api/v1/meta` lists `auth.silent-sign-in@1`.
+- Changed: a sign-in through the identity provider uses PKCE, and its
+  callback is refused in a browser that did not start it (#325). A deep link
+  to the sign-in keeps its query string.
 - Added: a person who may not see an issue can ask for access to it (#279),
   from the issue's "not found" page or, for a partner such as Stator,
   through `POST /api/v1/issues/{key}/access-requests` with their own token.

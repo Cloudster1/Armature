@@ -306,7 +306,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** End the session. */
+        /** End the session; one from the identity provider answers where to end the provider's session too. */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -478,7 +478,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Begin signing in through the installation's identity provider. */
+        /** Begin signing in through the installation's identity provider; with prompt=none, quietly, landing on the sign-in page when the provider has no session. */
         get: operations["oIDCStart"];
         put?: never;
         post?: never;
@@ -6479,6 +6479,9 @@ export interface components {
             email: string;
             password: string;
         };
+        LogoutAnswer: {
+            endSession: string;
+        };
         ManagedUser: {
             /** Format: date-time */
             createdAt: string;
@@ -7663,14 +7666,15 @@ export interface components {
             projectName: string;
             share: components["schemas"]["Share"];
         };
+        SignInOffer: {
+            first: boolean;
+            open: boolean;
+            silentSignIn: boolean;
+        };
         SignupRequest: {
             email: string;
             name: string;
             password: string;
-        };
-        SignupState: {
-            first: boolean;
-            open: boolean;
         };
         Span: {
             /** Format: date-time */
@@ -9152,6 +9156,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogoutAnswer"];
+                };
+            };
             /** @description No Content */
             204: {
                 headers: {
@@ -9589,6 +9602,8 @@ export interface operations {
             query?: {
                 /** @description Where to land afterwards. */
                 next?: string;
+                /** @description none asks the provider not to show anything: a silent sign-in. */
+                prompt?: string;
             };
             header?: never;
             path?: never;
@@ -9814,7 +9829,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SignupState"];
+                    "application/json": components["schemas"]["SignInOffer"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

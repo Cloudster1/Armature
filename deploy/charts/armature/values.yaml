@@ -240,6 +240,9 @@ auth:
     threads: 4
   readYourWritesTTL: 30s
   portalCodeCooldown: 1m
+  # With an identity provider set up, a visit without a session first asks it
+  # quietly, so somebody signed in to another tool of the suite is let in.
+  silentSignIn: true
   oidc:
     # Must match what is registered with the identity provider, byte for byte.
     # Empty derives it from ingress.host.

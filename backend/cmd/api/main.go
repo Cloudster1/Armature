@@ -239,17 +239,18 @@ func run() error {
 			WithRegistration(oauth.Registration(cfg.Auth.OAuthRegistration)).
 			WithDevelopment(cfg.Env == "development").
 			WithIdentityProvider(identityProvider),
-		AppBaseURL: cfg.Mail.AppBaseURL,
-		Renderer:   renderer(cfg.Render),
-		Assistant:  asker(cfg.Assistant),
-		Workflow:   &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
-		DB:         cluster,
-		Telemetry:  tel,
-		Fresh:      freshness.NewRedisTracker(rdb, cfg.Auth.ReadYourWritesTTL),
-		Log:        log,
-		Secure:     cfg.Auth.SecureCookies,
-		CookieName: cfg.Auth.SessionCookie,
-		SessionTTL: cfg.Auth.SessionTTL,
+		AppBaseURL:   cfg.Mail.AppBaseURL,
+		Renderer:     renderer(cfg.Render),
+		Assistant:    asker(cfg.Assistant),
+		Workflow:     &httpapi.WorkflowDeps{Engine: engine, Store: workflowStore, Admin: workflowAdmin},
+		DB:           cluster,
+		Telemetry:    tel,
+		Fresh:        freshness.NewRedisTracker(rdb, cfg.Auth.ReadYourWritesTTL),
+		Log:          log,
+		Secure:       cfg.Auth.SecureCookies,
+		CookieName:   cfg.Auth.SessionCookie,
+		SessionTTL:   cfg.Auth.SessionTTL,
+		SilentSignIn: cfg.Auth.OIDCSilentSignIn,
 	}
 	// In development the dev server proxies from an origin of its own, so the
 	// origin check would refuse every write it forwards.
