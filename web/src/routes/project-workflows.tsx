@@ -13,7 +13,6 @@ function ProjectWorkflowsPage() {
 
   return (
     <>
-
       <ProjectWorkflows projectKey={projectKey} />
     </>
   );

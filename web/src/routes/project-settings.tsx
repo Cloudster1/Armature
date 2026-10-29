@@ -50,7 +50,9 @@ function ProjectSettingsLayout() {
   const shown = projectSetupPages.filter((page) => hasFeature(project, page.feature));
   const base = `/projects/${projectKey}`;
   // The longest address that opens the path wins, so /settings is General only when nothing deeper matches.
-  const current = [...projectSetupPages].reverse().find((page) => pathname === `${base}${setupAddress(page.path)}` || pathname.startsWith(`${base}${setupAddress(page.path)}/`));
+  const current = [...projectSetupPages]
+    .reverse()
+    .find((page) => pathname === `${base}${setupAddress(page.path)}` || pathname.startsWith(`${base}${setupAddress(page.path)}/`));
   const off = current && !hasFeature(project, current.feature) ? current : undefined;
   return (
     <Page width="content">
@@ -72,7 +74,11 @@ function ProjectSettingsLayout() {
             value={current?.path ?? "/settings"}
             panelId={panelId}
             onChange={(next) => navigate({ to: `${base}${setupAddress(next)}` as never })}
-            tabs={shown.map((page) => ({ value: page.path, label: page.tab, attrs: { "data-settings-tab": page === projectSettingsPage ? "general" : page.path.slice(1) } }))}
+            tabs={shown.map((page) => ({
+              value: page.path,
+              label: page.tab,
+              attrs: { "data-settings-tab": page === projectSettingsPage ? "general" : page.path.slice(1) },
+            }))}
           />
         }
       />
