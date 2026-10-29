@@ -6,9 +6,9 @@
 // possible, and they are the ones a template answers so the project is usable
 // the moment it exists.
 //
-// Templates are code, not rows. What there is to choose between changes when
-// the product does, and a template that could be edited would need every
-// project made from it to say which version it meant.
+// The built-in templates are code and the ones administrators keep are rows.
+// Either is applied once: the project copies what it needs and never refers
+// back, so editing or archiving a template changes no project made from it.
 package template
 
 import (
@@ -37,6 +37,9 @@ type Template struct {
 	Desk bool `json:"desk"`
 	// Features are the pages a project made from the template starts with.
 	Features []project.Feature `json:"features"`
+	// IssueTypes names the built-in types a project made from it allows, in
+	// order; nil is every built-in type, which is what a project got before.
+	IssueTypes []string `json:"-"`
 
 	workflow *workflowSpec
 }

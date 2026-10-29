@@ -199,8 +199,15 @@ func TestAnUnknownTemplateIsRefused(t *testing.T) {
 	if r.Status != http.StatusOK {
 		t.Fatalf("list templates: %d", r.Status)
 	}
-	if got := len(r.Body["templates"].([]any)); got != len(template.All()) {
-		t.Errorf("the API offers %d templates, the package has %d", got, len(template.All()))
+	// Other tests' stored templates follow the built-ins, so only those are counted.
+	builtins := 0
+	for _, raw := range r.Body["templates"].([]any) {
+		if raw.(map[string]any)["builtin"] == true {
+			builtins++
+		}
+	}
+	if builtins != len(template.All()) {
+		t.Errorf("the API offers %d built-in templates, the package has %d", builtins, len(template.All()))
 	}
 }
 

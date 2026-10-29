@@ -176,7 +176,8 @@ func (a *Admin) SetDefaultScheme(ctx context.Context, id uuid.UUID, actor uuid.U
 	})
 }
 
-// DeleteScheme removes a scheme no project names and that is not the default.
+// DeleteScheme removes a scheme no project or project template names and that
+// is not the default.
 func (a *Admin) DeleteScheme(ctx context.Context, id uuid.UUID) (db.LSN, error) {
 	return a.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var (
@@ -201,6 +202,14 @@ func (a *Admin) DeleteScheme(ctx context.Context, id uuid.UUID) (db.LSN, error) 
 		}
 		if len(projects) > 0 {
 			return fmt.Errorf("%w: %s still uses it", ErrInUse, strings.Join(projects, ", "))
+		}
+		var template string
+		err = tx.QueryRow(ctx, `SELECT name FROM project_template WHERE workflow_scheme_id = $1 ORDER BY lower(name) LIMIT 1`, id).Scan(&template)
+		if err == nil {
+			return fmt.Errorf("%w: the project template %s gives it to new projects, so pick another scheme there first", ErrInUse, template)
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("read the templates that use the scheme: %w", err)
 		}
 
 		if _, err := tx.Exec(ctx, `DELETE FROM workflow_scheme WHERE id = $1`, id); err != nil {

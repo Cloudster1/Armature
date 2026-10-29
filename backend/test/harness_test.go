@@ -237,7 +237,7 @@ func uniqueKey(prefix string) string {
 // sharedLists are the tables that hold one list for everyone, by name: what a
 // test names in one must not be another test's, and goes when the test ends.
 var sharedLists = []string{
-	"automation_rule", "oauth_client", "webhook_endpoint", "dashboard_template", "workflow_scheme", "workflow",
+	"project_template", "automation_rule", "oauth_client", "webhook_endpoint", "dashboard_template", "workflow_scheme", "workflow",
 	"issue_link_type", "custom_field", "label", "user_group", "role", "holiday_calendar",
 	"issue_type", "issue_status",
 }

@@ -3606,7 +3606,7 @@
                     "templates": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ReportTemplate"
+                        "$ref": "#/components/schemas/Template"
                       }
                     }
                   },
@@ -3979,7 +3979,7 @@
                   "type": "object",
                   "properties": {
                     "template": {
-                      "$ref": "#/components/schemas/ReportTemplate"
+                      "$ref": "#/components/schemas/Template"
                     }
                   },
                   "required": [
@@ -12164,9 +12164,19 @@
     "/project-templates": {
       "get": {
         "operationId": "listTemplates",
-        "summary": "The templates a project can start from.",
+        "summary": "The templates a project can start from: the built-ins, then the installation's own by name, each with its scheme and issue types.",
         "tags": [
           "projects"
+        ],
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "true lists archived templates too; for administrators.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -12179,12 +12189,219 @@
                     "templates": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Template"
+                        "$ref": "#/components/schemas/ProjectTemplate"
                       }
                     }
                   },
                   "required": [
                     "templates"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProjectTemplate",
+        "summary": "Keep a project template, or with from a copy of a built-in or stored one.",
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "template": {
+                      "$ref": "#/components/schemas/ProjectTemplate"
+                    }
+                  },
+                  "required": [
+                    "template"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-templates/{templateID}": {
+      "patch": {
+        "operationId": "updateProjectTemplate",
+        "summary": "Change a stored template; projects made from it keep what they got.",
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "name": "templateID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "template": {
+                      "$ref": "#/components/schemas/ProjectTemplate"
+                    }
+                  },
+                  "required": [
+                    "template"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-templates/{templateID}/archive": {
+      "post": {
+        "operationId": "archiveProjectTemplate",
+        "summary": "Stop offering a stored template; projects made from it keep what they got.",
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "name": "templateID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "template": {
+                      "$ref": "#/components/schemas/ProjectTemplate"
+                    }
+                  },
+                  "required": [
+                    "template"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-templates/{templateID}/restore": {
+      "post": {
+        "operationId": "restoreProjectTemplate",
+        "summary": "Offer an archived template again.",
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "name": "templateID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "template": {
+                      "$ref": "#/components/schemas/ProjectTemplate"
+                    }
+                  },
+                  "required": [
+                    "template"
                   ]
                 }
               }
@@ -28494,6 +28711,179 @@
           "typeIds"
         ]
       },
+      "ProjectTemplate": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "boardType": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
+          "builtin": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "desk": {
+            "type": "boolean"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "board",
+                "sprints",
+                "plan",
+                "calendar",
+                "resources",
+                "milestones",
+                "releases",
+                "components",
+                "hierarchy",
+                "dashboard",
+                "queues",
+                "desk",
+                "teams",
+                "repositories",
+                "automation",
+                "import"
+              ]
+            }
+          },
+          "issueTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateIssueType"
+            }
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "software",
+              "service",
+              "business"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "planningMethod": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
+          "scheme": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TemplateScheme"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "workflowName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "kind",
+          "boardType",
+          "planningMethod",
+          "desk",
+          "features",
+          "builtin",
+          "scheme",
+          "issueTypes",
+          "archived"
+        ]
+      },
+      "ProjectTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "boardType": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
+          "defaultWorkflowScheme": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "desk": {
+            "type": "boolean"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "from": {
+            "type": "string"
+          },
+          "issueTypeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "software",
+              "service",
+              "business"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "planningMethod": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban"
+            ]
+          },
+          "workflowSchemeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "ProjectWorkflows": {
         "type": "object",
         "properties": {
@@ -29222,51 +29612,6 @@
           "description",
           "width",
           "narrows"
-        ]
-      },
-      "ReportTemplate": {
-        "type": "object",
-        "properties": {
-          "builtIn": {
-            "type": "boolean"
-          },
-          "description": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "key": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "projectKinds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "software",
-                "service",
-                "business"
-              ]
-            }
-          },
-          "widgets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TemplateWidget"
-            }
-          }
-        },
-        "required": [
-          "key",
-          "name",
-          "description",
-          "widgets",
-          "builtIn"
         ]
       },
       "Repository": {
@@ -31919,77 +32264,89 @@
       "Template": {
         "type": "object",
         "properties": {
-          "boardType": {
-            "type": "string",
-            "enum": [
-              "scrum",
-              "kanban"
-            ]
+          "builtIn": {
+            "type": "boolean"
           },
           "description": {
             "type": "string"
           },
-          "desk": {
-            "type": "boolean"
-          },
-          "features": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "board",
-                "sprints",
-                "plan",
-                "calendar",
-                "resources",
-                "milestones",
-                "releases",
-                "components",
-                "hierarchy",
-                "dashboard",
-                "queues",
-                "desk",
-                "teams",
-                "repositories",
-                "automation",
-                "import"
-              ]
-            }
+          "id": {
+            "type": "string",
+            "format": "uuid"
           },
           "key": {
             "type": "string"
           },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "software",
-              "service",
-              "business"
-            ]
-          },
           "name": {
             "type": "string"
           },
-          "planningMethod": {
-            "type": "string",
-            "enum": [
-              "scrum",
-              "kanban"
-            ]
+          "projectKinds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "software",
+                "service",
+                "business"
+              ]
+            }
           },
-          "workflowName": {
-            "type": "string"
+          "widgets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateWidget"
+            }
           }
         },
         "required": [
           "key",
           "name",
           "description",
-          "kind",
-          "boardType",
-          "planningMethod",
-          "desk",
-          "features"
+          "widgets",
+          "builtIn"
+        ]
+      },
+      "TemplateIssueType": {
+        "type": "object",
+        "properties": {
+          "icon": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "retired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "icon",
+          "level",
+          "retired"
+        ]
+      },
+      "TemplateScheme": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
         ]
       },
       "TemplateWidget": {

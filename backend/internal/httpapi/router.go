@@ -362,6 +362,14 @@ func (s *Server) projectRoutes(r chi.Router) {
 	// act; reading and working in one is not.
 	r.Get("/projects", s.handleListProjects)
 	r.Get("/project-templates", s.handleListTemplates)
+	// The templates kept beside the built-ins are the installation's to keep.
+	r.Group(func(r chi.Router) {
+		r.Use(requirePerm(perm.OrgAdminister))
+		r.Post("/project-templates", s.handleCreateProjectTemplate)
+		r.Patch("/project-templates/{templateID}", s.handleUpdateProjectTemplate)
+		r.Post("/project-templates/{templateID}/archive", s.handleArchiveProjectTemplate)
+		r.Post("/project-templates/{templateID}/restore", s.handleRestoreProjectTemplate)
+	})
 	r.Get("/projects/key-check", s.handleCheckProjectKey)
 	r.Get("/projects/{projectKey}", s.handleGetProject)
 	r.Get("/projects/{projectKey}/issues", s.handleListIssues)

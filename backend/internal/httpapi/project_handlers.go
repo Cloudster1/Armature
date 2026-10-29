@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/armature/armature/backend/internal/project"
-	"github.com/armature/armature/backend/internal/template"
 )
 
 type createProjectRequest struct {
@@ -18,14 +17,9 @@ type createProjectRequest struct {
 	Kind        string     `json:"kind,omitempty"`
 	LeadID      *uuid.UUID `json:"leadId,omitempty"`
 	SchemeID    *uuid.UUID `json:"workflowSchemeId,omitempty"`
-	// Template is which of the templates to set the project up from. Empty is
-	// the default one.
+	// Template is a built-in's key or a stored template's id to set the project
+	// up from. Empty is the default one.
 	Template string `json:"template,omitempty"`
-}
-
-// handleListTemplates offers the ways a project can be set up.
-func (s *Server) handleListTemplates(w http.ResponseWriter, r *http.Request) {
-	respondJSON(w, r, http.StatusOK, map[string]any{"templates": template.All()})
 }
 
 func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {

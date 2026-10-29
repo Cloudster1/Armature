@@ -49,13 +49,18 @@ func (e *StillUsedError) Error() string {
 	return fmt.Sprintf("%d %s %s in %s, so %s stays. Change their type or move them first", e.Issues, issues, e.Type, e.Project, e.Type)
 }
 
-// OnlyStandardError is a type a project depends on as its only standard one.
+// OnlyStandardError is a type a project, or a project template, depends on as its only standard one.
 type OnlyStandardError struct {
 	Project string
 	Type    string
+	// Template is set when Project names a project template.
+	Template bool
 }
 
 func (e *OnlyStandardError) Error() string {
+	if e.Template {
+		return fmt.Sprintf("%s is the only standard type the project template %s gives. Add another standard type to the template first", e.Type, e.Project)
+	}
 	return fmt.Sprintf("%s is the only standard type %s uses. Allow another standard type there first", e.Type, e.Project)
 }
 
@@ -214,8 +219,8 @@ func (e *TakenInUseError) Error() string {
 	return fmt.Sprintf("Something in %s started using a type being taken away. Reload its types and try again", e.Project)
 }
 
-// onlyStandardIn names a project for which the type is the only standard one
-// that is not retired, which retiring, moving or deleting it would leave bare.
+// onlyStandardIn names a project, then a project template, for which the type
+// is the only standard one not retired, which retiring, moving or deleting it would leave bare.
 func onlyStandardIn(ctx context.Context, tx db.DBTX, t *IssueType) error {
 	if t.Level != issue.LevelStandard || t.Retired {
 		return nil
@@ -228,11 +233,25 @@ func onlyStandardIn(ctx context.Context, tx db.DBTX, t *IssueType) error {
 		    SELECT 1 FROM project_issue_type other JOIN issue_type o ON o.id = other.issue_type_id
 		    WHERE other.project_id = p.id AND o.id <> $1 AND o.hierarchy_level = 0 AND o.retired_at IS NULL)
 		ORDER BY p.key LIMIT 1`, t.ID).Scan(&key)
+	if err == nil {
+		return &OnlyStandardError{Project: key, Type: t.Name}
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	var template string
+	err = tx.QueryRow(ctx, `
+		SELECT pt.name FROM project_template pt
+		JOIN project_template_issue_type ptt ON ptt.template_id = pt.id AND ptt.issue_type_id = $1
+		WHERE NOT EXISTS (
+		    SELECT 1 FROM project_template_issue_type other JOIN issue_type o ON o.id = other.issue_type_id
+		    WHERE other.template_id = pt.id AND o.id <> $1 AND o.hierarchy_level = 0 AND o.retired_at IS NULL)
+		ORDER BY lower(pt.name) LIMIT 1`, t.ID).Scan(&template)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	return &OnlyStandardError{Project: key, Type: t.Name}
+	return &OnlyStandardError{Project: template, Type: t.Name, Template: true}
 }

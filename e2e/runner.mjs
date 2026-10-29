@@ -93,6 +93,8 @@ const INSTALLATION_WIDE = [
   ["PATCH|DELETE", /^\/labels\//, "a label everybody tags with"],
   ["PATCH|DELETE", /^\/issue-types\/[^/]+$/, "an issue type every project picks from"],
   ["POST", /^\/issue-types\/[^/]+\/(retire|reinstate)$/, "whether an issue type is offered to every project"],
+  ["PATCH", /^\/project-templates\/[^/]+$/, "a project template everyone chooses from"],
+  ["POST", /^\/project-templates\/[^/]+\/(archive|restore)$/, "whether a project template is offered to everyone"],
 ];
 
 /** Where the API is served, which every guarded path is under. */
