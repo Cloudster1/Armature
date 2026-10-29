@@ -53,7 +53,9 @@ scenario("an unknown path stays inside the shell for somebody signed in, with th
   await goto(page, "/no-such-page");
   await page.waitForSelector("[data-shell] [data-not-found]", { timeout: WAIT });
   expect.truthy((await page.$("[data-sidebar], [data-narrow-strip]")) !== null, "the not-found page lost the sidebar");
-  expect.contains(await textOf(page, "[data-not-found]"), "Page not found", "the page says what happened");
+  // The page's heading is drawn in the sticky strip, the rest in the content.
+  expect.contains(await textOf(page, "[data-shell-header] h1"), "Page not found", "the page's heading says what happened");
+  expect.contains(await textOf(page, "[data-not-found]"), "does not exist", "the page says what happened");
   await page.click('[data-not-found] [data-action="home"]');
   await waitForPath(page, "/");
 });

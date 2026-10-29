@@ -102,6 +102,8 @@ export function AccountMenu({ userName, avatar }: { userName: string; avatar?: s
       label={t.shell.account.yours}
       align="start"
       side="right"
+      // As wide as the rail, so the list opens past the rail's edge rather than over it.
+      className="w-full justify-center"
       header={<AccountHeader />}
       trigger={(props) => (
         <IconButton
