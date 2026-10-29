@@ -44,7 +44,7 @@ export function FilterTile({
   savedQuery?: SavedQueryLookup;
 }) {
   const { data: savedData } = useSavedFilters();
-  const { data: typeData } = useIssueTypes();
+  const { data: typeData } = useIssueTypes({ retired: true });
   const { data: teamData } = useTeams(projectKey);
   const { data: milestoneData } = useMilestones(projectKey, true);
   const types = (typeData?.issueTypes ?? []).filter((type) => !type.isSubtask);

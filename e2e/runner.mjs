@@ -91,6 +91,8 @@ const INSTALLATION_WIDE = [
   ["POST", /^\/automation\/rules$/, "a rule over every project"],
   ["POST|PATCH|DELETE", /^\/webhooks(\/|$)/, "a webhook that hears every project"],
   ["PATCH|DELETE", /^\/labels\//, "a label everybody tags with"],
+  ["PATCH|DELETE", /^\/issue-types\/[^/]+$/, "an issue type every project picks from"],
+  ["POST", /^\/issue-types\/[^/]+\/(retire|reinstate)$/, "whether an issue type is offered to every project"],
 ];
 
 /** Where the API is served, which every guarded path is under. */

@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useMutation } from "./mutation";
 import { ApiError, request } from "./client";
 import { META_STALE_MS } from "@/config";
+import type { components } from "./schema";
 
 export type StatusCategory = "todo" | "in_progress" | "done";
 export type Priority = "lowest" | "low" | "medium" | "high" | "highest";
@@ -17,16 +18,10 @@ export interface Status {
   position: number;
 }
 
-export interface IssueType {
-  id: string;
-  name: string;
-  description?: string;
-  icon: string;
-  /** Where the type sits in the hierarchy: 0 is the ordinary working level. */
-  level: number;
-  isSubtask: boolean;
-  position: number;
-}
+/** A type in the installation's library. Its level is where it sits in the hierarchy: 0 is the ordinary working level. */
+export type IssueType = components["schemas"]["IssueType"];
+/** A glyph a type is drawn with; the server's list, so the web draws every one it accepts. */
+export type IssueTypeIcon = IssueType["icon"];
 
 export const LEVEL_SUBTASK = -1;
 export const LEVEL_STANDARD = 0;
@@ -526,10 +521,14 @@ export function useSetParent() {
   });
 }
 
-export function useIssueTypes() {
+export const issueTypesQueryKey = ["issue-types"] as const;
+
+/** The library of issue types. A reading of what exists asks for the retired
+ * ones too; a picker for something new does not. */
+export function useIssueTypes({ retired = false }: { retired?: boolean } = {}) {
   return useQuery({
-    queryKey: ["issue-types"],
-    queryFn: () => request<{ issueTypes: IssueType[] }>("/issue-types"),
+    queryKey: [...issueTypesQueryKey, { retired }],
+    queryFn: () => request<{ issueTypes: IssueType[] }>(retired ? "/issue-types?retired=true" : "/issue-types"),
     staleTime: META_STALE_MS,
   });
 }

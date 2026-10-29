@@ -509,3 +509,9 @@ export const LANGUAGE_STORAGE_KEY = "armature.language";
 
 /** How long a note asking for access may be; the server keeps it to the same. */
 export const ACCESS_REQUEST_MESSAGE_MAX = 1000;
+
+/** The longest name and description an issue type may have; the server holds the same bounds. */
+export const ISSUE_TYPE_NAME_MAX_LENGTH = 60;
+export const ISSUE_TYPE_DESCRIPTION_MAX_LENGTH = 300;
+/** The levels a type may sit at, highest first, as the database's range allows. */
+export const ISSUE_TYPE_LEVELS = [3, 2, 1, 0, -1] as const;
