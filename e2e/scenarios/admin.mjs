@@ -55,11 +55,7 @@ scenario("a member is refused the Admin page, sees no Admin entry, and nothing o
     await page.waitForFunction(() => document.body.innerText.includes("Only administrators can open this page"), { timeout: WAIT });
     expect.equal(await page.$("[data-admin-nav]"), null, `${path} shows no navigation`);
   }
-  expect.equal(
-    asked.filter((p) => /\/api\/v1\/(users|roles|permissions|audit|webhooks)/.test(p)),
-    [],
-    "no admin request went out",
-  );
+  expect.equal(asked.filter((p) => /\/api\/v1\/(users|roles|permissions|audit|webhooks)/.test(p)).length, 0, "no admin request went out");
 });
 
 scenario("an old settings address leads to the Admin page, keeping its search", async ({ page }) => {

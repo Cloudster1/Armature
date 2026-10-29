@@ -135,7 +135,7 @@ scenario("at phone width a drawer holds every group and closes on following a li
     for (const group of ["work", "project"])
       expect.truthy(await page.$(`[data-sidebar="drawer"] [data-sidebar-group="${group}"]`), `the drawer holds the ${group} group`);
     const foot = await page.$eval("[data-drawer-foot]", (el) => el.innerText);
-    for (const word of [...PERSONAL, "Settings", "Sign out"]) expect.contains(foot, word, `the drawer's foot offers ${word}`);
+    for (const word of [...PERSONAL, "Admin", "Sign out"]) expect.contains(foot, word, `the drawer's foot offers ${word}`);
     expect.truthy(await page.$('[data-drawer-foot] [data-action="theme"]'), "and the theme switch");
     // The stamp waits on /meta, which may answer after the drawer opens.
     expect.truthy(await page.waitForSelector("[data-drawer-foot] [data-build]", { timeout: WAIT }).catch(() => null), "and the build stamp");
@@ -147,10 +147,11 @@ scenario("at phone width a drawer holds every group and closes on following a li
     await page.waitForFunction(() => !document.querySelector('[data-sidebar="drawer"]'), { timeout: WAIT });
 
     await openDrawer(page);
-    await page.click('[data-drawer-foot] [data-action="settings"]');
-    await waitForPath(page, "/settings");
+    await page.click('[data-drawer-foot] [data-action="admin"]');
+    await waitForPath(page, "/admin");
     await page.waitForFunction(() => !document.querySelector('[data-sidebar="drawer"]'), { timeout: WAIT });
-    await openDrawer(page, '[data-sidebar="drawer"][data-sidebar-area="settings"] [data-sidebar-group="settings"]');
+    await goto(page, "/settings");
+    await openDrawer(page, '[data-sidebar="drawer"][data-sidebar-area="settings"] [data-sidebar-group="you"]');
     expect.truthy(await page.$('[data-sidebar="drawer"] [data-action="back-from-settings"]'), "in the settings area the drawer holds the settings sidebar");
   });
 });
