@@ -6,7 +6,7 @@ import { ApiError } from "@/api/client";
 import { useLogout, useMe } from "@/api/auth";
 import { useAcceptInvite, useInvitePreview, type InvitePreview } from "@/api/invites";
 import { NewPasswordFields, passwordsMatch } from "@/features/auth/AuthForms";
-import { Button, ErrorBanner, Field } from "@/components/ui";
+import { Button, ErrorBanner, Field, Skeleton } from "@/components/ui";
 import { takeLinkSecret } from "@/lib/linkSecret";
 import { t } from "@/i18n";
 
@@ -53,7 +53,7 @@ function InvitePage() {
   if (!invite) {
     return (
       <AuthLayout title={t.doors.invite.title} footer={<SignInLink />}>
-        <p className="text-sm text-ink-muted">{t.doors.common.loading}</p>
+        <Skeleton lines={4} />
       </AuthLayout>
     );
   }
@@ -98,7 +98,7 @@ function Accept({ token, invite }: { token: string; invite: InvitePreview }) {
     navigate({ to: "/" });
   }
 
-  if (me.isLoading) return <p className="text-sm text-ink-muted">{t.doors.common.loading}</p>;
+  if (me.isLoading) return <Skeleton lines={4} />;
 
   const signedIn = me.data?.principal?.user;
   if (signedIn) {

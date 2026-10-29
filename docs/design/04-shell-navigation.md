@@ -10,71 +10,82 @@ gradient.
 
 ```
 +---+------------------------+------------------------------------------------------+
-|[<]| Acme                   | Settings                                             |
+|[<]| (m) Acme               | Admin                               <- crumbs        |
 |   |                        | Workflows                                            |
 | ⌂ | WORK & PLAN         v  | [Workflows] Statuses  Schemes          <- glass strip|
 | ⌕ |  o Home                |------------------------------------------------------|
 | ⚑ |  o Search      Ctrl K  |                                                      |
-| ▦ |  o Inbox               |  +------------------------------------------------+  |
-| + |  o Projects            |  | Default software workflow [In the default]     |  |
-|   |                        |  | Used by every project ...     STATUSES  SCHEMES|  |
-|   | PROJECT             v  |  | To Do, In Progress ...        4 ====    all    |  |
-|   |  [v Alpha         ALP] |  +------------------------------------------------+  |
-|   |  o Issues   o Board    |     elevated glass cards with icon actions [✎][⧉][🗑] |
+| ▭ |  o Notifications   (3) |  +------------------------------------------------+  |
+| + |  o Saved searches      |  | Default software workflow [In the default]     |  |
+|   |  o Projects            |  | Used by every project ...     STATUSES  SCHEMES|  |
+|   |                        |  | To Do, In Progress ...        4 ====    all    |  |
+|   | PROJECT             v  |  +------------------------------------------------+  |
+|   |  [v Alpha         ALP] |     elevated glass cards with icon actions [✎][⧉][🗑] |
+|   |  o Issues   o Board    |                                                      |
 |   |  o Sprints  o Plan     |                                                      |
 |   |  o Milestones ...      |                                                      |
-|   |  PROJECT ADMIN      >  |                                                      |
+|   |  o Settings            |                                                      |
 |   |                        |                                                      |
-|   | SETTINGS            v  |                                                      |
-|   |  o Access  o Workflows |                                                      |
-|   |  o Labels  o API tokens|                                                      |
+|   |  o Admin               |                                                      |
 | ? |                        |                                                      |
-| ◐ |------------------------|                                                      |
-|(A)| (AL) Ada     Owner [⏻] |                                                      |
+| ◐ |                        |                                                      |
+|(A)|            build stamp |                                                      |
 +---+------------------------+------------------------------------------------------+
 
-Rail only (below 1024px or by the toggle):  the sidebar is gone; the rail's
-avatar becomes a menu with Your profile and Sign out.
+Below 768px:  the rail and the sidebar are gone; a 48px strip holds the menu
+button, the installation's name and the bell, and the menu button opens the
+same groups as a drawer.
 ```
 
 ## The rail
 
-48px, `<aside data-rail>`. Its top is a `<header>` holding the toggle
-(`data-action="sidebar"`, "Collapse the sidebar" / "Expand the sidebar").
-Then Home, Search, the inbox bell (`data-action="inbox"`,
-`data-unread-count`, `data-guide="inbox"`), Projects, and New issue
-(`data-action="new-issue"`, `data-guide="new-issue"`), each an icon with its
-word in a tooltip to the right. Its foot: the guide (`data-action="guide"`),
+48px, `<aside data-rail>`. Its first child is the navigation (`<nav>`,
+"Everywhere"), whose top is a `div` (`[data-rail-top]`) holding the toggle
+(`data-action="sidebar"`, "Collapse the sidebar" / "Expand the sidebar"). Then
+Home, Search, the bell (`data-action="notifications"`, `data-unread-count`,
+`data-guide="inbox"`), Projects as a folder, as in Stator and Exciter, and New
+issue (`data-action="new-issue"`, `data-guide="new-issue"`), each an icon with
+its word in a tooltip to the right. Its foot: the guide (`data-action="guide"`),
 the theme (`data-action="theme"`, `data-guide="theme"`, sr-only text Auto,
-Light or Dark), and the avatar, a link to the profile (`data-action="profile"`)
-while the sidebar is open and a Menu holding Sign out (`data-action="sign-out"`)
-when it is folded, so the way out exists exactly once either way.
+Light or Dark), and the avatar (`data-action="account"`), a round button whose
+menu opens to the right of the rail: a header with the avatar beside the name,
+address and role, the person's own pages, "Switch to" the partner tools, Admin
+for an administrator, and Sign out (`data-action="sign-out"`), which lands on
+the sign-in page however the request ends. That menu is the one way out.
 
 ## The sidebar
 
 232px, `<nav data-sidebar="open">`, only while open; the state is
-`localStorage armature.sidebar` (open or rail). The installation's name at the
-top (`[data-installation-name]`), plain text. Then the groups, each a fold whose
-title is the switch (`data-sidebar-group=<id>`, `data-open`, `aria-expanded`;
-folds are kept in `localStorage armature.sidebar-groups`):
+`localStorage armature.sidebar` (open or rail), and below 1024px it starts as
+the rail alone until the toggle opens it. Its head is the mark and the
+installation's name (`[data-installation-name]`), plain text; its foot only
+the shared build stamp, with no person and no Sign out. Then the groups, each
+a fold whose title is the switch (`data-sidebar-group=<id>`, `data-open`,
+`aria-expanded`; folds are kept in `localStorage armature.sidebar-groups`):
 
-- **Work & Plan** (open): Home, Search (with the palette's shortcut shown),
-  Inbox, Projects.
+- **Work & Plan** (open): Home, Search (with the palette's key, "Ctrl K", or
+  "Cmd K" on a Mac, from the catalogue), Notifications (with the unread
+  `Count`), Saved searches, Projects.
 - **Project** (open): a switcher at the top, a menu with a filter field
   listing every project; switching keeps the page kind (Board stays Board)
   and drops the ids of the old project (a sprint's board becomes Sprints).
-  Below it the project's Work pages that its features include, then
-  **Project Admin** (folded by default): Teams, Workflow, Fields,
-  Components, Repositories, Automation, Import, Settings. With no project in
+  Below it the project's Work pages that its features include, then one
+  **Settings** entry for every member of the project, which opens the
+  project's settings: one tab per page, in the suite's sections (General;
+  Issue types, Fields, Issue view; Workflow; Components, Repositories,
+  Automation; Import), read only for somebody who does not administer the
+  project. Teams stay a Work page. With no project in
   the route the group shows the last visited project (`localStorage
   armature.project`) or a "Choose a project" button.
-- **Settings** (open): Installation, Access, Users, Holidays, Workflows,
-  Labels, Automation, Webhooks, Fields, Issue view, Audit log, API tokens,
-  Themes. The link to API tokens is what the browser
-  suite waits for, so the group opens by default and the link stays a link.
+- **Admin**, for an administrator only: one entry that opens `/admin`.
 
-At the bottom the person: avatar and name (a link to the profile), the role
-they hold here, and Sign out (`data-action="sign-out"`).
+In the settings area (`/settings` and below) the sidebar is the settings' own:
+"Back to Armature" and the person's pages.
+
+Below 768px there is no rail and no sidebar: the strip over the content holds
+the menu button (`data-action="open-drawer"`), the installation's name and the
+bell, and the button opens the same groups as a modal drawer from the left
+(`[data-sidebar="drawer"]`), which a followed link closes.
 
 ## The strip and the backdrop
 
@@ -82,16 +93,24 @@ they hold here, and Sign out (`data-action="sign-out"`).
 strip (`[data-shell-header]`): sticky, glass (`bg-surface-glass` under a
 backdrop blur), a hairline under it. `PageHeader` draws itself into the
 strip through `ShellHeaderContext` and in place where there is no strip
-(the portal, a shared page, every unit test), so pages keep their one
-`PageHeader` call. The issue page's own sticky head is unchanged.
+(a shared page, every unit test), so pages keep their one `PageHeader` call.
+The shell hands every `PageHeader` its breadcrumbs through `PageCrumbsContext`;
+no page names its own. The issue page's own sticky head is unchanged.
+
+A path that leads nowhere, and a page that throws, stay inside the shell for
+somebody signed in: a page header, an `EmptyState` and the way home or Try
+again (`[data-not-found]`, `[data-route-error]`), as Stator's and Exciter's
+`routes/root.tsx`. Somebody not signed in sees the plain not-found page.
 
 ## Routes
 
 - A nested `projectRoute` at `/projects/$projectKey` loads the project once,
   owns the crumb and the not-found state, and renders its children: index
   (Issues), board, sprints, plan, calendar, milestones, releases, dashboard,
-  hierarchy, teams, workflows, fields, components, repositories, automation,
-  import, queues, service-desk, settings.
+  hierarchy, teams, queues, service-desk and settings. The settings route
+  holds the tabs: `/settings` (General), `/settings/issue-types`, `fields`,
+  `issue-view`, `workflows`, `components`, `repositories`, `automation` and
+  `import`; each page's old address under the project redirects to its tab.
 - `/admin/workflows` is **Workflows**, the installation's library of
   workflows and schemes. `/projects/$key/workflows` is **Workflow scheme**;
   its sidebar label is **Workflow**.
@@ -107,8 +126,9 @@ strip through `ShellHeaderContext` and in place where there is no strip
   administrators can, and no child page is mounted. Every old
   `/settings/<page>` address of those pages redirects to `/admin/<page>`,
   search and hash kept; `/settings/organization` lands on `/admin/installation`.
-- `/inbox` is what the person was told, newest first, unread or everything;
-  a row is a link to its issue and opening it marks it read.
+- `/notifications` is the Notifications page: what the person was told,
+  newest first, unread or everything; a row is a link to its issue and
+  opening it marks it read. `/inbox`, its old address, redirects there.
 - `/filters` lists every saved search the person may see. `/search` takes `f`
   beside `q` to say which saved search the query came from.
 - Creating a project navigates to it. Creating an issue toasts with a link,
@@ -127,13 +147,17 @@ the guide (`web/src/features/guide`): pages, actions and query intents scored
 by the words they share with the question, above a threshold or not at all.
 An answer navigates and, when the entry names a `data-guide` target on that
 page, a `Spotlight` callout points at it with the entry's sentence. The
-question mark button in the sidebar's foot (`data-action="guide"`) opens the
+question mark button in the rail's foot (`data-action="guide"`) opens the
 palette in ask mode (`data-palette-mode="ask"`): answers first, placeholder
 "Ask where something is...", and "No answer for that yet" when there is none.
 
 ## Breadcrumbs
 
-The sidebar's path minus the current page, rendered by `Breadcrumbs` inside
-`PageHeader`: `Projects / Alpha` on a project page, `Projects / Alpha /
-ALP-4` on an issue whose parent is ALP-4, `Settings` on a settings page. Home,
-Projects and Search have none.
+Derived from the places, the sidebar's path minus the current page, by
+`crumbsFor` in `features/shell/Crumbs.tsx`, and drawn by `PageHeader` in the
+sticky strip, as Exciter's `Crumbs`: `Projects` on a project's issues,
+`Projects / Alpha` on its other pages and on an issue, `Projects / Alpha /
+Project settings` on a settings tab, `Settings` below the person's pages,
+`Admin` below the installation's, `Admin / Workflows` deeper still. Home,
+Projects, Search, Notifications, the settings hub and the Admin page have none.
+An issue's parents are its own trail (`nav[aria-label="Parent issues"]`).

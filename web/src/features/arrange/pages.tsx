@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui";
 import { ArrangementEditor } from "./ArrangementEditor";
 
 /** How this project draws an issue of each type, and how to change it. */
-export function ProjectArrangement({ projectKey }: { projectKey: string }) {
+export function ProjectArrangement({ projectKey, readOnly = false }: { projectKey: string; readOnly?: boolean }) {
   const { data, isLoading } = useArrangements(projectKey);
   const { data: fields } = useProjectFields(projectKey);
   const save = useSetProjectArrangement(projectKey);
@@ -16,6 +16,7 @@ export function ProjectArrangement({ projectKey }: { projectKey: string }) {
       saving={save.isPending}
       error={save.error as Error | null}
       canFollow
+      readOnly={readOnly}
       onSave={save.mutate}
     />
   );

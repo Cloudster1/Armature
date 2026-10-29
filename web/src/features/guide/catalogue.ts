@@ -160,7 +160,7 @@ const pages: GuideEntry[] = [
     id: "page:inbox",
     keywords: ["inbox", "notification", "bell", "unread", "told", "mention", "mentioned"],
     target: "inbox",
-    to: () => ({ to: "/inbox" }),
+    to: () => ({ to: "/notifications" }),
   }),
   entry({
     id: "page:settings",

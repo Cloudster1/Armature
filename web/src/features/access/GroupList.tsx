@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { useAddToGroup, useCreateGroup, useDeleteGroup, useGroup, useGroups, useRemoveFromGroup, type Group } from "@/api/access";
-import { Button, Card, EmptyState, ErrorBanner, Field } from "@/components/ui";
+import { groupLabel, useAddToGroup, useCreateGroup, useDeleteGroup, useGroup, useGroups, useRemoveFromGroup, type Group } from "@/api/access";
+import { Button, Card, EmptyState, ErrorBanner, Field, Skeleton } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { t } from "@/i18n";
@@ -22,15 +22,32 @@ export function GroupList() {
     <div className="space-y-4">
       <NewGroup />
 
-      {isLoading && <p className="text-sm text-ink-muted">{t.access.loading}</p>}
-      {!isLoading && groups.length === 0 && <EmptyState title={t.access.groups.empty} description={t.access.groups.emptyDetail} />}
+      {isLoading && <Skeleton lines={4} />}
+      {!isLoading && groups.every((group) => group.builtin) && <EmptyState title={t.access.groups.empty} description={t.access.groups.emptyDetail} />}
 
       <div className="space-y-3">
-        {groups.map((group) => (
-          <GroupCard key={group.id} group={group} />
-        ))}
+        {groups.map((group) => (group.builtin ? <BuiltinGroupCard key={group.id} group={group} /> : <GroupCard key={group.id} group={group} />))}
       </div>
     </div>
+  );
+}
+
+/**
+ * Everyone, whose members are the installation's: listed by count, since it
+ * holds every member, and never edited here.
+ */
+function BuiltinGroupCard({ group }: { group: Group }) {
+  return (
+    <Card className="p-4" data-group={group.name} data-group-builtin={group.builtin}>
+      <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-ink">
+        <span className="break-words">{groupLabel(group)}</span>
+        <span className="rounded-full bg-surface-raised px-2 py-0.5 text-2xs font-medium whitespace-nowrap text-ink-muted">{t.access.groups.builtin}</span>
+      </h3>
+      <p className="mt-0.5 text-xs text-ink-muted">
+        {t.access.groups.people(group.memberCount)} · {t.access.groups.roles(group.roleCount)}
+      </p>
+      <p className="mt-2 text-sm text-ink-muted">{t.access.groups.everyoneDetail}</p>
+    </Card>
   );
 }
 

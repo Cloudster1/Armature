@@ -3,22 +3,27 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAccess } from "@/api/access";
 import { useLogout, useMe } from "@/api/auth";
 import { useConnectedTools, type ConnectedTool } from "@/api/installation";
-import { Avatar, IconButton, Menu, type MenuItem } from "@/components/ui";
+import { Avatar, IconButton, Menu, type MenuEntry, type MenuGroup } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { adminEntry, personalPlaces, type Place } from "./places";
 import { t } from "@/i18n";
 
 const toolIcons: Record<string, ReactNode> = { stator: <Icon.Stator />, exciter: <Icon.Exciter /> };
 
-/** The "Switch to" group: each connected tool, a plain link to its home, under one heading. */
-export function switchToItems(tools: ConnectedTool[] | undefined): MenuItem[] {
-  return (tools ?? []).map((tool, i) => ({
-    label: tool.name,
-    icon: toolIcons[tool.product] ?? <Icon.External />,
-    href: tool.url,
-    section: i === 0 ? t.shell.account.switchTo : undefined,
-    attrs: { "data-switch-to": tool.product },
-  }));
+/** The "Switch to" group: each connected tool, a plain link to its home, under one heading; none without a tool. */
+export function switchToItems(tools: ConnectedTool[] | undefined): MenuGroup[] {
+  if (!tools?.length) return [];
+  return [
+    {
+      group: t.shell.account.switchTo,
+      items: tools.map((tool) => ({
+        label: tool.name,
+        icon: toolIcons[tool.product] ?? <Icon.External />,
+        href: tool.url,
+        attrs: { "data-switch-to": tool.product },
+      })),
+    },
+  ];
 }
 
 /** The seat a person holds here, as the menu's header and the drawer's foot word it. */
@@ -31,7 +36,7 @@ export function roleWord(role: string | undefined): string {
  * What the avatar menu holds, in its order: the person's own pages, the other
  * tools, Admin for administrators and the way out. The drawer lists the same.
  */
-export function useAccountItems(): MenuItem[] {
+export function useAccountItems(): MenuEntry[] {
   const navigate = useNavigate();
   const logout = useLogout();
   const { data: tools } = useConnectedTools();
@@ -60,7 +65,7 @@ export function useAccountItems(): MenuItem[] {
       label: t.shell.account.signOut,
       icon: <Icon.External />,
       separated: true,
-      onSelect: () => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) }),
+      onSelect: () => logout.mutate(undefined, { onSettled: () => navigate({ to: "/login" }) }),
       attrs: { "data-action": "sign-out" },
     },
   ];
@@ -89,13 +94,16 @@ function AccountHeader() {
   );
 }
 
-/** The avatar's menu, "Your account", which opens from the avatar whether the sidebar is open or folded. */
+/** The avatar's menu, "Your account", which opens to the right of the rail whether the sidebar is open or folded. */
 export function AccountMenu({ userName, avatar }: { userName: string; avatar?: string }) {
   const items = useAccountItems();
   return (
     <Menu
       label={t.shell.account.yours}
       align="start"
+      side="right"
+      // As wide as the rail, so the list opens past the rail's edge rather than over it.
+      className="w-full justify-center"
       header={<AccountHeader />}
       trigger={(props) => (
         <IconButton

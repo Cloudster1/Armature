@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import { useArchiveProjectTemplate, useCreateProjectTemplate, useProjectTemplates, useRestoreProjectTemplate, type ProjectTemplate } from "@/api/projects";
 import { Button, Card, EmptyState, ErrorBanner, Page, PageHeader, Segmented, Tag, useToast } from "@/components/ui";
@@ -95,11 +95,6 @@ function ProjectTemplatesPage() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
         title={words.title}
         meta={words.meta}
         actions={

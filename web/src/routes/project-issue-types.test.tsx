@@ -34,6 +34,7 @@ function routes(extra: Routes = {}): Routes {
   return {
     "GET /projects/CP/issue-types?retired=true": [200, { issueTypes: kept }],
     "GET /issue-types": [200, { issueTypes: library }],
+    "GET /access/me": [200, { canAdministerOrg: false, permissions: { org: [], projects: { CP: ["project.administer"] } } }],
     ...extra,
   };
 }
@@ -103,6 +104,15 @@ describe("the Issue types tab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save types" }));
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(sentence));
+  });
+
+  it("shows a member who does not administer the project the types, with nothing to change", async () => {
+    serve(routes({ "GET /access/me": [200, { canAdministerOrg: false, permissions: { org: [], projects: { CP: ["read"] } } }] }));
+    renderInShell(<Tab />);
+
+    expect(await screen.findByRole("checkbox", { name: "Allow Bug" })).toBeDisabled();
+    expect(names()).toEqual(["Task", "Bug", "Epic", "Spike", "Story", "Chore"]);
+    expect(screen.queryByRole("button", { name: /Save/ })).toBeNull();
   });
 
   it("will not save without a standard type", async () => {

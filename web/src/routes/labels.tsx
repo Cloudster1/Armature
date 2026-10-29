@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { LABEL_COLORS, useDeleteLabel, useLabels, useUpdateLabel, type Label } from "@/api/labels";
@@ -70,15 +70,7 @@ function LabelsPage() {
 
   return (
     <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
-        title={t.looks.labels.title}
-        meta={t.looks.labels.meta}
-      />
+      <PageHeader title={t.looks.labels.title} meta={t.looks.labels.meta} />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {/* A refused removal is the shell's toast, as on every table, rather than a banner above rows it may be far from. */}
       <div className="mb-3 flex items-center gap-3">

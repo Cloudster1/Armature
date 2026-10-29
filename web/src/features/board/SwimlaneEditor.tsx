@@ -9,7 +9,7 @@ import {
   type Grouping,
   type Swimlane,
 } from "@/api/boards";
-import { Button, Card, Checkbox, Chip, ErrorBanner, Field, Input, cx } from "@/components/ui";
+import { Button, Card, Checkbox, Chip, cx, ErrorBanner, Field, Input, Skeleton } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { useProjectStatuses, type Status } from "@/api/issues";
 import { t } from "@/i18n";
@@ -32,7 +32,7 @@ export function SwimlaneEditor({ boardId }: { boardId: string }) {
   const reorder = useReorderSwimlanes();
   const [adding, setAdding] = useState(false);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.board.swimlanes.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
 
   const board = data?.board;
   const statuses = statusData?.statuses ?? [];

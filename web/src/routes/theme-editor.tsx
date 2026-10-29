@@ -1,7 +1,7 @@
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useTheme } from "@/api/themes";
-import { ErrorBanner, Page, PageHeader } from "@/components/ui";
+import { ErrorBanner, Page, PageHeader, Skeleton } from "@/components/ui";
 import { ThemeEditor } from "@/features/themes/ThemeEditor";
 import { t } from "@/i18n";
 
@@ -22,29 +22,24 @@ export const themeEditRoute = createRoute({
 
 function EditorPage({ themeId }: { themeId?: string }) {
   const { data, error, isLoading } = useTheme(themeId);
-  const crumb = (
-    <>
-      <Link to="/settings" className="hover:text-ink">
-        {t.settings.crumb}
-      </Link>
-      <span className="mx-1 text-ink-subtle">/</span>
-      <Link to="/settings/themes" className="hover:text-ink">
-        {t.looks.themes.title}
-      </Link>
-    </>
-  );
   if (themeId && error) {
     return (
       <Page width="content">
-        <PageHeader crumb={crumb} title={t.looks.editor.title} />
+        <PageHeader title={t.looks.editor.title} />
         <ErrorBanner>{(error as Error).message}</ErrorBanner>
       </Page>
     );
   }
-  if (themeId && (isLoading || !data)) return null;
+  if (themeId && (isLoading || !data)) {
+    return (
+      <Page width="content">
+        <Skeleton lines={6} />
+      </Page>
+    );
+  }
   return (
     <Page width="content">
-      <PageHeader crumb={crumb} title={data?.theme.name ?? t.looks.themes.newTheme} />
+      <PageHeader title={data?.theme.name ?? t.looks.themes.newTheme} />
       <ThemeEditor key={data?.theme.id ?? "new"} theme={data?.theme} />
     </Page>
   );

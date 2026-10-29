@@ -2,6 +2,7 @@ import { keepPreviousData, queryOptions, useQuery, useQueryClient } from "@tanst
 import { useMutation } from "./mutation";
 import { request } from "./client";
 import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
+import { t } from "@/i18n";
 
 /**
  * Roles are the organization's own: the five it starts with and any it adds,
@@ -59,6 +60,8 @@ export interface Group {
   /** "oidc" means the identity provider owns who is in it. */
   source: "local" | "oidc";
   externalRef?: string;
+  /** Set on a group the installation keeps itself: "everyone" holds every member. */
+  builtin?: "everyone";
   members?: GroupMember[];
   memberCount: number;
   roleCount: number;
@@ -73,6 +76,12 @@ export interface Assignment {
   userName?: string;
   groupId?: string;
   groupName?: string;
+  groupBuiltin?: "everyone";
+}
+
+/** A group's name as the page shows it; Everyone is named in the reader's language. */
+export function groupLabel(group: { name?: string; builtin?: string }): string {
+  return group.builtin === "everyone" ? t.access.groups.everyone : (group.name ?? "");
 }
 
 export interface Provider {

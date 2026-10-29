@@ -26,7 +26,6 @@ export const dashboardEn = {
     deleteThis: "Delete this dashboard",
     addWidget: "Add a widget",
     notNarrowed: "Not narrowed by the filter: this widget counts sprints, not issues.",
-    counting: "Counting...",
   },
   create: {
     name: "Dashboard name",
@@ -34,7 +33,6 @@ export const dashboardEn = {
     create: "Create dashboard",
   },
   templates: {
-    loading: "Loading templates...",
     startFrom: "Start from",
     template: "Template",
     blank: "Blank",

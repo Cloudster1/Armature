@@ -83,6 +83,9 @@ var (
 	// ErrNotAMember is returned when somebody authenticates correctly but has
 	// not been invited. Signing in is not the same as being let in.
 	ErrNotAMember = errors.New("nobody here has let you in yet")
+	// ErrUnreachable is returned when the provider cannot be asked who it is,
+	// so the sign-in page can say to try again rather than blame the person.
+	ErrUnreachable = errors.New("the identity provider could not be reached")
 )
 
 // howLongALoginMayTake bounds the window between the redirect out and the

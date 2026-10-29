@@ -5232,6 +5232,7 @@ export interface components {
             size: number;
         };
         Assignment: {
+            groupBuiltin?: string;
             /** Format: uuid */
             groupId?: string;
             groupName?: string;
@@ -6283,6 +6284,7 @@ export interface components {
             transitions: components["schemas"]["EdgeRequest"][];
         };
         Group: {
+            builtin?: string;
             description?: string;
             externalRef?: string;
             /** Format: uuid */

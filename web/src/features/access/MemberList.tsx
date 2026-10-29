@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useMembers } from "@/api/people";
-import { Avatar, Card, EmptyState, ErrorBanner, Pager, SectionTitle, Tag, clampOffset, countOf } from "@/components/ui";
+import { Avatar, Card, clampOffset, countOf, EmptyState, ErrorBanner, Pager, SectionTitle, Skeleton, Tag } from "@/components/ui";
 import { PeopleSearch } from "@/features/people/PeopleSearch";
 import { PEOPLE_PAGE_SIZE } from "@/config";
 import { InvitePanel } from "./InvitePanel";
@@ -43,7 +43,7 @@ export function MemberList({ q = "", offset = 0, show }: MembersShown & { show: 
         </div>
         {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
         {isLoading ? (
-          <p className="text-sm text-ink-muted">{t.access.loading}</p>
+          <Skeleton lines={4} />
         ) : members.length === 0 && q ? (
           <EmptyState title={t.access.members.noMatch} description={t.access.members.noMatchDetail} />
         ) : members.length === 0 ? (

@@ -23,14 +23,7 @@ function InstallationPage() {
 
   return (
     <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
-        title={t.access.installation.title}
-      />
+      <PageHeader title={t.access.installation.title} />
       {name !== undefined &&
         (canAdminister ? (
           <RenameForm name={name} />

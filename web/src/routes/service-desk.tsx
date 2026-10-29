@@ -1,7 +1,6 @@
 import { Fragment, useState, type FormEvent } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
-import { useProject } from "@/api/projects";
 import { LEVEL_STANDARD, type Priority } from "@/api/issues";
 import { useProjectIssueTypes } from "@/api/issueTypes";
 import { useTeams } from "@/api/teams";
@@ -35,19 +34,11 @@ const priorities: Priority[] = ["highest", "high", "medium", "low", "lowest"];
 /** How the desk is set up: what customers can raise, and what was promised. */
 function ServiceDeskPage() {
   const { projectKey } = serviceDeskRoute.useParams();
-  const { data } = useProject(projectKey);
   const { data: access } = useAccess();
 
   return (
     <Page width="content" className="space-y-8">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {data?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.desk.setup.title}
-      />
+      <PageHeader title={t.desk.setup.title} />
       <Door projectKey={projectKey} editable={canAdminister(access, projectKey)} />
       <RequestTypes projectKey={projectKey} />
       <Companies projectKey={projectKey} editable={canAdminister(access, projectKey)} />

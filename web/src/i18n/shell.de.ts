@@ -99,7 +99,7 @@ export const shellDe: typeof shellEn = {
   notifications: {
     title: "Benachrichtigungen",
     unread: (count: number) => `Benachrichtigungen, ${count} ungelesen`,
-    unreadSuffix: " ungelesen",
+    unreadSaid: (count: number) => `${count} ungelesen`,
     markAllRead: "Alle als gelesen markieren",
     empty: "Noch nichts. Hier erfahren Sie, wenn sich ein Vorgang von Ihnen bewegt oder jemand Sie erwähnt.",
     seeAll: "Alle anzeigen",
@@ -123,10 +123,14 @@ export const shellDe: typeof shellEn = {
   },
   page: {
     notShown: "Diese Seite konnte nicht angezeigt werden",
+    notShownTitle: "Auf dieser Seite ist etwas schiefgegangen",
+    notShownFallback: "Versuchen Sie es erneut; scheitert es weiter, sagen Sie einem Administrator, was Sie gerade getan haben.",
     tryAgain: "Erneut versuchen",
   },
   palette: {
     label: "Schnellsuche",
+    hint: "Strg K",
+    hintApple: "Cmd K",
     askLabel: "Fragen, wo etwas ist",
     searchLabel: "Nach einem Vorgang, einem Projekt, einer Seite oder einer Aktion suchen",
     askPlaceholder: "Fragen Sie, wo etwas ist...",

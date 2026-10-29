@@ -1,19 +1,19 @@
 import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
-import { canAdminister, useAccess } from "@/api/access";
+import { useAccess } from "@/api/access";
 import { MY_DATA_HREF, useEraseMe, useLogout, useMe } from "@/api/auth";
 import { useProject, useProjectSearch, type Feature, type Project } from "@/api/projects";
 import { hasFeature } from "@/features/projects/features";
 import { projectSettingsPage, type PageLink } from "@/features/projects/settingsTabs";
-import { Avatar, Button, IconButton, Input, Menu, Tooltip, type MenuItem } from "@/components/ui";
+import { Avatar, Button, IconButton, Input, Menu, Tooltip, isMenuGroup, type MenuItem } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
 import { PROJECT_SEARCH_DELAY_MS, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { useDebounced } from "@/lib/debounce";
 import { DRAWER_ID, SIDEBAR_ID, lastOutsideSettings, useLastProject, useNarrow, useSidebarGroups, useSidebarMode } from "./state";
 import { useConfirm } from "./ConfirmProvider";
-import { NavButton, NavItem, NavLinkOut, UnreadBadge } from "./nav";
+import { NavButton, NavItem, NavLinkOut, UnreadCount } from "./nav";
 import { Rail } from "./Rail";
 import { BuildStamp } from "./BuildStamp";
 import { LogoMark } from "@/components/Logo";
@@ -21,6 +21,7 @@ import { SidebarGroup } from "./SidebarGroup";
 import { ThemeButton } from "./ThemeButton";
 import { roleWord, useAccountItems } from "./AccountMenu";
 import { adminEntry, inSettingsArea, personalPlaces, workPlaces, type Place } from "./places";
+import { onApple } from "@/lib/device";
 import { t } from "@/i18n";
 
 export { projectSetupPages } from "@/features/projects/settingsTabs";
@@ -256,7 +257,11 @@ function WorkGroups() {
   const [groups, toggleGroup] = useSidebarGroups();
   const isOpen = (id: string, defaultOpen: boolean) => groups[id] ?? defaultOpen;
   const trailing = (place: Place) =>
-    place.to === "/search" ? <kbd className="font-mono text-2xs text-ink-subtle">Ctrl K</kbd> : place.to === "/inbox" ? <UnreadBadge /> : undefined;
+    place.to === "/search" ? (
+      <kbd className="font-mono text-2xs text-ink-subtle">{onApple() ? t.shell.palette.hintApple : t.shell.palette.hint}</kbd>
+    ) : place.to === "/notifications" ? (
+      <UnreadCount />
+    ) : undefined;
   return (
     <>
       <SidebarGroup id="work" title={t.shell.groups.work} open={isOpen("work", true)} onToggle={() => toggleGroup("work", true)}>
@@ -361,13 +366,27 @@ function DrawerFoot() {
         <ThemeButton side="top" />
       </div>
       <ul aria-label={t.shell.account.yours}>
-        {items.map((item, i) => (
-          <li key={i}>
-            {item.section && <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-ink-subtle uppercase">{item.section}</p>}
-            {item.separated && !item.section && <div role="separator" className="my-1 border-t border-border" />}
-            <DrawerEntry item={item} />
-          </li>
-        ))}
+        {items.map((entry, i) =>
+          isMenuGroup(entry) ? (
+            <li key={i}>
+              <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-ink-subtle uppercase" id={`drawer-group-${i}`}>
+                {entry.group}
+              </p>
+              <ul aria-labelledby={`drawer-group-${i}`}>
+                {entry.items.map((item, j) => (
+                  <li key={j}>
+                    <DrawerEntry item={item} />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ) : (
+            <li key={i}>
+              {entry.separated && <div role="separator" className="my-1 border-t border-border" />}
+              <DrawerEntry item={entry} />
+            </li>
+          ),
+        )}
       </ul>
       <BuildStamp />
     </div>
@@ -395,7 +414,6 @@ function DrawerEntry({ item }: { item: MenuItem }) {
 
 function ProjectPages({ projectKey }: { projectKey: string }) {
   const { data } = useProject(projectKey);
-  const { data: access } = useAccess();
   const pages = (list: PageLink[]) => pagesFor(data?.project, list);
   return (
     <>
@@ -409,11 +427,9 @@ function ProjectPages({ projectKey }: { projectKey: string }) {
           {data.project.docsLabel || t.shell.projectPages.docs}
         </NavLinkOut>
       )}
-      {canAdminister(access, projectKey) && (
-        <NavItem to={`/projects/$projectKey${projectSettingsPage.path}`} params={{ projectKey }} icon={projectSettingsPage.icon} rail={false}>
-          {projectSettingsPage.label}
-        </NavItem>
-      )}
+      <NavItem to={`/projects/$projectKey${projectSettingsPage.path}`} params={{ projectKey }} icon={projectSettingsPage.icon} rail={false}>
+        {projectSettingsPage.label}
+      </NavItem>
     </>
   );
 }
@@ -550,7 +566,7 @@ export function SidebarFoot({ userName, avatar }: { userName: string; avatar?: s
           icon={<Icon.External />}
           label={t.shell.account.signOut}
           size="sm"
-          onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}
+          onClick={() => logout.mutate(undefined, { onSettled: () => navigate({ to: "/login" }) })}
           data-action="sign-out"
           aria-busy={logout.isPending}
         />

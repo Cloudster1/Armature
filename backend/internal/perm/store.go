@@ -27,7 +27,25 @@ var (
 	// ErrManagedElsewhere is returned when editing the membership of a group the
 	// identity provider owns. Changing it here would last until the next login.
 	ErrManagedElsewhere = errors.New("that group's members come from the identity provider")
+	// ErrBuiltinGroup is returned for deleting the built-in Everyone group, or
+	// editing its members, which follow everybody's membership here.
+	ErrBuiltinGroup = errors.New("everyone holds every member here and cannot be changed by hand")
+	// ErrEveryoneAdministers is returned for granting Everyone a role that
+	// administers the installation, which would make every member an administrator.
+	ErrEveryoneAdministers = errors.New("everyone cannot be given a role that administers the installation")
 )
+
+// Everyone is the built-in group's mark: it holds every member, not customers.
+const Everyone = "everyone"
+
+// EveryoneAdministers names the database's refusal of the same, so a grant or a
+// role change it stops reads as ErrEveryoneAdministers.
+const EveryoneAdministers = "role_assignment_everyone_administers"
+
+func isEveryoneAdministers(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.ConstraintName == EveryoneAdministers
+}
 
 // Store reads and writes roles and groups.
 type Store struct {
@@ -133,7 +151,10 @@ type Group struct {
 	// is a mirror of what it sends, not something to edit here.
 	Source string `json:"source"`
 	// ExternalRef is the value the provider's groups claim is matched against.
-	ExternalRef string   `json:"externalRef,omitempty"`
+	ExternalRef string `json:"externalRef,omitempty"`
+	// Builtin marks a group the installation keeps itself; "everyone" holds
+	// every member. Its name, description and members are not edited.
+	Builtin     string   `json:"builtin,omitempty"`
 	Members     []Member `json:"members,omitempty"`
 	MemberCount int      `json:"memberCount"`
 	RoleCount   int      `json:"roleCount"`
@@ -141,6 +162,9 @@ type Group struct {
 
 // FromProvider reports whether the identity provider owns this group's members.
 func (g Group) FromProvider() bool { return g.Source == "oidc" }
+
+// IsBuiltin reports whether the installation keeps this group itself.
+func (g Group) IsBuiltin() bool { return g.Builtin != "" }
 
 // Member is a person in a group.
 type Member struct {
@@ -150,14 +174,14 @@ type Member struct {
 }
 
 const selectGroup = `
-SELECT g.id, g.name, g.description, g.source::text, COALESCE(g.external_ref, ''),
+SELECT g.id, g.name, g.description, g.source::text, COALESCE(g.external_ref, ''), COALESCE(g.builtin, ''),
        (SELECT count(*) FROM group_member m WHERE m.group_id = g.id),
        (SELECT count(*) FROM role_assignment a WHERE a.group_id = g.id)
 FROM user_group g`
 
 func scanGroup(row pgx.Row) (*Group, error) {
 	var g Group
-	err := row.Scan(&g.ID, &g.Name, &g.Description, &g.Source, &g.ExternalRef,
+	err := row.Scan(&g.ID, &g.Name, &g.Description, &g.Source, &g.ExternalRef, &g.Builtin,
 		&g.MemberCount, &g.RoleCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -168,11 +192,11 @@ func scanGroup(row pgx.Row) (*Group, error) {
 	return &g, nil
 }
 
-// Groups lists the organization's groups.
+// Groups lists the installation's groups, the built-in ones first.
 func (s *Store) Groups(ctx context.Context) ([]Group, error) {
 	out := []Group{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectGroup+` ORDER BY g.name`)
+		rows, err := tx.Query(ctx, selectGroup+` ORDER BY (g.builtin IS NULL), g.name`)
 		if err != nil {
 			return fmt.Errorf("list groups: %w", err)
 		}
@@ -280,8 +304,15 @@ func (s *Store) CreateGroup(ctx context.Context, in GroupInput, actor uuid.UUID)
 // DeleteGroup removes a group along with everything granted to it.
 func (s *Store) DeleteGroup(ctx context.Context, id uuid.UUID, actor uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		found, err := scanGroup(tx.QueryRow(ctx, selectGroup+` WHERE g.id = $1`, id))
+		if err != nil {
+			return err
+		}
+		if found.IsBuiltin() {
+			return ErrBuiltinGroup
+		}
 		var name string
-		err := tx.QueryRow(ctx, `DELETE FROM user_group WHERE id = $1 RETURNING name`, id).Scan(&name)
+		err = tx.QueryRow(ctx, `DELETE FROM user_group WHERE id = $1 RETURNING name`, id).Scan(&name)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -301,6 +332,9 @@ func (s *Store) AddToGroup(ctx context.Context, groupID, userID uuid.UUID, actor
 		found, err := scanGroup(tx.QueryRow(ctx, selectGroup+` WHERE g.id = $1`, groupID))
 		if err != nil {
 			return err
+		}
+		if found.IsBuiltin() {
+			return ErrBuiltinGroup
 		}
 		if found.FromProvider() {
 			return fmt.Errorf("%w: %s", ErrManagedElsewhere, found.Name)
@@ -337,6 +371,9 @@ func (s *Store) RemoveFromGroup(ctx context.Context, groupID, userID uuid.UUID, 
 		found, err := scanGroup(tx.QueryRow(ctx, selectGroup+` WHERE g.id = $1`, groupID))
 		if err != nil {
 			return err
+		}
+		if found.IsBuiltin() {
+			return ErrBuiltinGroup
 		}
 		if found.FromProvider() {
 			return fmt.Errorf("%w: %s", ErrManagedElsewhere, found.Name)

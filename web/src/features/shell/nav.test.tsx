@@ -43,12 +43,12 @@ const { NotificationsBell } = await import("./nav");
 afterEach(cleanup);
 
 describe("the bell", () => {
-  it("goes by the name all three tools give it, and counts on the accent", () => {
+  it("goes by the name all three tools give it, and counts in the shared accent-subtle style", () => {
     render(<NotificationsBell />);
     const bell = document.querySelector('[data-action="notifications"]')!;
     expect(bell.getAttribute("data-unread-count")).toBe("1");
-    const count = bell.parentElement!.querySelector(":scope > span[aria-hidden]")!;
-    expect(count.className.split(" ")).toEqual(expect.arrayContaining(["bg-accent", "text-on-accent", "font-medium"]));
+    const count = bell.parentElement!.querySelector('[data-count="bell"]')!;
+    expect(count.className.split(" ")).toEqual(expect.arrayContaining(["bg-accent-subtle", "text-accent", "font-medium"]));
   });
 
   it("opens the latest notifications with Mark all as read, See all and Notification settings", async () => {
@@ -57,7 +57,7 @@ describe("the bell", () => {
     const panel = screen.getByRole("dialog", { name: "Notifications" });
     expect(panel.querySelectorAll("[data-notification]")).toHaveLength(2);
     expect(panel.querySelector('[data-notification="mentioned"]')?.getAttribute("href")).toBe("/issues/ALP-1");
-    expect(screen.getByRole("link", { name: "See all" })).toHaveAttribute("href", "/inbox");
+    expect(screen.getByRole("link", { name: "See all" })).toHaveAttribute("href", "/notifications");
     expect(screen.getByRole("link", { name: "Notification settings" })).toHaveAttribute("href", "/settings/profile#notifications");
     await userEvent.click(screen.getByRole("button", { name: "Mark all as read" }));
     expect(markRead).toHaveBeenCalledWith({ all: true });

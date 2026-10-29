@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import { ApiError } from "@/api/client";
 import {
@@ -50,11 +50,6 @@ function ConnectedAppsPage() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
         title={t.access.apps.title}
         meta={t.access.apps.meta}
         actions={

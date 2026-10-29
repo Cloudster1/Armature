@@ -3,7 +3,6 @@ import type { issueListEn } from "./issueList.en";
 /** Die Texte der Vorgangsliste, ihrer Tabelle und des Dialogs zum Anlegen. */
 export const issueListDe: typeof issueListEn = {
   page: {
-    crumb: "Projekte",
     meta: (open: number, all: number, lead: string) => `${open} offen von ${all}${lead ? ` · geleitet von ${lead}` : ""}`,
     newIssue: "Neuer Vorgang",
     narrow: "Die Vorgänge eingrenzen",

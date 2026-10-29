@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useMe } from "@/api/auth";
+import { t } from "@/i18n";
 
 /** How the reader wants time written: their profile's zone and language, else the browser's. */
 export interface Format {
@@ -18,18 +19,18 @@ const DAY = 24 * HOUR;
 const MONTH = 30 * DAY;
 
 // The short forms the interface always used, kept: a list column reads "2h
-// ago", not "2 hours ago". Anything older than a month is a date in the
-// reader's language.
+// ago", not "2 hours ago", in the language shown. Anything older than a month
+// is a date in the reader's language.
 export function relativeIn(iso: string, locale: string, timezone: string, now = Date.now()): string {
   const then = new Date(iso).getTime();
   const seconds = Math.round((now - then) / 1000);
-  if (seconds < MINUTE) return "just now";
+  if (seconds < MINUTE) return t.kit.ago.now;
   const minutes = Math.round(seconds / MINUTE);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t.kit.ago.minutes(minutes);
   const hours = Math.round(seconds / HOUR);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t.kit.ago.hours(hours);
   const days = Math.round(seconds / DAY);
-  if (seconds < MONTH) return `${days}d ago`;
+  if (seconds < MONTH) return t.kit.ago.days(days);
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: timezone }).format(new Date(iso));
 }
 

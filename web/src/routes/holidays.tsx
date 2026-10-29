@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { useCreateHolidayCalendar, useDeleteHolidayCalendar, useHolidayCalendars, useUpdateHolidayCalendar, type HolidayCalendar } from "@/api/availability";
@@ -48,15 +48,7 @@ function HolidaysPage() {
 
   return (
     <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
-        title={t.schedule.holidays.title}
-        meta={t.schedule.holidays.meta}
-      />
+      <PageHeader title={t.schedule.holidays.title} meta={t.schedule.holidays.meta} />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {update.error && <ErrorBanner>{(update.error as Error).message}</ErrorBanner>}
       {remove.error && <ErrorBanner>{(remove.error as Error).message}</ErrorBanner>}

@@ -110,6 +110,83 @@ func TestARoleGrantedToAGroupReachesItsMembers(t *testing.T) {
 	}
 }
 
+// everyone is the built-in group that holds every member.
+func (h *harness) everyone(t *testing.T, ws *workspace) perm.Group {
+	t.Helper()
+	groups, err := h.perms().Groups(ws.ctx)
+	if err != nil {
+		t.Fatalf("list the groups: %v", err)
+	}
+	if len(groups) == 0 || groups[0].Builtin != perm.Everyone {
+		t.Fatalf("the groups do not start with Everyone: %+v", groups)
+	}
+	return groups[0]
+}
+
+// A grant to Everyone reaches each member, the moment they join and no longer
+// once they leave, and never a portal customer.
+func TestAGrantToEveryoneReachesEveryMemberAndNoCustomer(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	ws := h.newProject(t, "everyone")
+	perms := h.perms()
+	everyone := h.everyone(t, ws)
+
+	if _, _, err := perms.Grant(ws.ctx, perm.GrantInput{
+		Role: perm.Reader, ProjectKey: ws.project.Key, GroupID: &everyone.ID,
+	}, ws.actor.UserID); err != nil {
+		t.Fatalf("grant to Everyone: %v", err)
+	}
+
+	member := h.joinAs(t, ws, "everyone member", "member")
+	customer := h.joinAs(t, ws, "everyone customer", "customer")
+	if !h.resolve(t, ws, member, false).Can(perm.Read, ws.project.Key) {
+		t.Error("a member who just joined does not hold what Everyone was granted")
+	}
+	if h.resolve(t, ws, customer, false).Can(perm.Read, ws.project.Key) {
+		t.Error("a portal customer holds what Everyone was granted")
+	}
+
+	if _, err := h.super.Exec(context.Background(), `UPDATE app_user SET standing = 'customer' WHERE id = $1`, member); err != nil {
+		t.Fatalf("make the member a customer: %v", err)
+	}
+	if h.resolve(t, ws, member, false).Can(perm.Read, ws.project.Key) {
+		t.Error("somebody who is no longer a member keeps what Everyone was granted")
+	}
+}
+
+// Everyone's members follow the installation's, so the service refuses every
+// edit by hand, and administration given to all of them at once.
+func TestEveryoneIsNotEditedByHandNorMadeAnAdministrator(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	ws := h.newProject(t, "everyone fixed")
+	perms := h.perms()
+	everyone := h.everyone(t, ws)
+	member := h.joinAs(t, ws, "everyone fixed", "member")
+
+	if _, _, err := perms.RemoveFromGroup(ws.ctx, everyone.ID, member, ws.actor.UserID); !errors.Is(err, perm.ErrBuiltinGroup) {
+		t.Errorf("taking a member out of Everyone answered %v, want ErrBuiltinGroup", err)
+	}
+	if _, _, err := perms.AddToGroup(ws.ctx, everyone.ID, member, ws.actor.UserID); !errors.Is(err, perm.ErrBuiltinGroup) {
+		t.Errorf("adding to Everyone answered %v, want ErrBuiltinGroup", err)
+	}
+	if _, err := perms.DeleteGroup(ws.ctx, everyone.ID, ws.actor.UserID); !errors.Is(err, perm.ErrBuiltinGroup) {
+		t.Errorf("deleting Everyone answered %v, want ErrBuiltinGroup", err)
+	}
+	if _, _, err := perms.Grant(ws.ctx, perm.GrantInput{Role: perm.GlobalAdministrator, GroupID: &everyone.ID}, ws.actor.UserID); !errors.Is(err, perm.ErrEveryoneAdministers) {
+		t.Errorf("making Everyone global administrators answered %v, want ErrEveryoneAdministers", err)
+	}
+	if _, err := h.super.Exec(context.Background(), `
+		INSERT INTO role_assignment (role, group_id) VALUES ('global_administrator', $1)`, everyone.ID); err == nil || !strings.Contains(err.Error(), "cannot administer") {
+		t.Errorf("the database let Everyone administer the installation: %v", err)
+	}
+	if _, err := h.super.Exec(context.Background(), `
+		DELETE FROM group_member WHERE group_id = $1 AND user_id = $2`, everyone.ID, member); err == nil {
+		t.Error("the database let a member be taken out of Everyone")
+	}
+}
+
 // Somebody with an account but no membership is nobody here: no role reaches
 // them, through the service or straight through SQL.
 func TestAccessIsNeverGrantedToAStranger(t *testing.T) {

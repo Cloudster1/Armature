@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useAccess, useCreateRole, useDeleteRole, usePermissions, useRoles, useUpdateRole, type RoleDescription } from "@/api/access";
-import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Menu, Switch, Table, Tag, Td, Th, useToast } from "@/components/ui";
+import { Button, Checkbox, Dialog, ErrorBanner, Field, IconButton, Menu, Skeleton, Switch, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { t } from "@/i18n";
@@ -38,7 +38,7 @@ export function RoleMatrix() {
     }
   }
 
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.access.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
 
   return (
     <div className="space-y-4" data-role-matrix>

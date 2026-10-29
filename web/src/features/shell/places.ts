@@ -40,7 +40,7 @@ export const workPlaces: Place[] = [
     icon: "Search",
   },
   {
-    to: "/inbox",
+    to: "/notifications",
     get label() {
       return t.shell.places.notifications;
     },
@@ -58,7 +58,7 @@ export const workPlaces: Place[] = [
     get label() {
       return t.shell.places.projects;
     },
-    icon: "Board",
+    icon: "Folder",
   },
 ];
 

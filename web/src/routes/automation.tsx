@@ -1,4 +1,4 @@
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { projectSettingsRoute } from "./project-settings";
 import { adminRoute } from "./admin";
 import { canAdminister, useAccess } from "@/api/access";
@@ -38,11 +38,6 @@ function OrgAutomationPage() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
         title={t.projectSetup.automation.title}
         meta={data?.principal?.installation?.name ? t.projectSetup.automation.orgMeta(data.principal.installation.name) : undefined}
       />

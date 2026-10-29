@@ -1,7 +1,6 @@
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { projectSettingsRoute } from "./project-settings";
-import { useProject } from "@/api/projects";
 import { canAdminister, holds, useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
 import { ReleaseList } from "@/features/versions/ReleaseList";
@@ -24,21 +23,12 @@ export const componentsRoute = createRoute({
 
 function ReleasesPage() {
   const { projectKey } = releasesRoute.useParams();
-  const { data } = useProject(projectKey);
   const { data: access } = useAccess();
   // Planning a release is the same job as planning a sprint.
   const canPlan = holds(access, "sprint.manage", projectKey);
   return (
     <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {data?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.schedule.releases.title}
-        meta={t.schedule.releases.meta}
-      />
+      <PageHeader title={t.schedule.releases.title} meta={t.schedule.releases.meta} />
       <ReleaseList projectKey={projectKey} canPlan={canPlan} />
     </Page>
   );

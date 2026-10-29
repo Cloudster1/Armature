@@ -8,29 +8,37 @@ export const doorsDe: typeof doorsEn = {
     yourName: "Ihr Name",
     signIn: "Anmelden",
     signOut: "Abmelden",
-    loading: "Wird geladen...",
     backToSignIn: "Zurück zur Anmeldung",
     linkIncomplete: "Dieser Link ist unvollständig",
     somethingWrong: "Etwas ist schiefgegangen. Bitte versuchen Sie es erneut.",
   },
   login: {
     title: "Anmelden",
+    subtitle: "Melden Sie sich über Ihren Identitätsanbieter an.",
     forgot: "Passwort vergessen?",
-    submit: "Anmelden",
-    sso: "Mit zentraler Anmeldung fortfahren",
+    submit: "Mit Passwort anmelden",
+    sso: "Mit SSO anmelden",
+    passwordTitle: "Mit Passwort anmelden",
+    passwordHint: "Für Personen, die hier ein Passwort bekommen haben, etwa die Kunden eines Service Desks. Alle anderen melden sich mit SSO an.",
     passwordChanged: "Ihr Passwort ist geändert. Melden Sie sich damit an.",
     noAccount: "Noch kein Konto?",
     createOne: "Konto anlegen",
     askToBeInvited: "Noch kein Konto? Bitten Sie einen Administrator, Sie einzuladen.",
+    waitingTitle: "Ihre Anfrage wartet",
+    waitingBody:
+      "Ihr Identitätsanbieter kennt Sie, aber noch niemand hat Sie in Armature aufgenommen. Ihre Anfrage wartet auf einen Administrator auf der Seite Benutzer; melden Sie sich erneut an, sobald Sie aufgenommen wurden.",
     ssoFailures: {
-      notAMember:
-        "Ihr Anbieter kennt Sie, aber hier hat Sie noch niemand eingelassen. Ein Administrator kann das auf der Seite Benutzer tun; melden Sie sich danach erneut an.",
+      expired: "Diese Anmeldung hat zu lange gedauert oder wurde schon verwendet. Beginnen Sie sie erneut.",
       notConfigured:
-        "Die zentrale Anmeldung ist hier nicht eingerichtet. Melden Sie sich mit Ihrem Passwort an oder bitten Sie einen Administrator, sie einzurichten.",
-      expired: "Diese Anmeldung hat zu lange gedauert. Beginnen Sie sie erneut.",
-      noEmail: "Ihr Anbieter hat keine E-Mail-Adresse gesendet, daher gibt es kein passendes Konto.",
-      unverifiedEmail: "Ihr Anbieter hat Ihre E-Mail-Adresse nicht bestätigt. Bestätigen Sie sie dort und melden Sie sich dann erneut an.",
-      other: "Die Anmeldung über Ihren Anbieter hat nicht funktioniert.",
+        "Armature meldet noch nicht über einen Identitätsanbieter an. Melden Sie sich mit einem Passwort an, oder bitten Sie einen Administrator, einen einzurichten.",
+      noEmail: "Ihr Identitätsanbieter hat keine E-Mail-Adresse gesendet. Bitten Sie seinen Administrator, Armature die E-Mail-Angabe freizugeben.",
+      unverifiedEmail: "Ihr Identitätsanbieter hat Ihre E-Mail-Adresse nicht bestätigt. Bestätigen Sie sie dort und melden Sie sich erneut an.",
+      inactive: "Ihr Konto wurde abgeschaltet. Bitten Sie einen Administrator, es wieder einzuschalten.",
+      denied: "Ihr Identitätsanbieter hat Sie nicht hereingelassen. Versuchen Sie es erneut, oder fragen Sie seinen Administrator.",
+      unreachable:
+        "Armature konnte den Identitätsanbieter nicht erreichen. Versuchen Sie es gleich noch einmal, und sagen Sie einem Administrator Bescheid, wenn es weiter fehlschlägt.",
+      other:
+        "Die Anmeldung über Ihren Identitätsanbieter hat nicht geklappt. Versuchen Sie es erneut, und sagen Sie einem Administrator Bescheid, wenn es weiter fehlschlägt.",
     },
   },
   signup: {
@@ -148,7 +156,9 @@ export const doorsDe: typeof doorsEn = {
   },
   notFound: {
     title: "Seite nicht gefunden",
-    body: "Die gesuchte Seite gibt es nicht.",
+    emptyTitle: "Unter dieser Adresse ist nichts",
+    body: "Die gesuchte Seite gibt es nicht. Prüfen Sie die Adresse, oder gehen Sie zur Startseite und suchen Sie sie von dort.",
+    home: "Zur Startseite",
   },
   profile: {
     weekTitle: "Arbeitswoche",

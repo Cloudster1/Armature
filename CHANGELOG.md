@@ -7,6 +7,52 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Changed: the kit follows the suite's (#473). It gains Exciter's `Radio`
+  and `WordButton` and Stator's `ref` on `Button` and `Field`. A menu's
+  groups are read out as groups, and an item picked from a set is marked
+  as checked. The archive, comment, eye, list, menu and palette glyphs are
+  drawn as Stator and Exciter draw them.
+- Fixed: relative times such as "2h ago" are said in German too, as "vor
+  2 Std." (#473). The theme editor names every colour, group and pointer
+  from the catalogues, never in English alone.
+
+- Changed: the shell follows the suite's (#472). A page that is not there,
+  or fails, stays inside the shell with its sidebar, a heading and the way
+  home or Try again. Pages wait with a skeleton instead of the word
+  "Loading". Breadcrumbs come from where a page lies and sit in the sticky
+  strip. Projects are a folder in the rail, the account menu opens to the
+  right of the rail, and signing out lands on the sign-in page even when
+  the request fails. The palette's key reads Cmd K on a Mac and is
+  translated. Counts beside a place use the suite's accent style, capped
+  at 99+. Menus open inside the part of the page their button is in. The
+  phone's strip has the bell.
+- Changed: the inbox is the Notifications page at `/notifications` (#472);
+  `/inbox` and the digest mail's link still land there.
+
+- Changed: every member of a project may open its settings and see how it
+  is set up (#471). What they may not change is read only, with a line that
+  says whom to ask, and Automation and Import, which only its administrators
+  use, are not shown to them. The sidebar's Settings entry is there for
+  every member. The tabs follow the suite's order: General, Issue types,
+  Fields, Issue view, Workflow, Components, Repositories, Automation, Import.
+
+- Added: a built-in group Everyone holds every member of the installation,
+  not portal customers (#470). People join it when they are let in and
+  leave it when they go, so a role granted to it reaches all members, as
+  Stator's and Exciter's "everyone" does. It comes first on the Groups tab
+  and in "Who to grant to", and it cannot be deleted, renamed or edited by
+  hand. Granting it a role that administers the installation is refused. A
+  group someone already called Everyone is renamed "Everyone (made by
+  hand)" and keeps its members and grants.
+
+- Changed: the sign-in page is the suite's, as Stator's and Exciter's (#469):
+  "Sign in with SSO" comes first, in a card of its own, and the password
+  form for people given a password here sits in a second card below it, with
+  the link for a forgotten password. Somebody the identity provider knows but
+  nobody let in yet is told "Your request is waiting" instead of an error,
+  and a sign-in the provider refused, an account that is switched off and a
+  provider that cannot be reached each have a sentence that says what to do.
+
 - Added: a visit without a session first signs in silently when the
   installation's identity provider still has one (#325), so somebody signed
   in to Stator or Exciter through the suite's Keycloak lands on the page

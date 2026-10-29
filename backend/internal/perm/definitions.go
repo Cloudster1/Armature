@@ -324,6 +324,9 @@ func (s *Store) UpdateRole(ctx context.Context, in RoleInput, actor uuid.UUID) (
 		if isUniqueViolation(err) {
 			return ErrRoleNameTaken
 		}
+		if isEveryoneAdministers(err) {
+			return ErrEveryoneAdministers
+		}
 		if isCheckViolation(err) {
 			return ErrLockout
 		}

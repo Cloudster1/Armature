@@ -30,7 +30,6 @@ export const dashboardDe: typeof dashboardEn = {
     deleteThis: "Dieses Dashboard löschen",
     addWidget: "Ein Widget hinzufügen",
     notNarrowed: "Nicht durch den Filter eingegrenzt: Dieses Widget zählt Sprints, keine Vorgänge.",
-    counting: "Wird gezählt...",
   },
   create: {
     name: "Name des Dashboards",
@@ -38,7 +37,6 @@ export const dashboardDe: typeof dashboardEn = {
     create: "Dashboard anlegen",
   },
   templates: {
-    loading: "Vorlagen werden geladen...",
     startFrom: "Beginnen mit",
     template: "Vorlage",
     blank: "Leer",

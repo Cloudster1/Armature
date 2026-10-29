@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import { useIssueTypes, type IssueType, type IssueTypeIcon } from "@/api/issues";
 import { useCreateIssueType, useDeleteIssueType, useReinstateIssueType, useRetireIssueType, useUpdateIssueType } from "@/api/issueTypes";
@@ -53,15 +53,7 @@ function IssueTypesPage() {
 
   return (
     <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
-        title={t.looks.issueTypes.title}
-        meta={t.looks.issueTypes.meta}
-      />
+      <PageHeader title={t.looks.issueTypes.title} meta={t.looks.issueTypes.meta} />
       {error && <ErrorBanner>{(error as Error).message}</ErrorBanner>}
       {/* A refused retirement or deletion is the shell's toast, as on every table. */}
       <NewTypeForm />

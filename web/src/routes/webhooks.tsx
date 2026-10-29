@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import {
   useAutomationCatalog,
@@ -88,11 +88,6 @@ function WebhooksPage() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {words.settings.crumb}
-          </Link>
-        }
         title={words.access.webhooks.title}
         meta={words.access.webhooks.meta}
         actions={

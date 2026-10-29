@@ -1,11 +1,10 @@
 import { useMemo } from "react";
-import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { useSprints } from "@/api/sprints";
 import { BoardView } from "@/features/board/BoardView";
 import { Page, PageHeader, Tag } from "@/components/ui";
 import { parseSearch, toSearch, type QuickFilterSearch } from "@/features/board/quickFilter";
-import { t } from "@/i18n";
 
 /**
  * One sprint's board. A scrum board follows the sprint that is running; this
@@ -32,11 +31,6 @@ function SprintBoardPage() {
   return (
     <Page width="wide">
       <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey/sprints" params={{ projectKey }} className="hover:text-ink">
-            {t.shell.projectPages.sprints}
-          </Link>
-        }
         title={
           <>
             {sprint?.name ?? "Sprint board"}

@@ -1,4 +1,5 @@
-import type { Feature } from "@/api/projects";
+import type { Feature, Project } from "@/api/projects";
+import { hasFeature } from "@/features/projects/features";
 import type { IconName } from "@/components/icons";
 import { t } from "@/i18n";
 
@@ -11,10 +12,25 @@ export interface PageLink {
   feature?: Feature;
 }
 
-/** A project's setup pages, for its administrators: General first, then one tab for each thing the project is set up with. */
-export const projectSetupPages: Array<PageLink & { tab: string }> = [
+/** The suite's sections of a project's settings, in their order. */
+export type SettingsSection = "general" | "work" | "workflow" | "integrations" | "import";
+
+export interface SetupPage extends PageLink {
+  tab: string;
+  section: SettingsSection;
+  /** Only its administrators use it, so the others are not shown it. */
+  adminOnly?: boolean;
+}
+
+/**
+ * A project's settings, one tab per page, in the order of the suite's sections:
+ * General, Work items, Workflow, Integrations, Import and export. Every member
+ * opens them; what only administrators use is marked so.
+ */
+export const projectSetupPages: SetupPage[] = [
   {
     path: "/settings",
+    section: "general",
     get label() {
       return t.shell.projectPages.settings;
     },
@@ -24,17 +40,19 @@ export const projectSetupPages: Array<PageLink & { tab: string }> = [
     icon: "Settings",
   },
   {
-    path: "/workflows",
+    path: "/issue-types",
+    section: "work",
     get label() {
-      return t.shell.projectPages.workflow;
+      return t.shell.projectPages.issueTypes;
     },
     get tab() {
-      return t.shell.projectPages.workflow;
+      return t.shell.projectPages.issueTypes;
     },
-    icon: "Workflow",
+    icon: "Tag",
   },
   {
     path: "/fields",
+    section: "work",
     get label() {
       return t.shell.projectPages.fields;
     },
@@ -45,6 +63,7 @@ export const projectSetupPages: Array<PageLink & { tab: string }> = [
   },
   {
     path: "/issue-view",
+    section: "work",
     get label() {
       return t.shell.projectPages.issueView;
     },
@@ -54,17 +73,19 @@ export const projectSetupPages: Array<PageLink & { tab: string }> = [
     icon: "Issue",
   },
   {
-    path: "/issue-types",
+    path: "/workflows",
+    section: "workflow",
     get label() {
-      return t.shell.projectPages.issueTypes;
+      return t.shell.projectPages.workflow;
     },
     get tab() {
-      return t.shell.projectPages.issueTypes;
+      return t.shell.projectPages.workflow;
     },
-    icon: "Tag",
+    icon: "Workflow",
   },
   {
     path: "/components",
+    section: "integrations",
     get label() {
       return t.shell.projectPages.components;
     },
@@ -76,6 +97,7 @@ export const projectSetupPages: Array<PageLink & { tab: string }> = [
   },
   {
     path: "/repositories",
+    section: "integrations",
     get label() {
       return t.shell.projectPages.repositories;
     },
@@ -87,6 +109,8 @@ export const projectSetupPages: Array<PageLink & { tab: string }> = [
   },
   {
     path: "/automation",
+    section: "integrations",
+    adminOnly: true,
     get label() {
       return t.shell.projectPages.automation;
     },
@@ -98,6 +122,8 @@ export const projectSetupPages: Array<PageLink & { tab: string }> = [
   },
   {
     path: "/import",
+    section: "import",
+    adminOnly: true,
     get label() {
       return t.shell.projectPages.import;
     },
@@ -115,6 +141,11 @@ export const projectSettingsPage = projectSetupPages[0]!;
 /** Where a setup page lives under the project: General is the settings page itself, the rest are tabs of it. */
 export function setupAddress(path: string): string {
   return path === projectSettingsPage.path ? path : `/settings${path}`;
+}
+
+/** The settings pages somebody is shown: those the project's features include, and the administrators' only to them. */
+export function settingsPagesFor(project: Project | undefined, administers: boolean): SetupPage[] {
+  return projectSetupPages.filter((page) => hasFeature(project, page.feature) && (administers || !page.adminOnly));
 }
 
 /** The old project addresses of the pages that became tabs. */

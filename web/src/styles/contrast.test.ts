@@ -8,7 +8,7 @@ import { TOKEN_GROUPS } from "@/lib/theme-tokens";
 const AA_TEXT = 4.5;
 const AA_LARGE_TEXT_OR_ICON = 3;
 
-const TEXT_TOKENS = TOKEN_GROUPS.find((group) => group.title === "Text")!.tokens.map((token) => token.name);
+const TEXT_TOKENS = TOKEN_GROUPS.find((group) => group.id === "Text")!.tokens.map((token) => token.name);
 const SURFACE_TOKENS = ["canvas", "surface", "surface-raised", "surface-sunken", "surface-overlay"];
 
 // Every text token is held to AA_TEXT except the ones named here, each with

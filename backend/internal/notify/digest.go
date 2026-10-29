@@ -202,7 +202,7 @@ func digestMail(to string, items []Notification, appURL string) mail.Mail {
 			fmt.Fprintf(&b, "  %s\n", n.Link)
 		}
 	}
-	fmt.Fprintf(&b, "\nSee everything at %s/inbox\n", appURL)
+	fmt.Fprintf(&b, "\nSee everything at %s/notifications\n", appURL)
 	return mail.Mail{To: to, Subject: fmt.Sprintf("%d %s on your work", len(items), plural(len(items), "update", "updates")), Body: b.String()}
 }
 

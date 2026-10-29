@@ -7,8 +7,37 @@ the routes are what the router says. Widths: `narrow` for forms and settings,
 Pages with no wireframe here, because the redesign left them as they were:
 `/hierarchy`, `/teams`, `/sprints`, `/sprints/$sprintId/board`, `/queues`,
 `/repositories`, a project's `/fields`, `/admin/labels`, `/admin/access`,
-`/unwatch`, `/login` and `/signup`, and the workflow designer's own routes
+`/unwatch` and `/signup`, and the workflow designer's own routes
 under `/admin/workflows`.
+
+## Sign in (no shell)
+
+The suite's one sign-in page, as Stator's and Exciter's: the identity provider
+first, a password second.
+
+```
+[logo]  Armature
+Sign in
+Sign in through your identity provider.
++--------------------------------------+
+| (Your request is waiting ...)        |  status, for sso=not_a_member
+| [!] That sign-in took too long ...   |  ErrorBanner, for any other sso=
+| [        Sign in with SSO         ]  |  primary, data-action="single-sign-on"
++--------------------------------------+
++--------------------------------------+
+| Sign in with a password              |
+| For people given a password here ... |
+| Email     [                       ]  |
+| Password  [                       ]  |
+| [      Sign in with password      ]  |  secondary, data-action="password-sign-in"
+| Forgot your password?                |
++--------------------------------------+
+No account yet? Create one              only where sign-up is open
+```
+
+A saved new password (`?reset=done`) is said above the cards
+(`[data-password-changed]`). A wait is `[data-sso-waiting]`, `role="status"`,
+never `role="alert"`.
 
 ## Home (content)
 
@@ -276,9 +305,8 @@ project.
 
 ```
 Settings
-YOU             Profile · API tokens · Themes
-EVERYONE        Installation · Access · Users · Holidays · Workflows · Labels
-                Automation · Webhooks · Fields · Audit log
+YOU             Profile · Notifications · Watching · Themes · API tokens
+                (the installation's pages are under Admin, /admin)
 
 Settings / Profile
 [ (TK) ]  [Upload picture] [Remove]        PNG or JPEG, up to 2 MB.
@@ -342,10 +370,14 @@ administrator sees an empty state. The profile gains a Password card
 and "Change password" (`[data-action="change-password"]`), toasting
 "Password changed".
 
-## Access: the role matrix (content)
+## Access (content)
+
+`/admin/access`, under Admin, with the tabs Roles, Matrix, Members, Groups and
+Single sign-on (`data-access-tab`), the tab in the address as `?tab=`.
 
 ```
-Settings / Access
+Admin
+Access
 [Roles] [Matrix] Members  Groups  Single sign-on             [+ New role]
 PERMISSION                          Global admin  Project admin  ...  Sprint planner ⋯
 See projects and everything   read    [x]           [x]              [x]
@@ -368,6 +400,14 @@ describes it (`rename-role`, `[data-rename-role=<key>]`) or deletes it
 grants go with it). The client decides buttons by permission
 (`access.permissions.org` and `.projects[key]`), never by role name, so a
 renamed or invented role works everywhere at once.
+
+The Groups tab lists the built-in group Everyone first
+(`[data-group-builtin="everyone"]`): every member of the installation, not
+portal customers, by count, with nothing to edit. Its members follow who is a
+member, so it is not deleted, renamed or edited, and nobody is added to it or
+taken out by hand. A grant may name it like any other group, and the Roles
+tab's "Who to grant to" offers it first; a role that administers the
+installation is refused for it, by the service and by the database.
 
 ## Themes (narrow) and the theme editor (content)
 
@@ -561,11 +601,13 @@ and an Aiming for date. History is a Dialog listing every post, newest first.
 The projects table gains a Status column with the same Tag, "Not said" until
 a first post.
 
-## Project settings (narrow)
+## Project settings (content)
 
 ```
-Projects / Alpha
+Projects / Alpha / Settings
 Settings  [ALP]
+[General] Issue types  Fields  Issue view  Workflow  Components  Repositories  Automation  Import
+(Only the project's administrators change its settings. Ask one of them, ...)   for a member
 | Project name | Description | Lead |                    [Save changes]
 FEATURES
 | Board       [on] | Sprints    [on] |
@@ -573,6 +615,20 @@ FEATURES
 | Queues      [on] | Service desk [on]|  desk pages only on a desk
 ARCHIVE                                              [Archive project]
 ```
+
+One route per tab (`/projects/<key>/settings/<tab>`, General at `/settings`),
+`[data-settings-tab=<slug>]`, in the suite's sections: General; Work items
+(Issue types, Fields, Issue view); Workflow (Workflow); Integrations
+(Components, Repositories, Automation); Import and export (Import). A tab whose
+feature is off is not listed. Archiving sits at the foot of General; Armature
+has no deleting of a project.
+
+Every member of the project opens the settings and sees them read only: a
+status above the tabs (`[data-settings-read-only]`) says whom to ask, the forms
+are closed and archiving is not offered. Automation and Import are only the
+administrators', so they are not listed for anybody else, and their address
+answers `[data-settings-refused=<slug>]` with the same sentence. The old
+addresses, such as `/projects/<key>/fields`, land on their tab.
 
 Each Switch is `[data-feature=<feature>]`; flipping one saves the whole list
 and toasts "Sprints turned on". A page the project lacks answers its address

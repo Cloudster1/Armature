@@ -15,7 +15,7 @@ import {
   type Sprint,
   type SprintPlan,
 } from "@/api/sprints";
-import { Button, Card, DateInput, EmptyState, ErrorBanner, Field, Input, Segmented, SelectInput, cx } from "@/components/ui";
+import { Button, Card, cx, DateInput, EmptyState, ErrorBanner, Field, Input, Segmented, SelectInput, Skeleton } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { StatusBadge, TypeBadge } from "@/features/issues/badges";
 import { describe, teamHours } from "@/features/plan/SprintBands";
@@ -49,7 +49,7 @@ export function SprintPlanning({ projectKey }: { projectKey: string }) {
   const states = sprints.map((sprint) => `${sprint.id}:${sprint.state}`).join("|");
 
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.schedule.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
 
   return (
     <div className="space-y-6">

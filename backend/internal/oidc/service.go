@@ -147,7 +147,7 @@ func (s *Service) discover(ctx context.Context, issuer string) (*coreoidc.Provid
 
 	found, err := coreoidc.NewProvider(s.providerContext(ctx), issuer)
 	if err != nil {
-		return nil, fmt.Errorf("ask %s who it is: %w", issuer, err)
+		return nil, fmt.Errorf("%w: ask %s who it is: %w", ErrUnreachable, issuer, err)
 	}
 
 	s.mu.Lock()

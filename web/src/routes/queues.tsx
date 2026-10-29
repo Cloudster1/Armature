@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
 import { projectRoute } from "./project";
-import { useProject } from "@/api/projects";
 import { useCompanies, useQueue, type QueueFilter } from "@/api/desk";
 import { EmptyState, Page, PageHeader, Pager, Segmented, SelectInput, Table, Td, Th, clampOffset, countOf } from "@/components/ui";
 import { Avatar, StatusBadge, TypeBadge, RelativeTime } from "@/features/issues/badges";
@@ -24,7 +23,6 @@ const filters = (): Array<{ value: QueueFilter; label: string }> => filterValues
 /** The agents' view of a desk: what is waiting, and how long it has left. */
 function QueuesPage() {
   const { projectKey } = queuesRoute.useParams();
-  const { data: projectData } = useProject(projectKey);
   const [filter, setFilter] = useState<QueueFilter>("open");
   const [offset, setOffset] = useState(0);
   const [company, setCompany] = useState("");
@@ -46,15 +44,7 @@ function QueuesPage() {
 
   return (
     <Page width="content">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {projectData?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.desk.queues.title}
-        meta={data ? countOf(total, t.kit.counted.request) : undefined}
-      />
+      <PageHeader title={t.desk.queues.title} meta={data ? countOf(total, t.kit.counted.request) : undefined} />
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <Segmented label={t.desk.queues.queue} value={filter} onChange={choose} options={filters()} />
         {companies.length > 0 && (

@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { LEVEL_STANDARD, useCreateIssue, useSetParent } from "@/api/issues";
 import { useProjectIssueTypes } from "@/api/issueTypes";
 import { useAddLink, usePlan, useRemoveLink, useSchedule, type Dependency, type PlanItem, type PlanWarning, type TeamLoad } from "@/api/plan";
-import { Button, Card, ErrorBanner, IconButton, cx } from "@/components/ui";
+import { Button, Card, cx, ErrorBanner, IconButton, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TypeBadge } from "@/features/issues/badges";
 import { SprintBands, describe as describeSprint, number as describeSprintNumber } from "./SprintBands";
@@ -191,7 +191,7 @@ export function Timeline({
     return map;
   }, [data?.warnings]);
 
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.plan.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
   // A query that fails to compile is reported beside the query box, and the
   // last good plan stays drawn underneath it.
   if (error && !data) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;

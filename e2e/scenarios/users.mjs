@@ -66,14 +66,15 @@ scenario("an administrator's own row is not theirs to change here", async ({ pag
 });
 
 // Somebody the identity provider vouched for who is not a member is sent back
-// to the sign-in page with a reason. Said there: who can let them in, and
-// where. The page that lists the waiting takes no room while nobody waits.
-scenario("somebody the provider knows is told who can let them in", async ({ page }) => {
+// to the sign-in page, told as news that the request waits, not as an error.
+// The page that lists the waiting takes no room while nobody waits.
+scenario("somebody the provider knows is told their request is waiting", async ({ page }) => {
   await goto(page, "/login?sso=not_a_member");
-  await page.waitForSelector("[role=alert]", { timeout: WAIT });
-  const told = await textOf(page, "[role=alert]");
-  expect.contains(told, "let you in", "the refusal says what happens next");
-  expect.contains(told, "Users page", "the refusal says where");
+  await page.waitForSelector("[data-sso-waiting][role=status]", { timeout: WAIT });
+  const told = await textOf(page, "[data-sso-waiting]");
+  expect.contains(told, "Your request is waiting", "the notice is titled as a wait");
+  expect.contains(told, "Users page", "the notice says where an administrator lets them in");
+  expect.equal(await page.$("[role=alert]"), null, "a wait is shown as an error");
 
   await signUp(page, unique("user"), { visit: false });
   await goto(page, "/admin/users");

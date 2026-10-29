@@ -209,6 +209,9 @@ export const SIDEBAR_DRAWER_BELOW_PX = 768;
 /** How many notifications the bell's panel shows before "See all". */
 export const BELL_PANEL_SIZE = 8;
 
+/** The largest count a badge writes out; more reads as this with a plus. */
+export const COUNT_MAX = 99;
+
 /** How wide the issue drawer opens from the right, on a screen too narrow to dock it. */
 export const DRAWER_WIDTH = 704;
 
@@ -479,6 +482,9 @@ export const SHARE_FULL_PERCENT = 100;
 
 /** The product's name, written beside its logo. */
 export const APP_NAME = "Armature";
+
+/** The reason the API gives when the provider knew the person but nobody here has let them in. */
+export const SSO_WAITING = "not_a_member";
 /** The logo's edge on a door page, and the mark's beside a line of text, in pixels; the same as Stator's and Exciter's. */
 export const LOGO_WIDTH_PX = 112;
 export const MARK_WIDTH_PX = 24;

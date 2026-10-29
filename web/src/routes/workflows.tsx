@@ -1,6 +1,6 @@
 import { useCallback, useId } from "react";
 import { useAccess } from "@/api/access";
-import { Link, Outlet, createRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import { Outlet, createRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { adminRoute } from "./admin";
 import { Page, PageHeader, TabPanel, Tabs, isPageOffset } from "@/components/ui";
 import { SchemeCards } from "@/features/workflows/library/SchemeCards";
@@ -81,11 +81,6 @@ function WorkflowLibrary() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/admin" className="hover:text-ink">
-            {t.shell.admin.crumb}
-          </Link>
-        }
         title={t.workflows.library.title}
         tabs={
           <Tabs

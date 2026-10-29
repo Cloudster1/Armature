@@ -12,8 +12,8 @@ import { Icon, type IconName } from "@/components/icons";
 import { Input, cx, modalBackdropStyle, modalPanelStyle } from "@/components/ui";
 import { PALETTE_RESULTS } from "@/config";
 import { applyTheme, readTheme, type Theme } from "@/lib/theme";
-import { pagesFor, projectSetupPages, projectWorkPages } from "@/features/shell/Sidebar";
-import { setupAddress } from "@/features/projects/settingsTabs";
+import { pagesFor, projectWorkPages } from "@/features/shell/Sidebar";
+import { settingsPagesFor, setupAddress } from "@/features/projects/settingsTabs";
 import { adminEntry, adminFor, personalPlaces, placeKey, workPlaces, type Place as ShellPlace } from "@/features/shell/places";
 import { t } from "@/i18n";
 
@@ -164,13 +164,13 @@ export function CommandPalette({
     // Matched again here, since the last answer stays on screen while the next is asked.
     for (const p of projectData?.projects ?? []) {
       if (matches(`${p.name} ${p.key}`))
-        out.push({ id: `project:${p.key}`, group: "Projects", label: p.name, detail: p.key, icon: "Board", run: () => go(`/projects/${p.key}`) });
+        out.push({ id: `project:${p.key}`, group: "Projects", label: p.name, detail: p.key, icon: "Folder", run: () => go(`/projects/${p.key}`) });
     }
     if (projectKey) {
-      // The setup pages are tabs of the project's settings, which only its administrators open.
+      // The setup pages are tabs of the project's settings, which every member opens; some only its administrators use.
       const listed = [
         ...pagesFor(currentProject?.project, projectWorkPages).map((page) => ({ page, address: page.path })),
-        ...(canAdminister(access, projectKey) ? pagesFor(currentProject?.project, projectSetupPages) : []).map((page) => ({
+        ...settingsPagesFor(currentProject?.project, canAdminister(access, projectKey)).map((page) => ({
           page,
           address: setupAddress(page.path),
         })),

@@ -320,7 +320,7 @@ export function EnrolmentRequired() {
             variant="ghost"
             loading={logout.isPending}
             data-action="sign-out"
-            onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}
+            onClick={() => logout.mutate(undefined, { onSettled: () => navigate({ to: "/login" }) })}
           >
             {t.doors.common.signOut}
           </Button>

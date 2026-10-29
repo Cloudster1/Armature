@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { Link, createRoute, redirect } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useInbox, useMarkRead, type Notification } from "@/api/notifications";
 import { accessRequestOf } from "@/lib/notice";
@@ -11,8 +11,17 @@ import { t } from "@/i18n";
 /** What you were told, newest first; opening one marks it read and goes there. */
 export const inboxRoute = createRoute({
   getParentRoute: () => appRoute,
-  path: "/inbox",
+  path: "/notifications",
   component: InboxPage,
+});
+
+/** The page's address before it was named Notifications, kept for links and bookmarks. */
+export const inboxMovedRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/inbox",
+  beforeLoad: ({ location }) => {
+    throw redirect({ href: `/notifications${location.searchStr}${location.hash ? `#${location.hash}` : ""}`, replace: true });
+  },
 });
 
 type View = "unread" | "all";

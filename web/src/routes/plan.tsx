@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { projectRoute } from "./project";
 import { ErrorBanner, Page, PageHeader, useToast } from "@/components/ui";
 import { canWriteIssues, useAccess } from "@/api/access";
 import { useAlign, usePlan, useSchedulePlan, type Alignment } from "@/api/plan";
-import { useProject } from "@/api/projects";
 import { AutoPlanPreview } from "@/features/plan/AutoPlanPreview";
 import { followOffer, movesBack, movesToSave, proposedBars, undoRefusal } from "@/features/plan/autoplan";
 import { DependencyGraph } from "@/features/plan/DependencyGraph";
@@ -30,7 +29,6 @@ export const planRoute = createRoute({
 function PlanPage() {
   const { projectKey } = planRoute.useParams();
   const { view, q = "" } = planRoute.useSearch();
-  const { data } = useProject(projectKey);
   const navigate = useNavigate();
   const [closedForDays, setClosedForDays] = useClosedForDays();
   // The filters and the zoom live here, above the views, so switching views
@@ -126,14 +124,7 @@ function PlanPage() {
 
   return (
     <Page width="wide">
-      <PageHeader
-        crumb={
-          <Link to="/projects/$projectKey" params={{ projectKey }} className="hover:text-ink">
-            {data?.project?.name ?? projectKey}
-          </Link>
-        }
-        title={t.plan.title}
-      />
+      <PageHeader title={t.plan.title} />
 
       <PlanToolbar
         view={view}

@@ -3,7 +3,7 @@ import { useAddTeamMember, useCreateTeam, useDeleteTeam, useRemoveTeamMember, us
 import { useCreateBoard } from "@/api/boards";
 import { holds, useAccess } from "@/api/access";
 import { AbsenceDialog } from "@/features/availability/Absences";
-import { Button, Card, EmptyState, ErrorBanner, Field, Input } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, Input, Skeleton } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { PersonPicker } from "@/features/people/PersonPicker";
 import { Avatar } from "@/features/issues/badges";
@@ -26,7 +26,7 @@ export function TeamList({ projectKey }: { projectKey: string }) {
     <div className="space-y-6">
       <NewTeam projectKey={projectKey} />
 
-      {isLoading && <p className="text-sm text-ink-muted">{t.board.teams.loading}</p>}
+      {isLoading && <Skeleton lines={4} />}
       {!isLoading && teams.length === 0 && <EmptyState title={t.board.teams.emptyTitle} description={t.board.teams.emptyBody} />}
 
       <div className="space-y-4">

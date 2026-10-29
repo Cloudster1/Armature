@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useInbox, useMarkRead, useUnreadCount, type Notification } from "@/api/notifications";
 import { accessRequestOf } from "@/lib/notice";
-import { Button, IconButton, Popover, Tooltip, cx } from "@/components/ui";
+import { Button, Count, IconButton, Popover, Tooltip, cx } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { BELL_PANEL_SIZE } from "@/config";
 import { useFormat } from "@/lib/format";
@@ -115,16 +115,10 @@ export function NavButton({
 }
 
 /** How many notifications are unread, beside the sidebar's Notifications; nothing when none are. */
-export function UnreadBadge() {
+export function UnreadCount() {
   const { data } = useUnreadCount();
   const unread = data?.unread ?? 0;
-  if (unread === 0) return null;
-  return (
-    <span className="min-w-5 rounded-full bg-accent px-1.5 text-center text-2xs leading-5 font-medium text-on-accent" data-unread-badge={unread}>
-      {unread > 99 ? "99+" : unread}
-      <span className="sr-only">{t.shell.notifications.unreadSuffix}</span>
-    </span>
-  );
+  return <Count count={unread} name="notifications" says={t.shell.notifications.unreadSaid(unread)} />;
 }
 
 /**
@@ -156,14 +150,9 @@ export function NotificationsBell({ side = "bottom" }: { side?: "top" | "bottom"
               data-guide="inbox"
               data-unread-count={unread}
             />
-            {unread > 0 && (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-2xs leading-4 font-medium text-on-accent"
-              >
-                {unread > 99 ? "99+" : unread}
-              </span>
-            )}
+            <span aria-hidden="true" className="pointer-events-none absolute -top-1 -right-1.5">
+              <Count count={unread} name="bell" says={t.shell.notifications.unreadSaid(unread)} />
+            </span>
           </span>
         </Tooltip>
       }
@@ -243,7 +232,7 @@ function NotificationsPanel({ unread, onDone }: { unread: number; onDone: () => 
         )}
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 text-sm">
-        <Link to="/inbox" onClick={onDone} className="text-accent hover:underline" data-action="see-all-notifications">
+        <Link to="/notifications" onClick={onDone} className="text-accent hover:underline" data-action="see-all-notifications">
           {t.shell.notifications.seeAll}
         </Link>
         <Link

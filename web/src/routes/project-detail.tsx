@@ -161,11 +161,6 @@ function ProjectDetail() {
   return (
     <Page width="content">
       <PageHeader
-        crumb={
-          <Link to="/projects" className="hover:text-ink">
-            {t.issueList.page.crumb}
-          </Link>
-        }
         title={
           <>
             {project?.name ?? projectKey}

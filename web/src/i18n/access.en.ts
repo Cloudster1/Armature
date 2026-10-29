@@ -1,7 +1,6 @@
 /** The strings of access, roles, groups, members, users, tokens, connected apps, webhooks, the installation and the audit log. */
 export const accessEn = {
   title: "Access",
-  loading: "Loading...",
   save: "Save",
   tabs: {
     roles: "Roles",
@@ -58,7 +57,7 @@ export const accessEn = {
   add: "Add",
   optional: "Optional",
   groups: {
-    empty: "No groups yet",
+    empty: "No groups of your own yet",
     emptyDetail: "A group is a name for a set of people, so that a role can be given once instead of to everybody in turn.",
     fromProvider: "from the identity provider",
     people: (count: number) => `${count} ${count === 1 ? "person" : "people"}`,
@@ -75,6 +74,10 @@ export const accessEn = {
     claim: "Provider claim",
     create: "Create group",
     claimHint: "The provider claim is the value your identity provider sends for this group; with it, membership follows sign-ins.",
+    everyone: "Everyone",
+    builtin: "built in",
+    everyoneDetail:
+      "Every member of the installation, not portal customers. People join it when they are let in and leave it when they go, so a role granted to it reaches all members.",
   },
   actions: "Actions",
   grants: {
@@ -235,7 +238,6 @@ export const accessEn = {
     pickedHint: "This token reaches only what is picked here, and never more than you can. Press one to take it off.",
     addProject: "Add a project",
     chooseProject: "Choose a project to add",
-    loading: "Loading tokens...",
     empty: "No tokens yet",
     emptyDetail: "Create one above to call the API from a script or a CI job.",
     disconnectBody: (app: string) => `${app} can no longer act as you; it asks again if you connect it later.`,

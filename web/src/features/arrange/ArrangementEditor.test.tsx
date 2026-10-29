@@ -132,6 +132,18 @@ describe("ArrangementEditor", () => {
     expect(onSave).toHaveBeenCalledWith({ issueTypeId: STORY_TYPE, places: [{ area: "people", slot: "estimate" }] });
   });
 
+  // A member who may not change it still looks at each type's arrangement.
+  it("lets a reader pick a type to look at and change nothing", async () => {
+    const story = arrangement({ issueTypeId: STORY_TYPE, issueTypeName: "Story", places: [{ area: "tracking", slot: "estimate" }] });
+    const { container } = draw({ arrangements: [arrangement(), story], readOnly: true });
+    expect(screen.queryByRole("button", { name: "Follow the default" })).not.toBeInTheDocument();
+    expect(place(container, "assignee").getByRole("combobox")).toBeDisabled();
+    expect(container.querySelector('[data-arrange-place="assignee"]')).toHaveAttribute("draggable", "false");
+
+    await userEvent.selectOptions(screen.getByLabelText("Issue type"), STORY_TYPE);
+    expect(place(container, "estimate").getByRole("combobox")).toBeDisabled();
+  });
+
   it("says what the server refused", () => {
     draw({ error: new Error("Severity is placed twice; a field is in one place") });
     expect(screen.getByText("Severity is placed twice; a field is in one place")).toBeInTheDocument();

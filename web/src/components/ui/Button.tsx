@@ -1,4 +1,4 @@
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import { cx } from "./cx";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "link";
@@ -11,6 +11,8 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** An icon before the label; the label stays, so the button keeps its name. */
   icon?: ReactNode;
   iconRight?: ReactNode;
+  /** The button, for a caller that focuses it or places something beside it. */
+  ref?: Ref<HTMLButtonElement>;
 };
 
 // Primary is ink, not the accent: the accent marks what is current, and a
@@ -66,6 +68,17 @@ export function Button({
       {children}
       {iconRight}
     </button>
+  );
+}
+
+/** A button that reads as words in running text and wraps with them, as a name in a sentence does. */
+export function WordButton({ className, type = "button", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<HTMLButtonElement> }) {
+  return (
+    <button
+      {...rest}
+      type={type}
+      className={cx("inline cursor-pointer rounded-sm p-0 text-left font-[inherit] focus-visible:outline-2 focus-visible:outline-focus", className)}
+    />
   );
 }
 

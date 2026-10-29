@@ -132,8 +132,8 @@ describe("the shell's chrome", () => {
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
     const places = Array.from(document.querySelectorAll('[data-sidebar-group="work"] [data-place]')).map((a) => a.getAttribute("data-place"));
     expect(places).toEqual(["Home", "Search", "Notifications", "Saved searches", "Projects"]);
-    expect(document.querySelector('[data-place="Notifications"]')?.getAttribute("href")).toBe("/inbox");
-    expect(document.querySelector('[data-place="Notifications"] [data-unread-badge]')?.textContent).toContain("3");
+    expect(document.querySelector('[data-place="Notifications"]')?.getAttribute("href")).toBe("/notifications");
+    expect(document.querySelector('[data-place="Notifications"] [data-count="notifications"]')?.textContent).toContain("3");
     expect(document.querySelector('[data-sidebar-group="settings"]')).toBeNull();
     expect(document.querySelector('a[href="/settings/tokens"]')).toBeNull();
     expect(document.querySelector('[data-action="sign-out"]')).toBeNull();
@@ -292,11 +292,12 @@ describe("a project's setup", () => {
     for (const word of setupWords) expect(screen.queryByRole("link", { name: word })).toBeNull();
   });
 
-  it("shows nobody else the Settings entry", () => {
+  // Every member may see how the project is set up, read only.
+  it("shows the Settings entry to a member who does not administer the project too", () => {
     state.params = { projectKey: "ALP" };
     state.projectAdmin = false;
     render(<Sidebar onNewIssue={() => {}} onAsk={() => {}} />);
-    expect(screen.queryByRole("link", { name: "Project settings" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Project settings" })).toHaveAttribute("href", "/projects/$projectKey/settings");
   });
 });
 

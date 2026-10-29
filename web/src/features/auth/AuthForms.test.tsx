@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { LoginForm, passwordMismatch, SignupForm, safeNext } from "./AuthForms";
+import { LoginForm, passwordMismatch, SignupForm, SingleSignOn, safeNext, ssoFailure } from "./AuthForms";
 import { ApiError } from "@/api/client";
 
 // The router is only used for the post-login redirect, which is not what these
@@ -55,6 +55,37 @@ function baseLogin() {
   return { mutate: vi.fn(), isPending: false, error: null as unknown };
 }
 
+describe("SingleSignOn", () => {
+  it("offers single sign-on as one link, with no organization to name", () => {
+    wrap(<SingleSignOn next="/issues/SEC-1" />);
+    const sso = screen.getByRole("link", { name: "Sign in with SSO" });
+    expect(sso.getAttribute("href")).toBe("/api/v1/auth/oidc/start?next=%2Fissues%2FSEC-1");
+    expect(screen.queryByLabelText("Organization")).toBeNull();
+  });
+
+  // The provider knew them and the tracker did not: news of a wait, not an error.
+  it("tells somebody the provider vouched for that their request is waiting", () => {
+    wrap(<SingleSignOn reason="not_a_member" />);
+    expect(screen.getByRole("status")).toHaveTextContent("Your request is waiting");
+    expect(screen.getByRole("status")).toHaveTextContent("Users page");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("says what to do for every reason the API gives, and for one it does not know", () => {
+    const reasons = ["expired", "not_configured", "no_email", "unverified_email", "inactive", "denied", "unreachable"];
+    const sentences = reasons.map((reason) => ssoFailure(reason));
+    for (const sentence of sentences) expect(sentence).toMatch(/\.$/);
+    expect(new Set(sentences).size).toBe(reasons.length);
+    expect(ssoFailure("access_denied")).toBe(ssoFailure("something_new"));
+    expect(ssoFailure(undefined)).toBeNull();
+  });
+
+  it("shows a failure as an error above the button", () => {
+    wrap(<SingleSignOn reason="inactive" />);
+    expect(screen.getByRole("alert")).toHaveTextContent("switched off");
+  });
+});
+
 describe("LoginForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,7 +96,7 @@ describe("LoginForm", () => {
     const mutate = vi.fn((_input, options) => options?.onSuccess?.());
     mockLogin({ mutate });
     wrap(<LoginForm next="/invite" />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in with password" }));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ href: "/invite" }));
 
     expect(safeNext("//evil.example")).toBeUndefined();
@@ -77,17 +108,6 @@ describe("LoginForm", () => {
     mockLogin();
     wrap(<LoginForm />);
     expect(screen.getByRole("link", { name: "Forgot your password?" }).getAttribute("href")).toBe("/forgot-password");
-  });
-
-  // The provider knew them and the tracker did not: the page says who can
-  // change that, not just that it failed.
-  it("tells somebody the provider vouched for that an administrator can let them in", () => {
-    window.history.replaceState({}, "", "/login?sso=not_a_member");
-    mockLogin({ mutate: vi.fn() });
-    wrap(<LoginForm />);
-    expect(screen.getByText(/nobody here has let you in yet/)).toBeTruthy();
-    expect(screen.getByText(/Users page/)).toBeTruthy();
-    window.history.replaceState({}, "", "/login");
   });
 
   // One installation: whatever an older server listed, there is nothing to choose.
@@ -103,17 +123,9 @@ describe("LoginForm", () => {
     });
 
     wrap(<LoginForm next="/issues/SEC-1" />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in with password" }));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ href: "/issues/SEC-1" }));
     expect(screen.queryByText("Which organization?")).toBeNull();
-  });
-
-  it("offers single sign-on as one link, with no organization to name", () => {
-    mockLogin();
-    wrap(<LoginForm next="/issues/SEC-1" />);
-    const sso = screen.getByRole("link", { name: "Continue with single sign-on" });
-    expect(sso.getAttribute("href")).toBe("/api/v1/auth/oidc/start?next=%2Fissues%2FSEC-1");
-    expect(screen.queryByLabelText("Organization")).toBeNull();
   });
 
   // A password alone opens nothing for somebody with two-step sign-in: the
@@ -124,7 +136,7 @@ describe("LoginForm", () => {
     finish.mockReturnValue({ ...baseLogin(), mutate: finishing, reset: vi.fn() });
 
     wrap(<LoginForm />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in with password" }));
     const code = await screen.findByLabelText("Code");
     expect(navigate).not.toHaveBeenCalled();
     expect(code).toHaveAttribute("autocomplete", "one-time-code");
@@ -141,7 +153,7 @@ describe("LoginForm", () => {
     finish.mockReturnValue({ ...baseLogin(), mutate: finishing, reset: vi.fn() });
 
     wrap(<LoginForm />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in with password" }));
     await userEvent.click(await screen.findByRole("button", { name: "Use a recovery code" }));
     await userEvent.type(screen.getByLabelText("Recovery code"), "abcd-efgh-ijkl-mnop");
     await userEvent.click(screen.getByRole("button", { name: "Verify" }));
@@ -164,7 +176,7 @@ describe("LoginForm", () => {
     });
 
     wrap(<LoginForm />);
-    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in with password" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Sign in again with your password");
     await userEvent.click(screen.getByRole("button", { name: "Sign in again" }));
     expect(screen.getByLabelText("Password")).toHaveValue("");
@@ -178,7 +190,7 @@ describe("LoginForm", () => {
     wrap(<LoginForm />);
     await userEvent.type(screen.getByLabelText("Email"), "ada@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
-    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in with password" }));
 
     await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
     expect(mutate.mock.calls[0]?.[0]).toEqual({
@@ -217,7 +229,7 @@ describe("LoginForm", () => {
     mockLogin({ isPending: true });
 
     wrap(<LoginForm />);
-    const button = screen.getByRole("button", { name: "Sign in" });
+    const button = screen.getByRole("button", { name: "Sign in with password" });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
   });

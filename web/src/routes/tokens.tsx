@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
 import { useApiTokens, useCreateApiToken, useRevokeApiToken } from "@/api/auth";
-import { Button, Card, Checkbox, Chip, EmptyState, ErrorBanner, Field, Page, PageHeader, Select, Tag } from "@/components/ui";
+import { Button, Card, Checkbox, Chip, EmptyState, ErrorBanner, Field, Page, PageHeader, Select, Skeleton, Tag } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { ProjectPicker } from "@/features/projects/ProjectPicker";
 import { useFormat } from "@/lib/format";
@@ -59,14 +59,7 @@ function TokensPage() {
 
   return (
     <Page width="narrow">
-      <PageHeader
-        crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
-          </Link>
-        }
-        title={t.access.tokens.title}
-      />
+      <PageHeader title={t.access.tokens.title} />
 
       {freshSecret && (
         <Card className="mb-6 border-accent/40 bg-accent-subtle p-4">
@@ -138,7 +131,7 @@ function TokensPage() {
       </Card>
 
       {isLoading ? (
-        <p className="text-sm text-ink-muted">{t.access.tokens.loading}</p>
+        <Skeleton lines={4} />
       ) : tokens.length === 0 ? (
         <EmptyState title={t.access.tokens.empty} description={t.access.tokens.emptyDetail} />
       ) : (

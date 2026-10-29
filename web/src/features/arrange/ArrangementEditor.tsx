@@ -21,6 +21,7 @@ export function ArrangementEditor({
   saving,
   error,
   canFollow,
+  readOnly = false,
   onSave,
 }: {
   arrangements: Arrangement[];
@@ -29,6 +30,8 @@ export function ArrangementEditor({
   error: Error | null;
   /** A project can hand a type back; the organization has nobody to hand it to. */
   canFollow: boolean;
+  /** Shown to somebody who may see the arrangement but not change it. */
+  readOnly?: boolean;
   onSave: (input: ArrangementInput) => void;
 }) {
   const [typeId, setTypeId] = useState(arrangements[0]?.issueTypeId ?? "");
@@ -73,7 +76,7 @@ export function ArrangementEditor({
           ))}
         </SelectInput>
         <Tag data-arrange-origin={current.origin.scope}>{originWords(current.origin.scope)}</Tag>
-        {canFollow && current.origin.scope === "project" && (
+        {canFollow && !readOnly && current.origin.scope === "project" && (
           <Button
             variant="secondary"
             size="sm"
@@ -88,7 +91,7 @@ export function ArrangementEditor({
 
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <fieldset disabled={readOnly} className="grid min-w-0 gap-3 md:grid-cols-2">
         {areaLabels().map(({ area, title, note }) => (
           <AreaColumn
             key={area}
@@ -102,9 +105,10 @@ export function ArrangementEditor({
             onMove={moveTo}
             onShift={shift}
             find={(key) => places.find((place) => keyOf(place) === key)}
+            readOnly={readOnly}
           />
         ))}
-      </div>
+      </fieldset>
     </div>
   );
 }
@@ -120,6 +124,7 @@ function AreaColumn({
   onMove,
   onShift,
   find,
+  readOnly,
 }: {
   area: Area;
   title: string;
@@ -131,6 +136,7 @@ function AreaColumn({
   onMove: (place: Placement, area: Area) => void;
   onShift: (place: Placement, by: -1 | 1) => void;
   find: (key: string) => Placement | undefined;
+  readOnly: boolean;
 }) {
   return (
     <Card
@@ -140,7 +146,7 @@ function AreaColumn({
       onDrop={(e) => {
         e.preventDefault();
         const place = find(e.dataTransfer.getData("text/plain"));
-        if (place) onDrop(place);
+        if (place && !readOnly) onDrop(place);
       }}
     >
       <h3 className="text-2xs font-medium tracking-wide text-ink-subtle uppercase">{title}</h3>
@@ -150,7 +156,7 @@ function AreaColumn({
         {places.map((place, at) => (
           <li
             key={keyOf(place)}
-            draggable
+            draggable={!readOnly}
             onDragStart={(e) => e.dataTransfer.setData("text/plain", keyOf(place))}
             className="flex items-center gap-1 rounded-control border border-border bg-canvas px-2 py-1"
             data-arrange-place={keyOf(place)}

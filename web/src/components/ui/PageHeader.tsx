@@ -10,6 +10,12 @@ import { t } from "@/i18n";
  */
 export const ShellHeaderContext = createContext<HTMLElement | null>(null);
 
+/**
+ * The trail a shell derives from the address and every page header draws above
+ * its title, so no page names its own; nothing outside a shell.
+ */
+export const PageCrumbsContext = createContext<ReactNode>(null);
+
 export interface Crumb {
   label: ReactNode;
   /** A link, rendered by the caller so the router's typing is kept. */
@@ -36,17 +42,12 @@ export function Breadcrumbs({ crumbs, className }: { crumbs: Crumb[]; className?
 // The head of a page: a title, the facts about it, and what can be done from
 // here. No room for a sentence about the page; the empty state says that.
 export function PageHeader({
-  crumb,
-  crumbs,
   title,
   meta,
   actions,
   tabs,
   className,
 }: {
-  /** Where this page sits, drawn small above the title; crumbs is the structured form. */
-  crumb?: ReactNode;
-  crumbs?: Crumb[];
   title: ReactNode;
   /** Facts about the thing on the page: counts, a key, a type. */
   meta?: ReactNode;
@@ -56,15 +57,12 @@ export function PageHeader({
   className?: string;
 }) {
   const target = useContext(ShellHeaderContext);
+  const crumbs = useContext(PageCrumbsContext);
   const header = (
     <header className={cx(target ? "pb-3" : "mb-5", className)}>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          {crumbs && crumbs.length > 0 ? (
-            <Breadcrumbs crumbs={crumbs} className="mb-1" />
-          ) : (
-            crumb && <div className="mb-1 flex items-center gap-1.5 text-sm text-ink-muted">{crumb}</div>
-          )}
+          {crumbs}
           <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink">{title}</h1>
           {meta && <div className="mt-0.5 text-sm text-ink-muted">{meta}</div>}
         </div>

@@ -1,8 +1,8 @@
 // The kit, one file per component. Every name the old single file exported is
 // still exported here, so callers keep importing from "@/components/ui".
 export { cx } from "./cx";
-export { Button, IconButton, Spinner, controlHeight, type ButtonVariant, type ControlSize, ButtonLink } from "./Button";
-export { Input, Textarea, Checkbox, Switch, Select, SelectInput, Labelled, control, controlClass, fieldId, type InputProps } from "./controls";
+export { Button, IconButton, Spinner, WordButton, controlHeight, type ButtonVariant, type ControlSize, ButtonLink } from "./Button";
+export { Input, Textarea, Checkbox, Radio, Switch, Select, SelectInput, Labelled, control, controlClass, fieldId, type InputProps } from "./controls";
 export { DateInput, isCompleteDate } from "./DateInput";
 export { Field } from "./Field";
 export { ColorField } from "./ColorField";
@@ -10,12 +10,13 @@ export { Card } from "./Card";
 export { ProgressBar, type ProgressTone } from "./ProgressBar";
 export { Stat } from "./Stat";
 export { Tag } from "./Tag";
+export { Count } from "./Count";
 export { SectionTitle } from "./SectionTitle";
 export { Table, Th, Td } from "./Table";
 export { EmptyState } from "./EmptyState";
 export { ErrorBanner } from "./ErrorBanner";
 export { Segmented } from "./Segmented";
-export { PageHeader, Breadcrumbs, ShellHeaderContext, type Crumb } from "./PageHeader";
+export { PageHeader, Breadcrumbs, PageCrumbsContext, ShellHeaderContext, type Crumb } from "./PageHeader";
 export { Chip } from "./Chip";
 export { Choice, OptionCard } from "./Choice";
 export { Page, type PageWidth } from "./Page";
@@ -26,7 +27,7 @@ export { Popover } from "./Popover";
 export { Tooltip } from "./Tooltip";
 export { Spotlight } from "./Spotlight";
 export { MentionTextarea, mentionQuery, type FindPeople, type Mentionable } from "./MentionTextarea";
-export { Menu, type MenuItem } from "./Menu";
+export { Menu, isMenuGroup, type MenuEntry, type MenuGroup, type MenuItem } from "./Menu";
 export { Dialog, ConfirmDialog, Drawer, DockedPanel, isInteractiveTarget, modalBackdropStyle, modalPanelStyle } from "./Dialog";
 export { isEditing } from "./overlay";
 export { ToastProvider, ToastShelf, useToast, type ToastKind, type ToastOptions } from "./Toast";

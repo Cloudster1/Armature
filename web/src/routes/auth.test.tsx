@@ -11,8 +11,10 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("./root", () => ({ rootRoute: {} }));
 vi.mock("@/features/auth/AuthForms", () => ({
-  LoginForm: () => null,
+  LoginForm: () => <form data-password-form />,
   SignupForm: () => <form data-signup-form />,
+  SingleSignOn: () => <a data-sso-button href="/sso" />,
+  safeNext: (next?: string) => next,
 }));
 vi.mock("@/api/client", () => ({ request: vi.fn() }));
 vi.mock("@/api/auth", () => ({
@@ -20,7 +22,7 @@ vi.mock("@/api/auth", () => ({
   useSignupOpen: () => signup,
 }));
 
-const { SignupOffer, signupRoute } = await import("./auth");
+const { SignInPage, SignupOffer, signupRoute } = await import("./auth");
 const SignupPage = (signupRoute as unknown as { component: () => ReactNode }).component;
 
 describe("sign-up where the installation allows it", () => {
@@ -76,5 +78,24 @@ describe("the door", () => {
     expect(logo.getAttribute("alt")).toBe("");
     expect(logo.closest("[data-logo-head]")!.textContent).toBe("Armature");
     expect(logo.closest("[data-door]")!.className).toContain("bg-backdrop");
+  });
+});
+
+describe("the sign-in page", () => {
+  // The suite's one sign-in page: the provider first, a password second, sign-up below both.
+  it("puts single sign-on first, the password second and the way to sign up below them", () => {
+    signup.data = { open: true, first: false };
+    const { container } = render(<SignInPage />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign in");
+    expect(screen.getByText("Sign in through your identity provider.")).toBeTruthy();
+    const order = [...container.querySelectorAll("[data-sso-button], [data-password-form], a[href='/signup']")];
+    expect(order.map((el) => (el.tagName === "FORM" ? "password" : el.getAttribute("href")))).toEqual(["/sso", "password", "/signup"]);
+    expect(screen.getByRole("heading", { level: 2, name: "Sign in with a password" })).toBeTruthy();
+  });
+
+  it("keeps the word that a new password is saved", () => {
+    signup.data = undefined;
+    render(<SignInPage reset />);
+    expect(screen.getByRole("status")).toHaveTextContent("Your password is changed");
   });
 });

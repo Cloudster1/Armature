@@ -13,6 +13,12 @@ export const kitDe: typeof kitEn = {
   mentionList: "Personen zum Erwähnen",
   spotlight: "Hier ist es",
   gotIt: "Verstanden",
+  ago: {
+    now: "gerade eben",
+    minutes: (count: number) => `vor ${count} Min.`,
+    hours: (count: number) => `vor ${count} Std.`,
+    days: (count: number) => `vor ${count} T.`,
+  },
   editor: {
     description: "Beschreibung",
     mode: "Editormodus",

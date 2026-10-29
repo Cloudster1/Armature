@@ -6,17 +6,19 @@ Every name the first kit exported is still exported, so callers keep
 
 | component | props | behaviour |
 |---|---|---|
-| Button | variant primary, secondary, ghost, danger; size sm, md, lg; loading; icon; iconRight | aria-busy while loading, label never swapped |
+| Button | variant primary, secondary, ghost, danger; size sm, md, lg; loading; icon; iconRight; ref | aria-busy while loading, label never swapped |
+| WordButton | as a button | a button that reads as words in running text and wraps with them, as Exciter's |
 | IconButton | icon, label (required), variant, size | label is the name and the title |
 | Input, Textarea | controlSize, invalid | the shared control look at one of three heights |
 | Checkbox | label | one click target with its words |
+| Radio | label, hint | one of a few options sharing a name, its words and a sentence under them, one click target, as Exciter's |
 | Switch | checked, onChange, label | role switch, aria-checked, Space toggles |
 | Select | label, hint, error | id `field-<label slug>`, described by hint or error |
-| Field | label, hint, error, rows | id `field-<label slug>`; rows makes it a textarea |
+| Field | label, hint, error, rows, ref | id `field-<label slug>`; rows makes it a textarea; ref is the input |
 | Labelled | id, label, hint, error | the label and messages around any control |
 | Segmented | label, value, options, onChange, size | role group, aria-pressed, arrows move |
 | Tabs, TabPanel | label, value, tabs, onChange | tablist and tabs, arrows and Home and End activate |
-| Menu | trigger, items, label, align | role menu, arrows, Home, End, typeahead, Escape returns focus |
+| Menu | trigger, items (an item or a `MenuGroup`), label, align, side | role menu, arrows, Home, End, typeahead, Escape returns focus, Tab closes; a `MenuGroup` is `role="group"` named by its heading (`data-menu-group`); an item with `checked` is a `menuitemradio`; `separated` draws a line above an item |
 | Popover | open, onClose, trigger, label, align | anchored, not modal, Escape and outside press close, focus in and back |
 | Tooltip | text, side | shows after 400ms on hover or focus, role tooltip, never the only label |
 | MentionTextarea | value, onValueChange, people | a Textarea that lists `[data-mention-option=<name>]` after an at sign; arrows walk, Enter or Tab takes, Escape closes; inserts `@Full Name` as plain text |
@@ -27,13 +29,14 @@ Every name the first kit exported is still exported, so callers keep
 | DockedPanel | open, onClose, title, width, actions | a column beside the page: no scrim, no trap, Escape closes unless typing |
 | ToastProvider, useToast | success, error, info (message, link, action) | polite status, assertive alert, six seconds, three at most, Escape dismisses the newest |
 | Breadcrumbs | crumbs | nav labelled Breadcrumb, the last item is the page and is not rendered |
-| PageHeader | crumbs, title, meta, actions, tabs | a header element |
+| PageHeader | title, meta, actions, tabs | a header element; its breadcrumbs come from the shell (`PageCrumbsContext`), never from the page |
 | Page | width narrow, content, wide | the one place widths are decided |
 | ButtonLink | href, download, variant, size, icon | a link drawn as a button, for a file the browser handles itself |
 | Columns, Donut, Legend, LineChart (features/dashboard/charts.tsx and ChartBody.tsx) | groups or series, a tone per label | hand-drawn; HTML columns with a 4px cap and a surface gap between segments, an SVG ring with the total in the hole, a legend from two series, a table under every chart |
 | Toolbar | start, end, label | role toolbar, wraps |
 | Table, Th, Td | dense, sticky | tabular numbers, sticky heads |
 | Card, Tag, SectionTitle, EmptyState, ErrorBanner | as before; EmptyState takes an icon, ErrorBanner an onRetry | |
+| Count | count, name, says | a count beside a place, accent-subtle, capped at 99+, said in full to a screen reader, nothing at zero (`data-count=<name>`) |
 | Skeleton | lines or rows | waits 150ms, then grey in the shape of what is coming |
 | Avatar | name, src, size xs to lg | picture when there is one, initials when not or when it breaks |
 
@@ -41,7 +44,8 @@ Every name the first kit exported is still exported, so callers keep
 
 - Nothing a browser test presses may live only inside a closed menu or
   popover; a flow that gains a step gains a named helper in the suite.
-- Overlays are portaled last in the DOM and close on Escape. Menus and
+- Overlays are portaled last in the DOM, a menu last in its trigger's
+  landmark, and close on Escape. Menus and
   popovers also close on a press outside. Dialogs trap focus; popovers do not.
   A menu, a popover, a tooltip and the mention list are placed by
   `useAnchored` in `overlay.ts`: fixed beside their trigger, below it or above

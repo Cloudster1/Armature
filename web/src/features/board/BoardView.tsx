@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { groupCards, useBoard, useBoardById, useMoveCard, useSprintBoard, type Card as BoardCard, type Swimlane } from "@/api/boards";
 import { Avatar, PriorityBadge, TypeBadge } from "@/features/issues/badges";
 import { LabelChips } from "@/features/labels/LabelChip";
-import { EmptyState, ErrorBanner, cx, IconButton, useToast } from "@/components/ui";
+import { cx, EmptyState, ErrorBanner, IconButton, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useIssueDrawer, useIssueList } from "@/features/issues/IssueDrawer";
 import { MS_PER_DAY } from "@/features/plan/scale";
@@ -103,7 +103,7 @@ export function BoardView({
   // Cards in column order, top to bottom, so the panel's next is the card below.
   useIssueList((lanes ?? []).flatMap((lane) => (visible.get(lane.id) ?? []).map((card) => card.key)));
 
-  if (isLoading) return <p className="text-sm text-ink-muted">{t.board.view.loading}</p>;
+  if (isLoading) return <Skeleton lines={4} />;
   if (error) return <ErrorBanner>{(error as Error).message}</ErrorBanner>;
 
   const board = data?.board;
