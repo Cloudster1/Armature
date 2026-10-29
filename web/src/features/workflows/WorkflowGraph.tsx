@@ -45,7 +45,7 @@ export function WorkflowGraph({ workflowId, caption }: { workflowId: string; cap
             <>
               {" "}
               <Link
-                to="/settings/workflows"
+                to="/admin/workflows"
                 search={{ workflow: workflow.id, q: workflow.name }}
                 className="text-ink-muted underline-offset-2 hover:text-ink hover:underline"
               >

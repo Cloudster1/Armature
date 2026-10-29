@@ -5,7 +5,7 @@ import { useLogout, useMe } from "@/api/auth";
 import { useConnectedTools, type ConnectedTool } from "@/api/installation";
 import { Avatar, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { personalPlaces, SETTINGS_PATH, type Place } from "./places";
+import { adminEntry, personalPlaces, type Place } from "./places";
 import { t } from "@/i18n";
 
 const toolIcons: Record<string, ReactNode> = { stator: <Icon.Stator />, exciter: <Icon.Exciter /> };
@@ -29,7 +29,7 @@ export function roleWord(role: string | undefined): string {
 
 /**
  * What the avatar menu holds, in its order: the person's own pages, the other
- * tools, Settings for administrators and the way out. The drawer lists the same.
+ * tools, Admin for administrators and the way out. The drawer lists the same.
  */
 export function useAccountItems(): MenuItem[] {
   const navigate = useNavigate();
@@ -48,11 +48,11 @@ export function useAccountItems(): MenuItem[] {
     ...(access?.canAdministerOrg
       ? [
           {
-            label: t.shell.account.settings,
+            label: adminEntry.label,
             icon: <Icon.Settings />,
             separated: true,
-            onSelect: () => navigate({ to: SETTINGS_PATH }),
-            attrs: { "data-action": "settings" },
+            onSelect: () => navigate({ to: adminEntry.to }),
+            attrs: { "data-action": "admin" },
           },
         ]
       : []),

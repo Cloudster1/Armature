@@ -1,5 +1,5 @@
 import { createRoute } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { Page, PageHeader } from "@/components/ui";
 import { FieldList } from "@/features/fields/FieldList";
@@ -7,8 +7,8 @@ import { t } from "@/i18n";
 
 /** The fields every project of the organization records. */
 export const orgFieldsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/fields",
+  getParentRoute: () => adminRoute,
+  path: "/fields",
   component: OrgFieldsPage,
 });
 

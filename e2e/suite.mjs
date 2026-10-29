@@ -9,6 +9,7 @@ const SCENARIO_FILES = [
   "work",
   "shell",
   "menus",
+  "admin",
   "projects",
   "templates",
   "git",

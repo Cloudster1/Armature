@@ -1,5 +1,5 @@
 import { createRoute } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { EmptyState, Page, PageHeader } from "@/components/ui";
 import { OrgArrangement } from "@/features/arrange/pages";
@@ -7,8 +7,8 @@ import { t } from "@/i18n";
 
 /** The arrangement every project of the organization follows until it disagrees. */
 export const orgIssueArrangementRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/issue-view",
+  getParentRoute: () => adminRoute,
+  path: "/issue-view",
   component: OrgIssueArrangementPage,
 });
 

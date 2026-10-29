@@ -42,7 +42,8 @@ export const guideDe: typeof guideEn = {
       sentence:
         "Worüber Sie informiert wurden: Ihnen zugewiesene Arbeit, Erwähnungen, Bewegungen an beobachteten Vorgängen; die Glocke in der Leiste zählt das Ungelesene und öffnet das Neueste.",
     },
-    "page:settings": { title: "Einstellungen", sentence: "Ihre und die aller: Profil, Token, Zugriff, Workflows, Schlagwörter." },
+    "page:settings": { title: "Einstellungen", sentence: "Ihre: Profil, Benachrichtigungseinstellungen, Designs und Token." },
+    "page:admin": { title: "Admin", sentence: "Die aller: Installation, Zugriff, Benutzer, Workflows, Schlagwörter, Felder, Webhooks und das Prüfprotokoll." },
     "page:profile": {
       title: "Ihr Profil",
       sentence: "Ihr Name, Ihr Bild, Ihre Zeitzone und wie Daten für Sie geschrieben werden; das Menü des Avatars unten in der Leiste öffnet es.",
@@ -107,7 +108,7 @@ export const guideDe: typeof guideEn = {
     },
     "action:design-workflow": {
       title: "Einen Workflow entwerfen",
-      sentence: "Der Designer zeichnet Status und Übergänge auf eine Fläche; die Seite Workflows in den Einstellungen öffnet ihn.",
+      sentence: "Der Designer zeichnet Status und Übergänge auf eine Fläche; die Seite Workflows in der Administration öffnet ihn.",
     },
     "action:create-token": {
       title: "Ein Zugriffstoken erstellen",
@@ -182,12 +183,12 @@ export const guideDe: typeof guideEn = {
     "action:audit": {
       title: "Wer was in Armature getan hat",
       sentence:
-        "Das Prüfprotokoll in den Einstellungen führt vergebene Rollen, geänderte Gruppen, angelegte oder archivierte Projekte, Token und Anmeldungen auf, ein Jahr lang.",
+        "Das Prüfprotokoll in der Administration führt vergebene Rollen, geänderte Gruppen, angelegte oder archivierte Projekte, Token und Anmeldungen auf, ein Jahr lang.",
     },
     "action:org-field": {
       title: "Ein Feld, das jedes Projekt hat",
       sentence:
-        "Felder in den Einstellungen gibt es in jedem Projekt; ein eigenes Feld eines Projekts wird von seiner Seite Felder dorthin übernommen, und gleichnamige Felder werden zu einem.",
+        "Felder in der Administration gibt es in jedem Projekt; ein eigenes Feld eines Projekts wird von seiner Seite Felder dorthin übernommen, und gleichnamige Felder werden zu einem.",
     },
     "action:status-update": {
       title: "Sagen, wie es dem Projekt geht",

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, createRoute } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 import {
   useAutomationCatalog,
   useCreateWebhook,
@@ -40,8 +40,8 @@ import { t as words } from "@/i18n";
 
 /** Where the organization's events are posted, signed, with a log of every try. */
 export const webhooksRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/webhooks",
+  getParentRoute: () => adminRoute,
+  path: "/webhooks",
   component: WebhooksPage,
 });
 
@@ -89,7 +89,7 @@ function WebhooksPage() {
     <Page width="content">
       <PageHeader
         crumb={
-          <Link to="/settings" className="hover:text-ink">
+          <Link to="/admin" className="hover:text-ink">
             {words.settings.crumb}
           </Link>
         }

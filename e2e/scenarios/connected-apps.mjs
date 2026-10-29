@@ -112,7 +112,7 @@ scenario("an app Armature does not know is never sent the browser", async ({ pag
 scenario("an administrator adds an app by hand and sees its secret once", async ({ page }) => {
   await signUp(page);
   const name = uniqueName("Rotor");
-  await goto(page, "/settings/connected-apps");
+  await goto(page, "/admin/connected-apps");
   await page.click('[data-action="new-connected-app"]');
   await fill(page, "App name", name);
   await fill(page, "Return addresses", RETURN);
@@ -155,7 +155,7 @@ serialScenario("a partner sets up its own webhook, which the administrator sees 
     expect.equal(made.status, 201, "the partner makes its webhook");
     expect.contains(made.body.webhook.secret, "armature_whs_", "its secret comes back once");
 
-    await goto(page, "/settings/webhooks");
+    await goto(page, "/admin/webhooks");
     const row = `[data-webhook-partner="${app.client_name}"]`;
     await page.waitForSelector(row, { timeout: WAIT });
     expect.contains(await textOf(page, row), `Managed by ${app.client_name}`, "the list says who manages it");
@@ -169,7 +169,7 @@ serialScenario("a partner sets up its own webhook, which the administrator sees 
     const read = await asPartner(tokens, "GET", "/webhooks/partner");
     expect.equal(read.body.webhook.enabled, false, "the partner reads it switched off");
   } finally {
-    await page.goto(`${BASE_URL}/settings/connected-apps`).catch(() => {});
+    await page.goto(`${BASE_URL}/admin/connected-apps`).catch(() => {});
     await removeApp(page, app.client_name).catch(() => {});
   }
 });

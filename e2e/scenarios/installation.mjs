@@ -30,7 +30,7 @@ serialScenario("renaming the installation shows in the sidebar, and the old sett
   const name = uniqueName("Plant");
   try {
     await goto(page, "/settings/organization");
-    await waitForPath(page, "/settings/installation");
+    await waitForPath(page, "/admin/installation");
     await page.waitForSelector("#field-installation-name", { timeout: WAIT });
     expect.equal(await page.$('[data-action="delete-organization"]'), null, "nothing deletes the installation");
 
@@ -51,13 +51,13 @@ serialScenario("renaming the installation shows in the sidebar, and the old sett
 serialScenario("an administrator adds the demo project, and a second time is refused with where it is", async ({ page }) => {
   await signUp(page, unique("demo"), { visit: false });
   if (!(await demoProjectAdded())) {
-    await goto(page, "/settings/installation");
+    await goto(page, "/admin/installation");
     await clickButton(page, "Add the demo project");
     await waitForPath(page, `/projects/${DEMO_PROJECT_KEY}`);
     await page.waitForFunction(() => document.body.innerText.includes("Welding cell 2 stops intermittently"), { timeout: WAIT });
   }
 
-  await goto(page, "/settings/installation");
+  await goto(page, "/admin/installation");
   await clickButton(page, "Add the demo project");
   await page.waitForFunction((words) => document.body.innerText.includes(words), { timeout: WAIT }, DEMO_IS_HERE);
 });
@@ -66,7 +66,7 @@ serialScenario("an administrator adds the demo project, and a second time is ref
 // suite demo there, from the first or from make seed, and only looks.
 serialScenario("an administrator adds the suite demo, and EXC-261 is Exciter's issue 261 with what blocks it", async ({ page }) => {
   await signUp(page, unique("suite"), { visit: false });
-  await goto(page, "/settings/installation");
+  await goto(page, "/admin/installation");
   if (!(await suiteDemo())) {
     await clickButton(page, "Add the suite demo");
   }

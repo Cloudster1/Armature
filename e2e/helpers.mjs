@@ -716,13 +716,13 @@ export async function pickPerson(page, selectSelector, name, words = name) {
 
 /** Opens the users page searched for one address, as one finds somebody among thousands. */
 export async function findUser(page, email) {
-  await goto(page, `/settings/users?q=${encodeURIComponent(email)}`);
+  await goto(page, `/admin/users?q=${encodeURIComponent(email)}`);
   await page.waitForSelector(`[data-user="${email}"]`, { timeout: WAIT });
 }
 
 /** Opens the access page's members searched for what is given, by default the name itself. */
 export async function findMembers(page, words) {
-  await goto(page, `/settings/access?tab=members&q=${encodeURIComponent(words)}`);
+  await goto(page, `/admin/access?tab=members&q=${encodeURIComponent(words)}`);
   await page.waitForSelector("[data-members-total]", { timeout: WAIT });
 }
 
@@ -975,7 +975,7 @@ export async function dragConnect(page, from, to) {
 
 /** Opens the designer on the named workflow from the settings list, searched for its name. */
 export async function openWorkflowDesign(page, name) {
-  await goto(page, `/settings/workflows?q=${encodeURIComponent(name)}`);
+  await goto(page, `/admin/workflows?q=${encodeURIComponent(name)}`);
   const edit = `[data-workflow-card="${name}"] [data-action="edit"]`;
   await page.waitForSelector(edit, { timeout: WAIT });
   await page.click(edit);
@@ -984,7 +984,7 @@ export async function openWorkflowDesign(page, name) {
 
 /** Deletes a scheme from the library's Schemes tab, searched for its name, and confirms. */
 export async function deleteScheme(page, name) {
-  await goto(page, `/settings/workflows/schemes?q=${encodeURIComponent(name)}`);
+  await goto(page, `/admin/workflows/schemes?q=${encodeURIComponent(name)}`);
   const remove = `[data-scheme-card="${name}"] [data-action="delete"]`;
   await page.waitForSelector(remove, { timeout: WAIT });
   await page.click(remove);
@@ -1010,7 +1010,7 @@ export async function coinStatus(page, { name, category }) {
  * otherwise.
  */
 export async function createWorkflow(page, { name, statuses, opensIn, transitions = [] }) {
-  await goto(page, "/settings/workflows");
+  await goto(page, "/admin/workflows");
   await clickButton(page, "New workflow");
   await page.waitForSelector("#field-name", { timeout: WAIT });
   await page.type("#field-name", name);
@@ -1044,7 +1044,7 @@ export async function createWorkflow(page, { name, statuses, opensIn, transition
 
 /** Builds a scheme mapping one issue type onto a workflow. */
 export async function createScheme(page, { name, issueType, workflow }) {
-  await goto(page, "/settings/workflows/schemes");
+  await goto(page, "/admin/workflows/schemes");
   await clickButton(page, "New scheme");
   await page.waitForSelector("#field-scheme-name", { timeout: WAIT });
   await page.type("#field-scheme-name", name);
@@ -1436,7 +1436,7 @@ export async function createTheme(page, name, { accent } = {}) {
 /** Makes a local account on the users page and waits for its row. */
 export async function createLocalUser(page, { email, name, role = "Member", password = PASSWORD }) {
   // Searched for the address first, so the new row is on the page among thousands.
-  await goto(page, `/settings/users?q=${encodeURIComponent(email)}`);
+  await goto(page, `/admin/users?q=${encodeURIComponent(email)}`);
   await fill(page, "Email", email);
   await fill(page, "Name", name);
   await selectByLabel(page, "#field-role", role);
@@ -1478,7 +1478,7 @@ export async function acceptInvite(page, who, { visit = true } = {}) {
 
 /** Grants a role on the access page, the way an administrator would. */
 export async function grantRole(page, { who, role, projectKey }) {
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await page.waitForSelector('select[aria-label="Who to grant to"]', { timeout: WAIT });
 
   await pickPerson(page, 'select[aria-label="Who to grant to"]', who);
@@ -1520,7 +1520,7 @@ export async function narrowGrants(page, text) {
 
 /** Takes every role somebody holds away, so a test can start from nothing. */
 export async function revokeAll(page, who) {
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await narrowGrants(page, who);
 
   for (;;) {
@@ -1822,7 +1822,7 @@ export async function deleteMyAccount(page) {
  * callers open the secret on BASE_URL themselves.
  */
 export async function inviteFromMembersPage(page, email, roleLabel = "Member") {
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await page.click('[data-access-tab="Members"]');
   await fill(page, "Invite by email", email);
   await selectByLabel(page, "#field-as", roleLabel);
@@ -2318,7 +2318,7 @@ export async function incomingAddress(page, name) {
 
 /** Adds a webhook on the settings page and returns the secret shown once. */
 export async function createWebhook(page, name, url, { topics = ["*"], version } = {}) {
-  await goto(page, "/settings/webhooks");
+  await goto(page, "/admin/webhooks");
   await page.waitForSelector('[data-action="new-webhook"]', { timeout: WAIT });
   await page.click('[data-action="new-webhook"]');
   await fill(page, "Webhook name", name);
@@ -2576,7 +2576,7 @@ export async function postStatus(page, projectKey, status, note) {
 
 /** The rows the audit log shows for one action, after narrowing to it. */
 export async function auditRowsFor(page, action) {
-  await goto(page, "/settings/audit");
+  await goto(page, "/admin/audit");
   await page.waitForSelector("#field-audit-action", { timeout: WAIT });
   await page.waitForFunction((a) => [...document.querySelectorAll("#field-audit-action option")].some((o) => o.value === a), { timeout: WAIT }, action);
   await selectByLabel(page, "#field-audit-action", action);

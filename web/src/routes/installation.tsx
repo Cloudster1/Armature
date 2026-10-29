@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, createRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { appRoute } from "./app";
+import { Link, createRoute, useNavigate } from "@tanstack/react-router";
+import { adminRoute } from "./admin";
 import { useAccess } from "@/api/access";
 import { ApiError } from "@/api/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,18 +9,9 @@ import { Button, Card, ErrorBanner, Field, Page, PageHeader, SectionTitle, useTo
 import { t } from "@/i18n";
 
 export const installationRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/installation",
+  getParentRoute: () => adminRoute,
+  path: "/installation",
   component: InstallationPage,
-});
-
-/** The page's old address, kept for bookmarks until the next release. */
-export const organizationSettingsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/organization",
-  beforeLoad: () => {
-    throw redirect({ to: "/settings/installation", replace: true });
-  },
 });
 
 /** The installation itself: what everybody sees it called, and the demo an administrator may fill it with. */
@@ -34,8 +25,8 @@ function InstallationPage() {
     <Page width="narrow">
       <PageHeader
         crumb={
-          <Link to="/settings" className="hover:text-ink">
-            {t.settings.crumb}
+          <Link to="/admin" className="hover:text-ink">
+            {t.shell.admin.crumb}
           </Link>
         }
         title={t.access.installation.title}

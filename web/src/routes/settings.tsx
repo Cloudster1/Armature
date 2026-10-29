@@ -1,13 +1,12 @@
 import { Link, createRoute } from "@tanstack/react-router";
 import { appRoute } from "./app";
-import { useAccess } from "@/api/access";
 import { useMe } from "@/api/auth";
 import { Card, Page, PageHeader, SectionTitle } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { personalPlaces, placeKey, settingsFor, type Place } from "@/features/shell/places";
+import { personalPlaces, placeKey, type Place } from "@/features/shell/places";
 import { t } from "@/i18n";
 
-/** One door to everything that is set up rather than worked on: yours, then the installation's for its administrators. */
+/** One door to the person's own pages; the installation's are on the Admin page. */
 export const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings",
@@ -16,13 +15,10 @@ export const settingsRoute = createRoute({
 
 function SettingsHub() {
   const { data } = useMe();
-  const { data: access } = useAccess();
-  const settings = settingsFor(access?.canAdministerOrg ?? false);
   return (
     <Page width="narrow">
       <PageHeader title={t.shell.settingsHub.title} meta={data?.principal?.installation?.name} />
       <Group id="You" title={t.shell.groups.you} places={personalPlaces} />
-      {settings.length > 0 && <Group id="Settings" title={t.shell.groups.settings} places={settings} />}
     </Page>
   );
 }

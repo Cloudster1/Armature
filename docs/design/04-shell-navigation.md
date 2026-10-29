@@ -92,17 +92,21 @@ strip through `ShellHeaderContext` and in place where there is no strip
   (Issues), board, sprints, plan, calendar, milestones, releases, dashboard,
   hierarchy, teams, workflows, fields, components, repositories, automation,
   import, queues, service-desk, settings.
-- `/settings/workflows` is **Workflows**, the installation's library of
+- `/admin/workflows` is **Workflows**, the installation's library of
   workflows and schemes. `/projects/$key/workflows` is **Workflow scheme**;
   its sidebar label is **Workflow**.
-- `/settings` is a hub: You (Profile, API tokens, Themes) and Everyone
-  (Installation, Access, Users, Holidays, Workflows, Labels, Automation,
-  Webhooks, Fields, Audit log). `/settings/installation` names the
-  installation. `/settings/users` is every account that signs in here.
-  `/settings/fields` is the fields every project shares and `/settings/audit`
-  the audit log. `/settings/automation` is the rules that watch every project
-  and `/settings/webhooks` their endpoints. `/settings/profile` is the profile, with the
-  notification settings below it; `/me` redirects.
+- `/settings` is a hub of the person's own pages: Profile, Notifications,
+  Watching, Themes and API tokens. `/settings/profile` is the profile, with
+  the notification settings below it; `/me` redirects.
+- `/admin` is the Admin page, for administrators only (#462). Its index
+  groups the installation's pages as cards under People and access (Installation,
+  Access, Users), Work (Holidays, Workflows, Labels, Automation, Fields, Issue
+  view), Integrations (Connected apps, Webhooks) and Records (Audit log); a list
+  of the same on the left, or a menu on a phone, moves between them. The work
+  sidebar stays, with one Admin entry. A member who opens it is told only
+  administrators can, and no child page is mounted. Every old
+  `/settings/<page>` address of those pages redirects to `/admin/<page>`,
+  search and hash kept; `/settings/organization` lands on `/admin/installation`.
 - `/inbox` is what the person was told, newest first, unread or everything;
   a row is a link to its issue and opening it marks it read.
 - `/filters` lists every saved search the person may see. `/search` takes `f`

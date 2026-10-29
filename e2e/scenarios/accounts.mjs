@@ -257,7 +257,7 @@ serialScenario("an administrator requires two-step sign-in and a member is held 
   // administrator who puts the rule back.
   const elsewhere = await context.browser().createBrowserContext();
   try {
-    await goto(page, "/settings/access");
+    await goto(page, "/admin/access");
     await page.click('[data-access-tab="Single sign-on"]');
     await selectByLabel(page, "#field-require-two-step-sign-in", "For everyone");
     await page.click('[data-action="save-second-factor-rule"]');

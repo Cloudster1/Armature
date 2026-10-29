@@ -184,27 +184,14 @@ describe("the shell's chrome", () => {
 describe("the settings area", () => {
   it("swaps the sidebar for the settings' own, headed by the way back to the last page outside it", async () => {
     window.sessionStorage.setItem("armature.outside-settings", "/projects/AAA/board");
-    state.pathname = "/settings/labels";
+    state.pathname = "/settings/themes";
     render(<Sidebar onNewIssue={() => {}} />);
     expect(document.querySelector('[data-sidebar-area="settings"]')).not.toBeNull();
     expect(document.querySelector('[data-sidebar-group="work"]')).toBeNull();
     const you = Array.from(document.querySelectorAll('[data-sidebar-group="you"] [data-place]')).map((a) => a.getAttribute("data-place"));
     expect(you).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens"]);
-    const settings = Array.from(document.querySelectorAll('[data-sidebar-group="settings"] [data-place]')).map((a) => a.getAttribute("data-place"));
-    expect(settings).toEqual([
-      "Installation",
-      "Access",
-      "Users",
-      "Holidays",
-      "Workflows",
-      "Labels",
-      "Automation",
-      "Fields",
-      "Issue view",
-      "Connected apps",
-      "Webhooks",
-      "Audit log",
-    ]);
+    expect(document.querySelector('[data-sidebar-group="settings"]')).toBeNull();
+    expect(document.querySelector('a[href^="/admin"]')).toBeNull();
     expect(document.querySelector('[data-place="Notification settings"]')?.getAttribute("href")).toBe("/settings/profile#notifications");
     expect(document.querySelector('[data-place="Watching"]')?.getAttribute("href")).toBe("/search?q=watcher+%3D+currentUser%28%29");
 
@@ -220,7 +207,7 @@ describe("the settings area", () => {
     render(<Sidebar onNewIssue={() => {}} />);
     expect(document.querySelector('[data-sidebar-group="you"]')).not.toBeNull();
     expect(document.querySelector('[data-sidebar-group="settings"]')).toBeNull();
-    expect(document.querySelector('a[href="/settings/audit"]')).toBeNull();
+    expect(document.querySelector('a[href="/admin/audit"]')).toBeNull();
   });
 
   it("draws Themes with a glyph of its own, not one the light and dark switch wears", () => {
@@ -229,6 +216,21 @@ describe("the settings area", () => {
     const glyph = document.querySelector('a[href="/settings/themes"] svg')?.getAttribute("data-icon");
     expect(glyph).toBe("palette");
     expect(["sun", "moon", "monitor"]).not.toContain(glyph);
+  });
+
+  it("keeps the work sidebar on the Admin page, with the one Admin entry for an administrator", () => {
+    state.admin = true;
+    state.pathname = "/admin/labels";
+    render(<Sidebar onNewIssue={() => {}} />);
+    expect(document.querySelector('[data-sidebar-area="work"]')).not.toBeNull();
+    expect(document.querySelectorAll('a[href^="/admin"]')).toHaveLength(1);
+    expect(document.querySelector('[data-place="Admin"]')?.getAttribute("href")).toBe("/admin");
+  });
+
+  it("gives somebody who does not administer no Admin entry", () => {
+    state.admin = false;
+    render(<Sidebar onNewIssue={() => {}} />);
+    expect(document.querySelector('a[href^="/admin"]')).toBeNull();
   });
 
   it("goes home when nothing outside it was seen", () => {
@@ -314,7 +316,7 @@ describe("a narrow screen", () => {
     expect(drawer.querySelector('[data-sidebar-group="work"]')).not.toBeNull();
     expect(drawer.querySelector('[data-sidebar-group="project"]')).not.toBeNull();
     const foot = drawer.querySelector("[data-drawer-foot]") as HTMLElement;
-    for (const word of ["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Settings", "Sign out"]) {
+    for (const word of ["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Admin", "Sign out"]) {
       expect(foot.textContent, word).toContain(word);
     }
     expect(foot.querySelector('[data-action="theme"]')).not.toBeNull();
@@ -323,11 +325,11 @@ describe("a narrow screen", () => {
 
   it("holds the settings sidebar in the settings area", () => {
     window.innerWidth = 375;
-    state.pathname = "/settings/users";
+    state.pathname = "/settings/tokens";
     render(<Sidebar onNewIssue={() => {}} drawerOpen onCloseDrawer={() => {}} />);
     const drawer = screen.getByRole("dialog", { name: "Navigation" });
     expect(drawer.getAttribute("data-sidebar-area")).toBe("settings");
-    expect(drawer.querySelector('[data-sidebar-group="settings"]')).not.toBeNull();
+    expect(drawer.querySelector('[data-sidebar-group="you"]')).not.toBeNull();
     expect(drawer.querySelector('[data-action="back-from-settings"]')).not.toBeNull();
   });
 

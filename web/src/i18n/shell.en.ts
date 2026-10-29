@@ -18,7 +18,6 @@ export const shellEn = {
     project: "Project",
     projectAdmin: "Project admin",
     you: "You",
-    settings: "Settings",
   },
   places: {
     home: "Home",
@@ -103,7 +102,6 @@ export const shellEn = {
   account: {
     yours: "Your account",
     switchTo: "Switch to",
-    settings: "Settings",
     signOut: "Sign out",
     roles: { owner: "Owner", admin: "Admin", member: "Member", customer: "Customer" } as Record<string, string>,
   },
@@ -134,7 +132,7 @@ export const shellEn = {
     askAssistant: "Ask the assistant",
     assistantLooks: "a model looks for you",
     openIssue: "Open the issue",
-    settingsPage: (page: string) => `Settings / ${page}`,
+    adminPage: (page: string) => `Admin / ${page}`,
     projectPage: (projectKey: string, page: string) => `${projectKey} / ${page}`,
     newIssue: "New issue",
     switchTheme: "Switch theme",
@@ -142,7 +140,18 @@ export const shellEn = {
     searchQuery: "Search with a query",
     // Extra words a person may type to find their own pages and the settings.
     youWords: "you account",
-    settingsWords: "settings",
+    adminWords: "admin settings",
+  },
+  admin: {
+    title: "Admin",
+    crumb: "Admin",
+    lede: "Everything an administrator sets for everyone.",
+    sections: { people: "People and access", work: "Work", integrations: "Integrations", records: "Records" },
+    navLabel: "Admin sections",
+    menuLabel: "Section",
+    allSections: "All sections",
+    refusedTitle: "Only administrators can open this page",
+    refusedBody: "Ask an administrator of this installation to make the change, or to give you the role.",
   },
   settingsHub: {
     title: "Settings",

@@ -26,7 +26,7 @@ import {
 
 /** Imports the fixture .ics into the default calendar and waits for its days. */
 async function importHolidays(page) {
-  await goto(page, "/settings/holidays");
+  await goto(page, "/admin/holidays");
   await page.waitForSelector('[data-calendar-row="Holidays"] [data-default-calendar]', { timeout: WAIT });
   await page.waitForSelector("[data-holiday-file]", { timeout: WAIT });
   const input = await page.$("[data-holiday-file]");

@@ -46,24 +46,12 @@ describe("the settings hub", () => {
     expect(document.querySelector('[data-settings-group="Everyone"]')).toBeNull();
   });
 
-  it("gives an administrator the Settings card, Issue view among it", () => {
+  it("holds no installation page, not even for an administrator", () => {
     state.admin = true;
     render(<SettingsHub />);
-    expect(links("Settings")).toEqual([
-      "Installation",
-      "Access",
-      "Users",
-      "Holidays",
-      "Workflows",
-      "Labels",
-      "Automation",
-      "Fields",
-      "Issue view",
-      "Connected apps",
-      "Webhooks",
-      "Audit log",
-    ]);
-    expect(document.querySelector('a[href="/settings/issue-view"]')).not.toBeNull();
+    expect(links("You")).toHaveLength(5);
+    expect(document.querySelector('[data-settings-group="Settings"]')).toBeNull();
+    expect(document.querySelector('a[href^="/admin"]')).toBeNull();
   });
 });
 

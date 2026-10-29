@@ -30,11 +30,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("the palette's pages", () => {
-  it("reaches every settings page an administrator has, the ones the old list left out included", async () => {
+  it("reaches every admin page an administrator has, the ones the old list left out included", async () => {
     state.admin = true;
-    const all = await offered("settings");
+    const all = await offered("admin");
     for (const label of ["Installation", "Automation", "Webhooks", "Fields", "Issue view", "Audit log", "Connected apps"]) {
-      expect(all, label).toContain(`Settings / ${label}`);
+      expect(all, label).toContain(`Admin / ${label}`);
     }
   });
 

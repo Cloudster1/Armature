@@ -72,13 +72,13 @@ describe("the avatar menu", () => {
     expect(header.querySelector("[data-account-role]")?.textContent).toBe("Member");
   });
 
-  it("offers Settings to an administrator, after the other tools and before Sign out", async () => {
+  it("offers Admin to an administrator, after the other tools and before Sign out", async () => {
     state.admin = true;
     state.tools = [stator];
     await open();
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([...PERSONAL, "Stator", "Settings", "Sign out"]);
-    await userEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
-    expect(navigate).toHaveBeenCalledWith({ to: "/settings" });
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([...PERSONAL, "Stator", "Admin", "Sign out"]);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Admin" }));
+    expect(navigate).toHaveBeenCalledWith({ to: "/admin" });
   });
 
   it("opens each personal page where it lives, the notification settings and Watching included", async () => {

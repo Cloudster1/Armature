@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
 import { ROLE_ASSIGNMENT_PAGE_SIZE } from "@/config";
@@ -113,12 +113,17 @@ export function canWriteIssues(access: Access | undefined, projectKey: string): 
 
 export const accessQueryKey = ["access"] as const;
 
-/** What the signed-in person may do, which decides which buttons to draw. */
-export function useAccess() {
-  return useQuery({
+/** The query behind useAccess, so a route can wait for it before it draws. */
+export function accessQueryOptions() {
+  return queryOptions({
     queryKey: [...accessQueryKey, "me"],
     queryFn: () => request<Access>("/access/me"),
   });
+}
+
+/** What the signed-in person may do, which decides which buttons to draw. */
+export function useAccess() {
+  return useQuery(accessQueryOptions());
 }
 
 export function useRoles() {

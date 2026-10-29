@@ -48,7 +48,7 @@ scenario("a person whose profile says German sets things up and signs in again i
   await signUp(page);
   await speakThroughAPI(page, "de-DE");
 
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await page.waitForFunction(() => document.documentElement.lang === "de", { timeout: WAIT });
   await page.waitForSelector('[data-access-tab="Single sign-on"]', { timeout: WAIT });
   expect.equal(await textOf(page, '[data-access-tab="Single sign-on"]'), "Zentrale Anmeldung", "the sign-on tab's words");

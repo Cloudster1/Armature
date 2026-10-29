@@ -103,7 +103,7 @@ scenario("roles are granted to people and to groups", async ({ page }) => {
   // Groups are everybody's, so this one has a name nobody else took.
   const managers = uniqueName("Release managers");
 
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await page.click('[data-access-tab="Groups"]');
   await page.waitForSelector("#field-new-group", { timeout: WAIT });
   await page.type("#field-new-group", managers);
@@ -147,7 +147,7 @@ scenario("the roles tab shows one page of grants and finds one by typing", async
     key,
   );
 
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await page.waitForSelector('[data-testid="role-assignments"] tbody tr', { timeout: WAIT });
   const shown = await page.$$eval('[data-testid="role-assignments"] tbody tr', (rows) => rows.length);
   expect.truthy(shown <= 50, `the tab shows one page of grants, not ${shown}`);
@@ -170,7 +170,7 @@ scenario("global administration cannot be scoped to one project", async ({ page 
   await signUp(page, unique("user"), { visit: false });
   await createProject(page, "Whole tenant", { visit: false });
 
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
   await selectByLabel(page, 'select[aria-label="Role"]', "Global administrator");
 
@@ -182,7 +182,7 @@ scenario("global administration cannot be scoped to one project", async ({ page 
 
 scenario("the access page explains what each role grants", async ({ page }) => {
   await signUp(page, unique("user"), { visit: false });
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await page.waitForSelector('select[aria-label="Role"]', { timeout: WAIT });
 
   await selectByLabel(page, 'select[aria-label="Role"]', "Reader");
@@ -197,7 +197,7 @@ serialScenario("single sign-on is configured once, and people sign in at one add
   await signUp(page, unique("user"), { visit: false });
   const putBack = await keepProvider();
   try {
-    await goto(page, "/settings/access");
+    await goto(page, "/admin/access");
     await page.click('[data-access-tab="Single sign-on"]');
     await page.waitForSelector("#field-issuer", { timeout: WAIT });
 
@@ -217,7 +217,7 @@ serialScenario("single sign-on is configured once, and people sign in at one add
     expect.equal(await textOf(page, "[data-sso-start]"), "/api/v1/auth/oidc/start", "the address names no organization");
 
     // The secret is never sent back, only the fact that one is stored.
-    await goto(page, "/settings/access");
+    await goto(page, "/admin/access");
     await page.click('[data-access-tab="Single sign-on"]');
     await page.waitForSelector("#field-client-secret", { timeout: WAIT });
 
@@ -252,7 +252,7 @@ scenario("every tab of the access page fits a phone", async ({ page }) => {
   await waitForApp(page);
 
   await page.setViewport({ width: 400, height: 860 });
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   for (const tab of ["Roles", "Members", "Groups", "Single sign-on"]) {
     await page.waitForSelector(`[data-access-tab="${tab}"]`, { timeout: WAIT });
     await page.click(`[data-access-tab="${tab}"]`);
@@ -284,7 +284,7 @@ scenario("a member granted global administration can author workflows", async ({
 
   await signIn(page, who.email);
   await waitForApp(page);
-  await goto(page, "/settings/workflows");
+  await goto(page, "/admin/workflows");
   await page.waitForSelector('[data-workflow-tab="Workflows"]', { timeout: WAIT });
   const offered = await page.evaluate(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "New workflow"));
   expect.truthy(offered, "a granted administrator is offered a new workflow");
@@ -296,7 +296,7 @@ scenario("a member granted global administration can author workflows", async ({
 serialScenario("the role matrix adds a role and decides what it grants", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   const planner = uniqueName("Sprint planner");
-  await goto(page, "/settings/access");
+  await goto(page, "/admin/access");
   await page.click('[data-access-tab="Matrix"]');
   await page.waitForSelector("[data-role-matrix]", { timeout: WAIT });
   expect.truthy(await page.$('[data-role-column="global_administrator"]'), "the built-in roles are columns");

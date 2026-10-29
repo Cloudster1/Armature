@@ -377,7 +377,7 @@ scenario("the swimlane editor offers only the states of the project's workflows"
   const key = await createProject(page, "Own states", { visit: false });
 
   // A workflow no project follows, holding a status only it has.
-  await goto(page, "/settings/workflows");
+  await goto(page, "/admin/workflows");
   await clickButton(page, "New workflow");
   await page.waitForSelector("#field-name", { timeout: WAIT });
   await page.type("#field-name", elsewhere);
