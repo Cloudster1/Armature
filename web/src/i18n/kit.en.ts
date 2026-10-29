@@ -54,6 +54,7 @@ export const kitEn = {
     title: (verb: string, thing: string) => `${verb} ${thing}?`,
     action: (verb: string, thing: string) => `${verb} ${thing}`,
     verbs: {
+      archive: "Archive",
       delete: "Delete",
       remove: "Remove",
       revoke: "Revoke",
@@ -84,6 +85,7 @@ export const kitEn = {
       group: "group",
       invitation: "invitation",
       issue: (key: string) => `issue ${key}`,
+      projectTemplate: "project template",
       issueType: "issue type",
       label: "label",
       link: "link",

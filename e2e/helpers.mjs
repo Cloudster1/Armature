@@ -296,7 +296,7 @@ async function sendJSON(method, path, body, cookies) {
  * Sends one JSON request as the browser's session, or as nobody, and returns
  * the answer; a refusal throws with the API's own sentence.
  */
-async function callAPI(page, method, path, body, { asNobody = false } = {}) {
+export async function callAPI(page, method, path, body, { asNobody = false } = {}) {
   const cookies = asNobody ? "" : await cookiesOf(page);
   const { response, answer } = await sendJSON(method, path, body, cookies);
   await keepCookies(page, response);

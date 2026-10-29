@@ -149,6 +149,7 @@ export const KEYWORDS_DE: Record<string, string[]> = {
   "page:org-automation": ["automatisierung", "regel", "automatisch", "auslöser", "alle projekte"],
   "page:webhooks": ["webhook", "ereignis", "endpunkt", "integration", "signatur", "geheimnis", "zustellung"],
   "page:holidays": ["feiertag", "feiertage", "kalender", "frei", "urlaub", "arbeitswoche", "teilzeit", "stunden"],
+  "page:project-templates": ["vorlage", "projektvorlage", "duplizieren", "schema", "vorgangstypen", "neues projekt"],
   "page:labels": ["schlagwort", "etikett", "wort"],
   "action:new-issue": ["anlegen", "erstellen", "neu", "vorgang", "bug", "aufgabe", "melden"],
   "action:share-dashboard": ["teilen", "link", "öffentlich", "extern", "bildschirm", "widerrufen", "dashboard"],

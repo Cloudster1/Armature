@@ -55,6 +55,10 @@ export const guideEn = {
       title: "Holidays",
       sentence: "Calendars of days off, imported from an .ics file or typed in; everybody keeps the default until given another under Users.",
     },
+    "page:project-templates": {
+      title: "Project templates",
+      sentence: "The ways a new project can be set up: duplicate a built-in one and choose its workflow scheme and issue types.",
+    },
     "page:labels": { title: "Labels", sentence: "Words shared by every project, with how often each is used." },
     "action:new-issue": { title: "Create an issue", sentence: "The New issue button in the rail files one in the current project; Ctrl+K reaches it too." },
     "action:share-dashboard": {

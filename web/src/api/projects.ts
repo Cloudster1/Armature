@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useMutation } from "./mutation";
 import { request } from "./client";
 import { META_STALE_MS, PROJECT_PAGE_SIZE, PROJECT_PICKER_RESULTS } from "@/config";
+import type { components } from "./schema";
 
 export type ProjectKind = "software" | "service" | "business";
 
@@ -153,6 +154,9 @@ export interface CreateProjectInput {
   template?: string;
 }
 
+/** One issue type a template brings, as the library keeps it. */
+export type TemplateIssueType = components["schemas"]["TemplateIssueType"];
+
 /**
  * A way to set a project up: what kind it is, what its first board is, and
  * whether it brings a workflow of its own or follows the organization's.
@@ -167,14 +171,59 @@ export interface ProjectTemplate {
   workflowName?: string;
   /** The pages a project made from it starts with. */
   features: Feature[];
+  /** Whether a project made from it is set up as a service desk. */
+  desk?: boolean;
+  /** Built in, in code; the others are kept by administrators. */
+  builtin?: boolean;
+  /** The workflow scheme a stored template hands its projects, or null for everyone's default. */
+  scheme?: { id?: string; name: string } | null;
+  /** The types its projects allow, in order. */
+  issueTypes?: TemplateIssueType[];
+  archived?: boolean;
+  archivedAt?: string;
 }
 
-export function useProjectTemplates() {
+export const projectTemplatesQueryKey = ["project-templates"] as const;
+
+/** The templates a new project may start from; an administrator can ask for the archived ones too. */
+export function useProjectTemplates({ archived = false }: { archived?: boolean } = {}) {
   return useQuery({
-    queryKey: ["project-templates"],
-    queryFn: () => request<{ templates: ProjectTemplate[] }>("/project-templates"),
+    queryKey: [...projectTemplatesQueryKey, { archived }],
+    queryFn: () => request<{ templates: ProjectTemplate[] }>(`/project-templates${archived ? "?archived=true" : ""}`),
     staleTime: META_STALE_MS,
   });
+}
+
+/** What an administrator writes about a template; on an edit, what is left out stays. */
+export type ProjectTemplateInput = Omit<components["schemas"]["ProjectTemplateRequest"], "from">;
+
+function useTemplateMutation<Vars>(send: (vars: Vars) => Promise<{ template: ProjectTemplate }>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: send,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectTemplatesQueryKey }),
+  });
+}
+
+/** Keeps a template, or with from copies a built-in (its key) or a stored one (its id). */
+export function useCreateProjectTemplate() {
+  return useTemplateMutation((body: ProjectTemplateInput & { from?: string }) =>
+    request<{ template: ProjectTemplate }>("/project-templates", { method: "POST", body }),
+  );
+}
+
+export function useUpdateProjectTemplate() {
+  return useTemplateMutation(({ id, ...body }: ProjectTemplateInput & { id: string }) =>
+    request<{ template: ProjectTemplate }>(`/project-templates/${id}`, { method: "PATCH", body }),
+  );
+}
+
+export function useArchiveProjectTemplate() {
+  return useTemplateMutation((id: string) => request<{ template: ProjectTemplate }>(`/project-templates/${id}/archive`, { method: "POST" }));
+}
+
+export function useRestoreProjectTemplate() {
+  return useTemplateMutation((id: string) => request<{ template: ProjectTemplate }>(`/project-templates/${id}/restore`, { method: "POST" }));
 }
 
 export function useCreateProject() {

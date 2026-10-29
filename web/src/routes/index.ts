@@ -54,6 +54,7 @@ import { projectIssueTypesRoute } from "./project-issue-types";
 import { issueArrangementRoute } from "./issue-arrangement";
 import { labelsRoute } from "./labels";
 import { issueTypesRoute } from "./issue-types";
+import { projectTemplatesRoute } from "./project-templates";
 import { holidaysRoute } from "./holidays";
 import { usersRoute } from "./users";
 import { themesRoute } from "./themes";
@@ -126,6 +127,7 @@ const routeTree = rootRoute.addChildren([
       workflowNewRoute,
       workflowDesignRoute,
       issueTypesRoute,
+      projectTemplatesRoute,
       labelsRoute,
       orgAutomationRoute,
       orgFieldsRoute,

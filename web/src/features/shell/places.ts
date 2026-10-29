@@ -208,6 +208,17 @@ export const adminPlaces: AdminPlace[] = [
     },
   },
   {
+    to: "/admin/project-templates",
+    section: "work",
+    get label() {
+      return t.shell.places.projectTemplates;
+    },
+    icon: "Component",
+    get detail() {
+      return t.shell.places.projectTemplatesDetail;
+    },
+  },
+  {
     to: "/admin/labels",
     section: "work",
     get label() {

@@ -78,6 +78,10 @@ export const guideDe: typeof guideEn = {
       sentence:
         "Kalender freier Tage, aus einer .ics-Datei importiert oder eingetippt; alle behalten den Standard, bis ihnen unter Benutzer ein anderer gegeben wird.",
     },
+    "page:project-templates": {
+      title: "Projektvorlagen",
+      sentence: "Die Arten, ein neues Projekt anzulegen: Duplizieren Sie eine eingebaute Vorlage und wählen Sie Workflow-Schema und Vorgangstypen.",
+    },
     "page:labels": { title: "Schlagwörter", sentence: "Wörter, die alle Projekte teilen, mit ihrer Häufigkeit." },
     "action:new-issue": {
       title: "Einen Vorgang anlegen",

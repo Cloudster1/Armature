@@ -121,6 +121,8 @@ export const projectSetupDe: typeof projectSetupEn = {
     defaultWorkflows: "die Standard-Workflows",
     shape: (board: string, workflow: string) => `${board} · ${workflow}`,
     without: (features: string) => ` · ohne ${features}`,
+    madeHere: "Hier erstellt",
+    types: (names: string) => ` · ${names}`,
     loading: "Vorlagen werden geladen...",
     label: "Vorlage",
   },

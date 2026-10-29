@@ -224,6 +224,12 @@ const pages: GuideEntry[] = [
     keywords: ["label", "tag", "word"],
     to: () => ({ to: "/admin/labels" }),
   }),
+  entry({
+    id: "page:project-templates",
+    keywords: ["template", "project template", "scrum", "kanban", "duplicate", "scheme", "issue types", "new project"],
+    needs: "admin",
+    to: () => ({ to: "/admin/project-templates" }),
+  }),
 ];
 
 const actions: GuideEntry[] = [

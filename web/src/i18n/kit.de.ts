@@ -54,6 +54,7 @@ export const kitDe: typeof kitEn = {
     title: (verb: string, thing: string) => `${thing} ${verb}?`,
     action: (verb: string, thing: string) => `${thing} ${verb}`,
     verbs: {
+      archive: "archivieren",
       delete: "löschen",
       remove: "entfernen",
       revoke: "widerrufen",
@@ -84,6 +85,7 @@ export const kitDe: typeof kitEn = {
       group: "Gruppe",
       invitation: "Einladung",
       issue: (key: string) => `Vorgang ${key}`,
+      projectTemplate: "Projektvorlage",
       issueType: "Vorgangstyp",
       label: "Schlagwort",
       link: "Link",

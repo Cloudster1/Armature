@@ -117,6 +117,8 @@ export const projectSetupEn = {
     defaultWorkflows: "the default workflows",
     shape: (board: string, workflow: string) => `${board} · ${workflow}`,
     without: (features: string) => ` · no ${features}`,
+    madeHere: "Made here",
+    types: (names: string) => ` · ${names}`,
     loading: "Loading templates...",
     label: "Template",
   },

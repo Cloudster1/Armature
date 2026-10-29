@@ -13,6 +13,7 @@ const ADMIN = [
   "Holidays",
   "Workflows",
   "Issue types",
+  "Project templates",
   "Labels",
   "Automation",
   "Fields",
