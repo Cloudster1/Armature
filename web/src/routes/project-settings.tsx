@@ -8,7 +8,7 @@ import { Button, Card, EmptyState, ErrorBanner, Field, Page, PageHeader, Section
 import { DOCS_LABEL_MAX_LENGTH } from "@/config";
 import { useDraft } from "@/lib/draft";
 import { FEATURES, featureWord, hasFeature } from "@/features/projects/features";
-import { projectSetupPages, setupAddress } from "@/features/projects/settingsTabs";
+import { projectSettingsPage, projectSetupPages, setupAddress } from "@/features/projects/settingsTabs";
 import { ShareSettings } from "@/features/projects/ShareSettings";
 import { PlanningSettings } from "@/features/projects/PlanningSettings";
 import { PersonPicker } from "@/features/people/PersonPicker";
@@ -72,7 +72,7 @@ function ProjectSettingsLayout() {
             value={current?.path ?? "/settings"}
             panelId={panelId}
             onChange={(next) => navigate({ to: `${base}${setupAddress(next)}` as never })}
-            tabs={shown.map((page) => ({ value: page.path, label: page.tab, attrs: { "data-settings-tab": page.path.slice(1) || "general" } }))}
+            tabs={shown.map((page) => ({ value: page.path, label: page.tab, attrs: { "data-settings-tab": page === projectSettingsPage ? "general" : page.path.slice(1) } }))}
           />
         }
       />

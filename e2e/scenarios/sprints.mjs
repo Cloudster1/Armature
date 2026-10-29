@@ -227,7 +227,7 @@ scenario("a team carrying work cannot just be deleted", async ({ page }) => {
   await createTeam(page, key, "Platform");
   await assignTeam(page, task, "Platform");
 
-  await goto(page, `/projects/${key}/teams`);
+  await goto(page, `/projects/${key}/settings/teams`);
   await page.evaluate(() => {
     const card = document.querySelector('[data-team="Platform"]');
     [...card.querySelectorAll("button")].find((b) => b.textContent.trim() === "Delete")?.click();

@@ -18,8 +18,11 @@ import {
   pickProjectAction,
   press,
   inviteMember,
+  openSetupTab,
   PASSWORD,
   reload,
+  revokeAll,
+  waitForPath,
   settled,
   signIn,
   signInThroughForm,
@@ -387,4 +390,58 @@ scenario("an archived project's settings are closed until it is restored", async
   await page.waitForFunction(() => !document.querySelector("[data-archived-notice]"), { timeout: WAIT });
   await page.waitForFunction(() => document.querySelector("#field-project-name")?.matches(":enabled"), { timeout: WAIT });
   expect.truthy((await page.$('[data-action="archive-project"]')) !== null, "the project can be archived again");
+});
+
+// A project's setup is tabs of its settings, not a group of the sidebar; the
+// old addresses of those pages land on their tabs, search and hash kept.
+scenario("a project's setup lives in the tabs of its settings, and its old addresses land on them", async ({ page }) => {
+  await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Set up in tabs", { visit: false });
+  await goto(page, `/projects/${key}`);
+  await page.waitForSelector(`[data-sidebar] a[href="/projects/${key}/settings"]`, { timeout: WAIT });
+  expect.equal(await page.$('[data-sidebar-group="project-admin"]'), null, "the sidebar has no project-admin group");
+  const entries = await page.$$eval(`[data-sidebar] a[href^="/projects/${key}/settings"]`, (links) => links.length);
+  expect.equal(entries, 1, "and one Settings entry");
+
+  const tabs = await openAndListTabs(page, key);
+  for (const tab of ["general", "workflows", "fields", "issue-view"]) expect.truthy(tabs.includes(tab), `the settings have a ${tab} tab: ${tabs.join(", ")}`);
+  for (const tab of tabs.filter((each) => each !== "general")) {
+    await page.click(`[data-settings-tab="${tab}"]`);
+    await waitForPath(page, `/projects/${key}/settings/${tab}`);
+    expect.equal(await page.$eval(`[data-settings-tab="${tab}"]`, (el) => el.getAttribute("aria-selected")), "true", `${tab} is the chosen tab`);
+  }
+
+  await openSetupTab(page, key, "fields");
+  await goto(page, `/projects/${key}/fields?q=area#top`);
+  await waitForPath(page, `/projects/${key}/settings/fields`);
+  expect.equal(await page.evaluate(() => `${location.search}${location.hash}`), "?q=area#top", "the old address keeps its search and hash");
+  await page.waitForSelector('[data-settings-tab="fields"][aria-selected="true"]', { timeout: WAIT });
+});
+
+/** Opens the project's settings from the sidebar and names the tabs on offer, by their slugs. */
+async function openAndListTabs(page, key) {
+  await page.click(`[data-sidebar] a[href="/projects/${key}/settings"]`);
+  await page.waitForSelector("[data-settings-tab]", { timeout: WAIT });
+  return page.$$eval("[data-settings-tab]", (tabs) => tabs.map((tab) => tab.getAttribute("data-settings-tab")));
+}
+
+scenario("a reader of a project sees no Settings entry, and its address tells them to ask", async ({ page }) => {
+  const owner = await signUp(page, unique("user"), { visit: false });
+  const key = await createProject(page, "Read only setup", { visit: false });
+  const who = await inviteMember(page, "settingsreader");
+  await acceptInvite(page, who, { visit: false });
+  await signIn(page, owner.email);
+  await waitForApp(page);
+  await revokeAll(page, who.name);
+  await grantRole(page, { who: who.name, role: "Reader", projectKey: key });
+
+  await signIn(page, who.email);
+  await waitForApp(page);
+  await goto(page, `/projects/${key}`);
+  await page.waitForSelector("[data-sidebar] a[href$='/board'], [data-sidebar] a[href='/projects/" + key + "']", { timeout: WAIT });
+  expect.equal(await page.$(`[data-sidebar] a[href="/projects/${key}/settings"]`), null, "a reader is offered no Settings");
+  await goto(page, `/projects/${key}/teams`);
+  await waitForPath(page, `/projects/${key}/settings/teams`);
+  await page.waitForFunction(() => document.body.innerText.includes("Only the project's administrators change its settings"), { timeout: WAIT });
+  expect.equal(await page.$("[data-settings-tab]"), null, "and no tab opens for them");
 });

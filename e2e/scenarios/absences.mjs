@@ -92,7 +92,7 @@ scenario("a scrum master records an absence for somebody on their team", async (
 
   await signIn(page, master.email, PASSWORD);
   await waitForApp(page);
-  await goto(page, `/projects/${key}/teams`);
+  await goto(page, `/projects/${key}/settings/teams`);
   await page.waitForSelector(`[data-team-member="${member.name}"] [data-action="record-member-absence"]`, { timeout: WAIT });
   await page.click(`[data-team-member="${member.name}"] [data-action="record-member-absence"]`);
   await page.waitForSelector("[data-absence-dialog] [data-absence-form]", { timeout: WAIT });
@@ -125,7 +125,7 @@ scenario("a person is told in their inbox when a scrum master records an absence
   // The scrum master adds a day for them, and is refused taking theirs away.
   await signIn(page, master.email, PASSWORD);
   await waitForApp(page);
-  await goto(page, `/projects/${key}/teams`);
+  await goto(page, `/projects/${key}/settings/teams`);
   await page.waitForSelector(`[data-team-member="${member.name}"] [data-action="record-member-absence"]`, { timeout: WAIT });
   await page.click(`[data-team-member="${member.name}"] [data-action="record-member-absence"]`);
   await page.waitForSelector("[data-absence-dialog] [data-absence-form]", { timeout: WAIT });

@@ -107,7 +107,7 @@ scenario("an issue takes a description, the project's own fields and a file", as
   const key = await createProject(page, "Recorded", { visit: false });
 
   // The project defines what it wants to record.
-  await goto(page, `/projects/${key}/fields`);
+  await goto(page, `/projects/${key}/settings/fields`);
   await clickButton(page, "New field");
   await fill(page, "Field name", "Customer");
   await selectByLabel(page, "#field-kind", "Select");

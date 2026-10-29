@@ -156,7 +156,7 @@ serialScenario("a field defined for all projects is on every project", async ({ 
     await page.waitForSelector(`[data-field="${costCentre}"][data-field-scope="org"]`, { timeout: WAIT });
 
     for (const key of [first, second]) {
-      await goto(page, `/projects/${key}/fields`);
+      await goto(page, `/projects/${key}/settings/fields`);
       await page.waitForSelector(`[data-field="${costCentre}"][data-field-scope="org"]`, { timeout: WAIT });
     }
 
@@ -169,7 +169,7 @@ serialScenario("a field defined for all projects is on every project", async ({ 
     await page.click(`[data-field="${region}"] [data-action="promote-field"]`);
     await confirm(page);
     await page.waitForSelector(`[data-field="${region}"][data-field-scope="org"]`, { timeout: WAIT });
-    await goto(page, `/projects/${first}/fields`);
+    await goto(page, `/projects/${first}/settings/fields`);
     await page.waitForSelector(`[data-field="${region}"][data-field-scope="org"]`, { timeout: WAIT });
   } finally {
     await removeOrgFields([costCentre, region]);

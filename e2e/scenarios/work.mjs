@@ -107,7 +107,7 @@ scenario("a rule labels a ticket when it is moved, and the run log says so", asy
   // The worker runs the rule from the stream; the label arrives on its own.
   await eventually(page, '[data-label="moving"]');
 
-  await goto(page, `/projects/${key}/automation`);
+  await goto(page, `/projects/${key}/settings/automation`);
   await page.waitForSelector('[data-rule="Mark moved work"]', { timeout: WAIT });
   await ruleMenu(page, "Mark moved work", "rule-log");
   await page.waitForSelector('[data-rule-run="done"]', { timeout: WAIT });
@@ -194,7 +194,7 @@ scenario("a ticket filed with a component lands on the component's default assig
   await pickName(page, "issue-components", "Billing");
   // Filing through the API with the component, as the create dialog will: the assignee is the component's.
   const filed = await page.evaluate(async (projectKey) => {
-    const components = await (await fetch(`/api/v1/projects/${projectKey}/components`, { credentials: "include" })).json();
+    const components = await (await fetch(`/api/v1/projects/${projectKey}/settings/components`, { credentials: "include" })).json();
     const r = await fetch(`/api/v1/projects/${projectKey}/issues`, {
       method: "POST",
       credentials: "include",
