@@ -158,7 +158,7 @@ func TestADigestBundlesTheQueue(t *testing.T) {
 			bobs = append(bobs, m)
 		}
 	}
-	if len(bobs) != 1 || !strings.Contains(bobs[0].Subject, "2 updates") || strings.Count(bobs[0].Body, "assigned") != 2 || !strings.Contains(bobs[0].Body, "http://app.test/inbox") {
+	if len(bobs) != 1 || !strings.Contains(bobs[0].Subject, "2 updates") || strings.Count(bobs[0].Body, "assigned") != 2 || !strings.Contains(bobs[0].Body, "http://app.test/notifications") {
 		t.Fatalf("digest mail = %+v, want one with both items", bobs)
 	}
 
