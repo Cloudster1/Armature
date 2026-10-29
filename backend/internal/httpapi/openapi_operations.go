@@ -25,6 +25,7 @@ import (
 	"github.com/armature/armature/backend/internal/git"
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/issuetype"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/notify"
@@ -264,7 +265,13 @@ var operations = []operation{
 	{method: "DELETE", path: "/absences/{absenceID}", handler: "handleRemoveAbsence", tag: "availability", summary: "Take an absence back.", responses: none()},
 	{method: "GET", path: "/members", handler: "handleListMembers", tool: "list_members", toolHelp: "Everyone with an active account here, with the ids other tools take for assignees, 50 at a time by name; q finds somebody by part of their name or address, staff leaves customers out, and offset reads the next page.", tag: "users", summary: "Everyone with an active account here and their role, a page at a time, with how many there are in all.",
 		query: []param{{name: "q", description: "Text the name or the address contains; names it starts come first."}, {name: "staff", schema: boolParam, description: "Leave the service desk's customers out."}, {name: "limit", schema: intParam, description: "1 to 200; 50 unless said."}, {name: "offset", schema: intParam}}, responses: ok(auth.MemberPage{})},
-	{method: "GET", path: "/issue-types", handler: "handleListIssueTypes", tool: "list_issue_types", toolHelp: "The issue types and their ids, needed to file an issue of a given type.", tag: "issues", summary: "The issue types and where each sits in the hierarchy.", responses: ok(env{"issueTypes": []issueTypeView{}})},
+	{method: "GET", path: "/issue-types", handler: "handleListIssueTypes", tool: "list_issue_types", toolHelp: "The issue types and their ids, needed to file an issue of a given type.", tag: "issues", summary: "The issue types, where each sits in the hierarchy, and whether it is built in; retired ones only when asked for.",
+		query: []param{{name: "retired", schema: boolParam, description: "true lists the retired types too."}}, responses: ok(env{"issueTypes": []issuetype.IssueType{}})},
+	{method: "POST", path: "/issue-types", handler: "handleCreateIssueType", tag: "issues", summary: "Add an issue type of the installation's own, at any level.", request: issueTypeRequest{}, responses: created(env{"issueType": issuetype.IssueType{}})},
+	{method: "PATCH", path: "/issue-types/{typeID}", handler: "handleUpdateIssueType", tag: "issues", summary: "Change a type; a built-in one keeps its name and level, and one issues use keeps its level.", request: issueTypeRequest{}, responses: ok(env{"issueType": issuetype.IssueType{}})},
+	{method: "DELETE", path: "/issue-types/{typeID}", handler: "handleDeleteIssueType", tag: "issues", summary: "Remove a type of the installation's own that nothing uses.", responses: none()},
+	{method: "POST", path: "/issue-types/{typeID}/retire", handler: "handleRetireIssueType", tag: "issues", summary: "Stop offering a type for anything new; its issues keep it.", responses: ok(env{"issueType": issuetype.IssueType{}})},
+	{method: "POST", path: "/issue-types/{typeID}/reinstate", handler: "handleReinstateIssueType", tag: "issues", summary: "Offer a retired type again.", responses: ok(env{"issueType": issuetype.IssueType{}})},
 	{method: "GET", path: "/statuses", handler: "handleListStatuses", tool: "list_statuses", toolHelp: "The statuses workflows are built from.", tag: "workflows", summary: "The statuses workflows are built from.", responses: ok(env{"statuses": []workflow.Status{}})},
 	{method: "POST", path: "/statuses", handler: "handleCreateStatus", tag: "workflows", summary: "Coin a status workflows can be built from.", request: createStatusRequest{}, responses: created(env{"status": workflow.Status{}})},
 	{method: "GET", path: "/link-types", handler: "handleListLinkTypes", tag: "issues", summary: "The ways two issues can relate.", responses: ok(env{"linkTypes": []issue.LinkTypeRef{}})},

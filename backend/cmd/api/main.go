@@ -40,6 +40,7 @@ import (
 	"github.com/armature/armature/backend/internal/httpapi"
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/issuetype"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/mail"
 	"github.com/armature/armature/backend/internal/milestone"
@@ -208,6 +209,7 @@ func run() error {
 		Fields:       field.NewService(cluster),
 		Arrange:      arrange.NewService(cluster),
 		Labels:       labels,
+		IssueTypes:   issuetype.NewService(cluster),
 		Notify:       notify.NewService(cluster),
 		Automation:   automation.NewService(cluster, issues, labels, log).WithMailer(mailer).WithWebhooks(webhooks),
 		Webhooks:     webhooks,

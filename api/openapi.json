@@ -6610,9 +6610,19 @@
     "/issue-types": {
       "get": {
         "operationId": "listIssueTypes",
-        "summary": "The issue types and where each sits in the hierarchy.",
+        "summary": "The issue types, where each sits in the hierarchy, and whether it is built in; retired ones only when asked for.",
         "tags": [
           "issues"
+        ],
+        "parameters": [
+          {
+            "name": "retired",
+            "in": "query",
+            "description": "true lists the retired types too.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -6625,12 +6635,252 @@
                     "issueTypes": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/IssueTypeView"
+                        "$ref": "#/components/schemas/IssueType"
                       }
                     }
                   },
                   "required": [
                     "issueTypes"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createIssueType",
+        "summary": "Add an issue type of the installation's own, at any level.",
+        "tags": [
+          "issues"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueTypeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issueType": {
+                      "$ref": "#/components/schemas/IssueType"
+                    }
+                  },
+                  "required": [
+                    "issueType"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issue-types/{typeID}": {
+      "delete": {
+        "operationId": "deleteIssueType",
+        "summary": "Remove a type of the installation's own that nothing uses.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "typeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateIssueType",
+        "summary": "Change a type; a built-in one keeps its name and level, and one issues use keeps its level.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "typeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueTypeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issueType": {
+                      "$ref": "#/components/schemas/IssueType"
+                    }
+                  },
+                  "required": [
+                    "issueType"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issue-types/{typeID}/reinstate": {
+      "post": {
+        "operationId": "reinstateIssueType",
+        "summary": "Offer a retired type again.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "typeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issueType": {
+                      "$ref": "#/components/schemas/IssueType"
+                    }
+                  },
+                  "required": [
+                    "issueType"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issue-types/{typeID}/retire": {
+      "post": {
+        "operationId": "retireIssueType",
+        "summary": "Stop offering a type for anything new; its issues keep it.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "typeID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issueType": {
+                      "$ref": "#/components/schemas/IssueType"
+                    }
+                  },
+                  "required": [
+                    "issueType"
                   ]
                 }
               }
@@ -25595,14 +25845,31 @@
           "todo"
         ]
       },
-      "IssueTypeView": {
+      "IssueType": {
         "type": "object",
         "properties": {
+          "builtin": {
+            "type": "boolean"
+          },
           "description": {
             "type": "string"
           },
           "icon": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "task",
+              "bug",
+              "story",
+              "epic",
+              "subtask",
+              "initiative",
+              "change",
+              "improvement",
+              "incident",
+              "question",
+              "research",
+              "release"
+            ]
           },
           "id": {
             "type": "string",
@@ -25619,6 +25886,13 @@
           },
           "position": {
             "type": "integer"
+          },
+          "retired": {
+            "type": "boolean"
+          },
+          "retiredAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -25627,8 +25901,41 @@
           "icon",
           "level",
           "isSubtask",
-          "position"
+          "position",
+          "builtin",
+          "retired"
         ]
+      },
+      "IssueTypeRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string",
+            "enum": [
+              "task",
+              "bug",
+              "story",
+              "epic",
+              "subtask",
+              "initiative",
+              "change",
+              "improvement",
+              "incident",
+              "question",
+              "research",
+              "release"
+            ]
+          },
+          "level": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
       },
       "Item": {
         "type": "object",

@@ -15,6 +15,7 @@ import (
 	"github.com/armature/armature/backend/internal/field"
 	"github.com/armature/armature/backend/internal/git"
 	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/issuetype"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/openapi"
 	"github.com/armature/armature/backend/internal/perm"
@@ -398,6 +399,7 @@ func declareEnums(b *openapi.Builder) {
 	}
 	b.Enums[reflect.TypeOf(project.Feature(""))] = features
 	set(calendar.Kind(""), "issue", "sprint", "milestone", "version", "holiday", "absence")
+	b.Enums[reflect.TypeOf(issuetype.Icon(""))] = issuetype.IconNames()
 	b.FieldOverrides["Label.color"] = &openapi.Schema{Type: "string", Enum: label.Colors}
 	b.FieldOverrides["LabelRef.color"] = &openapi.Schema{Type: "string", Enum: label.Colors}
 	b.FieldOverrides["ResourceRow.kind"] = &openapi.Schema{Type: "string", Enum: []string{plan.LoadTeam, plan.RowPerson, plan.LoadUnassigned}}

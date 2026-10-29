@@ -34,6 +34,7 @@ import (
 	"github.com/armature/armature/backend/internal/git"
 	"github.com/armature/armature/backend/internal/installation"
 	"github.com/armature/armature/backend/internal/issue"
+	"github.com/armature/armature/backend/internal/issuetype"
 	"github.com/armature/armature/backend/internal/label"
 	"github.com/armature/armature/backend/internal/milestone"
 	"github.com/armature/armature/backend/internal/notify"
@@ -230,6 +231,8 @@ type Server struct {
 	Fields      *field.Service
 	Attachments *attachment.Service
 	Labels      *label.Service
+	// IssueTypes is the library of issue types every project picks from.
+	IssueTypes *issuetype.Service
 	// Arrange says which of an issue's fields are shown, where, and in what
 	// order, per project and per issue type.
 	Arrange *arrange.Service
