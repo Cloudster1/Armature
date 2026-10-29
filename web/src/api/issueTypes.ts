@@ -1,7 +1,26 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
 import { request } from "./client";
-import type { IssueType, IssueTypeIcon } from "./issues";
+import { issueTypesQueryKey, type IssueType, type IssueTypeIcon } from "./issues";
+import { META_STALE_MS } from "@/config";
+import type { components } from "./schema";
+
+/** A type as a project keeps it: the library's type, and how many of the project's issues have it. */
+export type ProjectIssueType = components["schemas"]["ProjectIssueType"];
+
+/**
+ * The types a project allows, in its order. Anything that offers a type for
+ * new or changed work in one project reads this, not the library; a reading
+ * of what exists asks for the retired ones the project keeps too.
+ */
+export function useProjectIssueTypes(projectKey: string, { retired = false }: { retired?: boolean } = {}) {
+  return useQuery({
+    queryKey: [...issueTypesQueryKey, "project", projectKey, { retired }],
+    queryFn: () => request<{ issueTypes: ProjectIssueType[] }>(`/projects/${projectKey}/issue-types${retired ? "?retired=true" : ""}`),
+    staleTime: META_STALE_MS,
+    enabled: Boolean(projectKey),
+  });
+}
 
 /** What an administrator writes about a type; on an edit, what is left out stays. */
 export interface IssueTypeInput {
@@ -40,4 +59,11 @@ export function useReinstateIssueType() {
 
 export function useDeleteIssueType() {
   return useLibraryMutation((id: string) => request<void>(`/issue-types/${id}`, { method: "DELETE" }));
+}
+
+/** Choose the types a project allows, in order. A library edit and this both refresh every reading of either. */
+export function useSetProjectIssueTypes(projectKey: string) {
+  return useLibraryMutation((typeIds: string[]) =>
+    request<{ issueTypes: ProjectIssueType[] }>(`/projects/${projectKey}/issue-types`, { method: "PUT", body: { typeIds } }),
+  );
 }

@@ -46,7 +46,7 @@ const requested: URL[] = [];
 
 function answer(url: URL): unknown {
   const path = url.pathname.replace("/api/v1", "");
-  if (path === "/issue-types") return { issueTypes: types };
+  if (path === "/projects/LONG/issue-types") return { issueTypes: types };
   if (path === "/projects/LONG/issues") {
     const text = url.searchParams.get("text") ?? "";
     const found = [oldEpic, recentEpic].filter((each) => each.summary.toLowerCase().includes(text.toLowerCase()));

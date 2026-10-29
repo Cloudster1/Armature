@@ -50,6 +50,7 @@ import { installationRoute } from "./installation";
 import { adminIndexRoute, adminRoute, settingsMovedDeepRoute, settingsMovedRoute } from "./admin";
 import { repositoriesRoute } from "./repositories";
 import { fieldsRoute } from "./fields";
+import { projectIssueTypesRoute } from "./project-issue-types";
 import { issueArrangementRoute } from "./issue-arrangement";
 import { labelsRoute } from "./labels";
 import { issueTypesRoute } from "./issue-types";
@@ -100,6 +101,7 @@ const routeTree = rootRoute.addChildren([
         projectWorkflowsRoute,
         fieldsRoute,
         issueArrangementRoute,
+        projectIssueTypesRoute,
         componentsRoute,
         repositoriesRoute,
         automationRoute,

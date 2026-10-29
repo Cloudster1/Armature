@@ -71,6 +71,9 @@ const PROJECT_PAGE_WORDS: Record<string, { keywords: string[]; target?: string }
   "/fields": {
     keywords: ["field", "custom", "column", "attribute", "property"],
   },
+  "/issue-types": {
+    keywords: ["issue type", "type", "allow", "bug", "epic", "task", "story", "order"],
+  },
   "/repositories": {
     keywords: ["repository", "git", "branch", "commit", "webhook", "gitea", "github", "gitlab", "pull"],
   },

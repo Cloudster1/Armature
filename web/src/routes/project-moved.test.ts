@@ -14,7 +14,7 @@ type Moved = { path: string; beforeLoad: (args: unknown) => void };
 
 describe("a project's old setup addresses", () => {
   it("name every setup page but General, and Teams, which stays a work page of the project", () => {
-    expect(MOVED_PROJECT_PAGES).toEqual(["/workflows", "/fields", "/issue-view", "/components", "/repositories", "/automation", "/import"]);
+    expect(MOVED_PROJECT_PAGES).toEqual(["/workflows", "/fields", "/issue-view", "/issue-types", "/components", "/repositories", "/automation", "/import"]);
     expect((projectMovedRoutes as unknown as Moved[]).map((route) => route.path)).toEqual(MOVED_PROJECT_PAGES);
   });
 

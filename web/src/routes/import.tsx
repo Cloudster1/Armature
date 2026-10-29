@@ -97,7 +97,7 @@ function ImportPage() {
       {shape && (
         <>
           <MappingCard columns={shape.preview.columns} targets={shape.targets} mapping={mapping} onChange={remap} />
-          <WordsCard words={shape.preview.words} values={values} onChange={setValues} />
+          <WordsCard projectKey={projectKey} words={shape.preview.words} values={values} onChange={setValues} />
           <PeopleCard people={shape.preview.people} choice={people} onChange={setPeople} />
 
           <Card className="mb-4 p-5">

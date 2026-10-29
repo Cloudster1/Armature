@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -8,7 +8,7 @@ import type { Issue } from "@/api/issues";
 // Before a move is confirmed, the dialog names the answers that stay behind:
 // those to the old project's own fields. Organization fields go along.
 
-const state = { values: [] as FieldValue[] };
+const state = { values: [] as FieldValue[], moveError: null as Error | null };
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="#">{children}</a>,
@@ -17,7 +17,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/api/filters", async () => ({
   ...(await vi.importActual<typeof import("@/api/filters")>("@/api/filters")),
-  useMoveIssue: () => ({ mutate: vi.fn(), isPending: false, error: null }),
+  useMoveIssue: () => ({ mutate: vi.fn(), isPending: false, error: state.moveError }),
   useCloneIssue: () => ({ mutate: vi.fn(), isPending: false, error: null }),
 }));
 
@@ -78,6 +78,17 @@ function draw(values: FieldValue[]) {
 }
 
 describe("MoveDialog", () => {
+  afterEach(() => {
+    state.moveError = null;
+  });
+
+  // The server refuses a move into a project that does not allow the type, and says what to do.
+  it("says the server's sentence when the target does not use the issue's type", () => {
+    state.moveError = new Error("OPS does not use Bug; ask its administrator to allow it or change the type first.");
+    draw([]);
+    expect(screen.getByRole("alert")).toHaveTextContent("OPS does not use Bug; ask its administrator to allow it or change the type first.");
+  });
+
   it("names each answer to a field of the old project before the move", () => {
     draw([answer("Cost", true, 120, "120"), answer("Platform", false, "Web", "Web"), answer("Customer", false)]);
     const dropped = document.querySelector("[data-move-dropped]");

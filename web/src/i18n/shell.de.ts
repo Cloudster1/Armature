@@ -80,6 +80,7 @@ export const shellDe: typeof shellEn = {
     workflow: "Workflow",
     fields: "Felder",
     issueView: "Vorgangsansicht",
+    issueTypes: "Vorgangstypen",
     components: "Komponenten",
     repositories: "Repositorys",
     automation: "Automatisierung",

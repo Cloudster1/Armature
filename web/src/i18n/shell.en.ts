@@ -78,6 +78,7 @@ export const shellEn = {
     workflow: "Workflow",
     fields: "Fields",
     issueView: "Issue view",
+    issueTypes: "Issue types",
     components: "Components",
     repositories: "Repositories",
     automation: "Automation",

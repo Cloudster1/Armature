@@ -1,7 +1,8 @@
 import { markdownToDoc } from "@/features/editor/markdown";
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { useCreateIssue, useIssueHierarchy, useIssueTypes, useSetParent, type Issue, type Progress, type TreeNode } from "@/api/issues";
+import { useCreateIssue, useIssueHierarchy, useSetParent, type Issue, type Progress, type TreeNode } from "@/api/issues";
+import { useProjectIssueTypes } from "@/api/issueTypes";
 import { useParentCandidates } from "@/api/issueReads";
 import { Button, ErrorBanner, Input, ProgressBar as Bar, SelectInput, Textarea, cx } from "@/components/ui";
 import { Avatar, StatusBadge, TypeBadge } from "./badges";
@@ -198,7 +199,7 @@ function AddChildForm({
 export function ParentPicker({ issue }: { issue: Issue }) {
   const setParent = useSetParent();
   const [words, setWords] = useState("");
-  const { data: typeData } = useIssueTypes({ retired: true });
+  const { data: typeData } = useProjectIssueTypes(issue.projectKey, { retired: true });
   // The server is asked for the level above by type, so a parent older than
   // any one page is still found by typing its name.
   const levelAbove = (typeData?.issueTypes ?? []).filter((type) => type.level === issue.type.level + 1).map((type) => type.id);

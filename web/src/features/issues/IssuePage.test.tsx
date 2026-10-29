@@ -62,7 +62,6 @@ vi.mock("@/api/issues", async () => ({
   useIssues: nothing,
   useStatuses: nothing,
   useWorklogs: nothing,
-  useIssueTypes: nothing,
   useAddComment: mutation,
   useTransitionIssue: mutation,
   useUpdateIssue: mutation,
@@ -74,6 +73,7 @@ vi.mock("@/api/issues", async () => ({
 
 vi.mock("@/api/issueReads", () => ({ useParentCandidates: nothing }));
 
+vi.mock("@/api/issueTypes", () => ({ useProjectIssueTypes: nothing }));
 vi.mock("@/api/people", () => ({ useMemberSearch: nothing, useFindMentionable: () => async () => [] }));
 
 vi.mock("@/api/access", async () => ({

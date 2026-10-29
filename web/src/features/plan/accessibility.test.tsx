@@ -75,8 +75,22 @@ vi.mock("@/api/plan", async () => ({
 vi.mock("@/api/issues", async () => ({
   ...(await vi.importActual<typeof import("@/api/issues")>("@/api/issues")),
   useCreateIssue: () => idle,
-  useIssueTypes: () => ({ data: [] }),
   useSetParent: () => idle,
+}));
+
+// The library has more; the plan's add row offers what ALP allows, standard level and up.
+vi.mock("@/api/issueTypes", () => ({
+  useProjectIssueTypes: (key: string) => ({
+    data: {
+      issueTypes:
+        key === "ALP"
+          ? [
+              { id: "t-task", name: "Task", icon: "task", level: 0, isSubtask: false },
+              { id: "t-sub", name: "Subtask", icon: "subtask", level: -1, isSubtask: true },
+            ]
+          : [],
+    },
+  }),
 }));
 
 const { Timeline } = await import("./Timeline");
@@ -93,5 +107,12 @@ describe("the planning view", () => {
     for (const key of ["ALP-1", "ALP-2"]) expect(document.querySelector(`[data-plan-bar="${key}"]`), key).not.toBeNull();
     expect(document.querySelector("[data-plan-arrow]")).not.toBeNull();
     expect(await axeViolations()).toEqual([]);
+  });
+
+  it("offers only the project's standard types in the row that adds an issue", () => {
+    renderInShell(<Timeline projectKey="ALP" />);
+    const picks = [...document.querySelectorAll("[data-plan-add-type]")];
+    expect(picks.length).toBeGreaterThan(0);
+    for (const pick of picks) expect([...pick.querySelectorAll("option")].map((o) => o.textContent)).toEqual(["Task"]);
   });
 });

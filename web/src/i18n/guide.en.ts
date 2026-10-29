@@ -15,6 +15,7 @@ export const guideEn = {
     "/service-desk": "How requests reach the desk: request types, the portal and the mailbox.",
     "/teams": "The project's teams, their members and their capacity.",
     "/workflows": "Which workflow each issue type follows here, drawn as a graph.",
+    "/issue-types": "Which issue types this project allows, and in what order they are offered.",
     "/fields": "The custom fields this project records beyond the standard columns.",
     "/repositories": "The git repositories connected to the project and their webhooks.",
     "/releases": "What the project ships: each version with how close it is, released or not, and its notes of finished work.",

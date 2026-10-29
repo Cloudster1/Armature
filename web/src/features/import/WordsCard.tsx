@@ -1,5 +1,6 @@
 import { Card, SelectInput, Table, Td, Th } from "@/components/ui";
-import { useIssueTypes, useStatuses } from "@/api/issues";
+import { useStatuses } from "@/api/issues";
+import { useProjectIssueTypes } from "@/api/issueTypes";
 import type { ImportWord } from "@/api/filters";
 import { TARGET_LABELS } from "./targets";
 import { t } from "@/i18n";
@@ -9,15 +10,17 @@ const PRIORITIES = ["lowest", "low", "medium", "high", "highest"];
 
 /** What the file's words mean here: Jira's Requested is somebody's To Do. */
 export function WordsCard({
+  projectKey,
   words,
   values,
   onChange,
 }: {
+  projectKey: string;
   words: ImportWord[];
   values: Record<string, Record<string, string>>;
   onChange: (values: Record<string, Record<string, string>>) => void;
 }) {
-  const types = useIssueTypes();
+  const types = useProjectIssueTypes(projectKey);
   const statuses = useStatuses();
   if (words.length === 0) return null;
 

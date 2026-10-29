@@ -48,7 +48,7 @@ const changed = { issue: { ...issue, type: { ...issue.type, id: "bug", name: "Bu
 
 function routes(extra: Routes = {}): Routes {
   return {
-    "GET /issue-types": [200, issueTypes],
+    "GET /projects/CP/issue-types": [200, issueTypes],
     "GET /projects/CP/workflows": [200, projectWorkflows],
     "GET /workflows/w-default": [200, workflow("w-default", [todo, doing])],
     "GET /workflows/w-triage": [200, workflow("w-triage", [todo])],

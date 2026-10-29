@@ -30,12 +30,19 @@ vi.mock("@/api/client", () => ({
 vi.mock("@/api/issues", async () => ({
   ...(await vi.importActual<typeof import("@/api/issues")>("@/api/issues")),
   useCreateIssue: () => ({ mutate: state.created, isPending: false, error: null, reset: vi.fn() }),
-  useIssueTypes: () => ({
+}));
+
+// The library has Bug too; CP allows only these two, and the dialog must offer no more.
+vi.mock("@/api/issueTypes", () => ({
+  useProjectIssueTypes: (key: string) => ({
     data: {
-      issueTypes: [
-        { id: "t-epic", name: "Epic", icon: "epic", level: 1, isSubtask: false },
-        { id: "t-story", name: "Story", icon: "story", level: 0, isSubtask: false },
-      ],
+      issueTypes:
+        key === "CP"
+          ? [
+              { id: "t-epic", name: "Epic", icon: "epic", level: 1, isSubtask: false },
+              { id: "t-story", name: "Story", icon: "story", level: 0, isSubtask: false },
+            ]
+          : [],
     },
     isLoading: false,
   }),
@@ -189,6 +196,11 @@ describe("CreateIssueDialog", () => {
     draw();
     expect(screen.getByLabelText("Type")).toHaveValue("t-story");
     expect(screen.queryByRole("option", { name: "The project's default" })).not.toBeInTheDocument();
+  });
+
+  it("offers only the types of the project", () => {
+    draw();
+    expect([...screen.getByLabelText("Type").querySelectorAll("option")].map((o) => o.textContent)).toEqual(["Epic", "Story"]);
   });
 
   // With no project visited yet, the first of thousands is no better a guess than none.
