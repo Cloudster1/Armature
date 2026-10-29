@@ -244,7 +244,8 @@ func TestTheDeskOverTheAPI(t *testing.T) {
 	want(t, agent.post("/api/v1/projects", map[string]any{"name": "Help", "key": hldKey, "template": "service-desk"}), http.StatusCreated, "desk")
 
 	types := list(t, want(t, agent.get("/api/v1/projects/"+hldKey+"/request-types"), http.StatusOK, "request types"), "requestTypes")
-	issueTypes := list(t, agent.get("/api/v1/issue-types"), "issueTypes")
+	// The project's own types, not the library's first: a parallel test may add a custom type that sorts first.
+	issueTypes := list(t, want(t, agent.get("/api/v1/projects/"+hldKey+"/issue-types"), http.StatusOK, "project issue types"), "issueTypes")
 	made := want(t, agent.post("/api/v1/projects/"+hldKey+"/request-types", map[string]any{
 		"name": "Something else", "description": "Anything not listed.", "issueTypeId": issueTypes[0].(map[string]any)["id"], "priority": "low",
 	}), http.StatusCreated, "add request type")
