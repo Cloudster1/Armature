@@ -107,7 +107,7 @@ func (s *Service) importIssue(ctx context.Context, tx db.DBTX, in ImportInput, a
 		return nil, project.ErrArchived
 	}
 
-	issueType, err := importType(ctx, tx, in.TypeID)
+	issueType, err := ProjectType(ctx, tx, projectID, projectKey, in.TypeID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -161,27 +161,6 @@ func (s *Service) importIssue(ctx context.Context, tx db.DBTX, in ImportInput, a
 		return nil, err
 	}
 	return &ImportResult{Issue: made}, nil
-}
-
-// importType is the type the row named, or the first at the ordinary working
-// level when it named none, which is what Create does with a file's silence.
-func importType(ctx context.Context, tx db.DBTX, id uuid.UUID) (TypeRef, error) {
-	const columns = `SELECT id, name, icon, hierarchy_level, is_subtask FROM issue_type `
-	var (
-		t   TypeRef
-		err error
-	)
-	if id == uuid.Nil {
-		err = tx.QueryRow(ctx, columns+`WHERE hierarchy_level = $1 ORDER BY position LIMIT 1`, LevelStandard).
-			Scan(&t.ID, &t.Name, &t.Icon, &t.Level, &t.IsSubtask)
-	} else {
-		err = tx.QueryRow(ctx, columns+`WHERE id = $1`, id).
-			Scan(&t.ID, &t.Name, &t.Icon, &t.Level, &t.IsSubtask)
-	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		return t, errors.New("that issue type does not exist")
-	}
-	return t, err
 }
 
 // importStatus keeps an imported issue inside its workflow: a status the

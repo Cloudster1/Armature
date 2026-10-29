@@ -170,7 +170,10 @@ export function CommandPalette({
       // The setup pages are tabs of the project's settings, which only its administrators open.
       const listed = [
         ...pagesFor(currentProject?.project, projectWorkPages).map((page) => ({ page, address: page.path })),
-        ...(canAdminister(access, projectKey) ? pagesFor(currentProject?.project, projectSetupPages) : []).map((page) => ({ page, address: setupAddress(page.path) })),
+        ...(canAdminister(access, projectKey) ? pagesFor(currentProject?.project, projectSetupPages) : []).map((page) => ({
+          page,
+          address: setupAddress(page.path),
+        })),
       ];
       for (const { page, address } of listed) {
         if (matches(page.label))

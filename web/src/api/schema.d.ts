@@ -3435,6 +3435,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectKey}/issue-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The issue types this project allows, in its order, with how many of its issues have each; retired ones only when asked for. */
+        get: operations["listProjectIssueTypes"];
+        /** Choose the issue types this project allows, in order; a type its issues or request types use stays, and so does a standard one. */
+        put: operations["setProjectIssueTypes"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectKey}/issues": {
         parameters: {
             query?: never;
@@ -7093,6 +7111,25 @@ export interface components {
             updatedAt: string;
             /** Format: uuid */
             workflowSchemeId?: string;
+        };
+        ProjectIssueType: {
+            builtin: boolean;
+            description?: string;
+            /** @enum {string} */
+            icon: "task" | "bug" | "story" | "epic" | "subtask" | "initiative" | "change" | "improvement" | "incident" | "question" | "research" | "release";
+            /** Format: uuid */
+            id: string;
+            isSubtask: boolean;
+            issues: number;
+            level: number;
+            name: string;
+            position: number;
+            retired: boolean;
+            /** Format: date-time */
+            retiredAt?: string;
+        };
+        ProjectIssueTypesRequest: {
+            typeIds: string[];
         };
         ProjectWorkflows: {
             assignments: components["schemas"]["WorkflowAssignment"][];
@@ -17859,6 +17896,79 @@ export interface operations {
                 content: {
                     "application/json": {
                         arrangements: components["schemas"]["Arrangement"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listProjectIssueTypes: {
+        parameters: {
+            query?: {
+                /** @description true lists the retired types the project keeps too. */
+                retired?: boolean;
+            };
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issueTypes: components["schemas"]["ProjectIssueType"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setProjectIssueTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectIssueTypesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issueTypes: components["schemas"]["ProjectIssueType"][];
                     };
                 };
             };

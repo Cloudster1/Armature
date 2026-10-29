@@ -357,7 +357,7 @@ func (s *Service) Hierarchy(ctx context.Context, key string) (*Hierarchy, error)
 			out.Children = append(out.Children, Node{Issue: c, Progress: grandchildren[c.ID], Children: []Node{}})
 		}
 
-		out.ChildTypes, err = typesAtLevel(ctx, tx, found.Type.Level-1)
+		out.ChildTypes, err = typesAtLevel(ctx, tx, found.ProjectID, found.Type.Level-1)
 		return err
 	})
 	if err != nil {
@@ -548,15 +548,18 @@ func progressFor(ctx context.Context, tx db.DBTX, ids []uuid.UUID) (map[uuid.UUI
 	return out, rows.Err()
 }
 
-// typesAtLevel lists the issue types available at one level of the hierarchy.
-func typesAtLevel(ctx context.Context, tx db.DBTX, level int) ([]TypeOption, error) {
+// typesAtLevel lists the types a project offers at one level of the
+// hierarchy, in its own order; retired ones are offered for nothing new.
+func typesAtLevel(ctx context.Context, tx db.DBTX, projectID uuid.UUID, level int) ([]TypeOption, error) {
 	out := []TypeOption{}
 	if level < LevelSubtask || level > MaxLevel {
 		return out, nil
 	}
 	rows, err := tx.Query(ctx, `
-		SELECT id, name, icon, hierarchy_level FROM issue_type
-		WHERE hierarchy_level = $1 ORDER BY position, name`, level)
+		SELECT t.id, t.name, t.icon, t.hierarchy_level
+		FROM project_issue_type pit JOIN issue_type t ON t.id = pit.issue_type_id
+		WHERE pit.project_id = $1 AND t.hierarchy_level = $2 AND t.retired_at IS NULL
+		ORDER BY pit.position, t.position, t.name`, projectID, level)
 	if err != nil {
 		return nil, fmt.Errorf("list the types at level %d: %w", level, err)
 	}

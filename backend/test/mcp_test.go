@@ -134,6 +134,20 @@ func TestAnAssistantCallsTheAPIAsTools(t *testing.T) {
 		}
 	})
 
+	t.Run("a type the project does not use is refused in words the model reads", func(t *testing.T) {
+		allowed := call(t, agent, "list_project_issue_types", map[string]any{"projectKey": mcpKey})
+		if allowed["isError"] == true || !strings.Contains(text(allowed), `"Bug"`) {
+			t.Fatalf("list_project_issue_types: %s", text(allowed))
+		}
+		task := find(t, types.Body["issueTypes"], "name", "Task")["id"].(string)
+		want(t, setProjectTypes(owner, mcpKey, task, bug), http.StatusOK, "narrow the project")
+		epic := find(t, types.Body["issueTypes"], "name", "Epic")["id"].(string)
+		res := call(t, agent, "create_issue", map[string]any{"projectKey": mcpKey, "summary": "too big", "typeId": epic})
+		if res["isError"] != true || !strings.Contains(text(res), mcpKey+" does not use Epic; ask its administrator to allow it") {
+			t.Errorf("an epic in a project without epics: %v", res)
+		}
+	})
+
 	t.Run("a wrong key is an error the model reads, not a failure", func(t *testing.T) {
 		res := call(t, agent, "get_issue", map[string]any{"issueKey": mcpKey + "-999"})
 		if res["isError"] != true || !strings.HasSuffix(text(res), ".") {

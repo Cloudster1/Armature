@@ -304,21 +304,8 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actor Actor) (*Iss
 			return project.ErrArchived
 		}
 
-		var issueType TypeRef
-		if in.TypeID == uuid.Nil {
-			// No type given: the first type at the ordinary working level.
-			err = tx.QueryRow(ctx, `
-				SELECT id, name, icon, hierarchy_level, is_subtask FROM issue_type
-				WHERE hierarchy_level = $1 ORDER BY position LIMIT 1`, LevelStandard).
-				Scan(&issueType.ID, &issueType.Name, &issueType.Icon, &issueType.Level, &issueType.IsSubtask)
-		} else {
-			err = tx.QueryRow(ctx, `
-				SELECT id, name, icon, hierarchy_level, is_subtask FROM issue_type WHERE id = $1`, in.TypeID).
-				Scan(&issueType.ID, &issueType.Name, &issueType.Icon, &issueType.Level, &issueType.IsSubtask)
-		}
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errors.New("that issue type does not exist")
-		}
+		// No type given: the project's first type at the ordinary working level.
+		issueType, err := ProjectType(ctx, tx, projectID, projectKey, in.TypeID, "pick another type")
 		if err != nil {
 			return err
 		}

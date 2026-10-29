@@ -374,6 +374,9 @@ func (s *Server) projectRoutes(r chi.Router) {
 	// And the statuses those workflows hold, which a board is made of.
 	r.Get("/projects/{projectKey}/statuses", s.handleProjectStatuses)
 
+	// The issue types this project allows, which its pickers offer.
+	r.Get("/projects/{projectKey}/issue-types", s.handleListProjectIssueTypes)
+
 	// The whole project as a tree, roots first.
 	r.Get("/projects/{projectKey}/hierarchy", s.handleProjectHierarchy)
 
@@ -503,6 +506,8 @@ func (s *Server) boardRoutes(r chi.Router) {
 		// or handing the decision back to it.
 		r.Put("/projects/{projectKey}/workflow-scheme", s.handleSetProjectScheme)
 		r.Put("/projects/{projectKey}/workflow-assignments/{issueTypeID}", s.handleSetProjectAssignment)
+		// Which issue types the project allows, in order.
+		r.Put("/projects/{projectKey}/issue-types", s.handleSetProjectIssueTypes)
 
 		r.Post("/projects/{projectKey}/boards", s.handleCreateBoard)
 

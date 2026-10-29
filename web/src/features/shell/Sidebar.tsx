@@ -267,9 +267,7 @@ function WorkGroups() {
 
       <SidebarGroup id="project" title={t.shell.groups.project} open={isOpen("project", true)} onToggle={() => toggleGroup("project", true)}>
         <ProjectSwitcher projectKey={projectKey} />
-        {projectKey && (
-          <ProjectPages projectKey={projectKey} />
-        )}
+        {projectKey && <ProjectPages projectKey={projectKey} />}
       </SidebarGroup>
 
       {access?.canAdministerOrg && (
