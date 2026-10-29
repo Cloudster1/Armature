@@ -37,8 +37,9 @@ in, and signing out ends the provider's session too.
   browser, for its session, so the next page goes straight to the sign-in
   page. Silent sign-in is off without a provider, with
   `ARMATURE_OIDC_SILENT_SIGN_IN=false` (`auth.silentSignIn` in the chart), and
-  after signing out. `GET /auth/signup` says `silentSignIn: true` when a visit
-  should try it.
+  after signing out, and for a visit by any address but `ARMATURE_APP_URL`'s,
+  since the round trip lands there. `GET /auth/signup` says
+  `silentSignIn: true` when a visit should try it.
 - `POST /auth/logout` for a session from the provider answers `200
   {"endSession": "..."}`, the provider's end session address with
   `id_token_hint`, `client_id` and `post_logout_redirect_uri`; the browser

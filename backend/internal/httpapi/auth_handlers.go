@@ -105,7 +105,7 @@ func (s *Server) handleSignupOpen(w http.ResponseWriter, r *http.Request) {
 // mayTryQuietly says whether a silent sign-in is worth the round trip for
 // this browser now.
 func (s *Server) mayTryQuietly(r *http.Request) bool {
-	if !s.SilentSignIn || s.OIDC == nil || triedQuietly(r, s.quietCookie()) {
+	if !s.maySilence(r) {
 		return false
 	}
 	provider, err := s.OIDC.ProviderFor(r.Context())

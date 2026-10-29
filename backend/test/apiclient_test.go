@@ -163,6 +163,9 @@ type client struct {
 	base string
 	// bearer, when set, is sent instead of relying on the cookie jar.
 	bearer string
+	// host, when set, is the Host every request names, as a browser using
+	// the app's own address does; the jar keeps cookies under it too.
+	host string
 }
 
 func (s *apiServer) client(t *testing.T) *client {
@@ -224,6 +227,9 @@ func (c *client) do(method, path string, body any) response {
 	}
 
 	req, err := http.NewRequestWithContext(context.Background(), method, c.base+path, reader)
+	if err == nil && c.host != "" {
+		req.Host = c.host
+	}
 	if err != nil {
 		c.t.Fatal(err)
 	}

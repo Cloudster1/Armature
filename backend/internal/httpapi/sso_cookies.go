@@ -2,8 +2,10 @@ package httpapi
 
 import (
 	"crypto/subtle"
+	"net"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // The cookies around single sign-on: one ties a callback to the browser that
@@ -56,6 +58,26 @@ func (s *Server) clearQuiet(w http.ResponseWriter) {
 		Name: s.quietCookie(), Value: "", Path: "/", MaxAge: -1,
 		HttpOnly: true, Secure: s.Secure, SameSite: http.SameSiteLaxMode,
 	})
+}
+
+// maySilence says a silent attempt may start for this request: turned on, a
+// provider service, a browser that has not tried, arriving by the app's address.
+func (s *Server) maySilence(r *http.Request) bool {
+	return s.SilentSignIn && s.OIDC != nil && !triedQuietly(r, s.quietCookie()) && s.throughTheApp(r)
+}
+
+// throughTheApp says the browser came by the app's own address, where the
+// provider's round trip lands again; from any other it could not come back.
+func (s *Server) throughTheApp(r *http.Request) bool {
+	app, err := url.Parse(s.AppBaseURL)
+	if err != nil || app.Hostname() == "" {
+		return true
+	}
+	host := r.Host
+	if bare, _, err := net.SplitHostPort(host); err == nil {
+		host = bare
+	}
+	return strings.EqualFold(host, app.Hostname())
 }
 
 func triedQuietly(r *http.Request, name string) bool {

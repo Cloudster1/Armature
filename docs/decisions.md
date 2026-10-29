@@ -2850,8 +2850,9 @@ out a hidden frame, and a third-party cookie would not reach Keycloak in one
 anyway.
 
 The SPA decides: its guard asks `GET /auth/signup` whether to try, and the
-server says yes only with a provider enabled, the setting on and no mark in
-this browser. Every failure of a silent attempt, a refusal, an unreachable
+server says yes only with a provider enabled, the setting on, no mark in this
+browser, and a visit by the app's own address, where the provider's round trip
+comes back; the browser suite visits by another and is never sent round. Every failure of a silent attempt, a refusal, an unreachable
 provider or a sign-in that is refused here, lands on the sign-in page with
 where the person was going, and marks the browser with a cookie that lasts as
 long as the browser does, so the next page does not go round again. Signing

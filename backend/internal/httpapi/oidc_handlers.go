@@ -18,7 +18,7 @@ import (
 func (s *Server) handleOIDCStart(w http.ResponseWriter, r *http.Request) {
 	next := safeRedirect(r.URL.Query().Get("next"))
 	silent := r.URL.Query().Get("prompt") == "none"
-	if silent && (!s.SilentSignIn || s.OIDC == nil || triedQuietly(r, s.quietCookie())) {
+	if silent && !s.maySilence(r) {
 		s.landQuietly(w, r, next, "")
 		return
 	}

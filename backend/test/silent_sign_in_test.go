@@ -39,7 +39,15 @@ func newSilentCrew(t *testing.T, h *harness, dbName string) silentCrew {
 }
 
 // browser is a client that sees each redirect rather than following it.
-func (c silentCrew) browser(t *testing.T) *client { return c.api.client(t).noRedirects() }
+func (c silentCrew) browser(t *testing.T) *client {
+	b := c.api.client(t).noRedirects()
+	b.host = appHost
+	return b
+}
+
+// appHost is the host of the test server's ARMATURE_APP_URL, which a browser
+// using the app names; a silent attempt is only tried through it.
+const appHost = "app.test"
 
 func visit(t *testing.T, c silentCrew, b *client, path string) *http.Response {
 	t.Helper()
@@ -47,6 +55,7 @@ func visit(t *testing.T, c silentCrew, b *client, path string) *http.Response {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = b.host
 	resp, _ := b.raw(req)
 	if resp.StatusCode != http.StatusFound {
 		t.Fatalf("%s answered %d, want a redirect", path, resp.StatusCode)
@@ -60,7 +69,7 @@ func quietly(next string) string {
 
 func hasCookie(t *testing.T, c silentCrew, b *client, name string) bool {
 	t.Helper()
-	base, _ := url.Parse(c.api.URL)
+	base, _ := url.Parse("http://" + b.host)
 	for _, cookie := range b.http.Jar.Cookies(base) {
 		if cookie.Name == name {
 			return true
@@ -69,10 +78,23 @@ func hasCookie(t *testing.T, c silentCrew, b *client, name string) bool {
 	return false
 }
 
-func offersSilence(t *testing.T, b *client) bool {
+func offersSilence(t *testing.T, c silentCrew, b *client) bool {
 	t.Helper()
-	offer := want(t, b.get("/api/v1/auth/signup"), http.StatusOK, "what the sign-in page may do")
-	return offer.Body["silentSignIn"] == true
+	return offersSilenceAt(t, c, b, appHost)
+}
+
+func offersSilenceAt(t *testing.T, c silentCrew, b *client, host string) bool {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, c.api.URL+"/api/v1/auth/signup", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Host = host
+	resp, body := b.raw(req)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("what the sign-in page may do: %d %s", resp.StatusCode, body)
+	}
+	return strings.Contains(string(body), `"silentSignIn":true`)
 }
 
 // A visit without a session asks the provider quietly first; with a session
@@ -83,8 +105,12 @@ func TestASilentSignInLandsOnTheDeepLink(t *testing.T) {
 	c := newSilentCrew(t, h, "armature_silent_lands_test")
 	deep := "/issues/CP-12?tab=history"
 	b := c.browser(t)
-	if !offersSilence(t, b) {
+	if !offersSilence(t, c, b) {
 		t.Fatal("a browser that has not tried is not offered a silent sign-in")
+	}
+	// From another address the round trip could not come back to the page.
+	if offersSilenceAt(t, c, b, "elsewhere.test") {
+		t.Error("a browser on another address is offered a silent sign-in")
 	}
 
 	out := visit(t, c, b, quietly(deep))
@@ -138,10 +164,10 @@ func TestASilentSignInWithoutASessionTriesOnce(t *testing.T) {
 	if got := again.Header.Get("Location"); got != "http://app.test/login?next=%2Fboard" {
 		t.Errorf("the next silent start goes to %q, want the sign-in page without the provider", got)
 	}
-	if offersSilence(t, b) {
+	if offersSilence(t, c, b) {
 		t.Error("a browser that tried is still offered a silent sign-in")
 	}
-	if !offersSilence(t, c.browser(t)) {
+	if !offersSilence(t, c, c.browser(t)) {
 		t.Error("another browser is not offered one")
 	}
 
@@ -235,7 +261,7 @@ func TestASilentSignInCanBeTurnedOff(t *testing.T) {
 	c := newSilentCrew(t, h, "armature_silent_off_test")
 	c.api.api.SilentSignIn = false
 	b := c.browser(t)
-	if offersSilence(t, b) {
+	if offersSilence(t, c, b) {
 		t.Error("a silent sign-in is offered while it is turned off")
 	}
 	if got := visit(t, c, b, quietly("/projects")).Header.Get("Location"); got != "http://app.test/login?next=%2Fprojects" {
@@ -244,7 +270,7 @@ func TestASilentSignInCanBeTurnedOff(t *testing.T) {
 
 	none, _ := emptyInstallation(t, h, "armature_silent_none_test")
 	bare := silentCrew{api: none}
-	if offersSilence(t, bare.browser(t)) {
+	if offersSilence(t, bare, bare.browser(t)) {
 		t.Error("a silent sign-in is offered with no provider")
 	}
 	if got := visit(t, bare, bare.browser(t), quietly("/projects")).Header.Get("Location"); got != "http://app.test/login?next=%2Fprojects" {
