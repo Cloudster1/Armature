@@ -104,13 +104,15 @@ function DemoProject() {
   );
 }
 
-/** The suite demo: the GitHub issues of Armature, Exciter and Stator, which their own suite demos link to. */
+/** The suite demo: the GitHub issues of Armature, Exciter, Stator and Rotor, which Exciter's and Stator's suite demos link to. */
 function SuiteDemoCard() {
   const { data } = useSuiteDemo(true);
   const add = useAddSuiteDemo();
   const queryClient = useQueryClient();
   const demo = data?.demo ?? null;
   const building = demo?.state === "queued" || demo?.state === "running";
+  // A demo from an older snapshot than this version carries can be brought up to date.
+  const outdated = demo?.state === "done" && demo.taken < demo.latest;
   const [wasBuilding, setWasBuilding] = useState(false);
   const refused = add.error instanceof ApiError ? (add.error.fields.key ?? add.error.message) : (add.error as Error | null)?.message;
 
@@ -139,6 +141,14 @@ function SuiteDemoCard() {
         <p role="status" className="text-sm text-ink">
           {t.access.installation.building(demo.step, demo.steps)}
         </p>
+      )}
+      {outdated && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-md text-sm text-ink-muted">{t.access.installation.newerSuite(demo.latest)}</p>
+          <Button variant="secondary" loading={add.isPending} data-action="update-suite-demo" onClick={() => add.mutate()}>
+            {t.access.installation.updateSuite}
+          </Button>
+        </div>
       )}
       {demo?.state === "done" && (
         <p className="text-sm text-ink">

@@ -123,10 +123,101 @@ func TestTheSuiteDemoHoldsTheToolsIssuesUnderTheirNumbers(t *testing.T) {
 		SELECT count(*) FROM issue_link l
 		JOIN issue s ON s.id = l.source_id JOIN project sp ON sp.id = s.project_id
 		JOIN issue d ON d.id = l.target_id JOIN project dp ON dp.id = d.project_id
-		WHERE sp.key <> dp.key AND sp.key IN ('ARM', 'EXC', 'STA') AND dp.key IN ('ARM', 'EXC', 'STA')`); n == 0 {
+		WHERE sp.key <> dp.key AND sp.key IN ('ARM', 'EXC', 'STA', 'ROT') AND dp.key IN ('ARM', 'EXC', 'STA', 'ROT')`); n == 0 {
 		t.Error("no blocking link crosses the suite demo's projects")
 	}
 	if n := count(`SELECT count(*) FROM audit_log WHERE action = 'installation.suite_demo_added' AND actor_user_id = $1`, ownerID); n != 1 {
 		t.Errorf("adding the suite demo was recorded %d times", n)
 	}
+
+	plan := demo.PlanSuite(snapshots, 1)
+	milestonesAsOnGitHub := func(t *testing.T) {
+		t.Helper()
+		for _, p := range plan.Projects {
+			var closed, due int
+			for _, m := range p.Milestones {
+				if m.Closed {
+					closed++
+				}
+				if m.DueOn != nil {
+					due++
+				}
+			}
+			if n := count(`SELECT count(*) FROM milestone m JOIN project p ON p.id = m.project_id WHERE p.key = $1`, p.Key); n != len(p.Milestones) {
+				t.Errorf("%s has %d milestones, GitHub %d", p.Key, n, len(p.Milestones))
+			}
+			if n := count(`SELECT count(*) FROM milestone m JOIN project p ON p.id = m.project_id WHERE p.key = $1 AND m.closed_at IS NOT NULL`, p.Key); n != closed {
+				t.Errorf("%s has %d milestones closed, GitHub %d", p.Key, n, closed)
+			}
+			if n := count(`SELECT count(*) FROM milestone m JOIN project p ON p.id = m.project_id WHERE p.key = $1 AND m.due_on IS NOT NULL`, p.Key); n != due {
+				t.Errorf("%s has %d milestones with a due date, GitHub %d", p.Key, n, due)
+			}
+			filed := 0
+			for _, i := range p.Issues {
+				if i.Milestone != "" {
+					filed++
+				}
+			}
+			if n := count(`SELECT count(*) FROM issue i JOIN project p ON p.id = i.project_id WHERE p.key = $1 AND i.milestone_id IS NOT NULL`, p.Key); n != filed {
+				t.Errorf("%s has %d issues under a milestone, GitHub %d", p.Key, n, filed)
+			}
+		}
+	}
+	milestonesAsOnGitHub(t)
+	for _, l := range plan.Labels {
+		if n := count(`SELECT count(*) FROM label WHERE lower(name) = lower($1) AND color = $2`, l.Name, l.Color); n != 1 {
+			t.Errorf("the label %s is not %s as on GitHub", l.Name, l.Color)
+		}
+	}
+	keys := []string{"ARM", "EXC", "STA", "ROT"}
+	if n := count(`
+		SELECT count(*) FROM issue_link l
+		JOIN issue s ON s.id = l.source_id JOIN project sp ON sp.id = s.project_id
+		JOIN issue d ON d.id = l.target_id JOIN project dp ON dp.id = d.project_id
+		WHERE sp.key = ANY ($1) AND dp.key = ANY ($1)`, keys); n != len(plan.Links) {
+		t.Errorf("the suite demo's issues have %d links, their snapshot %d", n, len(plan.Links))
+	}
+
+	t.Run("a demo from an older snapshot is brought up to date, with Rotor", func(t *testing.T) {
+		// As a version before Rotor left it: three projects, an older day, nothing recorded as made.
+		if _, err := empty.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+			if _, err := tx.Exec(ctx, `DELETE FROM project WHERE key = 'ROT'`); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, `UPDATE suite_demo SET taken = '2026-10-21', made = '{}'`)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+		old := obj(t, want(t, owner.get("/api/v1/installation/suite-demo"), http.StatusOK, "the older suite demo"), "demo")
+		if old["taken"] != "2026-10-21" || old["latest"] != snapshots[0].Taken {
+			t.Fatalf("the older suite demo reads %v", old)
+		}
+
+		theirs := idOf(t, want(t, owner.post("/api/v1/projects", map[string]any{"name": "Rotor, ours", "key": "ROT", "template": "kanban"}), http.StatusCreated, "a project of the installation's own"), "project")
+		refused := owner.post("/api/v1/installation/suite-demo", nil)
+		if fields, _ := refused.Error()["fields"].(map[string]any); refused.Status != http.StatusUnprocessableEntity || !strings.Contains(fields["key"].(string), "ROT") {
+			t.Fatalf("bringing the demo up to date over somebody's ROT: %d %s", refused.Status, refused.Raw)
+		}
+		if _, err := empty.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+			_, err := tx.Exec(ctx, `DELETE FROM project WHERE id = $1`, theirs)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		want(t, owner.post("/api/v1/installation/suite-demo", nil), http.StatusAccepted, "bring the suite demo up to date")
+		if built, err := builder.Once(ctx); err != nil || built != 1 {
+			t.Fatalf("the worker brought %d suite demos up to date: %v", built, err)
+		}
+		for _, s := range snapshots {
+			if n := count(`SELECT count(*) FROM issue i JOIN project p ON p.id = i.project_id WHERE p.key = $1`, s.Key); n != len(s.Issues) {
+				t.Errorf("%s holds %d issues after the update, its snapshot %d", s.Key, n, len(s.Issues))
+			}
+		}
+		milestonesAsOnGitHub(t)
+		if again := owner.post("/api/v1/installation/suite-demo", nil); again.Status != http.StatusConflict {
+			t.Errorf("an up to date suite demo added again: %d %s", again.Status, again.Raw)
+		}
+	})
 }
