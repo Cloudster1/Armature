@@ -370,11 +370,18 @@ func TestJoiningTheInstallationGrantsARole(t *testing.T) {
 	if access.Status != 200 {
 		t.Fatalf("access returned %d: %s", access.Status, access.Raw)
 	}
+	// Only the grants across all projects: another test's project may be granted to Everyone, which the member joins.
 	grants, _ := access.Body["grants"].([]any)
-	if len(grants) != 1 {
-		t.Fatalf("grants = %v, want the one that comes with joining", grants)
+	var everywhere []map[string]any
+	for _, g := range grants {
+		if grant := g.(map[string]any); grant["projectKey"] == nil || grant["projectKey"] == "" {
+			everywhere = append(everywhere, grant)
+		}
 	}
-	if got := grants[0].(map[string]any)["role"]; got != "user" {
+	if len(everywhere) != 1 {
+		t.Fatalf("grants across all projects = %v, want the one that comes with joining", everywhere)
+	}
+	if got := everywhere[0]["role"]; got != "user" {
 		t.Errorf("role = %v, want user", got)
 	}
 }

@@ -27,12 +27,13 @@ const groupings = (): Array<{ value: Grouping; label: string }> => [
 export function SwimlaneEditor({ boardId }: { boardId: string }) {
   const { data, isLoading } = useBoardById(boardId);
   // Only the project's workflows can put a card in a state, so only theirs are offered.
-  const { data: statusData } = useProjectStatuses(data?.board?.projectKey ?? "");
+  const { data: statusData, isError: statusesFailed } = useProjectStatuses(data?.board?.projectKey ?? "");
   const updateBoard = useUpdateBoard();
   const reorder = useReorderSwimlanes();
   const [adding, setAdding] = useState(false);
 
-  if (isLoading) return <Skeleton lines={4} />;
+  // The project's states come after the board; drawn without them, every lane grows under the pointer when they land.
+  if (isLoading || (data?.board && !statusData && !statusesFailed)) return <Skeleton lines={4} />;
 
   const board = data?.board;
   const statuses = statusData?.statuses ?? [];

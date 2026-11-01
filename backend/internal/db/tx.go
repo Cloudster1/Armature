@@ -37,6 +37,12 @@ func (c *Cluster) committedLSN(ctx context.Context, pool *pgxpool.Pool) (LSN, er
 	return ParseLSN(text)
 }
 
+// Written is the primary's position now, for a change made over several
+// transactions that a caller's later reads must see.
+func (c *Cluster) Written(ctx context.Context) (LSN, error) {
+	return c.committedLSN(ctx, c.primary)
+}
+
 // Read runs fn inside a read-only transaction on whichever pool is appropriate
 // for ctx: a healthy, sufficiently caught-up replica when one exists, otherwise
 // the primary.

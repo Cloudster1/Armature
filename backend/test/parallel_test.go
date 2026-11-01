@@ -26,6 +26,7 @@ var sequentialTests = map[string]string{
 	"TestADashboardMadeOnFirstSightIsShownAtOnce":                "holds the shared replica",
 	"TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags":               "holds the shared replica",
 	"TestSavedPreferencesAreTheAnswerWhileTheReplicaLags":        "holds the shared replica",
+	"TestARuleRunByHandIsListedWhileTheReplicaLags":              "holds the shared replica",
 	"TestAWebhookTestReadsTheDeliveryItJustWrote":                "pauses replay on the shared replica",
 	"TestReplicaDownAtStartJoinsWhenItReturns":                   "watches a replica join within a deadline",
 	"TestAReplyThatFailsToPostIsReadAgain":                       "puts a trigger on issue_comment, which every test writes",

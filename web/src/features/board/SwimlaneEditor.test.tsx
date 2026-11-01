@@ -78,6 +78,20 @@ describe("SwimlaneEditor", () => {
     expect(screen.getByLabelText("Swimlane 1 name")).toHaveValue("Queued");
   });
 
+  // Drawn before the project's states, every lane grows when they land and a
+  // click aimed at one of its buttons hits whatever moved under it.
+  it("waits for the project's states before it draws the lanes", () => {
+    useProjectStatuses.mockReturnValue({ data: undefined, isError: false });
+    render(<SwimlaneEditor boardId="b2" />);
+    expect(screen.queryByLabelText("Swimlane 1 name")).toBeNull();
+  });
+
+  it("draws the lanes when the project's states cannot be had", () => {
+    useProjectStatuses.mockReturnValue({ data: undefined, isError: true });
+    render(<SwimlaneEditor boardId="b2" />);
+    expect(screen.getByLabelText("Swimlane 1 name")).toHaveValue("Queued");
+  });
+
   it("groups only that board", async () => {
     render(<SwimlaneEditor boardId="b2" />);
     await userEvent.click(screen.getByRole("button", { name: "Assignee" }));

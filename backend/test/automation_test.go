@@ -152,7 +152,7 @@ func TestScheduledAndManualRuns(t *testing.T) {
 		Actions: []automation.Action{{Kind: automation.ActionTransition, Value: "Nowhere"}},
 	}, ws.actor.UserID)
 	target := ws.newIssue(t, "Try me")
-	run, err := svc.RunNow(ws.ctx, manual.ID, target.Key, ws.actor.UserID)
+	run, _, err := svc.RunNow(ws.ctx, manual.ID, target.Key, ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
