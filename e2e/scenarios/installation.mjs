@@ -64,27 +64,30 @@ serialScenario("an administrator adds the demo project, and a second time is ref
 
 // Exciter's issue 261 is EXC-261, and what its GitHub issue depends on blocks it here. A second run finds the
 // suite demo there, from the first or from make seed, and only looks.
-serialScenario("an administrator adds the suite demo, and EXC-261 is Exciter's issue 261 with what blocks it, and ROT has Rotor's milestones", async ({ page }) => {
-  await signUp(page, unique("suite"), { visit: false });
-  await goto(page, "/admin/installation");
-  const before = await suiteDemo();
-  if (!before) {
-    await clickButton(page, "Add the suite demo");
-  } else if (before.state === "done" && before.taken < before.latest) {
-    await clickButton(page, "Bring the suite demo up to date");
-  }
-  await page.waitForSelector('[data-suite-demo="done"]', { timeout: SUITE_DEMO_WAIT });
-  for (const key of ["ARM", "EXC", "STA", "ROT"]) {
-    await page.waitForSelector(`[data-suite-demo="done"] a[href="/projects/${key}"]`, { timeout: WAIT });
-  }
+serialScenario(
+  "an administrator adds the suite demo, and EXC-261 is Exciter's issue 261 with what blocks it, and ROT has Rotor's milestones",
+  async ({ page }) => {
+    await signUp(page, unique("suite"), { visit: false });
+    await goto(page, "/admin/installation");
+    const before = await suiteDemo();
+    if (!before) {
+      await clickButton(page, "Add the suite demo");
+    } else if (before.state === "done" && before.taken < before.latest) {
+      await clickButton(page, "Bring the suite demo up to date");
+    }
+    await page.waitForSelector('[data-suite-demo="done"]', { timeout: SUITE_DEMO_WAIT });
+    for (const key of ["ARM", "EXC", "STA", "ROT"]) {
+      await page.waitForSelector(`[data-suite-demo="done"] a[href="/projects/${key}"]`, { timeout: WAIT });
+    }
 
-  await goto(page, "/issues/EXC-261");
-  await page.waitForFunction(() => document.body.innerText.includes("Risks in traceability"), { timeout: WAIT });
-  await page.waitForSelector('[data-issue-link="EXC-203"]', { timeout: WAIT });
-  expect.contains(await page.$eval('[data-issue-link="EXC-203"]', (el) => el.innerText), "blocked by", "the issue says what blocks it");
+    await goto(page, "/issues/EXC-261");
+    await page.waitForFunction(() => document.body.innerText.includes("Risks in traceability"), { timeout: WAIT });
+    await page.waitForSelector('[data-issue-link="EXC-203"]', { timeout: WAIT });
+    expect.contains(await page.$eval('[data-issue-link="EXC-203"]', (el) => el.innerText), "blocked by", "the issue says what blocks it");
 
-  // Rotor's milestones come as GitHub has them: the first was closed there, so it is closed here.
-  await goto(page, "/projects/ROT/milestones");
-  await page.waitForSelector('[data-milestone="M0 Foundation"]', { timeout: WAIT });
-  expect.contains(await page.$eval('[data-milestone="M0 Foundation"]', (el) => el.innerText), "Closed", "a milestone GitHub closed is closed");
-});
+    // Rotor's milestones come as GitHub has them: the first was closed there, so it is closed here.
+    await goto(page, "/projects/ROT/milestones");
+    await page.waitForSelector('[data-milestone="M0 Foundation"]', { timeout: WAIT });
+    expect.contains(await page.$eval('[data-milestone="M0 Foundation"]', (el) => el.innerText), "Closed", "a milestone GitHub closed is closed");
+  },
+);
