@@ -395,3 +395,32 @@ func TestAKeyUsedAtOnceIsKnownWhileTheReplicaLags(t *testing.T) {
 	bearer.bearer = principalField(t, made, "token", "secret").(string)
 	want(t, bearer.get("/api/v1/auth/me"), http.StatusOK, "the key used at once")
 }
+
+// A rule run by hand is in its runs at once, however far a replica lags: the
+// run is written over several transactions, and the caller's reads wait for the last.
+func TestARuleRunByHandIsListedWhileTheReplicaLags(t *testing.T) {
+	h := newHarness(t)
+	h.ownCluster(t)
+	if h.replica == nil {
+		t.Skip("no replica configured")
+	}
+	rnlKey := h.projectKey(t, "RNL")
+	api := newAPIServer(t, h)
+	c := api.client(t)
+	c.signIn(t, h.person(t, "runlag", auth.RoleOwner))
+	project := want(t, c.post("/api/v1/projects", map[string]any{"name": "Runs", "key": rnlKey, "template": "kanban"}), http.StatusCreated, "project")
+	key := obj(t, project, "project")["key"].(string)
+	made := want(t, c.post("/api/v1/projects/"+key+"/automation/rules", map[string]any{
+		"name": "Label new work", "trigger": map[string]any{"kind": "issue.created"},
+		"actions": []any{map[string]any{"kind": "add_label", "value": "new"}},
+	}), http.StatusCreated, "a rule")
+	ruleID := idOf(t, made, "rule")
+	issueKey := obj(t, want(t, c.post("/api/v1/projects/"+key+"/issues", map[string]any{"summary": "Run me"}), http.StatusCreated, "issue"), "issue")["key"].(string)
+
+	h.holdTheReplicaHere(t)
+
+	want(t, c.post("/api/v1/automation/rules/"+ruleID+"/run", map[string]any{"issueKey": issueKey}), http.StatusOK, "running it while the replica is behind")
+	if runs := list(t, want(t, c.get("/api/v1/automation/rules/"+ruleID+"/runs"), http.StatusOK, "runs"), "runs"); len(runs) != 1 {
+		t.Errorf("the rule lists %d runs right after running it, want 1", len(runs))
+	}
+}

@@ -611,20 +611,20 @@ func (s *Service) emails(ctx context.Context, ids []uuid.UUID) ([]string, error)
 
 // RunNow runs one rule by hand against an issue, or with none, and returns
 // the run. The event is minted here, so a second press is a second run.
-func (s *Service) RunNow(ctx context.Context, ruleID uuid.UUID, issueKey string, actor uuid.UUID) (*Run, error) {
+func (s *Service) RunNow(ctx context.Context, ruleID uuid.UUID, issueKey string, actor uuid.UUID) (*Run, db.LSN, error) {
 	rule, err := s.Get(ctx, ruleID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if rule.ProjectKey != "" && issueKey != "" {
 		if key, _, err := issue.ParseKey(issueKey); err != nil || !strings.EqualFold(key, rule.ProjectKey) {
-			return nil, fmt.Errorf("%w: %s is not in %s, which this rule runs in", ErrOutsideRule, issueKey, rule.ProjectKey)
+			return nil, 0, fmt.Errorf("%w: %s is not in %s, which this rule runs in", ErrOutsideRule, issueKey, rule.ProjectKey)
 		}
 	}
 	eventID := uuid.New()
 	raw, _ := json.Marshal(map[string]any{"ruleId": rule.ID, "key": issueKey, "actorId": actor})
 	if err := s.Handle(ctx, events.Event{ID: eventID, Topic: events.TopicAutomationManual, Payload: raw}); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var run *Run
 	err = s.db.Read(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
@@ -632,7 +632,12 @@ func (s *Service) RunNow(ctx context.Context, ruleID uuid.UUID, issueKey string,
 		run, err = scanRun(tx.QueryRow(ctx, selectRuns+` WHERE ru.rule_id = $1 AND ru.event_id = $2`, ruleID, eventID))
 		return err
 	})
-	return run, err
+	if err != nil {
+		return nil, 0, err
+	}
+	// The run is written over several transactions, so its position is read after the last.
+	lsn, err := s.db.Written(ctx)
+	return run, lsn, err
 }
 
 // Incoming records a call on a hook's address as an event, so the rule runs

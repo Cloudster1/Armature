@@ -47,7 +47,7 @@ func TestARunWithoutAnIssueStillAsksItsConditions(t *testing.T) {
 		return n
 	}
 
-	run, err := svc.RunNow(ws.ctx, rule.ID, "", member)
+	run, _, err := svc.RunNow(ws.ctx, rule.ID, "", member)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestARunWithoutAnIssueStillAsksItsConditions(t *testing.T) {
 	}
 
 	// Somebody who holds the role runs it.
-	run, err = svc.RunNow(ws.ctx, rule.ID, "", ws.actor.UserID)
+	run, _, err = svc.RunNow(ws.ctx, rule.ID, "", ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestARunWithoutAnIssueStillAsksItsConditions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	run, err = svc.RunNow(ws.ctx, queried.ID, "", ws.actor.UserID)
+	run, _, err = svc.RunNow(ws.ctx, queried.ID, "", ws.actor.UserID)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -159,11 +159,12 @@ func (s *Server) handleRunRule(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	run, err := s.Automation.RunNow(r.Context(), rule.ID, req.IssueKey, userFrom(r))
+	run, lsn, err := s.Automation.RunNow(r.Context(), rule.ID, req.IssueKey, userFrom(r))
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
 	}
+	NoteWrite(r.Context(), lsn)
 	respondJSON(w, r, http.StatusOK, map[string]any{"run": run})
 }
 
