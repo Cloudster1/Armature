@@ -14,7 +14,7 @@ import { t } from "@/i18n";
  */
 export function RoleMatrix() {
   const { data: roleData, isLoading, error } = useRoles();
-  const { data: permissionData } = usePermissions();
+  const { data: permissionData, isLoading: permissionsLoading } = usePermissions();
   const { data: access } = useAccess();
   const update = useUpdateRole();
   const remove = useDeleteRole();
@@ -38,7 +38,8 @@ export function RoleMatrix() {
     }
   }
 
-  if (isLoading) return <Skeleton lines={4} />;
+  // Both lists, or the grid shows its columns with no rows for a moment.
+  if (isLoading || permissionsLoading) return <Skeleton lines={4} />;
 
   return (
     <div className="space-y-4" data-role-matrix>

@@ -6,17 +6,22 @@ import { RoleMatrix } from "./RoleMatrix";
 const update = vi.fn();
 const remove = vi.fn();
 const roles = vi.fn();
+const permissionsLoading = vi.fn(() => false);
 vi.mock("@/api/access", () => ({
   useRoles: () => ({ data: { roles: roles() }, isLoading: false, error: null }),
-  usePermissions: () => ({
-    data: {
-      permissions: [
-        { permission: "read", words: "See projects" },
-        { permission: "sprint.manage", words: "Plan sprints" },
-        { permission: "org.administer", words: "Administer Armature" },
-      ],
-    },
-  }),
+  usePermissions: () =>
+    permissionsLoading()
+      ? { data: undefined, isLoading: true }
+      : {
+          data: {
+            permissions: [
+              { permission: "read", words: "See projects" },
+              { permission: "sprint.manage", words: "Plan sprints" },
+              { permission: "org.administer", words: "Administer Armature" },
+            ],
+          },
+          isLoading: false,
+        },
   useAccess: () => ({ data: { canAdministerOrg: true } }),
   useUpdateRole: () => ({ mutate: update, isPending: false, error: null }),
   useDeleteRole: () => ({ mutate: remove, isPending: false, error: null }),
@@ -54,6 +59,12 @@ describe("the role matrix", () => {
 
     await userEvent.click(screen.getByLabelText("Global administrator may plan sprints"));
     expect(update).toHaveBeenLastCalledWith({ role: "global_administrator", permissions: ["read", "org.administer"] });
+  });
+
+  it("waits for the permissions as well as the roles before it draws the grid", () => {
+    permissionsLoading.mockReturnValueOnce(true);
+    const { container } = render(<RoleMatrix />);
+    expect(container.querySelector("[data-role-matrix]")).toBeNull();
   });
 
   it("never lets the global administrator stop administering", () => {

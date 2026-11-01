@@ -350,6 +350,7 @@ serialScenario("the role matrix adds a role and decides what it grants", async (
   await page.click('[data-access-tab="Matrix"]');
   await page.waitForSelector("[data-role-matrix]", { timeout: WAIT });
   expect.truthy(await page.$('[data-role-column="global_administrator"]'), "the built-in roles are columns");
+  await page.waitForSelector('[data-permission-cell="global_administrator:org.administer"]', { timeout: WAIT });
   const fixed = await page.$eval('[data-permission-cell="global_administrator:org.administer"]', (el) => el.disabled && el.checked);
   expect.truthy(fixed, "the global administrator's administration cannot be unticked");
   const columns = () => page.$$eval("[data-role-column]", (els) => els.map((el) => el.getAttribute("data-role-column")));
