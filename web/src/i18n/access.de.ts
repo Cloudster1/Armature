@@ -342,8 +342,10 @@ export const accessDe: typeof accessEn = {
       "Ein erfundenes Werk, um Armature mit Inhalt zu zeigen: eine Fertigungslinie und ihre Instandhaltung, mit Vorgängen, Teams, Boards, Sprints und Meilensteinen, als zwei Projekte neben Ihren eigenen. Sie leiten sie.",
     addDemo: "Demoprojekt hinzufügen",
     suiteDetail:
-      "Die Vorgänge, aus denen Armature, Exciter und Stator entstanden sind, von GitHub übernommen, jeder unter seiner eigenen Nummer: Exciters Vorgang 261 ist EXC-261. Exciter und Stator verlinken ihre eigenen Suite-Demos darauf.",
+      "Die Vorgänge, aus denen Armature, Exciter, Stator und Rotor entstanden sind, mit ihren Meilensteinen und Labels von GitHub übernommen, jeder unter seiner eigenen Nummer: Exciters Vorgang 261 ist EXC-261. Exciter und Stator verlinken ihre eigenen Suite-Demos darauf.",
     addSuite: "Suite-Demo hinzufügen",
+    updateSuite: "Suite-Demo auf den neuesten Stand bringen",
+    newerSuite: (day: string) => `Diese Version von Armature bringt die Vorgänge so mit, wie GitHub sie am ${day} hatte.`,
     building: (step: number, steps: number) => `Die Suite-Demo wird aufgebaut: Schritt ${step} von ${steps}.`,
     suiteIn: "Die Suite-Demo liegt in",
     and: " und ",

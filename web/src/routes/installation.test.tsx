@@ -11,9 +11,17 @@ const access = { canAdministerOrg: true };
 const demo: { error: Error | null } = { error: null };
 const addSuite = vi.fn();
 const invalidate = vi.fn();
-type Suite = { state: string; step: number; steps: number; message: string; taken: string; projects: string[] };
+type Suite = { state: string; step: number; steps: number; message: string; taken: string; latest: string; projects: string[] };
 const suite: { demo: Suite | null; error: Error | null; loaded: boolean } = { demo: null, error: null, loaded: true };
-const building = (state: string, step = 0): Suite => ({ state, step, steps: 4, message: "", taken: "2026-10-21", projects: ["ARM", "EXC", "STA"] });
+const building = (state: string, step = 0): Suite => ({
+  state,
+  step,
+  steps: 5,
+  message: "",
+  taken: "2026-11-01",
+  latest: "2026-11-01",
+  projects: ["ARM", "EXC", "STA", "ROT"],
+});
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, params }: { children: ReactNode; to: string; params?: { projectKey: string } }) => (
@@ -103,16 +111,25 @@ describe("the installation page", () => {
   it("follows the suite demo while the worker builds it, then links its projects", () => {
     suite.demo = building("running", 2);
     const { rerender } = render(<InstallationPage />);
-    expect(screen.getByRole("status").textContent).toBe("Building the suite demo: step 2 of 4.");
+    expect(screen.getByRole("status").textContent).toBe("Building the suite demo: step 2 of 5.");
     expect(screen.queryByRole("button", { name: "Add the suite demo" })).toBeNull();
 
-    suite.demo = building("done", 4);
+    suite.demo = building("done", 5);
     rerender(<InstallationPage />);
     expect(screen.queryByRole("status")).toBeNull();
-    for (const key of ["ARM", "EXC", "STA"]) {
+    for (const key of ["ARM", "EXC", "STA", "ROT"]) {
       expect(screen.getByRole("link", { name: key }).getAttribute("href")).toBe(`/projects/${key}`);
     }
     expect(invalidate).toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Bring the suite demo up to date" })).toBeNull();
+  });
+
+  it("offers to bring a suite demo from an older snapshot up to date", async () => {
+    suite.demo = { ...building("done", 4), taken: "2026-10-21" };
+    render(<InstallationPage />);
+    expect(screen.getByText("This version of Armature carries the issues as GitHub had them on 2026-11-01.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Bring the suite demo up to date" }));
+    expect(addSuite).toHaveBeenCalled();
   });
 
   it("says why the suite demo stopped, and offers it again", async () => {

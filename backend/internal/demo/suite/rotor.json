@@ -1,0 +1,1832 @@
+{
+  "repo": "Cloudster1/Rotor",
+  "key": "ROT",
+  "name": "Rotor",
+  "commit": "46af61fd9158c40da70617e8510d82defa4514df",
+  "taken": "2026-11-01",
+  "milestones": [
+    {
+      "title": "M0 Foundation",
+      "description": "Tooling, CI, compose stack (Postgres, Valkey, Keycloak, OpenBao), Go, Python and web skeletons, architecture decisions, sign-in",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M1 Tool connections",
+      "description": "People connect their accounts in the tools once; refresh tokens live in OpenBao; Rotor mints short-lived tokens",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M2 Workflow engine",
+      "description": "Declarative spec v1, compiled to LangGraph in the runner, runner protocol, checkpoints, model providers",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M3 First run (MVP)",
+      "description": "Manual trigger, Docker sandbox, delegated tokens, MCP reads and writes in Exciter, live run view",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M4 Sandboxes on Kubernetes",
+      "description": "gVisor pods, locked-down egress, idle reaper, Helm chart",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M5 Approvals",
+      "description": "Human-in-the-loop steps, resume after a sandbox is gone, write confirmations",
+      "dueOn": null,
+      "closed": false
+    },
+    {
+      "title": "M6 Triggers",
+      "description": "Schedules and inbound tool events (envelope v1 and CloudEvents v2)",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M7 Observability and audit",
+      "description": "Audit log, OpenTelemetry, optional LangSmith, usage, cost and rate limits",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M8 Security hardening",
+      "description": "Threat model, prompt-injection guards, run data encrypted at rest, supply chain",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M9 Suite and release",
+      "description": "Dynamo, capabilities, releases, Armature and Stator connections",
+      "dueOn": null,
+      "closed": false
+    },
+    {
+      "title": "Backlog",
+      "description": "Planned after the first release",
+      "dueOn": null,
+      "closed": false
+    },
+    {
+      "title": "M10 Assistants and editor",
+      "description": "Assistants start workflows and read runs over Rotor's own MCP endpoint (#47), and authors draw workflows on a canvas over the spec (#46).",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M11 OpenShell sandboxes",
+      "description": "NVIDIA OpenShell as an optional sandbox backend, beside the gVisor pods.",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M12 Story to requirements",
+      "description": "Armature user stories clarified on the ticket and turned into Exciter requirements for review, by a triggered workflow.",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "M13 Feature implementation",
+      "description": "Features specified in Exciter implemented through tested code that code, security, test and requirements reviewers agree on.",
+      "dueOn": null,
+      "closed": true
+    },
+    {
+      "title": "UI",
+      "description": "One sign-in page, settings, access and look and feel across the suite, as Dynamo's docs/administration.md and docs/look-and-feel.md set out.",
+      "dueOn": null,
+      "closed": false
+    },
+    {
+      "title": "M14 Confidentiality levels",
+      "description": "An administrator caps the Stator pages a workflow's runs may read.",
+      "dueOn": null,
+      "closed": false
+    },
+    {
+      "title": "M15 Dynamo",
+      "description": "Everything Rotor changes so Dynamo can pin, run, wire, test and release it with Stator, Armature and Exciter (praetorianer777/Dynamo#77).",
+      "dueOn": null,
+      "closed": false
+    }
+  ],
+  "labels": [
+    {
+      "name": "accessibility",
+      "color": "f143ab",
+      "description": "Barrier affecting people with disabilities"
+    },
+    {
+      "name": "area/auth",
+      "color": "b60205",
+      "description": "Sign-in, sessions, OIDC, permissions"
+    },
+    {
+      "name": "area/backend",
+      "color": "1d76db",
+      "description": "Go API, worker, database"
+    },
+    {
+      "name": "area/connections",
+      "color": "0e7c86",
+      "description": "Tool OAuth connections, OpenBao, token minting"
+    },
+    {
+      "name": "area/infra",
+      "color": "c5def5",
+      "description": "Tooling, CI, compose, deployment"
+    },
+    {
+      "name": "area/integration",
+      "color": "d93f0b",
+      "description": "Exciter, Armature, Stator and Dynamo"
+    },
+    {
+      "name": "area/observability",
+      "color": "bfd4f2",
+      "description": "Events, tracing, metrics, usage"
+    },
+    {
+      "name": "area/runner",
+      "color": "5319e7",
+      "description": "Python LangGraph runner"
+    },
+    {
+      "name": "area/sandbox",
+      "color": "6f42c1",
+      "description": "Sandbox orchestration and isolation"
+    },
+    {
+      "name": "area/security",
+      "color": "5a0000",
+      "description": "Threat model, guardrails, hardening"
+    },
+    {
+      "name": "area/web",
+      "color": "0e8a16",
+      "description": "React frontend"
+    },
+    {
+      "name": "area/workflows",
+      "color": "fbca04",
+      "description": "Workflow spec, compiler, editor"
+    },
+    {
+      "name": "backlog",
+      "color": "ededed",
+      "description": "Planned after the first release"
+    },
+    {
+      "name": "blocked",
+      "color": "e99695",
+      "description": "Waits on work outside this repository"
+    },
+    {
+      "name": "bug",
+      "color": "d73a4a",
+      "description": "Something isn't working"
+    },
+    {
+      "name": "dependencies",
+      "color": "0366d6",
+      "description": "Pull requests that update a dependency file"
+    },
+    {
+      "name": "documentation",
+      "color": "0075ca",
+      "description": "Improvements or additions to documentation"
+    },
+    {
+      "name": "duplicate",
+      "color": "cfd3d7",
+      "description": "This issue or pull request already exists"
+    },
+    {
+      "name": "enhancement",
+      "color": "a2eeef",
+      "description": "New feature or request"
+    },
+    {
+      "name": "good first issue",
+      "color": "7057ff",
+      "description": "Good for newcomers"
+    },
+    {
+      "name": "help wanted",
+      "color": "008672",
+      "description": "Extra attention is needed"
+    },
+    {
+      "name": "invalid",
+      "color": "e4e669",
+      "description": "This doesn't seem right"
+    },
+    {
+      "name": "javascript",
+      "color": "168700",
+      "description": "Pull requests that update javascript code"
+    },
+    {
+      "name": "kube",
+      "color": "326CE5",
+      "description": "Run the Kubernetes tests on this pull request"
+    },
+    {
+      "name": "mvp",
+      "color": "0052cc",
+      "description": "Part of the first release"
+    },
+    {
+      "name": "python:uv",
+      "color": "2b67c6",
+      "description": "Pull requests that update python:uv code"
+    },
+    {
+      "name": "question",
+      "color": "d876e3",
+      "description": "Further information is requested"
+    },
+    {
+      "name": "suite",
+      "color": "5319e7",
+      "description": "Run the tests against the real Exciter on this pull request"
+    },
+    {
+      "name": "type/bug",
+      "color": "d73a4a",
+      "description": "Something does not work as it should"
+    },
+    {
+      "name": "type/chore",
+      "color": "cfd3d7",
+      "description": "Tooling and maintenance"
+    },
+    {
+      "name": "type/feature",
+      "color": "a2eeef",
+      "description": "New capability"
+    },
+    {
+      "name": "wontfix",
+      "color": "ffffff",
+      "description": "This will not be worked on"
+    }
+  ],
+  "issues": [
+    {
+      "number": 1,
+      "title": "Set up repository tooling, the compose stack and CI",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:09Z",
+      "closedAt": "2026-10-18T09:41:02Z",
+      "labels": [
+        "area/infra",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M0 Foundation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/1",
+      "body": "## User story\n\nAs a contributor, I want every toolchain in a container behind `make` and one test gate that CI runs too, so that Rotor works the way Exciter, Armature and Stator do from the first commit.\n\n## Acceptance criteria\n\n- [ ] `make help` lists the targets; `make up` starts Postgres, Valkey, Keycloak with the realm `dynamo` and OpenBao in dev mode configured by an init script; the api joins in #3 and the web app in #5; Go 1.26, Python 3.13 and Node run in containers only\n- [ ] `./run-tests.sh` runs the layers shell, check-format, check-go, check-python, check-web, test-integration and test-e2e (a layer without a make target yet is skipped); `--list` names them; the quick gate leaves the stack layers to CI and `ROTOR_GATE=full` runs them\n- [ ] `.github/workflows` runs every layer on each pull request and blocks the merge when one fails\n- [ ] CONTRIBUTING.md, CLAUDE.md, SECURITY.md, NOTICE, CHANGELOG.md and VERSION exist, adapted from Exciter (branches `<type>/<issue>-<slug>` via `gh issue develop`, Conventional Commits, `--no-ff` merges)\n- [ ] `.claude/skills/gh/SKILL.md` and `.claude/hooks/branch-guard.sh` are adapted from Exciter\n- [ ] `.github/ISSUE_TEMPLATE/feature.yml`, `bug.yml` (with optional Run ID and sandbox backend fields and a note to strip tokens from logs) and `config.yml` (blank issues off, vulnerability link to security advisories)\n- [ ] `tests/test-stack.sh` checks that the issuer, client and secret in compose match the realm\n\n## Tests\n\nShell: `run-tests.sh --list` and each layer on an empty project. Stack: `make up` comes up healthy and `tests/test-stack.sh` passes.\n\n## Implementation\n\n- Port `Makefile`, `mk/`, `run-tests.sh`, `deploy/docker-compose.yml`, `.github/workflows/ci.yml` and the `.claude/` hooks (Exciter has no `.githooks/`) from `Cloudster1/Exciter`, trimmed to Rotor's services.\n- OpenBao dev container plus `deploy/openbao/init.sh` enabling KV v2, transit and JWT auth.\n\n## Depends on\n\n- nothing\n"
+    },
+    {
+      "number": 2,
+      "title": "Record the architecture decisions: Go control plane, Python runner, OpenBao, delegation and sandboxes",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:11Z",
+      "closedAt": "2026-10-18T09:47:06Z",
+      "labels": [
+        "area/backend",
+        "area/security",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M0 Foundation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/2",
+      "body": "## User story\n\nAs maintainers, we want the key decisions written down before code depends on them, so that every later issue follows one design and reviewers can point at the reason.\n\n## Acceptance criteria\n\n- [ ] `docs/decisions.md` records the split: a Go control plane (api, worker, web) and a Python runner that executes LangGraph inside the sandbox\n- [ ] It records delegation: Rotor is an OAuth 2.1 client of each tool; refresh tokens live only in OpenBao and never enter a sandbox; each run gets its own short-lived access tokens limited to the workflow's scopes intersected with the person's consent\n- [ ] It records who a run acts as: a manual run acts as the person who starts it; a scheduled or event run acts as the trigger's owner and stops when that person's consent or account ends\n- [ ] It records OpenBao auth: JWT/OIDC with a Keycloak service account for the control plane, Kubernetes auth for sandboxes\n- [ ] It records sandboxes: one per run, kept while the run is active or waiting until an idle TTL, then destroyed and respawned from a checkpoint; gVisor RuntimeClass in production, a Docker backend for development only\n- [ ] It records the runner channel (the runner dials out to the control plane over gRPC, so a sandbox takes no ingress), checkpoints owned by the control plane (the sandbox never reaches Postgres), the declarative spec with Python code nodes, and run events to the browser over SSE\n- [ ] It lists alternatives and why they lost: an MCP gateway in the control plane instead of tokens in the sandbox, LangGraph's PostgresSaver, HashiCorp Vault, Kata Containers and Firecracker\n- [ ] `docs/architecture.md` has a component and trust-boundary diagram\n\n## Tests\n\nDocumentation only; reviewed in the pull request.\n\n## Implementation\n\n- Follow the format of `docs/decisions.md` in Exciter and Armature.\n\n## Depends on\n\n- nothing\n"
+    },
+    {
+      "number": 3,
+      "title": "Build the backend skeleton: config, database, migrations, route table, meta and audit",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:13Z",
+      "closedAt": "2026-10-18T10:07:39Z",
+      "labels": [
+        "area/backend",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M0 Foundation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/3",
+      "body": "## User story\n\nAs a backend developer, I want the same skeleton as the siblings, so that features land as routes and migrations and the OpenAPI document and MCP tools can be generated from one table later.\n\n## Acceptance criteria\n\n- [ ] A chi route table with operation metadata; `api/openapi.json` is generated from it with `make openapi`, and a test fails when the file is out of date\n- [ ] pgx pool, goose migrations, and separate `rotor_app` and admin database roles\n- [ ] `/healthz`, `/readyz` and `GET /api/v1/meta` with product, build, apiVersion and a `capabilities` list (empty at first)\n- [ ] An append-only `audit` table and `audit.Write`\n- [ ] Configuration comes from the environment; no secret is read from a file in the repository\n\n## Tests\n\nGo unit: route table and meta. Integration: migrations up and down against Postgres; `rotor_app` cannot UPDATE or DELETE audit rows.\n\n## Implementation\n\n- Adapt `backend/internal/httpapi/router.go`, `openapi_operations.go` and the audit package from Armature and Exciter.\n\n## Depends on\n\n- #1\n"
+    },
+    {
+      "number": 4,
+      "title": "Build the runner skeleton: Python project, pinned LangGraph, image and tests",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:14Z",
+      "closedAt": "2026-10-18T10:14:51Z",
+      "labels": [
+        "area/runner",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M0 Foundation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/4",
+      "body": "## User story\n\nAs a runner developer, I want a pinned Python project and image, so that workflows run in a reproducible, minimal sandbox.\n\n## Acceptance criteria\n\n- [ ] `runner/` is a uv project with a lockfile pinning langgraph, langchain-core, langchain-mcp-adapters and grpcio\n- [ ] ruff, mypy and pytest run in a container as the `python` layer of the gate\n- [ ] `deploy/Dockerfile.runner` runs as non-root with a read-only root filesystem, no shell where feasible, and base images pinned by digest\n- [ ] A smoke test compiles and runs a trivial StateGraph with a fake chat model\n\n## Tests\n\npytest smoke test; image build in CI.\n\n## Implementation\n\n- New `runner/` directory; gate layer added to `run-tests.sh`.\n\n## Depends on\n\n- #1\n"
+    },
+    {
+      "number": 5,
+      "title": "Build the web skeleton: React 19, Vite, theme, API client and browser tests",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:16Z",
+      "closedAt": "2026-10-18T10:39:01Z",
+      "labels": [
+        "area/web",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M0 Foundation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/5",
+      "body": "## User story\n\nAs a web developer, I want the siblings' SPA setup, so that Rotor looks and works like the rest of the suite.\n\n## Acceptance criteria\n\n- [ ] React 19 + Vite with a router and the shared theme tokens\n- [ ] A typed client generated from `api/openapi.json`\n- [ ] vitest, and Playwright with an axe check on every page, both in the gate\n- [ ] An app shell with Workflows, Runs, Approvals, Connections and Settings, each with an empty state\n\n## Tests\n\nvitest for the shell; Playwright with axe for each page.\n\n## Implementation\n\n- Adapt `web/` structure, theme tokens and test setup from Exciter.\n\n## Depends on\n\n- #1\n- #3\n"
+    },
+    {
+      "number": 6,
+      "title": "Sign in through the shared Keycloak realm dynamo",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:18Z",
+      "closedAt": "2026-10-18T10:55:34Z",
+      "labels": [
+        "area/auth",
+        "area/web",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M0 Foundation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/6",
+      "body": "## User story\n\nAs someone using the suite, I want to sign in to Rotor with the same account I use for Exciter, Armature and Stator, so that there is one identity behind every workflow.\n\n## Acceptance criteria\n\n- [ ] OIDC authorization code flow with PKCE against the realm `dynamo`, client `rotor`, configured from `ROTOR_OIDC_*` environment variables (no local passwords); sessions are held in Postgres (`user_session`, SHA-256 of an opaque token, HttpOnly cookie `rotor_session`, SameSite Lax)\n- [ ] Groups are synced at each sign-in; `rotor-administrators` maps to the administrator role\n- [ ] OIDC Back-Channel Logout at `POST /api/v1/auth/oidc/backchannel-logout` ends the matching sessions; switching somebody off sets `is_active=false` and deletes their sessions (ending their triggers and tool connections follows in M1 and later)\n- [ ] `deploy/keycloak/realm.json` adds the `rotor` client; `make realm-check` compares it with Dynamo's canonical copy and passes with a message while Dynamo holds none\n\n## Tests\n\nIntegration: sign-in against Keycloak in compose, group mapping, back-channel logout. Playwright: sign in and out with axe.\n\n## Implementation\n\n- Adapt `backend/internal/oidc/` and `grouproles.go` from Exciter.\n\n## Depends on\n\n- #3\n- #5\n\nRelated: praetorianer777/Dynamo#6\n"
+    },
+    {
+      "number": 7,
+      "title": "Agree the API contract for tool connections",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:19Z",
+      "closedAt": "2026-10-18T11:35:12Z",
+      "labels": [
+        "area/connections",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M1 Tool connections",
+      "url": "https://github.com/Cloudster1/Rotor/issues/7",
+      "body": "## User story\n\nAs backend and web developers, we want M1 agreed before it is built, so that its issues can proceed in parallel without guessing.\n\n## Acceptance criteria\n\n- [ ] Every new operation is in the route table with `pending: true` and answers 501\n- [ ] `docs/api-contract-m1.md` settles the tool registry and connection operations, the OAuth client registration per tool, the scope vocabulary per tool (Exciter: `mcp`, `mcp:read`), the OpenBao path layout and policies, the internal `Mint` interface and the audit topics\n- [ ] Migration number ranges are divided between the M1 issues\n- [ ] `docs/decisions.md` records the refresh single-flight rule: the tools rotate refresh tokens and end the grant when one is reused, so Rotor never refreshes one connection twice at once\n\n## Tests\n\nOpenAPI freshness test covers the pending operations.\n\n## Implementation\n\n- Same pattern as the \"API contract for ...\" chores in Exciter.\n\n## Depends on\n\n- #2\n- #3\n"
+    },
+    {
+      "number": 8,
+      "title": "Add test doubles for the tools and a suite profile with the real ones",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:21Z",
+      "closedAt": "2026-10-18T12:04:45Z",
+      "labels": [
+        "area/infra",
+        "area/integration",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M1 Tool connections",
+      "url": "https://github.com/Cloudster1/Rotor/issues/8",
+      "body": "## User story\n\nAs a tester, I want an OAuth and MCP stub kept honest by contract tests, plus the real Exciter pinned, so that integration tests mock nothing below the layer under test.\n\n## Acceptance criteria\n\n- [ ] A `tool-stub` service serves any number of tools side by side under `/t/{tenant}`, each with RFC 8414 and RFC 9728 metadata, dynamic client registration, authorize (state, PKCE S256, `resource`, answering `iss`), a consent page, token and revoke with rotating refresh tokens and reuse detection, `POST /api/v1/mcp` and `GET /api/v1/meta`; a tenant without OAuth answers only the last two\n- [ ] Tenants are created, inspected and disturbed through a control API reachable only inside the stack's network, never through the published port\n- [ ] Contract tests check the stub against the siblings' vendored `api/openapi.json` files and a snapshot of Exciter's MCP `tools/list`\n- [ ] A suite profile (`make suite-up`) runs the real Exciter, built from a pinned commit, beside Rotor's stack and its `dynamo` realm; Armature and Stator join once they are authorization servers (Cloudster1/Armature#280, praetorianer777/Stator#449)\n- [ ] Tests against the real Exciter run in a CI job of their own, nightly and on pull requests labelled `suite`, outside the required checks\n\n## Tests\n\nContract tests in the go layer; the stack layer checks the stub's service definition; the suite job checks Exciter's health and `mcp@1`.\n\n## Implementation\n\n- Stub written in Go as `backend/cmd/tool-stub` and `backend/internal/toolstub`, in the backend module so it shares its toolchain and image.\n- `make tool-contracts` vendors the siblings' documents at pinned commits; `make tool-snapshots` records Exciter's `tools/list` from the suite.\n- `mk/suite.mk` clones Exciter at the commit in `deploy/suite/EXCITER_REF` and runs its compose with an overlay that uses Rotor's Keycloak.\n\n## Depends on\n\n- #1\n- #7\n"
+    },
+    {
+      "number": 9,
+      "title": "Add a tool to Rotor and register Rotor as its OAuth client",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:23Z",
+      "closedAt": "2026-10-18T12:49:28Z",
+      "labels": [
+        "area/connections",
+        "area/web",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M1 Tool connections",
+      "url": "https://github.com/Cloudster1/Rotor/issues/9",
+      "body": "## User story\n\nAs an administrator, I want to add a tool by its address and have Rotor register itself as an OAuth client, so that people can connect without me copying secrets around.\n\n## Acceptance criteria\n\n- [ ] Adding a base URL reads `/api/v1/meta` (requires `mcp@1`) and the RFC 9728 and RFC 8414 metadata; a tool without an authorization server is refused with a sentence saying what is missing\n- [ ] Rotor registers as a confidential client by RFC 7591 (`client_secret_basic`) or accepts a pre-registered client; the client secret is kept only in OpenBao\n- [ ] A settings page lists the tools, their capabilities and status; removing a tool ends every connection to it\n- [ ] The audit log records `tool.added` and `tool.removed`\n\n## Tests\n\nIntegration against `tool-stub` and the real Exciter: discovery, registration, refusal of a tool without OAuth. Playwright with axe for the settings page.\n\n## Implementation\n\n- New package `backend/internal/tools`; OpenBao access through the client from the OpenBao issue.\n\n## Depends on\n\n- #7\n- #10\n"
+    },
+    {
+      "number": 10,
+      "title": "Keep connection secrets in OpenBao",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:24Z",
+      "closedAt": "2026-10-18T11:43:47Z",
+      "labels": [
+        "area/connections",
+        "area/security",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M1 Tool connections",
+      "url": "https://github.com/Cloudster1/Rotor/issues/10",
+      "body": "## User story\n\nAs an operator, I want every long-lived secret in OpenBao and nowhere else, so that a database dump or a compromised sandbox reveals no refresh token.\n\n## Acceptance criteria\n\n- [ ] A Go client authenticates to OpenBao with JWT auth using a Keycloak client-credentials token of `rotor-control-plane` and renews its own token, logging in again when renewal ends\n- [ ] KV v2 at `rotor/connections/{userID}/{toolID}` and `rotor/tools/{toolID}/client`; the mount requires check-and-set, and the client's API is typed so nothing outside it builds a path\n- [ ] Policies live as code in `deploy/openbao/policies/*.hcl` and are applied by the compose init script and later the chart; the control plane may touch `connections` and `tools` and nothing else\n- [ ] `/readyz` fails while OpenBao is sealed, uninitialized or unreachable\n- [ ] Dev OpenBao keeps its data across restarts: a server with file storage, initialized and unsealed by its entrypoint\n- [ ] Integration tests run against a real OpenBao; a test proves the `rotor_app` database holds no secret material (with #11, once a secret exists)\n\n## Tests\n\nIntegration against OpenBao in compose: login and renew, CAS conflict, policy denial outside `connections` and `tools` (other KV paths, transit, `sys`), sealed readiness against a second, never-unsealed OpenBao (`openbao-sealed`) and an unreachable one. Stack layer: a secret survives a restart of OpenBao.\n\n## Implementation\n\n- New package `backend/internal/vault` using `github.com/openbao/openbao/api/v2`.\n- Layout and policy as in `docs/api-contract-m1.md`.\n\n## Depends on\n\n- #3\n- #7\n\nRelated: praetorianer777/Dynamo#6\n"
+    },
+    {
+      "number": 11,
+      "title": "Connect your account in a tool with one click",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:26Z",
+      "closedAt": "2026-10-18T13:05:12Z",
+      "labels": [
+        "area/auth",
+        "area/connections",
+        "area/web",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M1 Tool connections",
+      "url": "https://github.com/Cloudster1/Rotor/issues/11",
+      "body": "## User story\n\nAs a person, I want to connect my Exciter account to Rotor once, and see and end that connection, so that my workflows act as me without pasted tokens.\n\n## Acceptance criteria\n\n- [ ] Authorization code flow with PKCE S256, `state` bound to the session, and `resource` (RFC 8707) naming the tool's MCP endpoint\n- [ ] The refresh token goes to OpenBao; no access token is persisted\n- [ ] A Connections page shows each tool, the scopes granted, when it was connected and last used, and whether it needs connecting again\n- [ ] Disconnecting revokes at the tool (RFC 7009) and deletes the secret from OpenBao; an `invalid_grant` from the tool marks the connection \"connect again\"\n- [ ] The audit log records `connection.granted` and `connection.ended` with who ended it\n\n## Tests\n\nIntegration: the full flow against the real Exciter in the suite profile and against `tool-stub`; revoked grant marked. Playwright with axe: connect, consent, disconnect.\n\n## Implementation\n\n- New package `backend/internal/connections`; consent happens on the tool's own page.\n\n## Depends on\n\n- #6\n- #9\n- #10\n"
+    },
+    {
+      "number": 12,
+      "title": "Mint a short-lived access token for a person and a tool",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:27Z",
+      "closedAt": "2026-10-18T13:19:02Z",
+      "labels": [
+        "area/connections",
+        "area/security",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M1 Tool connections",
+      "url": "https://github.com/Cloudster1/Rotor/issues/12",
+      "body": "## User story\n\nAs the control plane, I need a narrow, short-lived access token per run, so that a sandbox never holds more than the run needs, for longer than it needs it.\n\n## Acceptance criteria\n\n- [ ] `Mint(user, tool, scopes)` refuses when the scopes are not within the person's consent, naming what is missing\n- [ ] Only one refresh runs at a time per connection (advisory lock or Valkey lock); the rotated refresh token is written to OpenBao with check-and-set before the access token is used; a test runs 20 parallel mints without ending the grant\n- [ ] Each run gets its own access token, never shared, so revoking it affects one run only\n- [ ] When a tool cannot narrow a token without narrowing the whole grant (Exciter today), Rotor mints the consented scope, the runner enforces the narrower scope, and the run records \"not narrowed at the tool\"; narrowing at the tool follows the Exciter token-exchange issue\n- [ ] The audit log records `token.minted` with tool, scopes, run and expiry, never the token\n\n## Tests\n\nIntegration against `tool-stub` with reuse detection on: parallel mints, scope refusal, CAS conflict recovery. Against real Exciter: minted token works at `/mcp`.\n\n## Implementation\n\n- `backend/internal/connections/mint.go`; lock key per connection.\n\n## Depends on\n\n- #8\n- #10\n- #11\n\nRelated: Cloudster1/Exciter#235\n"
+    },
+    {
+      "number": 13,
+      "title": "Agree the API contract for workflows and the runner",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:29Z",
+      "closedAt": "2026-10-18T14:41:07Z",
+      "labels": [
+        "area/backend",
+        "area/runner",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/13",
+      "body": "## User story\n\nAs developers of the control plane, runner and web app, we want M2 and M3 agreed first, so that the three can be built in parallel.\n\n## Acceptance criteria\n\n- [ ] `docs/api-contract-m2.md` covers the workflow and run operations (pending, 501), the run state machine, the SSE event types and their payloads, and the sandbox backend interface\n- [ ] `proto/rotor/runner/v1/runner.proto` is generated with buf for Go and Python; CI fails when generated code is out of date\n- [ ] The spec's JSON Schema is placed at `api/workflow.v1.schema.json`\n- [ ] Migration number ranges are divided between the M2 and M3 issues\n\n## Tests\n\nbuf lint and breaking-change check; generated-code freshness test.\n\n## Implementation\n\n- buf configuration at the repository root.\n\n## Depends on\n\n- #2\n- #3\n- #4\n"
+    },
+    {
+      "number": 14,
+      "title": "Define workflow spec v1 with a JSON Schema",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:31Z",
+      "closedAt": "2026-10-18T14:53:40Z",
+      "labels": [
+        "area/workflows",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/14",
+      "body": "## User story\n\nAs a workflow author, I want to describe a workflow in versioned YAML, so that it is reviewable, diffable and runs the same everywhere.\n\n## Acceptance criteria\n\n- [ ] `apiVersion: rotor.dev/v1`, `kind: Workflow` with metadata, an `inputs` schema, `tools` bindings `{tool, scopes, allowTools}`, `model`, `limits` (maxSteps, timeout, maxTokens), `triggers`, `nodes` (`agent`, `tool`, `code`, `approval`, `router`) and `edges`\n- [ ] Go validates the schema and the semantics: every node reachable, no undeclared tool, scopes known for the tool, approval before writes where requested; errors carry JSON paths\n- [ ] Golden fixtures are validated identically by Go and Python\n- [ ] `docs/workflows.md` explains the spec with three examples\n\n## Tests\n\nGo unit and pytest over the shared golden fixtures, valid and invalid.\n\n## Implementation\n\n- `backend/internal/workflow/spec`; `runner/rotor_runner/spec.py`.\n\n## Depends on\n\n- #13\n"
+    },
+    {
+      "number": 15,
+      "title": "Write, version and share workflows",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:32Z",
+      "closedAt": "2026-10-18T15:59:29Z",
+      "labels": [
+        "area/backend",
+        "area/web",
+        "area/workflows",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/15",
+      "body": "## User story\n\nAs an author, I want to write a workflow in the browser, keep its versions and share it, so that colleagues can run it as themselves.\n\n## Acceptance criteria\n\n- [ ] Create, read, update and delete; each save makes an immutable version; runs pin a version; diffs between versions\n- [ ] Sharing: private, a Keycloak group, or everyone; sharing never shares the author's tokens\n- [ ] A YAML editor with schema completion and inline errors; YAML import and export\n- [ ] A tool and scope picker filled from each connected tool's MCP `tools/list`, read as the editing person and cached per tool build; read-only and destructive hints are shown\n- [ ] The audit log records `workflow.created`, `workflow.changed` and `workflow.shared`\n\n## Tests\n\nIntegration: versioning, sharing visibility per group. Playwright with axe: edit, validate, share.\n\n## Implementation\n\n- CodeMirror or Monaco with the JSON Schema; tool lists via the connection of the editing person.\n\n## Depends on\n\n- #11\n- #14\n"
+    },
+    {
+      "number": 16,
+      "title": "Compile a workflow into a LangGraph graph in the runner",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:34Z",
+      "closedAt": "2026-10-18T15:05:24Z",
+      "labels": [
+        "area/runner",
+        "area/workflows",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/16",
+      "body": "## User story\n\nAs the runner, I turn a spec into a StateGraph, so that workflows are data and not code, and LangGraph handles orchestration, retries and interrupts.\n\n## Acceptance criteria\n\n- [ ] `agent` becomes a LangChain tool-calling agent built with `init_chat_model`; `tool` becomes one MCP call with templated arguments; `router` becomes conditional edges; `approval` becomes `interrupt()`; `code` is handled by the code-node issue\n- [ ] MCP over streamable HTTP via langchain-mcp-adapters with a bearer token per tool; the tool list is filtered to `allowTools`, and read-only bindings to tools with `readOnlyHint`\n- [ ] `limits` map to the recursion limit and timeouts; a violation ends the run with a reason\n- [ ] pytest runs workflows with a fake chat model against `tool-stub`\n\n## Tests\n\npytest: one test per node type, tool filtering, limit violations.\n\n## Implementation\n\n- `runner/rotor_runner/compile.py`.\n\n## Depends on\n\n- #4\n- #8\n- #14\n"
+    },
+    {
+      "number": 17,
+      "title": "Run Python code nodes",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:36Z",
+      "closedAt": "2026-10-18T15:27:05Z",
+      "labels": [
+        "area/runner",
+        "area/security",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/17",
+      "body": "## User story\n\nAs an author, I want a small Python step when the declarative nodes are not enough, so that I don't need a new node type for each transformation.\n\n## Acceptance criteria\n\n- [ ] `def run(state, ctx) -> dict` runs in a subprocess inside the sandbox without the tool tokens in its environment\n- [ ] `ctx.call_tool` goes through the runner, which enforces `allowTools`\n- [ ] Only preinstalled libraries are available (no installs at run time); per-node timeouts and memory limits apply\n- [ ] Output must be JSON and is checked against the declared output schema; stdout and stderr become size-capped log events\n\n## Tests\n\npytest: token absence in the subprocess environment, timeout, memory limit, schema refusal, disallowed tool refused.\n\n## Implementation\n\n- `runner/rotor_runner/codenode.py` using a subprocess with resource limits.\n\n## Depends on\n\n- #16\n"
+    },
+    {
+      "number": 18,
+      "title": "Build the runner protocol between control plane and sandbox",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:38Z",
+      "closedAt": "2026-10-18T16:17:40Z",
+      "labels": [
+        "area/backend",
+        "area/runner",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/18",
+      "body": "## User story\n\nAs the control plane, I need one well-defined channel to a sandbox, so that runs can be started, fed tokens, resumed, cancelled and watched.\n\n## Acceptance criteria\n\n- [ ] The runner dials `RunnerControl` over TLS with a one-time bootstrap credential that is single-use and expires within minutes\n- [ ] One bidirectional stream: control plane to runner `StartRun`, `Resume`, `Cancel`, `TokenGrant`; runner to control plane `Hello`, `Event`, `RequestToken`, `Heartbeat`, `Done`\n- [ ] Sequence numbers and acknowledgements so a reconnect loses no event; missed heartbeats mark the sandbox lost\n- [ ] Conformance tests run the Go server against the Python client\n\n## Tests\n\nConformance suite; bootstrap reuse refused; reconnect replay.\n\n## Implementation\n\n- `backend/internal/runnerctl`; `runner/rotor_runner/control.py`.\n\n## Depends on\n\n- #3\n- #4\n- #13\n"
+    },
+    {
+      "number": 19,
+      "title": "Keep checkpoints in the control plane",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:39Z",
+      "closedAt": "2026-10-18T17:06:54Z",
+      "labels": [
+        "area/backend",
+        "area/runner",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/19",
+      "body": "## User story\n\nAs someone whose run waits on an approval for days, I want it to pick up where it stopped, even after its sandbox was destroyed.\n\n## Acceptance criteria\n\n- [ ] An async Python `BaseCheckpointSaver` stores and loads checkpoints and pending writes over the runner channel\n- [ ] Go stores them in `run_checkpoint` and `run_checkpoint_write`, scoped to the run; the sandbox has no database access\n- [ ] A test starts a run, kills the sandbox, starts a fresh one and resumes from the last checkpoint\n- [ ] Checkpoints never contain tokens (redaction test); sizes are capped\n\n## Tests\n\nIntegration: kill and resume; redaction; size cap.\n\n## Implementation\n\n- `runner/rotor_runner/checkpoint.py`; `backend/internal/runs/checkpoint.go`.\n\n## Depends on\n\n- #18\n"
+    },
+    {
+      "number": 20,
+      "title": "Let administrators set language model providers",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:41Z",
+      "closedAt": "2026-10-18T17:21:20Z",
+      "labels": [
+        "area/backend",
+        "area/runner",
+        "area/web",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/20",
+      "body": "## User story\n\nAs an administrator, I want to choose which model providers and models workflows may use, so that keys and costs stay under control.\n\n## Acceptance criteria\n\n- [ ] Providers: Anthropic, OpenAI, Azure OpenAI and OpenAI-compatible endpoints (for example Ollama), through LangChain `init_chat_model`\n- [ ] Keys live in OpenBao and are delivered to the sandbox the same way as tool tokens; they never appear in a spec or env file\n- [ ] A default model and an allowed list for a workflow's `model`; a test-connection button\n- [ ] The audit log records `provider.changed`\n\n## Tests\n\nIntegration with a fake OpenAI-compatible server; Playwright with axe for the settings page.\n\n## Implementation\n\n- `backend/internal/providers`; runner reads provider config from `StartRun`.\n\n## Depends on\n\n- #10\n- #16\n"
+    },
+    {
+      "number": 21,
+      "title": "Put sandboxes behind one interface, with a Docker backend for development",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:43Z",
+      "closedAt": "2026-10-18T15:33:35Z",
+      "labels": [
+        "area/sandbox",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/21",
+      "body": "## User story\n\nAs a developer, I want sandboxes behind one interface with a Docker backend, so that the whole flow runs under `make up`, and the runner protocol and checkpoints of M2 are tested against real containers.\n\n## Acceptance criteria\n\n- [ ] Interface `Spawn`, `Destroy`, `Status` and `List` (by label), with resource limits and a run label\n- [ ] The Docker backend is enabled only in development and uses a dedicated internal network that reaches the api and the tools only, with no internet egress\n- [ ] Containers run read-only, without capabilities, as a non-root user, with memory, CPU and process limits\n- [ ] Orphans found by label are destroyed at start-up; destroying a sandbox when its run ends is wired by #22\n\n## Tests\n\nIntegration: spawn a real runner container, list it by label, destroy it; orphan sweep; the sandbox reaches the api and not the internet. Hello over the runner channel follows in #18.\n\n## Implementation\n\n- `backend/internal/sandbox` with a `docker` subpackage speaking the Docker Engine API over the unix socket.\n- Moved into M2 so #18 and #19 can kill and restart real sandboxes in their tests.\n\n## Depends on\n\n- #4\n- #13\n"
+    },
+    {
+      "number": 22,
+      "title": "Start a workflow by hand and carry the run to its end",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:45Z",
+      "closedAt": "2026-10-18T18:27:41Z",
+      "labels": [
+        "area/backend",
+        "area/web",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M3 First run (MVP)",
+      "url": "https://github.com/Cloudster1/Rotor/issues/22",
+      "body": "## User story\n\nAs a person, I want to press Run on a workflow, fill in its inputs and have it run as me.\n\n## Acceptance criteria\n\n- [ ] `POST /api/v1/workflows/{id}/runs` checks inputs against the schema and takes an idempotency key; each tool binding needs the caller's connection, otherwise the response (409) names the tools and the dialog offers \"Connect ...\", which returns to the workflow\n- [ ] States queued, starting, running, waiting, succeeded, failed, cancelled and expired; a trigger refuses any other move; a worker claims queued runs with `SKIP LOCKED` and starts their sandboxes\n- [ ] Timeouts and cancel (from any api replica); a lost sandbox is retried from its checkpoint, at most three times; runs are taken up again after the worker restarts; a waiting run keeps no sandbox and expires after 7 days\n- [ ] The audit log records `run.started` and `run.cancelled`\n\n## Tests\n\nIntegration: state machine (also through SQL), idempotency, missing connection, inputs refused, a run carried to its end by the worker, cancel, timeout, worker restart recovery, lost sandbox retried. Unit: the worker's decisions. Playwright with axe: run dialog.\n\n## Implementation\n\n- `backend/internal/runs` (start, cancel, query, worker); the worker is `cmd/rotor-worker`, its own compose service, which takes the Docker socket and the orphan sweep from the api.\n- Migration `00300_run_lifecycle.sql`; Valkey pub/sub tells the api replica holding a run's stream to send a Cancel.\n- `VersionResponse` carries the inputs schema and bindings; `POST /tools/{id}/connection` takes a `next` path.\n\n## Depends on\n\n- #12\n- #15\n- #18\n- #21\n"
+    },
+    {
+      "number": 23,
+      "title": "Hand a run's tokens to its sandbox and take them back",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:46Z",
+      "closedAt": "2026-10-18T18:55:06Z",
+      "labels": [
+        "area/connections",
+        "area/sandbox",
+        "area/security",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M3 First run (MVP)",
+      "url": "https://github.com/Cloudster1/Rotor/issues/23",
+      "body": "## User story\n\nAs a person, I want my tokens to reach only my run's sandbox, live briefly and end with it.\n\n## Acceptance criteria\n\n- [ ] At `StartRun` and on `RequestToken`, Rotor mints per tool and wraps the result with OpenBao response wrapping (single use, TTL of at most 2 minutes); the runner unwraps; provider keys travel the same way\n- [ ] Tokens are kept in runner memory only, never in events, logs or checkpoints (test); events are redacted by the runner and again by the control plane\n- [ ] Renewal before expiry runs for as long as the run is alive and is refused once the person's connection or account has ended\n- [ ] On teardown or run end, Rotor revokes each access token at the tool (RFC 7009); until then each token is held in OpenBao (`rotor/runs/{run}/tokens/{id}`), never in the database\n\n## Tests\n\nIntegration: unwrap once, second unwrap refused; token absent from events and checkpoints; revoked token refused by the tool after teardown; a person switched off mid-run gets no new token.\n\n## Implementation\n\n- `backend/internal/connections/deliver.go`; `runner/src/rotor_runner/tokens.py`.\n- Migration `00320_run_tokens.sql` (which tokens to revoke, no token values); OpenBao joins the sandbox network so a sandbox can unwrap, holding no OpenBao credential of its own.\n\n## Depends on\n\n- #12\n- #18\n- #21\n- #22\n"
+    },
+    {
+      "number": 24,
+      "title": "Follow a run live",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:48Z",
+      "closedAt": "2026-10-18T19:21:40Z",
+      "labels": [
+        "area/backend",
+        "area/web",
+        "mvp",
+        "type/feature"
+      ],
+      "milestone": "M3 First run (MVP)",
+      "url": "https://github.com/Cloudster1/Rotor/issues/24",
+      "body": "## User story\n\nAs a person, I want to watch my run step by step and see what it read and wrote.\n\n## Acceptance criteria\n\n- [ ] An append-only `run_event` table with a sequence number; `GET /api/v1/runs/{id}/events` streams over SSE with `Last-Event-ID` replay; Valkey pub/sub fans out across api replicas\n- [ ] Events `node.started`, `node.finished`, `llm.output` (chunked), `tool.called` (name, arguments, result summary), `log`, `interrupt` and `run.finished`; sizes capped, secrets redacted\n- [ ] A runs list filtered by workflow, status and mine; a run page with the graph and live node states, a timeline, collapsible tool calls, links to items created in the tools and a cancel button\n- [ ] People see their own runs and runs of workflows they own; administrators see all (the policy landed in #22; the list and the stream honour it)\n\n## Tests\n\nIntegration: replay after reconnect, fan-out across two api instances, visibility (also through SQL). Playwright with axe: live run page and runs list.\n\n## Implementation\n\n- `backend/internal/runs/events.go`; migration `00330_run_events.sql` if an index is needed; `GET /runs/{id}` carries the graph derived from the pinned spec.\n- React Flow (`@xyflow/react`) for the graph view, laid out in layers without a layout library.\n\n## Depends on\n\n- #18\n- #22\n"
+    },
+    {
+      "number": 25,
+      "title": "Prove end to end that a workflow writes to Exciter as the person who started it",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:49Z",
+      "closedAt": "2026-10-18T19:31:37Z",
+      "labels": [
+        "area/integration",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M3 First run (MVP)",
+      "url": "https://github.com/Cloudster1/Rotor/issues/25",
+      "body": "## User story\n\nAs maintainers, we want the MVP proven against the real Exciter, so that delegation and permissions are tested rather than assumed.\n\n## Acceptance criteria\n\n- [ ] In the suite profile, alice connects Exciter and runs `examples/draft-requirements.yaml`; the revision appears in Exciter marked as written through Rotor (`via.name` is `Rotor`) with alice as its author\n- [ ] dave, a viewer of the project, runs the same workflow; Exciter refuses the write, the run fails with `tool_error` and its last event carries Exciter's sentence\n- [ ] After each run the sandbox is gone, every token the run held is revoked, and Exciter no longer holds the access tokens it issued to Rotor during the run\n- [ ] The test runs in the suite job (`make test-suite`: nightly and on pull requests labelled `suite`), which this pull request carries; the everyday gate covers the same paths against the tool double (#22 to #24)\n\n## Tests\n\nThis issue is the test: `backend/test/suite_run_test.go` (`integration && suite`), at API level. The browser is covered against the tool double by #22 and #24.\n\n## Implementation\n\n- `examples/draft-requirements.yaml`: an agent drafts a title and statement, a tool node calls `create_requirement` with `projectKey`, `title` and `statementMarkdown`. No approval node until M5. The fixture and `docs/workflows.md` follow Exciter's arguments; a test validates every example in Go and Python.\n- The agent's model is the tool double's stub model (sandboxes reach no internet until M4); Exciter and its tools are real.\n- `deploy/suite/exciter.yml` admits dave; the test creates a project through Exciter's REST API as its bootstrap admin and grants alice `editor`, dave `viewer`.\n\n## Depends on\n\n- #20\n- #22\n- #23\n- #24\n"
+    },
+    {
+      "number": 26,
+      "title": "Run sandboxes as hardened Kubernetes pods with gVisor",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:51Z",
+      "closedAt": "2026-10-18T20:25:48Z",
+      "labels": [
+        "area/sandbox",
+        "area/security",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M4 Sandboxes on Kubernetes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/26",
+      "body": "## User story\n\nAs an operator, I want each run in its own hardened pod, so that a hostile code node cannot reach the host or other runs.\n\n## Acceptance criteria\n\n- [ ] A Pod per sandbox in a dedicated namespace via client-go, with `runtimeClassName` gVisor by default (start-up refuses without it unless `ROTOR_SANDBOX_ALLOW_RUNC` explicitly overrides, never in production), non-root, read-only root filesystem, all capabilities dropped, no privilege escalation, seccomp RuntimeDefault and `activeDeadlineSeconds` as a backstop\n- [ ] No service-account token in a sandbox at all: one shared token-less ServiceAccount, `automountServiceAccountToken: false`; since #23 a sandbox only opens single-use wrapped tokens, which needs no OpenBao login (decided 2026-10-18)\n- [ ] The in-cluster control plane (api and worker) signs in to OpenBao with Kubernetes auth instead of Keycloak JWT\n- [ ] Least-privilege RBAC: the worker may only manage pods and their bootstrap Secrets in the sandbox namespace; the api has no Kubernetes rights\n- [ ] The runner's TLS host is configurable, so sandboxes dial the api's Service by its cluster name\n- [ ] A kind-based integration test runs in CI, in a separate non-required job (runc allowed there behind the override)\n\n## Tests\n\nkind integration: spawn with every hardening field and no token mount, self-check to completion, list and destroy; RBAC denial outside the namespace; config refusals. Unit: the pod built from a spec.\n\n## Implementation\n\n- `backend/internal/sandbox/kube` on client-go; `mk/kind.mk`, `scripts/kind/`, `.github/workflows/kube.yml`.\n\n## Depends on\n\n- #21\n- #23\n"
+    },
+    {
+      "number": 27,
+      "title": "Let sandboxes reach only the tools, OpenBao, Rotor and the model provider",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:52Z",
+      "closedAt": "2026-10-18T21:47:41Z",
+      "labels": [
+        "area/sandbox",
+        "area/security",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M4 Sandboxes on Kubernetes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/27",
+      "body": "## User story\n\nAs an operator, I want sandbox egress denied by default, so that a prompt-injected run cannot send data anywhere else.\n\n## Acceptance criteria\n\n- [ ] A default-deny NetworkPolicy for sandbox pods with allow rules for cluster DNS, the Rotor runner endpoint and OpenBao\n- [ ] The tools and the provider, given by hostname, are allowed by a CiliumNetworkPolicy with `toFQDNs` (Cilium is required for hostname allows; without it the chart offers CIDR allows only)\n- [ ] Cloud metadata (169.254.169.254), the cluster's other pods and namespaces are blocked\n- [ ] A test proves any other destination fails\n\n## Tests\n\nkind with Cilium: a probe pod with the sandbox's policies reaches the runner endpoint, OpenBao and an allowed tool, and is refused an unlisted in-cluster Service, an external host, the metadata address and the api's HTTP port. Golden files cover the policies.\n\n## Implementation\n\n- Chart templates (#29); Cilium in the kind test.\n\n## Depends on\n\n- #26\n- #29\n"
+    },
+    {
+      "number": 28,
+      "title": "Destroy sandboxes after a period without interaction",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:54Z",
+      "closedAt": "2026-10-18T20:50:32Z",
+      "labels": [
+        "area/sandbox",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M4 Sandboxes on Kubernetes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/28",
+      "body": "## User story\n\nAs an operator, I want waiting runs to keep nothing alive, so that they cost nothing and hold no tokens.\n\n## Acceptance criteria\n\n- [ ] A run that starts waiting loses its sandbox at once (since #22) and now its tool tokens too, revoked at the tools; on resume a new sandbox is spawned from the checkpoint and gets fresh tokens\n- [ ] The idle TTL is therefore zero for waiting runs; no per-workflow setting is needed (decided 2026-10-18), and docs/decisions.md says so\n- [ ] Orphaned sandboxes are removed (the worker's reconcile, since #22); metrics count live and reaped sandboxes by reason, on both backends\n- [ ] The worker's SKIP LOCKED leases make one worker act per run, instead of an advisory-lock election\n\n## Tests\n\nIntegration on Docker: a waiting run's token is refused by the tool after its sandbox goes; resume finishes with a fresh token; `/metrics` counts the reap. The kind side is covered by #26's test, the reaping code being shared.\n\n## Implementation\n\n- The worker's expire step and a hand-written `/metrics` endpoint on the worker.\n\n## Depends on\n\n- #19\n- #21\n- #23\n"
+    },
+    {
+      "number": 29,
+      "title": "Ship a Helm chart",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:56Z",
+      "closedAt": "2026-10-18T21:17:35Z",
+      "labels": [
+        "area/infra",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M4 Sandboxes on Kubernetes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/29",
+      "body": "## User story\n\nAs an operator, I want to install Rotor with one chart, as I install the siblings.\n\n## Acceptance criteria\n\n- [ ] `deploy/charts/rotor` with api, worker and web, a migration job, the sandbox namespace with its token-less ServiceAccount and Pod Security labels, the worker's RBAC, OpenBao (address, Kubernetes auth role, optional configure job), Keycloak and provider values, and the runner image by digest\n- [ ] Lint (`helm lint --strict`, `ct lint`) and golden-file template tests run in the everyday shell layer; an install on kind runs in the separate kube job and carries a run end to end in a sandbox pod\n- [ ] `docs/deployment.md`\n\n## Tests\n\nLint and golden files as in Exciter and Armature; install on kind with OpenBao in dev mode, bundled Postgres and Valkey, a run that succeeds in a pod, and an upgrade.\n\n## Implementation\n\n- Adapt `deploy/charts/exciter`.\n\n## Depends on\n\n- #26\n"
+    },
+    {
+      "number": 30,
+      "title": "Agree the API contract for approvals",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:58Z",
+      "closedAt": "2026-10-19T07:15:48Z",
+      "labels": [
+        "area/backend",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M5 Approvals",
+      "url": "https://github.com/Cloudster1/Rotor/issues/30",
+      "body": "## User story\n\nAs developers, we want M5 agreed before it is built.\n\n## Acceptance criteria\n\n- [ ] `docs/api-contract-m5.md` covers approval records, decisions (approve, reject, edit inputs), approvers (the person who started the run or a group), expiry, the write-confirmation policy and notification hooks\n- [ ] Pending operations answer 501; migration ranges are divided\n\n## Tests\n\nOpenAPI freshness test.\n\n## Implementation\n\n- Contract document plus pending routes.\n\n## Depends on\n\n- #24\n"
+    },
+    {
+      "number": 31,
+      "title": "Pause a run at an approval step until a person decides",
+      "closed": true,
+      "createdAt": "2026-10-18T09:05:59Z",
+      "closedAt": "2026-10-19T08:01:22Z",
+      "labels": [
+        "area/backend",
+        "area/runner",
+        "area/web",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M5 Approvals",
+      "url": "https://github.com/Cloudster1/Rotor/issues/31",
+      "body": "## User story\n\nAs a person, I want a workflow to stop and show me what it is about to do, and only go on when I say so.\n\n## Acceptance criteria\n\n- [ ] An `approval` node raises an interrupt; the run becomes `waiting` with a preview of the proposed writes (tool and arguments), computed by the runner from the nodes that follow\n- [ ] An Approvals inbox with a badge, a deep link, and approve, reject or edit with a comment\n- [ ] Approvers: the person who started the run, or the group the node names (`approvers: {group}`); with a group only its members decide. The administrator and the workflow's owner see an approval but do not decide it\n- [ ] Group approvers see the run and its events, but cannot cancel it and do not find it under Runs\n- [ ] Editing: the node declares `form: {schema, values}`, values prefilled from the run's state; later nodes read `nodes.<approval>.<field>`; edits are checked against the schema\n- [ ] A decision resumes the run, respawning a sandbox when needed; a rejection ends it `cancelled` (`rejected`); an approval that expires (72h by default, `expiresIn` up to 168h) ends it `expired` (`approval_expired`)\n- [ ] A resumed run answers only the interrupt it was decided for: a replaced sandbox never replays an earlier answer\n- [ ] Rotor never offers approval of reviews in the tools (Exciter decision #182): a binding that allows a review-deciding call is refused\n- [ ] The audit log records `approval.decided`\n- [ ] Events `approval.requested` and `approval.decided` on the run stream; outbound notifications are left for later\n\n## Tests\n\nIntegration: interrupt, reap, approve as a group member with an edit, resume in a new sandbox; reject; expiry; cancel; visibility and RLS as `rotor_app`; a lost sandbox after an approval does not answer the next one. pytest: preview, resume by interrupt id. Playwright with axe: inbox, badge and decision.\n\n## Implementation\n\n- `backend/internal/approvals`, migration `00500_approvals.sql`; `StartRun.resume_interrupt_id`; LangGraph `Command(resume={id: answer})` in the runner.\n- Contract: `docs/api-contract-m5.md` (#30).\n\n## Depends on\n\n- #19\n- #28\n- #30\n"
+    },
+    {
+      "number": 32,
+      "title": "Confirm writes to a tool before they happen",
+      "closed": false,
+      "createdAt": "2026-10-18T09:06:01Z",
+      "closedAt": null,
+      "labels": [
+        "area/runner",
+        "area/security",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M5 Approvals",
+      "url": "https://github.com/Cloudster1/Rotor/issues/32",
+      "body": "## User story\n\nAs a person, I want every write to a tool held for my confirmation when the workflow says so, enforced by Rotor rather than by the sandbox.\n\n## Acceptance criteria\n\n- [ ] `confirmWrites: always | never | after-untrusted-input` per tool binding, with an administrator minimum\n- [ ] The runner turns tool calls without `readOnlyHint` into an interrupt\n- [ ] Enforcement does not trust the sandbox: until confirmed, the sandbox holds only a read-scoped token; the write token is minted after the decision (needs narrowing at the tool)\n- [ ] A code node that calls a write tool before confirmation is refused by the tool\n\n## Tests\n\nIntegration against Exciter once token exchange exists; against `tool-stub` before.\n\n## Implementation\n\n- Policy in `backend/internal/approvals`; mint read-only first, write after decision.\n\n## Depends on\n\n- #12\n- #31\n- Cloudster1/Exciter#235\n"
+    },
+    {
+      "number": 33,
+      "title": "Agree the API contract for triggers",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:02Z",
+      "closedAt": "2026-10-19T09:06:06Z",
+      "labels": [
+        "area/backend",
+        "area/integration",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M6 Triggers",
+      "url": "https://github.com/Cloudster1/Rotor/issues/33",
+      "body": "## User story\n\nAs developers, we want M6 agreed before it is built.\n\n## Acceptance criteria\n\n- [ ] `docs/api-contract-m6.md` covers trigger records, schedule syntax and time zones, inbound hook endpoints, accepted envelopes (Armature and Stator v1, Exciter CloudEvents v2), filters, deduplication and who a run acts as\n- [ ] Pending operations answer 501\n\n## Tests\n\nOpenAPI freshness test.\n\n## Implementation\n\n- Contract document plus pending routes.\n\n## Depends on\n\n- #22\n"
+    },
+    {
+      "number": 34,
+      "title": "Run workflows on a schedule",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:04Z",
+      "closedAt": "2026-10-19T09:27:44Z",
+      "labels": [
+        "area/backend",
+        "area/web",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M6 Triggers",
+      "url": "https://github.com/Cloudster1/Rotor/issues/34",
+      "body": "## User story\n\nAs a person, I want a workflow to run every Monday morning as me.\n\n## Acceptance criteria\n\n- [ ] A schedule trigger is a record a person makes on a workflow they may see: 5-field cron with a time zone (DST: a skipped time is skipped, a repeated one fires once), at most every 5 minutes, a no-overlap option\n- [ ] One scheduler at a time, elected by an advisory lock in the worker; a time missed during downtime fires once, never catches up\n- [ ] The run acts as the trigger's owner with their consent; a lost connection, a switched-off owner or an archived workflow disables the trigger, and the trigger and the Workflows page say why\n- [ ] Until #32 enforces writes at the tool, a trigger is allowed only on a workflow whose every possible write passes an approval node first, checked on create, enable and every fire\n- [ ] The trigger list shows the next run and the last outcome\n- [ ] The audit log records `trigger.enabled` and `trigger.disabled`\n\n## Tests\n\nUnit: cron, time zones and DST. Integration with a fake clock: firing, no-overlap, one scheduler, disable on lost consent and on an unapproved write; RLS as `rotor_app`. Playwright with axe.\n\n## Implementation\n\n- `backend/internal/triggers`; the scheduler, fire pass and sweep in the worker; `docs/api-contract-m6.md` (#33).\n\n## Depends on\n\n- #33\n"
+    },
+    {
+      "number": 35,
+      "title": "Start workflows from tool events",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:05Z",
+      "closedAt": "2026-10-19T10:03:08Z",
+      "labels": [
+        "area/backend",
+        "area/integration",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M6 Triggers",
+      "url": "https://github.com/Cloudster1/Rotor/issues/35",
+      "body": "## User story\n\nAs a person, I want a workflow to start when an Armature issue is created or an Exciter requirement is approved.\n\n## Acceptance criteria\n\n- [ ] `POST /api/v1/hooks/{toolID}` verifies the timestamped HMAC signature of Armature, Exciter and Stator within a replay window; the secret, made by the tool and pasted in by an administrator, is kept in OpenBao\n- [ ] Rotor reads envelope v1 from all three and Exciter's CloudEvents v2, and deduplicates by event id\n- [ ] Filters by topic, project and simple conditions on the payload; the event becomes the run input `event`\n- [ ] The run acts as the trigger's owner, who must be connected to the tool; a run starts only if the owner can read the event's subject at the tool, since a payload is read with the rights of the admin who registered the webhook\n- [ ] Registration is manual by the tool's administrator, documented in `docs/triggers.md`; self-registration with Armature (Armature #281) is a follow-up issue\n\n## Tests\n\nIntegration with signed fixtures from each tool, replay refused, duplicate ignored, unreadable subject skipped; suite test with real Exciter webhooks.\n\n## Implementation\n\n- `backend/internal/hooks`; verification and envelope decoding adapted from Exciter's receiver.\n\n## Depends on\n\n- #33\n- #34\n"
+    },
+    {
+      "number": 36,
+      "title": "Show and export the audit log",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:07Z",
+      "closedAt": "2026-10-19T11:55:11Z",
+      "labels": [
+        "area/backend",
+        "area/security",
+        "area/web",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M7 Observability and audit",
+      "url": "https://github.com/Cloudster1/Rotor/issues/36",
+      "body": "## User story\n\nAs an administrator or auditor, I want to see who connected what, who ran what as whom, and what was approved.\n\n## Acceptance criteria\n\n- [ ] Entries for connections, tools, workflows, runs, token mints (no secrets), sandboxes spawned and destroyed, approvals and triggers\n- [ ] Append-only, enforced by database grants (a test tries an UPDATE as `rotor_app`)\n- [ ] An administrator page with filters, and CSV and JSON export\n\n## Tests\n\nIntegration: grants; Playwright with axe for the page.\n\n## Implementation\n\n- Builds on `audit.Write` from the backend skeleton.\n\n## Depends on\n\n- #24\n"
+    },
+    {
+      "number": 37,
+      "title": "Trace and measure runs with OpenTelemetry, with LangSmith optional",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:08Z",
+      "closedAt": "2026-10-19T12:48:05Z",
+      "labels": [
+        "area/observability",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M7 Observability and audit",
+      "url": "https://github.com/Cloudster1/Rotor/issues/37",
+      "body": "## User story\n\nAs an operator, I want one trace per run across the control plane, runner, LLM and tool calls.\n\n## Acceptance criteria\n\n- [ ] otelhttp and pgx instrumentation in Go; runner spans for each node, LLM call and MCP call; trace context propagates over the runner channel (`StartRun.traceparent`)\n- [ ] Runner telemetry goes out through the control plane as span batches on the runner channel, so the sandbox needs no extra egress\n- [ ] Metrics: runs by state, durations, live sandboxes, mint failures; the api serves its own /metrics; an `observe` compose profile with a collector, Jaeger and Prometheus, which the gate's stack starts\n- [ ] LangSmith is off by default; an administrator can turn it on, with the key in OpenBao and an acknowledged warning that run data leaves the installation; the control plane forwards the run's redacted spans to LangSmith's OpenTelemetry endpoint, so the key never enters the sandbox\n\n## Tests\n\nIntegration in the gate: one trace id across Go and Python spans in Jaeger; LangSmith on and off against a stand-in that records what reaches it.\n\n## Implementation\n\n- OpenTelemetry SDKs for Go and Python; tracing adapted from Armature; metrics on prometheus/client_golang.\n\n## Depends on\n\n- #18\n- #24\n"
+    },
+    {
+      "number": 38,
+      "title": "Limit usage, cost and rate",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:09Z",
+      "closedAt": "2026-10-19T12:19:01Z",
+      "labels": [
+        "area/backend",
+        "area/runner",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M7 Observability and audit",
+      "url": "https://github.com/Cloudster1/Rotor/issues/38",
+      "body": "## User story\n\nAs an administrator, I want runaway runs stopped before they cost too much or flood a tool.\n\n## Acceptance criteria\n\n- [ ] The runner reports token usage per LLM call; the control plane totals usage per run, person and day\n- [ ] Administrators set input and output prices per million tokens for each model; cost is reckoned from them, and maxCost on an unpriced model is refused\n- [ ] A workflow sets `maxTokens` (across every sandbox of the run), `maxCost`, `maxConcurrent` and `toolCallsPerMinute`; administrators set a daily quota per person (tokens and cost) and concurrent runs per person on the settings page\n- [ ] Going over a limit stops the run with the reason; a run over a concurrency limit waits queued; a usage page\n\n## Tests\n\nIntegration with a fake model reporting usage: each limit stops a run or holds it queued.\n\n## Implementation\n\n- Usage tables, checks where the runner's events are stored and in the worker's start step.\n\n## Depends on\n\n- #20\n- #24\n"
+    },
+    {
+      "number": 39,
+      "title": "Write the threat model",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:11Z",
+      "closedAt": "2026-10-19T14:02:02Z",
+      "labels": [
+        "area/security",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/39",
+      "body": "## User story\n\nAs maintainers, we want the risks written down and each one tracked.\n\n## Acceptance criteria\n\n- [ ] `docs/threat-model.md` applies STRIDE across the browser, api, worker, runner and sandbox, OpenBao, Keycloak, the tools and the provider, with trust boundaries\n- [ ] It analyses untrusted content combined with private data and an exfiltration path, code-node escape, token replay and webhook spoofing\n- [ ] Each open finding becomes an issue linked from the document\n\n## Tests\n\nDocumentation; reviewed in the pull request.\n\n## Implementation\n\n- Builds on `docs/architecture.md`.\n\n## Depends on\n\n- #2\n- #27\n- #32\n"
+    },
+    {
+      "number": 40,
+      "title": "Guard against prompt injection from tool content",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:12Z",
+      "closedAt": "2026-10-19T19:18:12Z",
+      "labels": [
+        "area/runner",
+        "area/security",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/40",
+      "body": "## User story\n\nAs a person, I want text inside an issue or wiki page to be unable to make my workflow do something I did not ask for.\n\n## Acceptance criteria\n\n- [ ] Tool results are marked as untrusted data in prompts, with a fixed system policy\n- [ ] Validation warns about, or refuses, workflows that read untrusted content and write without `confirmWrites` or an approval\n- [ ] Links in model output are limited to the tools' hosts\n- [ ] A corpus of injection attempts runs in CI against a fake model\n\n## Tests\n\npytest corpus; Go validation tests.\n\n## Implementation\n\n- Runner prompt wrappers; validation rule in the spec validator.\n\n## Depends on\n\n- #32\n- #39\n"
+    },
+    {
+      "number": 41,
+      "title": "Encrypt run data at rest and keep secrets out of it",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:13Z",
+      "closedAt": "2026-10-19T18:13:57Z",
+      "labels": [
+        "area/backend",
+        "area/security",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/41",
+      "body": "## User story\n\nAs an operator, I want checkpoints and events, which hold tool content, encrypted at rest and deleted on schedule.\n\n## Acceptance criteria\n\n- [ ] OpenBao transit envelope encryption for checkpoint and event payloads\n- [ ] A secret scanner and redactor on every event and log line\n- [ ] Retention per installation and per workflow, with deletion of run data and an audit entry\n\n## Tests\n\nIntegration: ciphertext at rest, redaction, retention job.\n\n## Implementation\n\n- Transit key per installation; data keys cached briefly.\n\n## Depends on\n\n- #19\n- #24\n"
+    },
+    {
+      "number": 42,
+      "title": "Sign images, attach SBOMs and check dependencies",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:15Z",
+      "closedAt": "2026-10-19T15:40:45Z",
+      "labels": [
+        "area/infra",
+        "area/security",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/42",
+      "body": "## User story\n\nAs an operator, I want to know what runs in a sandbox and that it is what Rotor built.\n\n## Acceptance criteria\n\n- [ ] Images are signed with cosign and carry an SBOM; the chart pins digests\n- [ ] govulncheck, pip-audit and npm audit run in CI; Renovate keeps dependencies current\n- [ ] Optionally, admission requires a signature in the sandbox namespace\n\n## Tests\n\nCI jobs; signature verification in the kind test.\n\n## Implementation\n\n- Release workflow additions.\n\n## Depends on\n\n- #29\n"
+    },
+    {
+      "number": 43,
+      "title": "Join Dynamo: capabilities, integration docs and partner contract tests",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:16Z",
+      "closedAt": "2026-10-19T21:34:03Z",
+      "labels": [
+        "area/integration",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M9 Suite and release",
+      "url": "https://github.com/Cloudster1/Rotor/issues/43",
+      "body": "## User story\n\nAs the suite, we want Rotor released and tested alongside the three tools.\n\n## Acceptance criteria\n\n- [ ] `/api/v1/meta` reports the capability names agreed in Dynamo#4; a unit test ties each name to the route table, as in Armature\n- [ ] Rotor reads each tool's capabilities before offering a feature (needs `mcp@1` and partner OAuth through the tool's authorization-server metadata)\n- [ ] `docs/integration.md`; nightly contract tests against the siblings' main\n\n## Tests\n\nUnit for capability names; nightly suite job.\n\n## Implementation\n\n- Follow `docs/integration.md` in Armature and Exciter.\n\n## Depends on\n\n- #25\n- praetorianer777/Dynamo#5\n"
+    },
+    {
+      "number": 44,
+      "title": "Cut releases: VERSION, CHANGELOG, images and chart",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:18Z",
+      "closedAt": "2026-10-19T21:49:29Z",
+      "labels": [
+        "area/infra",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M9 Suite and release",
+      "url": "https://github.com/Cloudster1/Rotor/issues/44",
+      "body": "## User story\n\nAs maintainers, we want releases cut the way Exciter cuts them.\n\n## Acceptance criteria\n\n- [ ] `release.sh`: a release is a pull request and its merge commit is the tag; images and the chart are published\n- [ ] Dynamo is told by `repository_dispatch` (`tool-released`)\n- [ ] `docs/releasing.md`\n\n## Tests\n\nDry run in CI.\n\n## Implementation\n\n- Adapt `release.sh` and `.github/workflows/release.yml` from Exciter.\n\n## Depends on\n\n- #29\n"
+    },
+    {
+      "number": 45,
+      "title": "Connect Armature now that it offers OAuth",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:19Z",
+      "closedAt": "2026-10-22T10:09:45Z",
+      "labels": [
+        "area/connections",
+        "area/integration",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M12 Story to requirements",
+      "url": "https://github.com/Cloudster1/Rotor/issues/45",
+      "body": "## User story\n\nAs a person, I want my workflows to read and write Armature issues as me.\n\n## Acceptance criteria\n\n- [ ] A tool profile for Armature, with its scope vocabulary (`read`, `issue.write`, `issue.transition`, `comment.write`) mapped to bindings\n- [ ] Offered only when Armature reports `mcp@1` and partner OAuth in its authorization-server metadata; otherwise the Connections page says what to update\n- [ ] Each run gets a token of its own by RFC 8693 token exchange; ending a run never ends the person's grant\n- [ ] The end-to-end test grows: an Exciter requirement leads to an Armature issue written as the person who started the run, and a reader is refused\n\n## Tests\n\nSuite end-to-end test across Exciter and Armature.\n\n## Implementation\n\n- Profiles in `backend/internal/tools/profiles`.\n\n## Depends on\n\n- #11\n- #12\n- #43\n- Cloudster1/Armature#280 (shipped)\n- Cloudster1/Armature#305\n\nStator moved to #105.\n"
+    },
+    {
+      "number": 46,
+      "title": "Draw workflows in a visual editor on top of the spec",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:21Z",
+      "closedAt": "2026-10-21T09:05:46Z",
+      "labels": [
+        "area/web",
+        "area/workflows",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M10 Assistants and editor",
+      "url": "https://github.com/Cloudster1/Rotor/issues/46",
+      "body": "## User story\n\nAs an author, I want to draw a workflow and get back the same YAML I could have written.\n\n## Acceptance criteria\n\n- [ ] A React Flow canvas that round-trips losslessly to spec v1, with validation shown on nodes\n- [ ] Full keyboard use; Playwright with axe\n\n## Tests\n\nRound-trip property tests over the golden fixtures; Playwright with axe.\n\n## Implementation\n\n- Shares the graph view from the live run page.\n\n## Depends on\n\n- #15\n"
+    },
+    {
+      "number": 47,
+      "title": "Offer Rotor's own MCP endpoint so assistants can start workflows and read runs",
+      "closed": true,
+      "createdAt": "2026-10-18T09:06:23Z",
+      "closedAt": "2026-10-21T09:30:26Z",
+      "labels": [
+        "area/auth",
+        "area/backend",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M10 Assistants and editor",
+      "url": "https://github.com/Cloudster1/Rotor/issues/47",
+      "body": "## User story\n\nAs someone using an assistant, I want it to start a Rotor workflow as me and read the result.\n\n## Acceptance criteria\n\n- [ ] `POST /api/v1/mcp` with tools generated from the route table, as in the siblings\n- [ ] An OAuth authorization server like Exciter #188\n- [ ] Assistants can never decide an approval\n\n## Tests\n\nIntegration: MCP flow with OAuth; approval tools absent.\n\n## Implementation\n\n- Port `httpapi/mcp.go` and `backend/internal/oauth` from Exciter.\n\n## Depends on\n\n- #22\n- #31\n"
+    },
+    {
+      "number": 53,
+      "title": "End all of a person's Rotor sessions when Keycloak signs them out everywhere",
+      "closed": true,
+      "createdAt": "2026-10-18T10:45:26Z",
+      "closedAt": "2026-10-19T14:35:50Z",
+      "labels": [
+        "area/auth",
+        "area/security",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/53",
+      "body": "## User story\n\nAs an administrator of the realm, I want signing a person out of all their sessions in Keycloak to end all their Rotor sessions too, so that a compromised account stops starting workflows at once.\n\n## Acceptance criteria\n\n- [ ] Keycloak's \"Sign out\" of a user (admin console or `POST /admin/realms/{realm}/users/{id}/logout`) ends every Rotor session of that person, not just one.\n- [ ] Ending a single Keycloak session still ends only the Rotor session it signed in, as Back-Channel Logout 1.0 section 2.7 asks.\n- [ ] The integration suite proves both against the stack's Keycloak.\n\n## Tests\n\nIntegration: two browsers signed in as one person; admin sign-out of the user ends both; ending one session ends one.\n\n## Implementation\n\nFound while building #6: Keycloak 26.2 answers the admin sign-out of a user with one logout token, carrying the `sid` of one of the person's sessions. Rotor follows the specification and ends only that session, so the others last until they expire (12 hours). To look into:\n- whether Keycloak can be configured to send one token per session, or a token without `sid`\n- whether Rotor should also end a person's sessions when Keycloak reports the user disabled, through admin events or a periodic check of the user's sessions\n\n## Depends on\n\n- #6\n"
+    },
+    {
+      "number": 67,
+      "title": "Read workflow YAML as YAML 1.2 in Go, and word two not-found refusals as sentences",
+      "closed": true,
+      "createdAt": "2026-10-18T15:59:30Z",
+      "closedAt": "2026-10-18T16:25:07Z",
+      "labels": [
+        "area/workflows",
+        "mvp",
+        "type/bug"
+      ],
+      "milestone": "M2 Workflow engine",
+      "url": "https://github.com/Cloudster1/Rotor/issues/67",
+      "body": "## What happens\n\n1. The control plane reads a workflow's YAML with goccy/go-yaml, which reads a plain scalar with a colon inside a flow sequence nested in a flow mapping as a mapping: `{tool: exciter, scopes: [mcp:read]}` gives `scopes: [{mcp: read}]`. YAML 1.2, and the runner's ruamel.yaml, read the string `mcp:read`. So the control plane refuses, or misreads, a workflow the runner reads fine, and the golden fixtures do not catch it.\n2. M1's not-found errors for a tool and a connection answer a bare noun (`ErrNotFound(\"tool\")`) where every other refusal is a sentence that says what to do.\n\n## Expected\n\n- Go and Python read every YAML 1.2 document alike; a golden fixture holds them to the flow-style case.\n- The not-found refusals are sentences.\n\n## Fix\n\n- Parse with go.yaml.in/yaml/v3, whose node tree carries line and column, instead of goccy; keep problems placed by JSON pointer, line and column.\n- Add a valid golden fixture with flow-style bindings and scopes.\n- Word the two refusals as sentences.\n\nFound while building #15 (PR #66).\n"
+    },
+    {
+      "number": 84,
+      "title": "Register Rotor's webhook at Armature by itself",
+      "closed": false,
+      "createdAt": "2026-10-19T09:38:30Z",
+      "closedAt": null,
+      "labels": [
+        "area/integration",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "Backlog",
+      "url": "https://github.com/Cloudster1/Rotor/issues/84",
+      "body": "## User story\n\nAs an administrator, I want Rotor to register its own webhook at Armature, so I no longer copy a URL and a secret by hand.\n\n## Acceptance criteria\n\n- [ ] When a tool offers `webhooks.partner@1` (Armature #281), an administrator can let Rotor register its hook there: `POST /api/v1/webhooks/partner` with Rotor's hook URL and the topics its event triggers need, as a person who is an Armature administrator, through a grant holding `webhooks.partner`\n- [ ] The secret Armature returns goes straight to OpenBao; turning it over uses `POST /webhooks/partner/rotate-secret`\n- [ ] The topics follow the enabled event triggers of that tool; a refused URL (`outbound_refused`) is said in a sentence naming what Armature's administrator must allow\n- [ ] Manual registration stays for Exciter and Stator until they offer the same\n\n## Tests\n\nIntegration against a stub of Armature's partner webhook routes held to Armature's vendored contract; suite test against the real Armature.\n\n## Implementation\n\n- Re-vendor Armature's contract at or after the merge of Armature #297; extend `internal/hooks`.\n\n## Depends on\n\n- #35 (shipped)\n- #45: Rotor connects to Armature by OAuth, which an administrator's grant with `webhooks.partner` needs\n- Cloudster1/Armature#281 (shipped)\n\n"
+    },
+    {
+      "number": 89,
+      "title": "Keep code nodes out of the runner's memory",
+      "closed": true,
+      "createdAt": "2026-10-19T13:20:21Z",
+      "closedAt": "2026-10-19T17:03:07Z",
+      "labels": [
+        "area/runner",
+        "area/sandbox",
+        "area/security",
+        "type/bug"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/89",
+      "body": "## User story\n\nAs a person starting a workflow, I want its code nodes to be unable to read the tokens and keys the runner holds for me, so that code in a workflow cannot act as me beyond its bindings.\n\n## Acceptance criteria\n\n- [ ] A code node cannot read the runner's memory, environment or open files: `/proc/<runner>/mem`, `environ`, `fd` and ptrace all fail, whatever the kernel's ptrace policy\n- [ ] The runner makes itself non-dumpable before it holds any token, or code nodes run under another user; the choice is recorded in docs/decisions.md\n- [ ] The threat model's finding F1 is closed\n\n## Tests\n\npytest: a code node trying each way in is refused. Kind test: the same inside gVisor.\n\n## Implementation\n\nFound by the threat model (#39, F1): the child is started by `runner/src/rotor_runner/codenode.py` as the runner's own user with an empty environment; today only Yama's ptrace scope (or gVisor's) keeps it out. `prctl(PR_SET_DUMPABLE, 0)` in the runner closes `/proc/<pid>/mem` and ptrace to same-user processes without a second user.\n\n## Depends on\n\n- #39"
+    },
+    {
+      "number": 90,
+      "title": "Check a workflow's writes against the tools when a run starts",
+      "closed": true,
+      "createdAt": "2026-10-19T13:20:23Z",
+      "closedAt": "2026-10-19T20:18:03Z",
+      "labels": [
+        "area/security",
+        "area/workflows",
+        "type/bug"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/90",
+      "body": "## User story\n\nAs a person, I want a workflow whose binding asks for an approval before writing to never write without one, even when a tool changes what a call does after the workflow was saved.\n\n## Acceptance criteria\n\n- [ ] Starting a run checks the pinned spec against the tools' catalogs as the starter sees them, as a trigger's firing already does, and refuses with a sentence when a write is not behind the approval its binding asks for\n- [ ] The check reads the catalog fresh from the tool when the cached copy is older than the run's tool build, so a poisoned or stale Valkey entry cannot pass a write\n- [ ] The threat model's finding F2 is closed\n\n## Tests\n\nIntegration: a stub tool flips a call from read-only to write after saving; the next start is refused, and the trigger path keeps refusing.\n\n## Implementation\n\nFound by the threat model (#39, F2): `workflows/save.go` runs `CheckAgainst` on save; `runs/start.go` checks inputs and usage only. Reuse `triggers/check.go`'s catalog check.\n\n## Depends on\n\n- #39"
+    },
+    {
+      "number": 91,
+      "title": "Seal approval content with the run's data key",
+      "closed": true,
+      "createdAt": "2026-10-19T13:20:26Z",
+      "closedAt": "2026-10-19T19:45:26Z",
+      "labels": [
+        "area/backend",
+        "area/security",
+        "type/feature"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/91",
+      "body": "## User story\n\nAs an operator, I want an approval's message, preview and values encrypted at rest like the rest of a run's data.\n\n## Acceptance criteria\n\n- [ ] `approval.message`, `preview`, `form_values` and `approved_values` are sealed with the run's data key from #41, and a database dump shows ciphertext\n- [ ] The resume answer is built in Go from the opened values instead of in SQL\n- [ ] The inbox and the approval page show the same as before\n- [ ] The threat model's finding F3 is closed\n\n## Tests\n\nIntegration: ciphertext at rest, the approval round trip, the inbox listing.\n\n## Implementation\n\nFound by the threat model (#39, F3). `runnerctl/approval.go` `resumeAnswer` builds the answer with `jsonb_build_object` today.\n\n## Depends on\n\n- #41"
+    },
+    {
+      "number": 92,
+      "title": "Audit OpenBao access and require Valkey's password outside development",
+      "closed": true,
+      "createdAt": "2026-10-19T13:20:28Z",
+      "closedAt": "2026-10-19T17:33:00Z",
+      "labels": [
+        "area/infra",
+        "area/security",
+        "type/chore"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/92",
+      "body": "## User story\n\nAs an operator, I want a record of every read of Rotor's secrets, and the chart to refuse an unprotected Valkey.\n\n## Acceptance criteria\n\n- [ ] `deploy/openbao/init.sh` and the chart's copy enable a file audit device when none is enabled, and docs/deployment.md says where its log goes and that an installation's own OpenBao needs one\n- [ ] The chart refuses `valkey.auth: false` outside `env: development`, and can reach Valkey over TLS\n- [ ] The threat model's findings F4 and F5 are closed\n\n## Tests\n\nShell: the helm tests render the refusal and the TLS settings. Integration: the development OpenBao writes an audit entry for a token mint.\n\n## Implementation\n\nFound by the threat model (#39, F4 and F5).\n\n## Depends on\n\n- #39"
+    },
+    {
+      "number": 96,
+      "title": "Let one person sign in for the first time from two browsers at once",
+      "closed": true,
+      "createdAt": "2026-10-19T14:36:06Z",
+      "closedAt": "2026-10-19T16:11:24Z",
+      "labels": [
+        "area/auth",
+        "type/bug"
+      ],
+      "milestone": "M8 Security hardening",
+      "url": "https://github.com/Cloudster1/Rotor/issues/96",
+      "body": "## User story\n\nAs a person signing in to Rotor for the first time, I want a second browser or tab signing in at the same moment to succeed too, instead of failing with an error.\n\n## Acceptance criteria\n\n- [ ] Two first sign-ins of the same person at once both land signed in, as one person with one identity\n- [ ] The integration suite proves it with two browsers signing in concurrently on a person Rotor has not seen\n\n## Tests\n\nIntegration: two concurrent first sign-ins of a fresh realm person.\n\n## Implementation\n\nFound while building #41: `upsertUser` in `backend/internal/oidc/signin.go` inserts into `user_identity` without `ON CONFLICT`, so the second of two concurrent first sign-ins fails with `duplicate key value violates unique constraint \"user_identity_pkey\"`. The light and dark copies of the approvals e2e test hit it on a fresh stack. Insert with `ON CONFLICT (issuer, subject) DO NOTHING` and read the person back.\n\n## Depends on\n\n- #6"
+    },
+    {
+      "number": 105,
+      "title": "Connect Stator once it offers OAuth",
+      "closed": false,
+      "createdAt": "2026-10-19T20:45:02Z",
+      "closedAt": null,
+      "labels": [
+        "area/connections",
+        "area/integration",
+        "backlog",
+        "blocked",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/105",
+      "body": "## User story\n\nAs a person, I want my workflows to read and write Stator pages as me.\n\n## Acceptance criteria\n\n- [ ] A tool profile for Stator, with its scope vocabulary mapped to bindings\n- [ ] Offered only when Stator reports `mcp@1` and partner OAuth in its authorization-server metadata; otherwise the Connections page says what to update\n- [ ] The suite end-to-end test grows: an Exciter requirement leads to an Armature issue and a Stator page, each written as the person who started the run\n\n## Tests\n\nSuite end-to-end test across all three tools.\n\n## Implementation\n\n- A profile in `backend/internal/tools/profiles`, built in #45.\n- Stator joins the suite as Armature does (`deploy/suite/STATOR_REF`).\n\n## Depends on\n\n- #45\n- praetorianer777/Stator#449\n- praetorianer777/Stator#461 (token exchange from Keycloak, shipped)\n- praetorianer777/Stator#498 (marking what a connected app wrote)\n- praetorianer777/Stator#499 (a narrower token for each run)\n\n"
+    },
+    {
+      "number": 109,
+      "title": "Keep the realm check passing now that Dynamo holds the canonical realm",
+      "closed": true,
+      "createdAt": "2026-10-21T08:05:48Z",
+      "closedAt": "2026-10-21T08:22:22Z",
+      "labels": [
+        "area/infra",
+        "mvp",
+        "type/bug"
+      ],
+      "milestone": "M9 Suite and release",
+      "url": "https://github.com/Cloudster1/Rotor/issues/109",
+      "body": "## User story\n\nAs a contributor, I want the gate's realm check to pass while Rotor's realm matches Dynamo's, so every pull request is not red for a reason it did not cause.\n\n## Acceptance criteria\n\n- [ ] `deploy/keycloak/realm.json` carries the token-exchange audience mappers Dynamo added to the armature, exciter and stator clients (Dynamo 77f7f7b)\n- [ ] `make realm-check` compares Dynamo's realm with Rotor's own part left out of both: clients `rotor` and `rotor-control-plane`, group `rotor-administrators` and alice's membership of it, and their service-account users\n- [ ] Any other difference still fails, in a sentence naming the first one\n- [ ] Once praetorianer777/Dynamo#6 lands Rotor's part, leaving it out changes nothing, and a follow-up compares the whole realm again\n\n## Tests\n\n`tests/test-stack.sh`, or a test of its own: the check passes on Dynamo's current realm, fails on a changed shared client, and passes when Rotor's part is in both.\n\n## Implementation\n\n- `deploy/keycloak/realm-check.mjs`: strip Rotor's own part from both sides before comparing\n- `deploy/keycloak/realm.json`: the three audience mappers, copied from Dynamo\n\n## Depends on\n\n- praetorianer777/Dynamo#6 for the whole-realm comparison, not for this fix\n"
+    },
+    {
+      "number": 113,
+      "title": "Bump the runner's certifi past PYSEC-2026-4320 once its fix is two weeks old",
+      "closed": false,
+      "createdAt": "2026-10-21T09:06:46Z",
+      "closedAt": null,
+      "labels": [
+        "area/runner",
+        "area/security",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "Backlog",
+      "url": "https://github.com/Cloudster1/Rotor/issues/113",
+      "body": "## User story\n\nAs an operator, I want the runner's certifi free of PYSEC-2026-4320, so the dependency audit is green again.\n\n## Acceptance criteria\n\n- [ ] On or after 2026-11-02, when certifi 2026.10.19 is two weeks old, `runner/uv.lock` carries certifi 2026.10.19 or newer\n- [ ] `make audit-deps` passes on main again\n- [ ] Until then `audit-deps` stays red on main and on every pull request for this one advisory, and nothing else is let through\n\n## Tests\n\n`make audit-deps` and the `check-python` layer, including the runner image's smoke run.\n\n## Implementation\n\n- Take Renovate's bump if it comes first; otherwise `make` the lock update in the uv container (`uv lock --upgrade-package certifi`).\n\n## Depends on\n\n- certifi 2026.10.19 reaching the two-week minimum age on 2026-11-02\n"
+    },
+    {
+      "number": 114,
+      "title": "Let an assistant connect by its client ID metadata document",
+      "closed": true,
+      "createdAt": "2026-10-21T09:32:08Z",
+      "closedAt": "2026-10-21T10:18:43Z",
+      "labels": [
+        "area/auth",
+        "area/security",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M10 Assistants and editor",
+      "url": "https://github.com/Cloudster1/Rotor/issues/114",
+      "body": "## User story\n\nAs someone using an assistant, I want it to connect to Rotor by naming its client metadata document, as current MCP clients can, so it does not have to register itself first.\n\n## Acceptance criteria\n\n- [ ] `client_id` may be an https address with a path; Rotor fetches the client ID metadata document there, at most 5 KiB within a few seconds, follows no redirect, and keeps it as long as its cache headers say, at most a day\n- [ ] The document is held to the rules a registration is (`checkMetadata`): its `client_id` is its own address, it keeps no secret (`token_endpoint_auth_method: none`), and its redirects are https or loopback http\n- [ ] The fetch refuses private, loopback, link-local and metadata-service addresses, after resolving the name and on every connection, so a document's address can never reach inside Rotor's network\n- [ ] `/.well-known/oauth-authorization-server` says `client_id_metadata_document_supported: true`\n- [ ] The consent page says whether an assistant registered or is known by its document, and shows the document's address\n- [ ] A document that cannot be fetched or is refused sends the browser to `/oauth/consent?error=invalid_client`, never to the assistant's redirect\n\n## Tests\n\n- Unit: the outbound guard on each kind of private address, a name resolving to one, and a redirect to one; the cache header rules; a document naming another `client_id` or asking for a secret.\n- Integration: an assistant known by its document connects through the go-sdk; one whose address resolves to a private address is refused.\n- Threat model: a new row under the api for server-side requests to addresses an anonymous caller names.\n\n## Implementation\n\n- Port Exciter's `backend/internal/netguard` (introduced in f70ebfd) as the dialer of a client of its own, separate from `boot.ToolClient`, which reaches the stack's tools on private addresses on purpose.\n- Port the metadata-document half of Exciter's `backend/internal/oauth/clients.go` at 3b340ca (`HTTPFetcher`, `keepFor`, `fetchClient`) and its `kind` and `fresh_until` columns, in a new migration.\n- Credit both in `NOTICE`; `docs/api-contract-m10.md`, `docs/decisions.md` (it reverses \"Registration only, for now\") and `docs/assistants.md`.\n\n## Depends on\n\n- #47\n"
+    },
+    {
+      "number": 116,
+      "title": "docs: a readme that shows what rotor does, as armature's does",
+      "closed": true,
+      "createdAt": "2026-10-21T11:31:51Z",
+      "closedAt": "2026-10-21T12:24:33Z",
+      "labels": [
+        "area/infra",
+        "documentation",
+        "mvp",
+        "type/chore"
+      ],
+      "milestone": "M9 Suite and release",
+      "url": "https://github.com/Cloudster1/Rotor/issues/116",
+      "body": "## User story\n\nAs somebody who finds Rotor on GitHub, I want its README to show me what Rotor\ndoes, how to run it in a couple of commands, how it is put together, deployed,\ntested and operated, so I can judge and start using it without reading the\nwhole `docs/` folder first, the way Armature's README does for Armature.\n\n## Acceptance criteria\n\n- The README follows Armature's: a tagline, badges, a picture of the product,\n  a quick start with nothing installed but Docker, \"What it does\" with\n  pictures, how it is put together, deploying, testing, operations, every\n  environment variable with its default, where everything lives, building\n  the images, releasing and the license.\n- Every statement matches the code and the docs it links to; nothing is\n  promised that is not built.\n- The pictures are taken by `make screenshots` from the running stack, not\n  drawn by hand, so they can be taken again when the pages change.\n- ASCII only, as the style asks.\n\n## Tests\n\n- `make screenshots` against a fresh `make up` produces every picture the\n  README and `docs/screenshots.md` name.\n- The screenshots spec is outside the gate's browser suite, so the gate is\n  unchanged.\n- The links in the README resolve to files in the repository.\n\n## Implementation\n\n- `README.md` rewritten on Armature's pattern.\n- `e2e/screenshots/`: a Playwright spec that signs in as alice, adds a tool\n  from the tool stub, saves the example workflow, starts runs and takes each\n  page's picture into `docs/screenshots/`.\n- `make screenshots` in `mk/e2e.mk`.\n- `docs/screenshots.md`: the product in pictures.\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 118,
+      "title": "Find out whether OpenShell can isolate a run, on the kind cluster",
+      "closed": true,
+      "createdAt": "2026-10-21T14:19:27Z",
+      "closedAt": "2026-10-21T16:50:12Z",
+      "labels": [
+        "area/sandbox",
+        "backlog",
+        "kube",
+        "type/chore"
+      ],
+      "milestone": "M11 OpenShell sandboxes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/118",
+      "body": "## User story\n\nAs an operator of Rotor, I want to know whether NVIDIA OpenShell can isolate a run better than Rotor's own gVisor pods, before Rotor builds a backend for it.\n\nOpenShell moves three things outside the sandbox that Rotor today does inside it, or does more coarsely:\n- **Each binding's `allowTools`.** OpenShell can allow MCP `tools/call` by tool name, outside the sandbox. Today the runner, inside the untrusted boundary, filters the tools it offers.\n- **Egress.** OpenShell filters per request, at L7 with TLS termination, instead of by Cilium hostname rules and NetworkPolicy.\n- **Credentials.** The agent sees only placeholders. Today the model key and run tokens reach the runner's memory through OpenBao wrapping tokens.\n\nWhat we know so far, from the OpenShell docs for v0.1.5 (Apache 2.0):\n- **Parts:** a gateway, a supervisor per sandbox outside the agent's boundary, and the sandbox. The agent runs non-root, without capabilities, under Landlock and seccomp. If the supervisor is lost, the agent is frozen.\n- **On Kubernetes:** a Helm chart, which needs the Agent Sandbox controller and a CNI that enforces NetworkPolicy. Each sandbox is a workload pod plus a supervisor pod.\n- **Kernel needs:** Landlock ABI 3 (Linux 6.2+), seccomp user notification with ADDFD, and `process_vm_readv`.\n- **Runtime class:** Kata is documented through `runtime_class_name`; gVisor is not mentioned.\n\nThis spike answers what the docs leave open, so that #119 to #122 can be corrected or closed.\n\n## Acceptance criteria\n\n- On this checkout's kind cluster (Cilium), these run beside Rotor's chart, each pinned to a release at least two weeks old:\n  - the Agent Sandbox controller and its CRDs;\n  - the OpenShell chart (`oci://ghcr.io/nvidia/openshell/helm-chart`).\n- A throwaway Go program on the pinned SDK (`github.com/NVIDIA/OpenShell/sdk/go/openshell/v1`) starts the runner image in an OpenShell sandbox, and one run reaches its end.\n- A new section of `docs/decisions.md` answers each question, with what was measured:\n  1. **Isolation.** Does the supervisor admit a workload under gVisor (Landlock, seccomp user notification)? If not, does it under Kata, and what would Rotor lose without gVisor?\n  2. **The runner protocol.** Does gRPC with mTLS to the api's runner port pass as a `tcp` endpoint with `tls: skip`?\n  3. **Code nodes.** Do they still start under Landlock? They run under the same Python interpreter as the runner, so per-binary rules cannot tell them apart; what does that mean for #120?\n  4. **Credentials.** Can a provider update reach a long-running runner? The docs say a process keeps the credential revision it started with, but Rotor mints tokens while a run goes on.\n  5. **Cost.** How long to the first event, against a gVisor pod? How many pods and resources does a run cost?\n  6. **Secrets at rest.** Can short-lived values be kept off the gateway's database, using the credential driver for Kubernetes Secrets? Rotor's rule is that secrets never land in a database.\n- The outcome is go or no-go. With go, the bodies of #119 to #122 are corrected from the findings; with no-go, they are closed with the reason.\n\n## Tests\n\nNone in the gate: the spike leaves a decision, not code. The commands that set the cluster up go into the decision, so they can be run again.\n\n## Implementation\n\n- Use `make kind-up` and the chart install test's setup in `scripts/kind/` as the starting point.\n- Add `M11 OpenShell sandboxes` to the milestone list in `.claude/skills/gh/SKILL.md` on this issue's branch.\n- Docs consulted:\n  - [architecture](https://docs.nvidia.com/openshell/latest/about/architecture)\n  - [Kubernetes setup](https://docs.nvidia.com/openshell/latest/kubernetes/setup)\n  - [runtimes](https://docs.nvidia.com/openshell/latest/how-it-works/sandboxes/runtimes)\n  - [network rules](https://docs.nvidia.com/openshell/latest/how-it-works/policies/network-rules)\n  - [providers](https://docs.nvidia.com/openshell/latest/how-it-works/providers/overview)\n  - [Go SDK](https://docs.nvidia.com/openshell/latest/sdk/go)\n  - [support matrix](https://docs.nvidia.com/openshell/latest/about/support-matrix)\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 119,
+      "title": "Start runs in OpenShell sandboxes, as an optional backend",
+      "closed": true,
+      "createdAt": "2026-10-21T14:19:45Z",
+      "closedAt": "2026-10-21T16:29:49Z",
+      "labels": [
+        "area/sandbox",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M11 OpenShell sandboxes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/119",
+      "body": "## User story\n\nAs an operator, I want Rotor to start each run in an NVIDIA OpenShell sandbox when I choose to. Then I get OpenShell's supervisor and policy enforcement around every run, and today's gVisor pods stay the default for everyone else.\n\n## Acceptance criteria\n\n- `ROTOR_SANDBOX_BACKEND=openshell` makes the worker start, list, check and end sandboxes through an OpenShell gateway; `kube` and `docker` work as before.\n- **Settings** (`backend/internal/config/sandbox.go`):\n  - `ROTOR_OPENSHELL_ADDR`, `ROTOR_OPENSHELL_WORKSPACE` and `ROTOR_OPENSHELL_CA_FILE`;\n  - OIDC client credentials of a realm client, which the gateway trusts.\n- **Refusals:** outside development the api and the worker refuse to start without TLS to the gateway and a user credential. The error says what to set.\n- **Each sandbox:**\n  - carries the `rotor.dev/sandbox`, `rotor.dev/stack` and `rotor.dev/run` labels;\n  - gets `Spec.Env` and `Spec.SecretEnv`, the bootstrap token kept as the gateway keeps secrets;\n  - gets the limits, and the policy #120 renders.\n- **Status** maps OpenShell's phases (Provisioning, Starting, Ready, Stopping, Stopped, Completed, Error, Deleting, Unknown) to Rotor's states (starting, running, exited, unknown).\n- **The worker's passes** (reconcile, expire, teardown) work unchanged. OpenShell has no `activeDeadlineSeconds`, so the deadline stays with the worker.\n\n## Tests\n\n- **Unit:** the phase mapping and the label filter; `config_test` cases for the new settings and refusals.\n- **Integration:** against an OpenShell gateway on its Docker driver in the compose stack, under a compose profile (`openshell`) so the default stack and gate are unchanged. A run reaches its end, and a sandbox no live run keeps is destroyed by the next pass.\n- **Kubernetes:** a `make test-kube` variant on kind with the OpenShell chart, as set up in the spike.\n\n## Implementation\n\n- **The backend:** `backend/internal/sandbox/openshell`, implementing `sandbox.Backend` (`backend/internal/sandbox/sandbox.go`):\n  - Spawn is `Sandboxes().Create` with `SandboxTemplate.Image`, `Environment`, labels and `Policy`, then `WaitReady`;\n  - Status is `Get`, List is a paged list filtered by labels, and Destroy is `Delete`.\n- **The SDK:** `github.com/NVIDIA/OpenShell/sdk/go`, pinned to a release at least two weeks old, the same release as the gateway. It goes in `NOTICE` if any code is adapted.\n- **Wiring:** the backend is chosen in `cmd/worker` beside `docker` and `kube`. Constants go in `backend/internal/config`.\n- **Docs:** [Go SDK](https://docs.nvidia.com/openshell/latest/sdk/go), [gateway authentication](https://docs.nvidia.com/openshell/latest/how-it-works/gateways/authentication), [runtimes](https://docs.nvidia.com/openshell/latest/how-it-works/sandboxes/runtimes).\n\n## Depends on\n\n#118, the spike, and its go decision.\n"
+    },
+    {
+      "number": 120,
+      "title": "Hold each run's network access to what its workflow declares, outside the sandbox",
+      "closed": true,
+      "createdAt": "2026-10-21T14:20:02Z",
+      "closedAt": "2026-10-21T16:29:52Z",
+      "labels": [
+        "area/security",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M11 OpenShell sandboxes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/120",
+      "body": "## User story\n\nAs a person whose run reads content an attacker may have written, I want the sandbox's way out to allow only what the workflow declared, checked outside the sandbox. Then a run that has been talked into something cannot call a tool its binding does not allow, even with the runner subverted.\n\nToday each binding's `allowTools` and read-only access are applied by the runner, inside the untrusted boundary, and egress is held by Cilium hostname rules and NetworkPolicy. OpenShell's supervisor can terminate TLS and check each MCP request by method and tool name before it leaves.\n\n## Acceptance criteria\n\n- On the `openshell` backend (#119), Spawn sends a policy rendered from the run's pinned workflow version. The policy allows nothing else:\n  - **Each tool binding's MCP host and port:**\n    - `protocol: mcp` and `enforcement: enforce`;\n    - `initialize`, `notifications/initialized` and `tools/list` allowed;\n    - `tools/call` allowed only for the tool names in `allowTools`;\n    - for a read binding, only the tools that say they only read, as `internal/catalog` reads them today.\n  - **The run's model provider:** its host, port and API path.\n  - **Rotor's runner port**, as a `tcp` endpoint with `tls: skip`: the runner's mTLS stays end to end.\n  - **OpenBao**, only while #121 has not replaced unwrapping.\n- **Who may connect:** each rule names the runner's binaries, by real path. The spike's finding on code nodes decides whether code nodes get a rule of their own.\n- **Denials:** a `policy_denied` answer reaches the run's timeline as an event, and the audit log as `sandbox.denied`, naming the host and tool, never a credential.\n- **Docs:** `docs/threat-model.md` records which checks moved outside the sandbox.\n\n## Tests\n\n- **Unit:** the renderer, covering a read binding, a write binding behind an approval, two bindings on one host, and a workflow without tools.\n- **Integration:**\n  - a code node calls a tool outside its binding's `allowTools`, and the supervisor refuses the call, not the runner;\n  - a request to a host no binding names is refused;\n  - both refusals are on the timeline and in the audit log.\n\n## Implementation\n\n- **The renderer:** a package of its own beside the backend, such as `backend/internal/sandbox/openshell/policy`. It reads `internal/workflow` spec types and the tool records in `internal/tools`.\n- **Denials** come from OpenShell's sandbox logs or its OCSF export, whichever the spike shows is reliable: [logging](https://docs.nvidia.com/openshell/latest/observability/logging), [OCSF JSON export](https://docs.nvidia.com/openshell/latest/observability/ocsf-json-export).\n- **Docs:** [network rules](https://docs.nvidia.com/openshell/latest/how-it-works/policies/network-rules), [policy schema](https://docs.nvidia.com/openshell/latest/how-it-works/policies/schema). The policy prover ([prover](https://docs.nvidia.com/openshell/latest/how-it-works/policies/prover)) may check rendered policies in a test.\n- **Related:** #32. A deny rule can hold a write back before it reaches the tool, which may serve that issue once Exciter#235 ships.\n\n## Depends on\n\n#119.\n"
+    },
+    {
+      "number": 121,
+      "title": "Keep a run's tokens and the model key out of its OpenShell sandbox",
+      "closed": true,
+      "createdAt": "2026-10-21T14:20:30Z",
+      "closedAt": "2026-10-21T16:29:54Z",
+      "labels": [
+        "area/security",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M11 OpenShell sandboxes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/121",
+      "body": "## User story\n\nAs a person whose run acts in a tool as me, I want my access tokens and the installation's model key never to enter the sandbox. Then a run that has been talked into something has no credential to leak, and can use one only on the endpoint it belongs to.\n\nToday the control plane mints each binding's token as the run asks for one, keeps it in OpenBao and sends a wrapping token that opens once. The runner unwraps it and holds the token in memory; the provider key travels the same way. OpenShell providers give the agent an opaque placeholder instead. The supervisor puts the real value in only on requests to endpoints the provider is bound to.\n\n## Acceptance criteria\n\n- **Per binding:** on the `openshell` backend (#119), when a run starts or its runner asks for a binding's token, the control plane:\n  - mints the access token as today (`internal/connections`);\n  - stores it as an OpenShell provider bound to that tool's MCP host, port and path;\n  - attaches the provider to the run's sandbox.\n  The runner receives a placeholder.\n- **The model provider's key** is attached the same way:\n  - for Anthropic and OpenAI, with OpenShell's built-in profiles;\n  - for Azure OpenAI and OpenAI-compatible endpoints, with a profile Rotor imports for that host.\n- **Rotation:** a token minted again during a run reaches the runner as the spike found it can. Either a provider update reaches the running process, or the runner starts each tool session in a new process. The decision is recorded.\n- **When the run ends** (or its connection ends, or its person is switched off), the providers are detached and deleted, and the tokens are revoked at their tools, as today.\n- **What stays the same:**\n  - refresh tokens stay in OpenBao alone;\n  - the gateway keeps only short-lived values, in the credential driver for Kubernetes Secrets where the spike found it works.\n- **Docs:**\n  - `docs/decisions.md` records where the gateway keeps them and why that meets the secrets rule;\n  - `docs/threat-model.md` is updated;\n  - `SECURITY.md`'s claims for tokens and the sandbox say what holds on this backend.\n\n## Tests\n\n- **Integration**, on the `openshell` backend:\n  - a run's tool calls and model calls succeed;\n  - the runner's environment and `/proc` hold no real token or key;\n  - a request carrying the placeholder to a host no provider is bound to fails closed;\n  - after the run, the gateway lists none of its providers, and the tool counts the revocations (tool-stub stats).\n- **Unit:** the provider records Rotor builds for each kind of binding and model provider.\n\n## Implementation\n\n- Calls go through the pinned Go SDK's provider and attachment APIs, behind `internal/runnerctl`'s token path, so the `kube` backend keeps OpenBao wrapping.\n- Docs: [providers](https://docs.nvidia.com/openshell/latest/how-it-works/providers/overview), [profiles](https://docs.nvidia.com/openshell/latest/how-it-works/providers/profiles), [inference](https://docs.nvidia.com/openshell/latest/how-it-works/inference), [Kubernetes credential storage](https://docs.nvidia.com/openshell/latest/kubernetes/setup).\n\n## Depends on\n\n#119, and the answer of #118 on rotation and secrets at rest.\n"
+    },
+    {
+      "number": 122,
+      "title": "Choose OpenShell sandboxes in the chart, with the docs to install them",
+      "closed": true,
+      "createdAt": "2026-10-21T14:20:33Z",
+      "closedAt": "2026-10-21T16:29:57Z",
+      "labels": [
+        "area/infra",
+        "backlog",
+        "blocked",
+        "kube",
+        "type/feature"
+      ],
+      "milestone": "M11 OpenShell sandboxes",
+      "url": "https://github.com/Cloudster1/Rotor/issues/122",
+      "body": "## User story\n\nAs an operator, I want to choose OpenShell sandboxes in Rotor's chart and find out from the docs what to install first, so a deployment uses them without guesswork.\n\n## Acceptance criteria\n\n- **The chart setting:** `sandbox.backend` in `deploy/charts/rotor` takes `kubernetes` (the default, today's gVisor pods) or `openshell`.\n- **With `openshell`:**\n  - the worker gets the gateway's address, workspace, CA and its realm client's credentials from values and Secrets;\n  - the chart refuses to render without the gateway's address and CA, saying what to set;\n  - Rotor's sandbox namespace, NetworkPolicy and Cilium egress policies are left out, since OpenShell's chart and per-run policy (#120) take their place;\n  - the worker's Role for pods and Secrets is left out too.\n- **What the operator installs:** the OpenShell gateway, the Agent Sandbox controller and its CRDs, as with Postgres and OpenBao. `docs/deployment.md` gets a section \"OpenShell sandboxes\" covering:\n  - the versions Rotor is tested with;\n  - the CNI that must enforce NetworkPolicy;\n  - Kata or gVisor, as the spike decided;\n  - where the gateway keeps credentials;\n  - how to check that a run is isolated.\n- **Other docs:**\n  - `docs/architecture.md` lists the three backends;\n  - `docs/threat-model.md` covers this backend;\n  - the README's environment table and chart notes name the new settings;\n  - `CHANGELOG.md` says what changes for the operator.\n\n## Tests\n\n- **Helm:** `tests/test-helm.sh` renders an `openshell` install, compares it with a new golden file in `tests/helm/`, and checks the refusals.\n- **Chart install:** a `make test-chart-install` variant installs the OpenShell chart and Rotor's on kind, carries a run in an OpenShell sandbox, tries a host and a tool the run may not reach, and upgrades in place. The Kube workflow runs it nightly.\n\n## Implementation\n\n- Values and templates in `deploy/charts/rotor`, following how `sandbox.*` is laid out now; the install steps in `scripts/kind/`.\n- Docs: [Kubernetes setup](https://docs.nvidia.com/openshell/latest/kubernetes/setup), [access control](https://docs.nvidia.com/openshell/latest/kubernetes/access-control), [managing certificates](https://docs.nvidia.com/openshell/latest/kubernetes/managing-certificates), [security best practices](https://docs.nvidia.com/openshell/latest/security/best-practices).\n\n## Depends on\n\n#119 and #120.\n"
+    },
+    {
+      "number": 124,
+      "title": "Agree how triggers exclude events, skip a run's own writes and allow named writes unattended",
+      "closed": true,
+      "createdAt": "2026-10-22T07:40:46Z",
+      "closedAt": "2026-10-22T09:37:13Z",
+      "labels": [
+        "area/workflows",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M12 Story to requirements",
+      "url": "https://github.com/Cloudster1/Rotor/issues/124",
+      "body": "## User story\n\nAs a person who sets up a trigger, I want it agreed before it is built how a trigger leaves events out, how it ignores what its own runs wrote, and how a few named writes may happen without an approval, so the M12 workflows rest on one agreement.\n\n## Acceptance criteria\n\n- **Contract:** `docs/api-contract-m12.md` agrees, as `docs/api-contract-m6.md` did:\n  - the condition operators `notEquals`, `notIn` and `absent`;\n  - the write ledger: what a run reports for each write, how long it is kept, and how a delivered event is matched against it;\n  - the binding field `unattended: [call]` and the trigger body's `allowUnattended`, with the problems `unattended_not_allowed` and `unattended_widened`, and the administrator setting that forbids unattended writes.\n- **Pending operations:** operations not built yet are in `api/openapi.json` with `pending: true` and answer 501.\n- **Decision:** a section of `docs/decisions.md` says why named unattended writes are acceptable before #32:\n  - the person's review in Exciter stays the gate;\n  - a call that decides a review is still refused;\n  - every such write is audited;\n  - an administrator can forbid them.\n- **Milestones:** `.claude/skills/gh/SKILL.md` names `M12 Story to requirements` and `M13 Feature implementation`.\n\n## Tests\n\n- **Unit:** the OpenAPI drift test with the pending operations.\n\n## Implementation\n\n- The contract follows `docs/api-contract-m6.md`.\n- The rule it changes is in `backend/internal/workflow/spec/unattended.go`, and in \"What a triggered run may do\" in `docs/triggers.md`.\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 125,
+      "title": "Read Armature's issue key where Armature sends it",
+      "closed": true,
+      "createdAt": "2026-10-22T07:40:49Z",
+      "closedAt": "2026-10-22T09:39:23Z",
+      "labels": [
+        "area/integration",
+        "backlog",
+        "type/bug"
+      ],
+      "milestone": "M12 Story to requirements",
+      "url": "https://github.com/Cloudster1/Rotor/issues/125",
+      "body": "## User story\n\nAs a person with a trigger on Armature events, I want Rotor to find the issue an event is about, so the trigger matches its projects and the run starts.\n\n## Acceptance criteria\n\n- **The key:** `Project` (`backend/internal/hooks/match.go:177`) and `Subject` (`backend/internal/hooks/triggers.go:126`) read `payload.key`, which Armature sends on `issue.*` and `comment.added`. `payload.issue.key` stays as a fallback.\n- **Fixtures:** tests use payloads shaped as in Armature's `docs/webhooks.md`, not `{\"issue\":{\"key\":...}}`.\n- **Docs:** the topics table in `docs/triggers.md` names `payload.key`.\n\n## Tests\n\n- **Unit:** project and subject for each Armature topic.\n- **Integration:** a signed `comment.added` delivery starts a matching trigger and is skipped for another project.\n\n## Implementation\n\n- Fixtures in `backend/internal/hooks/hooks_test.go:47`, `backend/internal/hooks/subject_test.go:22` and `backend/test/hooks_test.go:214`.\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 126,
+      "title": "Let a trigger condition exclude an event",
+      "closed": true,
+      "createdAt": "2026-10-22T07:40:51Z",
+      "closedAt": "2026-10-22T10:22:17Z",
+      "labels": [
+        "area/backend",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M12 Story to requirements",
+      "url": "https://github.com/Cloudster1/Rotor/issues/126",
+      "body": "## User story\n\nAs a person with an event trigger, I want a condition to say what an event must not be, so I can leave out, for example, internal comments or a bot's events.\n\n## Acceptance criteria\n\n- **Operators:** `notEquals`, `notIn` and `absent` beside `equals`, `in` and `exists`, as `docs/api-contract-m12.md` agrees. A path that is missing equals nothing.\n- **The form:** the trigger form offers them, with its strings in `web/src/strings.ts`.\n- **Docs:** `docs/triggers.md` lists them.\n\n## Tests\n\n- **Unit:** each operator in `Filter.Matches`, a missing path included.\n- **Integration:** a trigger with `payload.internal notEquals true` skips an internal comment.\n- **E2E:** the form adds a `notEquals` condition, with the accessibility check.\n\n## Implementation\n\n- `backend/internal/hooks/match.go` (`Filter.Matches`, `problem()`), `make openapi`, and the trigger form in `web/`.\n\n## Depends on\n\n- #124\n"
+    },
+    {
+      "number": 127,
+      "title": "Keep a workflow from starting itself on its own writes",
+      "closed": true,
+      "createdAt": "2026-10-22T07:40:53Z",
+      "closedAt": "2026-10-22T10:14:40Z",
+      "labels": [
+        "area/backend",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M12 Story to requirements",
+      "url": "https://github.com/Cloudster1/Rotor/issues/127",
+      "body": "## User story\n\nAs a person whose workflow comments on the issue that started it, I want that comment not to start the workflow again, so a run never feeds itself.\n\n## Acceptance criteria\n\n- **The ledger:** each write a run makes through a tool is recorded with the tool, the call and the ids in its answer: an Armature comment id, an Exciter requirement key and revision. It is sealed like the run's other data and deleted with the run.\n- **Matching:** a delivered event about something a run of the same workflow wrote does not fire that workflow's triggers: the comment id for `comment.added`, the key and revision for `requirement.*`. Other workflows still hear it.\n- **Exciter's `via`:** an Exciter event whose `actor.via` names Rotor's client and matches a run of the same workflow is skipped too.\n- **Visible:** the trigger's history says an event was skipped as the workflow's own write, and names the run.\n\n## Tests\n\n- **Unit:** matching against the ledger.\n- **Integration:**\n  - a run posts a comment, and its delivery does not start the workflow again, while a person's comment does;\n  - as `rotor_app`, the ledger of another person's run cannot be read.\n\n## Implementation\n\n- The runner already sees each tool answer (`runner/src/rotor_runner/mcp.py`). Report the ids with the tool event.\n- Keep them in a new migration under `backend/migrations`.\n- Check them in `backend/internal/triggers/fire.go` before a run starts.\n\n## Depends on\n\n- #124\n- #125\n"
+    },
+    {
+      "number": 128,
+      "title": "Let a trigger's owner allow named writes without an approval",
+      "closed": true,
+      "createdAt": "2026-10-22T07:40:55Z",
+      "closedAt": "2026-10-22T10:10:45Z",
+      "labels": [
+        "area/security",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M12 Story to requirements",
+      "url": "https://github.com/Cloudster1/Rotor/issues/128",
+      "body": "## User story\n\nAs a person who sets up a trigger, I want to let a few named writes, such as a comment or a draft requirement, happen without an approval in Rotor, so a workflow can ask questions on a ticket and hand its drafts to a review in the tool.\n\n## Acceptance criteria\n\n- **The binding:** `unattended: [call]` lists calls from the binding's `allowTools` that may run in a triggered run with no approval node before them. A call not in `allowTools`, or one that decides a review, is a problem.\n- **The check:** `UnattendedWrites` (`backend/internal/workflow/spec/unattended.go`) exempts those calls. Every other write still needs an approval node on every path before it.\n- **The owner agrees:** creating or changing a trigger lists the calls. The body must carry them as `allowUnattended`, or it is refused with 422 `unattended_not_allowed`.\n- **A wider version:** a version that adds a call turns the trigger off at its next firing with reason `unattended_widened`, until the owner agrees again.\n- **Audit:** each unattended write is in the audit log with the trigger, the run, the call and its subject.\n- **Administrators:** a setting forbids unattended writes in the whole installation, and turns such triggers off with reason `unattended_forbidden`.\n- **Docs:** `docs/workflows.md` and `docs/triggers.md` describe it.\n\n## Tests\n\n- **Unit:** the check with and without the field; a call that decides a review is refused.\n- **Integration:**\n  - a trigger is refused without `allowUnattended` and accepted with it;\n  - a wider version turns it off, and so does the setting;\n  - the audit entry.\n- **E2E:** the trigger form lists the calls and asks the owner to agree.\n\n## Implementation\n\n- `api/workflow.v1.schema.json`, `backend/internal/workflow/spec`, `runner/src/rotor_runner/spec.py`, `backend/internal/triggers/check.go` and `make openapi`.\n\n## Depends on\n\n- #124\n"
+    },
+    {
+      "number": 129,
+      "title": "Answer Armature's tools in the tool-stub, held to a recorded snapshot",
+      "closed": true,
+      "createdAt": "2026-10-22T07:40:57Z",
+      "closedAt": "2026-10-22T10:10:12Z",
+      "labels": [
+        "area/integration",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M12 Story to requirements",
+      "url": "https://github.com/Cloudster1/Rotor/issues/129",
+      "body": "## User story\n\nAs a contributor, I want the tool-stub to answer Armature's tools as Armature does, so the story workflow's tests run in the gate without the real Armature.\n\n## Acceptance criteria\n\n- **The snapshot:** `make tool-snapshots` records Armature's `tools/list` at `deploy/suite/ARMATURE_REF` into `api/tools/armature/tools-list.json`.\n- **The stub:** an Armature tenant lists that snapshot, not Exciter's as today. It answers `whoami`, `get_issue`, `list_comments`, `add_comment`, `add_remote_link` and `list_remote_links` from the tenant's options, with comment ids that `comment.added` fixtures can name.\n- **The Exciter calls the story workflow makes (#130):** an Exciter tenant also answers `search_requirements`, `list_armature_links`, `create_requirement`, `update_requirement` (over a `baseRevision`), `link_armature_issue` and `request_reviews`, keeping the requirements, links and reviews written there per tenant.\n- **Read back:** the control API answers what was written at a tenant (comments, remote links, requirements, Armature links, reviews), for tests to assert on.\n- **Contract:**\n  - the answers hold to each tool's `outputSchema` in the snapshot, and Armature's, which list none, to the response of the operation each stands for in `api/tools/armature/openapi.json`, vendored at the same commit;\n  - every route the stub serves is an Armature operation.\n\n## Tests\n\n- **Unit:** `backend/internal/toolstub/contract_test.go`, one shape test per call.\n\n## Implementation\n\n- `scripts/tool-snapshot.mjs` and `mk/tools.mk`.\n- `backend/internal/toolstub`: the `callTool` switch in `mcp.go`, and a new `issues.go`.\n\n## Depends on\n\n- #125\n"
+    },
+    {
+      "number": 130,
+      "title": "Clarify an Armature story and turn it into Exciter requirements",
+      "closed": true,
+      "createdAt": "2026-10-22T07:40:59Z",
+      "closedAt": "2026-10-22T14:38:24Z",
+      "labels": [
+        "area/workflows",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M12 Story to requirements",
+      "url": "https://github.com/Cloudster1/Rotor/issues/130",
+      "body": "## User story\n\nAs a product owner, I want a workflow that reads each new user story in Armature, asks on the ticket what is unclear, and once the answers are in writes or updates the project's requirements in Exciter and asks me to review them, so stories turn into reviewed requirements without anyone copying them over.\n\n## Acceptance criteria\n\n- **The workflow:** `examples/story-to-requirements.yaml`, checked by the Go and Python example tests.\n- **Triggers:**\n  - Armature `issue.created` and `comment.added`, narrowed to projects;\n  - fixed inputs `exciterProject` and `requirementType`;\n  - the comment trigger leaves out internal comments (`payload.internal notEquals true`).\n- **Gate:** a code node ends the run unless the issue's type is Story. On a comment, it also ends the run unless the issue carries Rotor's open questions and the new comment came after them. A marker line in Rotor's comment identifies the questions.\n- **Analysis:** an agent reads the story, every comment and the requirements already linked to the issue. It answers `openQuestions[]` and `changes[]`: create or update, with `reqKey` and `baseRevision`.\n- **Questions:** with open questions, the run posts them as one numbered comment with the marker and ends. The answer starts the next run.\n- **Requirements:** with no open questions, a code node:\n  1. creates or updates each requirement in `exciterProject`;\n  2. links it to the issue as `implements`;\n  3. calls `request_reviews`;\n  4. comments on the ticket, listing the requirements and asking the reporter to review them in Exciter.\n- **Bindings:** reading and writing use separate bindings. Only these calls write, and all of them are `unattended`: `add_comment`, `add_remote_link`, `create_requirement`, `update_requirement`, `link_armature_issue` and `request_reviews`.\n- **Docs:** a section in `docs/workflows.md`, and the trigger setup in `docs/triggers.md`.\n\n## Tests\n\n- **Integration** (tool-stub, stub model):\n  - the question round;\n  - the answer round, which files requirements;\n  - a Bug is ignored;\n  - the run's own comment starts no run.\n- **Suite:** the same against real Armature and Exciter. `mk/suite.mk` and `deploy/suite` start Armature.\n\n## Implementation\n\n- The code nodes call tools through `ctx.call_tool`.\n- The agent has only read bindings, so whatever the ticket says cannot make it write.\n\n## Depends on\n\n- #126\n- #127\n- #128\n- #129\n- #45, and through it Cloudster1/Armature#305\n"
+    },
+    {
+      "number": 131,
+      "title": "Agree the workflow spec for roles, loops, joins and workspaces",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:01Z",
+      "closedAt": "2026-10-22T22:52:21Z",
+      "labels": [
+        "area/workflows",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/131",
+      "body": "## User story\n\nAs a workflow author, I want it agreed before anything is built how a workflow gives each agent its own role and model, bounds a loop, waits for parallel branches and works on a repository, so the M13 issues build to one agreement.\n\n## Acceptance criteria\n\n- **Contract:** `docs/api-contract-m13.md` agrees, with examples:\n  - `model`, `role` and `maxSteps` on an agent node;\n  - `maxVisits` and `onExhausted` on any node, and `visits.<id>` in templates and routers;\n  - `join: all` on a node with several incoming edges;\n  - the `workspace` block on agent and code nodes: a repository binding, a branch, an image, and `read` or `write`;\n  - the `test` node type and its output;\n  - the repository binding, through Armature.\n- **Schema draft:** `api/workflow.v1.schema.json` carries these, and a run refuses them until they are built.\n- **Decision:** a section of `docs/decisions.md` says why coding agents use Rotor's own agent loop with workspace tools rather than a vendor's coding agent: any allowed provider works, and the fences and bindings stay the same.\n\n## Tests\n\n- **Unit:** invalid golden fixtures for the new fields in `api/workflow-fixtures/invalid`.\n\n## Implementation\n\n- Follows `docs/api-contract-m6.md`.\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 132,
+      "title": "Find out how a run step can work on a repository in a sandbox",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:02Z",
+      "closedAt": "2026-10-23T07:44:51Z",
+      "labels": [
+        "area/sandbox",
+        "backlog",
+        "kube",
+        "type/chore"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/132",
+      "body": "## User story\n\nAs an operator, I want to know how a run step can check out a repository, edit it, build it and run its tests in a sandbox as safe as today's, before Rotor builds workspaces.\n\nToday's sandbox is built to keep code out:\n- a distroless runner with no shell;\n- a 64Mi `noexec` `/tmp`;\n- code nodes capped at 5 minutes;\n- nothing kept between steps (`docs/decisions.md`, the sandbox and checkpoint sections).\n\n## Acceptance criteria\n\n- **A throwaway pod** on this checkout's kind cluster, under gVisor:\n  - the runner container and a toolchain container (an official Go or Node image) share an ephemeral volume;\n  - the runner clones a repository from a local Gitea, a command runs in the toolchain container, and the runner pushes a branch.\n- **A decision:** a section of `docs/decisions.md` answers each question, with what was measured:\n  1. how the runner runs a command in the toolchain container without a shell of its own: a small exec agent in the toolchain container, or a sidecar API;\n  2. egress limited to Armature, the model provider and a package mirror, and how a build fetches its dependencies;\n  3. size and time: the volume, memory, and a test run's length against a run timeout that restarts on each resume;\n  4. the branch as the only state between steps: what a clone costs per step, and whether shallow or partial clones help;\n  5. the same shape in compose, for the gate.\n- **Outcome:** go, or a different shape. Either way the bodies of #136 and #138 are corrected from the findings.\n\n## Tests\n\nNone in the gate. The commands go into the decision, so they can be run again.\n\n## Implementation\n\n- `make kind-up`, `scripts/kind/` and `backend/internal/sandbox/kube/pod.go` as the starting point.\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 133,
+      "title": "Give each agent node its own model, role and step budget",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:04Z",
+      "closedAt": "2026-10-23T07:52:12Z",
+      "labels": [
+        "area/workflows",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/133",
+      "body": "## User story\n\nAs a workflow author, I want each agent to have its own role, model and number of steps, so a coder, a reviewer and a security reviewer act as different specialists.\n\n## Acceptance criteria\n\n- **`model`:** one of the models an administrator allows, or the workflow's model when absent. It is checked when saving and when a run starts.\n- **`role`:** text added under Rotor's fixed policy (`runner/src/rotor_runner/policy.py`), outside the fences, at most as long as a prompt.\n- **`maxSteps`:** the agent's own step cap, at most the workflow's. Today every agent gets the workflow's `maxSteps` (`compile.py:113`).\n- **Cost:** `maxCost` and usage count each call at its own model's price.\n- **Web:** the canvas edits the role and the model, and the run page shows which model each agent used.\n\n## Tests\n\n- **Unit:**\n  - Go and Python validation;\n  - the runner with two agents on two stub models.\n- **Integration:** a run on two models, with usage per model.\n- **E2E:** editing the role on the canvas.\n\n## Implementation\n\n- `api/workflow.v1.schema.json` and `backend/internal/workflow/spec`.\n- `backend/internal/runnerctl/startrun.go`, which resolves only one model today.\n- `runner/src/rotor_runner/compile.py` and `models.py`.\n\n## Depends on\n\n- #131\n"
+    },
+    {
+      "number": 134,
+      "title": "Bound how often a loop repeats and say what happens after",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:06Z",
+      "closedAt": "2026-10-23T07:52:26Z",
+      "labels": [
+        "area/workflows",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/134",
+      "body": "## User story\n\nAs a workflow author, I want a loop between a coder and its reviewers to run at most so many times and then go where I say, so a run that cannot converge asks a person instead of failing at `maxSteps`.\n\n## Acceptance criteria\n\n- **Counting:** `maxVisits` on a node counts its visits under `visits.<id>`. One visit too many goes to `onExhausted`, or, with none, ends the run with `failed/loop_exhausted`.\n- **Reading the count:** routers and templates read `visits.<id>`.\n- **Warning:** a cycle in which no node carries `maxVisits` gives the save warning `unbounded_loop`.\n- **Output:** a node's output keeps its latest visit, and the run's timeline numbers each visit.\n- **Canvas:** back edges are drawn so they read as a loop.\n\n## Tests\n\n- **Unit:**\n  - Go and Python validation;\n  - the runner ends a loop on its count and follows `onExhausted`;\n  - the count survives an approval resume, since it lives in the checkpoint.\n- **E2E:** the canvas and the run page with a loop.\n\n## Implementation\n\n- `runner/src/rotor_runner/compile.py`: the state `{inputs, nodes}` gains `visits`.\n- `backend/internal/workflow/spec/sense.go`.\n\n## Depends on\n\n- #131\n"
+    },
+    {
+      "number": 135,
+      "title": "Run branches in parallel and wait for all of them",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:08Z",
+      "closedAt": "2026-10-23T07:52:43Z",
+      "labels": [
+        "area/runner",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/135",
+      "body": "## User story\n\nAs a workflow author, I want reviewers to run at the same time and the next step to wait for all of them, so a review round takes as long as its slowest reviewer.\n\n## Acceptance criteria\n\n- **Fan-out:** several edges out of a node already run their targets in parallel; `docs/workflows.md` says so.\n- **Join:** `join: all` makes a node run once, after every branch into it has ended. A node with several incoming edges and no `join` gets a warning.\n- **Approvals:** when parallel branches each wait at an approval, all of them are in the inbox. Today only the first is reported (`compile.py:323`).\n- **Limits:** limits, usage and the tool call rate count every branch.\n\n## Tests\n\n- **Unit:** the runner joins branches of different lengths, and two approvals wait at once.\n- **Integration:** a run with a parallel review and both approvals.\n- **E2E:** the run page shows the branches side by side.\n\n## Implementation\n\n- LangGraph's edge from several sources, in `runner/src/rotor_runner/compile.py`.\n- `backend/internal/approvals`, for several waits at once.\n\n## Depends on\n\n- #131\n"
+    },
+    {
+      "number": 136,
+      "title": "Give a step a workspace with the run's branch checked out",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:09Z",
+      "closedAt": "2026-10-23T07:55:26Z",
+      "labels": [
+        "area/sandbox",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/136",
+      "body": "## User story\n\nAs a workflow author, I want an agent or code step to work in a checkout of the run's branch, reading and editing files and running commands, so a coder can write code and a reviewer can read it.\n\n## Acceptance criteria\n\n- **The block:** `workspace: {repository, branch, image, access}` on agent and code nodes, as #131 agreed. `image` must be one an administrator allows.\n- **The sandbox** (`docs/decisions.md`, #132):\n  - a run whose pinned version has workspace nodes gets, beside the runner, one toolchain container per image those nodes name; other runs get today's pod;\n  - the toolchain container's entrypoint is Rotor's exec agent, which an init container copies in, so any allowed image works as it is;\n  - the runner reaches the agent over the pod's loopback with a secret per sandbox, delivered like the bootstrap token, so code nodes cannot call it;\n  - the toolchain container is hardened as the runner is: non-root, read-only root, no capabilities. Its caches (`HOME`, `TMPDIR`, `GOCACHE`, `GOMODCACHE` and the like) are an ephemeral volume of 4 GiB on disk, the work tree a memory volume of 1 GiB, and its memory 3 GiB unless an administrator sets more for the image.\n- **Tools:**\n  - an agent gets `list_files`, `read_file` and `search`;\n  - with `access: write`, also `write_file` and `edit_file`;\n  - every path stays inside the work tree and no tool follows a symbolic link, since the toolchain can plant one pointing at the runner's own files;\n  - `run_command` runs an argv, without a shell, in the toolchain container through the agent: a timeout of 15 minutes unless the call says, at most the run's, kills the command's process group; the output keeps its first and last 32 KiB of 64 KiB.\n- **The branch:**\n  - at its start the runner fetches only the run's branch, at depth 1, with dulwich, into a git directory only the runner mounts, and checks it out into the work tree, which has no `.git`;\n  - with `access: write` the runner commits what changed (a link as a link) and pushes at the end, with the run's Armature token, which never reaches the toolchain container;\n  - a step that fails pushes nothing.\n- **Nothing else is kept** between steps:\n  - each step has its own directory in the work tree volume, removed at its end with the toolchain's caches;\n  - the agent then ends every process of its container, those that left their process group included;\n  - a waiting run holds no workspace.\n- **Egress:** Armature's host, git included, the run's other tools, the model provider, and one package mirror host an administrator sets, passed to the toolchain as `GOPROXY`, `GOSUMDB` and `npm_config_registry`. The public Go proxy is not offered, since it needs every Cloud Storage bucket.\n- **Fences:** text read from files is fenced as data, like any tool's answer.\n\n## Tests\n\n- **Unit:** the tools against a temporary checkout, a planted link refused among them; the agent's timeout, output cap and reset.\n- **Integration:** in compose, against a test git server, with the toolchain container in the runner's network namespace, the agent as an image mount and a fixture repository without dependencies: a write step pushes, and a read step cannot.\n- **Kube:** the same under gVisor on the kind cluster (`make test-kube`).\n\n## Implementation\n\n- The agent: a small Go command of its own, in an image of Rotor's; `scripts/kind/workspace-trial.sh` and `scripts/kind/workspace-trial/agent` in commit 3d350d8 are the trial's version.\n- `backend/internal/sandbox`: the toolchain container, the agent and the volumes in both backends.\n- `deploy/charts/rotor`: the mirror host, the allowed images and their resources.\n- `runner/src/rotor_runner`: the workspace tools and git on dulwich, added to the runner's locked dependencies.\n\n## Depends on\n\n- #132\n- #137\n"
+    },
+    {
+      "number": 137,
+      "title": "Clone and push an Armature project's repository as the person",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:11Z",
+      "closedAt": "2026-10-23T07:53:55Z",
+      "labels": [
+        "area/integration",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/137",
+      "body": "## User story\n\nAs a person who starts a coding workflow, I want it to work on the repository Armature connects to the project, with my rights there, so code goes where the project's issues already point.\n\n## Acceptance criteria\n\n- **The binding:** a repository binding names an Armature project and repository. When saving, Rotor checks with `list_repositories` that the person sees it.\n- **Credentials:** the clone URL is Armature's git proxy, and the credential is the run's Armature token with `git.write`. No git host token reaches Rotor or OpenBao.\n- **Branches and pull requests:**\n  - `create_issue_branch` makes the run's branch for the issue;\n  - `open_pull_request` opens the pull request at the end;\n  - the default branch is never written.\n- **The scope:** the Armature tool profile from #45 maps `git.write`.\n\n## Tests\n\n- **Integration:** against a stub git proxy that checks the token.\n- **Suite:** against real Armature with a Gitea repository.\n\n## Implementation\n\n- `backend/internal/tools/profiles` and `backend/internal/connections/mint.go`.\n- The workspace's clone in #136.\n\n## Depends on\n\n- #45\n- Cloudster1/Armature#332\n- Cloudster1/Armature#333\n"
+    },
+    {
+      "number": 138,
+      "title": "Run a workspace's tests as a step and report each result",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:12Z",
+      "closedAt": "2026-10-23T07:56:36Z",
+      "labels": [
+        "area/runner",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/138",
+      "body": "## User story\n\nAs a workflow author, I want a step that runs the project's tests and reports each one, so an analyst agent and Exciter both know which test cases pass.\n\n## Acceptance criteria\n\n- **The node:** `type: test` with `workspace`, `command`, `reports` (JUnit paths) and `timeout`, run in the toolchain container through the exec agent of #136.\n  - `command` is an argv, run without a shell, so it cannot redirect: the reports are files the test tool writes itself, such as `gotestsum --junitfile` for Go (the toolchain image carries it), `pytest --junitxml` or vitest's JUnit reporter.\n  - `timeout` is 15 minutes unless the node says, at most the run's. Each test step starts from empty caches and builds cold: Rotor's backend took about 4 minutes under gVisor on 2 CPUs (`docs/decisions.md`, #132).\n  - The runner reads the reports from the work tree after the command, without following a symbolic link, each at most 4 MiB.\n- **Output:** `{passed, failed, skipped, failures: [{name, message, file}], cases: [{name, result, verifies: [KEY]}], logTail}`. `[verifies KEY]` tags in test names map cases to Exciter test cases. `logTail` is the end of the command's output, which the agent caps at 64 KiB.\n- **Failures:**\n  - a failing test is a result, not a failed step;\n  - a command that cannot run, times out or writes no report fails the step, with the reason.\n\n## Tests\n\n- **Unit:** JUnit from Go, pytest and vitest; a report that is a link is refused.\n- **Integration:** in compose, a fixture repository without dependencies, since the gate's network reaches no mirror, with one passing and one failing test.\n\n## Implementation\n\n- `runner/src/rotor_runner`; the schema and spec as #131 agreed.\n\n## Depends on\n\n- #136\n"
+    },
+    {
+      "number": 139,
+      "title": "Bring Exciter's tools up to test plans and executions",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:14Z",
+      "closedAt": "2026-10-23T07:51:58Z",
+      "labels": [
+        "area/integration",
+        "backlog",
+        "type/chore"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/139",
+      "body": "## User story\n\nAs a workflow author, I want Rotor to know Exciter's test plan and test execution tools, so a workflow can record a test run's results against Exciter's test cases.\n\n## Acceptance criteria\n\n- **The snapshot:**\n  - `deploy/suite/EXCITER_REF` moves to a current Exciter commit;\n  - the snapshot in `api/tools/exciter` is recorded again;\n  - the catalogue knows whether each of `start_test_execution`, `record_test_result`, `close_test_execution` and `get_test_case_results` reads or writes.\n- **The stub:** it answers `create_requirement`, `update_requirement`, `link_requirements`, `get_tree`, `start_test_execution` and `record_test_result`, held to the snapshot.\n- **Suite:** the suite passes against the new Exciter.\n\n## Tests\n\n- **Unit:** the contract tests.\n- **Suite:** `make test-suite`.\n\n## Implementation\n\n- `scripts/tool-snapshot.mjs`, `backend/internal/toolstub` and `backend/internal/tools/contract_test.go`.\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 140,
+      "title": "Implement an Exciter feature through reviewed, tested code",
+      "closed": true,
+      "createdAt": "2026-10-22T07:41:16Z",
+      "closedAt": "2026-10-23T10:14:22Z",
+      "labels": [
+        "area/workflows",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M13 Feature implementation",
+      "url": "https://github.com/Cloudster1/Rotor/issues/140",
+      "body": "## User story\n\nAs a product owner, I want a workflow that takes a feature specified in Exciter, writes its test specification and test cases, implements or updates the code and its tests, and repeats code, security, test and requirements reviews until every reviewer agrees. Then I get a pull request I can trust, and a trace from the requirements to passing tests.\n\n## Acceptance criteria\n\n- **The workflow:** `examples/implement-feature.yaml`, started by a person with:\n  - `exciterProject`;\n  - `featureKey`, a section or a requirement;\n  - the test section;\n  - `armatureIssue`;\n  - `image` and `testCommand`.\n- **Read:** the feature's requirements, what changed since it was last implemented (suspect links, revisions), and the test cases that verify them.\n- **Test design loop**, at most 3 rounds, then a person decides:\n  - a test designer writes or updates the test specification and its cases;\n  - a test reviewer checks that every requirement is covered and every case can be verified.\n- **Filing the tests:** the test cases go to Exciter as Test case requirements, linked to the requirements with `verifies`.\n- **Implementation loop**, at most 5 rounds, then a person allows another round or stops:\n  - a coder, with a write workspace, implements the code and automated tests tagged `[implements KEY]` and `[verifies KEY]`;\n  - a test step runs them;\n  - four reviewers run in parallel, each with a read-only workspace: code review, security review, test run analysis, and conformance to the requirements;\n  - a code node joins their verdicts, and any `changes` goes back to the coder with every finding.\n- **Finish:**\n  - a pull request through Armature, with the reviewers' summary;\n  - the test results recorded in a test execution in Exciter;\n  - a comment on the Armature issue.\n  - The pull request is the human gate, and nothing merges by itself.\n- **Least access:** each agent has its own `role`, the model the author chooses, and only the bindings it needs. Reviewers cannot write.\n- **Docs:** a section in `docs/workflows.md`, and a screenshot of a run in `docs/screenshots`.\n\n## Tests\n\n- **Integration:** a fixture repository on a test git server, a stub model that asks for changes once and then approves, and the stub's Exciter.\n- **Suite:** against real Armature and Exciter.\n\n## Implementation\n\n- Builds only on the node types and fields of #133 to #138.\n\n## Depends on\n\n- #133\n- #134\n- #135\n- #136\n- #138\n- #139\n- #129\n"
+    },
+    {
+      "number": 159,
+      "title": "Take the suite's kit, icons, strings, formats and themes",
+      "closed": false,
+      "createdAt": "2026-10-29T21:23:59Z",
+      "closedAt": null,
+      "labels": [
+        "area/web",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "UI",
+      "url": "https://github.com/Cloudster1/Rotor/issues/159",
+      "body": "Rotor joins the suite's standard, [administration.md](https://github.com/praetorianer777/Dynamo/blob/main/docs/administration.md) and [look-and-feel.md](https://github.com/praetorianer777/Dynamo/blob/main/docs/look-and-feel.md) in Dynamo (praetorianer777/Dynamo#75). Stator, Armature and Exciter share one kit, and Rotor shares only a subset of their tokens: it has no `components/ui`, and class strings are typed again in each file. The other issues of this milestone build on this one.\n\n## Done when\n- **Kit:** Rotor's web app takes the suite's kit: Button, Field, Select, Checkbox, Switch, Radio, Dialog with `ConfirmDialog`, Drawer, Menu with `MenuGroup`, Tabs, Table, Tag, Chip, Badge and `Count`, Toast, ErrorBanner, EmptyState, Skeleton, Tooltip, Avatar, PageHeader and `Page`. Each page uses them instead of its own class strings.\n- **Tokens:** the full set, including `surface-glass`, `shadow-3`, the status tokens and the six `--color-chart-*`, with JetBrains Mono for code.\n- **Icons:** the suite's 16 px glyphs on a 16-unit grid with a 1.5 stroke, replacing the 24-unit set in `features/shell/icons.tsx`.\n- **Strings:** the suite's i18n runtime with per-feature catalogues in English and German, and a language choice on the profile. `strings.ts` and `strings_*.ts` move in.\n- **Dates and times:** one format module, in the person's language and their time zone from the profile, with relative times translated. No page calls `toLocaleString` itself.\n- **Themes:** the theme engine, with custom themes, the editor, the installation's default, everyone's, and following a partner's theme. Not only Auto, Light and Dark.\n\nhttps://claude.ai/code/session_01XsypREK6CTfvi1885SVu2k\n"
+    },
+    {
+      "number": 160,
+      "title": "Follow the suite's shell and feedback",
+      "closed": false,
+      "createdAt": "2026-10-29T21:24:01Z",
+      "closedAt": null,
+      "labels": [
+        "area/web",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "UI",
+      "url": "https://github.com/Cloudster1/Rotor/issues/160",
+      "body": "Rotor joins the suite's standard, [administration.md](https://github.com/praetorianer777/Dynamo/blob/main/docs/administration.md) and [look-and-feel.md](https://github.com/praetorianer777/Dynamo/blob/main/docs/look-and-feel.md) in Dynamo (praetorianer777/Dynamo#75). Stator, Armature and Exciter share one kit, and Rotor shares only a subset of their tokens: it has no `components/ui`, and class strings are typed again in each file.\n\n## Done when\n- **Rail and sidebar:** the rail at 48 px and the sidebar at 232 px, a drawer below 768 px instead of a row that scrolls sideways. The head is the mark and the installation's name.\n- **Account menu:** the round button with the avatar, name, address and role, \"Switch to\" Stator, Armature and Exciter with their logos, and signing out. It replaces the top bar's name and \"Sign out\" button; the theme switch moves into it as in the others.\n- **Palette and breadcrumbs:** a Ctrl+K palette, Cmd+K on a Mac, for workflows, runs, places and actions, and breadcrumbs derived from the places.\n- **Notifications and approvals:** a bell with a Notifications page. Approvals stay a page of their own with a `Count` in the sidebar, and each new approval is a notification too.\n- **Feedback:** toasts for what happened, `ConfirmDialog` for archiving and deleting instead of the inline two-step, the kit's Dialog instead of a native `<dialog>`, skeletons instead of \"Reading the...\" strings, and a 404 with the way home.\n- **Widths:** `Page` widths. The YAML editor and the graph canvas are `width=\"wide\"`, with code in the mono font.\n- **Build stamp:** the shared `BuildStamp` in the sidebar rather than a card in Settings. `<main>` takes `tabIndex={-1}` without a ring, as the others.\n\nhttps://claude.ai/code/session_01XsypREK6CTfvi1885SVu2k\n"
+    },
+    {
+      "number": 161,
+      "title": "Split Settings from Admin and grant access as the suite does",
+      "closed": false,
+      "createdAt": "2026-10-29T21:24:04Z",
+      "closedAt": null,
+      "labels": [
+        "area/web",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "UI",
+      "url": "https://github.com/Cloudster1/Rotor/issues/161",
+      "body": "Rotor joins the suite's standard, [administration.md](https://github.com/praetorianer777/Dynamo/blob/main/docs/administration.md) and [look-and-feel.md](https://github.com/praetorianer777/Dynamo/blob/main/docs/look-and-feel.md) in Dynamo (praetorianer777/Dynamo#75). Stator, Armature and Exciter share one kit, and Rotor shares only a subset of their tokens: it has no `components/ui`, and class strings are typed again in each file. Today `/settings` is one column of cards, and the administrators' cards are simply left out for anybody else.\n\n## Done when\n- **`/settings` holds your own pages:**\n  - profile with notifications, language and time zone;\n  - themes;\n  - access tokens and connected assistants;\n  - your usage;\n  - your accounts in the partner tools, from today's `/connections`.\n\n  The hub gives each page a sentence on what it is for.\n- **`/admin` holds the installation's,** in the standard's sections, refused once to anybody but an administrator:\n  - People and access: Installation, Access, Users;\n  - Work: Workspaces, Unattended writes;\n  - Integrations: Model providers, LangSmith, Tools, Connected apps with all assistants;\n  - Records: Audit log, Usage, Retention.\n- **A workflow's settings** live at `/workflows/<id>/settings/<section>`, with the sections General, Versions, Sharing and Triggers, each with its own route. Every person it is shared with may open them read-only. Archiving offers Undo, and deleting asks in a `ConfirmDialog`.\n- **Access follows the standard's model:**\n  - roles, built in and an administrator's own;\n  - the Matrix of permissions;\n  - groups, by hand or with a provider claim, and a built-in Everyone group;\n  - grants of a role on the whole installation or one workflow.\n\n  The built-in roles are administrator over the installation, and on a workflow runner, editor and workflow administrator.\n- **Migration:** today's `rotor-administrators` membership becomes the administrator grant. A workflow's owner becomes its administrator, and sharing with groups or everyone becomes runner grants, so nobody's access changes.\n- **Letting people in:** Rotor lets in only who an administrator lets in, or whose group holds a grant with \"Let people in by their groups\" on. Join requests wait under Users.\n- **Single sign-on** is a tab of Access, with the standard's form.\n\nhttps://claude.ai/code/session_01XsypREK6CTfvi1885SVu2k\n"
+    },
+    {
+      "number": 162,
+      "title": "Use the suite's sign-in and consent pages",
+      "closed": false,
+      "createdAt": "2026-10-29T21:24:06Z",
+      "closedAt": null,
+      "labels": [
+        "area/web",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "UI",
+      "url": "https://github.com/Cloudster1/Rotor/issues/162",
+      "body": "Rotor joins the suite's standard, [administration.md](https://github.com/praetorianer777/Dynamo/blob/main/docs/administration.md) and [look-and-feel.md](https://github.com/praetorianer777/Dynamo/blob/main/docs/look-and-feel.md) in Dynamo (praetorianer777/Dynamo#75). Stator, Armature and Exciter share one kit, and Rotor shares only a subset of their tokens: it has no `components/ui`, and class strings are typed again in each file. Rotor's `/login` is one card with \"Sign in with your suite account\", an accent-filled button, and no logo, waiting notice or password card.\n\n## Done when\n- **`/login` is the suite's sign-in page,** Stator's and Exciter's `LoginPage`:\n  - the logo, \"Rotor\", \"Sign in\" and \"Sign in through your identity provider.\";\n  - a card with the primary button \"Sign in with SSO\";\n  - a second card for a password, if Rotor keeps one for a local administrator; otherwise no second card.\n- **A person not let in yet** sees the waiting notice, \"Your request is waiting\", once Rotor has join requests (see the settings issue).\n- **Failures:** every reason has the standard's sentence, saying what to do: expired, not set up, no email, unverified email, switched off, refused, unreachable, anything else.\n- **`/oauth/consent`** uses the sign-in page's frame. The card names the assistant and what it asks for, with \"Allow\" as the primary button and \"Deny\" beside it.\n- **The browser tests** follow the new pages.\n\nhttps://claude.ai/code/session_01XsypREK6CTfvi1885SVu2k\n"
+    },
+    {
+      "number": 163,
+      "title": "Let administrators cap the Stator pages a workflow may read",
+      "closed": false,
+      "createdAt": "2026-10-30T22:46:17Z",
+      "closedAt": null,
+      "labels": [
+        "area/security",
+        "area/workflows",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M14 Confidentiality levels",
+      "url": "https://github.com/Cloudster1/Rotor/issues/163",
+      "body": "## User story\n\nAs an administrator, I want to set the highest Stator confidentiality level each workflow may read, and a default for every workflow, so that no workflow author can give their runs access to pages above it.\n\n## Acceptance criteria\n\n- [ ] The levels are Stator's: `public < internal < confidential < secret` (praetorianer777/Stator#595)\n- [ ] An installation default, `internal` at first, that only administrators change\n- [ ] A workflow's own cap, empty for the installation default, that only administrators change\n- [ ] Only an administrator acting in person changes either: a member, the owner, and an assistant acting for an administrator are refused by the route (403) and again by the database for `rotor_app`\n- [ ] `PUT /api/v1/workflows/{id}/confidentiality` (`admin: true`) takes a level or `null`; `PUT /api/v1/settings/confidentiality` sets the default\n- [ ] The workflow summary returns `confidentiality` (`effective`, `source`: `workflow` or `default`) to everyone who may see the workflow\n- [ ] Saving a new spec version leaves the cap untouched\n- [ ] Audit actions `workflow.confidentiality_set` and `confidentiality.default_set`\n- [ ] `api/openapi.json` and `web/src/api/schema.d.ts` regenerated; the agreement in `docs/api-contract-m14.md`\n- [ ] `docs/decisions.md` records the choice: the first limit Rotor sets on top of a tool's own permissions, enforced by the tool through the run's token; `docs/architecture.md` (trust boundaries) and `docs/threat-model.md` follow\n- [ ] `.claude/skills/gh/SKILL.md` lists `M14 Confidentiality levels`\n\n## Tests\n\nUnit: the route table and the admin flag in the OpenAPI document. Integration, as `TestAdministratorsForbidUnattendedWritesForEveryone` does: bob, owner and member, gets 403; alice, an administrator, gets 200 and the audit row is written; the same update straight through SQL as `rotor_app` is refused for the owner, for an assistant (`WithVia`) and for a member; a spec save keeps the cap.\n\n## Implementation\n\n- A migration after 01260: a singleton default table on the pattern of `01260_workspace_setting.sql`, and `workflow.stator_max_confidentiality`\n- Row policies cannot guard one column, so a `BEFORE UPDATE` trigger refuses a change unless `current_actor_is_admin() AND current_actor_via() IS NULL`, as `workflow_owner_fixed` guards the owner\n- Written through `db.WriteAdmin`, as `Archive` is in `workflows/save.go`\n\n## Depends on\n\nNothing; the levels are agreed with praetorianer777/Stator#595.\n"
+    },
+    {
+      "number": 164,
+      "title": "Hold each run's Stator reads to its workflow's cap",
+      "closed": false,
+      "createdAt": "2026-10-30T22:46:20Z",
+      "closedAt": null,
+      "labels": [
+        "area/connections",
+        "area/runner",
+        "area/security",
+        "backlog",
+        "blocked",
+        "type/feature"
+      ],
+      "milestone": "M14 Confidentiality levels",
+      "url": "https://github.com/Cloudster1/Rotor/issues/164",
+      "body": "## User story\n\nAs an administrator, I want every run of a workflow to read Stator only up to the workflow's cap, enforced by Stator itself, so that a run, or anything that takes over its sandbox, cannot read a page above it.\n\n## Acceptance criteria\n\n- [ ] The cap is frozen on the run when it starts, so an administrator's later change does not alter a run that waits or runs\n- [ ] Every Stator token minted for the run carries `stator_max_confidentiality`, the runner's and the trigger's `get_page` subject read alike\n- [ ] A run with a Stator binding does not start when Stator does not advertise `confidentiality@1` or cannot exchange tokens; the refusal says what to update\n- [ ] A triggered run whose subject page lies above the cap does not start; the trigger log says why, without the page's title\n- [ ] The run page shows the cap the run read under; `token.minted` audits the cap carried\n\n## Tests\n\nIntegration against the tool-stub: a run capped at `internal` reads an internal page and gets \"not found\" for a confidential page and for its child; a start without `confidentiality@1` is refused; a trigger skips a capped page; the frozen cap holds through an administrator's change. The suite repeats it against the real Stator.\n\n## Implementation\n\n- The Stator profile from #105 exchanges tokens (`SharedGrantToken`); `connections/exchange.go` takes the cap; `grant` in `runnerctl/startrun.go` and `hooks/triggers.go` pass it\n- `runs.Service.Start` freezes the cap in a new `run` column and checks Stator's capability\n- The tool-stub grows a Stator tenant with pages, parents and levels; its exchange accepts the cap and `get_page` and `search` honour it, held to the recorded `api/tools/stator/tools-list.json`\n\n## Depends on\n\n- #163\n- #105\n- praetorianer777/Stator#597\n"
+    },
+    {
+      "number": 165,
+      "title": "Show and change a workflow's Stator cap in the web app",
+      "closed": false,
+      "createdAt": "2026-10-30T22:46:22Z",
+      "closedAt": null,
+      "labels": [
+        "area/web",
+        "backlog",
+        "type/feature"
+      ],
+      "milestone": "M14 Confidentiality levels",
+      "url": "https://github.com/Cloudster1/Rotor/issues/165",
+      "body": "## User story\n\nAs a person looking at a workflow, I want to see the highest Stator level its runs may read, and as an administrator to change it there, so that nobody has to guess what a workflow can see.\n\n## Acceptance criteria\n\n- [ ] The workflow page shows the effective cap and whether it comes from the default\n- [ ] Administrators get a control to set the cap or return to the default; others see it read-only\n- [ ] The installation default is a card in the administrators' settings\n- [ ] It sits where #161 puts a workflow's General settings\n- [ ] Strings live in a new `web/src/strings_confidentiality.ts`, since `strings.ts` is near the 500-line limit\n- [ ] axe passes in light and dark\n\n## Tests\n\nvitest as `Unattended.test.tsx` does. e2e as `retention.spec.ts` does: an administrator sets and resets a cap and the default, a member sees them read-only, light and dark.\n\n## Implementation\n\n`web/src/features/workflows/` beside `SharePanel`, and a card in `features/settings/`.\n\n## Depends on\n\n- #163\n"
+    },
+    {
+      "number": 166,
+      "title": "fix: keep the realm check passing against dynamo's redirect forms",
+      "closed": true,
+      "createdAt": "2026-10-31T13:19:07Z",
+      "closedAt": "2026-10-31T15:10:43Z",
+      "labels": [
+        "area/auth",
+        "suite",
+        "type/bug"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/166",
+      "body": "## User story\n\nAs a maintainer, I want Rotor's realm to match Dynamo's again, so that `main` is green and Rotor can be released for Dynamo to pin.\n\n## Acceptance criteria\n\n- [ ] `make realm-check` passes against Dynamo's `deploy/keycloak/realm.json` on `main`\n- [ ] The shared clients carry Dynamo's redirect forms (`http://localhost:*`, `http://localhost/*` and the like) instead of `http://localhost*`\n- [ ] Rotor's own clients use the same forms, since Dynamo's `tests/test-realm.sh` refuses the loose wildcard and will hold Rotor's part once praetorianer777/Dynamo#6 lands\n- [ ] Sign-in still works in `make up` and in the browser layer\n\n## Tests\n\n`make realm-check` in the `shell` layer, and the browser layer's sign-in. The scheduled `ci.yml` run on `main` turns green.\n\n## Implementation\n\nThe nightly run has failed at `make realm-check` every day since 2026-10-26 (for example run 41190711465): Dynamo changed its redirect URIs and Rotor's copy in `deploy/keycloak/realm.json` still has the old forms. Take Dynamo's shared part as it is and bring Rotor's clients `rotor` and `rotor-control-plane` to the same forms.\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 167,
+      "title": "chore: release rotor 0.1.0 for dynamo to pin",
+      "closed": false,
+      "createdAt": "2026-10-31T13:19:09Z",
+      "closedAt": null,
+      "labels": [
+        "area/infra",
+        "suite",
+        "type/chore"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/167",
+      "body": "## User story\n\nAs the suite's maintainer, I want a released Rotor, so that Dynamo can pin its images and chart like Stator's, Armature's and Exciter's.\n\n## Acceptance criteria\n\n- [ ] `v0.1.0` is tagged by `release.sh` and `release.yml`, with the four images (`rotor-backend`, `rotor-web`, `rotor-runner`, `rotor-agent`) and the chart at `oci://ghcr.io/cloudster1/charts/rotor`, each signed with its SBOM attested\n- [ ] The ghcr packages are public, so Dynamo and its clusters pull them without a secret (`docs/releasing.md`)\n- [ ] `DYNAMO_DISPATCH_TOKEN` is set, and the release tells Dynamo with `tool-released`\n- [ ] The GitHub release lists every digest\n\n## Tests\n\n`release.yml` verifies the signatures and attestations in the run; `cosign verify` against one pulled image and the chart from outside CI.\n\n## Implementation\n\nFollow `docs/releasing.md`. Rotor has never been released: `VERSION` is 0.1.0 and `CHANGELOG.md` has everything under Unreleased. A 0.2.0 follows once a service account can administer tools (#168), since dynamo-connect needs it.\n\n## Depends on\n\n- #166 (a green `main`)\n\n"
+    },
+    {
+      "number": 168,
+      "title": "feat: let a service account add tools and hook secrets",
+      "closed": true,
+      "createdAt": "2026-10-31T13:21:25Z",
+      "closedAt": "2026-10-31T17:56:44Z",
+      "labels": [
+        "area/auth",
+        "area/security",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/168",
+      "body": "## User story\n\nAs the suite's operator, I want dynamo-connect to add Stator, Armature and Exciter to Rotor and hand it each tool's webhook secret, so that a fresh suite has Rotor wired to the tools without anyone clicking through Admin.\n\n## Acceptance criteria\n\n- [ ] `GET /api/v1/tools`, `POST /api/v1/tools` and `GET`/`PUT /api/v1/tools/{toolID}/hook` accept `Authorization: Bearer` with an access token of the realm `dynamo` whose audience holds `rotor` and whose groups hold `rotor-administrators`\n- [ ] Every other route still takes the session cookie only; a bearer token there is refused with a sentence that says which routes take one\n- [ ] The origin check keeps applying to cookie writes and does not apply to bearer requests\n- [ ] A token without the group, with the wrong audience or issuer, or expired is refused, and the refusal says what is missing\n- [ ] Each change made with a bearer token is audited with the service account as the actor\n- [ ] `GET /api/v1/tools` shows each tool's base URL and hook URL, so a caller finds a tool by its base URL and knows where to point the tool's webhook\n- [ ] The development realm has a client `dynamo-connect`: a service account only, in `rotor-administrators`, with an audience mapper for `rotor`\n\n## Tests\n\nIntegration: a client-credentials token of `dynamo-connect` adds a tool at the tool-stub and sets its hook secret; the same token is refused on `/api/v1/workflows`; tokens without the group or audience are refused. Unit tests for the token checks. The OpenAPI document names the bearer scheme on these operations.\n\n## Implementation\n\n- Today `backend/internal/httpapi/session.go` takes `rotor_session` only, and `assistant_auth.go` takes bearer tokens only at `/mcp`. Verify the token against the realm's JWKS as the assistant path does, and map the groups claim as `oidc/grouproles.go` does at sign-in.\n- Dynamo's realm gets the same client, and its `dynamo-connect` uses it (praetorianer777/Dynamo#97).\n- `docs/integration.md` names the routes and the token.\n\n## Depends on\n\nNothing. A release after #167 carries it, since Dynamo pins only released images.\n\n"
+    },
+    {
+      "number": 169,
+      "title": "test: install the chart as a subchart with outside keycloak and openbao",
+      "closed": true,
+      "createdAt": "2026-10-31T13:21:27Z",
+      "closedAt": "2026-10-31T18:39:04Z",
+      "labels": [
+        "area/infra",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/169",
+      "body": "## User story\n\nAs the suite's maintainer, I want Rotor's chart to install as a dependency of Dynamo's umbrella chart, with Keycloak and OpenBao from outside, so that one install brings up Rotor beside the other three.\n\n## Acceptance criteria\n\n- [ ] The chart renders and installs as a subchart: the parent sets `fullnameOverride`, and nothing assumes Rotor is the top chart or the release is named after it\n- [ ] Every secret can come from a Secret made beforehand: the OIDC client secret, the OpenBao token for `openbao.configure`, the Postgres owner and Valkey passwords\n- [ ] It works with an OpenBao the parent installs, reached at `openbao.addr`, with sandboxes allowed to reach it through `sandbox.egress.openbao`\n- [ ] The sandbox namespace is named from the release, so two installs in one cluster do not collide\n- [ ] Refusals for missing values name the value as the parent sets it (`rotor.oidc.issuer`), or say the path is relative to Rotor's chart\n\n## Tests\n\n`tests/test-helm.sh` renders the chart under a small parent chart with existing Secrets and an outside OpenBao and Keycloak, with golden output like `tests/helm/production.yaml`; the `kube` layer installs it that way on kind once.\n\n## Implementation\n\n`deploy/charts/rotor`: check `templates/_helpers.tpl` (names, `ROTOR_APP_URL` from `ingress.host`), `job-openbao.yaml`, the sandbox namespace and its policies. Dynamo's umbrella chart sets these values (praetorianer777/Dynamo#101).\n\n## Depends on\n\nNothing.\n\n"
+    },
+    {
+      "number": 170,
+      "title": "docs: tell dynamo what it needs to run rotor",
+      "closed": true,
+      "createdAt": "2026-10-31T13:21:29Z",
+      "closedAt": "2026-10-31T15:33:58Z",
+      "labels": [
+        "area/integration",
+        "suite",
+        "type/chore"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/170",
+      "body": "## User story\n\nAs the suite's maintainer, I want Rotor's integration document to say what Dynamo needs to run Rotor, so that Dynamo can pin, size and install it without reading Rotor's code.\n\n## Acceptance criteria\n\n- [ ] `docs/integration.md` points to Dynamo's `docs/compatibility.md` (Dynamo#4 is done) instead of saying the list is not written yet, and uses the general promise of `mcp@1` from praetorianer777/Dynamo#92\n- [ ] It says that everyone in the realm `dynamo` may sign in to Rotor and `rotor-administrators` makes an administrator, until #161 adds an allow-list\n- [ ] It names Rotor's images and the memory the compose stack and the chart ask for, with sandboxes counted apart (a workspace toolchain defaults to 3072 MiB), for Dynamo's `make check-host`\n- [ ] It lists what an umbrella chart sets: `openbao.addr` and `openbao.configure` with a token Secret, the audit device and `system:auth-delegator` OpenBao needs, the ingress host, `sandbox.egress.openbao` and the gVisor RuntimeClass\n- [ ] It says the Docker sandbox backend is for development only, so a compose server runs Rotor without sandboxes\n\n## Tests\n\nDocumentation only; the gate's format and link checks.\n\n## Implementation\n\n`docs/integration.md` and the README's deployment section. Measure memory from `make up` with `docker stats` after a run and from the chart's requests in `deploy/charts/rotor/values.yaml`.\n\n## Depends on\n\n- praetorianer777/Dynamo#92\n"
+    },
+    {
+      "number": 171,
+      "title": "feat: let bootstrap members in, as stator and exciter do",
+      "closed": false,
+      "createdAt": "2026-10-31T13:21:31Z",
+      "closedAt": null,
+      "labels": [
+        "area/auth",
+        "backlog",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "Backlog",
+      "url": "https://github.com/Cloudster1/Rotor/issues/171",
+      "body": "## User story\n\nAs the suite's operator, I want the people Dynamo lets into every tool to be let into Rotor too, so that `DYNAMO_MEMBERS` means the same in all four.\n\n## Acceptance criteria\n\n- [ ] `ROTOR_BOOTSTRAP_MEMBERS` (and the chart value beside it) names people by email, as Stator's and Exciter's bootstrap members do; they are let in at first start, and a later start adds new names without removing anyone\n- [ ] A name that is not in the realm yet is let in when it first signs in\n- [ ] A malformed list stops the start with a sentence that names the entry\n\n## Tests\n\nIntegration: a member from the list signs in without a join request; someone not on the list waits as #161 says.\n\n## Implementation\n\nOnly meaningful once #161 replaces \"everyone in the realm signs in\" with an allow-list. Dynamo then passes `DYNAMO_MEMBERS` to it (praetorianer777/Dynamo#97).\n\n## Depends on\n\n- #161\n\n"
+    },
+    {
+      "number": 172,
+      "title": "feat: answer back-channel logout as rotor-api, the name the suite gives it",
+      "closed": true,
+      "createdAt": "2026-10-31T13:37:22Z",
+      "closedAt": "2026-10-31T16:04:24Z",
+      "labels": [
+        "area/auth",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/172",
+      "body": "## User story\n\nAs a person signed in to Rotor in the suite, I want signing out at Keycloak to sign me out of Rotor too, so that a shared machine does not keep my Rotor session.\n\n## Acceptance criteria\n\n- [ ] Rotor's api answers back-channel logout at the name the suite gives it, `rotor-api`: in Rotor's own compose the api gets that network alias, and the realm's `rotor` client points at `http://rotor-api:8080/api/v1/auth/oidc/backchannel-logout`\n- [ ] Rotor's part of the realm (`rotor`, `rotor-control-plane`, `rotor-administrators`, the service-account users) is the same in Rotor and in Dynamo, apart from secrets\n- [ ] Once Dynamo carries that part, `make realm-check` compares the whole realm again instead of leaving Rotor's part aside (#109)\n\n## Tests\n\n`make realm-check` in the `shell` layer; the integration test for back-channel logout runs against the alias.\n\n## Implementation\n\n`deploy/keycloak/realm.json` (the `rotor` client's `backchannel.logout.url`, today `http://api:8080/...`), `deploy/docker-compose.yml` (alias), `deploy/keycloak/realm-check.mjs` (drop the exclusions).\n\n## Depends on\n\n- praetorianer777/Dynamo#6 (Rotor's clients in Dynamo's realm)\n- #166\n"
+    },
+    {
+      "number": 173,
+      "title": "test: a workflow writes to exciter, armature and stator as alice",
+      "closed": false,
+      "createdAt": "2026-10-31T13:40:41Z",
+      "closedAt": null,
+      "labels": [
+        "area/workflows",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/173",
+      "body": "## User story\n\nAs a person in the suite, I want one workflow to read an Exciter requirement and write an Armature issue and a Stator page as me, so that I can trust Rotor to work across all three tools with my permissions and no more.\n\n## Acceptance criteria\n\n- [ ] The suite starts Stator beside Exciter and Armature, from a pinned `deploy/suite/STATOR_REF`\n- [ ] A workflow run by alice reads an Exciter requirement, then files an Armature issue and writes a Stator page that link to it, each written as alice\n- [ ] The same workflow run by dave, who only reads, is refused by each tool it writes to, and the run says which tool refused and why\n- [ ] The workflow is a named example that Dynamo's stack test and `helm test` can start too (praetorianer777/Dynamo#98, praetorianer777/Dynamo#102)\n\n## Tests\n\n`make test-suite`, in `backend/test/suite_*.go`; it runs nightly and on pull requests labelled `suite`.\n\n## Implementation\n\n- Follow `suite_armature_test.go` (alice writes, dave is refused) and `suite_story_test.go`.\n- `mk/suite.mk` and `deploy/suite` grow a Stator overlay with its seed.\n- The example workflow lives where the other examples do, so Dynamo starts it by name.\n\n## Depends on\n\n- #105 (Stator as a tool)\n\n"
+    },
+    {
+      "number": 178,
+      "title": "feat: refuse to start a run when the installation runs no sandboxes",
+      "closed": true,
+      "createdAt": "2026-10-31T15:34:33Z",
+      "closedAt": "2026-10-31T18:57:04Z",
+      "labels": [
+        "area/runner",
+        "area/web",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/178",
+      "body": "## User story\n\nAs a person using Rotor on an installation that runs no sandboxes, such as Dynamo's compose server, I want starting a run to be refused with a sentence that says why, so that I do not wait for a run that never starts.\n\n## Acceptance criteria\n\n- [ ] With `ROTOR_SANDBOX_BACKEND` empty, `POST` to start a run (and a trigger that would start one) answers with a refusal instead of 201 with a `queued` run; the sentence says this installation runs no workflows and that an administrator installs Rotor with sandboxes (the chart) to run them\n- [ ] The web app shows that sentence where a run is started, and the workflow page says so before anyone presses Start\n- [ ] A trigger that cannot start its run records why in the trigger log, once, without retrying forever\n- [ ] `GET /api/v1/meta` or the settings an administrator sees say that runs are off, so dynamo-connect and Dynamo's server test can check it\n- [ ] Nothing changes with a backend set; the worker's own message stays for the operator's log\n\n## Tests\n\nIntegration: the api started without a backend refuses a run start and a trigger with the sentence; with the Docker backend the same start is accepted. Browser: the workflow page shows why Start is off.\n\n## Implementation\n\nToday `handleStartRun` needs only OpenBao, so the run is accepted and stays `queued`; the worker exits at `backend/cmd/worker/main.go:168` with \"ROTOR_SANDBOX_BACKEND is not set, so the worker has nowhere to start sandboxes\", which only the operator sees. The api reads the same setting (`backend/internal/config/sandbox.go`) and can refuse before the run row is written. The sentence lives in `web/src/strings.ts`.\n\nDynamo runs Rotor this way on a compose server (praetorianer777/Dynamo#96).\n\n## Depends on\n\nNothing.\n"
+    },
+    {
+      "number": 181,
+      "title": "feat: show hook urls at the address tools deliver to",
+      "closed": true,
+      "createdAt": "2026-10-31T18:28:53Z",
+      "closedAt": "2026-10-31T19:38:41Z",
+      "labels": [
+        "area/connections",
+        "area/integration",
+        "suite",
+        "type/feature"
+      ],
+      "milestone": "M15 Dynamo",
+      "url": "https://github.com/Cloudster1/Rotor/issues/181",
+      "body": "## User story\n\nAs the suite's operator, I want the hook URL Rotor shows for a tool to be one that tool can reach, so that dynamo-connect can register each tool's webhook without rewriting addresses.\n\n## Acceptance criteria\n\n- [ ] A setting `ROTOR_HOOKS_URL` (and the chart value beside it) names the base address tools deliver webhooks to, such as `http://rotor-api:8080` in a compose stack; without it, hook URLs keep using `ROTOR_APP_URL` as today\n- [ ] `hookURL` in `GET /api/v1/tools` and the `url` of `GET /api/v1/tools/{toolID}/hook` use it, and so does the Admin page that shows the address to paste\n- [ ] A value that is not an absolute http or https URL stops the start with a sentence that names the setting\n- [ ] Rotor's own compose stack and the suite overlay set it to the api's address on the suite network, and a suite test delivers a real tool's event to it\n\n## Tests\n\nUnit tests for the setting; integration: with the setting, `hookURL` carries it and a ping to it is accepted; the suite test delivers an Armature or Exciter event to the address Rotor shows.\n\n## Implementation\n\nToday `hookURL` is built on `ROTOR_APP_URL` (#168), which in a compose stack is the browser's `http://localhost:<port>`; tools in other containers cannot reach that. `ROTOR_TOOLS_BACKCHANNEL` already maps the other direction, Rotor reaching tools. Dynamo's dynamo-connect registers the webhooks (praetorianer777/Dynamo#97) and runs Rotor's api as `rotor-api` (praetorianer777/Dynamo#95).\n\n## Depends on\n\nNothing.\n"
+    }
+  ]
+}

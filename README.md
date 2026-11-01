@@ -47,11 +47,14 @@ an administrator adds a made-up plant, two projects with their issues, teams,
 boards and sprints, with "Add the demo project" under Admin, Installation.
 
 The seed also adds the suite demo, and an administrator can add it from the
-same page: the GitHub issues of Armature, Exciter and Stator, pull requests
-left out, as the projects `ARM`, `EXC` and `STA`. Each keeps its GitHub number,
-so `EXC-261` is Cloudster1/Exciter#261, with its body, labels, milestone and
-whether it was closed, and what an issue says it depends on blocks it, across
-projects too. The seed's people report and work them; no GitHub login or
+same page: the GitHub issues of Armature, Exciter, Stator and Rotor, pull
+requests left out, as the projects `ARM`, `EXC`, `STA` and `ROT`. Each keeps
+its GitHub number, so `EXC-261` is Cloudster1/Exciter#261, with its body,
+labels, milestone and whether it was closed, and what an issue says it depends
+on blocks it, across projects too. Each project has its repository's
+milestones as GitHub has them, with their due dates, and the closed ones
+closed. A suite demo from an older snapshot is brought up to date from the
+same page. The seed's people report and work them; no GitHub login or
 address is copied. Exciter's and Stator's own suite demos link their
 requirements and pages to these keys: `make suite-up DEMO=1` in Exciter adds
 all three. The issues come from a snapshot in

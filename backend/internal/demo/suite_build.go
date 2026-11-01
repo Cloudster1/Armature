@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,7 +45,7 @@ const SuiteStale = 15 * time.Minute
 // suiteAgain is how a stopped suite demo is put right: adding it again carries on in the projects it made.
 const suiteAgain = "Add the suite demo again, and it carries on in the projects it made."
 
-// ErrSuiteAdded refuses a second suite demo while the first is built or done.
+// ErrSuiteAdded refuses a second suite demo while the first is built, or done from the snapshot this version carries.
 var ErrSuiteAdded = errors.New("the suite demo was added already")
 
 // SuiteKeyTakenError is a suite demo held off by a project already under one of its keys.
@@ -62,8 +63,10 @@ type SuiteDemo struct {
 	Step    int    `json:"step"`
 	Steps   int    `json:"steps"`
 	Message string `json:"message"`
-	// Taken is the day the snapshot was taken.
+	// Taken is the day the snapshot was taken; Latest is the day of the one this version carries,
+	// and a done demo older than it can be added again to bring it up to date.
 	Taken     string    `json:"taken"`
+	Latest    string    `json:"latest"`
 	Projects  []string  `json:"projects"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -82,16 +85,47 @@ func scanSuite(row pgx.Row) (*SuiteDemo, error) {
 
 // Suite is the suite demo, or nil when nobody added it.
 func Suite(ctx context.Context, cluster *db.Cluster) (*SuiteDemo, error) {
+	latest, err := latestTaken()
+	if err != nil {
+		return nil, err
+	}
 	var out *SuiteDemo
-	err := cluster.Read(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
+	err = cluster.Read(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		out, err = scanSuite(tx.QueryRow(ctx, selectSuite))
 		return err
 	})
+	if out != nil {
+		out.Latest = latest
+	}
 	return out, err
 }
 
-// QueueSuite asks the worker for the suite demo, or for a failed one again. The keys are checked first,
+// latestTaken is the day of the embedded snapshot, read once since the status is asked for while the worker builds.
+var latestTaken = sync.OnceValues(func() (string, error) {
+	snapshots, err := Snapshots()
+	if err != nil {
+		return "", err
+	}
+	return snapshots[0].Taken, nil
+})
+
+// outdated is a done demo from an older snapshot than this version carries.
+func (d *SuiteDemo) outdated(latest string) bool {
+	return d.State == SuiteDone && d.Taken < latest
+}
+
+// suiteHolds is whether the project under key holds the repository's GitHub issues, which only the
+// suite demo files there; a demo the seed made never recorded the projects it made.
+func suiteHolds(ctx context.Context, tx db.DBTX, key, repo string) (bool, error) {
+	var holds bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM issue i JOIN project p ON p.id = i.project_id WHERE p.key = $1 AND i.external_key LIKE $2)`,
+		project.NormalizeKey(key), "https://github.com/"+repo+"/issues/%").Scan(&holds)
+	return holds, err
+}
+
+// QueueSuite asks the worker for the suite demo, or for a failed or outdated one again. The keys are checked first,
 // so a refusal leaves nothing made; a failed demo's own projects do not hold it off.
 func QueueSuite(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip string) (*SuiteDemo, db.LSN, error) {
 	ctx = db.PinPrimary(ctx)
@@ -110,7 +144,7 @@ func QueueSuite(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip 
 		if err != nil {
 			return err
 		}
-		if existing != nil && existing.State != SuiteFailed {
+		if existing != nil && existing.State != SuiteFailed && !existing.outdated(snapshots[0].Taken) {
 			return ErrSuiteAdded
 		}
 		var made []string
@@ -119,7 +153,7 @@ func QueueSuite(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip 
 				return err
 			}
 		}
-		for _, key := range SuiteKeys {
+		for i, key := range SuiteKeys {
 			if slices.Contains(made, key) {
 				continue
 			}
@@ -127,7 +161,16 @@ func QueueSuite(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip 
 			if err != nil {
 				return err
 			}
-			if !free {
+			if free {
+				continue
+			}
+			ours := false
+			if existing != nil {
+				if ours, err = suiteHolds(ctx, tx, key, snapshots[i].Repo); err != nil {
+					return err
+				}
+			}
+			if !ours {
 				return &SuiteKeyTakenError{Key: key}
 			}
 		}
@@ -147,6 +190,7 @@ func QueueSuite(ctx context.Context, cluster *db.Cluster, p *auth.Principal, ip 
 	if err != nil {
 		return nil, 0, err
 	}
+	out.Latest = snapshots[0].Taken
 	return out, lsn, nil
 }
 
@@ -343,6 +387,13 @@ func buildSuite(ctx context.Context, cluster *db.Cluster, snapshots []Snapshot, 
 	importer := actor
 	importer.Import = true
 
+	// A label made here first keeps GitHub's colour; one somebody already has keeps theirs.
+	for _, in := range plan.Labels {
+		if _, _, err := labels.Create(ctx, in); err != nil && !errors.Is(err, label.ErrNameTaken) {
+			return fmt.Errorf("create the label %s: %w", in.Name, err)
+		}
+	}
+
 	for n, p := range plan.Projects {
 		made, err := suiteProject(ctx, projects, templates, p, actor.UserID, progress.made)
 		if err != nil {
@@ -392,7 +443,10 @@ func buildSuite(ctx context.Context, cluster *db.Cluster, snapshots []Snapshot, 
 				return fmt.Errorf("file %s: %w", key, err)
 			}
 		}
-		log.Info("suite demo project filled", "project", p.Key, "issues", len(p.Issues))
+		if err := closeMilestones(ctx, milestones, p, named, actor.UserID); err != nil {
+			return err
+		}
+		log.Info("suite demo project filled", "project", p.Key, "issues", len(p.Issues), "milestones", len(p.Milestones))
 		if err := progress.step(n + 1); err != nil {
 			return err
 		}
@@ -420,27 +474,50 @@ func suiteProject(ctx context.Context, projects *project.Service, templates *tem
 	return made, record(p.Key)
 }
 
-// suiteMilestones makes the milestones the project lacks and answers all of them by name.
+// suiteMilestones makes the milestones the project lacks and answers all of them by name. One an earlier
+// run closed is opened again, since an issue is only filed under an open milestone; closeMilestones ends it.
 func suiteMilestones(ctx context.Context, milestones *milestone.Service, p SuiteProject, actor uuid.UUID) (map[string]uuid.UUID, error) {
 	have, err := milestones.List(ctx, p.Key, true)
 	if err != nil {
 		return nil, err
 	}
 	named := map[string]uuid.UUID{}
+	closed := map[string]bool{}
 	for _, m := range have {
 		named[m.Name] = m.ID
+		closed[m.Name] = !m.Open()
 	}
-	for _, name := range p.Milestones {
-		if _, ok := named[name]; ok {
+	for _, planned := range p.Milestones {
+		if id, ok := named[planned.Name]; ok {
+			if closed[planned.Name] {
+				if _, _, err := milestones.Reopen(ctx, id, actor); err != nil {
+					return nil, fmt.Errorf("open milestone %s in %s again: %w", planned.Name, p.Key, err)
+				}
+			}
 			continue
 		}
-		made, _, err := milestones.Create(ctx, p.Key, milestone.Input{Name: name}, actor)
+		made, _, err := milestones.Create(ctx, p.Key, milestone.Input{
+			Name: planned.Name, Description: planned.Description, DueOn: planned.DueOn,
+		}, actor)
 		if err != nil {
-			return nil, fmt.Errorf("create milestone %s in %s: %w", name, p.Key, err)
+			return nil, fmt.Errorf("create milestone %s in %s: %w", planned.Name, p.Key, err)
 		}
-		named[name] = made.ID
+		named[planned.Name] = made.ID
 	}
 	return named, nil
+}
+
+// closeMilestones closes the milestones GitHub had closed, now that their issues are filed under them.
+func closeMilestones(ctx context.Context, milestones *milestone.Service, p SuiteProject, named map[string]uuid.UUID, actor uuid.UUID) error {
+	for _, planned := range p.Milestones {
+		if !planned.Closed {
+			continue
+		}
+		if _, _, err := milestones.Close(ctx, named[planned.Name], actor); err != nil {
+			return fmt.Errorf("close milestone %s in %s: %w", planned.Name, p.Key, err)
+		}
+	}
+	return nil
 }
 
 // doneStatuses is, per issue type, the last done status of the workflow the project gives it.
