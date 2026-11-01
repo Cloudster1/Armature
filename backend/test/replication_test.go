@@ -95,7 +95,7 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("warmup write: %v", err)
 	}
-	if !h.waitForReplica(t, warmup, 10*time.Second) {
+	if !h.waitForReplica(t, warmup, replicaCatchUp) {
 		t.Fatal("replica never caught up to the warmup write")
 	}
 
@@ -156,7 +156,7 @@ func TestReadYourWritesUnderLag(t *testing.T) {
 
 	h.resumeReplay(t)
 
-	if !h.waitForReplica(t, lsn, 10*time.Second) {
+	if !h.waitForReplica(t, lsn, replicaCatchUp) {
 		t.Fatal("replica did not catch up after replay resumed")
 	}
 	if got := count(ctx); got != 1 {
@@ -235,7 +235,7 @@ func TestIdleReplicaStaysHealthy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	if !h.waitForReplica(t, lsn, 10*time.Second) {
+	if !h.waitForReplica(t, lsn, replicaCatchUp) {
 		t.Fatal("replica never caught up")
 	}
 
@@ -264,7 +264,7 @@ func (h *harness) holdTheReplicaHere(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !h.waitForReplica(t, reached, 10*time.Second) {
+	if !h.waitForReplica(t, reached, replicaCatchUp) {
 		t.Fatal("the replica never caught up")
 	}
 	routable := func() bool {

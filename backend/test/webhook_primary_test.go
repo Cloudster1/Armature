@@ -38,7 +38,7 @@ func TestAWebhookTestReadsTheDeliveryItJustWrote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !h.waitForReplica(t, warmup, 10*time.Second) {
+	if !h.waitForReplica(t, warmup, replicaCatchUp) {
 		t.Fatal("the replica never caught up")
 	}
 	// The router trusts a replica only as far as its last health check saw it,

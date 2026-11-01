@@ -108,6 +108,9 @@ func openShared() error {
 		if err != nil {
 			return fmt.Errorf("connect replica directly: %w", err)
 		}
+		if err := catchUpReplica(ctx, shared.super, shared.replica, replicaStartWait); err != nil {
+			return err
+		}
 	}
 
 	if cfg.Auth.SecretKey == "" {
@@ -266,5 +269,34 @@ func (h *harness) ownMetrics(t *testing.T) {
 	h.ownCluster(t)
 	if err := h.tel.Register(observability.NewClusterCollector(h.cluster)); err != nil {
 		t.Fatalf("cluster collector: %v", err)
+	}
+}
+
+// replicaStartWait is how long the suite waits, before any test, for a replica
+// the stack has just restarted to replay what the primary holds.
+const replicaStartWait = 2 * time.Minute
+
+// catchUpReplica resumes a replay that a killed run left paused, and waits until
+// the replica has replayed what the primary held when the suite started.
+func catchUpReplica(ctx context.Context, primary, replica *pgxpool.Pool, within time.Duration) error {
+	_, _ = replica.Exec(ctx, `SELECT CASE WHEN pg_get_wal_replay_pause_state() <> 'not paused' THEN pg_wal_replay_resume() END`)
+	var text string
+	if err := primary.QueryRow(ctx, `SELECT pg_current_wal_lsn()::text`).Scan(&text); err != nil {
+		return fmt.Errorf("read the primary's position: %w", err)
+	}
+	lsn, err := db.ParseLSN(text)
+	if err != nil {
+		return fmt.Errorf("parse the primary's position: %w", err)
+	}
+	for deadline := time.Now().Add(within); ; time.Sleep(replicaPoll) {
+		var replayed string
+		if err := replica.QueryRow(ctx, `SELECT pg_last_wal_replay_lsn()::text`).Scan(&replayed); err == nil {
+			if got, err := db.ParseLSN(replayed); err == nil && got >= lsn {
+				return nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("the replica did not reach %s within %s, so no test would read what it wrote: %s", text, within, replicaState(ctx, replica, lsn))
+		}
 	}
 }

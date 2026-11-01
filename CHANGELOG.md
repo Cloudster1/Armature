@@ -7,6 +7,12 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: a rule run by hand shows in its runs at once, also while a replica
+  is behind (#488).
+- Fixed: the role matrix and the swimlane editor are drawn once everything
+  they show has loaded, so the grid no longer flashes without rows and the
+  lanes no longer jump under the pointer (#488).
+
 ## 0.3.0 - 2026-10-29
 
 - Changed: the kit follows the suite's (#473). It gains Exciter's `Radio`

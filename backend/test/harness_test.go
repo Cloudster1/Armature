@@ -135,10 +135,13 @@ func (h *harness) waitForReplica(t *testing.T, lsn db.LSN, within time.Duration)
 				return true
 			}
 		}
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(replicaPoll)
 	}
 	return false
 }
+
+// replicaPoll is how often a wait asks the replica how far it has replayed.
+const replicaPoll = 20 * time.Millisecond
 
 // waitForPrimary waits until the replica has replayed everything the primary
 // has written so far, which is what a client that reads from the replica
@@ -153,9 +156,30 @@ func (h *harness) waitForPrimary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse the primary's position: %v", err)
 	}
-	if !h.waitForReplica(t, lsn, 10*time.Second) {
-		t.Fatalf("the replica did not reach %s in time", text)
+	if !h.waitForReplica(t, lsn, replicaCatchUp) {
+		t.Fatalf("the replica did not reach %s within %s: %s", text, replicaCatchUp, replicaState(context.Background(), h.replica, lsn))
 	}
+}
+
+// replicaCatchUp is how long a test waits for the replica to replay what it
+// wrote; a replica held up by a query or a restart can take seconds.
+const replicaCatchUp = 30 * time.Second
+
+// replicaState says how far the replica is from lsn, for a failure to show.
+func replicaState(ctx context.Context, replica *pgxpool.Pool, lsn db.LSN) string {
+	var replayed, paused string
+	err := replica.QueryRow(ctx, `SELECT pg_last_wal_replay_lsn()::text, pg_get_wal_replay_pause_state()`).Scan(&replayed, &paused)
+	if err != nil {
+		return fmt.Sprintf("its position could not be read: %v", err)
+	}
+	got, err := db.ParseLSN(replayed)
+	if err != nil {
+		return fmt.Sprintf("it reported the position %q", replayed)
+	}
+	if got >= lsn {
+		return fmt.Sprintf("it has replayed to %s since, replay %s", replayed, paused)
+	}
+	return fmt.Sprintf("it had replayed to %s, %d bytes behind, replay %s", replayed, lsn-got, paused)
 }
 
 // pauseReplay stops the standby applying WAL, which is how these tests create
