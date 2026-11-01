@@ -121,8 +121,10 @@ scenario("roles are granted to people and to groups", async ({ page }) => {
 });
 
 // Everyone is built in: it holds every member, comes first, is not edited, and
-// a role granted to it reaches somebody who holds nothing of their own.
-scenario("a role granted to everyone reaches every member", async ({ page }) => {
+// a role granted to it reaches somebody who holds nothing of their own. The
+// grant reaches every person every other scenario signs up too, so it runs
+// alone and is taken back at the end.
+serialScenario("a role granted to everyone reaches every member", async ({ page }) => {
   const owner = await signUp(page, unique("user"), { visit: false });
   const key = await createProject(page, "For everyone", { visit: false });
   const who = await inviteMember(page, "everyone");
@@ -143,7 +145,16 @@ scenario("a role granted to everyone reaches every member", async ({ page }) => 
 
   await revokeAll(page, who.name);
   await grantRole(page, { who: "Everyone", role: "Reader", projectKey: key });
+  try {
+    await everyoneReadsTheProject(page, key, who);
+  } finally {
+    await signIn(page, owner.email);
+    await revokeEveryone(page, key);
+  }
+});
 
+/** What the grant to Everyone in the scenario above lets a member do, and may not let anybody do. */
+async function everyoneReadsTheProject(page, key, who) {
   const refused = await page.evaluate(async () => {
     const { groups } = await (await fetch("/api/v1/groups", { credentials: "include" })).json();
     const everyone = groups.find((group) => group.builtin === "everyone");
@@ -162,7 +173,23 @@ scenario("a role granted to everyone reaches every member", async ({ page }) => 
   await waitForApp(page);
   await goto(page, `/projects/${key}`);
   expect.contains(await bodyText(page), "For everyone", "a member does not see what Everyone was granted");
-});
+}
+
+/** Takes back what Everyone was granted on one project. */
+async function revokeEveryone(page, key) {
+  const left = await page.evaluate(async (project) => {
+    // The text narrows to the project's own grants; the project alone keeps every installation-wide one too.
+    const held = async () => {
+      const { assignments } = await (await fetch(`/api/v1/role-assignments?project=${project}&q=${project}`, { credentials: "include" })).json();
+      return assignments.filter((each) => each.groupBuiltin === "everyone" && each.projectKey === project);
+    };
+    for (const grant of await held()) {
+      await fetch(`/api/v1/role-assignments/${grant.id}`, { method: "DELETE", credentials: "include" });
+    }
+    return (await held()).length;
+  }, key);
+  expect.equal(left, 0, "Everyone still holds a role on the project");
+}
 
 // Every scenario's grants share one installation, so the Roles tab shows one
 // page of them, and the one a scenario made is found by typing.
