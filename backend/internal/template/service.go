@@ -168,7 +168,7 @@ func (s *Service) ensureScheme(ctx context.Context, tx db.DBTX, spec *workflowSp
 		if _, ok := statuses[st.name]; ok {
 			continue
 		}
-		id, err := workflow.InsertStatus(ctx, tx, workflow.StatusInput{Name: st.name, Category: st.category, Description: st.description})
+		id, err := workflow.EnsureStatus(ctx, tx, workflow.StatusInput{Name: st.name, Category: st.category, Description: st.description})
 		if err != nil {
 			return uuid.Nil, err
 		}

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/armature/armature/backend/internal/db"
@@ -477,70 +476,6 @@ func writeRules(ctx context.Context, tx db.DBTX, transitionID uuid.UUID, t Trans
 		}
 	}
 	return nil
-}
-
-// EnsureWorkflow returns the organization's workflow by the input's name,
-// building it from the graph when there is none yet.
-//
-// It runs in the caller's transaction, so a project made from a template and
-// the workflow that template brings commit together. Applying the same template
-// twice finds the workflow the first application made rather than failing on
-// the name or making a second one.
-func (a *Admin) EnsureWorkflow(ctx context.Context, tx db.DBTX, in GraphInput) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id FROM workflow WHERE lower(name) = lower($1)`, in.Name).Scan(&id)
-	if err == nil {
-		return id, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, fmt.Errorf("look for workflow %q: %w", in.Name, err)
-	}
-
-	if err := a.checkGraph(ctx, tx, &in); err != nil {
-		return uuid.Nil, err
-	}
-	if err := tx.QueryRow(ctx, `
-		INSERT INTO workflow (name, description)
-		VALUES ($1, $2) RETURNING id`,
-		in.Name, in.Description,
-	).Scan(&id); err != nil {
-		return uuid.Nil, fmt.Errorf("create workflow %q: %w", in.Name, err)
-	}
-	if err := a.writeGraph(ctx, tx, id, in); err != nil {
-		return uuid.Nil, err
-	}
-	return id, events.Emit(ctx, tx, "workflow.created", map[string]any{
-		"workflowId": id, "name": in.Name,
-	})
-}
-
-// EnsureScheme returns the organization's scheme by the input's name, creating
-// it with the given mappings when there is none. See EnsureWorkflow.
-func (a *Admin) EnsureScheme(ctx context.Context, tx db.DBTX, in SchemeInput) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id FROM workflow_scheme WHERE lower(name) = lower($1)`, in.Name).Scan(&id)
-	if err == nil {
-		return id, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, fmt.Errorf("look for scheme %q: %w", in.Name, err)
-	}
-
-	if err := a.checkScheme(ctx, tx, &in, false); err != nil {
-		return uuid.Nil, err
-	}
-	if err := tx.QueryRow(ctx, `
-		INSERT INTO workflow_scheme (name) VALUES ($1) RETURNING id`,
-		in.Name,
-	).Scan(&id); err != nil {
-		return uuid.Nil, fmt.Errorf("create scheme %q: %w", in.Name, err)
-	}
-	if err := writeSchemeItems(ctx, tx, id, in.Items); err != nil {
-		return uuid.Nil, err
-	}
-	return id, events.Emit(ctx, tx, "workflow.scheme.created", map[string]any{
-		"schemeId": id, "name": in.Name,
-	})
 }
 
 func stepsByStatus(ctx context.Context, tx db.DBTX, workflowID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
