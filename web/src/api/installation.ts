@@ -53,7 +53,7 @@ export function useAddDemoProject() {
   });
 }
 
-/** How far the suite demo got: the GitHub issues of Armature, Exciter and Stator, which the worker builds. */
+/** How far the suite demo got: the GitHub issues of Armature, Exciter, Stator and Rotor, which the worker builds. */
 export type SuiteDemo = components["schemas"]["SuiteDemo"];
 
 const suiteDemoQueryKey = ["installation", "suite-demo"] as const;

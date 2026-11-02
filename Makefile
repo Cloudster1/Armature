@@ -370,7 +370,7 @@ seed: ## Fill the running stack's installation with demo people and projects
 	docker compose -f deploy/docker-compose.yml run --rm --build seed
 
 .PHONY: demo-snapshot
-demo-snapshot: ## Take the suite demo's GitHub issues again, on the host with gh signed in
+demo-snapshot: ## Take the suite demo's GitHub issues, milestones and labels again, on the host with gh signed in
 	@sh deploy/demo-snapshot.sh
 
 # ImageMagick runs from an image, as every other tool does, and as root only

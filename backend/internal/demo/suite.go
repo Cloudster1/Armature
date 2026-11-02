@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,17 +17,17 @@ import (
 	"github.com/armature/armature/backend/internal/markdown"
 )
 
-// The suite demo (#300) holds the GitHub issues of the three tools, each under its own number, so
+// The suite demo (#300, #486) holds the GitHub issues of the four tools, each under its own number, so
 // Exciter's requirements and Stator's pages find EXC-261 as Cloudster1/Exciter#261.
 //
 //go:embed suite/*.json
 var suiteFiles embed.FS
 
 // suiteOrder is the snapshot files in the order the demo builds them, and so the order of its steps.
-var suiteOrder = []string{"armature", "exciter", "stator"}
+var suiteOrder = []string{"armature", "exciter", "stator", "rotor"}
 
 // SuiteKeys are the suite demo's projects, which it needs free before it starts.
-var SuiteKeys = []string{"ARM", "EXC", "STA"}
+var SuiteKeys = []string{"ARM", "EXC", "STA", "ROT"}
 
 // SuiteSteps is a step per project and one for the links between their issues.
 var SuiteSteps = len(suiteOrder) + 1
@@ -34,14 +35,30 @@ var SuiteSteps = len(suiteOrder) + 1
 // suiteSource is how an imported issue's changelog says where it came from.
 const suiteSource = "the suite demo's GitHub snapshot"
 
-// Snapshot is one repository's issues as make demo-snapshot took them.
+// Snapshot is one repository's issues, milestones and labels as make demo-snapshot took them.
 type Snapshot struct {
-	Repo   string        `json:"repo"`
-	Key    string        `json:"key"`
-	Name   string        `json:"name"`
-	Commit string        `json:"commit"`
-	Taken  string        `json:"taken"`
-	Issues []GitHubIssue `json:"issues"`
+	Repo       string            `json:"repo"`
+	Key        string            `json:"key"`
+	Name       string            `json:"name"`
+	Commit     string            `json:"commit"`
+	Taken      string            `json:"taken"`
+	Milestones []GitHubMilestone `json:"milestones"`
+	Labels     []GitHubLabel     `json:"labels"`
+	Issues     []GitHubIssue     `json:"issues"`
+}
+
+// GitHubMilestone is a milestone as GitHub had it, in the order it was made there.
+type GitHubMilestone struct {
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	DueOn       *time.Time `json:"dueOn"`
+	Closed      bool       `json:"closed"`
+}
+
+// GitHubLabel is a label as GitHub had it; Color is six hex digits.
+type GitHubLabel struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
 }
 
 // GitHubIssue is an issue as GitHub had it, without who wrote or worked it.
@@ -77,8 +94,9 @@ func Snapshots() ([]Snapshot, error) {
 	return out, nil
 }
 
-// SuitePlan is what the demo writes: the projects with their issues, and the blocking links between them.
+// SuitePlan is what the demo writes: the labels, the projects with their issues, and the blocking links between them.
 type SuitePlan struct {
+	Labels   []label.Input
 	Projects []SuiteProject
 	Links    []SuiteLink
 }
@@ -86,9 +104,16 @@ type SuitePlan struct {
 // SuiteProject is one repository as a project.
 type SuiteProject struct {
 	Key, Name, Description string
-	// Milestones are named in the order their first issue was opened.
-	Milestones []string
+	// Milestones are GitHub's, then any an issue names that GitHub no longer lists.
+	Milestones []SuiteMilestone
 	Issues     []SuiteIssue
+}
+
+// SuiteMilestone is a milestone as the project gets it; a closed one is closed once its issues are filed.
+type SuiteMilestone struct {
+	Name, Description string
+	DueOn             *time.Time
+	Closed            bool
 }
 
 // SuiteIssue is one GitHub issue as it is written here.
@@ -142,16 +167,34 @@ func PlanSuite(snapshots []Snapshot, people int) SuitePlan {
 	}
 	var plan SuitePlan
 	linked := map[[2]string]bool{}
+	labelled := map[string]bool{}
+	for _, s := range snapshots {
+		// Labels are shared by every project, so the first repository to have a word gives its colour.
+		for _, gh := range s.Labels {
+			names := labels([]string{gh.Name})
+			if len(names) == 0 || labelled[strings.ToLower(names[0])] {
+				continue
+			}
+			labelled[strings.ToLower(names[0])] = true
+			plan.Labels = append(plan.Labels, label.Input{Name: names[0], Color: labelColor(gh.Color, names[0])})
+		}
+	}
 	for _, s := range snapshots {
 		p := SuiteProject{
 			Key: s.Key, Name: s.Name,
 			Description: fmt.Sprintf("The issues of %s on GitHub, as they stood on %s at commit %.12s.", s.Repo, s.Taken, s.Commit),
 		}
 		seen := map[string]bool{}
+		for _, gh := range s.Milestones {
+			if name := strings.TrimSpace(gh.Title); name != "" && !seen[name] {
+				seen[name] = true
+				p.Milestones = append(p.Milestones, SuiteMilestone{Name: name, Description: gh.Description, DueOn: gh.DueOn, Closed: gh.Closed})
+			}
+		}
 		for _, gh := range s.Issues {
 			if gh.Milestone != "" && !seen[gh.Milestone] {
 				seen[gh.Milestone] = true
-				p.Milestones = append(p.Milestones, gh.Milestone)
+				p.Milestones = append(p.Milestones, SuiteMilestone{Name: gh.Milestone})
 			}
 			p.Issues = append(p.Issues, planIssue(s, gh, people))
 			blocked := issue.FormatKey(s.Key, gh.Number)
@@ -229,6 +272,48 @@ func labels(names []string) []string {
 		}
 	}
 	return out
+}
+
+// labelHues are the palette's colours by hue, in degrees; gray is for the colours with too little of one.
+var labelHues = []struct {
+	color string
+	hue   float64
+}{{"red", 0}, {"orange", 25}, {"amber", 45}, {"green", 140}, {"teal", 175}, {"blue", 217}, {"purple", 270}, {"pink", 330}}
+
+// labelGray is the saturation below which a GitHub colour reads as gray.
+const labelGray = 0.18
+
+// labelColor is the palette colour nearest GitHub's hex colour by hue, or the one picked from the name when it is unreadable.
+func labelColor(hex, name string) string {
+	v, err := strconv.ParseUint(strings.TrimPrefix(hex, "#"), 16, 32)
+	if err != nil || len(strings.TrimPrefix(hex, "#")) != 6 {
+		return label.ColorFor(name)
+	}
+	r, g, b := float64(v>>16&0xff)/255, float64(v>>8&0xff)/255, float64(v&0xff)/255
+	hi, lo := max(r, g, b), min(r, g, b)
+	if hi-lo < labelGray {
+		return "gray"
+	}
+	var hue float64
+	switch hi {
+	case r:
+		hue = 60 * (g - b) / (hi - lo)
+	case g:
+		hue = 60 * (2 + (b-r)/(hi-lo))
+	default:
+		hue = 60 * (4 + (r-g)/(hi-lo))
+	}
+	if hue < 0 {
+		hue += 360
+	}
+	best, distance := "gray", 360.0
+	for _, h := range labelHues {
+		d := min(math.Abs(hue-h.hue), 360-math.Abs(hue-h.hue))
+		if d < distance {
+			best, distance = h.color, d
+		}
+	}
+	return best
 }
 
 // IssueRef names an issue: Repo is "owner/name", or empty for the issue's own repository.

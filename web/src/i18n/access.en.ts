@@ -338,8 +338,10 @@ export const accessEn = {
       "A made-up plant to show Armature with something in it: a production line and its maintenance, with issues, teams, boards, sprints and milestones, as two projects beside your own. You are their lead.",
     addDemo: "Add the demo project",
     suiteDetail:
-      "The issues Armature, Exciter and Stator were built from, taken from GitHub, each under its own number: Exciter's issue 261 is EXC-261. Exciter and Stator link their own suite demos to them.",
+      "The issues Armature, Exciter, Stator and Rotor were built from, with their milestones and labels, taken from GitHub, each under its own number: Exciter's issue 261 is EXC-261. Exciter and Stator link their own suite demos to them.",
     addSuite: "Add the suite demo",
+    updateSuite: "Bring the suite demo up to date",
+    newerSuite: (day: string) => `This version of Armature carries the issues as GitHub had them on ${day}.`,
     building: (step: number, steps: number) => `Building the suite demo: step ${step} of ${steps}.`,
     suiteIn: "The suite demo is in",
     and: " and ",

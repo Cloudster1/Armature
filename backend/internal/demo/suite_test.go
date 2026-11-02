@@ -80,7 +80,7 @@ func TestTheSnapshotMapsToIssuesUnderTheirGitHubNumbers(t *testing.T) {
 	if !slices.Equal(bug.Labels, []string{"type/bug", "area/web"}) || bug.Milestone != "M2 Tracing" {
 		t.Errorf("labels %v, milestone %q", bug.Labels, bug.Milestone)
 	}
-	if !slices.Equal(exc.Milestones, []string{"M2 Tracing"}) || !slices.Equal(arm.Milestones, []string{"M1"}) {
+	if !slices.Equal(names(exc.Milestones), []string{"M2 Tracing"}) || !slices.Equal(names(arm.Milestones), []string{"M1"}) {
 		t.Errorf("milestones %v and %v", arm.Milestones, exc.Milestones)
 	}
 	if story.Reporter != 0 || story.Assignee != 1 || fix.Reporter != 1 || fix.Assignee != 2 {
@@ -104,7 +104,94 @@ func TestTheTwoDemosNeverWantTheSameKey(t *testing.T) {
 			t.Errorf("both demos want %s", key)
 		}
 	}
-	if SuiteKeysText() != "ARM, EXC and STA" {
+	if SuiteKeysText() != "ARM, EXC, STA and ROT" {
 		t.Errorf("the keys read %q", SuiteKeysText())
+	}
+}
+
+func names(milestones []SuiteMilestone) []string {
+	var out []string
+	for _, m := range milestones {
+		out = append(out, m.Name)
+	}
+	return out
+}
+
+func TestMilestonesAndLabelsComeAsGitHubHasThem(t *testing.T) {
+	due := time.Date(2026, 11, 30, 8, 0, 0, 0, time.UTC)
+	snapshots := []Snapshot{
+		{Repo: "Cloudster1/Armature", Key: "ARM", Taken: "2026-11-01",
+			Milestones: []GitHubMilestone{
+				{Title: "M0 Foundation", Description: "The skeleton.", Closed: true},
+				{Title: "M1 Planning", DueOn: &due},
+				{Title: "Backlog"},
+			},
+			Labels: []GitHubLabel{{Name: "bug", Color: "d73a4a"}, {Name: "good first issue", Color: "7057ff"}, {Name: "wontfix", Color: "ffffff"}},
+			Issues: []GitHubIssue{
+				{Number: 1, Title: "Start", Milestone: "M0 Foundation"},
+				{Number: 2, Title: "Plan", Milestone: "Gone since"},
+			}},
+		{Repo: "Cloudster1/Rotor", Key: "ROT", Taken: "2026-11-01",
+			Labels: []GitHubLabel{{Name: "Bug", Color: "0e8a16"}, {Name: "area/infra", Color: "c5def5"}, {Name: "odd", Color: "nope"}}},
+	}
+	plan := PlanSuite(snapshots, 1)
+
+	arm := plan.Projects[0]
+	want := []SuiteMilestone{
+		{Name: "M0 Foundation", Description: "The skeleton.", Closed: true},
+		{Name: "M1 Planning", DueOn: &due},
+		{Name: "Backlog"},
+		{Name: "Gone since"},
+	}
+	if len(arm.Milestones) != len(want) {
+		t.Fatalf("milestones %+v", arm.Milestones)
+	}
+	for i, m := range arm.Milestones {
+		w := want[i]
+		if m.Name != w.Name || m.Description != w.Description || m.Closed != w.Closed || (m.DueOn == nil) != (w.DueOn == nil) || (m.DueOn != nil && !m.DueOn.Equal(*w.DueOn)) {
+			t.Errorf("milestone %d is %+v, want %+v", i, m, w)
+		}
+	}
+
+	// Labels are shared, so Rotor's green Bug is Armature's red bug; GitHub's spaces become hyphens.
+	got := map[string]string{}
+	for _, l := range plan.Labels {
+		got[l.Name] = l.Color
+	}
+	wantLabels := map[string]string{"bug": "red", "good-first-issue": "purple", "wontfix": "gray", "area/infra": "blue", "odd": got["odd"]}
+	if len(got) != len(wantLabels) {
+		t.Fatalf("labels %v", got)
+	}
+	for name, color := range wantLabels {
+		if got[name] != color {
+			t.Errorf("label %s is %s, want %s", name, got[name], color)
+		}
+	}
+	if got["odd"] == "" {
+		t.Error("a label with an unreadable colour got none")
+	}
+}
+
+func TestEverySnapshotListsTheMilestonesItsIssuesName(t *testing.T) {
+	snapshots, err := Snapshots()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshots) != len(SuiteKeys) || snapshots[len(snapshots)-1].Repo != "Cloudster1/Rotor" {
+		t.Fatalf("the snapshot holds %d repositories", len(snapshots))
+	}
+	for _, s := range snapshots {
+		if len(s.Milestones) == 0 || len(s.Labels) == 0 || s.Taken != snapshots[0].Taken {
+			t.Errorf("%s was taken on %s with %d milestones and %d labels; take it again with make demo-snapshot", s.Repo, s.Taken, len(s.Milestones), len(s.Labels))
+		}
+		listed := map[string]bool{}
+		for _, m := range s.Milestones {
+			listed[m.Title] = true
+		}
+		for _, gh := range s.Issues {
+			if gh.Milestone != "" && !listed[gh.Milestone] {
+				t.Errorf("%s#%d names the milestone %q, which the snapshot does not list", s.Repo, gh.Number, gh.Milestone)
+			}
+		}
 	}
 }
