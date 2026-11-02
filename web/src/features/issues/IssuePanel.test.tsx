@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -13,7 +13,7 @@ const mutation = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(() => Promise.reso
 
 /** Every write the page sends, whichever way it sends it. */
 const sent = { update: vi.fn(), comment: vi.fn() };
-function writes(spy: ReturnType<typeof vi.fn>) {
+function writes(spy: Mock) {
   return () => ({
     mutate: (vars: unknown) => spy(vars),
     mutateAsync: (vars: unknown) => {
@@ -252,7 +252,7 @@ function commentBox(): HTMLTextAreaElement {
   return document.querySelector<HTMLTextAreaElement>("textarea#new-comment")!;
 }
 
-function keysWritten(spy: ReturnType<typeof vi.fn>): string[] {
+function keysWritten(spy: Mock): string[] {
   return spy.mock.calls.map(([vars]) => (vars as { key: string }).key);
 }
 

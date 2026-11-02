@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Board, Swimlane } from "@/api/boards";
@@ -13,7 +13,7 @@ const useBoardById = vi.fn();
 const useProjectStatuses = vi.fn();
 let reorderPending = false;
 
-function mutation(mutate: ReturnType<typeof vi.fn>) {
+function mutation(mutate: Mock) {
   return { mutate, isPending: false, error: null };
 }
 
