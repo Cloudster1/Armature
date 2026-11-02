@@ -1602,7 +1602,7 @@ export interface paths {
         /** How far the suite demo got: queued, running, done or failed, and the step of its steps; null until somebody added it. Administrators only. */
         get: operations["suiteDemo"];
         put?: never;
-        /** Add the suite demo: the GitHub issues of Armature, Exciter and Stator, under the keys ARM, EXC and STA and their GitHub numbers, built by the worker. Administrators only, once, and written to the audit log; 409 when it was added, 422 when one of its keys is taken. */
+        /** Add the suite demo: the GitHub issues of Armature, Exciter, Stator and Rotor with their milestones and labels, under the keys ARM, EXC, STA and ROT and their GitHub numbers, built by the worker. Administrators only, once per snapshot, and written to the audit log: a done demo from an older snapshot is brought up to date. 409 when it was added, 422 when one of its keys is taken. */
         post: operations["addSuiteDemo"];
         delete?: never;
         options?: never;
@@ -8068,6 +8068,7 @@ export interface components {
         SuiteDemo: {
             /** Format: date-time */
             createdAt: string;
+            latest: string;
             message: string;
             projects: string[];
             state: string;

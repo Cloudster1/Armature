@@ -7,6 +7,14 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Added: the suite demo holds Rotor too, as the project `ROT`, and every issue
+  of the four tools as GitHub has them today. Each project gets all of its
+  repository's milestones, with their descriptions and due dates, also those
+  no issue is in, and the closed ones closed; a label GitHub coloured keeps
+  the nearest of Armature's colours. A suite demo added from an older
+  snapshot is brought up to date under Settings, Installation, which adds
+  `ROT` beside the projects it made before (#486).
+
 ## 0.3.0 - 2026-10-29
 
 - Changed: the kit follows the suite's (#473). It gains Exciter's `Radio`
