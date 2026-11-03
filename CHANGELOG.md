@@ -7,6 +7,10 @@ and its tag message, so a change is written here in the branch that makes it.
 
 ## Unreleased
 
+- Fixed: the web tooling takes minimatch 11.0.4 in place of 10.2.6, through
+  an npm override, which closes the globparts amplification advisory
+  GHSA-g3hv-75wg-m249. eslint still asks for 10, and no 10.x is patched (#495).
+
 - Added: the suite demo holds Rotor too, as the project `ROT`, and every issue
   of the four tools as GitHub has them today. Each project gets all of its
   repository's milestones, with their descriptions and due dates, also those
