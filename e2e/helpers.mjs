@@ -1583,10 +1583,19 @@ async function rolesHeldBy(page, who) {
  * with visit, on the sign-in page where the button leaves it.
  */
 export async function signOut(page, { visit = true } = {}) {
+  await quietBeforeSessionEnds(page);
   // Already signed out, or the account is gone: the cookie goes either way.
   if (await cookiesOf(page)) await callAPI(page, "POST", "/auth/logout").catch(() => {});
   await forgetTheme(page);
   if (visit) await goto(page, "/login");
+}
+
+// A request still in flight when the session ends is answered 401, and the app then goes
+// to sign in by itself, over whatever load the scenario starts next (#476).
+async function quietBeforeSessionEnds(page) {
+  if (!page.url().startsWith(BASE_URL)) return;
+  const app = await page.evaluate(() => document.body?.dataset.settled !== undefined).catch(() => false);
+  if (app) await settled(page, WAIT).catch(() => {});
 }
 
 /** Signing out forgets the theme this browser paints first, so the next person does not see it. */
