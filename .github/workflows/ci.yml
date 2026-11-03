@@ -151,6 +151,11 @@ jobs:
         if: failure() && matrix.stack
         run: $COMPOSE logs --tail 200 api worker migrate web-e2e
 
+      # The tail above is often too short to hold the error behind a failed scenario (#458).
+      - name: Keep the stack's whole log with the browser suite's artifacts
+        if: failure() && matrix.shard
+        run: mkdir -p .cache/e2e && $COMPOSE logs --no-color --timestamps api worker > .cache/e2e/stack.log
+
       - name: Save the Go module and build cache
         if: matrix.go-cache && success() && github.ref == 'refs/heads/main'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
